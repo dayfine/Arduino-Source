@@ -139,6 +139,35 @@ bool talk_prompt_settled(PlzaBackend& backend){
     }
 }
 
+//  What a look `held` into a walk's last leg says for walk_until() with
+//  the event `end`: how the walk ends, or none to walk on.
+std::optional<Pokemon::Outcome> end_event_look(
+    PlzaBackend& backend, std::string_view walk, const ScreenObservation& look,
+    ScreenEvent end, Milliseconds held, Milliseconds end_after
+){
+    if (look.events.has(end) && held < end_after){
+        backend.log(std::format(
+            "[PLZA] {}: the end event after {} ms of the last leg, before its {} ms: passed on the way, on.",
+            walk, held.count(), end_after.count()
+        ));
+        return std::nullopt;
+    }
+    if (look.events.has(end) && end == ScreenEvent::INTERACT_PROMPT && !prompt_steady(backend)){
+        backend.log(std::format("[PLZA] {}: the A prompt after {} ms of the last leg went again: on.", walk, held.count()));
+        return std::nullopt;
+    }
+    if (look.events.has(end)){
+        backend.log(std::format("[PLZA] {}: the end event after {} ms of the last leg.", walk, held.count()));
+        backend.log_detail(std::format("[PLZA] {}: ended on: {}", walk, describe_scene_look(look)));
+        return Pokemon::outcome_ok();
+    }
+    if (look.events.has(ScreenEvent::FADE_BLACK)){
+        backend.log(std::format("[PLZA] {}: a black fade after {} ms of the last leg: the scene takes over.", walk, held.count()));
+        return Pokemon::outcome_ok();
+    }
+    return std::nullopt;
+}
+
 } // namespace
 
 
@@ -228,25 +257,9 @@ Pokemon::Outcome walk_until(
             }
             continue;
         }
-        if (look.events.has(*end) && held < end_after){
-            backend.log(std::format(
-                "[PLZA] {}: the end event after {} ms of the last leg, before its {} ms: passed on the way, on.",
-                walk, held.count(), end_after.count()
-            ));
-            continue;
-        }
-        if (look.events.has(*end) && *end == ScreenEvent::INTERACT_PROMPT && !prompt_steady(backend)){
-            backend.log(std::format("[PLZA] {}: the A prompt after {} ms of the last leg went again: on.", walk, held.count()));
-            continue;
-        }
-        if (look.events.has(*end)){
-            backend.log(std::format("[PLZA] {}: the end event after {} ms of the last leg.", walk, held.count()));
-            backend.log_detail(std::format("[PLZA] {}: ended on: {}", walk, describe_scene_look(look)));
-            return Pokemon::outcome_ok();
-        }
-        if (look.events.has(ScreenEvent::FADE_BLACK)){
-            backend.log(std::format("[PLZA] {}: a black fade after {} ms of the last leg: the scene takes over.", walk, held.count()));
-            return Pokemon::outcome_ok();
+        const std::optional<Pokemon::Outcome> ended = end_event_look(backend, walk, look, *end, held, end_after);
+        if (ended){
+            return *ended;
         }
     }
     if (!end){

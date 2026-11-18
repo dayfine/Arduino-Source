@@ -1321,8 +1321,8 @@ std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& read
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(
-        builtin_story_data(), sightings, scripted_arrow(test.input.arrow_reads)
+    const Pokemon::StoryGame<ZonePose> game = plza_story_game(
+        /*console=*/{}, builtin_story_data(), scripted_arrow(test.input.arrow_reads), sightings
     );
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
@@ -1354,7 +1354,7 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 //  The console-less game with a reload that presses HOME, as the console's
 //  does first, and succeeds.
 Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows, AutosaveSightings& sightings){
-    Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(rows, sightings);
+    Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, rows, /*arrow=*/std::nullopt, sightings);
     game.reload = [](Pokemon::StoryBackend<ZonePose>& backend){
         backend.press(BUTTON_HOME, Milliseconds(80), Milliseconds(80));
         return Pokemon::outcome_ok();
@@ -1426,7 +1426,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
     const Pokemon::StoryGame<ZonePose> game = test.input.has_reload
         ? game_with_reload(story, sightings)
-        : make_plza_story_game_without_console(story, sightings);
+        : plza_story_game(/*console=*/{}, story, /*arrow=*/std::nullopt, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
     const std::string verdict = loaded.succeeded() ? "done" : loaded.failure;

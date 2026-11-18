@@ -508,7 +508,7 @@ Pokemon::StoryGame<ZonePose> plza_game_actions(const PlzaConsoleActions& console
 }
 
 const Pokemon::StoryActionRegistry<ZonePose>& spec_registry(){
-    static const Pokemon::StoryGame<ZonePose> game = plza_game_actions({}, std::nullopt);
+    static const Pokemon::StoryGame<ZonePose> game = plza_game_actions(/*console=*/{}, /*arrow=*/std::nullopt);
     static const Pokemon::StoryActionRegistry<ZonePose> registry(game);
     return registry;
 }
@@ -613,16 +613,10 @@ void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& tot
 
 
 Pokemon::StoryGame<ZonePose> plza_story_game(
-    const PlzaConsoleActions& console, const Pokemon::StoryRows& rows, AutosaveSightings& sightings,
-    std::optional<MinimapArrowReader> arrow
+    const PlzaConsoleActions& console, const Pokemon::StoryRows& rows, std::optional<MinimapArrowReader> arrow,
+    AutosaveSightings& sightings
 ){
     return with_autosave_sightings(plza_game_actions(console, arrow), rows, sightings);
-}
-
-Pokemon::StoryGame<ZonePose> make_plza_story_game_without_console(
-    const Pokemon::StoryRows& rows, AutosaveSightings& sightings, std::optional<MinimapArrowReader> arrow
-){
-    return plza_story_game({}, rows, sightings, arrow);
 }
 
 Outcome load_checkpoint_start(const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){

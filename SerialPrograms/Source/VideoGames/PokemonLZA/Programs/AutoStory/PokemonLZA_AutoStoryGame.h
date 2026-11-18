@@ -55,23 +55,16 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end);
 using PlzaConsoleActions = std::map<std::string, Pokemon::StoryActionHandler<Pokemon::ZonePose>, std::less<>>;
 
 //  PLZA as a StoryGame, with no reload: the console_only actions by
-//  `console`, one it lacks failing as "console_only". Every step's looks go
+//  `console`, one it lacks failing as "console_only" (none: tests and
+//  simulations). Every step's looks go
 //  to `sightings`, which must outlive it; the save at a checkpoint's end
 //  counts the game's autosave when its badge was seen there ("[Save] <id>:
 //  the game autosaved (seen)"), else nothing saved (Pokemon::NOT_SAVED,
 //  "save unverified" for the plan's "unverified" rows). A walk's "heading"
 //  is faced by `arrow`; with none, such a walk fails as "console_only".
 Pokemon::StoryGame<Pokemon::ZonePose> plza_story_game(
-    const PlzaConsoleActions& console, const Pokemon::StoryRows& rows, AutosaveSightings& sightings,
-    std::optional<MinimapArrowReader> arrow
-);
-
-//  plza_story_game() with no console, for tests and simulations: the
-//  console_only actions fail as "console_only".
-//  code-health: allow test_only_api -- a test double: the game the scripted tests and simulations run
-Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console(
-    const Pokemon::StoryRows& rows, AutosaveSightings& sightings,
-    std::optional<MinimapArrowReader> arrow = std::nullopt
+    const PlzaConsoleActions& console, const Pokemon::StoryRows& rows, std::optional<MinimapArrowReader> arrow,
+    AutosaveSightings& sightings
 );
 
 //  Loads the save `row` starts from with `game`'s reload (the latest

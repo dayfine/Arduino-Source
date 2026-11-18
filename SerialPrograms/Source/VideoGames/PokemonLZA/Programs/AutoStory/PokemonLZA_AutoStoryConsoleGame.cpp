@@ -251,7 +251,7 @@ PlzaConsoleActions console_actions(StoryEnv& env){
 Pokemon::StoryGame<ZonePose> make_plza_story_game(
     StoryEnv& env, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
 ){
-    Pokemon::StoryGame<ZonePose> game = plza_story_game(console_actions(env), rows, sightings, minimap_arrow(env));
+    Pokemon::StoryGame<ZonePose> game = plza_story_game(console_actions(env), rows, minimap_arrow(env), sightings);
     game.reload = [&env, &sightings](Pokemon::StoryBackend<ZonePose>&){
         sightings.restart();
         return reload_latest_save(env);

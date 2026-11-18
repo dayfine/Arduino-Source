@@ -248,7 +248,7 @@ const RewindCase REWIND_CASES[] = {
 Pokemon::StoryGame<ZonePose> rewind_game(
     const StoryData& story, size_t failed_catches, std::string_view failure, AutosaveSightings& sightings, size_t& catches
 ){
-    Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(story, sightings);
+    Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, story, /*arrow=*/std::nullopt, sightings);
     game.reload = [](Pokemon::StoryBackend<ZonePose>&){
         return Pokemon::outcome_ok();
     };
