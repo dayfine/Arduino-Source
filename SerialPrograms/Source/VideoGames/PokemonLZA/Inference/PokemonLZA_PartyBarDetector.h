@@ -21,10 +21,14 @@ namespace PokemonLZA{
 
 //  Counts the filled slots of the overworld party bar (bottom left, 6
 //  slots). The bar is on screen when its D-pad marker shows
-//  (OverworldPartySelectionDetector). A filled slot has an HP bar under
+//  (OverworldPartySelectionDetector, a party of 2 or more) or when its last
+//  slot (slot 6) shows empty (a party of 1 to 5, which the marker misses
+//  with a party of 1: Hotel Z's lobby on 02.05, console B 2026-11-16).
+//  Cutscenes and dialogs hide the bar. A filled slot has an HP bar under
 //  its icon: green, yellow or red by its HP, over a dark trough. The slot
 //  whose partner is sent out (the D-pad down marker's) shows a Poke Ball
-//  and no HP bar: it counts too. An empty slot shows only its card.
+//  and no HP bar: it counts too. An empty slot shows only its frame: a
+//  thin light line over the scene darkened inside it.
 //  Boxes measured on 1920x1080 frames (console B, 2026-11-14): the bars
 //  on rows 1028-1031, slot i from x = 86 + 76.4 * i, 52 wide.
 class PartyBarDetector : public StaticScreenDetector{
@@ -51,6 +55,8 @@ private:
     bool slot_has_hp_bar(const ImageViewRGB32& screen, size_t index) const;
 
     OverworldPartySelectionDetector m_selection;
+    //  The last slot's frame, read when it is empty.
+    ImageFloatBox m_last_slot;
     //  Each slot's HP bar and, above it, the card between icon and bar.
     std::array<ImageFloatBox, 6> m_bar_boxes;
     std::array<ImageFloatBox, 6> m_card_boxes;
