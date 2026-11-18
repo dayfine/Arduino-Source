@@ -298,8 +298,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
         .reload_when_chained = story_data.reload_when_chained,
         .starts = builtin_checkpoint_starts(),
-        .read_start = [&env, &context]{
-            return read_start_signature(env.console, context);
+        .read_start = [&story, &backend](const StartSignature& start){
+            return start.wild_zone ? read_start_position(story, backend) : read_start_signature(story.env.console, story.context);
         },
     };
     RewindPlan plan{

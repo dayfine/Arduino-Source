@@ -266,6 +266,16 @@ const TableCase TABLE_CASES[] = {
         .expectation = {.from = "B"},
     },
     {
+        //  03.09 and a later row may both start out of a wild zone with 5
+        //  in the party: a chained run checks each against its own.
+        .name = "two starts share a signature, the asked one is one of them: as asked",
+        .input = {
+            .starts = {{.checkpoint = "B", .signature = AT_COUNTER}, {.checkpoint = "C", .signature = AT_COUNTER}},
+            .asked = "C", .read = AT_COUNTER,
+        },
+        .expectation = {.from = "C"},
+    },
+    {
         .name = "a reading sharing no field with the asked start: stop",
         .input = {.starts = {{.checkpoint = "B", .signature = {.registered = 1}}}, .asked = "B", .read = AT_COUNTER},
         .expectation = {.from = "stop"},

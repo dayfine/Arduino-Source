@@ -188,6 +188,11 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
             return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
         }},
         {"walk_back_to_zone_road", walk_back_to_zone_road},
+        {"check_out_of_zone_1", [](StoryEnv& env, PlzaBackend& backend){
+            return check_out_of_zone_1(backend, [&env, &backend]{
+                return read_pin_on_map(env, backend);
+            });
+        }},
         {"walk_to_unread_marker", walk_to_unread_marker},
         {"claim_mable_research_reward", claim_research_reward},
     };

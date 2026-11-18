@@ -1592,11 +1592,11 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
         starts.push_back(CheckpointStart{.checkpoint = "01.02", .signature = *test.input.start});
     }
     SegmentRunOptions options{.attempts_per_checkpoint = test.input.attempts, .starts = starts};
+    options.read_start = [&test](const StartSignature&){
+        return test.input.landed;
+    };
     if (test.input.reload_when_chained){
         options.reload_when_chained = {"01.02"};
-        options.read_start = [&test]{
-            return test.input.landed;
-        };
     }
     const Pokemon::SegmentReport report = run_plza_segments(game, rows, options, backend, state, sightings);
     const std::string verdict = report.completed

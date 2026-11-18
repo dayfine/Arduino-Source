@@ -108,6 +108,12 @@ PinReader pins_of(const std::vector<MapPoint>& pins){
 }
 
 
+//  The map pin on the street outside the far gate (03.08b's menu save,
+//  console B 2026-11-17 01:06), and at Wild Zone 1's 60 catch spot.
+constexpr MapPoint OUT_OF_ZONE_PIN{.x = 401, .y = 225};
+constexpr MapPoint IN_ZONE_PIN{.x = 386, .y = 252};
+
+
 struct GateWalkCase{
     std::string name;
     struct Input{
@@ -175,12 +181,31 @@ const GateWalkCase GATE_WALK_CASES[] = {
         //  The user, 2026-11-16: "if we did walk out the zone, that's a
         //  finish regardless what battle detector says".
         .name = "out of the zone with no prompt: done",
-        .input = {.looks = {{.gate_x = 600, .panel = true}, {.panel = false}, {.panel = false}}},
+        .input = {.looks = {{.gate_x = 600, .panel = true}, {.panel = false}, {.panel = false}}, .pins = {OUT_OF_ZONE_PIN}},
         .expectation = {.failure = std::nullopt, .inputs = {slice(6), slice(6)}},
     },
     {
+        //  console B, 2026-11-18 13:37:15 (03.08b zone_1_to_far_gate): the
+        //  lead's panel was gone on 2 looks 500 ms into the walk, still in
+        //  the zone; the walk ended there, and 03.08b saved in the zone.
+        .name = "the lead's panel gone but the map pin in the zone: walks on to the prompt",
+        .input = {
+            .looks = {{.gate_x = 600, .panel = true}, {.panel = false}, {.panel = false}, {.prompt = true}},
+            .pins = {IN_ZONE_PIN},
+        },
+        .expectation = {.failure = std::nullopt, .inputs = {slice(6), slice(6), slice(6)}},
+    },
+    {
+        .name = "the lead's panel gone with no map pin reader: walks on to the prompt",
+        .input = {.looks = {{.gate_x = 600, .panel = true}, {.panel = false}, {.panel = false}, {.prompt = true}}},
+        .expectation = {.failure = std::nullopt, .inputs = {slice(6), slice(6), slice(6)}},
+    },
+    {
         .name = "a battle read out of the zone does not hold the walk",
-        .input = {.looks = {{.gate_x = 500, .panel = true}, {.battle = true, .panel = false}}, .timeout = 15000ms},
+        .input = {
+            .looks = {{.gate_x = 500, .panel = true}, {.battle = true, .panel = false}}, .timeout = 15000ms,
+            .pins = {OUT_OF_ZONE_PIN},
+        },
         .expectation = {.failure = std::nullopt, .inputs = {slice(0), slice(0)}},
     },
     {
@@ -265,12 +290,78 @@ private:
     const GateWalkCase& m_test;
 };
 
+
+struct OutOfZoneCase{
+    std::string name;
+    struct Input{
+        //  The map pin's reads, in order, the last repeating; none: no reader.
+        std::vector<MapPoint> pins;
+    };
+    Input input;
+    struct Expectation{
+        //  The failure; none: out of the zone.
+        std::optional<std::string> failure;
+    };
+    Expectation expectation;
+};
+
+const OutOfZoneCase OUT_OF_ZONE_CASES[] = {
+    {
+        .name = "out of the zone on every read",
+        .input = {.pins = {OUT_OF_ZONE_PIN}},
+        .expectation = {.failure = std::nullopt},
+    },
+    {
+        //  console B, 2026-11-18 13:37: 03.08b saved in Wild Zone 1.
+        .name = "in the zone: no save there",
+        .input = {.pins = {IN_ZONE_PIN}},
+        .expectation = {.failure = "in_wild_zone"},
+    },
+    {
+        .name = "out on the first read, in on the next: in the zone",
+        .input = {.pins = {OUT_OF_ZONE_PIN, IN_ZONE_PIN}},
+        .expectation = {.failure = "in_wild_zone"},
+    },
+    {
+        .name = "no map pin reader: not known to be out",
+        .input = {.pins = {}},
+        .expectation = {.failure = "zone_unread"},
+    },
+};
+
+UnitTestResult check_out_of_zone(const OutOfZoneCase& test, CancellableScope& scope){
+    FakeBackend backend(Pokemon::FakeStoryScript<ZonePose>{.looks = {}, .kind = Pokemon::StoryBackendKind::SCRIPT}, scope);
+    const Pokemon::Outcome outcome = check_out_of_zone_1(backend, pins_of(test.input.pins));
+    const std::optional<std::string> failure = outcome.succeeded() ? std::nullopt : std::optional<std::string>(outcome.failure);
+    if (failure != test.expectation.failure){
+        return std::format("Expected {}, got {}.", test.expectation.failure.value_or("a pass"), to_string(outcome));
+    }
+    return true;
+}
+
+class Test_OutOfZone : public UnitTest{
+public:
+    explicit Test_OutOfZone(const OutOfZoneCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - check_out_of_zone_1: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        return check_out_of_zone(m_test, scope);
+    }
+
+private:
+    const OutOfZoneCase& m_test;
+};
+
 } // namespace
 
 
 void add_tests_AutoStoryGateWalk(UnitTestDatabase& database){
     for (const GateWalkCase& test : GATE_WALK_CASES){
         database.add<Test_GateWalk>(test);
+    }
+    for (const OutOfZoneCase& test : OUT_OF_ZONE_CASES){
+        database.add<Test_OutOfZone>(test);
     }
 }
 

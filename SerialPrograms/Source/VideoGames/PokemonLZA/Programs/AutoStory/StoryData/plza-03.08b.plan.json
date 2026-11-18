@@ -34,6 +34,12 @@
         }
       },
       {
+        "id": "out_of_zone_1",
+        "kind": "game_action",
+        "why": "the save below must be out of the zone, 03.09's start: the map pin out of Wild Zone 1 on two reads, else the run stops here unsaved. On console B, 2026-11-18 13:37, the gate walk ended on the lead's panel gone while still in the zone, the menu save saved there, and 03.09 walked into a wall.",
+        "action": "check_out_of_zone_1"
+      },
+      {
         "id": "save_outside_zone_1",
         "kind": "game_action",
         "why": "the user, 2026-11-16: \"the save is from where we caught the 5th species, so this might be a reason to manually save? like exit wildzone 1 and manually save\". The latest save was the last catch's autosave, wherever in the zone that catch was; a menu save here makes it this spot, 03.09's start: on the street just out of the far gate, where leave_zone_1 ends (party bar up, no A prompt: console B 2026-11-16 20:05:25). No turn back to the gate first (the user, 2026-11-16: no hand-written legs). The game's first menu save shows a tutorial screen, which the save presses through.",

@@ -134,6 +134,15 @@ std::optional<size_t> run_start(
     return checkpoint_at(rows, starts, asked, read);
 }
 
+bool start_confirmed(const StartSignature& known, const StartSignature& read){
+    const auto agrees = [](const auto& known_field, const auto& read_field){
+        return !known_field || known_field == read_field;
+    };
+    return agrees(known.talk_prompt, read.talk_prompt) && agrees(known.wild_zone, read.wild_zone)
+        && agrees(known.party, read.party) && agrees(known.minimap, read.minimap)
+        && (known.talk_prompt || known.wild_zone || known.party || known.minimap);
+}
+
 std::optional<bool> wild_zone_from_map(const std::optional<MapPoint>& pin){
     if (!pin){
         return std::nullopt;

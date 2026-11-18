@@ -90,9 +90,10 @@ struct SegmentRunOptions{
     //  The starts the plans name (execution "start_signature"): where a
     //  chained reload must land.
     std::span<const CheckpointStart> starts = {};
-    //  What the screen shows where the player stands, pressing nothing.
-    //  Unset: a chained reload's landing cannot be checked.
-    std::function<StartSignature()> read_start = {};
+    //  What the screen shows where the player stands, for the start it
+    //  is checked against (the console opens the full map only when that
+    //  start names wild_zone). Unset: no start can be checked.
+    std::function<StartSignature(const StartSignature& start)> read_start = {};
 };
 
 //  `rows` in order from the save the game is on, each with the story
@@ -106,11 +107,14 @@ struct SegmentRunOptions{
 //  where it landed (`options.read_start`) against the row's start in
 //  `options.starts` before any press of the row: "reload_off_start" when
 //  it is not there, "reload_unchecked" when the row names no start or
-//  there is no reader. Any other row
-//  runs on from the live screen when its start check passes or cannot
-//  tell (logged as "start unchecked"); when it fails, the row's start is
-//  loaded (load_checkpoint_start()) if the row before's autosave was seen,
-//  with a fresh `state`.
+//  there is no reader. Any other row, off the station platform, is
+//  checked against its start in `options.starts` on the live screen
+//  (start_confirmed()): there, logged as "START CHECKED", it runs on;
+//  elsewhere the run stops as "chain_off_start" ("START CHECK FAILED"),
+//  nothing of the row run. A row with no start in `options.starts`, or
+//  no reader, runs on, logged as "START UNCHECKED". On the platform, the
+//  row's start is loaded (load_checkpoint_start()) if the row before's
+//  autosave was seen, with a fresh `state`.
 //  With no autosave seen, a reload would rewind to an older save: the run
 //  fails there as "no_start_save". A failed load fails the run too.
 //  A row that saw an autosave and then failed is not retried: the save

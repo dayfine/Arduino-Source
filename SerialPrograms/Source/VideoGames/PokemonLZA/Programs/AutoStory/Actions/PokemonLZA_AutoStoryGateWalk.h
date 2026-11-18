@@ -63,9 +63,13 @@ struct GateWalk{
 //  the first second of looks shows no gate (the player faces away from
 //  it; walking on ran into the zone's wall), and as "no_prompt" after the
 //  timeout, each with how many looks saw the gate and its last reading.
-//  Out of the zone (ZONE_PANEL_READING 0 on 2 looks in a row, after a
-//  look read it 1) the walk is done too, prompt or not, whatever a battle reading says (the user,
-//  2026-11-16).
+//  The lead's panel gone (ZONE_PANEL_READING 0 on 2 looks in a row, after
+//  a look read it 1) asks the map whether the walk is out of the zone
+//  (check_out_of_zone_1() by `pin`): out, the walk is done, prompt or not,
+//  whatever a battle reading says (the user, 2026-11-16); else it walks
+//  on, and the panel must be gone on 2 more looks before the map is read
+//  again. The panel alone is no sign of being out: it was gone 500 ms
+//  into 03.08b's walk, still in the zone (console B, 2026-11-18 13:37).
 //  Inside the zone, a wild battle (BATTLE_STARTED; a Mareep at the zone's
 //  pillar, console B 2026-11-16) is walked on through at the last angle,
 //  its looks counted toward neither; still in battle after 20 s fails as
@@ -78,6 +82,14 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
     PlzaBackend& backend, const MinimapArrowReader& arrow, const LookReader& gate, const PinReader& pin,
     const GateWalk& walk
 );
+
+//  Whether the player is out of Wild Zone 1, by the map pin: `pin` read
+//  twice, out of the zone (pin_in_zone_1()) on both. Fails as
+//  "in_wild_zone" on a read in the zone and as "zone_unread" on a read
+//  with no pin or with no reader. Logs the verdict with the reads. 03.08b
+//  saved in the zone once (console B, 2026-11-18): its menu save waits for
+//  this.
+Pokemon::Outcome check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin);
 
 
 
