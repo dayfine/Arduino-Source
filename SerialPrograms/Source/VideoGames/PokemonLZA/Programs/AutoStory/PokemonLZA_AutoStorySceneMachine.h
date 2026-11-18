@@ -56,6 +56,9 @@ struct SceneMachineConfig{
     //  Ends at the choice box (CHOICE_BOX) instead of taking its top row.
     bool stop_at_choice = false;
     //  Ends at the battle HUD (BATTLE_STARTED), before anything else.
+    //  The HUD shows only while the player is locked on: after a black
+    //  fade with no text since, nothing busy for 3 s or the party bar held
+    //  a second gets ZL, then up to 4 times a quarter turn, L and ZL.
     bool stop_at_battle = false;
     //  The button that advances text in a machine that stops at a choice
     //  or a battle, and the advance chevron with no box: B where an A could
@@ -112,8 +115,10 @@ std::string describe_scene_look(const ScreenObservation& look);
 //  apart if it stays). With `config.stop_at_choice` it ends on the choice
 //  box, with `config.stop_at_battle` on the battle HUD, and neither takes
 //  the party bar or a prompt for control (they show between a talk's
-//  lines); with `config.end_after_black_fades` once its last fade has
-//  lifted and settled. `label` names its log lines ("[PLZA
+//  lines; after the battle's fade a battle start locks on to bring the
+//  HUD up: SceneMachineConfig::stop_at_battle); with
+//  `config.end_after_black_fades` once its last fade has lifted and
+//  settled. `label` names its log lines ("[PLZA
 //  mash_to_move_hints] screen 2: dialog at 1.5s: text box"), which go to
 //  log_detail() except the black fades, the banner, the hint and the end
 //  (log()). Fails as "scene_quiet" on the quiet end (unless

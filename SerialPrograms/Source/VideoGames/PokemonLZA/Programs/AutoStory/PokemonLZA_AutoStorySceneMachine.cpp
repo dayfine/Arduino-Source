@@ -48,6 +48,7 @@ enum class SceneScreen{
     HINT_SHOWING,   //  wait: the controls hint, not held a second yet
     TALK_PROMPT,    //  terminal: an A prompt ("A Talk") on the overworld, held a second, past min_length
     PROMPT_SHOWING, //  wait, no press: the A prompt, not held a second or before min_length
+    LOCK_ON,        //  ZL (after the first, a turn and L first): with stop_at_battle, no battle HUD after a black fade (lock_on_due())
     ENDED_IN_CONTROL,   //  terminal, failing: with stop_at_battle or stop_at_choice, the party bar held CONTROL_INSTEAD_HOLD with nothing busy
     AWAITING_SCENE, //  wait, no press: with start_window, the HUD up and no scene yet
     NEVER_STARTED,  //  terminal, failing: with start_window, the HUD up and no scene for that long
@@ -62,6 +63,12 @@ enum class SceneScreen{
 class SceneTimeline{
 public:
     SceneTimeline(SceneMachineConfig config, WallClock start);
+
+    //  The lock-ons since the last text or choice, the look acted on
+    //  included.
+    size_t lock_ons() const{
+        return m_lock_ons;
+    }
 
     //  The state for `look`. Does not change the timeline.
     SceneScreen classify(const ScreenObservation& look) const;
@@ -94,6 +101,12 @@ private:
     //  Whether, with end_after_black_fades, the banner showing has an A
     //  press due at `now`.
     bool banner_press_due(WallClock now) const;
+    //  Whether, with stop_at_battle, `look` gets a lock-on: a black fade
+    //  has been waited out with no text since, the battle HUD has not
+    //  shown, and since the fade nothing busy has shown for LOCK_ON_AFTER
+    //  or the party bar has held PARTY_BAR_HOLD with nothing busy;
+    //  LOCK_ON_ATTEMPTS at most until the next text.
+    bool lock_on_due(const ScreenObservation& look) const;
 
     SceneMachineConfig m_config;
     WallClock m_quiet_from;
@@ -123,6 +136,12 @@ private:
     //  end_after_black_fades' fades have all lifted.
     std::optional<WallClock> m_settled_since;
     bool m_banner_seen = false;
+    //  A black fade has shown since the last text or choice.
+    bool m_after_fade = false;
+    //  Since when nothing busy has shown, after that fade.
+    std::optional<WallClock> m_quiet_after_fade_since;
+    //  The lock-ons since the last text or choice.
+    size_t m_lock_ons = 0;
 };
 
 
@@ -161,6 +180,21 @@ constexpr Milliseconds BANNER_PRESS_EVERY = 1000ms;
 //  With end_after_black_fades, the banner up this long gets A (the same
 //  BANNER_PRESSES, BANNER_PRESS_EVERY apart): the Italian one stays until A.
 constexpr Milliseconds BANNER_PRESS_AFTER = 2000ms;
+//  With stop_at_battle, nothing busy this long after a black fade is a
+//  battle the camera does not face: the HUD shows only while the player
+//  is locked on, and a story battle's HUD shows within ~1 s of its fade
+//  when the camera faces the opponent. 03.02b's Tepig battle ran 22 s
+//  off camera with no HUD, then the party bar showed.
+constexpr Milliseconds LOCK_ON_AFTER = 3000ms;
+//  The lock-ons tried: ZL, then a quarter turn before each of the others,
+//  a full turn in all.
+constexpr size_t LOCK_ON_ATTEMPTS = 5;
+//  How far each lock-on after the first turns the player, clockwise.
+constexpr double LOCK_ON_TURN_DEGREES = 90;
+//  How long ZL is held: the battle code's lock-on recovery holds it 1 s.
+//  No release: the HUD shows only while ZL is held, and the next look is
+//  taken as it is let go.
+constexpr Milliseconds LOCK_ON_HOLD = 1000ms;
 
 //  Text to press on: a box, or the advance chevron without one.
 bool text_shows(const ScreenObservation& look){
@@ -225,7 +259,7 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
     SceneScreen::TALK_PROMPT, SceneScreen::PROMPT_SHOWING,
-    SceneScreen::ENDED_IN_CONTROL, SceneScreen::AWAITING_SCENE, SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END,
+    SceneScreen::LOCK_ON, SceneScreen::ENDED_IN_CONTROL, SceneScreen::AWAITING_SCENE, SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END,
     SceneScreen::BLIND_PRESS, SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
 
@@ -259,6 +293,7 @@ std::string_view scene_screen_name(SceneScreen screen){
         {SceneScreen::HINT_SHOWING, "hint_showing"},
         {SceneScreen::TALK_PROMPT, "talk_prompt"},
         {SceneScreen::PROMPT_SHOWING, "prompt_showing"},
+        {SceneScreen::LOCK_ON, "lock_on"},
         {SceneScreen::ENDED_IN_CONTROL, "ended_in_control"},
         {SceneScreen::AWAITING_SCENE, "awaiting_scene"},
         {SceneScreen::NEVER_STARTED, "never_started"},
@@ -285,10 +320,10 @@ bool scene_screen_terminal(SceneScreen screen){
 
 //  Whether this state's step presses (DIALOG dialog_button(),
 //  BLIND_PRESS its blind button, MISSION_COMPLETE, TUTORIAL_CARD and
-//  BANNER_PRESS A); the others wait.
+//  BANNER_PRESS A, LOCK_ON ZL); the others wait.
 bool scene_screen_presses(SceneScreen screen){
     return screen == SceneScreen::DIALOG || screen == SceneScreen::MISSION_COMPLETE || screen == SceneScreen::TUTORIAL_CARD ||
-        screen == SceneScreen::BLIND_PRESS || screen == SceneScreen::BANNER_PRESS;
+        screen == SceneScreen::BLIND_PRESS || screen == SceneScreen::BANNER_PRESS || screen == SceneScreen::LOCK_ON;
 }
 
 //  "the controls hint, the party bar, the A prompt or the mission banner":
@@ -371,6 +406,15 @@ bool SceneTimeline::banner_press_due(WallClock now) const{
     return m_banner_presses < BANNER_PRESSES && (!m_last_banner_press || now - *m_last_banner_press >= BANNER_PRESS_EVERY);
 }
 
+bool SceneTimeline::lock_on_due(const ScreenObservation& look) const{
+    if (!m_config.stop_at_battle || !m_after_fade || m_lock_ons >= LOCK_ON_ATTEMPTS){
+        return false;
+    }
+    const bool quiet = m_quiet_after_fade_since && look.when - *m_quiet_after_fade_since >= LOCK_ON_AFTER;
+    const bool control = m_control_since && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && look.when - *m_control_since >= PARTY_BAR_HOLD;
+    return quiet || control;
+}
+
 std::string SceneTimeline::black_fade_count() const{
     if (!m_config.end_after_black_fades){
         return std::format("fade {}", m_black_fades);
@@ -412,6 +456,9 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
     }
     if (fades_settled(look.when)){
         return SceneScreen::FADE_SETTLED;
+    }
+    if (lock_on_due(look)){
+        return SceneScreen::LOCK_ON;
     }
     if (m_control_since && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && look.when - *m_control_since >= CONTROL_INSTEAD_HOLD){
         return SceneScreen::ENDED_IN_CONTROL;
@@ -457,6 +504,13 @@ void SceneTimeline::record(const ScreenObservation& look){
         m_banner_presses++;
         m_last_banner_press = look.when;
     }
+    m_lock_ons += screen == SceneScreen::LOCK_ON ? 1 : 0;
+    if (text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
+        m_after_fade = false;
+        m_lock_ons = 0;
+    }
+    m_after_fade = m_after_fade || look.events.has(ScreenEvent::FADE_BLACK);
+    track_since(m_after_fade && !busy(look), look.when, m_quiet_after_fade_since);
     if (busy(look)){
         m_last_busy = look.when;
     }
@@ -683,6 +737,10 @@ public:
         if (scene_screen_terminal(screen)){
             return;
         }
+        if (screen == SceneScreen::LOCK_ON){
+            lock_on();
+            return;
+        }
         if (scene_screen_presses(screen)){
             m_backend.press(button_of(screen, look), /*hold=*/160ms, /*release=*/240ms);
             return;
@@ -691,6 +749,23 @@ public:
     }
 
 private:
+    //  ZL held LOCK_ON_HOLD to lock on to the opponent; before every
+    //  lock-on but the first a quarter turn clockwise and L, which puts
+    //  the camera behind the player: the battle code's lock-on recovery
+    //  turns the camera, which the backend's stick does not.
+    void lock_on(){
+        const size_t attempt = m_timeline.lock_ons();
+        if (attempt > 1){
+            m_backend.stick(LOCK_ON_TURN_DEGREES, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
+            m_backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+        }
+        m_backend.press(BUTTON_ZL, LOCK_ON_HOLD, /*release=*/0ms);
+        m_log.note(std::format(
+            "lock-on {}/{}: {}ZL.", attempt, LOCK_ON_ATTEMPTS,
+            attempt > 1 ? std::format("turned {:.0f} degrees right, L, ", LOCK_ON_TURN_DEGREES) : ""
+        ));
+    }
+
     //  The button `screen`'s step presses on `look`.
     Button button_of(SceneScreen screen, const ScreenObservation& look){
         switch (screen){
@@ -795,7 +870,8 @@ Milliseconds max_still(SceneScreen screen){
     case SceneScreen::SCENE_STILL:
     case SceneScreen::BLIND_PRESS:
     case SceneScreen::BANNER_PRESS:
-        //  A blind A press need not change the screen.
+    case SceneScreen::LOCK_ON:
+        //  A blind A press or a lock-on need not change the screen.
         return SCENE_STILL_WAIT;
     case SceneScreen::PROMPT_SHOWING:
         //  The overworld at the prompt can stay still until min_length.
