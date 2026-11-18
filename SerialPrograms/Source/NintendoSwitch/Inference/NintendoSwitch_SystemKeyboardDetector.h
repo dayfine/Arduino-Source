@@ -31,8 +31,10 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 
 
-//  The white key panel, the white bar below it, and the OK button (blue, or grey
-//  while the field is empty). Works wherever the cursor is.
+//  The key panel, the bar below it, and the OK button: white panel and bar and a
+//  blue OK (grey while the field is empty) in the light theme, dark grey panel
+//  and bar and a flat OK in the dark one (Basic Black). Works wherever the
+//  cursor is.
 class SystemKeyboardDetector : public StaticScreenDetector{
 public:
     SystemKeyboardDetector(Color color = COLOR_CYAN);
