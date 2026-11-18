@@ -6,6 +6,7 @@
 
 #include <format>
 #include <string>
+#include <string_view>
 #include <variant>
 #include "PokemonLZA_AutoStoryTable.h"
 
@@ -14,12 +15,25 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row){
+namespace{
+
+//  Whether `row`'s first step is the GAME action `action`.
+bool starts_with_game_action(const Pokemon::StoryCheckpoint& row, std::string_view action){
     if (row.steps.empty()){
         return false;
     }
     const Pokemon::StoryStep& first = row.steps.front();
-    return first.kind == Pokemon::StoryStepKind::GAME && (first.action == "new_game_intro" || first.action == "confirm_new_game");
+    return first.kind == Pokemon::StoryStepKind::GAME && first.action == action;
+}
+
+} // namespace
+
+bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row){
+    return starts_with_game_action(row, "new_game_intro") || starts_with_game_action(row, "confirm_new_game");
+}
+
+bool story_row_makes_new_game_choices(const Pokemon::StoryCheckpoint& row){
+    return starts_with_game_action(row, "new_game_intro");
 }
 
 namespace{

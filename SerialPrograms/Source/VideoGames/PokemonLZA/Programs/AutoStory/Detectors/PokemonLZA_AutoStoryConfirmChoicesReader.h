@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The new game's "Confirm Choices" screen, where checkpoint 01.00 starts:
+ *  The new game's "Confirm Choices" screen, where checkpoint 01.00b starts:
  *  the PROFILE screen after the name keyboard, with its rows "Change hair
  *  color", "Change look" and "Ready!".
  *

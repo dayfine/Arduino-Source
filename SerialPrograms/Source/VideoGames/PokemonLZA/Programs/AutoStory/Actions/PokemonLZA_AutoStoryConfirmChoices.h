@@ -25,7 +25,7 @@ namespace PokemonLZA{
 //  2 s with no press. Throws UserSetupError if the screen does not show.
 size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context);
 
-//  01.00's step after the intro: "Confirm Choices" is on screen. Checks
+//  01.00b's first step: "Confirm Choices" is on screen. Checks
 //  that screen first (require_confirm_choices()): on any other screen
 //  throws UserSetupError and presses nothing. Then reads the name and the
 //  language it shows (OCR) and, if either is not `choices`', throws

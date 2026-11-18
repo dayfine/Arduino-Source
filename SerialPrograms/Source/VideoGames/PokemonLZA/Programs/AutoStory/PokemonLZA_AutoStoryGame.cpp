@@ -556,10 +556,11 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
 
 namespace{
 
-//  Whether `row` starts on the station platform: its first step checks it
-//  (01.01).
-bool starts_on_platform(const Pokemon::StoryCheckpoint& row){
-    return !row.steps.empty() && row.steps.front().action == "wait_for_platform";
+//  Whether `row`'s first step checks its start: the station platform
+//  (01.01), or a new game's start screen (01.00a: HOME, 01.00b: Confirm
+//  Choices).
+bool first_step_checks_start(const Pokemon::StoryCheckpoint& row){
+    return (!row.steps.empty() && row.steps.front().action == "wait_for_platform") || story_row_starts_without_save(row);
 }
 
 //  Looks after a load, PLATFORM_POLL apart, to tell 01.01's start from a
@@ -568,7 +569,7 @@ constexpr size_t START_LOOKS = 4;
 
 //  What the screen says about a row's start.
 enum class StartCheck{
-    PASSED,     //  01.01: its first step checks the platform
+    PASSED,     //  its first step checks it (first_step_checks_start())
     FAILED,     //  the station platform holds: 01.01's start, not this row's
     UNCHECKED,  //  off the platform; nothing checks the row's own start yet
 };
@@ -576,7 +577,7 @@ enum class StartCheck{
 //  START_LOOKS looks at the screen for `row`'s start. Only the station
 //  platform is read so far: a later row's place is not checked.
 StartCheck check_start(PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
-    if (starts_on_platform(row)){
+    if (first_step_checks_start(row)){
         return StartCheck::PASSED;
     }
     size_t streak = 0;

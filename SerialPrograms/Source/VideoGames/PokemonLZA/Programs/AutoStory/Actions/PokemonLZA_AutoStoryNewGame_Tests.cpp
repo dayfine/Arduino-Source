@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
 #include "PokemonLZA_AutoStoryNewGameChoices.h"
 #include "PokemonLZA_AutoStoryNewGame_Tests.h"
@@ -139,13 +140,14 @@ private:
 };
 
 
-//  new_game_start_problem(): whether the program refuses the choices once it
-//  knows the start screen: from HOME or the language list it types the name,
-//  on Confirm Choices the name is typed already.
-struct StartProblemCase{
+//  new_game_run_problem(): whether the program refuses the choices for a
+//  run of the built-in rows `rows`: a run that plays 01.00a types the name,
+//  one from 01.00b finds it typed. Every refusal ends with
+//  NEW_GAME_BY_HAND_HINT.
+struct RunProblemCase{
     std::string name;
     struct Input{
-        NewGameStart start = NewGameStart::LANGUAGE_LIST;
+        std::vector<std::string> rows;
         NewGameChoices choices;
     };
     Input input;
@@ -155,42 +157,60 @@ struct StartProblemCase{
     Expectation expectation;
 };
 
-const StartProblemCase START_PROBLEM_CASES[] = {
-    {.name = "the defaults from the language list", .input = {.choices = {}}, .expectation = {.refused = false}},
+const RunProblemCase RUN_PROBLEM_CASES[] = {
+    {.name = "the defaults from 01.00a", .input = {.rows = {"01.00a", "01.00b"}, .choices = {}}, .expectation = {.refused = false}},
     {
-        .name = "Korean from the language list",
-        .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .name = "Korean from 01.00a",
+        .input = {.rows = {"01.00a", "01.00b"}, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
         .expectation = {.refused = true},
     },
     {
-        .name = "Korean from HOME",
-        .input = {.start = NewGameStart::HOME, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .name = "Korean through 01.00a only",
+        .input = {.rows = {"01.00a"}, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
         .expectation = {.refused = true},
     },
     {
-        .name = "Korean on Confirm Choices",
-        .input = {.start = NewGameStart::CONFIRM_CHOICES, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .name = "Korean from 01.00b",
+        .input = {.rows = {"01.00b", "01.01"}, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
         .expectation = {.refused = false},
     },
-    {.name = "a space in the name", .input = {.choices = {.name = "Kos mos"}}, .expectation = {.refused = true}},
-    {.name = "digits and the first page's symbols", .input = {.choices = {.name = "a1-/:',.?!"}}, .expectation = {.refused = false}},
-    {.name = "an accented letter", .input = {.choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = true}},
+    {.name = "Japanese from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.language = NewGameLanguage::Japanese}}, .expectation = {.refused = false}},
+    {.name = "a space in the name from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.name = "Kos mos"}}, .expectation = {.refused = true}},
     {
-        .name = "an accented letter on Confirm Choices",
-        .input = {.start = NewGameStart::CONFIRM_CHOICES, .choices = {.name = "Jos\xc3\xa9"}},
+        .name = "digits and the first page's symbols from 01.00a",
+        .input = {.rows = {"01.00a"}, .choices = {.name = "a1-/:',.?!"}},
         .expectation = {.refused = false},
     },
-    {.name = "a symbol of the second page", .input = {.choices = {.name = "a#"}}, .expectation = {.refused = true}},
+    {.name = "an accented letter from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = true}},
+    {.name = "an accented letter from 01.00b", .input = {.rows = {"01.00b"}, .choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = false}},
+    {.name = "a symbol of the second page from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.name = "a#"}}, .expectation = {.refused = true}},
 };
 
-class Test_NewGameStartProblem : public UnitTest{
+//  The built-in rows `ids`, in that order.
+std::vector<Pokemon::StoryCheckpoint> builtin_rows(const std::vector<std::string>& ids){
+    std::vector<Pokemon::StoryCheckpoint> rows;
+    for (const std::string& id : ids){
+        for (const Pokemon::StoryCheckpoint& row : builtin_story_data().checkpoints){
+            if (row.id == id){
+                rows.push_back(row);
+            }
+        }
+    }
+    return rows;
+}
+
+class Test_NewGameRunProblem : public UnitTest{
 public:
-    explicit Test_NewGameStartProblem(const StartProblemCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - new game choices by start screen: {}", test.name))
+    explicit Test_NewGameRunProblem(const RunProblemCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - new game choices by run: {}", test.name))
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::optional<std::string> problem = new_game_start_problem(m_test.input.start, m_test.input.choices);
+        const std::vector<Pokemon::StoryCheckpoint> rows = builtin_rows(m_test.input.rows);
+        if (rows.size() != m_test.input.rows.size()){
+            return std::string("A row of the case is not in the built-in story.");
+        }
+        const std::optional<std::string> problem = new_game_run_problem(rows, m_test.input.choices);
         if (problem.has_value() != m_test.expectation.refused){
             return std::format(
                 "Expected {}, got {}.",
@@ -198,11 +218,14 @@ public:
                 problem ? *problem : std::string("no problem")
             );
         }
+        if (problem && !problem->ends_with(NEW_GAME_BY_HAND_HINT)){
+            return std::format("Expected the refusal to end with the hint, got \"{}\".", *problem);
+        }
         return true;
     }
 
 private:
-    const StartProblemCase& m_test;
+    const RunProblemCase& m_test;
 };
 
 
@@ -266,8 +289,8 @@ void add_tests_AutoStoryNewGame(UnitTestDatabase& database){
     for (const ProblemCase& test : PROBLEM_CASES){
         database.add<Test_NewGameProblem>(test);
     }
-    for (const StartProblemCase& test : START_PROBLEM_CASES){
-        database.add<Test_NewGameStartProblem>(test);
+    for (const RunProblemCase& test : RUN_PROBLEM_CASES){
+        database.add<Test_NewGameRunProblem>(test);
     }
     for (const GridCase& test : GRID_CASES){
         database.add<Test_GridMoves>(test);

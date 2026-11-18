@@ -57,7 +57,7 @@ struct NewGameLanguageInfo{
     std::string_view confirm_text;
     //  The program can type a name on its keyboard (Korean: no; its
     //  keyboard is Hangul, which the Switch keyboard typer does not read).
-    //  A run that starts on Confirm Choices types nothing.
+    //  A run from 01.00b types nothing.
     bool keyboard_supported = true;
 };
 
@@ -80,7 +80,7 @@ struct NewGameChoices{
     //  row, then the bottom one.
     size_t look = 1;
     //  At most the language's name_limit characters. A run that types it
-    //  (one that starts before Confirm Choices) takes only letters, digits
+    //  (one that plays 01.00a) takes only letters, digits
     //  and the symbols on the name keyboard's first page (- / : ' , . ? !).
     std::string name = "Kosmos";
 };

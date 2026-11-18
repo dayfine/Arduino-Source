@@ -44,7 +44,7 @@ struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
     BattleAIOption& battle_ai;
-    //  01.00's new game: the language, look and name to pick.
+    //  01.00a's new game: the language, look and name to pick (01.00b checks them).
     NewGameChoices new_game = {};
 };
 

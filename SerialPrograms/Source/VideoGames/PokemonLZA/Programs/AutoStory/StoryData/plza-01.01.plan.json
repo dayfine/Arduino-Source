@@ -11,7 +11,7 @@
       {
         "id": "on_platform",
         "kind": "game_action",
-        "why": "start check: on the station platform with free control, as 01.00 ends",
+        "why": "start check: on the station platform with free control, as 01.00b ends",
         "action": "wait_for_platform",
         "args": {
           "timeout_ms": 10000

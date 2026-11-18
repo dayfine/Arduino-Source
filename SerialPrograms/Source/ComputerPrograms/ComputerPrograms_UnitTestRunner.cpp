@@ -10,6 +10,7 @@
 #include "Common/Cpp/MoveOnlyFunction_Tests.h"
 #include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Sockets/ServerSocket2_Tests.h"
 #include "Common/Cpp/Sockets/Sockets_Tests.h"
 #include "Common/Cpp/TestRunners/TestImageDistortionManager.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
@@ -22,6 +23,7 @@
 #include "CommonFramework/AudioPipeline/IO/AudioFileLoader_Tests.h"
 #include "CommonFramework/AudioPipeline/Spectrum/FFTStreamer.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTools/ImageStats_Tests.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/ProgramPrecheckRun_Tests.h"
 #include "CommonFramework/ProgramTransition_Tests.h"
@@ -94,6 +96,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
 
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
+    add_tests_ServerSocket2(ret, GlobalThreadPools::unlimited_normal());
     add_tests_HttpServer(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
@@ -122,6 +125,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabStateJson(ret);
     add_tests_ProgramPrecheckRun(ret);
     add_tests_ProgramTransition(ret);
+    add_tests_ImageStats(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
     Pokemon::add_tests_AutoStory(ret);
