@@ -22,6 +22,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  The minimap's heading from `from` to `to` on the full map: 0 up, 90 right.
+double bearing(MapPoint from, MapPoint to);
+
 //  What a leg does after a pin read.
 enum class MapLegStep{
     ARRIVED,        //  at the waypoint

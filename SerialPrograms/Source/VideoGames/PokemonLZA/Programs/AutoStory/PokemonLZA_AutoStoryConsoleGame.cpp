@@ -25,9 +25,11 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Map.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader.h"
 #include "PokemonLZA_AutoStoryConsoleGame.h"
@@ -115,9 +117,17 @@ Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
 using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk);
 
 //  "run_to_gate": the walk's heading faced first, if any, then run_to_gate().
+//  With an aim, the heading is the bearing from the map pin to it.
 Outcome run_gate_step(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
-    if (walk.heading){
-        const Outcome faced = face_heading(backend, minimap_arrow(env), *walk.heading);
+    std::optional<double> heading = walk.heading;
+    if (walk.aim){
+        const std::optional<MapPoint> pin = read_pin_on_map(env, backend);
+        if (pin){
+            heading = bearing(*pin, *walk.aim);
+        }
+    }
+    if (heading){
+        const Outcome faced = face_heading(backend, minimap_arrow(env), *heading);
         if (!faced.succeeded()){
             return faced;
         }
@@ -135,6 +145,13 @@ Handler gate_handler(StoryEnv& env, std::string name, GateStep step){
         const auto heading = call.args.find("heading");
         if (heading != call.args.end()){
             walk.heading = (double)std::get<int64_t>(heading->second);
+        }
+        const auto aim = call.args.find("aim");
+        if (aim != call.args.end()){
+            if (std::get<std::string>(aim->second) != "zone_1_far_gate"){
+                return Pokemon::outcome_failed("bad_aim", std::format("{}: no map point named {}", name, std::get<std::string>(aim->second)));
+            }
+            walk.aim = ZONE1_FAR_GATE.pin;
         }
         try{
             return step(env, backend, walk);
