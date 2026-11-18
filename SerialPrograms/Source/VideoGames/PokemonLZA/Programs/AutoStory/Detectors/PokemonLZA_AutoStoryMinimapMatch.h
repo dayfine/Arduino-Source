@@ -14,6 +14,8 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
+#include "Common/Cpp/Json/JsonObject.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 
 namespace PokemonAutomation{
@@ -27,6 +29,11 @@ namespace PokemonLZA{
 //  scaling each channel to the reference's mean, so a darker or lighter
 //  screen still matches), the closest when several are.
 std::optional<std::string> matching_minimap(const ImageViewRGB32& screen);
+
+//  The minimap on `screen` as a reference file's JSON (ReferenceData/
+//  plza-minimap-<name>.json): {"source": `source` and the cells' square,
+//  "grid": its 16 x 16 cells}. matching_minimap() compares the grid's ring.
+JsonObject minimap_reference_json(const ImageViewRGB32& screen, std::string_view source);
 
 
 

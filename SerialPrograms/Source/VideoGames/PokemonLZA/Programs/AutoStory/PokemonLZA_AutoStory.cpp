@@ -6,24 +6,31 @@
 
 #include <chrono>
 #include <format>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/Json/JsonValue.h"
+#include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Pokemon_Strings.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_DirectionArrowDetector.h"
 #include "Actions/PokemonLZA_AutoStoryBackupSave.h"
 #include "Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
+#include "Detectors/PokemonLZA_AutoStoryMinimapMatch.h"
 #include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
 #include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
@@ -137,6 +144,11 @@ constexpr std::string_view REWINDS_TO_BACKUP_LABEL =
     "The run then closes the game, opens the backup save's card at the title (Up + B + X), and when the card matches a checkpoint's start "
     "(\"start_signature\" in its plan), loads it and plays on from that checkpoint, up to this many times. An unknown backup is never loaded.";
 
+constexpr std::string_view RECORD_START_MINIMAPS_LABEL =
+    "<b>Record Start Minimaps:</b><br>For developers: at each checkpoint's start, after its start check, save the frame and its minimap "
+    "as plza-minimap-&lt;checkpoint&gt;-start.png and .json in the AutoStoryDev folder of the user files, "
+    "in the format of the minimap references. Nothing is saved where no minimap shows.";
+
 //  Loads the latest save for `row` with `game`: a run that starts after
 //  the new game starts from it (01.01: the platform autosave), not from
 //  wherever the game is. Throws OperationFailedException, with an error
@@ -230,6 +242,46 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
     return *from;
 }
 
+//  Where RECORD_START_MINIMAPS saves its frames and minimaps.
+std::string start_minimaps_folder(){
+    return std::format("{}AutoStoryDev/", USER_FILE_PATH());
+}
+
+//  The frame at `checkpoint`'s start, and its minimap as a reference file
+//  (minimap_reference_json()), in start_minimaps_folder() as
+//  plza-minimap-<checkpoint>-start.png and .json, ready to check in as a
+//  ReferenceData/ minimap. Nothing saved, and logged, when the minimap's
+//  arrow does not show (a menu, a fade, a scene). Presses nothing.
+void record_start_minimap(ConsoleHandle& console, std::string_view checkpoint){
+    const VideoSnapshot snapshot = console.video().snapshot();
+    DirectionArrowDetector arrow;
+    if (!snapshot || !arrow.detect(*snapshot.frame)){
+        console.log(std::format("AutoStory: {}: no minimap on screen at its start; not recorded", checkpoint));
+        return;
+    }
+    const std::string folder = start_minimaps_folder();
+    Filesystem::create_directories(Filesystem::Path(folder));
+    const std::string name = std::format("plza-minimap-{}-start", checkpoint);
+    snapshot.frame->save(std::format("{}{}.png", folder, name));
+    const JsonValue json(minimap_reference_json(*snapshot.frame, std::format(
+        "the minimap at {}'s start, recorded by AutoStory (Record Start Minimaps), {}x{} ({}.png, {})",
+        checkpoint, snapshot.frame->width(), snapshot.frame->height(), name, now_to_filestring()
+    )));
+    json.dump(std::format("{}{}.json", folder, name));
+    console.log(std::format("AutoStory: {}: start minimap recorded as {}{}.json", checkpoint, folder, name));
+}
+
+//  SegmentRunOptions::at_start for RECORD_START_MINIMAPS: record_start_minimap()
+//  at each row's start when `record`, else nothing.
+std::function<void(const StoryCheckpoint& row)> start_minimap_recorder(ConsoleHandle& console, bool record){
+    if (!record){
+        return {};
+    }
+    return [&console](const StoryCheckpoint& row){
+        record_start_minimap(console, row.id);
+    };
+}
+
 } // namespace
 
 
@@ -259,6 +311,7 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING,
         true
     )
+    , RECORD_START_MINIMAPS(std::string(RECORD_START_MINIMAPS_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false)
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -273,6 +326,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(REWINDS_TO_BACKUP);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
+    PA_ADD_OPTION(RECORD_START_MINIMAPS);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -301,6 +355,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         .read_start = [&story, &backend](const StartSignature& start){
             return start.wild_zone ? read_start_position(story, backend) : read_start_signature(story.env.console, story.context);
         },
+        .at_start = start_minimap_recorder(env.console, RECORD_START_MINIMAPS),
     };
     RewindPlan plan{
         .rows = rows, .first = first, .last = last, .segments = segments,

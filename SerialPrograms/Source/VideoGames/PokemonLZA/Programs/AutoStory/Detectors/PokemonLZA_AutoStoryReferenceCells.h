@@ -43,6 +43,10 @@ ReferenceCells grid_cells(const ImageViewRGB32& screen, const ImageFloatBox& box
 //  `source` when it is not.
 ReferenceCells read_cell_grid(const JsonObject& grid, size_t cols, size_t rows, std::string_view source);
 
+//  `cells`, `cols` to a row, as a grid read_cell_grid() reads: each
+//  channel rounded to the nearest of 0 to 255.
+JsonObject write_cell_grid(const ReferenceCells& cells, size_t cols);
+
 //  How far `cells` are from `reference`, cell for cell: the RMSD over the
 //  cells of the summed squared channel differences (0 = the same, at most
 //  441.7). `cells` is as long as `reference`.

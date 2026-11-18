@@ -151,6 +151,15 @@ std::optional<std::string> matching_minimap(const ImageViewRGB32& screen){
     return closest;
 }
 
+JsonObject minimap_reference_json(const ImageViewRGB32& screen, std::string_view source){
+    JsonObject json;
+    json["source"] = JsonValue(std::format(
+        "{}; {}x{} cells over x 52-184, y 55-187 of 1280x720", source, MINIMAP_CELLS, MINIMAP_CELLS
+    ));
+    json["grid"] = JsonValue(write_cell_grid(grid_cells(screen, MINIMAP_BOX, MINIMAP_CELLS, MINIMAP_CELLS), MINIMAP_CELLS));
+    return json;
+}
+
 
 
 } // namespace PokemonLZA

@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <charconv>
 #include <cmath>
 #include <format>
@@ -75,6 +76,24 @@ ReferenceCells read_cell_grid(const JsonObject& grid, size_t cols, size_t rows, 
         }
     }
     return cells;
+}
+
+JsonObject write_cell_grid(const ReferenceCells& cells, size_t cols){
+    const auto channel = [](double value){
+        return (unsigned)std::lround(std::clamp(value, 0.0, 255.0));
+    };
+    JsonArray hex_rows;
+    for (size_t start = 0; start < cells.size(); start += cols){
+        std::string hex;
+        for (size_t index = start; index < std::min(start + cols, cells.size()); index++){
+            hex += std::format("{:02x}{:02x}{:02x}", channel(cells[index].r), channel(cells[index].g), channel(cells[index].b));
+        }
+        hex_rows.push_back(JsonValue(std::move(hex)));
+    }
+    JsonObject grid;
+    grid["cols"] = JsonValue((int64_t)cols);
+    grid["rows"] = JsonValue(std::move(hex_rows));
+    return grid;
 }
 
 double cells_rmsd(const ReferenceCells& reference, const ReferenceCells& cells){
