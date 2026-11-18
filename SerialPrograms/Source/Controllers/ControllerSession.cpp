@@ -190,22 +190,24 @@ void ControllerSession::make_controller(
 
     //  Must be called under "m_reset_lock".
 
-    bool ready = false;
     {
         WriteSpinLock lg(m_state_lock);
 //        cout << "clear_settings = " << clear_settings << endl;
         m_connection = m_descriptor->open_connection(m_logger);
-        if (m_connection){
-            m_connection->add_status_listener(*this);
-            ready = m_connection->is_ready();
-        }
     }
 
     m_change_controller_on_ready = change_controller;
 
-    //  If we already missed it, run it ourselves.
-    if (ready){
-        ControllerSession::post_connection_ready(*m_connection);
+    //  Add the listener outside "m_state_lock": for a connection that is
+    //  already ready, add_status_listener() runs post_connection_ready() at
+    //  once, and that takes "m_state_lock" (a self-deadlock under the lock).
+    if (m_connection){
+        m_connection->add_status_listener(*this);
+
+        //  If we already missed it, run it ourselves.
+        if (m_connection->is_ready()){
+            ControllerSession::post_connection_ready(*m_connection);
+        }
     }
 
     signal_descriptor_changed(m_descriptor);
