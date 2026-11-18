@@ -30,13 +30,13 @@ constexpr double TOLERANCE = 6;
 //  The short correction legs after a leg that ended off its waypoint.
 constexpr size_t CORRECTIONS = 2;
 
-//  The minimap's heading from `from` to `to`: 0 up, 90 right.
+} // namespace
+
+
 double bearing(MapPoint from, MapPoint to){
     const double degrees = std::atan2(to.x - from.x, from.y - to.y) * 180 / std::numbers::pi;
     return degrees < 0 ? degrees + 360 : degrees;
 }
-
-} // namespace
 
 
 bool MapLeg::in_stop_area(MapPoint pin, double distance) const{
