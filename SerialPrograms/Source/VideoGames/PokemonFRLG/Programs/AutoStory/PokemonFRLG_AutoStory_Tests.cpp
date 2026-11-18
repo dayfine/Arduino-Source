@@ -519,7 +519,7 @@ UnitTestResult test_golden_plans(){
     if (first_diff == actual.size() && first_diff == stored){
         return true;
     }
-    std::string message = std::format("plans differ from the golden at line {} ({} lines now, {} stored): now \"{}\", stored \"{}\". Now:",
+    std::string message = std::format("plans differ from the golden at line {} ({} lines now, {} stored): now \"{}\", stored \"{}\". The golden holds the console-verified walks: fix the planner, or re-verify the checkpoint on the console before regenerating (PokemonFRLG_AutoStoryPlanGolden.h). Now:",
         first_diff + 1, actual.size(), stored,
         first_diff < actual.size() ? std::string_view(actual[first_diff]) : std::string_view(),
         first_diff < stored ? golden[first_diff] : std::string_view());

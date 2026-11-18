@@ -10,6 +10,12 @@
  *  One string per line: MSVC caps a single literal at 16 KB.
  *  Regenerate from the test's failure log; see test_golden_plans().
  *
+ *  The walks are the ones console B ran to the Champion (#618), but for
+ *  19.01a and 19.01, whose start and Mart moved since (Lavender's Nugget
+ *  sale). A planner change that alters any other line changes a walk the
+ *  console verified: fix the planner, or re-verify that checkpoint on the
+ *  console before regenerating.
+ *
  */
 
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryPlanGolden_H
