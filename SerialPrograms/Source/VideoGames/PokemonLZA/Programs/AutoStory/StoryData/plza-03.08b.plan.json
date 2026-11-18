@@ -17,11 +17,11 @@
       {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: from 60 the far gate's green pillars are straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the marker reading 41 there (console B, 2026-11-14). Steered by the pillars on screen (walk_to_zone_gate_entrance, ZoneGateReader), after facing 265 by the minimap (face_heading, L after the turn): the camera read 259 at the prompt with the gate right of centre (x 0.68), and after the catches the gate was off screen once in 3 (console B, 2026-11-14). plza/autostory's walk, about 10 passes on console B 2026-11-14 (3 gate_not_seen); ported over run_to_gate, which never ran here.",
-        "action": "walk_to_zone_gate_entrance",
+        "why": "step 62: from 60 the far gate's green pillars are straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the marker reading 41 there (console B, 2026-11-14). Faces 265 by the minimap first (face_heading, L after the turn: the camera read 259 at the prompt), then runs straight on to the A prompt by upstream's run_towards_gate_with_A_button, as 03.07 enters the zone (user, 2026-11-18). The pillar steering (walk_to_zone_gate_entrance, ZoneGateReader) passed about 10 times on console B 2026-11-14 with 3 gate_not_seen; it stays in the code until this run passes 3 of 3 on the console. Walking took 4.7 s, so 8 s of running is ample.",
+        "action": "run_to_gate",
         "args": {
           "heading": 265,
-          "timeout_ms": 15000
+          "timeout_ms": 8000
         }
       },
       {

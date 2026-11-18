@@ -841,6 +841,9 @@ Pokemon::SegmentReport run_plza_segments(
                 return total;
             }
         }
+        if (options.at_start){
+            options.at_start(row);
+        }
         if (!start_saved && options.attempts_per_checkpoint > 1){
             backend.log(std::format("[Checkpoint] {}: no autosave seen at its start, so no reload if it fails", row.id));
         }

@@ -64,6 +64,8 @@ struct ChainStartCase{
     struct Expectation{
         //  "done", or "failed at <checkpoint> <event>: <failure>".
         std::string verdict;
+        //  The rows SegmentRunOptions::at_start was called for, in order.
+        std::string started;
         //  A log line the run wrote, if any is checked.
         std::string line = {};
     };
@@ -76,6 +78,7 @@ const ChainStartCase CHAIN_START_CASES[] = {
         .input = {.start = OUT_OF_FAR_GATE, .screen = {.talk_prompt = false, .wild_zone = false, .party = 5}},
         .expectation = {
             .verdict = "done",
+            .started = "01.01 01.02",
             .line = "[Checkpoint] 01.02: START CHECKED: the screen reads (no talk prompt, not in a wild zone, party 5), "
                 "its start is (not in a wild zone, party 5); on from the live screen",
         },
@@ -87,6 +90,7 @@ const ChainStartCase CHAIN_START_CASES[] = {
         .input = {.start = OUT_OF_FAR_GATE, .screen = {.talk_prompt = false, .wild_zone = true, .party = 5}},
         .expectation = {
             .verdict = "failed at 01.02 chain: chain_off_start",
+            .started = "01.01",
             .line = "[Checkpoint] 01.02: START CHECK FAILED: the screen reads (no talk prompt, in a wild zone, party 5), "
                 "its start is (not in a wild zone, party 5); nothing run from there",
         },
@@ -95,7 +99,7 @@ const ChainStartCase CHAIN_START_CASES[] = {
         //  The zone not read, party 5 alone matched 03.09's start.
         .name = "a field of the row's start not read: stops there",
         .input = {.start = OUT_OF_FAR_GATE, .screen = {.talk_prompt = false, .party = 5}},
-        .expectation = {.verdict = "failed at 01.02 chain: chain_off_start"},
+        .expectation = {.verdict = "failed at 01.02 chain: chain_off_start", .started = "01.01"},
     },
     {
         .name = "the backup card's registered is not read on the overworld: on",
@@ -103,13 +107,14 @@ const ChainStartCase CHAIN_START_CASES[] = {
             .start = StartSignature{.registered = 1, .talk_prompt = true, .wild_zone = false, .party = 1},
             .screen = {.talk_prompt = true, .wild_zone = false, .party = 1},
         },
-        .expectation = {.verdict = "done"},
+        .expectation = {.verdict = "done", .started = "01.01 01.02"},
     },
     {
         .name = "the row names no start: on, unchecked",
         .input = {.start = std::nullopt, .screen = {}},
         .expectation = {
             .verdict = "done",
+            .started = "01.01 01.02",
             .line = "[Checkpoint] 01.02: START UNCHECKED: its plan names no start signature; on from the live screen (autosave before it not seen)",
         },
     },
@@ -134,6 +139,10 @@ UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& s
     options.read_start = [&test](const StartSignature&){
         return test.input.screen;
     };
+    std::string started;
+    options.at_start = [&started](const StoryCheckpoint& row){
+        started += started.empty() ? row.id : std::format(" {}", row.id);
+    };
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = run_plza_segments(game, rows, options, backend, state, sightings);
     const std::string verdict = report.completed
@@ -147,6 +156,9 @@ UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& s
     }
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:{}", test.expectation.verdict, verdict, log);
+    }
+    if (started != test.expectation.started){
+        return std::format("expected at_start for \"{}\", got \"{}\"", test.expectation.started, started);
     }
     if (!has_line){
         return std::format("expected the line \"{}\" in:{}", test.expectation.line, log);

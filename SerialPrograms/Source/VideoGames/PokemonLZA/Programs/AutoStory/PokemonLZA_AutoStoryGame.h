@@ -94,6 +94,9 @@ struct SegmentRunOptions{
     //  is checked against (the console opens the full map only when that
     //  start names wild_zone). Unset: no start can be checked.
     std::function<StartSignature(const StartSignature& start)> read_start = {};
+    //  Called at each row's start, after the chain into it (its reload or
+    //  start check), before its first step. Unset: nothing.
+    std::function<void(const Pokemon::StoryCheckpoint& row)> at_start = {};
 };
 
 //  `rows` in order from the save the game is on, each with the story
