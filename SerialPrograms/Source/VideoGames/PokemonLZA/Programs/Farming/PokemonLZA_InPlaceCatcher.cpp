@@ -18,7 +18,6 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
-#include "VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
@@ -198,10 +197,11 @@ void InPlaceCatcher::run(
 
         if (!attack_tracker.currently_active() || last_attack + 5000ms > current_time()){
             env.log("Detected battle menu. Throwing ball...", COLOR_BLUE);
-            throw_ball(context, BallThrowOptions{
-                .aim = 500ms,
-                .after_throw = 3500ms,
-            });
+            pbf_press_button(
+                context,
+                BUTTON_ZL | BUTTON_ZR,
+                500ms, 3500ms
+            );
             pbf_press_button(context, BUTTON_L, 160ms, 160ms);
             stats.balls_thrown++;
             env.update_stats();
