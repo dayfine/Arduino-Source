@@ -129,9 +129,6 @@ std::vector<StoryActionSpec> make_specs(){
             optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
         }),
         game_spec("walk", walk_args()),
-        game_spec("walk_to_prompt", {
-            optional_ms("timeout_ms", 10000, "walking this long with no A prompt fails the step"),
-        }),
         game_spec("mash_to_move_hints", {
             optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
             optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
@@ -380,11 +377,6 @@ Outcome mash_scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     return run_scene_machine(backend, "scene", config, 120s);
 }
 
-//  "walk_to_prompt": straight on until an A prompt shows (walk_to_prompt()).
-Outcome walk_to_prompt_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-    return walk_to_prompt(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")));
-}
-
 
 //  "story_battle_start": A through the talk before a story battle (a
 //  choice takes its top row) and the battle tutorial's cards
@@ -455,7 +447,6 @@ const std::map<std::string_view, StepFunction>& step_functions(){
         {"talk", talk_step},
         {"mash", mash_scene_step},
         {"a", scene_step},
-        {"walk_to_prompt", walk_to_prompt_step},
         {"story_battle_start", battle_start_step},
         {"story_battle", battle_step},
         {"talk_through_map_screen", map_talk_step},

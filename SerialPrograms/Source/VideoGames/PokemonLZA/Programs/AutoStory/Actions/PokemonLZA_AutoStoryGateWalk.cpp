@@ -19,7 +19,7 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  One slice of the walk between looks, as walk_to_prompt()'s.
+//  One slice of the walk between looks.
 constexpr Milliseconds GATE_WALK_SLICE(250);
 //  Walking this long without a look at the gate fails the walk. From
 //  Wild Zone 1's catch spot at 60 the far gate is small at first: 1 s

@@ -798,7 +798,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "hold"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] walk_to_prompt: the A prompt shows after 2750 ms of walking",
+            .verdict = "done", .end = "[PLZA] to_taunie: the end event after 2500 ms of the last leg.",
         },
     },
     {

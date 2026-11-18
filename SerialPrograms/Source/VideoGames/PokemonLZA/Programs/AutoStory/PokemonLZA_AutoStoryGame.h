@@ -43,8 +43,8 @@ const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
 
 //  What is wrong with `checkpoint` for PLZA's engine
 //  (StoryActionRegistry::lint), then with a walk's "end", then a talk not
-//  right after a step that ends on its A prompt (a walk to "prompt", or
-//  "walk_to_prompt"): a talk never presses A blind.
+//  right after a step that ends on its A prompt (a walk to "prompt"): a
+//  talk never presses A blind.
 std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpoint);
 
 //  The event a walk's "end" arg names: "fade_white", "fade_black",

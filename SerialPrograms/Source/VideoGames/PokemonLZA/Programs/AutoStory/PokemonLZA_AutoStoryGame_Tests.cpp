@@ -165,14 +165,6 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = ""},
     },
     {
-        .name = "a talk after walk_to_prompt passes",
-        .input = {
-            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}}},
-            .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
-        },
-        .expectation = {.errors = ""},
-    },
-    {
         //  console B, 2026-11-16: 03.02's timed walk to Taunie stopped
         //  short of her, and the talk's A found no one.
         .name = "a talk after a timed walk fails",
@@ -182,7 +174,7 @@ const LintCase LINT_CASES[] = {
             }}},
             .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
         },
-        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
+        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")"},
     },
     {
         .name = "a story battle after story_battle_start passes",
@@ -198,7 +190,9 @@ const LintCase LINT_CASES[] = {
         .name = "a story battle right after a talk fails",
         .input = {
             .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+                }},
                 {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
             },
             .step = {.kind = Pokemon::StoryStepKind::GAME, .name = "b", .why = "", .action = "story_battle", .args = {}},
@@ -209,7 +203,9 @@ const LintCase LINT_CASES[] = {
         .name = "a scene after a talk passes",
         .input = {
             .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+                }},
                 {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
             },
             .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s", .why = "", .action = "a", .args = {}},
@@ -231,7 +227,9 @@ const LintCase LINT_CASES[] = {
         .name = "a scene after a scene fails",
         .input = {
             .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+                }},
                 {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
                 {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
             },
@@ -245,7 +243,9 @@ const LintCase LINT_CASES[] = {
         .name = "a bare scene after a scene passes: control ends it at once",
         .input = {
             .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+                }},
                 {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
                 {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
             },
@@ -256,7 +256,7 @@ const LintCase LINT_CASES[] = {
     {
         .name = "a checkpoint's first step cannot be a talk",
         .input = {.step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}}},
-        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
+        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")"},
     },
     {
         .name = "a walk with a heading passes",
@@ -267,7 +267,7 @@ const LintCase LINT_CASES[] = {
     },
     {
         .name = "a heading on a step that does not take one fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "walk_to_prompt", .args = {
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "climb_ladder", .args = {
             {"heading", int64_t(264)},
         }}},
         .expectation = {.errors = "01.01 step 1 p: unknown argument \"heading\""},
@@ -891,26 +891,34 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "02.02 walks on to the gate's A prompt",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE, CUTSCENE, A_PROMPT}},
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
+        )},
         .expectation = {
             .verdict = "done",
-            .inputs = "hold north 250ms walk, hold north 250ms walk, wait 300ms",
-            .line = "[PLZA] walk_to_prompt: the A prompt shows after 500 ms of walking",
+            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms",
+            .line = "[PLZA] to_battle_zone_gate: the end event after 500 ms of the last leg.",
         },
     },
     {
-        .name = "walk_to_prompt walks on past an A prompt gone again 300 ms later",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE, A_PROMPT, CUTSCENE, A_PROMPT}},
+        //  From the save the street scene ends at the gate, its prompt up.
+        .name = "02.02's walk to the gate ends at once on the A prompt it starts at",
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {A_PROMPT}},
         .expectation = {
             .verdict = "done",
-            .inputs = "hold north 250ms walk, wait 300ms, hold north 250ms walk, wait 300ms",
-            .line = "[PLZA] walk_to_prompt: the A prompt shows after 500 ms of walking",
+            .inputs = "wait 250ms, wait 300ms",
+            .line = "[PLZA] to_battle_zone_gate: the A prompt shows before the walk: no walk.",
         },
+    },
+    {
+        .name = "a walk that turns first walks on past the A prompt it starts at",
+        .input = {.checkpoint = "03.05", .first_step = 0, .steps = 1, .looks = {A_PROMPT}},
+        .expectation = {.verdict = "done", .line = "[PLZA] back_to_nurse: the end event after 250 ms of the last leg."},
     },
     {
         .name = "02.02's walk to the gate fails with no A prompt",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE}},
-        .expectation = {.verdict = "failed at to_battle_zone_gate: no_prompt"},
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at to_battle_zone_gate: walk_no_end"},
     },
     {
         .name = "02.03's lobby: A at the door's prompt until the fade, then the scene to the party bar",
@@ -1002,7 +1010,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02b walks on to the plaza scene's A prompt",
         .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT}
+            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
@@ -1016,7 +1024,7 @@ const RunCase RUN_CASES[] = {
         //  talk after it found no prompt.
         .name = "a walk to an A prompt holds on past a glimpse gone again 300 ms later",
         .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT, party_bar(Milliseconds(0)), A_PROMPT}
+            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT, party_bar(Milliseconds(0)), A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
@@ -1063,8 +1071,10 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.02b walks on from the arch to Taunie's A prompt",
-        .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), A_PROMPT}},
-        .expectation = {.verdict = "done", .inputs = "hold north 250ms walk, hold north 250ms walk, wait 300ms"},
+        .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
+        )},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms"},
     },
     {
         //  console B, 2026-11-16: the walk stopped short of Taunie, under

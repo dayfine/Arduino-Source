@@ -51,7 +51,9 @@ void finish_walk(PlzaBackend& backend, std::string_view walk);
 //  "walk_no_end" if neither shows within it. `end` seen before `end_after`
 //  of the last leg (the plan's measured walk) does not end it: an NPC's A
 //  prompt beside the path is passed on the way, not the one the walk goes
-//  to (02.05's Alton).
+//  to (02.05's Alton). A walk of one straight leg to an A prompt with no
+//  `end_after` ends before walking on the prompt it starts at, steady
+//  300 ms (02.02's street scene can end at the gate).
 //  With no `end`, the walk ends when a scene takes control: something no
 //  walk may start on (a text box, text waiting for A, a fade) on two looks
 //  in a row, for a walk that runs off into a scene with no measured end
@@ -60,12 +62,6 @@ void finish_walk(PlzaBackend& backend, std::string_view walk);
 Pokemon::Outcome walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, std::optional<ScreenEvent> end, Milliseconds end_after
 );
-
-//  Walks straight on, 250 ms at a time, until an A prompt shows
-//  (INTERACT_PROMPT: "A Leave" at the Battle Zone's gate) and shows again
-//  on a look 300 ms later, the stick let go; nothing if it shows already.
-//  Fails as "no_prompt" after `timeout` of walking without one.
-Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout);
 
 //  Whether a look shows `event` within `within`, looking every 250 ms and
 //  pressing nothing: "talk" presses A only on an A prompt

@@ -26,10 +26,11 @@
       {
         "id": "to_battle_zone_gate",
         "kind": "game_action",
-        "why": "step 22: on to the gate's \"A Leave\" until its prompt shows. From the save the street scene ends at the gate (console B, 2026-11-10: no walk then); after the Brigitte battle it ended at the near end of the street, facing the gate (2026-11-13).",
-        "action": "walk_to_prompt",
+        "why": "step 22: on to the gate's \"A Leave\" until its prompt shows. From the save the street scene ends at the gate (console B, 2026-11-10: no walk then); after the Brigitte battle it ended at the near end of the street, facing the gate (2026-11-13). not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "action": "walk",
         "args": {
-          "timeout_ms": 10000
+          "legs": [[0, 10000]],
+          "end": "prompt"
         }
       },
       {
