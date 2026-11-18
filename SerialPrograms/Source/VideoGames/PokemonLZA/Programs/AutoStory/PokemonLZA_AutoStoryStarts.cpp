@@ -33,6 +33,9 @@ std::string to_string(const StartSignature& signature){
     if (signature.party){
         parts.push_back(std::format("party {}", *signature.party));
     }
+    if (signature.minimap){
+        parts.push_back(std::format("minimap {}", *signature.minimap));
+    }
     if (parts.empty()){
         return "nothing read";
     }
@@ -66,13 +69,18 @@ std::optional<bool> field_agrees(const std::optional<Type>& known, const std::op
 }
 
 //  Whether `read` matches the start `known`: they share a field and agree
-//  on every field they share.
+//  on every field they share, and `read` has `known`'s minimap when it
+//  names one (StartSignature::minimap).
 bool start_matches(const StartSignature& known, const StartSignature& read){
+    if (known.minimap && known.minimap != read.minimap){
+        return false;
+    }
     const std::optional<bool> fields[] = {
         field_agrees(known.registered, read.registered),
         field_agrees(known.talk_prompt, read.talk_prompt),
         field_agrees(known.wild_zone, read.wild_zone),
         field_agrees(known.party, read.party),
+        field_agrees(known.minimap, read.minimap),
     };
     bool shared = false;
     for (const std::optional<bool>& agrees : fields){

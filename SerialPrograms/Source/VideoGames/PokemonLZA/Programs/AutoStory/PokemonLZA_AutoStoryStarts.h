@@ -46,12 +46,19 @@ struct StartSignature{
     //  catch in Main Mission 03 is a new species, so the party tells 03.08's
     //  start (3) from a save after a catch (4) or after the fifth (5).
     std::optional<size_t> party = std::nullopt;
+    //  The built-in minimap reference the minimap matches
+    //  (matching_minimap()), by name: the place, wherever the player and
+    //  camera face. A start that names one matches only a reading of that
+    //  one: a minimap that matches no reference reads the same as one not
+    //  read, and neither is a sign of being there. Station Front (03.04's
+    //  start) and the roof before it read the same party and prompt.
+    std::optional<std::string> minimap = std::nullopt;
 
     bool operator==(const StartSignature&) const = default;
 };
 
-//  "registered 1, talk prompt, not in a wild zone": the fields `signature`
-//  has; "nothing read" when it has none.
+//  "registered 1, talk prompt, not in a wild zone, minimap 03.04-start": the
+//  fields `signature` has; "nothing read" when it has none.
 std::string to_string(const StartSignature& signature);
 
 //  A checkpoint whose start shows `signature`: a plan's execution
@@ -67,7 +74,8 @@ const CheckpointStart* find_start(std::span<const CheckpointStart> starts, std::
 //  The index of the checkpoint the player is at, by the reading `read`:
 //  `asked` (an index of `rows`) when its start matches, else the one
 //  checkpoint before it whose start matches. A start matches when it and
-//  `read` share a field and agree on every field they share. None when no
+//  `read` share a field and agree on every field they share, and `read`
+//  has the start's minimap when it names one. None when no
 //  checkpoint up to `asked`, or more than one before it, matches: the
 //  position is unknown, and no checkpoint may run from there.
 std::optional<size_t> checkpoint_at(

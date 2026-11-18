@@ -32,12 +32,13 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "Reload when chained (user 2026-11-17 14:45: \"this should be the only one\"): the only PLZA row that reloads; dropped earlier that day as assumed unneeded, and the chained run failed: 03.03 -> 03.04 with no reload (console B, French, 2026-11-17 02:34), into_pokemon_center's timed legs ran along a building wall (walk_no_end), and the same legs passed from the reloaded save at 02:36 (and at 00:39, German): the legs assume the reloaded save's facing. The reload makes both start from 03.03's autosave; reloaded runs passed again 2026-11-17 14:26 (French). Later option, not built: a \"heading\" on the walk, as 03.09's, read from the minimap arrow on the reloaded save. 03.03's autosave shows in its rooftop_scene, not at its end (console B 2026-11-17, German). console B recording, 2026-11-08/09: played step by step from a new game. Ends outside the Pokemon Center, in control, on the game's autosave: console B 2026-11-16 logged the autosave badge after Taunie's scene's last black fade, then the party bar outside the Center."
+      "source": "Reload when chained (user 2026-11-17 14:45: \"this should be the only one\"): the only PLZA row that reloads; dropped earlier that day as assumed unneeded, and the chained run failed: 03.03 -> 03.04 with no reload (console B, French, 2026-11-17 02:34), into_pokemon_center's timed legs ran along a building wall (walk_no_end), and the same legs passed from the reloaded save at 02:36 (and at 00:39, German): the legs assume the reloaded save's facing. The reload makes both start from 03.03's autosave; reloaded runs passed again 2026-11-17 14:26 (French). Later option, not built: a \"heading\" on the walk, as 03.09's, read from the minimap arrow on the reloaded save. 03.03's autosave shows in its rooftop_scene, not at its end (console B 2026-11-17, German). console B recording, 2026-11-08/09: played step by step from a new game. Ends outside the Pokemon Center, in control, on the game's autosave: console B 2026-11-16 logged the autosave badge after Taunie's scene's last black fade, then the party bar outside the Center. Start signature: the minimap at Station Front (ReferenceData/plza-minimap-03.04-start.json, from the reloaded start save, Korean, console B); the party bar and the A prompt read the same on the roof before it, so a chained reload that landed there would run the legs from the roof."
     }
   },
   "execution": {
     "save": "autosave",
     "autosave_step": "pokedex_app",
-    "reload_when_chained": true
+    "reload_when_chained": true,
+    "start_signature": {"minimap": "03.04-start"}
   }
 }

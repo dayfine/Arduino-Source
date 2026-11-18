@@ -7,6 +7,7 @@
 #include <optional>
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
+#include "PokemonLZA_AutoStoryMinimapMatch.h"
 #include "PokemonLZA_AutoStoryStartScreenReader.h"
 
 namespace PokemonAutomation{
@@ -30,6 +31,7 @@ StartSignature read_start_screen(const ImageViewRGB32& screen){
     return StartSignature{
         .talk_prompt = events.has(ScreenEvent::INTERACT_PROMPT),
         .party = party,
+        .minimap = matching_minimap(screen),
     };
 }
 

@@ -4,7 +4,6 @@
  *
  */
 
-#include <charconv>
 #include <cmath>
 #include <iterator>
 #include <format>
@@ -12,13 +11,12 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
+#include "PokemonLZA_AutoStoryReferenceCells.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -65,39 +63,11 @@ constexpr double PLATFORM_RIGHT_MAX = 120.0;
 //  The largest distance: every channel of every cell 255 apart, sqrt(3) * 255.
 constexpr double MAX_PLATFORM_DISTANCE = 441.7;
 
-using Cells = std::vector<FloatPixel>;
+using Cells = ReferenceCells;
 
 //  `region` of `screen`, averaged into its cells, row by row.
 Cells region_cells(const ImageViewRGB32& screen, const PlatformRegion& region){
-    Cells cells;
-    cells.reserve(region.cols * region.rows);
-    const double cell_width = region.box.width / (double)region.cols;
-    const double cell_height = region.box.height / (double)region.rows;
-    for (size_t row = 0; row < region.rows; row++){
-        for (size_t col = 0; col < region.cols; col++){
-            const ImageFloatBox cell(
-                region.box.x + cell_width * (double)col, region.box.y + cell_height * (double)row,
-                cell_width, cell_height
-            );
-            cells.push_back(image_stats(extract_box_reference(screen, cell)).average);
-        }
-    }
-    return cells;
-}
-
-//  The "rrggbb" at `offset` of `hex` as a color. Throws ParseException for
-//  a character that is not a hex digit.
-FloatPixel hex_pixel(std::string_view hex, size_t offset){
-    const auto channel = [&](size_t index){
-        const std::string_view digits = hex.substr(offset + index * 2, 2);
-        int value = 0;
-        const auto [end, error] = std::from_chars(digits.data(), digits.data() + digits.size(), value, 16);
-        if (error != std::errc() || end != digits.data() + digits.size()){
-            throw ParseException(std::format("plza-platform.json: \"{}\" is not a hex color channel.", digits));
-        }
-        return (double)value;
-    };
-    return FloatPixel(channel(0), channel(1), channel(2));
+    return grid_cells(screen, region.box, region.cols, region.rows);
 }
 
 //  The reference's cells of `region` from ReferenceData/plza-platform.json:
@@ -105,21 +75,7 @@ FloatPixel hex_pixel(std::string_view hex, size_t offset){
 Cells reference_cells(const JsonObject& regions, const PlatformRegion& region){
     const std::string source = "plza-platform.json";
     const JsonObject& entry = regions.get_object_throw(std::string(region.name), source);
-    const JsonArray& rows = entry.get_array_throw("rows", source);
-    if ((size_t)entry.get_integer_throw("cols", source) != region.cols || rows.size() != region.rows){
-        throw ParseException(std::format("{}: region {} is not {}x{} cells.", source, region.name, region.cols, region.rows));
-    }
-    Cells cells;
-    for (const JsonValue& row : rows){
-        const std::string& hex = row.to_string_throw(source);
-        if (hex.size() != region.cols * 6){
-            throw ParseException(std::format("{}: a row of region {} is not {} colors.", source, region.name, region.cols));
-        }
-        for (size_t col = 0; col < region.cols; col++){
-            cells.push_back(hex_pixel(hex, col * 6));
-        }
-    }
-    return cells;
+    return read_cell_grid(entry, region.cols, region.rows, std::format("{} region {}", source, region.name));
 }
 
 //  The reference's cells, per PLATFORM_REGIONS entry.
@@ -141,18 +97,6 @@ const std::vector<Cells>& platform_reference(){
     }();
     return reference;
 }
-
-double cells_rmsd(const Cells& reference, const Cells& cells){
-    double sum = 0;
-    for (size_t index = 0; index < cells.size(); index++){
-        const double r = reference[index].r - cells[index].r;
-        const double g = reference[index].g - cells[index].g;
-        const double b = reference[index].b - cells[index].b;
-        sum += r * r + g * g + b * b;
-    }
-    return std::sqrt(sum / (double)cells.size());
-}
-
 
 //  The regions of a frame against the platform reference.
 PlatformDistances platform_distances(const ImageViewRGB32& screen){
