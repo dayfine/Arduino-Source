@@ -21,7 +21,6 @@
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
-#include "Pokemon/Navigation/Pokemon_Direction.h"
 #include "Pokemon_StoryPoseConcept.h"
 #include "Pokemon_ZonePose.h"
 
@@ -47,10 +46,6 @@ enum class StoryBackendKind{
 //  "console", "simulation", "script".
 std::string_view story_backend_kind_name(StoryBackendKind kind);
 
-//  `direction` as degrees clockwise of straight on (0, 90, 180, -90): a
-//  game with no tiles moves a direction's taps and holds as stick().
-double direction_degrees(Direction direction);
-
 //  One look at the game, with where the player is when a reader knows it
 //  (StoryGame::readers fill `pose` and the readings).
 template <StoryPose PoseType>
@@ -68,13 +63,9 @@ public:
     virtual StoryBackendKind kind() const = 0;
 
     virtual void press(NintendoSwitch::Button button, Milliseconds hold, Milliseconds release) = 0;
-    //  One tile in `direction`, or a turn to face it.
-    virtual void tap(Direction direction) = 0;
-    virtual void hold(Direction direction, Milliseconds duration, StoryPace pace) = 0;
     //  The move stick held at `degrees` clockwise from north (straight on,
     //  for a camera-relative game) for `duration`, then let go for `release`
-    //  (a turn's time to finish) like press(): the free-moving games' walk
-    //  and turn. A tile game's hold() is this at a multiple of 90.
+    //  (a turn's time to finish) like press(): the games' walk and turn.
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) = 0;
     virtual void wait(Milliseconds duration) = 0;
     //  The game now, once every input sent so far has been done.

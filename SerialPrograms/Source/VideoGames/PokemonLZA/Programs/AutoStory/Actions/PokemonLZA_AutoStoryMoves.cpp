@@ -95,7 +95,7 @@ Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move){
         }
         if (leg.walk > Milliseconds(0)){
             play_checked(backend, std::format("the walk of {}", label), [&]{
-                backend.hold(Pokemon::Direction::NORTH, leg.walk, Pokemon::StoryPace::WALK);
+                backend.stick(/*degrees=*/0, leg.walk, /*release=*/0ms, Pokemon::StoryPace::WALK);
             });
         }
     }
@@ -125,7 +125,7 @@ void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds sli
     if (move.style == StoryWalkStyle::HELD && !move.legs.empty()){
         backend.stick(move.legs.back().turn, slice, /*release=*/0ms, Pokemon::StoryPace::WALK);
     }else{
-        backend.hold(Pokemon::Direction::NORTH, slice, Pokemon::StoryPace::WALK);
+        backend.stick(/*degrees=*/0, slice, /*release=*/0ms, Pokemon::StoryPace::WALK);
     }
 }
 

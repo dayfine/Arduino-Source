@@ -1664,12 +1664,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryRegisteredArg.h
     Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
-    Source/Pokemon/Navigation/Pokemon_Direction.cpp
-    Source/Pokemon/Navigation/Pokemon_Direction.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
@@ -3631,7 +3630,6 @@ set(LOGIC_LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
-    Source/Pokemon/Navigation/Pokemon_Direction.cpp
 )
 
 # The logic test suites and their runner. Each suite here is also registered in

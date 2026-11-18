@@ -37,19 +37,23 @@ using Pokemon::ZonePose;
 //  observe() waits for them, as PlzaConsoleBackend's does. The arrow then
 //  still shows the facing from before the turn for `stale_reads` reads, as
 //  a video feed running behind the game shows it.
+//  Below this, a turn lands `small_turn_scale` times as far as asked.
+constexpr double SMALL_TURN = 15;
+
 class TurningGame : public Pokemon::FakeStoryBackend<ZonePose>{
 public:
-    TurningGame(double facing, bool turns_take, size_t stale_reads, CancellableScope& scope)
+    TurningGame(double facing, bool turns_take, size_t stale_reads, double small_turn_scale, CancellableScope& scope)
         : FakeStoryBackend({}, scope)
         , m_facing(facing)
         , m_shown(facing)
         , m_turns_take(turns_take)
         , m_stale_reads(stale_reads)
+        , m_small_turn_scale(small_turn_scale)
     {}
 
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override{
         if (m_turns_take){
-            m_queued_turn += degrees;
+            m_queued_turn += std::fabs(degrees) < SMALL_TURN ? degrees * m_small_turn_scale : degrees;
         }
         FakeStoryBackend::stick(degrees, duration, release, pace);
     }
@@ -83,6 +87,7 @@ private:
     double m_shown;
     const bool m_turns_take;
     const size_t m_stale_reads;
+    const double m_small_turn_scale;
     size_t m_stale_left = 0;
     double m_queued_turn = 0;
 };
@@ -105,6 +110,8 @@ struct FaceHeadingCase{
         //  The reads after each turn that still show the facing from
         //  before it.
         size_t stale_reads = 0;
+        //  How much farther than asked a turn under SMALL_TURN lands.
+        double small_turn_scale = 1;
     };
     Input input;
     struct Expectation{
@@ -152,13 +159,20 @@ const FaceHeadingCase FACE_HEADING_CASES[] = {
         .input = {.facing = 11, .heading = 231, .stale_reads = 1},
         .expectation = {.failure = ""},
     },
+    {
+        //  CHS 03.08 read 248.9, 259.1, 249.1, 259.3 for 254: each 5 deg
+        //  correction turned 10 (console B, 2026-11-18 02:03).
+        .name = "small turns overshoot: from 249 to 254",
+        .input = {.facing = 249, .heading = 254, .small_turn_scale = 2},
+        .expectation = {.failure = ""},
+    },
 };
 
 //  Faced: the player really faces the heading, not only the arrow read.
 constexpr double FACED_TOLERANCE = 4;
 
 UnitTestResult check_face_heading(const FaceHeadingCase& test, CancellableScope& scope){
-    TurningGame game(test.input.facing, test.input.turns_take, test.input.stale_reads, scope);
+    TurningGame game(test.input.facing, test.input.turns_take, test.input.stale_reads, test.input.small_turn_scale, scope);
     const Pokemon::Outcome outcome = face_heading(game, [&game](){ return game.arrow(); }, test.input.heading);
     if (outcome.failure != test.expectation.failure){
         return std::format(

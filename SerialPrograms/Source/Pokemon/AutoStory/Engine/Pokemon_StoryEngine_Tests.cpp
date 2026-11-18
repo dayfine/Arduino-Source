@@ -74,7 +74,7 @@ StoryGame<ZonePose> test_game(
     //  Walks north until a look shows a white fade, at most 3 slices.
     game.actions.push_back(game_action("walk_to_fade", [](StoryBackend<ZonePose>& backend, const StoryActionCall&, RunState&){
         for (size_t slice = 0; slice < 3; slice++){
-            backend.hold(Direction::NORTH, /*duration=*/500ms, StoryPace::WALK);
+            backend.stick(/*degrees=*/0, /*duration=*/500ms, /*release=*/0ms, StoryPace::WALK);
             if (backend.observe().events.has(ScreenEvent::FADE_WHITE)){
                 return outcome_ok();
             }
@@ -224,14 +224,14 @@ const SegmentCase SEGMENT_CASES[] = {
     {
         .name = "a walk ends on the scripted white fade",
         .input = {.checkpoints = {checkpoint_of("01.01", {"walk_to_fade"})}, .looks = {look({}), look({ScreenEvent::FADE_WHITE})}},
-        .expectation = {.summary = "done | runs 01.01:pass/1 | reloads 0", .inputs = "hold north 500ms walk, hold north 500ms walk"},
+        .expectation = {.summary = "done | runs 01.01:pass/1 | reloads 0", .inputs = "stick 0deg 500ms walk, stick 0deg 500ms walk"},
     },
     {
         .name = "a walk whose fade never shows fails",
         .input = {.checkpoints = {checkpoint_of("01.01", {"walk_to_fade"})}, .looks = {look({ScreenEvent::DIALOG_BOX})}},
         .expectation = {
             .summary = "failed at 01.01 walk_to_fade: no_fade | runs 01.01:fail/1 | reloads 0",
-            .inputs = "hold north 500ms walk, hold north 500ms walk, hold north 500ms walk",
+            .inputs = "stick 0deg 500ms walk, stick 0deg 500ms walk, stick 0deg 500ms walk",
             .line = "[Step] walk_to_fade GAME/walk_to_fade: failed: no_fade: no white fade in 3 slices",
         },
     },

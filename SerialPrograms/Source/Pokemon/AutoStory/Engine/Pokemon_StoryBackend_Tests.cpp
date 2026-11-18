@@ -57,8 +57,7 @@ std::string fake_text(CancellableScope& scope){
     fade.events = {ScreenEvent::FADE_WHITE};
     FakeStoryBackend<ZonePose> backend({.looks = {Observation<ZonePose>{}, fade}}, scope);
     backend.press(NintendoSwitch::BUTTON_A, /*hold=*/80ms, /*release=*/80ms);
-    backend.tap(Direction::EAST);
-    backend.hold(Direction::NORTH, /*duration=*/400ms, StoryPace::RUN);
+    backend.stick(/*degrees=*/0, /*duration=*/400ms, /*release=*/0ms, StoryPace::RUN);
     backend.stick(/*degrees=*/90, /*duration=*/150ms, /*release=*/300ms, StoryPace::WALK);
     backend.wait(100ms);
     std::string looks;
@@ -106,7 +105,7 @@ const BackendCase CASES[] = {
     {
         .name = "the scripted backend records inputs and repeats its last look",
         .input = {.read = fake_text},
-        .expectation = {.text = "press A, tap east, hold north 400ms run, stick 90deg 150ms walk, release 300ms, wait 100ms, "
+        .expectation = {.text = "press A, stick 0deg 400ms run, stick 90deg 150ms walk, release 300ms, wait 100ms, "
             "nothing / white fade / white fade"},
     },
     {

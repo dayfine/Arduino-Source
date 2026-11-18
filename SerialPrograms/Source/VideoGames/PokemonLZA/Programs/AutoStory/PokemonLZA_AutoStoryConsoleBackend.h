@@ -67,8 +67,6 @@ public:
         return Pokemon::StoryBackendKind::CONSOLE;
     }
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override;
-    virtual void tap(Pokemon::Direction direction) override;
-    virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace pace) override;
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
 

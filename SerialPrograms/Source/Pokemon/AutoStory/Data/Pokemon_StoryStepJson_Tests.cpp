@@ -13,9 +13,11 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <variant>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
@@ -35,6 +37,8 @@ using namespace std::chrono_literals;
 //  Which record a case reads.
 enum class Record{
     DECLARED,
+    //  A declared pose read by the test's registered kind.
+    REGISTERED_DECLARED,
     STEP,
     CHECKPOINT,
 };
@@ -71,6 +75,17 @@ const StoryStep& step_of(const ReadRecord& record){
     return std::get<StoryStep>(record);
 }
 
+using Pair = std::pair<int64_t, int64_t>;
+
+//  A kind a game registers: two integers, [3, 4].
+const StoryArgKind PAIR_KIND{.name = "pair", .read = [](const JsonValue& value, std::string_view source){
+    const JsonArray& items = value.to_array_throw(std::string(source));
+    if (items.size() != 2){
+        throw ParseException(std::format("{}: a pair has two numbers", source));
+    }
+    return make_registered_arg(Pair{items[0].to_integer_throw(std::string(source)), items[1].to_integer_throw(std::string(source))});
+}};
+
 const WireCase CASES[] = {
     {.name = "no args", .input = {.json = R"({"id":"talk","kind":"talk"})"}, .expectation = {.check = [](const ReadRecord& record){
         const StoryStep& step = step_of(record);
@@ -91,6 +106,15 @@ const WireCase CASES[] = {
     {.name = "timed legs", .input = {.json = R"({"id":"w","kind":"game_action","action":"timed_walk","args":{"legs":[[0,4500],[-90,1200]]}})"}, .expectation = {.check = [](const ReadRecord& record){
         const StoryActionArgs expected = {{"legs", std::vector<StoryTimedLeg>{{.turn = 0, .walk = 4500ms}, {.turn = -90, .walk = 1200ms}}}};
         return expect(step_of(record).args == expected, "two timed legs");
+    }}},
+    {.name = "registered arg", .input = {.json = R"({"id":"j","kind":"game_action","action":"jump","args":{"to":[3,4]}})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryActionArgs& args = step_of(record).args;
+        const StoryActionArgs expected = {{"to", make_registered_arg(Pair{3, 4})}};
+        return expect(registered_arg<Pair>(args, "to") == Pair{3, 4} && args == expected, "the pair (3, 4)");
+    }}},
+    {.name = "registered declared pose", .input = {.record = Record::REGISTERED_DECLARED, .json = R"([5,6])"}, .expectation = {.check = [](const ReadRecord& record){
+        const DeclaredPose expected = make_registered_arg(Pair{5, 6});
+        return expect(std::get<DeclaredPose>(record) == expected, "the game's pose (5, 6)");
     }}},
     {.name = "declared place", .input = {.record = Record::DECLARED, .json = R"({"place":"LumioseCity","spot":"HotelZ","heading":90})"}, .expectation = {.check = [](const ReadRecord& record){
         const DeclaredPose expected = ZoneDeclared{.place = "LumioseCity", .spot = "HotelZ", .heading = 90};
@@ -117,6 +141,8 @@ const WireCase CASES[] = {
     {.name = "integer rows, not rows", .input = {.json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[0,4500]}})"}, .expectation = {.rejected = true}},
     {.name = "integer rows, fraction", .input = {.json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4.5]]}})"}, .expectation = {.rejected = true}},
     {.name = "timed leg of three numbers", .input = {.json = R"({"id":"w","kind":"game_action","action":"timed_walk","args":{"legs":[[0,4500,1]]}})"}, .expectation = {.rejected = true}},
+    {.name = "registered arg malformed", .input = {.json = R"({"id":"j","kind":"game_action","action":"jump","args":{"to":[3]}})"}, .expectation = {.rejected = true}},
+    {.name = "registered declared pose malformed", .input = {.record = Record::REGISTERED_DECLARED, .json = R"({"place":"HotelZ"})"}, .expectation = {.rejected = true}},
     {.name = "unknown arg", .input = {.json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M","budget":1,"budgte":1}})"}, .expectation = {.rejected = true}},
     {.name = "missing required arg", .input = {.json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M"}})"}, .expectation = {.rejected = true}},
     {.name = "args on a kind with none", .input = {.json = R"({"id":"a","kind":"talk","args":{"yes":true}})"}, .expectation = {.rejected = true}},
@@ -152,6 +178,9 @@ std::vector<StoryActionSpec> test_actions(){
     actions.push_back({.kind = StoryStepKind::GAME, .name = "timed_walk", .args = {
         {.key = "legs", .type = StoryArgType::TIMED_LEGS, .required = true, .fallback = std::nullopt, .why = "[turn degrees, ms] legs"},
     }});
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "jump", .args = {
+        {.key = "to", .type = StoryArgType::REGISTERED, .required = true, .fallback = std::nullopt, .why = "where to", .kind = &PAIR_KIND},
+    }});
     actions.push_back({.kind = StoryStepKind::GAME, .name = "profile", .args = {}});
     return actions;
 }
@@ -165,6 +194,10 @@ ReadRecord read_record(const WireCase::Input& input, std::string_view source){
     case Record::DECLARED:{
         const std::string json = std::format(R"({{"id":"x","title":"X","start":{},"events":[]}})", input.json);
         return *read_story_checkpoint(parse_json(json), source, actions).start;
+    }
+    case Record::REGISTERED_DECLARED:{
+        const std::string json = std::format(R"({{"id":"x","title":"X","start":{},"events":[]}})", input.json);
+        return *read_story_checkpoint(parse_json(json), source, actions, &PAIR_KIND).start;
     }
     case Record::STEP:{
         const std::string json = std::format(R"({{"id":"x","title":"X","events":[{}]}})", input.json);

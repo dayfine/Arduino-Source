@@ -28,10 +28,11 @@ namespace Pokemon{
 //  heading optional) and its steps, each step's args parsed against its
 //  action among `actions` (the game's) and their fallbacks filled in.
 //  Unknown fields, kinds, actions and args, mistyped values and missing
-//  required args fail.
+//  required args fail. A game whose poses are not zones passes
+//  `declared_pose`, which reads "start" instead.
 StoryCheckpoint read_story_checkpoint(
     const JsonValue& value, std::string_view source,
-    std::span<const StoryActionSpec> actions
+    std::span<const StoryActionSpec> actions, const StoryArgKind* declared_pose = nullptr
 );
 
 

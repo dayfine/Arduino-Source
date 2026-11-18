@@ -29,7 +29,6 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-using Pokemon::Direction;
 
 
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
@@ -40,14 +39,6 @@ PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
     pbf_press_button(m_env.context, button, hold, release);
-}
-
-void PlzaConsoleBackend::tap(Direction direction){
-    story_turn(*this, Pokemon::direction_degrees(direction));
-}
-
-void PlzaConsoleBackend::hold(Direction direction, Milliseconds duration, Pokemon::StoryPace pace){
-    stick(Pokemon::direction_degrees(direction), duration, /*release=*/0ms, pace);
 }
 
 void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace){

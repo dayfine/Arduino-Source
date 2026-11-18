@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <format>
 #include <functional>
+#include <any>
 #include <map>
 #include <string>
 #include <string_view>
@@ -26,6 +27,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_MapUtil.h"
+#include "Pokemon_StoryRegisteredArg.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -40,7 +42,6 @@ struct StoryTimedLeg{
     bool operator==(const StoryTimedLeg& other) const = default;
 };
 
-
 //  The type an action declares for an argument, in StoryArgValue's order.
 enum class StoryArgType{
     BOOLEAN,
@@ -49,6 +50,7 @@ enum class StoryArgType{
     WORDS,
     INTEGER_ROWS,
     TIMED_LEGS,
+    REGISTERED,
 };
 
 //  One argument's value; the index is its StoryArgType.
@@ -56,9 +58,10 @@ using StoryArgValue = std::variant<
     bool, int64_t, std::string,             //  BOOLEAN, INTEGER, WORD
     std::vector<std::string>,               //  WORDS
     std::vector<std::vector<int64_t>>,      //  INTEGER_ROWS: rows of any length, [[12, 7], [3, 9, 1], []]
-    std::vector<StoryTimedLeg>              //  TIMED_LEGS: [turn degrees, ms] pairs, [[0, 4500], [90, 1200]]
+    std::vector<StoryTimedLeg>,             //  TIMED_LEGS: [turn degrees, ms] pairs, [[0, 4500], [90, 1200]]
+    StoryRegisteredArgValue                 //  REGISTERED: read by the arg's StoryArgKind
 >;
-static_assert(std::variant_size_v<StoryArgValue> == (size_t)StoryArgType::TIMED_LEGS + 1, "one StoryArgType per StoryArgValue type");
+static_assert(std::variant_size_v<StoryArgValue> == (size_t)StoryArgType::REGISTERED + 1, "one StoryArgType per StoryArgValue type");
 
 //  A step's arguments by key.
 using StoryActionArgs = std::map<std::string, StoryArgValue, std::less<>>;
@@ -72,6 +75,11 @@ StoryArgType story_arg_type(const StoryArgValue& value);
 template <typename Type>
 const Type& story_arg(const StoryActionArgs& args, std::string_view key);
 
+//  story_arg() for a registered arg holding a `Type`. Throws
+//  InternalProgramError when it is missing or holds another type.
+template <typename Type>
+const Type& registered_arg(const StoryActionArgs& args, std::string_view key);
+
 
 
 template <typename Type>
@@ -81,6 +89,16 @@ const Type& story_arg(const StoryActionArgs& args, std::string_view key){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("Missing or mistyped story arg: {}", key));
     }
     return *value;
+}
+
+template <typename Type>
+const Type& registered_arg(const StoryActionArgs& args, std::string_view key){
+    const StoryRegisteredArgValue& held = story_arg<StoryRegisteredArgValue>(args, key);
+    const Type* typed = std::any_cast<Type>(&held.value);
+    if (typed == nullptr){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("Story arg of another registered kind: {}", key));
+    }
+    return *typed;
 }
 
 
