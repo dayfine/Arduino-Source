@@ -18,6 +18,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h"
 #include "Pokemon_StoryStepJson.h"
@@ -92,6 +93,36 @@ const WireCase CASES[] = {
         const StoryActionArgs expected = {{"legs", std::vector<StoryTimedLeg>{{.turn = 0, .walk = 4500ms}, {.turn = -90, .walk = 1200ms}}}};
         return expect(step_of(record).args == expected, "two timed legs");
     }}},
+    {.name = "game direction", .input = {.json = R"({"id":"t","kind":"game_action","action":"turn","args":{"facing":"west"}})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryActionArgs expected = {{"facing", Direction::WEST}};
+        return expect(step_of(record).args == expected, "west");
+    }}},
+    {.name = "game grid pose", .input = {.json = R"({"id":"g","kind":"game_action","action":"go","args":{"to":{"map":"PalletTown","tiles":[[3,4],[3,5]],"facing":"north"}}})"}, .expectation = {.check = [](const ReadRecord& record){
+        const GridPose to{.map = "PalletTown", .tiles = {{3, 4}, {3, 5}}, .facing = Direction::NORTH};
+        const StoryActionArgs expected = {{"to", to}};
+        return expect(step_of(record).args == expected, "two tiles of PalletTown, facing north");
+    }}},
+    {.name = "game grid pose, map alone", .input = {.json = R"({"id":"g","kind":"game_action","action":"go","args":{"to":{"map":"PalletTown"}}})"}, .expectation = {.check = [](const ReadRecord& record){
+        const GridPose to{.map = "PalletTown", .tiles = {}, .facing = std::nullopt};
+        const StoryActionArgs expected = {{"to", to}};
+        return expect(step_of(record).args == expected, "any tile of PalletTown, any facing");
+    }}},
+    {.name = "game legs", .input = {.json = R"({"id":"l","kind":"game_action","action":"legs","args":{"legs":[{"direction":"north","tiles":3},{"direction":"east","tiles":1}]}})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryActionArgs expected = {{"legs", std::vector<StoryLeg>{{.direction = Direction::NORTH, .tiles = 3}, {.direction = Direction::EAST, .tiles = 1}}}};
+        return expect(step_of(record).args == expected, "north 3, east 1");
+    }}},
+    {.name = "game items", .input = {.json = R"({"id":"b","kind":"game_action","action":"buy","args":{"items":[{"item":"Potion","quantity":2}]}})"}, .expectation = {.check = [](const ReadRecord& record){
+        const StoryActionArgs expected = {{"items", std::vector<StoryItem>{{.item = "Potion", .quantity = 2}}}};
+        return expect(step_of(record).args == expected, "two Potions");
+    }}},
+    {.name = "declared tiles", .input = {.record = Record::DECLARED, .json = R"({"map":"PalletTown","tiles":[[3,4]],"facing":"south"})"}, .expectation = {.check = [](const ReadRecord& record){
+        const DeclaredPose expected = TileDeclared{.map = "PalletTown", .tiles = {{3, 4}}, .facing = Direction::SOUTH};
+        return expect(std::get<DeclaredPose>(record) == expected, "a tile pose facing south");
+    }}},
+    {.name = "declared map alone", .input = {.record = Record::DECLARED, .json = R"({"map":"PalletTown"})"}, .expectation = {.check = [](const ReadRecord& record){
+        const DeclaredPose expected = TileDeclared{.map = "PalletTown", .tiles = {}, .facing = std::nullopt};
+        return expect(std::get<DeclaredPose>(record) == expected, "any tile of PalletTown");
+    }}},
     {.name = "declared place", .input = {.record = Record::DECLARED, .json = R"({"place":"LumioseCity","spot":"HotelZ","heading":90})"}, .expectation = {.check = [](const ReadRecord& record){
         const DeclaredPose expected = ZoneDeclared{.place = "LumioseCity", .spot = "HotelZ", .heading = 90};
         return expect(std::get<DeclaredPose>(record) == expected, "a zone pose with spot and heading");
@@ -117,6 +148,11 @@ const WireCase CASES[] = {
     {.name = "integer rows, not rows", .input = {.json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[0,4500]}})"}, .expectation = {.rejected = true}},
     {.name = "integer rows, fraction", .input = {.json = R"({"id":"w","kind":"game_action","action":"walk","args":{"legs":[[0,4.5]]}})"}, .expectation = {.rejected = true}},
     {.name = "timed leg of three numbers", .input = {.json = R"({"id":"w","kind":"game_action","action":"timed_walk","args":{"legs":[[0,4500,1]]}})"}, .expectation = {.rejected = true}},
+    {.name = "unknown direction", .input = {.json = R"({"id":"t","kind":"game_action","action":"turn","args":{"facing":"up"}})"}, .expectation = {.rejected = true}},
+    {.name = "tile of three coordinates", .input = {.json = R"({"id":"g","kind":"game_action","action":"go","args":{"to":{"map":"M","tiles":[[1,2,3]]}}})"}, .expectation = {.rejected = true}},
+    {.name = "grid pose without map", .input = {.json = R"({"id":"g","kind":"game_action","action":"go","args":{"to":{"tiles":[[1,2]]}}})"}, .expectation = {.rejected = true}},
+    {.name = "leg with unknown field", .input = {.json = R"({"id":"l","kind":"game_action","action":"legs","args":{"legs":[{"direction":"north","tiles":3,"run":true}]}})"}, .expectation = {.rejected = true}},
+    {.name = "negative item quantity", .input = {.json = R"({"id":"b","kind":"game_action","action":"buy","args":{"items":[{"item":"Potion","quantity":-1}]}})"}, .expectation = {.rejected = true}},
     {.name = "unknown arg", .input = {.json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M","budget":1,"budgte":1}})"}, .expectation = {.rejected = true}},
     {.name = "missing required arg", .input = {.json = R"({"id":"a","kind":"game_action","action":"mart","args":{"map":"M"}})"}, .expectation = {.rejected = true}},
     {.name = "args on a kind with none", .input = {.json = R"({"id":"a","kind":"talk","args":{"yes":true}})"}, .expectation = {.rejected = true}},
@@ -129,6 +165,8 @@ const WireCase CASES[] = {
     {.name = "unknown field", .input = {.json = R"({"id":"a","kind":"talk","mystery":0})"}, .expectation = {.rejected = true}},
     {.name = "unknown kind", .input = {.json = R"({"id":"a","kind":"magic"})"}, .expectation = {.rejected = true}},
     {.name = "declared place with tiles", .input = {.record = Record::DECLARED, .json = R"({"place":"HotelZ","tiles":[[1,2]]})"}, .expectation = {.rejected = true}},
+    {.name = "declared map and place", .input = {.record = Record::DECLARED, .json = R"({"map":"PalletTown","place":"HotelZ"})"}, .expectation = {.rejected = true}},
+    {.name = "declared map with heading", .input = {.record = Record::DECLARED, .json = R"({"map":"PalletTown","heading":90})"}, .expectation = {.rejected = true}},
     {.name = "declared neither", .input = {.record = Record::DECLARED, .json = R"({"spot":"Lobby"})"}, .expectation = {.rejected = true}},
     {.name = "unknown phase", .input = {.record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[],"metadata":{"phase":"tested"}})"}, .expectation = {.rejected = true}},
     {.name = "unknown metadata field", .input = {.record = Record::CHECKPOINT, .json = R"({"id":"x","title":"X","events":[],"metadata":{"phase":"testing","runs":3}})"}, .expectation = {.rejected = true}},
@@ -136,8 +174,8 @@ const WireCase CASES[] = {
 };
 
 
-//  A game's actions: a Mart step (GAME "mart"), walks and a profile check
-//  that takes no args.
+//  A game's actions: a Mart step (GAME "mart"), walks, a turn, a buy and a
+//  profile check that takes no args.
 std::vector<StoryActionSpec> test_actions(){
     std::vector<StoryActionSpec> actions;
     actions.push_back({.kind = StoryStepKind::GAME, .name = "mart", .args = {
@@ -151,6 +189,18 @@ std::vector<StoryActionSpec> test_actions(){
     }});
     actions.push_back({.kind = StoryStepKind::GAME, .name = "timed_walk", .args = {
         {.key = "legs", .type = StoryArgType::TIMED_LEGS, .required = true, .fallback = std::nullopt, .why = "[turn degrees, ms] legs"},
+    }});
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "turn", .args = {
+        {.key = "facing", .type = StoryArgType::DIRECTION, .required = true, .fallback = std::nullopt, .why = "the way to face"},
+    }});
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "go", .args = {
+        {.key = "to", .type = StoryArgType::GRID_POSE, .required = true, .fallback = std::nullopt, .why = "where to walk"},
+    }});
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "legs", .args = {
+        {.key = "legs", .type = StoryArgType::LEGS, .required = true, .fallback = std::nullopt, .why = "straight legs"},
+    }});
+    actions.push_back({.kind = StoryStepKind::GAME, .name = "buy", .args = {
+        {.key = "items", .type = StoryArgType::ITEMS, .required = true, .fallback = std::nullopt, .why = "what to buy"},
     }});
     actions.push_back({.kind = StoryStepKind::GAME, .name = "profile", .args = {}});
     return actions;

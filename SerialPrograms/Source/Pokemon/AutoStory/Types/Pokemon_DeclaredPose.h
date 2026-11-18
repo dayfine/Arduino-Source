@@ -3,8 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  A pose a checkpoint declares in its data (its start), as plain data. A
- *  game with no tile grid (PLZA) declares a place, a spot in it and a
- *  heading.
+ *  tile game (FRLG, BDSP) declares a map, tiles and a facing; a game with
+ *  no tile grid (PLZA) declares a place, a spot in it and a heading.
  *
  */
 
@@ -14,10 +14,21 @@
 #include <optional>
 #include <string>
 #include <variant>
+#include <vector>
+#include "Pokemon/Navigation/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
+
+//  On one of `tiles` of `map` (any tile when none), facing `facing` if set.
+struct TileDeclared{
+    std::string map = {};
+    std::vector<TilePos> tiles = {};
+    std::optional<Direction> facing = {};
+
+    bool operator==(const TileDeclared& other) const = default;
+};
 
 //  In `place` ("LumioseCity"), at `spot` in it if set, heading `heading`
 //  degrees if set.
@@ -29,9 +40,9 @@ struct ZoneDeclared{
     bool operator==(const ZoneDeclared& other) const = default;
 };
 
-//  Where a checkpoint declares the player to be. Only the zone kind so far:
-//  a game with tiles adds its own alternative.
-using DeclaredPose = std::variant<ZoneDeclared>;
+//  Where a checkpoint declares the player to be; a game reads only its own
+//  kind.
+using DeclaredPose = std::variant<TileDeclared, ZoneDeclared>;
 
 
 
