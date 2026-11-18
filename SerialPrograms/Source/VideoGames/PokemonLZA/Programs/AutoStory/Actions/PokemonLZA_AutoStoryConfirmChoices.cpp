@@ -85,8 +85,8 @@ size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& con
     if (!cursor){
         throw UserSetupError(
             console,
-            "AutoStory: 01.00's confirm step needs the new game's \"Confirm Choices\" screen, after the language, look "
-            "and name. It is not on screen; nothing was pressed."
+            "AutoStory: 01.00b starts on the new game's \"Confirm Choices\" screen, after the language, look "
+            "and name (01.00a, or made by hand). It is not on screen; nothing was pressed."
         );
     }
     console.log(std::format("AutoStory intro: Confirm Choices on screen, row {} highlighted.", *cursor));

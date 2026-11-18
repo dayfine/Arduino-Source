@@ -1,0 +1,21 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "01.00a",
+    "title": "New game choices",
+    "events": [
+      {
+        "id": "new_game",
+        "kind": "game_action",
+        "why": "from HOME (the game closed, no save) launch the selected tile, then the language list, the look picker and the name keyboard with the panel's choices, ending on Confirm Choices with nothing confirmed",
+        "action": "new_game_intro"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "played step by step from a new game"
+    }
+  },
+  "execution": {}
+}

@@ -127,7 +127,7 @@ std::optional<std::string> env_folder(std::string_view variable){
     return folder;
 }
 
-//  01.00's start check on the console's intro screens, from the folder in
+//  01.00b's start check on the console's intro screens, from the folder in
 //  PLZA_INTRO_SCREENS: it accepts Confirm Choices as it opens, and refuses
 //  every other intro screen. A file the folder lacks is skipped.
 struct CaptureCase{

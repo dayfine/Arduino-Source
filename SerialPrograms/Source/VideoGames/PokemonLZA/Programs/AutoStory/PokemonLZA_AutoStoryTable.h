@@ -33,9 +33,13 @@ namespace PokemonLZA{
 using StoryData = Pokemon::StoryData<Pokemon::StoryCheckpoint>;
 
 //  Whether `row` starts with no save to load: it starts a new game (its
-//  first step is the GAME action "new_game_intro", or "confirm_new_game"
-//  on "Confirm Choices"): 01.00.
+//  first step is the GAME action "new_game_intro", from HOME: 01.00a; or
+//  "confirm_new_game", on "Confirm Choices": 01.00b).
 bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
+
+//  Whether `row` plays the new game's choices (its first step is the GAME
+//  action "new_game_intro"): 01.00a, which types the name.
+bool story_row_makes_new_game_choices(const Pokemon::StoryCheckpoint& row);
 
 //  "<step>: <rule>" for each step of `row` that does not come right after
 //  the step it needs (console B, 2026-11-16):

@@ -20,6 +20,7 @@
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryIntroScreens.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTable.h"
 #include "PokemonLZA_AutoStoryLaunch.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
 
@@ -49,8 +50,7 @@ std::optional<std::string> name_typing_problem(const NewGameChoices& choices){
     const NewGameLanguageInfo& info = new_game_language_info(choices.language);
     if (!info.keyboard_supported){
         return std::format(
-            "AutoStory: the program cannot type a name on the {} keyboard (Hangul). "
-            "Type the name by hand and start the run on \"Confirm Choices\".",
+            "AutoStory: the program cannot type a name on the {} keyboard (Hangul).",
             info.tag
         );
     }
@@ -343,72 +343,49 @@ void type_name(ConsoleHandle& console, ProControllerContext& context, const NewG
     submit_name(console, context);
 }
 
-std::optional<NewGameStart> read_start(ConsoleHandle& console, const ImageViewRGB32& frame){
-    if (read_confirm_choices_cursor(frame)){
-        return NewGameStart::CONFIRM_CHOICES;
-    }
-    if (read_language_list_cursor(frame)){
-        return NewGameStart::LANGUAGE_LIST;
-    }
-    HomeMenuDetector home(console, COLOR_RED);
-    if (home.detect_only(frame)){
-        return NewGameStart::HOME;
-    }
-    return std::nullopt;
-}
-
 } // namespace
 
 
-NewGameStart require_new_game_start(ConsoleHandle& console, ProControllerContext& context){
-    const WallClock deadline = current_time() + 2000ms;
-    while (true){
-        const VideoSnapshot frame = snapshot(console, context);
-        const std::optional<NewGameStart> start = frame ? read_start(console, frame) : std::nullopt;
-        if (start){
-            console.log(std::format("AutoStory intro: starting on screen {} (0 HOME, 1 language list, 2 Confirm Choices).", (int)*start));
-            return *start;
-        }
-        if (current_time() >= deadline){
-            throw UserSetupError(
-                console,
-                std::format(
-                    "AutoStory: 01.00 starts a new game (no save) from the Switch HOME (PLZA's tile among the first {}), "
-                    "from the language list, or from \"Confirm Choices\". None of them is on screen; nothing was pressed.",
-                    HOME_TILES_SEARCHED
-                )
-            );
-        }
-        context.wait_for(250ms);
+void require_new_game_home(ConsoleHandle& console, ProControllerContext& context){
+    HomeMenuDetector home(console, COLOR_RED);
+    const FrameCheck on_home = [&home](const ImageViewRGB32& frame){
+        return home.detect_only(frame);
+    };
+    if (!wait_for_frame(console, context, on_home, 2000ms)){
+        throw UserSetupError(
+            console,
+            std::format(
+                "AutoStory: 01.00a starts a new game (no save) from the Switch HOME (PLZA's tile among the first {}). "
+                "It is not on screen; nothing was pressed. {}",
+                HOME_TILES_SEARCHED, NEW_GAME_BY_HAND_HINT
+            )
+        );
     }
+    console.log("AutoStory intro: starting on the Switch HOME.");
 }
 
-std::optional<std::string> new_game_start_problem(NewGameStart start, const NewGameChoices& choices){
-    if (start == NewGameStart::CONFIRM_CHOICES){
-        return std::nullopt;
+std::optional<std::string> new_game_run_problem(std::span<const Pokemon::StoryCheckpoint> rows, const NewGameChoices& choices){
+    for (const Pokemon::StoryCheckpoint& row : rows){
+        if (!story_row_makes_new_game_choices(row)){
+            continue;
+        }
+        if (const std::optional<std::string> problem = name_typing_problem(choices)){
+            return std::format("{} {} types the name. {}", *problem, row.id, NEW_GAME_BY_HAND_HINT);
+        }
     }
-    return name_typing_problem(choices);
+    return std::nullopt;
 }
 
 void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
     if (const std::optional<std::string> problem = new_game_problem(choices)){
         throw UserSetupError(console, *problem);
     }
-    const NewGameStart start = require_new_game_start(console, context);
-    if (const std::optional<std::string> problem = new_game_start_problem(start, choices)){
+    if (const std::optional<std::string> problem = name_typing_problem(choices)){
         throw UserSetupError(console, *problem);
     }
-    switch (start){
-    case NewGameStart::CONFIRM_CHOICES:
-        console.log("AutoStory intro: already on Confirm Choices; its check reads the language and name.");
-        return;
-    case NewGameStart::HOME:
-        launch_plza_from_home(console, context);
-        wait_for_language_list(console, context);
-        break;
-    case NewGameStart::LANGUAGE_LIST:
-        break;
-    }
+    require_new_game_home(console, context);
+    launch_plza_from_home(console, context);
+    wait_for_language_list(console, context);
     pick_language(console, context, choices.language);
     pick_look(console, context, choices.look);
     type_name(console, context, choices);

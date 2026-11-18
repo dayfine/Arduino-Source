@@ -59,7 +59,8 @@ struct StoryDataCase{
     struct Input{};
     Input input;
     struct Expectation{
-        //  "<id>:<new_game|from_save>[:<autosave|unverified>]" per row, in order.
+        //  "<id>:<new_game|from_save>[:choices][:<autosave|unverified>]" per
+        //  row, in order; "choices": the row plays the new game's choices.
         std::string rows;
     };
     Expectation expectation;
@@ -70,7 +71,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
         .name = "the built-in story loads and passes the lint",
         .input = {},
         .expectation = {.rows =
-            "01.00:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
+            "01.00a:new_game:choices 01.00b:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
             "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save:autosave "
@@ -91,7 +92,8 @@ UnitTestResult check_story_data(const StoryDataCase& test){
             return std::format("{} fails the lint: {}", row.id, joined(lint, "; "));
         }
         rows.push_back(std::format(
-            "{}:{}{}", row.id, story_row_starts_without_save(row) ? "new_game" : "from_save",
+            "{}:{}{}{}", row.id, story_row_starts_without_save(row) ? "new_game" : "from_save",
+            story_row_makes_new_game_choices(row) ? ":choices" : "",
             data.unverified_autosaves.contains(row.id) ? ":unverified" : (data.autosaves.contains(row.id) ? ":autosave" : "")
         ));
     }
@@ -457,18 +459,18 @@ struct RunCase{
 
 const RunCase RUN_CASES[] = {
     {
-        .name = "01.00 stops at the new game off a console",
-        .input = {.checkpoint = "01.00", .first_step = 0, .looks = {CUTSCENE}},
+        .name = "01.00a stops at the new game off a console",
+        .input = {.checkpoint = "01.00a", .first_step = 0, .looks = {CUTSCENE}},
         .expectation = {.verdict = "failed at new_game: console_only", .inputs = ""},
     },
     {
-        .name = "01.00 stops at Confirm Choices off a console",
-        .input = {.checkpoint = "01.00", .first_step = 1, .looks = {CUTSCENE}},
+        .name = "01.00b stops at Confirm Choices off a console",
+        .input = {.checkpoint = "01.00b", .first_step = 0, .looks = {CUTSCENE}},
         .expectation = {.verdict = "failed at confirm: console_only", .inputs = ""},
     },
     {
-        .name = "01.00's opening ends on the platform after the autosave",
-        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {CUTSCENE, PLATFORM, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
+        .name = "01.00b's opening ends on the platform after the autosave",
+        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {CUTSCENE, PLATFORM, AUTOSAVE, AUTOSAVE, PLATFORM, PLATFORM}},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 300ms, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
@@ -476,13 +478,13 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "01.00's opening presses A once for the text waiting for it",
-        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {TEXT_FOR_A, TEXT_FOR_A, AUTOSAVE, PLATFORM, PLATFORM}},
+        .name = "01.00b's opening presses A once for the text waiting for it",
+        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {TEXT_FOR_A, TEXT_FOR_A, AUTOSAVE, PLATFORM, PLATFORM}},
         .expectation = {.verdict = "done", .inputs = "press A, wait 300ms, wait 300ms, wait 300ms, wait 300ms"},
     },
     {
-        .name = "01.00's opening fails with no autosave",
-        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {PLATFORM}},
+        .name = "01.00b's opening fails with no autosave",
+        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {PLATFORM}},
         .expectation = {.verdict = "failed at opening: platform_not_seen"},
     },
     {
@@ -651,17 +653,17 @@ const RunCase RUN_CASES[] = {
     },
     {
         //  The badge 2 s in: one in the first 1.5 s would be the save
-        //  before 01.00.
-        .name = "01.00's autosave badge is logged in the step it shows in",
-        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {CUTSCENE, OWN_AUTOSAVE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
+        //  before 01.00b.
+        .name = "01.00b's autosave badge is logged in the step it shows in",
+        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {CUTSCENE, OWN_AUTOSAVE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
         .expectation = {.verdict = "done", .line = "[PLZA] autosave badge at 2.0s in opening"},
     },
     {
         //  A first look, then the badge 2 s in: one on the first look would
-        //  be the save before 01.00.
-        .name = "01.00 ends on its autosave",
-        .input = {.checkpoint = "01.00", .first_step = 2, .looks = {CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
-        .expectation = {.verdict = "done", .line = "[Save] 01.00: the game autosaved (seen)"},
+        //  be the save before 01.00b.
+        .name = "01.00b ends on its autosave",
+        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .line = "[Save] 01.00b: the game autosaved (seen)"},
     },
     {
         .name = "01.01 is not saved: its autosave is unverified",
@@ -1615,6 +1617,85 @@ private:
     ChainCase m_case;
 };
 
+//  A run of built-in rows, then 01.01's walk off the platform, the
+//  console's new game steps scripted to pass, on a game with no reload: the
+//  choices row hands over to Confirm Choices, which hands over to the
+//  platform, with no save loaded between them.
+struct NewGameChainCase{
+    std::string name;
+    struct Input{
+        std::vector<std::string> rows;
+        std::vector<Observation<ZonePose>> looks;
+    };
+    Input input;
+    struct Expectation{
+        //  "done", or "failed at <checkpoint> <event>: <failure>".
+        std::string verdict;
+        //  The console new game steps run, in order.
+        std::string console_steps;
+    };
+    Expectation expectation;
+};
+
+const NewGameChainCase NEW_GAME_CHAIN_CASES[] = {
+    {
+        .name = "01.00a, 01.00b and 01.01 in one run",
+        .input = {.rows = {"01.00a", "01.00b"}, .looks = concat({CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}, walk_into_white_fade())},
+        .expectation = {.verdict = "done", .console_steps = "new_game_intro confirm_new_game"},
+    },
+    {
+        .name = "01.00b and 01.01 in one run",
+        .input = {.rows = {"01.00b"}, .looks = concat({CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}, walk_into_white_fade())},
+        .expectation = {.verdict = "done", .console_steps = "confirm_new_game"},
+    },
+};
+
+UnitTestResult check_new_game_chain(const NewGameChainCase& test, CancellableScope& scope){
+    const StoryData& story = builtin_story_data();
+    std::vector<std::string> steps_run;
+    PlzaConsoleActions console;
+    for (const std::string_view action : {"new_game_intro", "confirm_new_game"}){
+        console.emplace(std::string(action), [&steps_run, action](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+            steps_run.emplace_back(action);
+            return Pokemon::outcome_ok();
+        });
+    }
+    AutosaveSightings sightings;
+    const Pokemon::StoryGame<ZonePose> game = plza_story_game(console, story, /*arrow=*/std::nullopt, sightings);
+    std::vector<StoryCheckpoint> rows;
+    for (const std::string& id : test.input.rows){
+        rows.push_back(builtin_row(id, /*first_step=*/0, /*steps=*/std::numeric_limits<size_t>::max()));
+    }
+    rows.push_back(builtin_row("01.01", /*first_step=*/0, /*steps=*/2));
+    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .kind = Pokemon::StoryBackendKind::CONSOLE}, scope);
+    Pokemon::RunState state;
+    const Pokemon::SegmentReport report = run_plza_segments(game, rows, /*options=*/{}, backend, state, sightings);
+    const std::string verdict = report.completed
+        ? "done"
+        : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);
+    if (verdict != test.expectation.verdict){
+        return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
+    }
+    const std::string console_steps = joined(steps_run, " ");
+    if (console_steps != test.expectation.console_steps){
+        return std::format("expected the console steps \"{}\", got \"{}\"", test.expectation.console_steps, console_steps);
+    }
+    return true;
+}
+
+class NewGameChainTest : public UnitTest{
+public:
+    explicit NewGameChainTest(NewGameChainCase test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryGame new game chain - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        return check_new_game_chain(m_case, scope);
+    }
+private:
+    NewGameChainCase m_case;
+};
+
 //  A checkpoint whose last step saves from the menu.
 struct MenuSaveCase{
     std::string name;
@@ -1818,6 +1899,9 @@ void add_tests_AutoStoryGame(UnitTestDatabase& database){
     }
     for (const ChainCase& test : CHAIN_CASES){
         database.add<ChainTest>(test);
+    }
+    for (const NewGameChainCase& test : NEW_GAME_CHAIN_CASES){
+        database.add<NewGameChainTest>(test);
     }
 }
 

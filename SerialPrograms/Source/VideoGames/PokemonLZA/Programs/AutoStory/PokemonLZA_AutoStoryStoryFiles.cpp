@@ -120,7 +120,7 @@ StoryFileRow<StoryCheckpoint> read_checkpoint_file(std::string_view text, std::s
 
 //  How the shared loader reads a PLZA checkpoint file: against
 //  plza_story_specs(), its execution with the shared "save" and
-//  "reload_when_chained" and PLZA's "autosave_step". 01.00 (story_row_starts_without_save()) has no
+//  "reload_when_chained" and PLZA's "autosave_step". 01.00a and 01.00b (story_row_starts_without_save()) have no
 //  save to reload.
 const Pokemon::StoryFileReader<StoryCheckpoint>& plza_story_file_reader(){
     static const Pokemon::StoryFileReader<StoryCheckpoint> reader{

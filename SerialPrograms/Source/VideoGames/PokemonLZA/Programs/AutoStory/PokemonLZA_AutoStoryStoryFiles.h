@@ -31,8 +31,8 @@ namespace PokemonLZA{
 const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_json();
 
 //  The built-in story, read once. Throws ParseException naming the file
-//  when one does not parse. 01.00 plays a new game to the station platform
-//  from the new game's "Confirm Choices", its choices made by hand; 01.01
+//  when one does not parse. 01.00a makes a new game's choices from HOME up
+//  to "Confirm Choices"; 01.00b plays from there to the station platform; 01.01
 //  walks off the platform into the white fade.
 const StoryData& builtin_story_data();
 
