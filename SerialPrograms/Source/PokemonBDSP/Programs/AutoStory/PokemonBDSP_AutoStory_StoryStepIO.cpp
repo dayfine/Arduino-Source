@@ -310,8 +310,7 @@ std::optional<size_t> ConsoleStoryStepIO::tap_to_banner(Direction direction, con
 //  banner `banner`, if it has one, counts as the fade: a fade the run
 //  missed is over, but its banner comes after it (#268 slice 1).
 void ConsoleStoryStepIO::settle(Button button, const std::string& label, SettleKind kind, const std::string& banner){
-    const TalkOverRule rule{.warp = kind == SettleKind::AFTER_WARP, .door = kind == SettleKind::DOOR};
-    talk_over(m_stream, m_context, label, {.next = button, .rule = rule, .banner = banner});
+    talk_over(m_stream, m_context, label, {.next = button, .settle = settle_rule(kind), .banner = banner});
 }
 
 

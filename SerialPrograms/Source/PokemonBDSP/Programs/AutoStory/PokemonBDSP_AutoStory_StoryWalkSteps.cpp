@@ -124,25 +124,6 @@ std::vector<TrainerSight> row_trainers(const StoryWorld& world, const std::strin
     return sights;
 }
 
-CenterEntry run_into_center(
-    StoryStepIO& io, bool run,
-    const std::function<bool()>& inside, const std::function<void()>& line_up,
-    const std::string& label
-){
-    //  Every way in settles before the walk to the nurse: the inside can
-    //  still fade in whether or not the run saw the fade.
-    CenterEntry entry = CenterEntry::LINED_UP;
-    if (io.run_into_door(Direction::NORTH, run).any()){
-        entry = CenterEntry::FADED;
-    }else if (inside()){
-        entry = CenterEntry::INSIDE;
-    }else{
-        line_up();
-    }
-    io.settle(BUTTON_B, std::format("{}: into the Center", label), SettleKind::DOOR, "");
-    return entry;
-}
-
 TappedEnd tapped_end(const StoryWorld& world, const std::string& map, const TilePos& pos, const Pokemon::StoryLeg& leg){
     const size_t open = slide_to_wall(world, story_to_world(world, map, pos), leg.direction).tiles;
     TappedEnd tapped{.end = pos, .moved = std::min(open, (size_t)leg.tiles)};

@@ -58,6 +58,12 @@ public:
     //  actions fails too.
     std::vector<std::string> lint(const StoryCheckpoint& checkpoint) const;
 
+    //  The pause points of this game's run (StoryGame::breakpoints and
+    //  pause_point). Mutable state of the run, not of the game's actions.
+    StoryPausePoints& pause_points() const{
+        return m_pause;
+    }
+
     //  Runs `step`'s action with its args' fallbacks filled in; a step with
     //  no registered action fails as unsupported_step(), a console_only
     //  action on another backend as CONSOLE_ONLY, before any input.
@@ -73,6 +79,7 @@ private:
     std::vector<StoryActionSpec> m_specs;
     //  What is wrong with the game's own actions, reported with every lint.
     std::vector<std::string> m_game_problems;
+    mutable StoryPausePoints m_pause;
 };
 
 //  Instantiated once, in Pokemon_StoryActionRegistry.cpp.

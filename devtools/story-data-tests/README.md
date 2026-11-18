@@ -6,6 +6,7 @@ Run without Qt, controllers, profiles or game saves:
 cmake -S devtools/story-data-tests -B build/story-data-tests
 cmake --build build/story-data-tests -j4
 ctest --test-dir build/story-data-tests --output-on-failure
+build/story-data-tests/StoryDataTests /path/to/PokemonSimulation/data/story/wire-conformance.json
 ```
 
 For a multi-configuration generator, add `--config Debug` to the build,
@@ -18,13 +19,15 @@ facing, and fills arg fallbacks. Unknown fields, kinds, actions and invalid
 primitive types fail. The C++ side has no writer; its tests check the values
 read.
 
-The portable workflow checks the Python reader against the synthetic
-conformance cases at
-[PokemonSimulation revision 866613f](https://github.com/dayfine/PokemonSimulation/tree/866613fa03e5c4a5eb7e57c91b59fafb44fc7ee3/data/story).
+Given a path, `StoryDataTests` reads PokemonSimulation's synthetic
+conformance cases (`pokesim-story-wire-cases/2`) with the native readers and
+checks each accept/reject and value read (`StoryWireCases.cpp`). The portable
+workflow runs it and the Python reader on the same cases at
+[PokemonSimulation revision 4e023f3](https://github.com/dayfine/PokemonSimulation/tree/4e023f3d57022c68018f95f6fc0a4c0722d53adf/data/story).
 This fixture revision is a contract-test dependency, not an approved
 map-resource revision.
 
-See the [shared checkpoint contract](https://github.com/dayfine/PokemonSimulation/blob/866613fa03e5c4a5eb7e57c91b59fafb44fc7ee3/docs/story/CHECKPOINT_CONTRACT.md)
+See the [shared checkpoint contract](https://github.com/dayfine/PokemonSimulation/blob/4e023f3d57022c68018f95f6fc0a4c0722d53adf/docs/story/CHECKPOINT_CONTRACT.md)
 for the field boundary and proposed common requirements, state, save/retry and
 handoff envelope. Both games can use those policies; their menu/detector/action
 bindings remain game specific.

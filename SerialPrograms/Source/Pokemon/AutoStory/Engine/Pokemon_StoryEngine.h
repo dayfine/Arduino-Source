@@ -70,9 +70,10 @@ public:
     //  `attempts_per_checkpoint` runs, only when a reload returns to the
     //  save it started from: the first checkpoint's, or one the checkpoint
     //  before it saved at its end. In none and after_verification modes
-    //  (#329) that leaves only the first. No reload either for a failure
-    //  every attempt would repeat: a lint, a console_only action, the game
-    //  not running. Logs "[Segment] <id>: ..." lines.
+    //  that leaves only the first. No reload once a SAVE step has saved
+    //  part-way through the attempt (the reload would land there), nor for
+    //  a failure every attempt would repeat: a lint, a console_only action,
+    //  the game not running. Logs "[Segment] <id>: ..." lines.
     SegmentReport run_segment(
         std::string_view id, std::span<const StoryCheckpoint> checkpoints, size_t attempts_per_checkpoint,
         RunState& state
@@ -109,9 +110,11 @@ private:
         const StoryCheckpoint& checkpoint, SavePoint point, size_t attempts, RunState& state, CheckpointRun& run
     );
 
-    //  Declared first: m_game's save step reads them.
+    //  Declared first: m_game's save step reads them, and sets
+    //  m_saved_part_way when it saves.
     StorySaveMode m_save_mode = StorySaveMode::NONE;
     const StoryCheckpoint* m_checkpoint = nullptr;
+    bool m_saved_part_way = false;
     StoryGame<PoseType> m_game;
     StoryBackend<PoseType>& m_backend;
     StoryActionRegistry<PoseType> m_registry;

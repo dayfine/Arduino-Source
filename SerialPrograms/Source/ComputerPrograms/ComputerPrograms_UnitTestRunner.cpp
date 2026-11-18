@@ -46,8 +46,11 @@
 #include "Pokemon/Navigation/Pokemon_RouteScorer_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_KnownFailing_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimSeeds_Tests.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimSweep_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -66,6 +69,14 @@ namespace ComputerPrograms{
 
 
 
+
+static void add_tests_NavigationSimulation(UnitTestDatabase& ret){
+    Pokemon::add_tests_SimFaults(ret);
+    Pokemon::add_tests_SimGolden(ret);
+    Pokemon::add_tests_SimSweep(ret);
+    Pokemon::add_tests_SimSeeds(ret);
+    Pokemon::add_tests_KnownFailing(ret);
+}
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
@@ -97,8 +108,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_RouteLog(ret);
     Pokemon::add_tests_RouteScorer(ret);
-    Pokemon::add_tests_SimFaults(ret);
-    Pokemon::add_tests_SimGolden(ret);
+    add_tests_NavigationSimulation(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
