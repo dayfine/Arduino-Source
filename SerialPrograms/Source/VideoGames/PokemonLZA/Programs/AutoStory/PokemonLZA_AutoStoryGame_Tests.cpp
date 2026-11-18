@@ -1086,7 +1086,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA story_battle_start] done on battle."},
     },
     {
-        .name = "a battle start that ends in control, the party bar held 5 s, fails at once",
+        .name = "a battle start that ends in control, the party bar held 5 s, fails once lock-on finds no battle",
         //  The fade's wait takes the first look after it: the party bar's
         //  5 s run from the look after that.
         .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {

@@ -156,7 +156,8 @@ std::vector<GoldenScreen> golden_screens(std::string_view text){
 
 //  The console as a recording: observe() shows the screen whose time has
 //  come by the clock, which the step's presses and waits move; each press
-//  is put down to the screen the step last looked at.
+//  is put down to the screen the step last looked at. From the
+//  `lock_on_presses`th ZL on, it shows `locked_on` instead, if any.
 //  code-health: allow public_methods -- the backend calls a step makes, plus the presses and lines a test reads
 class GoldenBackend : public PlzaBackend{
 public:
@@ -165,8 +166,10 @@ public:
         std::string key;
     };
 
-    GoldenBackend(std::vector<GoldenScreen> screens, CancellableScope& scope)
+    GoldenBackend(std::vector<GoldenScreen> screens, std::string_view locked_on, size_t lock_on_presses, CancellableScope& scope)
         : m_screens(std::move(screens))
+        , m_locked_on(locked_on)
+        , m_lock_on_presses(lock_on_presses)
         , m_scope(scope)
     {}
 
@@ -183,6 +186,7 @@ public:
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
         m_presses.push_back({m_shown, button_to_string(button)});
         m_now += hold + release;
+        m_zl_presses += button == BUTTON_ZL ? 1 : 0;
     }
     virtual void tap(Pokemon::Direction) override{
         m_presses.push_back({m_shown, "tap"});
@@ -201,6 +205,9 @@ public:
     virtual Observation<ZonePose> observe() override{
         while (m_shown + 1 < m_screens.size() && m_screens[m_shown + 1].at <= m_now){
             m_shown++;
+        }
+        if (!m_locked_on.empty() && m_zl_presses >= m_lock_on_presses){
+            return golden_look(m_now, m_locked_on);
         }
         if (m_screens.empty()){
             return golden_look(m_now, "nothing");
@@ -222,9 +229,12 @@ public:
 
 private:
     std::vector<GoldenScreen> m_screens;
+    std::string_view m_locked_on;
+    size_t m_lock_on_presses;
     CancellableScope& m_scope;
     Milliseconds m_now = 0ms;
     size_t m_shown = 0;
+    size_t m_zl_presses = 0;
     std::vector<Press> m_presses;
     std::vector<std::string> m_lines;
 };
@@ -245,6 +255,11 @@ struct GoldenCase{
         std::string_view step;
         //  golden_screens()' lines.
         std::string_view screens;
+        //  The screen a lock-on shows from the `lock_on_presses`th ZL on,
+        //  over the recording: the battle HUD shows only while the player
+        //  is locked on. Empty: ZL changes nothing.
+        std::string_view locked_on = {};
+        size_t lock_on_presses = 1;
     };
     Input input;
     struct Expectation{
@@ -257,6 +272,36 @@ struct GoldenCase{
     };
     Expectation expectation;
 };
+
+//  03.02b tepig_battle_start (console B 2026-11-17 23:25): "We're not done
+//  just yet!", the Type Matchups card, the battle's fade, the HUD.
+constexpr std::string_view TEPIG_START = R"(
+0.0s: text box, advance arrow
+0.4s: text box
+0.8s: nothing
+1.3s: tutorial card
+1.7s: still, tutorial card
+2.5s: tutorial card
+2.9s: nothing
+3.4s: black fade
+4.5s: still
+4.7s: battle, still
+)";
+
+//  The same start four minutes before (console B 2026-11-17 23:21), the
+//  camera turned away by the Totodile battle's lock-on recovery: after the
+//  fade, the battle's effects with no HUD for 22 s, then the party bar.
+constexpr std::string_view TEPIG_START_OFF_CAMERA = R"(
+0.0s: text box, advance arrow
+0.4s: nothing
+0.9s: tutorial card
+1.7s: still, tutorial card
+2.1s: tutorial card
+2.6s: nothing
+3.1s: black fade
+4.1s: nothing
+26.6s: party bar
+)";
 
 //  01.02 pancham_cornered, French, passed (console B 2026-11-16 22:45).
 //  From 35 s on, the text and the screen between its lines took turns.
@@ -468,6 +513,51 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"battle, controls hint", "-"},
             },
             .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
+        },
+    },
+    {
+        .name = "03.02b tepig_battle_start, the battle HUD right after the battle's fade (passed 2026-11-17 23:25)",
+        .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START},
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"}, {"text box", "A"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                //  No lock-on: the HUD shows within 3 s of the fade.
+                {"nothing", "-"}, {"black fade", "-"}, {"still", "-"},
+                {"battle, still", "-"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
+        },
+    },
+    {
+        //  The battle ran off camera, with no HUD until locked on: the
+        //  run waited out 22 s of it and failed on the party bar.
+        .name = "03.02b tepig_battle_start, nothing for 3 s after the battle's fade: ZL locks on (failed 2026-11-17 23:21)",
+        .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA, .locked_on = "battle"},
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                {"nothing", "ZL"}, {"black fade", "-"},
+                {"party bar", "-"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
+        },
+    },
+    {
+        .name = "03.02b tepig_battle_start, the opponent behind the camera: a turn, L and ZL again",
+        .input = {
+            .checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA,
+            .locked_on = "battle", .lock_on_presses = 2,
+        },
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                {"nothing", "ZL or stick or L"}, {"black fade", "-"},
+                {"party bar", "-"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] lock-on 2/5: turned 90 degrees right, L, ZL.",
         },
     },
     {
@@ -940,7 +1030,7 @@ UnitTestResult check_golden(const GoldenCase& test, CancellableScope& scope){
     }
     AutosaveSightings sightings;
     const Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, builtin_story_data(), /*arrow=*/std::nullopt, sightings);
-    GoldenBackend backend(screens, scope);
+    GoldenBackend backend(screens, test.input.locked_on, test.input.lock_on_presses, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;
     const Pokemon::SegmentReport report = engine.run_segment("test", std::vector<StoryCheckpoint>{row}, 1, state);

@@ -624,6 +624,19 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_still, scene_moving, battle"},
     },
     {
+        .name = "after a battle start's fade, the party bar held a second with no battle HUD: ZL to lock on",
+        .input = {
+            .looks = {look_at(0ms, BLACK), look_at(1000ms, PARTY), look_at(1000ms, PARTY), look_at(2100ms, PARTY), look_at(3200ms, BATTLE)},
+            .config = battle_config(),
+        },
+        .expectation = {
+            .verdict = "done",
+            .a_presses = 0,
+            .line = "[PLZA test] lock-on 1/5: ZL.",
+            .states = "fade_black, scene_moving, lock_on, battle",
+        },
+    },
+    {
         .name = "a machine that stops at a choice does not take the party bar for control",
         .input = {
             .looks = {look_at(0ms, PARTY), look_at(1500ms, PARTY), look_at(2000ms, CHOICE)},
