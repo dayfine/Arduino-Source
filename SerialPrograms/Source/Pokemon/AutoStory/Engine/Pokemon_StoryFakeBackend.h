@@ -46,9 +46,8 @@ public:
     FakeStoryBackend(FakeStoryScript<PoseType> script, CancellableScope& scope);
 
     //  Each input, in order: "press A", "press +" (by button_to_string()),
-    //  "tap north", "hold east 400ms walk", "stick 90deg 150ms walk",
-    //  "stick 90deg 150ms walk, release 300ms" (a release only when not
-    //  zero), "wait 100ms", "battle".
+    //  "stick 90deg 150ms walk", "stick 90deg 150ms walk, release 300ms"
+    //  (a release only when not zero), "wait 100ms", "battle".
     const std::vector<std::string>& inputs() const{
         return m_inputs;
     }
