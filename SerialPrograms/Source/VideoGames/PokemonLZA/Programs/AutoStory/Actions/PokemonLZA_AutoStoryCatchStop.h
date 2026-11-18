@@ -14,6 +14,7 @@
 
 #include <optional>
 #include <span>
+#include <vector>
 #include "Common/Cpp/Time.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 
@@ -74,8 +75,28 @@ inline constexpr int THROWS_AT_ONE_TARGET = 3;
 //  after it (nothing: none), `throws_at_lock` throws at this lock so far.
 AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked, int throws_at_lock);
 
+//  What a catch stop does after its lock-on sweep (ZL held while the
+//  camera turns, as upstream's InPlaceCatcher): the battle menu's move
+//  symbols (MoveEffectivenessSymbolDetector) are the sign of a lock-on.
+enum class StopAim{
+    //  No move symbols in the whole sweep: no target here, on to the next
+    //  stop.
+    MOVE_ON,
+    //  Locked on, but no plate read with ZL held after: sweep again.
+    LOOK_AGAIN,
+    //  Every plate read is of a species already caught: turn the camera
+    //  further and sweep again.
+    LOOK_FURTHER,
+    //  Throw at the nearest plate not caught (nearest_uncaught()).
+    THROW,
+};
+
+//  After a sweep that locked on (`locked_on`) or not, with `plates` read
+//  with ZL held after it.
+StopAim stop_aim(bool locked_on, const std::vector<LockTarget>& plates);
+
 //  Whether the camera needs its pitch reset (level_camera()) before a
-//  sweep for brackets or the walk on: a ZL lock-on or throw leaves it
+//  lock-on sweep or the walk on: a ZL lock-on or throw leaves it
 //  looking down at the ground, while a walk and a sweep's turns keep the
 //  pitch. A reset at every stop's start was a needless look down and up
 //  (the user, console B 2026-11-14).

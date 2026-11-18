@@ -57,8 +57,10 @@ struct ZoneCatchGoal{
 //  (spot_visit()); a leg that fails ends it with that failure. At each
 //  stop, after a marker read logged as a cross-check, it fights a wild
 //  battle that is on (one of a species already caught is fought off),
-//  else sweeps the camera for the lock-on brackets
-//  (LockOnBracketDetector), turns to the nearest, holds ZL, flicks through
+//  else locks on as upstream's InPlaceCatcher does: rounds of a camera
+//  turn right, D-pad up, ZL mashed and held, until the battle menu's move
+//  symbols show (MoveEffectivenessSymbolWatcher; none in 8 rounds: on to
+//  the next stop). Then, ZL held, it flicks through
 //  the targets' plates and throws at the nearest not caught
 //  (lock_target_caught()), stepping toward it first while its plate reads
 //  far (step_toward_target()). After a miss at a plate that locks on

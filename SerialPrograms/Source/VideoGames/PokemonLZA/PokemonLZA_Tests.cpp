@@ -14,7 +14,6 @@
 #include "Inference/PokemonLZA_DialogDetector.h"
 #include "Inference/PokemonLZA_WeatherDetector.h"
 #include "Inference/PokemonLZA_HyperspaceCalorieDetector.h"
-#include "Inference/PokemonLZA_LockOnBracketDetector.h"
 #include "Inference/PokemonLZA_MainMenuDetector.h"
 #include "Inference/Map/PokemonLZA_MapDetector.h"
 #include "Inference/Map/PokemonLZA_MapIconDetector.h"
@@ -66,7 +65,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_DonutBerriesReader(database);
     add_tests_FlavorPowerScreenDetector(database);
     add_tests_HyperspaceCalorieDetector(database);
-    add_tests_LockOnBracketDetector(database);
     add_tests_MainMenuDetector(database);
     add_tests_MapDetector(database);
     add_tests_MapIconDetector(database);

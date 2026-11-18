@@ -18,16 +18,16 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
+#include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.h"
-#include "VideoGames/PokemonLZA/Inference/PokemonLZA_LockOnBracketDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
-#include "PokemonLZA_AutoStoryBracketWatch.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatchStop.h"
 #include "PokemonLZA_AutoStoryLines.h"
@@ -151,12 +151,14 @@ constexpr Milliseconds LOCK_ON_WAIT(3000);
 //  target that way.
 constexpr double TARGET_FLICK = 0.8;
 
-//  A catch stop's camera sweep (camera_sweep()): 4 looks, the turn between
-//  two about what camera_turn_toward() gives for a third of the screen.
-constexpr CameraTurn SWEEP_STEP{0.5, std::chrono::milliseconds(400)};
-constexpr int SWEEP_STEPS = 3;
-//  How long each look of the sweep watches for brackets.
-constexpr Milliseconds SWEEP_LOOK_LIMIT(3000);
+//  A catch stop's lock-on sweep (sweep_for_lock_on()), upstream's
+//  InPlaceCatcher's: rounds of the right stick at SWEEP_STICK_X for
+//  SWEEP_TURN, D-pad up (the partner out), ZL mashed 1 s and held 0.5 s.
+//  Right, toward the grass right of the road, where the user's catches
+//  were (Mareep) besides the road itself (Scatterbug).
+constexpr double SWEEP_STICK_X = 0.5;
+constexpr Milliseconds SWEEP_TURN(1000);
+constexpr int SWEEP_ROUNDS = 8;
 
 
 //  A ZL lock-on and throw leave the camera looking steeply down: the
@@ -302,8 +304,8 @@ void log_target(PlzaBackend& backend, std::string_view what, const LockTarget& t
 struct TargetChoice{
     //  The target locked on to now; nothing when no plate read.
     std::optional<LockTarget> target;
-    //  Plates read, all of species already caught.
-    bool all_caught = false;
+    //  The plates read, the nearest first.
+    std::vector<LockTarget> plates;
 };
 
 //  With ZL held until the lock shows (LOCK_ON_WAIT at most), flicks the
@@ -324,10 +326,10 @@ TargetChoice choose_target(PlzaBackend& backend, HeldZl& held){
         view = held.flick(TARGET_FLICK);
     }
     TargetChoice choice;
-    const std::vector<LockTarget>& targets = cycle.targets();
+    choice.plates = cycle.targets();
+    const std::vector<LockTarget>& targets = choice.plates;
     const std::optional<size_t> best = nearest_uncaught(targets);
     if (!best){
-        choice.all_caught = !targets.empty();
         backend.log(std::format("[PLZA] catch_in_zone: {} plates read, none of a species not caught", targets.size()));
         return choice;
     }
@@ -432,78 +434,38 @@ TargetThrows throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarg
     return out;
 }
 
-//  The brackets on the frame now, if any.
-std::optional<BracketSighting> read_brackets(StoryEnv& env){
-    const VideoSnapshot frame = env.env.console.video().snapshot();
-    if (!frame){
-        return std::nullopt;
-    }
-    const std::optional<LockOnBrackets> brackets = find_lock_on_brackets(frame);
-    if (!brackets){
-        return std::nullopt;
-    }
-    return BracketSighting{brackets->x, brackets->y, brackets->height};
-}
-
-//  Stands still and watches for the brackets (BracketWatch: until the
-//  first, BRACKET_SETTLE, `limit` at most), logging each one seen at stop
-//  `at` (the distance read there). Returns the tallest seen.
-std::optional<BracketSighting> watch_for_brackets(StoryEnv& env, PlzaBackend& backend, int at, Milliseconds limit){
-    BracketWatch watch(BRACKET_SETTLE, limit);
+//  Upstream's lock-on sweep (InPlaceCatcher): SWEEP_ROUNDS rounds of a
+//  camera turn right, D-pad up, ZL mashed 1 s and held 0.5 s, until the
+//  battle menu's move symbols show (MoveEffectivenessSymbolWatcher): ZL
+//  has locked on to a wild Pokemon. Returns whether they showed; when not,
+//  L puts the camera back behind the player.
+bool sweep_for_lock_on(StoryEnv& env, PlzaBackend& backend, int at){
+    ConsoleHandle& console = env.env.console;
+    MoveEffectivenessSymbolWatcher symbols(COLOR_RED, &console.overlay(), /*hold_duration=*/100ms);
+    env.context.wait_for_all_requests();
     const WallClock start = current_time();
-    while (!watch.done()){
-        env.context.wait_for_all_requests();
-        const std::optional<BracketSighting> seen = read_brackets(env);
-        if (seen){
-            backend.log_detail(std::format(
-                "[PLZA] catch_in_zone: at {}: brackets at ({:.2f}, {:.2f}), {:.3f} tall",
-                at, seen->x, seen->y, seen->height
-            ));
-        }
-        watch.add(std::chrono::duration_cast<Milliseconds>(current_time() - start), seen);
-        env.context.wait_for(Milliseconds(250));
-    }
-    backend.log(std::format("[PLZA] catch_in_zone: at {}: {} sightings of brackets", at, watch.sightings().size()));
-    return watch.nearest();
-}
-
-void turn_camera(StoryEnv& env, const CameraTurn& turn){
-    if (turn.time.count() > 0){
-        pbf_move_right_joystick(env.context, /*position=*/{turn.stick_x, 0}, turn.time, /*release=*/Milliseconds(300));
-    }
-}
-
-//  Sweeps the camera from straight on toward the grass right of the road
-//  and back (camera_sweep()), watching for brackets at each look. Returns
-//  the nearest brackets of the first look that saw any, the camera left
-//  there; nothing (the camera back straight on) when no look did.
-std::optional<BracketSighting> sweep_for_brackets(StoryEnv& env, PlzaBackend& backend, int at){
-    const std::vector<SweepLook> looks = camera_sweep(SWEEP_STEP, SWEEP_STEPS);
-    for (size_t i = 0; i < looks.size(); i++){
-        turn_camera(env, looks[i].turn);
-        if (!looks[i].watch){
-            continue;
-        }
-        const std::optional<BracketSighting> seen = watch_for_brackets(env, backend, at, SWEEP_LOOK_LIMIT);
-        if (seen){
-            backend.log(std::format("[PLZA] catch_in_zone: at {}: brackets at look {} of the sweep", at, i));
-            return seen;
-        }
-    }
+    const int fired = run_until<ProControllerContext>(
+        console, env.context,
+        [](ProControllerContext& context){
+            for (int round = 0; round < SWEEP_ROUNDS; round++){
+                ssf_press_right_joystick(context, /*position=*/{SWEEP_STICK_X, 0}, /*delay=*/0ms, /*hold=*/SWEEP_TURN, /*cool=*/0ms);
+                ssf_press_dpad(context, DPAD_UP, /*delay=*/0ms, /*hold=*/160ms, /*cool=*/160ms);
+                pbf_mash_button(context, BUTTON_ZL, 1000ms);
+                pbf_press_button(context, BUTTON_ZL, /*hold=*/500ms, /*release=*/0ms);
+            }
+        },
+        {symbols}
+    );
     env.context.wait_for_all_requests();
-    return std::nullopt;
-}
-
-//  Turns the camera toward `target` (camera_turn_toward()) so the
-//  brackets stay on it when ZL is held.
-void turn_to_brackets(StoryEnv& env, PlzaBackend& backend, const BracketSighting& target){
-    const CameraTurn turn = camera_turn_toward(target.x);
-    backend.log(std::format(
-        "[PLZA] catch_in_zone: choosing the brackets at ({:.2f}, {:.2f}), {:.3f} tall: stick {:.1f} for {} ms",
-        target.x, target.y, target.height, turn.stick_x, turn.time.count()
-    ));
-    turn_camera(env, turn);
+    const long long elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start).count();
+    if (fired == 0){
+        backend.log(std::format("[PLZA] catch_in_zone: at {}: the move symbols showed {} ms into the lock-on sweep: locked on", at, elapsed));
+        return true;
+    }
+    backend.log(std::format("[PLZA] catch_in_zone: at {}: no move symbols in {} sweep rounds ({} ms): L", at, SWEEP_ROUNDS, elapsed));
+    pbf_press_button(env.context, BUTTON_L, /*hold=*/160ms, /*release=*/160ms);
     env.context.wait_for_all_requests();
+    return false;
 }
 
 //  Attacks until the wild battle is over or a round lands nothing, 3
@@ -545,10 +507,10 @@ GrassCatches fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
 
 //  At one stop (`at` from the objective), 4 tries at most, until a new
 //  species is caught or `max_throws`: a wild battle on is fought
-//  (fight_back()); otherwise it sweeps for brackets, turns the camera to
-//  the first seen, chooses the nearest target not caught
-//  (aim_choose_approach()) and throws (throw_at_target()). No brackets, or
-//  THROWS_AT_ONE_TARGET misses at one lock: on to the next stop. All species caught: turns the camera right a little
+//  (fight_back()); otherwise it sweeps for a lock-on (sweep_for_lock_on()),
+//  chooses the nearest target not caught (aim_choose_approach()) and
+//  throws (throw_at_target()), as stop_aim() says. No lock-on in the
+//  sweep, or THROWS_AT_ONE_TARGET misses at one lock: on to the next stop. All species caught: turns the camera right a little
 //  and watches again. The pitch is reset only after ZL (CameraPitch).
 //  After a catch, out of battle, the map pin is read and logged
 //  (read_pin_on_map()): where the catch spots really are, for their
@@ -566,18 +528,18 @@ GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_
             pitch.zl_held();
             continue;
         }
-        const std::optional<BracketSighting> target = sweep_for_brackets(env, backend, at);
-        if (!target){
-            backend.log(std::format("[PLZA] catch_in_zone: no brackets at {} in the sweep", at));
+        const bool locked = sweep_for_lock_on(env, backend, at);
+        pitch.zl_held();
+        const TargetChoice choice = locked ? aim_choose_approach(env, backend) : TargetChoice{};
+        const StopAim aim = stop_aim(locked, choice.plates);
+        if (aim == StopAim::MOVE_ON){
+            backend.log(std::format("[PLZA] catch_in_zone: no lock-on at {} in the sweep", at));
             break;
         }
-        turn_to_brackets(env, backend, *target);
-        const TargetChoice choice = aim_choose_approach(env, backend);
-        pitch.zl_held();
-        if (!choice.target && !choice.all_caught){
+        if (aim == StopAim::LOOK_AGAIN){
             continue;
         }
-        if (choice.all_caught){
+        if (aim == StopAim::LOOK_FURTHER){
             backend.log("[PLZA] catch_in_zone: only species already caught lock on: looking further right");
             out.caught_seen++;
             pbf_move_right_joystick(env.context, /*position=*/{0.5, 0}, /*hold=*/Milliseconds(400), /*release=*/Milliseconds(300));
