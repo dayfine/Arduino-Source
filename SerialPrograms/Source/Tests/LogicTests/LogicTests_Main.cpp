@@ -36,7 +36,16 @@
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerArrival_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackups_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.h"
 
 namespace PokemonAutomation{
 namespace{
@@ -47,9 +56,18 @@ UnitTestDatabase make_logic_tests(){
     Pokemon::add_tests_AutoStory(database);
     add_tests_ScreenEvents(database);
     add_tests_ScreenMachine(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryBackend(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryBackups(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryCatchPlan(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryCatchStop(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryGame(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryGateWalk(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryLines(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryMarkerArrival(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryMenuSave(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStorySceneGolden(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStorySceneMachine(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStorySceneReplay(database);
     return database;
 }
 

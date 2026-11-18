@@ -14,6 +14,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryStarts_Tests.h"

@@ -13,7 +13,7 @@
 #include <optional>
 #include <span>
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h"
 #include "PokemonLZA_AutoStoryZone1Map.h"
 
 namespace PokemonAutomation{

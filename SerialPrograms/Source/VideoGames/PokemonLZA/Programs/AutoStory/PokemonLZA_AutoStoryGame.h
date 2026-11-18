@@ -15,6 +15,8 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryGame_H
 #define PokemonAutomation_PokemonLZA_AutoStoryGame_H
 
+#include <functional>
+#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -116,20 +118,23 @@ std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpo
 //  "dialog" or "prompt" (INTERACT_PROMPT). None for any other word.
 std::optional<ScreenEvent> walk_end_event(std::string_view end);
 
-//  PLZA as a StoryGame on the console `env`, which must outlive it, as must
-//  `sightings`. Every step's looks go to `sightings`; the save at a
-//  checkpoint's end counts the game's autosave when its badge was seen
-//  there ("[Save] <id>: the game autosaved (seen)"), else nothing saved
-//  (Pokemon::NOT_SAVED, "save unverified" for the plan's "unverified"
-//  rows). The reload resets the game from HOME onto the latest save.
-Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
-    StoryEnv& env, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
+//  The handlers of the console_only actions, by name.
+using PlzaConsoleActions = std::map<std::string, Pokemon::StoryActionHandler<Pokemon::ZonePose>, std::less<>>;
+
+//  PLZA as a StoryGame, with no reload: the console_only actions by
+//  `console`, one it lacks failing as "console_only". Every step's looks go
+//  to `sightings`, which must outlive it; the save at a checkpoint's end
+//  counts the game's autosave when its badge was seen there ("[Save] <id>:
+//  the game autosaved (seen)"), else nothing saved (Pokemon::NOT_SAVED,
+//  "save unverified" for the plan's "unverified" rows). A walk's "heading"
+//  is faced by `arrow`; with none, such a walk fails as "console_only".
+Pokemon::StoryGame<Pokemon::ZonePose> plza_story_game(
+    const PlzaConsoleActions& console, const Pokemon::StoryRows& rows, AutosaveSightings& sightings,
+    std::optional<MinimapArrowReader> arrow
 );
 
-//  The same with no console, for tests and simulations: the console_only
-//  actions fail as "console_only", and there is no reload. A walk's
-//  "heading" is faced by `arrow`; with none, such a walk fails as
-//  "console_only".
+//  plza_story_game() with no console, for tests and simulations: the
+//  console_only actions fail as "console_only".
 //  code-health: allow test_only_api -- a test double: the game the scripted tests and simulations run
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game_without_console(
     const Pokemon::StoryRows& rows, AutosaveSightings& sightings,

@@ -13,7 +13,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryCatches_H
 
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
