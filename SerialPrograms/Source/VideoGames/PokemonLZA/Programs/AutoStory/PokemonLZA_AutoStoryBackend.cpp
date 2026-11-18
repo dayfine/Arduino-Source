@@ -67,6 +67,11 @@ double read_after_turn(PlzaBackend& backend, const MinimapArrowReader& read_arro
 Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading){
     backend.observe();
     double now = read_arrow();
+    //  Small turns overshoot: 03.08 asked for 5 and got 10, then -5 and got
+    //  -10, back and forth around 254 (console B, 2026-11-18). Each time a
+    //  turn lands past the heading, the next one asks for half as much.
+    double gain = 1;
+    double last_turn = 0;
     for (int turns = 0; turns <= HEADING_TURNS; turns++){
         const double turn = turn_to(now, heading);
         backend.log_detail(std::format("[PLZA] face_heading: the arrow reads {:.1f} deg, {:.0f} wanted: {:.1f} off", now, heading, turn));
@@ -75,8 +80,13 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& re
             return Pokemon::outcome_ok();
         }
         if (turns < HEADING_TURNS){
-            story_turn(backend, turn);
-            now = read_after_turn(backend, read_arrow, now, turn);
+            if (last_turn * turn < 0){
+                gain /= 2;
+            }
+            last_turn = turn;
+            const double asked = turn * gain;
+            story_turn(backend, asked);
+            now = read_after_turn(backend, read_arrow, now, asked);
         }
     }
     return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after {} turns", heading, HEADING_TURNS));
