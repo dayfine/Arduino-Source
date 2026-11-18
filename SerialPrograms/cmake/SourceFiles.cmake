@@ -1512,6 +1512,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_RouteScorer.h
     Source/Pokemon/Navigation/Pokemon_RouteScorer_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_RouteScorer_Tests.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden.h
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.cpp
+    Source/Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h
     Source/Pokemon/Options/Pokemon_BoxSortingTable.cpp
     Source/Pokemon/Options/Pokemon_BoxSortingTable.h
     Source/Pokemon/Options/Pokemon_EncounterBotOptions.h
@@ -1843,6 +1847,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_OldStorySteps.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimFailureCases_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimFailureCases_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimGolden_Tests.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimGolden_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_SimTriggers.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StoryActions_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StoryActions_Tests.h
