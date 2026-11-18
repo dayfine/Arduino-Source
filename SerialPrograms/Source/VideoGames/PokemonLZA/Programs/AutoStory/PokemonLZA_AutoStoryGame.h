@@ -64,9 +64,11 @@ using PlzaConsoleActions = std::map<std::string, Pokemon::StoryActionHandler<Pok
 //  the game autosaved (seen)"), else nothing saved (Pokemon::NOT_SAVED,
 //  "save unverified" for the plan's "unverified" rows). A walk's "heading"
 //  is faced by `arrow`; with none, such a walk fails as "console_only".
+//  A story battle and its start lock on with `lock_on`; with none, they do
+//  not (SceneMachineConfig::lock_on).
 Pokemon::StoryGame<Pokemon::ZonePose> plza_story_game(
     const PlzaConsoleActions& console, const Pokemon::StoryRows& rows, std::optional<MinimapArrowReader> arrow,
-    AutosaveSightings& sightings
+    std::optional<LockOnWatch> lock_on, AutosaveSightings& sightings
 );
 
 //  Loads the save `row` starts from with `game`'s reload (the latest

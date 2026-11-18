@@ -335,6 +335,67 @@ private:
 };
 
 
+//  catch_summary_text(): catch_in_zone()'s last line. The party bar,
+//  read, decides the patrol, so it comes first; the banners' tally
+//  decides only when the bar was not read. 2 new species and 5 in the
+//  party wanted.
+struct CatchSummaryCase{
+    std::string name;
+    struct Input{
+        GrassCatches patrol = {};
+        std::optional<int> filled_slots = std::nullopt;
+    };
+    Input input;
+    struct Expectation{
+        std::string text;
+    };
+    Expectation expectation;
+};
+
+const CatchSummaryCase CATCH_SUMMARY_CASES[] = {
+    {
+        //  console B 2026-11-18 00:39: the second catch's banner missed,
+        //  the bar went 4 to 6.
+        .name = "a full party bar with a banner missed is done, not short",
+        .input = {.patrol = {.found = 1, .throws = 4}, .filled_slots = 6},
+        .expectation = {.text = "the party bar: 6 filled slots of 5: done; the banners: 1 new species (0 by a plate only) in 4 throws, 0 locks on caught species only"},
+    },
+    {
+        .name = "a party bar short of five is short whatever the banners",
+        .input = {.patrol = {.found = 2, .throws = 3}, .filled_slots = 4},
+        .expectation = {.text = "the party bar: 4 filled slots of 5: short; the banners: 2 new species (0 by a plate only) in 3 throws, 0 locks on caught species only"},
+    },
+    {
+        .name = "an unread party bar leaves the banners' tally to decide",
+        .input = {.patrol = {.found = 1, .throws = 4, .caught_seen = 2}},
+        .expectation = {.text = "the party bar: not read; the banners: 1 new species (0 by a plate only) in 4 throws, 2 locks on caught species only: short"},
+    },
+    {
+        .name = "an unread party bar with every banner seen",
+        .input = {.patrol = {.found = 2, .throws = 2}},
+        .expectation = {.text = "the party bar: not read; the banners: 2 new species (0 by a plate only) in 2 throws, 0 locks on caught species only: all by the banner"},
+    },
+};
+
+class Test_CatchSummary : public UnitTest{
+public:
+    explicit Test_CatchSummary(const CatchSummaryCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: summary: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::string text = catch_summary_text(m_case.input.patrol, m_case.input.filled_slots, /*new_species=*/2, /*party_species=*/5);
+        if (text != m_case.expectation.text){
+            return std::format("Expected \"{}\", got \"{}\".", m_case.expectation.text, text);
+        }
+        return true;
+    }
+
+private:
+    const CatchSummaryCase& m_case;
+};
+
+
 //  step_toward_target(): whether to take another 0.5 s step toward a
 //  locked target before throwing at it. The plates are console B's
 //  (2026-11-16): first-throw catches at 98 and 100 at 0.49 and 0.50 of the
@@ -555,6 +616,9 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const PartyCountCase& item : PARTY_COUNT_CASES){
         database.add<Test_PartyCount>(item);
+    }
+    for (const CatchSummaryCase& item : CATCH_SUMMARY_CASES){
+        database.add<Test_CatchSummary>(item);
     }
     for (const StepCase& item : STEP_CASES){
         database.add<Test_StepTowardTarget>(item);

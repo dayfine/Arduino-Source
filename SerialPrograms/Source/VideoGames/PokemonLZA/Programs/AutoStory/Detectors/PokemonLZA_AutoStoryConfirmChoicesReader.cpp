@@ -4,9 +4,11 @@
  *
  */
 
+#include <array>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "PokemonLZA_AutoStoryConfirmChoicesReader.h"
+#include "PokemonLZA_AutoStoryHighlightedRow.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -14,12 +16,6 @@ namespace PokemonLZA{
 
 
 namespace{
-
-enum class RowBox{
-    HIGHLIGHTED,
-    PLAIN,
-    OTHER,
-};
 
 double brightness(const ImageStats& stats){
     return stats.average.sum() / 3;
@@ -44,25 +40,13 @@ ImageFloatBox confirm_row_strip(size_t row){
 //  others slate. The highlight's glow pulses over the row next to it: on
 //  the console's frames in ten languages that row's spread went
 //  up to 20.
-RowBox classify_confirm_row(const ImageStats& stats){
-    if (stats.count == 0){
-        return RowBox::OTHER;
-    }
-    const FloatPixel& average = stats.average;
-    const double spread = stats.stddev.sum();
-    if (average.r >= 200 && average.g >= 200 && average.b >= 200 && spread <= 30){
-        return RowBox::HIGHLIGHTED;
-    }
-    const bool slate =
-        average.r >= 20 && average.r <= 55 &&
-        average.g >= 40 && average.g <= 80 &&
-        average.b >= 65 && average.b <= 115 &&
-        average.b >= average.r + 25;
-    if (slate && spread <= 30){
-        return RowBox::PLAIN;
-    }
-    return RowBox::OTHER;
-}
+constexpr SlateRows CONFIRM_ROWS_SLATE{
+    .min_red = 20, .max_red = 55,
+    .min_green = 40, .max_green = 80,
+    .min_blue = 65, .max_blue = 115,
+    .min_blue_over_red = 25,
+    .max_spread = 30,
+};
 
 //  The dark blue, dotted background round the rows: between the choices and
 //  "Ready!", and right of all three. The highlight's blue glow reaches 40
@@ -103,23 +87,8 @@ std::optional<size_t> read_confirm_choices_cursor(const ImageViewRGB32& frame){
     if (!confirm_background_dark(frame)){
         return std::nullopt;
     }
-    std::optional<size_t> highlighted;
-    for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
-        const ImageStats stats = image_stats(extract_box_reference(frame, confirm_row_strip(row)));
-        switch (classify_confirm_row(stats)){
-        case RowBox::HIGHLIGHTED:
-            if (highlighted){
-                return std::nullopt;
-            }
-            highlighted = row;
-            break;
-        case RowBox::PLAIN:
-            break;
-        case RowBox::OTHER:
-            return std::nullopt;
-        }
-    }
-    return highlighted;
+    const std::array<ImageFloatBox, CONFIRM_CHOICES_READY_ROW + 1> strips{confirm_row_strip(0), confirm_row_strip(1), confirm_row_strip(2)};
+    return highlighted_row(frame, strips, CONFIRM_ROWS_SLATE);
 }
 
 

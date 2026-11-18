@@ -13,7 +13,9 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoOverlay.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "CommonTools/Async/InferenceRoutines.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
+#include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBattles.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
@@ -33,8 +35,7 @@ using Pokemon::Direction;
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
     : m_env(env)
     , m_home(env.env.console, COLOR_RED)
-    //  The box save_game_to_menu() reads the arrow at Save in.
-    , m_save_button(COLOR_GREEN, nullptr, SelectionArrowType::RIGHT, {0.287118, 0.638835, 0.064410, 0.108738})
+    , m_save_button(COLOR_GREEN, nullptr, SelectionArrowType::RIGHT, main_menu_save_arrow_box())
 {}
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
@@ -135,6 +136,22 @@ CancellableScope& PlzaConsoleBackend::scope(){
 MinimapArrowReader minimap_arrow(StoryEnv& env){
     return [&env](){
         return get_facing_direction(env.env.console, env.context);
+    };
+}
+
+LockOnWatch move_symbols_lock_on(StoryEnv& env){
+    return [&env](Milliseconds hold){
+        MoveEffectivenessSymbolWatcher symbols(COLOR_RED, &env.env.console.overlay(), /*hold_duration=*/100ms);
+        env.context.wait_for_all_requests();
+        const int fired = run_until<ProControllerContext>(
+            env.env.console, env.context,
+            [hold](ProControllerContext& context){
+                pbf_press_button(context, BUTTON_ZL, hold, /*release=*/0ms);
+            },
+            {symbols}
+        );
+        env.context.wait_for_all_requests();
+        return fired == 0;
     };
 }
 

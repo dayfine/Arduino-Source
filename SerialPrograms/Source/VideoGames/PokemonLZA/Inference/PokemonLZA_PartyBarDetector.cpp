@@ -4,6 +4,7 @@
  *
  */
 
+#include <array>
 #include <format>
 #include <string>
 #include "CommonFramework/ImageTools/ImageStats.h"
@@ -51,11 +52,95 @@ double brightness(Color color){
     return (color.red() + color.green() + color.blue()) / 3.0;
 }
 
+//  On 1920x1080 (console B, 2026-11-16, German 02.05 with a party of one):
+//  an empty slot's frame at x 78 + 76 * i for slot i (from 0), y 954, 66 px
+//  square, its edges 2 px wide. The last slot's at x 458-523, y 954-1019.
+constexpr double LAST_SLOT_X = 458;
+constexpr double SLOT_FRAME_Y = 954;
+constexpr double SLOT_FRAME_SIZE = 66;
+constexpr double FRAME_LINE = 2;
+//  The strips each edge is held against: 3 px wide, 2 px off the line on
+//  either side. Each edge is read along its middle, 8 px in from the
+//  corners, which are rounded.
+constexpr double FRAME_STRIP = 3;
+constexpr double FRAME_GAP = 2;
+constexpr double FRAME_CORNER = 8;
+
+//  A frame's line is the scene under a light veil, its inside the scene
+//  darkened. On the six frames with the last slot empty (a dark lobby to
+//  bright ground) every edge's line is lighter than inside by 21-60 and
+//  than outside by 10-61; on 686 cutscene frames of 01.00-01.03 (no party
+//  bar) by 2 at most inside.
+constexpr double FRAME_INSIDE_MARGIN = 10;
+constexpr double FRAME_OUTSIDE_MARGIN = 0;
+
+ImageFloatBox pixel_box(double x, double y, double width, double height){
+    return {x / 1920, y / 1080, width / 1920, height / 1080};
+}
+
+double box_brightness(const ImageViewRGB32& screen, const ImageFloatBox& box){
+    return image_average(extract_box_reference(screen, box)).sum() / 3;
+}
+
+//  One edge of a slot's frame: the 2 px line, the strip inside it and the
+//  strip outside it.
+struct FrameEdge{
+    ImageFloatBox line;
+    ImageFloatBox inside;
+    ImageFloatBox outside;
+};
+
+//  The last slot's four edges.
+std::array<FrameEdge, 4> last_slot_edges(){
+    const double left = LAST_SLOT_X;
+    const double right = LAST_SLOT_X + SLOT_FRAME_SIZE - FRAME_LINE;
+    const double top = SLOT_FRAME_Y;
+    const double bottom = SLOT_FRAME_Y + SLOT_FRAME_SIZE - FRAME_LINE;
+    const double span = SLOT_FRAME_SIZE - 2 * FRAME_CORNER;
+    const double step = FRAME_LINE + FRAME_GAP;
+    return {
+        FrameEdge{
+            .line = pixel_box(left + FRAME_CORNER, top, span, FRAME_LINE),
+            .inside = pixel_box(left + FRAME_CORNER, top + step, span, FRAME_STRIP),
+            .outside = pixel_box(left + FRAME_CORNER, top - FRAME_GAP - FRAME_STRIP, span, FRAME_STRIP),
+        },
+        FrameEdge{
+            .line = pixel_box(left + FRAME_CORNER, bottom, span, FRAME_LINE),
+            .inside = pixel_box(left + FRAME_CORNER, bottom - FRAME_GAP - FRAME_STRIP, span, FRAME_STRIP),
+            .outside = pixel_box(left + FRAME_CORNER, bottom + step, span, FRAME_STRIP),
+        },
+        FrameEdge{
+            .line = pixel_box(left, top + FRAME_CORNER, FRAME_LINE, span),
+            .inside = pixel_box(left + step, top + FRAME_CORNER, FRAME_STRIP, span),
+            .outside = pixel_box(left - FRAME_GAP - FRAME_STRIP, top + FRAME_CORNER, FRAME_STRIP, span),
+        },
+        FrameEdge{
+            .line = pixel_box(right, top + FRAME_CORNER, FRAME_LINE, span),
+            .inside = pixel_box(right - FRAME_GAP - FRAME_STRIP, top + FRAME_CORNER, FRAME_STRIP, span),
+            .outside = pixel_box(right + step, top + FRAME_CORNER, FRAME_STRIP, span),
+        },
+    };
+}
+
+//  Whether the last slot shows empty: every edge of its frame lighter than
+//  the strip inside it and no darker than the strip outside it.
+bool last_slot_empty(const ImageViewRGB32& screen){
+    static const std::array<FrameEdge, 4> edges = last_slot_edges();
+    for (const FrameEdge& edge : edges){
+        const double line = box_brightness(screen, edge.line);
+        if (line - box_brightness(screen, edge.inside) < FRAME_INSIDE_MARGIN || line - box_brightness(screen, edge.outside) < FRAME_OUTSIDE_MARGIN){
+            return false;
+        }
+    }
+    return true;
+}
+
 } // namespace
 
 
 PartyBarDetector::PartyBarDetector(Color color, VideoOverlay* overlay)
     : m_selection(color, overlay)
+    , m_last_slot(pixel_box(LAST_SLOT_X, SLOT_FRAME_Y, SLOT_FRAME_SIZE, SLOT_FRAME_SIZE))
 {
     for (size_t i = 0; i < 6; i++){
         const double x = SLOT_X + SLOT_PITCH * i;
@@ -66,6 +151,7 @@ PartyBarDetector::PartyBarDetector(Color color, VideoOverlay* overlay)
 
 void PartyBarDetector::make_overlays(VideoOverlaySet& items) const{
     m_selection.make_overlays(items);
+    items.add(COLOR_GREEN, m_last_slot);
     for (size_t i = 0; i < 6; i++){
         items.add(COLOR_GREEN, m_bar_boxes[i]);
     }
@@ -96,7 +182,8 @@ bool PartyBarDetector::detect(const ImageViewRGB32& screen){
     if (screen.width() == 0 || screen.height() == 0){
         return false;
     }
-    if (!m_selection.detect(screen)){
+    //  The marker is read first: it also names the slot sent out.
+    if (!m_selection.detect(screen) && !last_slot_empty(screen)){
         return false;
     }
     const uint8_t sent_out = m_selection.dpad_down_idx();
@@ -120,7 +207,7 @@ int party_bar_filled_slots(const ImageViewRGB32& screen){
 struct PartyBarCase{
     std::string name;
     struct Input{
-        std::string image;  //  In CommandLineTests/PokemonLZA/PartyBarDetector/.
+        std::string image;  //  In CommandLineTests/PokemonLZA/.
     };
     Input input;
     struct Expectation{
@@ -132,18 +219,29 @@ struct PartyBarCase{
 const PartyBarCase PARTY_BAR_CASES[] = {
     {
         .name = "five filled, slot 0 selected (D-pad up), the sixth empty",
-        .input = {.image = "party5_slot0_selected.png"},
+        .input = {.image = "PartyBarDetector/party5_slot0_selected.png"},
         .expectation = {.filled_slots = 5},
     },
     {
         .name = "five filled, slot 0's partner sent out (Poke Ball, no bar), Mareep's bar red",
-        .input = {.image = "party5_slot0_sent_out.png"},
+        .input = {.image = "PartyBarDetector/party5_slot0_sent_out.png"},
         .expectation = {.filled_slots = 5},
     },
     {
         .name = "five filled, slot 0's partner sent out, over bright ground",
-        .input = {.image = "party5_b.png"},
+        .input = {.image = "PartyBarDetector/party5_b.png"},
         .expectation = {.filled_slots = 5},
+    },
+    {
+        //  No D-pad marker with a party of one: the empty last slot shows the bar.
+        .name = "one filled in Hotel Z's lobby, five empty",
+        .input = {.image = "AutoStoryScreenEvents/de_0205_lobby_start_party1.png"},
+        .expectation = {.filled_slots = 1},
+    },
+    {
+        .name = "one filled at the lobby elevator's A prompt",
+        .input = {.image = "AutoStoryScreenEvents/de_0205_elevator_prompt_steady.png"},
+        .expectation = {.filled_slots = 1},
     },
 };
 
@@ -152,7 +250,7 @@ public:
     explicit Test_PartyBarDetector(const PartyBarCase& test_case)
         : ImageUnitTest(
             std::format("PokemonLZA::PartyBarDetector - {}", test_case.name),
-            {std::format("PokemonLZA/PartyBarDetector/{}", test_case.input.image)}
+            {std::format("PokemonLZA/{}", test_case.input.image)}
         )
         , m_case(test_case)
     {}

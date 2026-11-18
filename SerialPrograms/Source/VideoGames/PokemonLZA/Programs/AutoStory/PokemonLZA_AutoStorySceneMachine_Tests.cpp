@@ -98,6 +98,15 @@ SceneMachineConfig battle_config(){
     return config;
 }
 
+//  battle_config() whose lock-on watch sees the move symbols: locked on.
+SceneMachineConfig battle_config_locking_on(){
+    SceneMachineConfig config = battle_config();
+    config.lock_on = [](Milliseconds){
+        return true;
+    };
+    return config;
+}
+
 //  `count` looks with the mission banner, then one without.
 std::vector<Observation<ZonePose>> banner_then_gone(size_t count){
     std::vector<Observation<ZonePose>> looks(count, look_at(/*at=*/0ms, NOTHING, {MISSION_BANNER_READING}));
@@ -624,16 +633,16 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_still, scene_moving, battle"},
     },
     {
-        .name = "after a battle start's fade, the party bar held a second with no battle HUD: ZL to lock on",
+        .name = "after a battle start's fade, the party bar held a second with no battle HUD: ZL held, the move symbols lock on",
         .input = {
-            .looks = {look_at(0ms, BLACK), look_at(1000ms, PARTY), look_at(1000ms, PARTY), look_at(2100ms, PARTY), look_at(3200ms, BATTLE)},
-            .config = battle_config(),
+            .looks = {look_at(0ms, BLACK), look_at(1000ms, PARTY), look_at(1000ms, PARTY), look_at(2100ms, PARTY), look_at(2200ms, PARTY)},
+            .config = battle_config_locking_on(),
         },
         .expectation = {
             .verdict = "done",
             .a_presses = 0,
-            .line = "[PLZA test] lock-on 1/5: ZL.",
-            .states = "fade_black, scene_moving, lock_on, battle",
+            .line = "[PLZA test] lock-on 1/5: ZL held: the move symbols showed.",
+            .states = "fade_black, scene_moving, lock_on, locked_on",
         },
     },
     {

@@ -35,6 +35,11 @@ void story_turn(PlzaBackend& backend, double degrees);
 //  (upstream's get_facing_direction(): 0 up, 90 right).
 using MinimapArrowReader = std::function<double()>;
 
+//  Holds ZL up to `hold` while reading the battle menu's move-effectiveness
+//  symbols (MoveEffectivenessSymbolDetector), the sign of a lock-on that
+//  upstream's TrainerBattle and the catches take; true once they show.
+using LockOnWatch = std::function<bool(Milliseconds hold)>;
+
 //  Turns the player to `heading` on the minimap from any start, 4 turns
 //  at most, each story_turn() by the arrow's error the short way round,
 //  then L puts the camera behind the player, so a run forward goes that

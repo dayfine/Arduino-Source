@@ -4,6 +4,7 @@
  *
  */
 
+#include <array>
 #include <cctype>
 #include <cstdint>
 #include <string_view>
@@ -12,6 +13,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/OCR/OCR_Routines.h"
+#include "PokemonLZA_AutoStoryHighlightedRow.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 
 namespace PokemonAutomation{
@@ -38,12 +40,6 @@ ImageStats box_stats(const ImageViewRGB32& frame, const ImageFloatBox& box){
     return image_stats(extract_box_reference(frame, box));
 }
 
-enum class ListBox{
-    HIGHLIGHTED,
-    PLAIN,
-    OTHER,
-};
-
 //  A strip at the left end of entry `index`'s box, left of its text and
 //  right of the cursor's arrow. The boxes are 576 x 84 at 1920 x 1080, the
 //  columns' left edges at x 347 and 996, the rows' tops 108 apart from
@@ -56,25 +52,13 @@ ImageFloatBox language_box_strip(size_t index){
 
 //  The highlighted box is 255 white, flat; the others slate blue, about
 //  (54, 60-76, 82-107), each channel's spread under 3.
-ListBox classify_list_box(const ImageStats& stats){
-    if (stats.count == 0){
-        return ListBox::OTHER;
-    }
-    const FloatPixel& average = stats.average;
-    const double spread = stats.stddev.sum();
-    if (average.r >= 200 && average.g >= 200 && average.b >= 200 && spread <= 30){
-        return ListBox::HIGHLIGHTED;
-    }
-    const bool slate =
-        average.r >= 35 && average.r <= 90 &&
-        average.g >= 45 && average.g <= 110 &&
-        average.b >= 65 && average.b <= 140 &&
-        average.b >= average.r + 15;
-    if (slate && spread <= 20){
-        return ListBox::PLAIN;
-    }
-    return ListBox::OTHER;
-}
+constexpr SlateRows LANGUAGE_LIST_ROWS_SLATE{
+    .min_red = 35, .max_red = 90,
+    .min_green = 45, .max_green = 110,
+    .min_blue = 65, .max_blue = 140,
+    .min_blue_over_red = 15,
+    .max_spread = 20,
+};
 
 //  The dark blue background between the columns (about (9, 24, 56)).
 bool column_gap_dark(const ImageViewRGB32& frame){
@@ -266,22 +250,11 @@ std::optional<size_t> read_language_list_cursor(const ImageViewRGB32& frame){
     if (!usable(frame) || !column_gap_dark(frame)){
         return std::nullopt;
     }
-    std::optional<size_t> highlighted;
+    std::array<ImageFloatBox, LANGUAGE_LIST_SIZE> strips;
     for (size_t index = 0; index < LANGUAGE_LIST_SIZE; index++){
-        switch (classify_list_box(box_stats(frame, language_box_strip(index)))){
-        case ListBox::HIGHLIGHTED:
-            if (highlighted){
-                return std::nullopt;
-            }
-            highlighted = index;
-            break;
-        case ListBox::PLAIN:
-            break;
-        case ListBox::OTHER:
-            return std::nullopt;
-        }
+        strips[index] = language_box_strip(index);
     }
-    return highlighted;
+    return highlighted_row(frame, strips, LANGUAGE_LIST_ROWS_SLATE);
 }
 
 std::optional<size_t> read_look_picker_cursor(const ImageViewRGB32& frame){

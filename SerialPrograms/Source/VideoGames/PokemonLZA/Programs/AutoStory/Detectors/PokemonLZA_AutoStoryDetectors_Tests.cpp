@@ -21,13 +21,13 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "PokemonLZA_AutoStoryAutosaveDetector.h"
 #include "PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "PokemonLZA_AutoStoryMissionCompleteDetector.h"
-#include "PokemonLZA_AutoStoryPartySlotsDetector.h"
 #include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 #include "PokemonLZA_AutoStoryTutorialCardDetector.h"
 
@@ -51,7 +51,7 @@ struct DetectorReads{
     std::optional<bool> advance_arrow = {};
     std::optional<bool> mission_banner = {};
     std::optional<bool> mission_complete = {};
-    std::optional<bool> party_slots = {};
+    std::optional<bool> party_bar = {};
 };
 
 struct DetectorField{
@@ -65,7 +65,7 @@ const DetectorField DETECTOR_FIELDS[] = {
     {"advance arrow", &DetectorReads::advance_arrow},
     {"mission banner", &DetectorReads::mission_banner},
     {"mission complete", &DetectorReads::mission_complete},
-    {"party slots", &DetectorReads::party_slots},
+    {"party bar", &DetectorReads::party_bar},
 };
 
 //  `reads` with every detector checked: one it leaves unset must not fire.
@@ -108,14 +108,14 @@ struct StoryDetectors{
     AdvanceArrowDetector arrow;
     MainMissionBannerDetector banner;
     MissionCompleteDetector complete;
-    PartySlotsDetector party_slots;
+    PartyBarDetector party_bar;
 
     DetectorReads read(const ImageViewRGB32& frame){
         return DetectorReads{
             .platform = platform.detect(frame), .autosave = autosave.detect(frame),
             .controls_hint = hint.detect(frame), .advance_arrow = arrow.detect(frame),
             .mission_banner = banner.detect(frame), .mission_complete = complete.detect(frame),
-            .party_slots = party_slots.detect(frame),
+            .party_bar = party_bar.detect(frame),
         };
     }
 };

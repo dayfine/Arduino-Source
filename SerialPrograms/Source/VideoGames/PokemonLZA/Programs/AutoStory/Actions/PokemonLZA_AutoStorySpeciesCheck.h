@@ -12,6 +12,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStorySpeciesCheck_H
 
 #include <optional>
+#include <string>
 #include <string_view>
 
 namespace PokemonAutomation{
@@ -70,6 +71,12 @@ bool enough_species(SpeciesTally tally, std::optional<int> dex_count, int dex_ne
 //  banner tally (the user: "we are obviously done when we have 5
 //  different icons in the party").
 bool party_has_species(std::optional<int> filled_slots, int dex_species);
+
+//  catch_in_zone()'s summary for the log: the party bar's verdict first
+//  (`filled_slots` of `party_species`, by party_has_species()), as it
+//  decides the patrol when read, then `patrol`'s banner tally of
+//  `new_species`, with that tally's verdict only when the bar was not read.
+std::string catch_summary_text(const GrassCatches& patrol, std::optional<int> filled_slots, int new_species, int party_species);
 
 
 

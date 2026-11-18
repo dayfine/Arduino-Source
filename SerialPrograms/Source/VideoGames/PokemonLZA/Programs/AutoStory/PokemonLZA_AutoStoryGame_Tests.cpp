@@ -1086,7 +1086,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA story_battle_start] done on battle."},
     },
     {
-        .name = "a battle start that ends in control, the party bar held 5 s, fails once lock-on finds no battle",
+        .name = "a battle start that ends in control, the party bar held 5 s and no lock-on watch, fails",
         //  The fade's wait takes the first look after it: the party bar's
         //  5 s run from the look after that.
         .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
@@ -1293,7 +1293,7 @@ std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& read
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
     const Pokemon::StoryGame<ZonePose> game = plza_story_game(
-        /*console=*/{}, builtin_story_data(), scripted_arrow(test.input.arrow_reads), sightings
+        /*console=*/{}, builtin_story_data(), scripted_arrow(test.input.arrow_reads), /*lock_on=*/std::nullopt, sightings
     );
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
@@ -1325,7 +1325,7 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 //  The console-less game with a reload that presses HOME, as the console's
 //  does first, and succeeds.
 Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows, AutosaveSightings& sightings){
-    Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, rows, /*arrow=*/std::nullopt, sightings);
+    Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, rows, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt, sightings);
     game.reload = [](Pokemon::StoryBackend<ZonePose>& backend){
         backend.press(BUTTON_HOME, Milliseconds(80), Milliseconds(80));
         return Pokemon::outcome_ok();
@@ -1397,7 +1397,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
     const Pokemon::StoryGame<ZonePose> game = test.input.has_reload
         ? game_with_reload(story, sightings)
-        : plza_story_game(/*console=*/{}, story, /*arrow=*/std::nullopt, sightings);
+        : plza_story_game(/*console=*/{}, story, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
     const std::string verdict = loaded.succeeded() ? "done" : loaded.failure;
@@ -1748,7 +1748,7 @@ UnitTestResult check_new_game_chain(const NewGameChainCase& test, CancellableSco
         });
     }
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = plza_story_game(console, story, /*arrow=*/std::nullopt, sightings);
+    const Pokemon::StoryGame<ZonePose> game = plza_story_game(console, story, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt, sightings);
     std::vector<StoryCheckpoint> rows;
     for (const std::string& id : test.input.rows){
         rows.push_back(builtin_row(id, /*first_step=*/0, /*steps=*/std::numeric_limits<size_t>::max()));
