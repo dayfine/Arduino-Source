@@ -108,6 +108,14 @@ const FrameCase FRAME_CASES[] = {
     //  HOME's tiles in last-played order: FireRed first, Z-A second.
     {.name = "2026-11-15: HOME on FireRed's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_firered.png"}, .expectation = {}},
     {.name = "2026-11-15: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_plza.png"}, .expectation = {.home_plza = true}},
+    //  The console in its dark theme (Basic Black), 2026-11-18.
+    {.name = "2026-11-18 dark theme: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-18/en_kb_dark.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-18 dark theme: HOME on Pokemon HOME's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile0.png"}, .expectation = {}},
+    {.name = "2026-11-18 dark theme: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile1.png"}, .expectation = {.home_plza = true}},
+    {.name = "2026-11-18 dark theme: HOME on FireRed's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile2.png"}, .expectation = {}},
+    {.name = "2026-11-18 dark theme: HOME on Brilliant Diamond's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile3.png"}, .expectation = {}},
+    {.name = "2026-11-18 dark theme: HOME on Violet's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile4.png"}, .expectation = {}},
+    {.name = "2026-11-18 dark theme: HOME dimmed", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_dim.png"}, .expectation = {}},
 };
 
 class Test_IntroScreenFrame : public ImageUnitTest{
@@ -198,6 +206,7 @@ const SystemKeyboardCase SYSTEM_KEYBOARD_CASES[] = {
     {.name = "Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_kb.png"}},
     {.name = "Simplified Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_kb.png"}},
     {.name = "Traditional Chinese", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHant_kb.png"}},
+    {.name = "English, dark theme", .input = {.file = "AutoStoryNewGame/2026-11-18/en_kb_dark.png"}},
 };
 
 class Test_SystemKeyboardOnNameKeyboard : public ImageUnitTest{

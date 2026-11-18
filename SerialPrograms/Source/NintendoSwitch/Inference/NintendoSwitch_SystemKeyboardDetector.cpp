@@ -39,9 +39,41 @@ constexpr double RIGHT_COLUMN_OK_TOP = 0.725;
 //  digit row to the bottom of the bottom row.
 const ImageFloatBox KEYS_AREA(0.0, 0.43, 1.0, 0.49);
 
+//  The labels of the bottom row's page keys (globe to the accent pages), inside
+//  the border a cursor on one of them draws (y 875-979 at 1080). In the dark
+//  theme the current page's label and underline are cyan (about 0, 230, 210,
+//  y 909-955 for ABC), like the cursor, so the cursor read skips this band.
+const ImageFloatBox PAGE_LABELS(0.0, 0.829, 0.49, 0.065);
+
+//  The bar below the keys, which tells the console's theme.
+const ImageFloatBox BOTTOM_BAR(0.10, 0.935, 0.35, 0.030);
+
+enum class KeyboardTheme{
+    LIGHT,
+    DARK,   //  The console's "Basic Black" theme.
+};
+
+//  The bar is white (245) in the light theme and flat grey (76) in the dark
+//  one; nothing if it is neither. Measured on Legends: Z-A.
+std::optional<KeyboardTheme> keyboard_theme(const ImageViewRGB32& screen){
+    const ImageStats bar = image_stats(extract_box_reference(screen, BOTTOM_BAR));
+    if (is_white(bar)){
+        return KeyboardTheme::LIGHT;
+    }
+    if (is_grey(bar, /*min_rgb_sum=*/180, /*max_rgb_sum=*/270)){
+        return KeyboardTheme::DARK;
+    }
+    return std::nullopt;
+}
+
+bool in_box(double x, double y, const ImageFloatBox& box){
+    return x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height;
+}
+
 //  The cursor border pulses between bright cyan (about 50, 240, 220) and a darker
-//  teal (about 0, 185, 210), measured on Legends: Z-A. The blue of the OK button
-//  and of the ABC underline (40, 90, 250) is not green enough to match.
+//  teal (about 0, 185, 210), measured on Legends: Z-A; in the dark theme it is
+//  about (115, 245, 250). The blue of the OK button and of the light theme's ABC
+//  underline (40, 90, 250) is not green enough to match.
 bool is_cursor_pixel(uint32_t pixel){
     const int red = (pixel >> 16) & 0xff;
     const int green = (pixel >> 8) & 0xff;
@@ -86,7 +118,7 @@ SystemKeyboardDetector::SystemKeyboardDetector(Color color)
     : m_color(color)
     , m_key_panel_upper(0.15, 0.532, 0.65, 0.036)
     , m_key_panel_lower(0.15, 0.715, 0.65, 0.032)
-    , m_bottom_bar(0.10, 0.935, 0.35, 0.030)
+    , m_bottom_bar(BOTTOM_BAR)
     , m_ok_button(0.875, 0.760, 0.045, 0.020)
 {}
 void SystemKeyboardDetector::make_overlays(VideoOverlaySet& items) const{
@@ -96,18 +128,33 @@ void SystemKeyboardDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_ok_button);
 }
 bool SystemKeyboardDetector::detect(const ImageViewRGB32& screen){
-    //  Each strip crosses white keys and the slightly brighter gaps between them,
-    //  which gives a stddev sum of about 11 (measured on BDSP and Legends: Z-A).
+    const std::optional<KeyboardTheme> theme = keyboard_theme(screen);
+    if (!theme){
+        return false;
+    }
+    //  Each strip crosses the keys and the gaps between them, which gives a
+    //  stddev sum of about 11 (white keys, measured on BDSP and Legends: Z-A)
+    //  or 12 (dark grey keys, about 84, on Legends: Z-A).
     const double max_panel_stddev = 20;
+    const ImageStats upper = image_stats(extract_box_reference(screen, m_key_panel_upper));
+    const ImageStats lower = image_stats(extract_box_reference(screen, m_key_panel_lower));
+    const ImageStats ok = image_stats(extract_box_reference(screen, m_ok_button));
+    if (*theme == KeyboardTheme::DARK){
+        const bool panel =
+            is_grey(upper, /*min_rgb_sum=*/210, /*max_rgb_sum=*/300, max_panel_stddev) ||
+            is_grey(lower, /*min_rgb_sum=*/210, /*max_rgb_sum=*/300, max_panel_stddev);
+        //  OK is flat grey (100, 100, 100) while the field is empty; its colour
+        //  with text is not captured yet, so any flat fill passes.
+        return panel && ok.stddev.sum() < 10;
+    }
     const bool panel =
-        is_white(extract_box_reference(screen, m_key_panel_upper), 500, max_panel_stddev) ||
-        is_white(extract_box_reference(screen, m_key_panel_lower), 500, max_panel_stddev);
-    if (!panel || !is_white(extract_box_reference(screen, m_bottom_bar))){
+        is_white(upper, /*min_rgb_sum=*/500, max_panel_stddev) ||
+        is_white(lower, /*min_rgb_sum=*/500, max_panel_stddev);
+    if (!panel){
         return false;
     }
     //  OK is blue (40, 93, 255), or flat grey (221, 221, 221) while the field is
     //  empty (disabled). Measured on BDSP and Legends: Z-A.
-    const ImageStats ok = image_stats(extract_box_reference(screen, m_ok_button));
     return is_solid(ok, {0.103, 0.240, 0.657}) || is_grey(ok, 600, 690);
 }
 
@@ -118,7 +165,12 @@ std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB3
     const ImageViewRGB32 keys = extract_box_reference(screen, KEYS_AREA);
     double count = 0, sum_x = 0, sum_y = 0;
     for (size_t y = 0; y < keys.height(); y++){
+        const double screen_y = KEYS_AREA.y + ((double)y + 0.5) / keys.height() * KEYS_AREA.height;
         for (size_t x = 0; x < keys.width(); x++){
+            const double screen_x = KEYS_AREA.x + ((double)x + 0.5) / keys.width() * KEYS_AREA.width;
+            if (in_box(screen_x, screen_y, PAGE_LABELS)){
+                continue;
+            }
             if (is_cursor_pixel(keys.pixel(x, y))){
                 count++;
                 sum_x += (double)x;
@@ -138,8 +190,13 @@ std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB3
 
 bool system_keyboard_field_has_text(const ImageViewRGB32& screen){
     //  Left part of the backspace key, clear of its icon and of the cursor border.
-    //  Light grey (221) with an empty field, dark grey (52) with text.
+    //  Light theme: light grey (221) with an empty field, dark grey (52) with
+    //  text. Dark theme: grey (100) with an empty field; its look with text is
+    //  not captured yet, so anything else counts as text.
     const ImageStats stats = image_stats(extract_box_reference(screen, ImageFloatBox(0.878, 0.470, 0.008, 0.060)));
+    if (keyboard_theme(screen) == KeyboardTheme::DARK){
+        return !is_grey(stats, /*min_rgb_sum=*/255, /*max_rgb_sum=*/345);
+    }
     return stats.average.sum() < 400;
 }
 
@@ -267,6 +324,9 @@ void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
     for (std::string_view language : {"English", "French", "German", "Italian", "Japanese", "Spanish"}){
         database.add<Test_SystemKeyboardDetector>(test_image_path(std::format("PLZA-{}-Empty.png", language)), key_1, false);
     }
+    //  The console's dark theme (Basic Black), console B 2026-11-18: the cyan
+    //  ABC label must not pull the cursor read off "1".
+    database.add<Test_SystemKeyboardDetector>(test_image_path("PLZA-English-Empty-Dark.png"), key_1, false);
     for (std::string_view image : {"BDSP-Dialog.png", "HomeMenu.png", "HomeMenu-OnlineLicensePopup.png", "UserSelect.png"}){
         database.add<Test_SystemKeyboardDetector>(test_image_path(image), std::nullopt, false);
     }

@@ -268,7 +268,11 @@ bool is_look_picker(const ImageViewRGB32& frame){
 //  The question area (x 1056-1824, y 54-184 at 1920 x 1080) is dark and
 //  flat: 27, spread 3 on all ten languages' keyboards; the intro's other
 //  screens are 46 or brighter there, or busy. The keys' bottom row
-//  (y 929-950) averages 205-211; elsewhere 160 at most.
+//  (y 929-950) averages 205-211; elsewhere 160 at most. In the console's
+//  dark theme (Basic Black) the question area is navy (5, 28, 48: 27, spread
+//  4) and the keys are dark grey (111 on that row), so the bar below them
+//  (y 1010-1042) tells it instead: flat grey 76, where the intro's other
+//  screens are 56 or darker and HOME's dark theme is 51.
 bool is_name_keyboard(const ImageViewRGB32& frame){
     if (!usable(frame)){
         return false;
@@ -278,7 +282,11 @@ bool is_name_keyboard(const ImageViewRGB32& frame){
         return false;
     }
     const ImageStats keys = box_stats(frame, ImageFloatBox(0.03, 0.86, 0.80, 0.02));
-    return keys.count > 0 && brightness(keys) >= 185;
+    if (keys.count > 0 && brightness(keys) >= 185){
+        return true;
+    }
+    const ImageStats bar = box_stats(frame, ImageFloatBox(0.10, 0.935, 0.35, 0.03));
+    return bar.count > 0 && brightness(bar) >= 65 && brightness(bar) <= 90 && bar.stddev.sum() < 10;
 }
 
 //  The counter is grey (about 128) on the dark question area: with a

@@ -62,6 +62,16 @@ const TileSearchCase TILE_SEARCH_CASES[] = {
         .input = {.files = {"AutoStoryNewGame/2026-11-15/home_firered.png"}},
         .expectation = {.tile = std::nullopt},
     },
+    {
+        //  The console in its dark theme (Basic Black), 2026-11-18: Pokemon
+        //  HOME played last, Z-A second.
+        .name = "dark theme, Pokemon HOME first, Z-A second",
+        .input = {.files = {
+            "AutoStoryNewGame/2026-11-18/home_dark_tile0.png",
+            "AutoStoryNewGame/2026-11-18/home_dark_tile1.png",
+        }},
+        .expectation = {.tile = 1},
+    },
 };
 
 std::vector<std::string> home_tile_images(const TileSearchCase& test){
