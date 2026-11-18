@@ -31,6 +31,9 @@ namespace PokemonLZA{
 //  Return true if the game is saved successfully, false otherwise.
 bool save_game_to_menu(ConsoleHandle& console, ProControllerContext& context);
 
+//  The box save_game_to_menu() reads the arrow at Save in, on the main menu.
+ImageFloatBox main_menu_save_arrow_box();
+
 
 
 // retrun type of the function fly_from_map()

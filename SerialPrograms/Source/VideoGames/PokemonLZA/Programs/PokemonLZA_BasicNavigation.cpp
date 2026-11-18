@@ -25,6 +25,10 @@
 
 namespace PokemonAutomation::NintendoSwitch::PokemonLZA{
 
+ImageFloatBox main_menu_save_arrow_box(){
+    return {0.287118, 0.638835, 0.064410, 0.108738};
+}
+
 bool save_game_to_menu(ConsoleHandle& console, ProControllerContext& context){
 
     bool seen_save_button = false;
@@ -48,7 +52,7 @@ bool save_game_to_menu(ConsoleHandle& console, ProControllerContext& context){
             COLOR_GREEN,
             &console.overlay(),
             SelectionArrowType::RIGHT,
-            {0.287118, 0.638835, 0.064410, 0.108738}
+            main_menu_save_arrow_box()
         );
         BlueDialogWatcher dialog(COLOR_YELLOW, &console.overlay());
 

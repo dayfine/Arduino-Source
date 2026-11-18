@@ -33,8 +33,7 @@ using Pokemon::Direction;
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
     : m_env(env)
     , m_home(env.env.console, COLOR_RED)
-    //  The box save_game_to_menu() reads the arrow at Save in.
-    , m_save_button(COLOR_GREEN, nullptr, SelectionArrowType::RIGHT, {0.287118, 0.638835, 0.064410, 0.108738})
+    , m_save_button(COLOR_GREEN, nullptr, SelectionArrowType::RIGHT, main_menu_save_arrow_box())
 {}
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
