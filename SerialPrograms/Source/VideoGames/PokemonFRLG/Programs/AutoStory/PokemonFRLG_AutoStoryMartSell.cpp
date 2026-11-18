@@ -56,71 +56,71 @@ std::optional<size_t> sale_price(std::string_view item){
 }
 
 
-ConsoleMartSellActions::ConsoleMartSellActions(ConsoleHandle& console, ProControllerContext& context, Language language)
-    : m_console(console)
-    , m_context(context)
-    , m_language(language)
-{}
+namespace{
 
-SaleEnd ConsoleMartSellActions::sell(const MartLine& sale){
+//  From the bag: out to the overworld facing the clerk; `end`, or FAILED
+//  if the overworld didn't come back.
+SaleEnd back_to_clerk(ConsoleHandle& console, ProControllerContext& context, SaleEnd end){
+    //  B out of the bag to the clerk's menu, B (SEE YA!) and through
+    //  "Please come again!".
+    pbf_press_button(context, BUTTON_B, /*hold=*/160ms, /*release=*/1500ms);
+    try{
+        mash_until_overworld(console, context, MENU_CLOSE_TIMEOUT);
+        return end;
+    }catch (OperationFailedException& e){
+        console.log("Mart: " + e.message(), COLOR_RED);
+        return SaleEnd::FAILED;
+    }
+}
+
+} // namespace
+
+SaleEnd sell_on_console(ConsoleHandle& console, ProControllerContext& context, Language language, const MartLine& sale){
     //  "May I help you?" BUY, SELL, SEE YA!: SELL, and the bag slides in.
     //  Not timed on the console: the BUY waits.
-    pbf_press_button(m_context, BUTTON_A, 160ms, 2000ms);
-    pbf_press_dpad(m_context, DPAD_DOWN, 160ms, 300ms);
-    pbf_press_button(m_context, BUTTON_A, 160ms, BAG_SLIDE_IN);
+    pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/2000ms);
+    pbf_press_dpad(context, DPAD_DOWN, /*hold=*/160ms, /*release=*/300ms);
+    pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/BAG_SLIDE_IN);
     //  Left to the Items pocket, which doesn't wrap, and up to its top.
     for (int c = 0; c < 3; c++){
-        pbf_press_dpad(m_context, DPAD_LEFT, POCKET_TAP, POCKET_SWITCH_WAIT);
+        pbf_press_dpad(context, DPAD_LEFT, POCKET_TAP, POCKET_SWITCH_WAIT);
     }
     for (int c = 0; c < 20; c++){
-        pbf_press_dpad(m_context, DPAD_UP, CURSOR_TAP, CURSOR_WAIT);
+        pbf_press_dpad(context, DPAD_UP, CURSOR_TAP, CURSOR_WAIT);
     }
-    const PocketRead read = read_open_pocket(m_console, m_context, m_language);
+    const PocketRead read = read_open_pocket(console, context, language);
     for (size_t c = 0; c < read.downs; c++){
-        pbf_press_dpad(m_context, DPAD_UP, CURSOR_TAP, CURSOR_WAIT);
+        pbf_press_dpad(context, DPAD_UP, CURSOR_TAP, CURSOR_WAIT);
     }
     const std::optional<size_t> row = bag_row_of(read.rows, sale.item);
     if (!row){
-        return back_to_clerk(SaleEnd::NONE_IN_BAG);
+        return back_to_clerk(console, context, SaleEnd::NONE_IN_BAG);
     }
     const int held = read.rows[*row].count;
     if (held < 1){
-        m_console.log(std::format("Mart: the {} count wasn't read; not sold.", sale.item), COLOR_RED);
-        return back_to_clerk(SaleEnd::FAILED);
+        console.log(std::format("Mart: the {} count wasn't read; not sold.", sale.item), COLOR_RED);
+        return back_to_clerk(console, context, SaleEnd::FAILED);
     }
     for (size_t c = 0; c < *row; c++){
-        pbf_press_dpad(m_context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
+        pbf_press_dpad(context, DPAD_DOWN, CURSOR_TAP, CURSOR_WAIT);
     }
     //  One held: straight to "I can pay $X." YES/NO. More: "How many would
     //  you like to sell?" on 1 first, typed as a purchase's.
-    pbf_press_button(m_context, BUTTON_A, 160ms, 2500ms);
+    pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/2500ms);
     if (held > 1){
         const QuantityPresses presses = quantity_presses(std::min<size_t>(sale.quantity, (size_t)held));
         for (size_t c = 0; c < presses.right; c++){
-            pbf_press_dpad(m_context, DPAD_RIGHT, 160ms, 340ms);
+            pbf_press_dpad(context, DPAD_RIGHT, /*hold=*/160ms, /*release=*/340ms);
         }
         for (size_t c = 0; c < presses.up; c++){
-            pbf_press_dpad(m_context, DPAD_UP, 160ms, 340ms);
+            pbf_press_dpad(context, DPAD_UP, /*hold=*/160ms, /*release=*/340ms);
         }
-        pbf_press_button(m_context, BUTTON_A, 160ms, 2500ms);
+        pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/2500ms);
     }
     //  YES, then "Turned over the <item> and received $X.", back to the bag.
-    pbf_press_button(m_context, BUTTON_A, 160ms, 2500ms);
-    pbf_press_button(m_context, BUTTON_A, 160ms, 1500ms);
-    return back_to_clerk(SaleEnd::SOLD);
-}
-
-SaleEnd ConsoleMartSellActions::back_to_clerk(SaleEnd end){
-    //  B out of the bag to the clerk's menu, B (SEE YA!) and through
-    //  "Please come again!".
-    pbf_press_button(m_context, BUTTON_B, 160ms, 1500ms);
-    try{
-        mash_until_overworld(m_console, m_context, MENU_CLOSE_TIMEOUT);
-        return end;
-    }catch (OperationFailedException& e){
-        m_console.log("Mart: " + e.message(), COLOR_RED);
-        return SaleEnd::FAILED;
-    }
+    pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/2500ms);
+    pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/1500ms);
+    return back_to_clerk(console, context, SaleEnd::SOLD);
 }
 
 

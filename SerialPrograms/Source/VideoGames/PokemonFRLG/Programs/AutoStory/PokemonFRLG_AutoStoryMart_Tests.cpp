@@ -171,13 +171,13 @@ private:
 
 //  The same Mart's SELL: the clerk buys from its `bag` at sale_price(),
 //  from facing the clerk.
-class FakeMartSell : public MartSellActions{
+class FakeMartSell{
 public:
     explicit FakeMartSell(FakeMart& mart)
         : m_mart(mart)
     {}
 
-    virtual SaleEnd sell(const MartLine& sale) override{
+    SaleEnd operator()(const MartLine& sale) const{
         const auto held = m_mart.bag.find(sale.item);
         const std::optional<size_t> price = sale_price(sale.item);
         if (m_mart.in_list || !price){
@@ -436,8 +436,7 @@ UnitTestResult check_mart_case(const MartCase& item){
     if (item.setup){
         item.setup(mart);
     }
-    FakeMartSell sell(mart);
-    const MartResult result = run_mart(logger, mart, sell, item.plan);
+    const MartResult result = run_mart(logger, mart, FakeMartSell(mart), item.plan);
     if (!mart.error.empty()){
         return item.name + ": " + mart.error;
     }

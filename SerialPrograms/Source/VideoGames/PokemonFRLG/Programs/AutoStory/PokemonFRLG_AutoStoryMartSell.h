@@ -12,6 +12,7 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryMartSell_H
 
 #include <cstddef>
+#include <functional>
 #include <optional>
 #include <string_view>
 #include "CommonFramework/Language.h"
@@ -39,33 +40,14 @@ enum class SaleEnd{
     FAILED,
 };
 
-//  The SELL game step a Mart step takes for each of its sales.
-class MartSellActions{
-public:
-    virtual ~MartSellActions() = default;
-
-    //  Facing the clerk: talk, SELL, `sale.quantity` of `sale.item` from
-    //  its pocket, YES, out of the bag and the menu, facing the clerk again.
-    virtual SaleEnd sell(const MartLine& sale) = 0;
-};
+//  The SELL game step a Mart step takes for each of its sales: facing the
+//  clerk, talk, SELL, `sale.quantity` of `sale.item` from its pocket, YES,
+//  out of the bag and the menu, facing the clerk again.
+using MartSell = std::function<SaleEnd(const MartLine& sale)>;
 
 //  The console's SELL: the bag on its Items pocket, read with
 //  read_open_pocket(), the quantity typed as a purchase's.
-class ConsoleMartSellActions : public MartSellActions{
-public:
-    ConsoleMartSellActions(ConsoleHandle& console, ProControllerContext& context, Language language);
-
-    virtual SaleEnd sell(const MartLine& sale) override;
-
-private:
-    //  From the bag: out to the overworld facing the clerk; `end`, or
-    //  FAILED if the overworld didn't come back.
-    SaleEnd back_to_clerk(SaleEnd end);
-
-    ConsoleHandle& m_console;
-    ProControllerContext& m_context;
-    Language m_language;
-};
+SaleEnd sell_on_console(ConsoleHandle& console, ProControllerContext& context, Language language, const MartLine& sale);
 
 
 

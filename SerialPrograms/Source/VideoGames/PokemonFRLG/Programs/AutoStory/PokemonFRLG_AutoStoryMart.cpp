@@ -257,7 +257,7 @@ namespace{
 //  One Mart step under way.
 class MartRun{
 public:
-    MartRun(Logger& logger, MartActions& actions, MartSellActions& sell, const MartPlan& plan)
+    MartRun(Logger& logger, MartActions& actions, const MartSell& sell, const MartPlan& plan)
         : m_logger(logger)
         , m_actions(actions)
         , m_sell(sell)
@@ -311,7 +311,7 @@ private:
     //  Sells `sale`, facing the clerk before and after. None in the bag is
     //  logged and passed.
     bool sell_one(const MartLine& sale){
-        switch (m_sell.sell(sale)){
+        switch (m_sell(sale)){
         case SaleEnd::SOLD:{
             const size_t earned = sale.quantity * sale_price(sale.item).value_or(0);
             m_logger.log(std::format("Mart: sold {} {} for ${}.", sale.quantity, sale.item, earned));
@@ -415,7 +415,7 @@ private:
 
     Logger& m_logger;
     MartActions& m_actions;
-    MartSellActions& m_sell;
+    const MartSell& m_sell;
     const MartPlan& m_plan;
     const std::vector<MartStockItem>& m_stock;
     //  Where the cursor is, from the list's top row as open_buy_list()
@@ -426,7 +426,7 @@ private:
 
 } // namespace
 
-MartResult run_mart(Logger& logger, MartActions& actions, MartSellActions& sell, const MartPlan& plan){
+MartResult run_mart(Logger& logger, MartActions& actions, const MartSell& sell, const MartPlan& plan){
     return MartRun(logger, actions, sell, plan).run();
 }
 

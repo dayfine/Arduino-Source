@@ -98,7 +98,7 @@ struct MartResult{
 //  (it holds at least what they earned) and cuts an if_affordable line to
 //  what it covers; unread, the buys go on blind.
 //  The sales take their game steps from `sell`, the buys from `actions`.
-MartResult run_mart(Logger& logger, MartActions& actions, MartSellActions& sell, const MartPlan& plan);
+MartResult run_mart(Logger& logger, MartActions& actions, const MartSell& sell, const MartPlan& plan);
 
 //  Formats a log message summarizing the Mart shopping result.
 std::string mart_message(const MartPlan& plan, const MartResult& result);

@@ -525,7 +525,9 @@ void pace_trainer_battle(StoryEnv& env, RunState& state, const StoryStep& step, 
 std::optional<Outcome> run_abilities(StoryEnv& env, RunState& state, const StoryStep& step){
     const Pokemon::Pose patch = state.pose;
     ConsoleMartActions mart(env.console, env.context, env.language, env.supplies);
-    ConsoleMartSellActions mart_sell(env.console, env.context, env.language);
+    const MartSell mart_sell = [&](const MartLine& sale){
+        return sell_on_console(env.console, env.context, env.language, sale);
+    };
     ConsoleTeachScreens teach_screens(env.console, env.context, env.language);
     ScreenTeachActions teach(env.console.logger(), teach_screens);
     ConsoleGrindActions grind(

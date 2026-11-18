@@ -43,10 +43,9 @@ public:
     virtual std::optional<size_t> read_money() override{ return std::nullopt; }
 };
 
-class StubMartSell : public MartSellActions{
-public:
-    virtual SaleEnd sell(const MartLine&) override{ return SaleEnd::FAILED; }
-};
+SaleEnd stub_mart_sell(const MartLine&){
+    return SaleEnd::FAILED;
+}
 
 class StubTeach : public TeachActions{
 public:
@@ -82,7 +81,7 @@ public:
 struct StubGame{
     std::optional<unsigned> level = 16;
     StubMart mart;
-    StubMartSell mart_sell;
+    MartSell mart_sell = stub_mart_sell;
     StubTeach teach;
     StubPatch patch;
     StubFossils fossils;
