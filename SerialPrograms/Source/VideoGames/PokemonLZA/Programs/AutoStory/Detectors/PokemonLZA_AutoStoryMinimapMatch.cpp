@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <map>
 #include <string>
@@ -36,17 +37,21 @@ constexpr size_t MINIMAP_CELLS = 16;
 constexpr double RING_INNER = 22.0 / 66;
 constexpr double RING_OUTER = 62.0 / 66;
 
-//  The largest distance that is the reference's place. Against the 03.04
-//  start (Station Front, Korean, console B, 1280x720):
-//  - the start itself moved 2 pixels: 8.7 to 15.4; JPEG at quality 40:
-//    4.4; scaled to 1920x1080: 2.0; 10% brighter: 22.3 (10% darker: 40.2,
-//    no match);
-//  - not there (Italian, 1920x1080): 2 s into 03.04's walk from it, 53.5;
-//    the end of a failed 03.04 walk along a wall, 47.4; outside the Center
-//    after 03.04, 53.5; 1,000+ other frames of Main Mission 03 (streets,
-//    Wild Zone 1, an office, menus, Korean and German): 63.9 and up.
-//  30 sits between the moved start (15.4) and the nearest other place (47.4).
+//  The largest distance that is the reference's place, after
+//  gain_matched(). Against the 03.04 start (Station Front, Korean,
+//  console B, 1280x720): 10% and 20% darker, 2.2 (40.2 and 78.8 before
+//  the gain match); 10% brighter, its whites clipped, 12.5 (22.3); 20%
+//  brighter, 21.9; its map moved one cell (8 pixels), 37 to 38; 946 lab
+//  frames of Main Mission 03 elsewhere (streets, Wild Zone 1, menus,
+//  fades), 47.5 and up. Before the gain match, also: the start moved 2
+//  pixels, 8.7 to 15.4; JPEG at quality 40, 4.4; scaled to 1920x1080, 2.0;
+//  not there (Italian, 1920x1080): the end of a failed 03.04 walk along a
+//  wall, 47.4, the rest 53.5 and up.
 constexpr double MINIMAP_MATCH_MAX = 30.0;
+
+//  The most gain_matched() scales a channel by, either way: a screen more
+//  than twice as dark or bright as the reference is too far gone to read.
+constexpr double MAX_GAIN = 2.0;
 
 constexpr std::string_view REFERENCE_PREFIX = "plza-minimap-";
 
@@ -79,6 +84,34 @@ ReferenceCells ring_of(const ReferenceCells& grid){
     return ring;
 }
 
+//  `cells` with each channel scaled so its mean is the reference's, by at
+//  most MAX_GAIN either way: a darker, lighter or tinted screen (dusk, a
+//  roof's shade) then compares by its colors relative to each other. A
+//  channel that is black throughout stays black.
+ReferenceCells gain_matched(const ReferenceCells& reference, const ReferenceCells& cells){
+    FloatPixel reference_sum;
+    FloatPixel sum;
+    for (size_t index = 0; index < cells.size(); index++){
+        reference_sum += reference[index];
+        sum += cells[index];
+    }
+    const auto gain = [](double want, double have){
+        if (have <= 0){
+            return 1.0;
+        }
+        return std::clamp(want / have, 1 / MAX_GAIN, MAX_GAIN);
+    };
+    const double r = gain(reference_sum.r, sum.r);
+    const double g = gain(reference_sum.g, sum.g);
+    const double b = gain(reference_sum.b, sum.b);
+    ReferenceCells matched;
+    matched.reserve(cells.size());
+    for (const FloatPixel& cell : cells){
+        matched.emplace_back(cell.r * r, cell.g * g, cell.b * b);
+    }
+    return matched;
+}
+
 //  The built-in minimap references' rings, by name (the file name after
 //  "plza-minimap-"). Throws ParseException for a malformed file.
 const std::map<std::string, ReferenceCells, std::less<>>& minimap_references(){
@@ -109,7 +142,7 @@ std::optional<std::string> matching_minimap(const ImageViewRGB32& screen){
     std::optional<std::string> closest;
     double closest_distance = MINIMAP_MATCH_MAX;
     for (const auto& [name, reference] : minimap_references()){
-        const double distance = cells_rmsd(reference, ring);
+        const double distance = cells_rmsd(reference, gain_matched(reference, ring));
         if (distance <= closest_distance){
             closest = name;
             closest_distance = distance;

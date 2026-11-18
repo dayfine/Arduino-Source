@@ -323,7 +323,9 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
     config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
     config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
-    config.text_with_a = Pokemon::story_arg<bool>(call.args, "advance_with_a");
+    if (Pokemon::story_arg<bool>(call.args, "advance_with_a")){
+        config.text_button = BUTTON_A;
+    }
     const auto gap = call.args.find("gap_press_ms");
     if (gap != call.args.end()){
         config.gap_press = Milliseconds(std::get<int64_t>(gap->second));

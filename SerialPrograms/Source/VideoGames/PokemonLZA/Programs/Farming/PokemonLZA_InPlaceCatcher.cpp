@@ -10,7 +10,6 @@
 //#include "CommonTools/Async/InferenceSession.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonLA/Inference/Sounds/PokemonLA_ShinySoundDetector.h"
@@ -19,8 +18,8 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
-#include "VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "PokemonLZA_InPlaceCatcher.h"
 
@@ -168,13 +167,7 @@ void InPlaceCatcher::run(
             env.console, context,
             [](ProControllerContext& context){
                 while (true){
-                    for (int c = 0; c < 10; c++){
-                        ssf_press_right_joystick(context, {-0.5, 0}, 0ms, 1000ms, 0ms);
-                        ssf_press_dpad(context, DpadPosition::DPAD_UP, 0ms, 160ms, 160ms);
-                        pbf_mash_button(context, BUTTON_ZL, 1000ms);
-                        pbf_press_button(context, BUTTON_ZL, 500ms, 0ms);
-                    }
-                    pbf_press_button(context, BUTTON_L, 160ms, 160ms);
+                    sweep_camera_for_lock_on(context, /*camera_x=*/-0.5, /*rounds=*/10);
                 }
             },
             {
@@ -204,10 +197,11 @@ void InPlaceCatcher::run(
 
         if (!attack_tracker.currently_active() || last_attack + 5000ms > current_time()){
             env.log("Detected battle menu. Throwing ball...", COLOR_BLUE);
-            throw_ball(context, BallThrowOptions{
-                .aim = 500ms,
-                .after_throw = 3500ms,
-            });
+            pbf_press_button(
+                context,
+                BUTTON_ZL | BUTTON_ZR,
+                500ms, 3500ms
+            );
             pbf_press_button(context, BUTTON_L, 160ms, 160ms);
             stats.balls_thrown++;
             env.update_stats();

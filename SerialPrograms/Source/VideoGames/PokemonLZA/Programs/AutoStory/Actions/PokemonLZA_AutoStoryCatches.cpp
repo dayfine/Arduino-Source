@@ -18,12 +18,11 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
-#include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
@@ -152,12 +151,11 @@ constexpr Milliseconds LOCK_ON_WAIT(3000);
 constexpr double TARGET_FLICK = 0.8;
 
 //  A catch stop's lock-on sweep (sweep_for_lock_on()), upstream's
-//  InPlaceCatcher's: rounds of the right stick at SWEEP_STICK_X for
-//  SWEEP_TURN, D-pad up (the partner out), ZL mashed 1 s and held 0.5 s.
+//  InPlaceCatcher's: rounds of the right stick at SWEEP_STICK_X for 1 s,
+//  D-pad up (the partner out), ZL mashed 1 s and held 0.5 s.
 //  Right, toward the grass right of the road, where the user's catches
 //  were (Mareep) besides the road itself (Scatterbug).
 constexpr double SWEEP_STICK_X = 0.5;
-constexpr Milliseconds SWEEP_TURN(1000);
 constexpr int SWEEP_ROUNDS = 8;
 
 
@@ -434,37 +432,21 @@ TargetThrows throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarg
     return out;
 }
 
-//  Upstream's lock-on sweep (InPlaceCatcher): SWEEP_ROUNDS rounds of a
-//  camera turn right, D-pad up, ZL mashed 1 s and held 0.5 s, until the
-//  battle menu's move symbols show (MoveEffectivenessSymbolWatcher): ZL
-//  has locked on to a wild Pokemon. Returns whether they showed; when not,
-//  L puts the camera back behind the player.
+//  Upstream's lock-on sweep (lock_on_by_sweep(), InPlaceCatcher's):
+//  SWEEP_ROUNDS rounds turning the camera right, until the battle menu's
+//  move symbols show: ZL has locked on to a wild Pokemon. Returns whether
+//  they showed; when not, the sweep's L put the camera back behind the
+//  player.
 bool sweep_for_lock_on(StoryEnv& env, PlzaBackend& backend, int at){
-    ConsoleHandle& console = env.env.console;
-    MoveEffectivenessSymbolWatcher symbols(COLOR_RED, &console.overlay(), /*hold_duration=*/100ms);
     env.context.wait_for_all_requests();
     const WallClock start = current_time();
-    const int fired = run_until<ProControllerContext>(
-        console, env.context,
-        [](ProControllerContext& context){
-            for (int round = 0; round < SWEEP_ROUNDS; round++){
-                ssf_press_right_joystick(context, /*position=*/{SWEEP_STICK_X, 0}, /*delay=*/0ms, /*hold=*/SWEEP_TURN, /*cool=*/0ms);
-                ssf_press_dpad(context, DPAD_UP, /*delay=*/0ms, /*hold=*/160ms, /*cool=*/160ms);
-                pbf_mash_button(context, BUTTON_ZL, 1000ms);
-                pbf_press_button(context, BUTTON_ZL, /*hold=*/500ms, /*release=*/0ms);
-            }
-        },
-        {symbols}
-    );
-    env.context.wait_for_all_requests();
+    const bool locked = lock_on_by_sweep(env.env.console, env.context, SWEEP_STICK_X, SWEEP_ROUNDS);
     const long long elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start).count();
-    if (fired == 0){
+    if (locked){
         backend.log(std::format("[PLZA] catch_in_zone: at {}: the move symbols showed {} ms into the lock-on sweep: locked on", at, elapsed));
         return true;
     }
     backend.log(std::format("[PLZA] catch_in_zone: at {}: no move symbols in {} sweep rounds ({} ms): L", at, SWEEP_ROUNDS, elapsed));
-    pbf_press_button(env.context, BUTTON_L, /*hold=*/160ms, /*release=*/160ms);
-    env.context.wait_for_all_requests();
     return false;
 }
 

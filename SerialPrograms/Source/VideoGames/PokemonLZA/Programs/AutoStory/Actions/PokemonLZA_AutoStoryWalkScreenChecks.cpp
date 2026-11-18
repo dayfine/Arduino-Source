@@ -55,8 +55,7 @@ constexpr size_t PROMPT_PRESSES = 3;
 
 //  Whether `look` shows that A at a prompt was taken: a fade, or text.
 bool prompt_taken(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::FADE_BLACK) || look.events.has(ScreenEvent::FADE_WHITE) ||
-        look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
+    return fade_shows(look) || look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
 }
 
 //  A at a prompt, then looks until a fade or text shows; returns whether
@@ -84,7 +83,7 @@ std::string_view not_free_control(const ScreenObservation& look){
     if (look.events.has(ScreenEvent::DIALOG_BOX)){
         return "a text box";
     }
-    if (look.events.has(ScreenEvent::FADE_BLACK) || look.events.has(ScreenEvent::FADE_WHITE)){
+    if (fade_shows(look)){
         return "a fade";
     }
     return "";

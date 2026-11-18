@@ -453,6 +453,13 @@ file(GLOB LIBRARY_SOURCES
     ../Common/Cpp/Sockets/ServerSocket_WinSocket.h
     ../Common/Cpp/Sockets/ServerSocket_Qt.h
     ../Common/Cpp/Sockets/ServerSocket.h
+    ../Common/Cpp/Sockets/ServerSocket2.h
+    ../Common/Cpp/Sockets/ServerSocket2_POSIX.cpp
+    ../Common/Cpp/Sockets/ServerSocket2_POSIX.h
+    ../Common/Cpp/Sockets/ServerSocket2_Qt.cpp
+    ../Common/Cpp/Sockets/ServerSocket2_Qt.h
+    ../Common/Cpp/Sockets/ServerSocket2_WinSocket.cpp
+    ../Common/Cpp/Sockets/ServerSocket2_WinSocket.h
     ../Common/Cpp/Sockets/ServerSocket2_Tests.cpp
     ../Common/Cpp/Sockets/ServerSocket2_Tests.h
     ../Common/Cpp/Sockets/Sockets_Tests.cpp
@@ -2529,6 +2536,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionCompleteDetector.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader_Tests.cpp
@@ -2625,6 +2634,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.h
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.cpp
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.cpp
@@ -3667,6 +3678,8 @@ list(APPEND LOGIC_LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Map.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Road.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryReferenceCells.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackups.cpp
@@ -3683,6 +3696,7 @@ list(APPEND LOGIC_TEST_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerArrival_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackups_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.cpp
