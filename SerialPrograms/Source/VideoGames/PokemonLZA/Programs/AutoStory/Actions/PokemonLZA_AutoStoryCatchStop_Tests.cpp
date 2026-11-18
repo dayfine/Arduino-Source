@@ -202,6 +202,84 @@ private:
 
 
 
+//  stop_aim(): what a catch stop does after its lock-on sweep, from
+//  whether the battle menu's move symbols showed and the plates read with
+//  ZL held after.
+struct StopAimCase{
+    std::string name;
+    struct Input{
+        bool locked_on;
+        std::vector<LockTarget> plates;
+    };
+    Input input;
+    struct Expectation{
+        StopAim aim;
+    };
+    Expectation expectation;
+};
+
+std::string_view stop_aim_text(StopAim aim){
+    switch (aim){
+    case StopAim::MOVE_ON:
+        return "move on";
+    case StopAim::LOOK_AGAIN:
+        return "look again";
+    case StopAim::LOOK_FURTHER:
+        return "look further";
+    case StopAim::THROW:
+        return "throw";
+    }
+    return "?";
+}
+
+const StopAimCase STOP_AIM_CASES[] = {
+    {
+        .name = "no move symbols in a full sweep moves on to the next stop",
+        .input = {.locked_on = false, .plates = {}},
+        .expectation = {.aim = StopAim::MOVE_ON},
+    },
+    {
+        .name = "locked on, the nearest plate not caught is thrown at",
+        .input = {.locked_on = true, .plates = {plate(/*x=*/0.50, /*y=*/0.48, /*caught=*/false)}},
+        .expectation = {.aim = StopAim::THROW},
+    },
+    {
+        .name = "locked on, the nearest of a caught species, the next not: thrown at the next",
+        .input = {.locked_on = true, .plates = {plate(/*x=*/0.50, /*y=*/0.50, /*caught=*/true), plate(/*x=*/0.70, /*y=*/0.42, /*caught=*/false)}},
+        .expectation = {.aim = StopAim::THROW},
+    },
+    {
+        .name = "locked on, every plate of a caught species looks further",
+        .input = {.locked_on = true, .plates = {plate(/*x=*/0.50, /*y=*/0.50, /*caught=*/true), plate(/*x=*/0.70, /*y=*/0.42, /*caught=*/true)}},
+        .expectation = {.aim = StopAim::LOOK_FURTHER},
+    },
+    {
+        .name = "locked on, but no plate read looks again",
+        .input = {.locked_on = true, .plates = {}},
+        .expectation = {.aim = StopAim::LOOK_AGAIN},
+    },
+};
+
+class Test_StopAim : public UnitTest{
+public:
+    explicit Test_StopAim(const StopAimCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: after the lock-on sweep: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const StopAim aim = stop_aim(m_case.input.locked_on, m_case.input.plates);
+        if (aim != m_case.expectation.aim){
+            return std::format("Expected {}, got {}.", stop_aim_text(m_case.expectation.aim), stop_aim_text(aim));
+        }
+        return true;
+    }
+
+private:
+    const StopAimCase& m_case;
+};
+
+
+
 //  CameraPitch: when a catch stop resets the camera's pitch.
 struct PitchCase{
     std::string name;
@@ -282,6 +360,9 @@ void add_tests_AutoStoryCatchStop(UnitTestDatabase& database){
     }
     for (const AfterThrowCase& item : AFTER_THROW_CASES){
         database.add<Test_AfterThrow>(item);
+    }
+    for (const StopAimCase& item : STOP_AIM_CASES){
+        database.add<Test_StopAim>(item);
     }
     for (const PitchCase& item : PITCH_CASES){
         database.add<Test_CameraPitch>(item);

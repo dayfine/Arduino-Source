@@ -3,9 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The console-free choices behind Wild Zone 1's catches: which lock-on
- *  target to throw at and whether to walk toward it first (the brackets
- *  to turn to are in PokemonLZA_AutoStoryBracketWatch.h, the stops along
- *  the road in PokemonLZA_AutoStoryZone1Road.h).
+ *  target to throw at and whether to walk toward it first (the stops
+ *  along the road are in PokemonLZA_AutoStoryZone1Road.h).
  *
  */
 

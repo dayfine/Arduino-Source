@@ -33,6 +33,16 @@ AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<L
     return AfterThrow::LOOK_AGAIN;
 }
 
+StopAim stop_aim(bool locked_on, const std::vector<LockTarget>& plates){
+    if (!locked_on){
+        return StopAim::MOVE_ON;
+    }
+    if (plates.empty()){
+        return StopAim::LOOK_AGAIN;
+    }
+    return nearest_uncaught(plates) ? StopAim::THROW : StopAim::LOOK_FURTHER;
+}
+
 bool CameraPitch::level_now(){
     const bool tipped = m_tipped;
     m_tipped = false;
