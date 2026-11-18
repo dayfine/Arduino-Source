@@ -12,6 +12,7 @@
 #define PokemonAutomation_PokemonFRLG_BikeSpinMechanics_H
 
 #include "Common/Cpp/Time.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -28,7 +29,7 @@ namespace MovementMechanics{
 //  of the motion on screen) held "west 16 (open)" for 17 or 18 tiles on
 //  Route 8 (08.03 run 2). Not the decompilation's 4 frames a tile (67ms):
 //  the bike speeds up from rest.
-inline constexpr Milliseconds BIKE_TILE_TIME(100);
+inline constexpr Milliseconds BIKE_TILE_TIME = Pokemon::FRLG_MOVE_MECHANICS.bike->tile.across;
 
 //  On the Bicycle a tap never only turns the player: from rest, a 40ms tap
 //  moved a tile facing either way, and holds of 112, 150, 200, 250, 300,

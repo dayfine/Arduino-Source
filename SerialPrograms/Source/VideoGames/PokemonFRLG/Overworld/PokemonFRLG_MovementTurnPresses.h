@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include "Common/Cpp/Time.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -19,7 +20,7 @@ namespace MovementMechanics{
 
 
 //  Turns a player facing another way, without a step.
-inline constexpr Milliseconds TURN_TAP(40);
+inline constexpr Milliseconds TURN_TAP = Pokemon::FRLG_MOVE_MECHANICS.turn_tap;
 //  How long to wait after a turn tap for the turn to show.
 inline constexpr Milliseconds TURN_SETTLE(300);
 //  How many taps turn_to() tries before it takes the player as turned.
