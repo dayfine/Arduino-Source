@@ -1,0 +1,37 @@
+exports_files([
+    "bazel_embed_text.py",
+    "bazel_test_main.cpp",
+])
+
+cc_library(
+    name = "third_party_core_headers",
+    hdrs = glob([
+        "3rdParty/**/*.h",
+        "3rdParty/**/*.hpp",
+        "3rdParty-Core/**/*.h",
+        "3rdParty-Core/**/*.hpp",
+    ]),
+    includes = ["3rdParty-Core"],
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "common_headers",
+    hdrs = glob([
+        "Common/**/*.h",
+        "Common/**/*.hpp",
+        "Common/**/*.tpp",
+    ]),
+    visibility = ["//visibility:public"],
+)
+
+cc_library(
+    name = "serial_programs_headers",
+    hdrs = glob([
+        "SerialPrograms/Source/**/*.h",
+        "SerialPrograms/Source/**/*.hpp",
+        "SerialPrograms/Source/**/*.tpp",
+    ]),
+    includes = ["SerialPrograms/Source"],
+    visibility = ["//visibility:public"],
+)
