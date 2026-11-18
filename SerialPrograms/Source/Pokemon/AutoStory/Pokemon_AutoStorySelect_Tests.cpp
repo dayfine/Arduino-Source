@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include <memory>
 #include <string>
 #include <utility>
@@ -103,6 +104,66 @@ private:
     const AutoStorySelectScenario m_scenario;
 };
 
+//  (slug, label) entries as [0 "label", ...].
+std::string describe_entries(const std::vector<std::pair<std::string, std::string>>& entries){
+    std::string text;
+    for (const auto& [slug, label] : entries){
+        text += std::format("{}{} \"{}\"", text.empty() ? "" : ", ", slug, label);
+    }
+    return std::format("[{}]", text);
+}
+
+//  A game's checkpoint labels, in story order.
+struct StoryCheckpointDatabaseInput{
+    std::string name;
+    std::vector<std::string> labels;
+};
+
+//  The (slug, label) entries: one per label, in order, slugged by its index.
+struct StoryCheckpointDatabaseExpectation{
+    std::vector<std::pair<std::string, std::string>> entries;
+};
+
+// story_checkpoint_database() over a game's labels and the entries it must make.
+struct StoryCheckpointDatabaseCase{
+    StoryCheckpointDatabaseInput input;
+    StoryCheckpointDatabaseExpectation expectation;
+};
+
+class Test_StoryCheckpointDatabase : public UnitTest{
+public:
+    Test_StoryCheckpointDatabase(StoryCheckpointDatabaseCase test_case)
+        : UnitTest(std::format("Pokemon::AutoStorySelectDatabase - {}", test_case.input.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const StringSelectDatabase database = story_checkpoint_database(m_case.input.labels);
+        std::vector<std::pair<std::string, std::string>> got;
+        for (const StringSelectEntry& entry : database.case_list()){
+            got.emplace_back(entry.slug, entry.display_name);
+        }
+        if (got != m_case.expectation.entries){
+            return std::format("Expected {}, got {}", describe_entries(m_case.expectation.entries), describe_entries(got));
+        }
+        return true;
+    }
+
+private:
+    const StoryCheckpointDatabaseCase m_case;
+};
+
+const StoryCheckpointDatabaseCase STORY_CHECKPOINT_DATABASE_CASES[] = {
+    {
+        .input = {.name = "checkpoint labels slugged by index", .labels = {"00.01 Pallet Town", "00.02 Oak's lab"}},
+        .expectation = {.entries = {{"0", "00.01 Pallet Town"}, {"1", "00.02 Oak's lab"}}},
+    },
+    {
+        .input = {.name = "no checkpoints, no entries", .labels = {}},
+        .expectation = {.entries = {}},
+    },
+};
+
 void add_index_tests(UnitTestDatabase& database){
     const AutoStoryIndexScenario scenarios[] = {
         {
@@ -157,6 +218,9 @@ void add_select_database_tests(UnitTestDatabase& database){
     };
     for (const AutoStorySelectScenario& scenario : select_scenarios){
         database.add<Test_AutoStorySelectDatabase>(scenario);
+    }
+    for (const StoryCheckpointDatabaseCase& test_case : STORY_CHECKPOINT_DATABASE_CASES){
+        database.add<Test_StoryCheckpointDatabase>(test_case);
     }
 }
 

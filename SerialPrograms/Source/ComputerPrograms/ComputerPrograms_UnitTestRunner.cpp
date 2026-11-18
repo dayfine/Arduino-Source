@@ -16,7 +16,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -29,15 +29,29 @@
 #include "CommonFramework/Windows/LabControl.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
+#include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
+#include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
+#include "Pokemon/Navigation/Pokemon_Gates_Tests.h"
+#include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
+#include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
+#include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
+#include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
@@ -58,7 +72,6 @@ namespace ComputerPrograms{
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
-
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_ServerSocket2(ret, GlobalThreadPools::unlimited_normal());
@@ -78,10 +91,24 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabControl(ret);
     add_tests_ImageStats(ret);
     OCR::add_tests(ret);
+    add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
-    Pokemon::add_tests_AutoStorySelect(ret);
+    Pokemon::add_tests_LegPlanner(ret);
+    Pokemon::add_tests_LegWalker(ret);
+    Pokemon::add_tests_WallRecovery(ret);
+    Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_ConnectedMaps(ret);
+    Pokemon::add_tests_Gates(ret);
+    Pokemon::add_tests_MoveMechanics(ret);
+    Pokemon::add_tests_RuntimeMap(ret);
+    Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_SimFaults(ret);
+    Pokemon::add_tests_SimGolden(ret);
+    Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
+    NintendoSwitch::add_tests_HomeTileReader(ret);
+    NintendoSwitch::add_tests_SystemKeyboardDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
     NintendoSwitch::PokemonBDSP::add_tests_DialogDetector(ret);

@@ -1,0 +1,513 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "11.03",
+    "title": "The Safari Zone: the FULL RESTORE, the GOLD TEETH and HM03 SURF from the Secret House, and Fly back to Fuchsia City",
+    "start": {
+      "map": "FuchsiaCity",
+      "tiles": [
+        [
+          24,
+          6
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "count_full_restore_before",
+        "kind": "game_action",
+        "action": "count_items",
+        "args": {
+          "items": [
+            "full-restore"
+          ]
+        },
+        "why": "the Items pocket's FULL RESTOREs before the Safari Zone, where the START menu can't be trusted to the standard rows (RETIRE tops it): the one found there is confirmed against this count after the Fly back"
+      },
+      {
+        "id": "below_safari_counter",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {
+            "map": "FuchsiaCity_SafariZone_Entrance",
+            "tiles": [
+              [
+                4,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "in through the Safari Zone's door (24, 5), off the Bicycle indoors, and up to below the middle trigger (4, 3) (pokefirered FuchsiaCity_SafariZone_Entrance map.json)"
+      },
+      {
+        "id": "safari_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {
+          "map": "FuchsiaCity_SafariZone_Entrance",
+          "tiles": [
+            [
+              4,
+              3
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "onto the middle trigger (4, 3), FuchsiaCity_SafariZone_Entrance_EventScript_EntryTriggerMid: \"Welcome to the SAFARI ZONE!\", the player turns right, and the money box opens"
+      },
+      {
+        "id": "join_safari_game",
+        "kind": "answer",
+        "why": "YES to \"Would you like to join the hunt? That'll be 500 each\" (pokeguy pays 500, 5634 to 5134, 1:12:54..1:13:23); the party has a free slot or room in a box (CheckSpaceForMons)"
+      },
+      {
+        "id": "thirty_safari_balls",
+        "kind": "scene",
+        "declared_after": {
+          "map": "SafariZone_Center",
+          "tiles": [
+            [
+              26,
+              30
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "\"<player> received 30 SAFARI BALLS!\", the PA message, two steps up (EnterSafariZoneMid) and the script's warp to the Safari Zone's center (26, 30) (warp MAP_SAFARI_ZONE_CENTER, 255, 26, 30): the 600-step count starts there"
+      },
+      {
+        "id": "center_to_east",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SafariZone_East",
+            "tiles": [
+              [
+                9,
+                27
+              ]
+            ],
+            "facing": "east"
+          }
+        },
+        "why": "pokeguy's eastern path: on foot through the center to its east exit (43, 15..17), on ground with no grass, into the east area (Area 1) at (8, 27)"
+      },
+      {
+        "id": "ride_bike",
+        "kind": "game_action",
+        "action": "ride_bike",
+        "why": "on the BICYCLE with SELECT (registered in 08.03): the Safari Zone's areas allow it, and their edge warps keep a rider on it (allow_cycling)"
+      },
+      {
+        "id": "before_east_grass",
+        "kind": "legs",
+        "action": "bike",
+        "args": {
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 19
+            }
+          ]
+        },
+        "why": "along the east area's bottom row to (28, 28), the tile before its first grass (29, 28): the Super Repel's 200 steps start here, so they last to the north area's last grass (SafariZone_Tests' step count)"
+      },
+      {
+        "id": "super_repel",
+        "kind": "game_action",
+        "action": "use_item",
+        "args": {
+          "item": "super-repel",
+          "safari": true
+        },
+        "why": "pokeguy's one Super Repel in the Safari Zone (1:13:24..47, at 548 of 600 steps; Super Repels 6 to 5): the lead (Lv38) is above every Safari Zone wild Pokemon (Lv33 at most on land, pokefirered wild_encounters.json), so none shows for 200 steps; from the Safari menu (RETIRE, POKEDEX, POKEMON, BAG, ...)"
+      },
+      {
+        "id": "to_full_restore",
+        "kind": "legs",
+        "action": "bike",
+        "args": {
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 8
+            },
+            {
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "west",
+              "tiles": 6
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 6
+            },
+            {
+              "direction": "north",
+              "tiles": 15
+            },
+            {
+              "direction": "east",
+              "tiles": 8
+            },
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 6
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ]
+        },
+        "why": "the shortest way round the east area's ledges and levels (pokefirered SafariZone_East map.json elevations) to below the FULL RESTORE's ball (37, 15), on the Bicycle. An approach to an A press ends on its tile: held east along row 14 to the wall (39, 14) at (38, 14), south to (38, 16) above the level 4 ground (38, 17), and a tile west; held, \"east 4\" was open at (37, 14)"
+      },
+      {
+        "id": "below_full_restore",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {
+            "map": "SafariZone_East",
+            "tiles": [
+              [
+                37,
+                16
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "turned to the ball; the LEAF STONE (36, 17), TM11 (31, 18) and MAX POTION (13, 12) are left, as pokeguy leaves them"
+      },
+      {
+        "id": "full_restore",
+        "kind": "talk",
+        "why": "pick up the FULL RESTORE (SafariZone_East_EventScript_ItemFullRestore; pokeguy 1:13:45..47)"
+      },
+      {
+        "id": "to_north_area",
+        "kind": "legs",
+        "action": "bike",
+        "args": {
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 6
+            },
+            {
+              "direction": "west",
+              "tiles": 14
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 12
+            }
+          ]
+        },
+        "why": "west along the east area's top to (9, 9), beside its exit (8, 9)"
+      },
+      {
+        "id": "into_north_area",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {
+            "map": "SafariZone_North",
+            "tiles": [
+              [
+                48,
+                31
+              ]
+            ],
+            "facing": "west"
+          }
+        },
+        "why": "through the exit into the north area (Area 2), arriving at (48, 31)"
+      },
+      {
+        "id": "to_west_area",
+        "kind": "legs",
+        "action": "bike",
+        "args": {
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 16
+            },
+            {
+              "direction": "north",
+              "tiles": 6
+            },
+            {
+              "direction": "west",
+              "tiles": 6
+            },
+            {
+              "direction": "south",
+              "tiles": 5
+            },
+            {
+              "direction": "west",
+              "tiles": 3
+            },
+            {
+              "direction": "north",
+              "tiles": 8
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 8
+            },
+            {
+              "direction": "east",
+              "tiles": 10
+            },
+            {
+              "direction": "north",
+              "tiles": 5
+            },
+            {
+              "direction": "west",
+              "tiles": 16
+            },
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "west",
+              "tiles": 2
+            },
+            {
+              "direction": "south",
+              "tiles": 6
+            },
+            {
+              "direction": "west",
+              "tiles": 5
+            },
+            {
+              "direction": "south",
+              "tiles": 17
+            }
+          ]
+        },
+        "why": "the shortest way through the north area's levels with the least grass, its last grass (13..14, 9..10) the Super Repel's 193rd step, down column 11 to (11, 33), above its exit (11, 34); the PROTEIN, TM47 and QUICK CLAW are left"
+      },
+      {
+        "id": "into_west_area",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {
+            "map": "SafariZone_West",
+            "tiles": [
+              [
+                31,
+                5
+              ]
+            ],
+            "facing": "south"
+          }
+        },
+        "why": "through the exit into the west area (Area 3), arriving at (31, 5)"
+      },
+      {
+        "id": "below_gold_teeth",
+        "kind": "legs",
+        "action": "bike",
+        "args": {
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 11
+            },
+            {
+              "direction": "west",
+              "tiles": 4
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            }
+          ]
+        },
+        "why": "down to below the GOLD TEETH's ball (28, 14) (pokeguy 1:14:07..09), the TM32, MAX POTION and MAX REVIVE left: west along row 16 to the wall (26, 16), a tile east, and up into the ball. An approach to an A press ends on its tile: held, \"south 10\" and \"west 3\" were open at (31, 16) and (27, 15)"
+      },
+      {
+        "id": "gold_teeth",
+        "kind": "talk",
+        "why": "pick up the GOLD TEETH (SafariZone_West_EventScript_ItemGoldTeeth), a key item for the Warden (14.01): its message confirms it, as the Items pocket has no row for it"
+      },
+      {
+        "id": "into_secret_house",
+        "kind": "route",
+        "action": "bike",
+        "args": {
+          "target": {
+            "map": "SafariZone_SecretHouse",
+            "tiles": [
+              [
+                4,
+                9
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "west to the Secret House's door (12, 7), off the Bicycle indoors, arriving at (4, 9)"
+      },
+      {
+        "id": "below_secret_house_attendant",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            }
+          ]
+        },
+        "why": "a tap a tile from the door (4, 9) up to below the attendant (6, 5): (6, 6), facing him. An approach to an A press ends on its tile: held, \"east 2\" along row 6 is open at (7, 6)"
+      },
+      {
+        "id": "hm03_surf",
+        "kind": "talk",
+        "why": "the attendant: \"CONGRATULATIONS! You have found the SECRET HOUSE!\" and HM03 SURF (SafariZone_SecretHouse_EventScript_Attendant, FLAG_GOT_HM03), no YES/NO (pokeguy 1:14:15..21)"
+      },
+      {
+        "id": "out_of_secret_house",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SafariZone_West",
+            "tiles": [
+              [
+                12,
+                8
+              ]
+            ],
+            "facing": "south"
+          }
+        },
+        "why": "out to below the Secret House's door, outdoors, where Fly works (MAP_TYPE_ROUTE)"
+      },
+      {
+        "id": "fly_fuchsia",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "FuchsiaCity",
+          "species": "pidgey",
+          "safari": true
+        },
+        "declared_after": {
+          "map": "FuchsiaCity",
+          "tiles": [
+            [
+              25,
+              32
+            ]
+          ],
+          "facing": "south"
+        },
+        "why": "the Pidgey flies out to Fuchsia City (pokeguy 1:14:22..37, rather than the steps running out or RETIRE), from the Safari menu, landing below the Pokemon Center's door; the Fly ends Safari mode"
+      },
+      {
+        "id": "count_full_restore_after",
+        "kind": "game_action",
+        "action": "count_items",
+        "args": {
+          "items": [
+            "full-restore"
+          ],
+          "found": true
+        },
+        "why": "one more FULL RESTORE than before the Safari Zone: its ball was picked up"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "From below the Safari Zone's door (11.02), pokeguy's Safari Zone (1:12:54 to 1:14:37): 500 for the game, the eastern path on foot, a Super Repel and the Bicycle, the FULL RESTORE, the GOLD TEETH, HM03 SURF from the Secret House, and Fly back to Fuchsia. No Safari Pokemon is caught, and the other item balls are left (pokefirered SafariZone_* map.json).",
+        "In the Safari Zone the START menu is RETIRE, POKEDEX, POKEMON, BAG, PLAYER, OPTION, EXIT (pokefirered SetUpStartMenu_SafariZone): the Super Repel and the Fly open it with the `safari` arg. There is no SAVE there, so the checkpoint ends after the Fly, saved in Fuchsia City.",
+        "Not measured on the console: the entrance's trigger and script timings, the Safari START menu's rows, and Fly from the Safari Zone (pokeguy flies; Overworld_ResetStateAfterFly clears Safari mode)."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

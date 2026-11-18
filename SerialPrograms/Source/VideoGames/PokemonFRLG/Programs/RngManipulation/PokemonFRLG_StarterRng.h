@@ -12,12 +12,13 @@
 #include "Common/Cpp/Options/StaticTextOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "CommonTools/Options/LanguageOCROption.h"
-#include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "Pokemon/Pokemon_StatsCalculation.h"
 #include "Pokemon/Pokemon_AdvRng.h"
 #include "PokemonFRLG_RngDisplays.h"
+#include "PokemonFRLG_RngProgram.h"
 #include "PokemonFRLG_SeedsDatabase.h"
+#include "PokemonFRLG_StarterRngAttempts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -26,13 +27,16 @@ namespace PokemonFRLG{
 class StarterRng_Descriptor : public SingleSwitchProgramDescriptor{
 public:
     StarterRng_Descriptor();
-    struct Stats;
+    using Stats = StarterRngStats;
     virtual std::unique_ptr<StatsTracker> make_stats() const override;
 };
 
-class StarterRng : public SingleSwitchProgramInstance, private ConfigOption::Listener{
+//  Calibrates timings to hit an RNG target for a starter.
+class StarterRng : public RngProgramInstance, private ConfigOption::Listener{
 public:
     using Descriptor = StarterRng_Descriptor;
+    //  The party is empty before the starter, so there is nothing to check.
+    virtual size_t free_party_slots_needed() const override{ return 0; }
     ~StarterRng();
     StarterRng();
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext &context) override;
@@ -44,35 +48,10 @@ public:
 private:
     virtual void on_config_value_changed(void* object) override;
 
-    enum class Starter{
-        bulbasaur,
-        squirtle,
-        charmander
-    };
-
     enum class GameVersion{
         firered,
         leafgreen
     };
-
-    bool walk_to_rival_battle(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
-    bool auto_battle_rival(
-        SingleSwitchProgramEnvironment& env, 
-        ProControllerContext& context, 
-        AdvObservedPokemon& pokemon,
-        AdvRngFilters& filters,
-        const BaseStats& BASE_STATS
-    );
-
-    bool walk_to_route1_from_lab(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
-    bool walk_to_route1_from_home(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
-    int autolevel_on_route1(
-        SingleSwitchProgramEnvironment& env, 
-        ProControllerContext& context, 
-        AdvObservedPokemon& pokemon,
-        AdvRngFilters& filters,
-        const BaseStats& BASE_STATS
-    );
 
     SectionDividerOption m_calibration_displays;
     RngTargetDisplay RNG_TARGET;
@@ -85,7 +64,7 @@ private:
     EnumDropdownOption<SoundSetting> SOUND;
 
     SectionDividerOption m_target_settings;
-    EnumDropdownOption<Starter> STARTER;
+    EnumDropdownOption<StarterSpecies> STARTER;
     StringOption SEED;
     SimpleIntegerOption<uint64_t>ADVANCES;
 

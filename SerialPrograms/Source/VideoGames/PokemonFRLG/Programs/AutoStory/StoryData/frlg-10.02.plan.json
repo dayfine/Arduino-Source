@@ -1,0 +1,31 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "10.02",
+    "title": "Pokemon Tower 1F and 2F, saved below the rival's trigger",
+    "start": {"map": "LavenderTown_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "tower_2f_east_of_rival",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_2F", "tiles": [[17, 6]], "facing": "west"}
+        },
+        "why": "out of the Center's door (6, 5), east to the Tower's door (18, 6), up 1F to its stairs (18, 9), and on 2F from its stairs (18, 10) up column 18 to (17, 6), a tile east of the trigger (16, 6) below the rival (16, 5); the other trigger (17, 5) is north of it"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "From Lavender's Pokemon Center into the Pokemon Tower (PokemonTower_1F, _2F map.json) to a tile east of the rival's lower trigger. The rival's battle is its own checkpoint, 10.03, verified and retried from this save. 1F and 2F have no wild Pokemon; 1F's wanderers (6..8, 7..9) and (6..10, 10..14) keep west of column 11.",
+        "The save card's place in the Tower isn't in save_card_place(): a run started at 10.03 doesn't check it."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

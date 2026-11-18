@@ -1,0 +1,68 @@
+{
+    "format": "pokesim-authored-checkpoint/1",
+    "game": "frlg",
+    "checkpoint": {
+        "id": "16.03b",
+        "title": "To the employee with the Lapras",
+        "start": {
+            "map": "SilphCo_7F",
+            "tiles": [
+                [
+                    2,
+                    4
+                ]
+            ],
+            "facing": "south"
+        },
+        "start_flags": [
+            "card_key_held"
+        ],
+        "events": [
+            {
+                "id": "to_lapras_guy",
+                "kind": "route",
+                "action": "run",
+                "args": {
+                    "target": {
+                        "map": "SilphCo_7F",
+                        "tiles": [
+                            [
+                                1,
+                                7
+                            ]
+                        ],
+                        "facing": "west"
+                    }
+                },
+                "why": "down column 1, past the rival's tile (2, 6), to (1, 7), beside the employee (0, 7) who gives the LAPRAS (SilphCo_7F_EventScript_LaprasGuy)"
+            }
+        ]
+    },
+    "execution": {
+        "menu": "full",
+        "lead": "after_brock",
+        "handoff": "gift_rng",
+        "gift": "lapras",
+        "notes": {
+            "checkpoint": [
+                "Starts where 16.03 ends after the rival's battle and saves.",
+                "Gift RNG starts from a save facing the employee, who gives a LAPRAS Lv25 for a free party slot (pokeguy skips it, 1:32:51; a user-approved RNG gift)."
+            ]
+        }
+    },
+    "metadata": {
+        "phase": "testing",
+        "postconditions": {
+            "position": {
+                "map": "SilphCo_7F",
+                "tiles": [
+                    [
+                        1,
+                        7
+                    ]
+                ],
+                "facing": "west"
+            }
+        }
+    }
+}

@@ -73,6 +73,7 @@ private:
     ImageFloatBox m_right_box;
     ImageFloatBox m_top_box;
     ImageFloatBox m_bottom_box;
+    ImageFloatBox m_frame_box;
 };
 class WhiteDialogWatcher : public DetectorToFinder<WhiteDialogDetector>{
 public:
@@ -134,11 +135,13 @@ public:
     {}
 };
 
+//  Register the white and advance white dialog detector unit tests.
 void add_tests_AdvanceWhiteDialogDetector(UnitTestDatabase& database);
+//  Register selection dialog detector unit tests.
 void add_tests_SelectionDialogDetector(UnitTestDatabase& database);
 
-}
-}
-}
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 
 #endif

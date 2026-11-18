@@ -9,8 +9,6 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "Pokemon/Pokemon_AdvRng.h"
@@ -18,7 +16,8 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_TrainerIdReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_StartMenuNavigation.h"
-#include "PokemonFRLG_RngCalibration.h"
+#include "VideoGames/PokemonFRLG/Programs/PokemonFRLG_TrainerCard.h"
+#include "PokemonFRLG_SidSteps.h"
 #include "PokemonFRLG_SidHelper.h"
 
 namespace PokemonAutomation{
@@ -100,133 +99,6 @@ SidHelper::SidHelper()
 
 namespace{
 
-void set_sid_from_name_screen(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    const uint64_t& SID_DELAY,
-    bool extra_press_at_end
-){
-    // this is performed blind to try to maximize consistency of timing
-    // ensure the OK button is selected
-    pbf_press_button(context, BUTTON_PLUS, 200ms, 300ms);
-    // confirm name (SID delay starts now)
-    pbf_press_button(context, BUTTON_A, 200ms, 1800ms);
-    // advance to "...about to unfold!", picking the default rival name
-    pbf_press_button(context, BUTTON_A, 200ms, 2300ms);
-    pbf_press_button(context, BUTTON_A, 200ms, 1050ms);
-    pbf_press_button(context, BUTTON_A, 200ms, 1550ms);
-    pbf_move_left_joystick(context, {0,-1}, 200ms, 300ms);
-    pbf_press_button(context, BUTTON_A, 200ms, 1050ms);
-    pbf_press_button(context, BUTTON_A, 200ms, 1550ms);
-    pbf_press_button(context, BUTTON_A, 200ms, 2300ms);
-
-    // 2000 + 2500 + 1250 + 1750 + 500 + 1250 + 1750 + 2500 + 200 ms
-    Milliseconds delay(SID_DELAY > 13700
-        ? SID_DELAY - 13700
-        : 0
-    );
-
-    if (extra_press_at_end){
-        pbf_press_button(context, BUTTON_A, 200ms, 1300ms);
-        delay = delay > 1500ms ? delay - 1500ms : 0ms;
-    }
-
-    pbf_press_button(context, BUTTON_A, 200ms, delay);
-
-    // finish dialogue and lock in SID
-    pbf_press_button(context, BUTTON_A, 200ms, 0ms);
-    context.wait_for_all_requests();
-}
-
-void finish_intro_animations(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    BlackScreenWatcher black_screen;
-    context.wait_for_all_requests();
-    int ret = wait_until(
-        env.console, context, 10s,
-        { black_screen }
-    );
-
-    if (ret < 0){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT, "SidHelper(): black screen not detected within 10 seconds of setting SID", env.console
-        );
-    }
-    
-    BlackScreenOverWatcher black_screen_over;
-    context.wait_for_all_requests();
-    int ret2 = wait_until(
-        env.console, context, 10s,
-        { black_screen_over }
-    );
-
-    if (ret2 < 0){
-        env.log("finish_intro_animations(): end of black screen not detected within 10 seconds. Continuing anyway...");
-        // if there's a problem, an error will be thrown when trying to navigate to the trainer card
-    }
-
-    pbf_wait(context, 2000ms);
-    context.wait_for_all_requests();
-}
-
-void navigate_to_trainer_card(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    int errors = 0;
-    while (true){
-        if (errors >= 5){
-            OperationFailedExceptionWithScreenshot::fire(
-                ErrorReportMode::SEND_ERROR_REPORT, "SidHelper(): failed 5 times to navigate to the Trainer Card", env.console
-            ); 
-        }
-
-        open_start_menu(env.console, context);
-
-        // the positions are different before recieving a Pokemon and Pokedex
-        bool cursor = move_cursor_to_position(
-            env.console, context, SelectionArrowPositionStartMenu(1)
-        );
-        if (!cursor){
-            errors++;
-            pbf_mash_button(context, BUTTON_B, 2000ms);
-            continue;
-        }
-
-        TrainerCardWatcher trainer_card(COLOR_RED);
-        context.wait_for_all_requests();
-        int ret = run_until<ProControllerContext>(
-            env.console, context,
-            [](ProControllerContext& context){
-                pbf_press_button(context, BUTTON_A, 200ms, 2300ms);
-                pbf_press_button(context, BUTTON_A, 200ms, 2300ms);
-            },
-            { trainer_card }
-        );
-
-        if (ret < 0){
-            env.log("SidHelper(): failed to detect Trainer Card");
-            errors++;
-            pbf_mash_button(context, BUTTON_B, 2000ms);
-            continue;
-        }
-
-        break;
-    }
-}
-
-uint16_t read_tid(SingleSwitchProgramEnvironment& env, ProControllerContext& context, Language lang){
-    TrainerIdReader reader;
-    VideoOverlaySet overlays(env.console.overlay());
-    reader.make_overlays(overlays);
-
-    VideoSnapshot screen = env.console.video().snapshot();
-    env.log("Trainer Card detected.");
-    env.log("Reading TID...");
-    uint16_t tid = reader.read_tid(env.logger(), lang, screen);
-    env.log("TID: " + std::to_string(tid));
-
-    context.wait_for_all_requests();
-
-    return tid;
-}
-
 std::vector<std::pair<std::string, std::string>> get_sid_messages(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -271,48 +143,15 @@ void SidHelper::program(SingleSwitchProgramEnvironment& env, ProControllerContex
 
     // SidHelper_Descriptor::Stats& stats = env.current_stats<SidHelper_Descriptor::Stats>();
 
-    uint64_t FINAL_TEXT_FRAMES;
     Language lang = LANGUAGE;
-    switch (lang){
-    case Language::English:
-        FINAL_TEXT_FRAMES = 249;
-        break;
-    case Language::Japanese:
-        FINAL_TEXT_FRAMES = 194;
-        break;
-    case Language::Italian:
-        FINAL_TEXT_FRAMES = 236;
-        break;
-    case Language::French:
-        FINAL_TEXT_FRAMES = 205;
-        break;
-    case Language::German:
-        FINAL_TEXT_FRAMES = 208;
-        break;
-    case Language::Spanish:
-        FINAL_TEXT_FRAMES = 202;
-        break;
-    default:
-        FINAL_TEXT_FRAMES = 249;
-    }
+    const SidTiming timing = sid_timing(lang, TARGET_ADVANCES);
+    env.log("Delay: " + std::to_string(timing.delay_ms) + "ms");
 
-    static const int64_t FIXED_ADVANCES_OFFSET = 7; // determined empirically. Probably not console/setup dependent
-
-    bool extra_press_at_end = (
-        LANGUAGE == Language::German ||
-        LANGUAGE == Language::Japanese ||
-        LANGUAGE == Language::Spanish ||
-        LANGUAGE == Language::French
-    );
-
-    const uint64_t SID_DELAY = uint64_t((TARGET_ADVANCES - 2*FINAL_TEXT_FRAMES + FIXED_ADVANCES_OFFSET) * FRLG_FRAME_DURATION / 2); // advances pass 2 by 2
-    env.log("Delay: " + std::to_string(SID_DELAY) + "ms");
-
-    set_sid_from_name_screen(env, context, SID_DELAY, extra_press_at_end);
+    set_sid_from_name_screen(context, timing);
     finish_intro_animations(env, context);
-    navigate_to_trainer_card(env, context);
+    navigate_to_trainer_card(env.console, context);
 
-    uint16_t tid = read_tid(env, context, lang);
+    uint16_t tid = read_trainer_card_tid(env.console, context, lang);
 
     std::vector<std::pair<std::string, std::string>> sid_messages = get_sid_messages(
         env, context, tid, TARGET_ADVANCES, NUM_CANDIDATES

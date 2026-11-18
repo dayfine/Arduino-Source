@@ -1,0 +1,982 @@
+/*  AutoStory Battle
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <algorithm>
+#include <cstdlib>
+#include <format>
+#include <memory>
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
+#include "CommonFramework/Tools/DebugDumper.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "Pokemon/AutoStory/Pokemon_ConsoleReadings.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
+#include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleFlashWatcher.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleHpBarReader.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleTextBoxDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkWatches.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
+#include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryBattleText.h"
+#include "PokemonFRLG_AutoStoryBattleDecisions.h"
+#include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryBagUse.h"
+#include "PokemonFRLG_AutoStoryBattleBag.h"
+#include "PokemonFRLG_AutoStoryBattleSwitch.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
+#include "PokemonFRLG_AutoStoryHealingSteps.h"
+#include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryLeadOut.h"
+#include "PokemonFRLG_AutoStoryPocketList.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+using namespace std::chrono_literals;
+
+
+namespace{
+
+constexpr Milliseconds POLL = 300ms;
+constexpr Milliseconds BATTLE_TIMEOUT = 600000ms;
+//  To see the battle at all, from its first flash.
+constexpr Milliseconds BATTLE_START_TIMEOUT = 20000ms;
+//  No battle screen for this long: check for the overworld with START.
+constexpr Milliseconds BATTLE_GONE = 2000ms;
+//  After a won battle, how long without a START menu before the scene after
+//  it is taken as the next step's.
+constexpr Milliseconds WON_SCENE = 10000ms;
+//  A battle screen with neither an arrow nor a menu for this long: B, for
+//  a prompt the detectors miss.
+constexpr Milliseconds STUCK = 8000ms;
+//  No battle menu for this long: A and B in turn, for a prompt nothing reads.
+//  Only near battle screens: A on the overworld after a gym leader's speech
+//  would talk to them again.
+constexpr Milliseconds NO_MENU = 60000ms;
+constexpr Milliseconds NO_MENU_NEAR = 10000ms;
+//  No battle screen yet and no turn taken: whether the overworld is back
+//  is checked by START this often (a trainer's battle that never started,
+//  console B, 2026-11-01: 10 minutes of B on the overworld).
+constexpr Milliseconds OVERWORLD_CHECK = 3000ms;
+//  No battle menu or HP box this long after a battle was seen: there was
+//  none (console B, 2026-11-01, Viridian Forest's north gate mat).
+constexpr Milliseconds NOT_A_BATTLE = 15000ms;
+//  Text and the move learn prompts after a battle, on the overworld.
+constexpr Milliseconds AFTER_BATTLE_TEXT = 60000ms;
+//  The move list to fade in after "Delete a move?", and its cursor to move.
+constexpr Milliseconds MOVE_LIST_TIMEOUT = 5000ms;
+
+//  In the player's box, as a fraction of the 240x160 screen: the status
+//  badge left of the HP numbers. The box bobs by a pixel; this keeps a
+//  pixel inside.
+const ImageFloatBox STATUS_BADGE_BOX(146.0 / 240, 99.0 / 160, 12.0 / 240, 4.0 / 160);
+
+
+enum class BattleScreen{
+    //  Keep in step with screen_name().
+    MENU,       //  "What will <Pokemon> do?" with FIGHT/BAG/POKEMON/RUN
+    LEARN,      //  a YES/NO about a move to learn
+    ADVANCE,    //  battle text waiting for a button
+    OTHER,      //  the battle, busy
+    NONE,       //  no battle on screen
+};
+
+std::string_view screen_name(BattleScreen screen){
+    switch (screen){
+    case BattleScreen::MENU:
+        return "battle menu";
+    case BattleScreen::LEARN:
+        return "move prompt";
+    case BattleScreen::ADVANCE:
+        return "battle text with arrow";
+    case BattleScreen::OTHER:
+        return "battle text box";
+    case BattleScreen::NONE:
+        return "no battle screen";
+    }
+    return "?";
+}
+
+//  Until `confirmed`, the battle text box alone counts for nothing: it also
+//  reads on the black below a small indoor map. Nor ever on a dark cave's
+//  overworld after the battle (console B, 2026-11-09, Rock Tunnel).
+BattleScreen read_battle_screen(const ImageViewRGB32& screen, bool confirmed){
+    if (BattleMenuDetector(COLOR_RED).detect(screen)){
+        return BattleScreen::MENU;
+    }
+    if (battle_yes_no_shows(screen)){
+        return BattleScreen::LEARN;
+    }
+    if ((!confirmed && !BattleScreenDetector(COLOR_RED).detect(screen)) || OverworldWalkSteps::dark_cave_screen(screen)){
+        return BattleScreen::NONE;
+    }
+    if (AdvanceBattleDialogDetector(COLOR_RED).detect(screen)){
+        return BattleScreen::ADVANCE;
+    }
+    if (BattleDialogDetector(COLOR_RED).detect(screen)){
+        return BattleScreen::OTHER;
+    }
+    return BattleScreen::NONE;
+}
+
+}  // namespace
+
+BattleTextScreen read_text_screen(const ImageViewRGB32& screen){
+    return BattleTextScreen{
+        .text_box = BattleTextBoxDetector(COLOR_RED).detect(screen),
+        .hp_box = BattleScreenDetector(COLOR_RED).detect(screen),
+        .arrow = AdvanceBattleDialogDetector(COLOR_RED).detect(screen),
+        .yes_no = battle_yes_no_shows(screen) || yes_no_cursor(screen).has_value(),
+        .dark_cave = OverworldWalkSteps::dark_cave_screen(screen),
+    };
+}
+
+namespace{
+
+//  The player's Pokemon gone while the opponent's is still there.
+bool starter_fainted(const ImageViewRGB32& screen){
+    return !BattlePokemonDetector(COLOR_RED).detect(screen) && BattleOpponentDetector(COLOR_RED).detect(screen);
+}
+
+void tap(ProControllerContext& context, DpadPosition position){
+    pbf_press_dpad(context, position, 160ms, 240ms);
+}
+
+//  RUN, bottom right of the battle menu.
+//  Overlaps flee_battle() in PokemonFRLG_Navigation.h.
+//  Ours is one blind turn that resets the cursor first, since the battle loop reads the result itself;
+//  upstream needs the cursor on FIGHT and assumes the run always works.
+//  Could be unified with upstream if needed.
+void run_away(ProControllerContext& context){
+    tap(context, DPAD_LEFT);
+    tap(context, DPAD_UP);
+    tap(context, DPAD_RIGHT);
+    tap(context, DPAD_DOWN);
+    pbf_press_button(context, BUTTON_A, 160ms, 500ms);
+}
+
+//  FIGHT, then the move in `slot` from the top left; the cursor stays off empty slots.
+void use_move(ProControllerContext& context, size_t slot){
+    tap(context, DPAD_LEFT);
+    tap(context, DPAD_UP);
+    pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+    tap(context, DPAD_LEFT);
+    tap(context, DPAD_UP);
+    if (slot % 2 == 1){
+        tap(context, DPAD_RIGHT);
+    }
+    if (slot >= 2){
+        tap(context, DPAD_DOWN);
+    }
+    pbf_press_button(context, BUTTON_A, 160ms, 500ms);
+}
+
+//  The move list's cursor row once it shows, and, if `before` is given, once
+//  it has left that row: up to `timeout`.
+std::optional<size_t> read_move_list_cursor(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::optional<size_t> before, Milliseconds timeout
+){
+    const WallClock deadline = current_time() + timeout;
+    while (true){
+        context.wait_for_all_requests();
+        VideoSnapshot screen = console.video().snapshot();
+        const std::optional<size_t> cursor = screen ? read_summary_move_cursor(screen) : std::nullopt;
+        if (cursor && cursor != before){
+            return cursor;
+        }
+        if (current_time() >= deadline){
+            return std::nullopt;
+        }
+        pbf_wait(context, POLL);
+    }
+}
+
+//  After YES to "Delete a move?": the move list fades in with its cursor on
+//  the top move (pret pokemon_summary_screen.c); A on a move forgets it,
+//  B would go back to "Stop learning?". The cursor is read before A and
+//  after each press: DOWNs sent while the list faded in were lost, and A
+//  forgot the top move, Tackle, for Water Gun instead of Bubble (console B,
+//  2026-11-02). Done in one go, so the loop's B presses can't land on the
+//  list. A list whose cursor never shows gets the presses by time, as
+//  before; a cursor that can't be brought to `slot` fails the battle.
+//  YES, then `slot` on the move list. False, with nothing more pressed, if no move list showed.
+bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t slot){
+    pbf_press_button(context, BUTTON_A, 160ms, 0ms);
+    std::optional<size_t> cursor = read_move_list_cursor(console, context, std::nullopt, MOVE_LIST_TIMEOUT);
+    if (!cursor){
+        console.log("Battle: no move list after YES; the moves stay as they were.", COLOR_ORANGE);
+        return false;
+    }
+    for (size_t presses = 0; *cursor != slot; presses++){
+        if (presses >= 2 * SUMMARY_MOVE_ROWS){
+            break;
+        }
+        const size_t from = *cursor;
+        pbf_press_dpad(context, from < slot ? DPAD_DOWN : DPAD_UP, 160ms, 0ms);
+        cursor = read_move_list_cursor(console, context, from, MOVE_LIST_TIMEOUT);
+        if (!cursor){
+            break;
+        }
+    }
+    if (cursor != slot){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("forget_move(): the cursor didn't reach move {} on the move list.", slot + 1),
+            console
+        );
+    }
+    pbf_press_button(context, BUTTON_A, 160ms, 2000ms);
+    return true;
+}
+
+
+class BattleLoop{
+public:
+    BattleLoop(
+        ConsoleHandle& console, ProControllerContext& context,
+        Supplies& supplies, BattleKind kind, Pokemon::StoryCheckLevel checks, Language language
+    )
+        : m_console(console)
+        , m_context(context)
+        , m_supplies(supplies)
+        , m_decisions(supplies, kind)
+        , m_evolution(supplies.lead)
+        , m_kind(kind)
+        , m_checks(checks)
+        , m_language(language)
+        , m_start(current_time())
+        , m_last_battle(m_start)
+        , m_last_press(m_start)
+        , m_last_menu(m_start)
+        , m_last_overworld_check(m_start)
+    {}
+
+    BattleEnd run(){
+        m_console.log(
+            m_kind == BattleKind::TRAINER ? "Battle: fighting a trainer." :
+            m_kind == BattleKind::WILD_FIGHT ? "Battle: fighting a wild Pokemon." : "Battle: running from a wild Pokemon."
+        );
+        bool over = false;
+        while (!over && !m_try_end){
+            over = step();
+        }
+        m_console.log(std::format("Battle: over after {} turns{}.", m_decisions.turns(), m_try_end ? ", the plan ended the try" : m_decisions.lost() ? ", the starter fainted" : ""));
+        return m_try_end.value_or(m_decisions.lost() ? BattleEnd::LOST : BattleEnd::WON);
+    }
+
+private:
+    //  One look at the screen and what it asks for. True once the battle is over.
+    bool step(){
+        m_context.wait_for_all_requests();
+        const WallClock now = current_time();
+        check_time(now);
+        VideoSnapshot screen = m_console.video().snapshot();
+        if (!screen){
+            pbf_wait(m_context, POLL);
+            return false;
+        }
+        if (!m_confirmed && BattleScreenDetector(COLOR_RED).detect(screen)){
+            m_console.log("Battle: the battle menu or an HP box shows.");
+            m_confirmed = true;
+        }
+        if (!m_confirmed && now - m_start > NOT_A_BATTLE){
+            m_console.log("Battle: no battle menu or HP box in 15 s: not a battle.", COLOR_ORANGE);
+            return true;
+        }
+        if (between_turns(screen, now)){
+            return false;
+        }
+        if (battle_gone(screen, now)){
+            return true;
+        }
+        const BattleScreen seen = read_battle_screen(screen, m_confirmed);
+        if (seen != m_last_seen){
+            m_console.log(std::format("Battle: {} (turn {}).", screen_name(seen), m_decisions.turns()));
+            m_last_seen = seen;
+        }
+        if (seen == BattleScreen::MENU){
+            m_last_menu = now;
+            m_move_chosen = false;
+        }else if (now - m_last_menu > NO_MENU && now - m_last_battle < NO_MENU_NEAR && now - m_last_press > 1500ms){
+            //  Something waits that none of the battle screens knows.
+            return press_blind(now);
+        }
+        if (seen == BattleScreen::NONE){
+            m_refusal.no_battle_screen();
+            m_faint.no_battle_screen();
+            return no_battle_screen(screen, now);
+        }
+        m_seen_battle = true;
+        m_last_battle = now;
+        read_hp(screen);
+        watch_for_faint(screen);
+        check_run_refused(seen, screen);
+        read_policy_text(seen, screen, now);
+        act(seen, screen, now);
+        return false;
+    }
+
+    //  The screens between the turns that need more than B: "no PP left",
+    //  the party list once the lead fainted, and an evolution after the
+    //  battle. True if one was handled.
+    bool between_turns(const ImageViewRGB32& screen, WallClock now){
+        if (!m_confirmed){
+            return false;
+        }
+        if (m_move_chosen && m_refusal.no_pp_due(now) && BattleOutOfPpDetector(COLOR_RED).detect(screen)){
+            m_console.log("Battle: no PP left for that move; choosing again.", COLOR_ORANGE);
+            m_decisions.turn_done(TurnChoice::MOVE, TurnResult::NOT_DONE);
+            m_move_chosen = false;
+            m_refusal = MoveRefusalWatch();
+            pbf_press_button(m_context, BUTTON_B, 160ms, 800ms);
+            pbf_press_button(m_context, BUTTON_B, 160ms, 800ms);
+            m_last_press = now;
+            return true;
+        }
+        if (m_decisions.lost() && PartyMenuDetector(COLOR_RED).detect(screen)){
+            send_next_member(now);
+            return true;
+        }
+        if (m_evolution.holds(read_text_screen(screen))){
+            hold_for_evolution();
+            return true;
+        }
+        return false;
+    }
+
+    //  The party list after the lead fainted: the next member allowed in, or
+    //  a stop with only protected members left.
+    void send_next_member(WallClock now){
+        const std::optional<size_t> slot = m_decisions.next_member_slot();
+        if (!slot){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::NO_ERROR_REPORT,
+                "fight_battle(): the starter fainted and only protected members are left; not sending one.",
+                m_console
+            );
+        }
+        m_console.log(std::format("Battle: the lead fainted; sending party slot {}.", *slot + 1), COLOR_ORANGE);
+        send_member(m_context, *slot);
+        m_last_press = now;
+    }
+
+    //  Nothing pressed while the screen may be an evolution, up to MAX_HOLD.
+    void hold_for_evolution(){
+        Pokemon::ConsoleReadings<BattleTextScreen> readings(m_console, m_context, read_text_screen);
+        const Milliseconds held = m_evolution.wait_out(POLL, readings);
+        const WallClock end = current_time();
+        if (held >= 2000ms){
+            m_console.log(std::format("Battle: no B for {} s, for an evolution.", held.count() / 1000));
+        }
+        m_evolution.held(held, m_decisions.lost());
+        m_last_press = end;
+        m_last_battle = end;
+    }
+
+    //  True once START opens the menu, after no battle menu, HP box or
+    //  YES/NO for a while: whatever the text box reads, the battle is over.
+    bool battle_gone(const ImageViewRGB32& screen, WallClock now){
+        const BattleSeen seen = BattleMenuDetector(COLOR_RED).detect(screen) ? BattleSeen::MENU
+            : battle_shows(screen) ? BattleSeen::BATTLE : BattleSeen::NONE;
+        m_end.seen(seen, now);
+        if (!m_end.check_overworld(now)){
+            return false;
+        }
+        m_last_overworld_check = now;
+        return overworld_shows(m_console, m_context);
+    }
+
+    //  A or B, in turn. True once they have gone on too long: the walk,
+    //  which finds the player again, takes over.
+    bool press_blind(WallClock now){
+        if (m_end.pressed_blind(now)){
+            m_console.log("Battle: no battle menu after pressing A and B; leaving the rest to the walk.", COLOR_RED);
+            return true;
+        }
+        m_console.log(std::format("Battle: no battle menu for {} s, pressing {}.",
+            std::chrono::duration_cast<std::chrono::seconds>(now - m_last_menu).count(), m_press_a ? "A" : "B"));
+        pbf_press_button(m_context, m_press_a ? BUTTON_A : BUTTON_B, 160ms, 200ms);
+        m_press_a = !m_press_a;
+        m_last_press = now;
+        return false;
+    }
+
+    //  True once the battle is over: only when START opens the menu. The
+    //  battle screens are gone during the opening slide-in (console B: "over
+    //  after 0 turns" at the rival) and under a move prompt's YES/NO (console
+    //  B, 2026-11-01, Viridian Forest: called over, then stuck at "Stop
+    //  learning?").
+    bool no_battle_screen(const ImageViewRGB32& screen, WallClock now){
+        if (!m_seen_battle){
+            pbf_wait(m_context, POLL);
+            return false;
+        }
+        if (m_decisions.turns() > 0 && yes_no_cursor(screen)){
+            answer_prompt(screen, now);
+            return false;
+        }
+        if (now - m_last_battle > BATTLE_GONE && now - m_last_overworld_check > OVERWORLD_CHECK){
+            m_last_overworld_check = now;
+            if (overworld_shows(m_console, m_context)){
+                return true;
+            }
+        }
+        //  Won, and no START menu after it: a scene follows the battle (the
+        //  Champion's, Oak into the Hall of Fame: console B, 2026-11-17),
+        //  which is the next step's.
+        if (m_won && now - m_last_battle > WON_SCENE){
+            m_console.log("Battle: won (the prize text read); the scene after it is the next step's.");
+            return true;
+        }
+        //  Oak's white text box in the rival's battle reads as no battle screen:
+        //  B moves it on, and B does nothing on the overworld once the battle is over.
+        if (now - m_last_press > 1500ms){
+            pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
+            m_last_press = now;
+            return false;
+        }
+        pbf_wait(m_context, POLL);
+        return false;
+    }
+
+    void check_time(WallClock now){
+        if (!m_seen_battle && now - m_start > BATTLE_START_TIMEOUT){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT, "fight_battle(): no battle on screen.", m_console
+            );
+        }
+        //  Neither the battle nor the overworld for a minute: a stop, not 10 minutes of + and B.
+        if (now - m_start > BATTLE_TIMEOUT || m_end.overworld_lost(now)){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT, now - m_start > BATTLE_TIMEOUT ? std::string("fight_battle(): the battle took over 10 minutes.") : std::format("fight_battle(): no battle screen and no START menu for 60 s after the battle (turn {}{}).", m_decisions.turns(), m_decisions.lost() ? ", the lead fainted: the battle is lost" : ""), m_console
+            );
+        }
+    }
+
+    void act(BattleScreen seen, const ImageViewRGB32& screen, WallClock now){
+        switch (seen){
+        case BattleScreen::MENU:
+            take_turn(screen);
+            m_last_press = now;
+            return;
+        case BattleScreen::LEARN:
+            if (m_decisions.turns() == 0){
+                //  The prompts come after a turn; before one it is a misread.
+                break;
+            }
+            answer_prompt(screen, now);
+            return;
+        case BattleScreen::ADVANCE:
+            pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
+            m_last_press = now;
+            return;
+        default:
+            break;
+        }
+        if (now - m_last_press > STUCK){
+            pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
+            m_last_press = now;
+        }
+        pbf_wait(m_context, POLL);
+    }
+
+    //  The HP bar whenever the starter's box shows, so the last reading
+    //  includes the battle's last hit. Not once another member is out.
+    void read_hp(const ImageViewRGB32& screen){
+        if (m_decisions.lost() || !BattlePokemonDetector(COLOR_RED).detect(screen)){
+            return;
+        }
+        const PartyStatus status = read_party_status(screen);
+        if (status.hp_seen){
+            m_supplies.hurt = status.hp_red || status.hp_yellow;
+            m_supplies.hp_red = status.hp_red;
+            m_supplies.hp_fill = status.hp_fill;
+            measured_hp(m_supplies, status.hp_fill);
+        }
+        m_supplies.status = status.status;
+    }
+
+    void answer_prompt(const ImageViewRGB32& screen, WallClock now){
+        dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-yes-no", m_decisions.turns()), screen);
+        const PromptAnswer answer = m_decisions.prompt(starter_fainted(screen));
+        if (answer.forget_slot){
+            m_console.log(std::format("Battle: learning the new move over move {}.", *answer.forget_slot + 1));
+            if (forget_move(m_console, m_context, *answer.forget_slot) && answer.learned){
+                m_supplies.lead = *answer.learned;
+            }
+        }else{
+            m_console.log(std::format("Battle: answering {} to a YES/NO.", answer.answer == YesNo::YES ? "YES" : "NO"));
+            pbf_press_button(m_context, answer.answer == YesNo::YES ? BUTTON_A : BUTTON_B, 160ms, 1500ms);
+        }
+        m_last_press = now;
+    }
+
+    //  From the battle menu, before the first turn (battle_needs_bag_read()): the
+    //  Items pocket through BAG, read whole and closed again, its counts
+    //  taken as the battle's. With nothing read the battle stops rather
+    //  than fight on counts it doesn't know.
+    void read_battle_bag(){
+        m_console.log("Battle: the Items pocket's counts are not known; reading it before the first turn.");
+        //  The pocket's rows as counted, and its CANCEL.
+        const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
+        //  A read ends with the cursor on the top row.
+        m_bag_cursor.row = 0;
+        if (rows.empty()){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "Battle: couldn't read the Items pocket; not fighting on unknown item counts.",
+                m_console
+            );
+        }
+        set_from_bag(m_supplies, rows);
+    }
+
+    void log_turn(const PartyStatus& status, const TurnAction& action){
+        m_console.log(std::format(
+            "Battle: turn {}, HP {} ({:.0f}% of the bar), {}, {}.",
+            m_decisions.turns(), status.hp_red ? "red" : status.hp_yellow ? "yellow" : "green", 100 * status.hp_fill,
+            status_name(status.status), supply_line(m_supplies)
+        ));
+        if (!action.heal_reason.empty()){
+            m_console.log("Battle: " + action.heal_reason + ".");
+        }
+    }
+
+    //  The Pokemon out on the battle menu: a wild battle's at its first
+    //  menu, a trainer's and ours at each.
+    void read_battlers(const ImageViewRGB32& screen){
+        const bool trainer = m_kind == BattleKind::TRAINER;
+        if (!trainer && m_decisions.turns() == 0){
+            m_supplies.wild_foes = read_wild_foes(m_console.logger(), m_language, screen);
+        }
+        if (trainer){
+            m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
+            m_supplies.own_out = read_own_battler(m_console.logger(), m_language, screen);
+        }
+    }
+
+    //  The lead's box, the foe's bar and the battle texts since the last turn.
+    PartyStatus turn_status(const ImageViewRGB32& screen){
+        PartyStatus status = read_party_status(screen);
+        if (m_kind == BattleKind::TRAINER){
+            status.foe_fill = read_opponent_hp_fill(screen);
+        }
+        status.battle_texts = std::exchange(m_policy_texts, {});
+        return status;
+    }
+    void take_turn(const ImageViewRGB32& screen){
+        read_battlers(screen);
+        if (m_refusal.refused(current_time())){
+            m_console.log("Battle: the move list came back without a turn (Disable?); choosing another move.", COLOR_ORANGE);
+            m_decisions.turn_done(TurnChoice::MOVE, TurnResult::REFUSED);
+        }
+        if (m_decisions.turns() == 0 && battle_needs_bag_read(m_supplies, m_kind)){
+            read_battle_bag();
+            return;
+        }
+        const PartyStatus status = turn_status(screen);
+        const TurnAction action = m_decisions.turn(status);
+        m_evolution.turn_taken(action.choice);
+        m_ran = action.choice == TurnChoice::RUN;
+        log_turn(status, action);
+        dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-menu", m_decisions.turns()), screen);
+        switch (action.choice){
+        case TurnChoice::RUN:
+            m_console.log("Battle: RUN.");
+            run_away(m_context);
+            return;
+        case TurnChoice::POTION:
+            m_decisions.turn_done(action.choice, use_item("potion", ItemTarget::PARTY_MEMBER));
+            return;
+        case TurnChoice::ANTIDOTE:
+            m_decisions.turn_done(action.choice, use_item("antidote", ItemTarget::PARTY_MEMBER));
+            return;
+        case TurnChoice::AWAKENING:
+            m_decisions.turn_done(action.choice, use_item("awakening", ItemTarget::PARTY_MEMBER));
+            return;
+        case TurnChoice::MEDICINE:
+            m_decisions.turn_done(action.choice, use_item(action.item, ItemTarget::PARTY_MEMBER));
+            return;
+        case TurnChoice::BATTLE_ITEM:
+            m_decisions.turn_done(action.choice, use_item(action.item, ItemTarget::POKEMON_OUT));
+            return;
+        case TurnChoice::SWITCH_LEAD:
+            m_decisions.turn_done(action.choice, switch_lead_in(m_console, m_context, m_language, m_supplies.lead.species) ? TurnResult::DONE : TurnResult::NOT_DONE);
+            return;
+        case TurnChoice::END_TRY:
+            m_try_end = action.try_end;
+            return;
+        case TurnChoice::MOVE:
+            m_console.log(std::format("Battle: move {}.", action.slot + 1));
+            m_refusal.move_chosen(current_time());
+            use_move(m_context, action.slot);
+            m_move_chosen = true;
+            return;
+        }
+    }
+
+    void watch_for_faint(const ImageViewRGB32& screen){
+        if (m_decisions.turns() == 0 || m_decisions.lost()){
+            return;
+        }
+        const BattleBoxes boxes{
+            .lead = BattlePokemonDetector(COLOR_RED).detect(screen),
+            .foe = BattleOpponentDetector(COLOR_RED).detect(screen),
+        };
+        if (m_faint.seen(boxes)){
+            m_console.log("Battle: the starter fainted.", COLOR_RED);
+            m_decisions.lead_fainted();
+        }
+    }
+
+    //  After RUN, until the next battle menu: the game's "No! There's no
+    //  running from a trainer battle!" makes the battle a trainer's.
+    void check_run_refused(BattleScreen seen, const ImageViewRGB32& screen){
+        const bool text = seen == BattleScreen::ADVANCE || seen == BattleScreen::OTHER;
+        if (!m_ran || !text || m_kind == BattleKind::TRAINER || !run_refused_shows(m_language, screen)){
+            return;
+        }
+        m_console.log("Battle: \"No! There's no running from a trainer battle!\": fighting it as a trainer's.", COLOR_ORANGE);
+        dump_debug_image(m_console, "AutoStory/battle", std::format("turn{}-run-refused", m_decisions.turns()), screen);
+        m_ran = false;
+        m_kind = BattleKind::TRAINER;
+        m_decisions.turn_done(TurnChoice::RUN, TurnResult::REFUSED);
+    }
+
+    //  From the battle menu: `item` from the Items pocket on `target`
+    //  (use_battle_item()); back at the menu if it wasn't used.
+    TurnResult use_item(const std::string& item, ItemTarget target){
+        ConsoleBattleBag bag(m_console, m_context, target, m_checks, m_language, m_bag_cursor);
+        return use_battle_item(item, m_console.logger(), bag, m_supplies) ? TurnResult::DONE : TurnResult::NOT_DONE;
+    }
+
+    //  A League fight's battle texts, kept for the policy's next turn (PokemonSimulation #110).
+    void read_policy_text(BattleScreen seen, const ImageViewRGB32& screen, WallClock now){
+        const bool text = seen == BattleScreen::ADVANCE || seen == BattleScreen::OTHER;
+        if (!text || m_supplies.policy.kind != BattlePolicyKind::BUDGETED_SETUP || now - m_last_policy_text < POLL){
+            return;
+        }
+        m_last_policy_text = now;
+        std::optional<std::string> letters = read_battle_text(m_language, screen);
+        if (letters && (m_policy_texts.empty() || m_policy_texts.back() != *letters)){
+            m_console.log(std::format("Battle: text \"{}\".", *letters));
+            //  pokefirered: "{PLAYER} got ¥{N}\nfor winning!", the battle's last text.
+            m_won = m_won || letters->find("forwinning") != std::string::npos;
+            m_policy_texts.push_back(std::move(*letters));
+        }
+    }
+
+    ConsoleHandle& m_console;
+    ProControllerContext& m_context;
+    Supplies& m_supplies;
+    BattleDecisions m_decisions;
+    EvolutionHold m_evolution;
+    BattleEndWatch m_end;
+    MoveRefusalWatch m_refusal;
+    LeadFaintWatch m_faint;
+    //  As the battle was taken at its start, until RUN is refused.
+    BattleKind m_kind;
+    const Pokemon::StoryCheckLevel m_checks;
+    const Language m_language;
+    //  The bag's cursor in this battle.
+    BattleBagCursor m_bag_cursor;
+    const WallClock m_start;
+    WallClock m_last_battle;
+    WallClock m_last_press;
+    WallClock m_last_menu;
+    WallClock m_last_overworld_check;
+    WallClock m_last_policy_text = WallClock{};
+    std::vector<std::string> m_policy_texts;
+    BattleScreen m_last_seen = BattleScreen::NONE;
+    bool m_seen_battle = false;
+    //  The prize text "for winning" read (League fights read the battle's texts).
+    bool m_won = false;
+    bool m_confirmed = false;
+    bool m_press_a = true;
+    //  A move was chosen and no battle menu has shown since.
+    bool m_move_chosen = false;
+    //  RUN was chosen and no battle menu has shown since.
+    bool m_ran = false;
+    std::optional<BattleEnd> m_try_end;
+};
+
+
+//  From the overworld: the bag open on the Items pocket, cursor on its top.
+//  Overlaps open_bag_from_overworld() in PokemonFRLG_Navigation.h.
+//  Ours wraps it, then waits for the bag to slide in and moves the cursor to the top of the Items pocket.
+//  Could be unified with upstream if needed.
+void open_items_pocket(ConsoleHandle& console, ProControllerContext& context){
+    open_bag_from_overworld(console, context);
+    //  The bag ignores presses while it slides in.
+    pbf_wait(context, 1000ms);
+    for (int c = 0; c < 3; c++){
+        pbf_press_dpad(context, DPAD_LEFT, 100ms, 500ms);
+    }
+    for (int c = 0; c < 20; c++){
+        pbf_press_dpad(context, DPAD_UP, 100ms, 100ms);
+    }
+}
+
+//  From the overworld: `item`, in `row` (from 0) of the Items pocket, on
+//  the starter. Returns whether it was used (THOROUGH reads the row first).
+//  Not run on the console yet.
+bool use_item_on_overworld(
+    ConsoleHandle& console, ProControllerContext& context,
+    const Supplies& supplies, const std::string& item, Pokemon::StoryCheckLevel checks, Language language
+){
+    const int row = item_row(supplies, item);
+    console.log(std::format("Story: using a {} from the bag (Items pocket, row {}).", item, row + 1));
+    open_items_pocket(console, context);
+    for (int c = 0; c < row; c++){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 300ms);
+    }
+    if (!bag_row_is(console, context, row, item_shown_row(supplies, row), item, checks, language)){
+        mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+        return false;
+    }
+    //  The item, USE, the starter, then its message.
+    pbf_press_button(context, BUTTON_A, 160ms, 800ms);
+    pbf_press_button(context, BUTTON_A, 160ms, 1500ms);
+    pbf_press_button(context, BUTTON_A, 160ms, 2500ms);
+    pbf_press_button(context, BUTTON_B, 160ms, 1500ms);
+    mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+    return true;
+}
+
+void fail_on_blackout(ConsoleHandle& console, BattleEnd end){
+    if (end == BattleEnd::LOST){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::NO_ERROR_REPORT, "Story: blackout: the starter fainted in a battle on the way.", console
+        );
+    }
+}
+
+
+//  A wild battle, seen by its flashes or, when they were missed, by "Wild
+//  <Pokemon> appeared!".
+class StoryWildBattle : public OverworldInterrupt{
+public:
+    StoryWildBattle(Supplies& supplies, bool fight, bool late, Pokemon::StoryCheckLevel checks, Language language)
+        : m_supplies(supplies)
+        , m_checks(checks)
+        , m_language(language)
+        , m_fight(fight)
+        , m_late(late)
+    {}
+    virtual std::string name() const override{
+        return m_late ? "a wild battle (seen late)" : "a wild battle";
+    }
+    virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
+        if (m_late){
+            return std::make_unique<BattleScreenWatcher>(COLOR_RED);
+        }
+        return std::make_unique<BattleFlashWatcher>(COLOR_RED);
+    }
+    //  As the walker's own wild battle interrupts.
+    virtual Milliseconds detection_delay() const override{
+        return m_late ? OverworldWalkSteps::LATE_WILD_BATTLE_DELAY : 300ms;
+    }
+    //  Run from or fought by the battle loop, which returns only once START
+    //  opens on the overworld, so nothing of the battle is left before the
+    //  next leg.
+    virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
+        const BattleKind kind = m_fight ? BattleKind::WILD_FIGHT : BattleKind::WILD_RUN;
+        fail_on_blackout(console, fight_battle(console, context, m_supplies, kind, m_checks, m_language));
+        recover_after_battle(console, context, m_supplies, m_checks, m_language);
+    }
+
+private:
+    Supplies& m_supplies;
+    const Pokemon::StoryCheckLevel m_checks;
+    const Language m_language;
+    const bool m_fight;
+    const bool m_late;
+};
+
+//  A message: read to its end, then a trainer's battle if one starts.
+class StoryMessage : public OverworldInterrupt{
+public:
+    StoryMessage(Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language)
+        : m_supplies(supplies)
+        , m_checks(checks)
+        , m_language(language)
+    {}
+    virtual std::string name() const override{
+        return "a message";
+    }
+    virtual std::unique_ptr<VisualInferenceCallback> make_watcher() const override{
+        return std::make_unique<WhiteDialogWatcher>(COLOR_RED);
+    }
+    virtual Milliseconds detection_delay() const override{
+        return 400ms;
+    }
+    //  The message's frame is saved first, to check a false stop by. After
+    //  "REPEL's effect wore off..." another Repel is used while the player
+    //  stands where the message stopped them, if a use_item step used one
+    //  (Supplies::repel): on 12.03 the one used at Pallet Town lingered
+    //  from before the save and wore off on Route 21 (console B, 2026-11-13
+    //  10:06 and 11:02), and three wild Tentacool followed.
+    virtual void clear(ConsoleHandle& console, ProControllerContext& context) const override{
+        bool wore_off = false;
+        if (const VideoSnapshot frame = console.video().snapshot()){
+            save_leg_interrupt_frame(console.logger(), frame, name());
+            wore_off = !m_supplies.repel.empty() && repel_wore_off_shows(m_language, frame);
+        }
+        clear_overworld_message(console, context, m_supplies, m_checks, m_language);
+        if (wore_off){
+            ConsoleItemUseActions bag(console, context, m_language, m_supplies.repel_menu);
+            const ItemUseEnd end = renew_repel(console.logger(), bag, m_supplies.repel);
+            console.log("Story: another Repel after the last wore off: " + item_use_end_name(end) + ".");
+            //  Not counted: the last Repel takes its row with it.
+            if (end == ItemUseEnd::USED){
+                m_supplies.counts_read = false;
+            }
+        }
+    }
+
+private:
+    Supplies& m_supplies;
+    const Pokemon::StoryCheckLevel m_checks;
+    const Language m_language;
+};
+
+} // namespace
+
+
+StatusCondition read_status_badge(const ImageViewRGB32& badge){
+    const ImageStats stats = image_stats(badge);
+    const double r = stats.average.r;
+    const double g = stats.average.g;
+    const double b = stats.average.b;
+    const double off_white = std::abs(r - 255) + std::abs(g - 255) + std::abs(b - 217);
+    if (off_white < 60){
+        return StatusCondition::NONE;
+    }
+    if (r > 200 && g < 200 && b > 180){
+        return StatusCondition::POISON;
+    }
+    //  SLP's grey-olive badge with its cream letters: red and green even,
+    //  blue lower but above the yellow taken for PAR.
+    if (std::abs(r - g) < 20 && b < g - 15 && b > 140 && r < 235){
+        return StatusCondition::SLEEP;
+    }
+    //  Not measured yet: PAR's badge is taken to be the yellow one.
+    if (r > 180 && g > 150 && b < 140){
+        return StatusCondition::PARALYSIS;
+    }
+    return StatusCondition::OTHER;
+}
+
+PartyStatus read_party_status(const ImageViewRGB32& screen){
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const HpBarReading bar = read_player_hp_bar(game);
+    PartyStatus status;
+    status.hp_seen = bar.seen;
+    status.hp_yellow = bar.seen && bar.color == HpBarColor::YELLOW;
+    status.hp_red = bar.seen && bar.color == HpBarColor::RED;
+    status.hp_fill = bar.fill;
+    status.status = read_status_badge(extract_box_reference(game, STATUS_BADGE_BOX));
+    return status;
+}
+
+bool battle_shows(const ImageViewRGB32& screen){
+    const BattleTextScreen text = read_text_screen(screen);
+    return text.hp_box || text.yes_no;
+}
+
+std::vector<BagRow> read_items_pocket(ConsoleHandle& console, ProControllerContext& context, Language language){
+    open_items_pocket(console, context);
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    dump_debug_image(console, "AutoStory/bag", "items-pocket", screen);
+    std::vector<BagRow> rows = read_open_pocket(console, context, language).rows;
+    std::string text;
+    for (const BagRow& row : rows){
+        text += std::format(" {} x{};", row.item, row.count);
+    }
+    console.log("Bag: Items pocket:" + (text.empty() ? std::string(" nothing read.") : text));
+    mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+    return rows;
+}
+
+bool use_recovery_item(
+    ConsoleHandle& console, ProControllerContext& context,
+    const std::string& item, Pokemon::StoryCheckLevel checks, Language language, Supplies& supplies
+){
+    //  The row before the count drops: a counted item with none left takes
+    //  no row.
+    if (!use_item_on_overworld(console, context, supplies, item, checks, language)){
+        return false;
+    }
+    took_recovery_item(supplies, item);
+    return true;
+}
+
+void recover_after_battle(
+    ConsoleHandle& console, ProControllerContext& context,
+    Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language
+){
+    //  Counts a row guessed: the recovery reads the pocket itself first.
+    if (!supplies.counts_read && (supplies.hurt || supplies.status != StatusCondition::NONE)){
+        const std::vector<BagRow> rows = read_items_pocket(console, context, language);
+        if (!rows.empty()){
+            set_from_bag(supplies, rows);
+        }
+    }
+    for (const std::string& item : recovery_items(supplies)){
+        use_recovery_item(console, context, item, checks, language, supplies);
+    }
+    if (supplies.status != StatusCondition::NONE){
+        console.log(std::format(
+            "Story: the starter is left with {}: the nurse at the next battle's ready step.", status_name(supplies.status)
+        ), COLOR_ORANGE);
+    }
+}
+
+BattleEnd fight_battle(
+    ConsoleHandle& console, ProControllerContext& context,
+    Supplies& supplies, BattleKind kind, Pokemon::StoryCheckLevel checks, Language language
+){
+    return BattleLoop(console, context, supplies, kind, checks, language).run();
+}
+
+void clear_overworld_message(ConsoleHandle& console, ProControllerContext& context, Supplies& supplies, Pokemon::StoryCheckLevel checks, Language language){
+    if (advance_text(console, context, AFTER_BATTLE_TEXT, true) == TextEnd::OVERWORLD){
+        return;
+    }
+    console.log("Story: a trainer's battle after a message on the overworld.");
+    fail_on_blackout(console, fight_battle(console, context, supplies, BattleKind::TRAINER, checks, language));
+    mash_until_overworld(console, context, AFTER_BATTLE_TEXT);
+    recover_after_battle(console, context, supplies, checks, language);
+}
+
+OverworldInterruptSet story_interrupts(Supplies& supplies, bool fight_wild, Pokemon::StoryCheckLevel checks, Language language){
+    //  Battles first: their screens are checked before the message box's.
+    OverworldInterruptSet ret;
+    ret.wild.emplace_back(std::make_unique<StoryWildBattle>(supplies, fight_wild, false, checks, language));
+    ret.wild.emplace_back(std::make_unique<StoryWildBattle>(supplies, fight_wild, true, checks, language));
+    ret.wild.emplace_back(std::make_unique<StoryMessage>(supplies, checks, language));
+    ret.other.emplace_back(std::make_unique<StoryMessage>(supplies, checks, language));
+    return ret;
+}
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

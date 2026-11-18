@@ -1,0 +1,125 @@
+/*  Overworld Re-anchor
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  Finding the player again after a battle or a message stopped a leg
+ *  part-way. The timing of the stop narrows where they are to a few tiles of
+ *  the leg (and a trainer who saw them may have stopped them earlier, on a
+ *  tile in their sight); this looks for holds to walls, none to three, that
+ *  end on the same tile from every one of them, and a way back to the leg's
+ *  end that walks the same from there whichever it was. If there are none,
+ *  the caller stops: the player is never guessed to be on one of them.
+ *
+ *  The player is taken to be on the leg's line. Wider sets were tried:
+ *  with even one tile to either side, Route 1's people and ledges cut some
+ *  hold for some tile, and nothing on its grass legs could be found.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonFRLG_OverworldReanchor_H
+#define PokemonAutomation_PokemonFRLG_OverworldReanchor_H
+
+#include <optional>
+#include <string>
+#include <vector>
+#include "Common/Cpp/Time.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "PokemonFRLG_OverworldMap.h"
+#include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldWalkedTiles.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+
+//  A trainer who saw the player and walked up to them: which of `map`'s
+//  objects, and the tile next to the player they stand on afterwards.
+struct TrainerStop{
+    size_t object = 0;
+    MapPosition at;
+
+    bool operator==(const TrainerStop& other) const = default;
+};
+
+//  One way things may stand after a stop: the player's tile, and the
+//  trainer who stopped them there, if one did.
+struct StopCandidate{
+    MapPosition player;
+    std::optional<TrainerStop> trainer;
+    //  On a leg tapped a tile at a time (RouteStep::tapped), the tile one
+    //  past the taps seen to move: where a tap that moved but read as not
+    //  moved left the player, the way on open.
+    bool past_seen_taps = false;
+
+    bool operator==(const StopCandidate& other) const = default;
+};
+//  Formats a StopCandidate as a string.
+std::string to_string(const StopCandidate& candidate);
+
+//  Where `step`, an open WALK from `start`, may have been stopped:
+//    - on the tiles `walked` covers, by a wild battle or a message;
+//    - on any tile up to `walked.max` a trainer may see, by that trainer:
+//      the player stops as soon as they are seen, and the trainer speaks
+//      only after walking up, so later than the timing says.
+//  Off the grass a message is taken to be a trainer's wherever one may see
+//  the player, so there only the second kind are left, if there are any.
+//  `start` not known: worked back from the leg's end. Empty if it can't be.
+std::vector<StopCandidate> stop_candidates(
+    const std::vector<MapData>& maps,
+    const std::optional<MapPosition>& start,
+    const RouteStep& step,
+    WalkedTiles walked
+);
+
+//  A candidate reanchor route step with its cost estimate.
+struct Reanchor{
+    //  Legs to walls, in order, that bring the player to `found` from every
+    //  candidate; none if there was only one. Each but the last ends on a
+    //  tile that depends on the candidate; its `end` is one of them.
+    std::vector<RouteStep> holds;
+    MapPosition found;
+    //  From `found` back to the stopped leg's end, walking the same from
+    //  there whichever candidate it was (a trainer who walked up stays).
+    std::vector<RouteStep> back;
+    //  Whether the holds, from any candidate, pass a tile a trainer may see:
+    //  no other way found the player.
+    bool in_sight = false;
+};
+
+//  After `step` stopped part-way, from `candidates`: of the ways that find
+//  the player, the one that walks the fewest tiles, holds and way back
+//  together, with tiles of open legs weighted over held ones. Nothing if
+//  no holds bring them all to one tile, or no way back walks the same from
+//  there. With `end_facing`, the way back ends facing that way: the route's
+//  last leg must leave the player facing as planned, or a step after it only
+//  turns them (16.03's rival_trigger, a tap west after a way back that ended
+//  "north 1 (to wall)" beside the trigger; console B, 2026-11-15 00:28).
+std::optional<Reanchor> plan_reanchor(
+    const std::vector<MapData>& maps,
+    const std::vector<StopCandidate>& candidates,
+    const RouteStep& step,
+    const RouteCosts& costs = default_route_costs(),
+    std::optional<Direction> end_facing = std::nullopt
+);
+
+//  Holds to walls that bring the player to one tile from every one of
+//  `tiles`, found as plan_reanchor() finds them, with no trainer about: for
+//  a player known to be on one of a few tiles without a stop (a wild
+//  battle's pacing). Empty if `tiles` are one tile; the last hold ends on
+//  it otherwise. Nothing if no holds bring them together.
+std::optional<std::vector<RouteStep>> holds_to_one_tile(
+    const std::vector<MapData>& maps, const std::vector<MapPosition>& tiles
+);
+
+
+//  Registers overworld reanchor unit tests.
+void add_tests_OverworldReanchor(UnitTestDatabase& database);
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

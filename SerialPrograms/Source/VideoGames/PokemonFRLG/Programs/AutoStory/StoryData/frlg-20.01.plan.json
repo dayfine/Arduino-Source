@@ -1,0 +1,284 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "20.01",
+    "title": "The League: Lorelei",
+    "start": {
+      "map": "IndigoPlateau_PokemonCenter_1F",
+      "tiles": [
+        [
+          2,
+          7
+        ]
+      ],
+      "facing": "west"
+    },
+    "events": [
+      {
+        "id": "lead_lv51_for_lorelei",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 51
+        },
+        "why": "the precondition for Lorelei: the lead at least Lv51, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md lorelei; the Route 22 rival takes it from 49 to 51)"
+      },
+      {
+        "id": "top_up_before_lorelei",
+        "kind": "game_action",
+        "action": "league_top_up",
+        "args": {
+          "fight": "lorelei",
+          "max_hp": 165,
+          "full_if_unknown": true
+        },
+        "why": "after the reload, before the walk: reads the lead's HP and the Items pocket, then the plan's top-up before the fight (planned_between(): a Super Potion for up to 50 missing HP, two for up to 100 if two are spare, else a Full Restore; the Elixir only before the Champion), then checks the fight's entry contract (contract.entry: the items it starts with); a broken contract fails the row's start; the HP unread is full: the save is after 20.01a's nurse"
+      },
+      {
+        "id": "below_league_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "IndigoPlateau_PokemonCenter_1F",
+            "tiles": [
+              [
+                4,
+                2
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from the Mart's counter north to below the League's door (4, 1), past the door guard (5, 3), who only talks when spoken to"
+      },
+      {
+        "id": "league_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto the door (4, 1), the warp into Lorelei's room at its south entrance (6, 12)"
+      },
+      {
+        "id": "enter_loreleis_room",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_LoreleisRoom",
+          "tiles": [
+            [
+              6,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script (PokemonLeague_EventScript_EnterRoom) walks the player five tiles north from (6, 12) to (6, 7) and closes the entrance behind; no text"
+      },
+      {
+        "id": "before_lorelei",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LoreleisRoom",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "to (6, 6) facing Lorelei (6, 5), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
+      },
+      {
+        "id": "challenge_lorelei",
+        "kind": "talk",
+        "why": "Lorelei (6, 5): her intro, then the battle (trainerbattle_no_intro)"
+      },
+      {
+        "id": "lorelei",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_ELITE_FOUR_LORELEI",
+          "foes": [
+            "dewgong",
+            "cloyster",
+            "slowbro",
+            "jynx",
+            "lapras"
+          ],
+          "policy": "budgeted-setup",
+          "setup_spa": 4,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [
+              93,
+              17,
+              10,
+              37,
+              30,
+              0,
+              0
+            ],
+            [
+              91,
+              0,
+              0,
+              0,
+              12,
+              0,
+              0,
+              0,
+              1
+            ],
+            [
+              45,
+              21,
+              7,
+              49,
+              24,
+              0,
+              0
+            ],
+            [
+              110,
+              22,
+              10,
+              48,
+              24,
+              0,
+              0
+            ],
+            [
+              94,
+              28,
+              12,
+              62,
+              31,
+              0,
+              0
+            ]
+          ],
+          "foe_stats": [
+            [
+              103,
+              119,
+              171
+            ],
+            [
+              203,
+              72,
+              127
+            ],
+            [
+              135,
+              103,
+              176
+            ],
+            [
+              59,
+              135,
+              150
+            ],
+            [
+              107,
+              123,
+              220
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "PokemonLeague_LoreleisRoom",
+          "tiles": [
+            [
+              6,
+              6
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Lorelei (TRAINER_ELITE_FOUR_LORELEI): Dewgong Lv52, Cloyster Lv51, Slowbro Lv52, Jynx Lv54, Lapras Lv54, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +4 by X Specials, X Speed until faster, Guard Spec first against an accuracy drop; the doc's lorelei row, 94.3% at 159/159); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: the 80th percentile of the foe's move choice, its mean, its worst case and its worst normal hit. Lapras's worst case is 62. Cloyster's only hit, Dive, hides a turn first (its row's ninth column): no KO risk until it is underwater. Dewgong's worst normal hit is 30, not the generator's 18: console B, 2026-11-16, took 30 of 162 in one turn. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then her door north (6, 2) opens"
+      },
+      {
+        "id": "below_loreleis_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "PokemonLeague_LoreleisRoom",
+            "tiles": [
+              [
+                6,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "from in front of Lorelei (6, 5) around her to below her door (6, 2), open since her defeat"
+      },
+      {
+        "id": "loreleis_door",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "into the door (6, 2), the warp into Bruno's room at its south entrance (6, 12)"
+      },
+      {
+        "id": "enter_brunos_room",
+        "kind": "scene",
+        "declared_after": {
+          "map": "PokemonLeague_BrunosRoom",
+          "tiles": [
+            [
+              6,
+              7
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the room's OnFrame script (PokemonLeague_EventScript_EnterRoom) walks the player five tiles north from (6, 12) to (6, 7) and closes the entrance behind; no text"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "protected_slots": [6],
+    "verify": {
+      "tries": 10,
+      "min_pass": 5,
+      "reset_budget": 5
+    },
+    "notes": {
+      "checkpoint": [
+        "Starts at Indigo Plateau's Mart counter, where 20.01a ends, the party healed by its nurse. Ends in Bruno's room (6, 7), where its entrance scene leaves the player.",
+        "One League fight per row, each run as a verification loop from its start save (execution.verify, copied from frlg-league-plan.json's contract.pass: tries = min_pass.of, min_pass = min_pass.k, reset_budget): phase 1 plays it that many times saving none and stops the run under min_pass; phase 2 plays it until a try passes (won, within the fight's item caps: league_row_pass()) and saves that one.",
+        "The League rooms are one-way: the entrance closes behind the player, and the next room's door opens only when the room's trainer is beaten.",
+        "PokeGuy's fights: Lorelei 1:46:37, Bruno 1:49:15, Agatha 1:51:12, Lance 1:53:07, the Champion 1:55:44 (docs/battles/pokeguy-conditions.md); his turns: ~/BDSPLab/notes/pokeguy-league-turns.md."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "PokemonLeague_BrunosRoom",
+        "tiles": [
+          [
+            6,
+            7
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

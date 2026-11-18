@@ -1,0 +1,546 @@
+/*  AutoStory Party
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <algorithm>
+#include <cmath>
+#include <iterator>
+#include "PokemonFRLG_AutoStoryMoveData.h"
+#include "PokemonFRLG_AutoStoryParty.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+namespace{
+
+struct LevelUpMove{
+    std::string_view species;
+    uint8_t level = 0;
+    std::string_view move;
+};
+
+//  pret/pokefirered src/data/pokemon/level_up_learnsets.h, the lines the
+//  story's party comes from.
+constexpr LevelUpMove LEVEL_UP_MOVES[] = {
+    {.species = "squirtle", .level = 1, .move = "tackle"},
+    {.species = "squirtle", .level = 4, .move = "tail-whip"},
+    {.species = "squirtle", .level = 7, .move = "bubble"},
+    {.species = "squirtle", .level = 10, .move = "withdraw"},
+    {.species = "squirtle", .level = 13, .move = "water-gun"},
+    {.species = "squirtle", .level = 18, .move = "bite"},
+    {.species = "squirtle", .level = 23, .move = "rapid-spin"},
+    {.species = "squirtle", .level = 28, .move = "protect"},
+    {.species = "squirtle", .level = 33, .move = "rain-dance"},
+    {.species = "squirtle", .level = 40, .move = "skull-bash"},
+    {.species = "squirtle", .level = 47, .move = "hydro-pump"},
+    {.species = "wartortle", .level = 1, .move = "tackle"},
+    {.species = "wartortle", .level = 1, .move = "tail-whip"},
+    {.species = "wartortle", .level = 1, .move = "bubble"},
+    {.species = "wartortle", .level = 4, .move = "tail-whip"},
+    {.species = "wartortle", .level = 7, .move = "bubble"},
+    {.species = "wartortle", .level = 10, .move = "withdraw"},
+    {.species = "wartortle", .level = 13, .move = "water-gun"},
+    {.species = "wartortle", .level = 19, .move = "bite"},
+    {.species = "wartortle", .level = 25, .move = "rapid-spin"},
+    {.species = "wartortle", .level = 31, .move = "protect"},
+    {.species = "wartortle", .level = 37, .move = "rain-dance"},
+    {.species = "wartortle", .level = 45, .move = "skull-bash"},
+    {.species = "wartortle", .level = 53, .move = "hydro-pump"},
+    {.species = "blastoise", .level = 1, .move = "tackle"},
+    {.species = "blastoise", .level = 1, .move = "tail-whip"},
+    {.species = "blastoise", .level = 1, .move = "bubble"},
+    {.species = "blastoise", .level = 1, .move = "withdraw"},
+    {.species = "blastoise", .level = 4, .move = "tail-whip"},
+    {.species = "blastoise", .level = 7, .move = "bubble"},
+    {.species = "blastoise", .level = 10, .move = "withdraw"},
+    {.species = "blastoise", .level = 13, .move = "water-gun"},
+    {.species = "blastoise", .level = 19, .move = "bite"},
+    {.species = "blastoise", .level = 25, .move = "rapid-spin"},
+    {.species = "blastoise", .level = 31, .move = "protect"},
+    {.species = "blastoise", .level = 42, .move = "rain-dance"},
+    {.species = "blastoise", .level = 55, .move = "skull-bash"},
+    {.species = "blastoise", .level = 68, .move = "hydro-pump"},
+    {.species = "magikarp", .level = 1, .move = "splash"},
+    {.species = "magikarp", .level = 15, .move = "tackle"},
+    {.species = "magikarp", .level = 30, .move = "flail"},
+    {.species = "gyarados", .level = 1, .move = "thrash"},
+    {.species = "gyarados", .level = 20, .move = "bite"},
+    {.species = "gyarados", .level = 25, .move = "dragon-rage"},
+    {.species = "gyarados", .level = 30, .move = "leer"},
+    {.species = "gyarados", .level = 35, .move = "twister"},
+    {.species = "gyarados", .level = 40, .move = "hydro-pump"},
+    {.species = "gyarados", .level = 45, .move = "rain-dance"},
+    {.species = "gyarados", .level = 50, .move = "dragon-dance"},
+    {.species = "gyarados", .level = 55, .move = "hyper-beam"},
+};
+
+struct Evolution{
+    std::string_view species;
+    LevelEvolution evolution;
+};
+
+//  pret/pokefirered src/data/pokemon/evolution.h.
+constexpr Evolution EVOLUTIONS[] = {
+    {.species = "squirtle", .evolution = {.into = "wartortle", .level = 16}},
+    {.species = "wartortle", .evolution = {.into = "blastoise", .level = 36}},
+    {.species = "magikarp", .evolution = {.into = "gyarados", .level = 20}},
+};
+
+//  The story's plan per line (named by its first species): a level-up move
+//  it learns over a full move list, and the move whose slot it takes. Any
+//  other move offered over four is declined. Squirtle's is the speedrun's:
+//  Water Gun where Bubble was (so the attack stays bottom left), Bite over
+//  Tail Whip. TM and tutor moves are not level-up prompts and are not
+//  here; no rule replaces them, so Water Pulse (TM03, 05.02) and Mega Kick
+//  (Route 4's tutor, 04.06) are kept over every later level-up move.
+struct LearnRule{
+    std::string_view line;
+    std::string_view move;
+    std::string_view replaces;
+};
+constexpr LearnRule LEARN_RULES[] = {
+    {.line = "squirtle", .move = "water-gun", .replaces = "bubble"},
+    {.line = "squirtle", .move = "bite", .replaces = "tail-whip"},
+    //  A save whose Water Gun took another slot may have no Tail Whip.
+    {.line = "squirtle", .move = "bite", .replaces = "withdraw"},
+    {.line = "magikarp", .move = "twister", .replaces = "splash"},
+};
+
+//  The attacks per line, the one used first at the top. Past these, the
+//  strongest damaging move with PP left.
+struct Attack{
+    std::string_view line;
+    std::string_view move;
+};
+constexpr Attack ATTACKS[] = {
+    //  From HM03 (12.01) on, as pokeguy: Surf on everything it is not
+    //  resisted by (1:15:14 on).
+    {.line = "squirtle", .move = "surf"},
+    //  Blastoise's strongest STAB move: a tie with Bite against Pidgeotto
+    //  went to Bite, and one with Bubble against Growlithe to Bubble, and
+    //  the Tower rival won (console B, 2026-11-12).
+    {.line = "squirtle", .move = "water-pulse"},
+    {.line = "squirtle", .move = "water-gun"},
+    {.line = "squirtle", .move = "bite"},
+    {.line = "squirtle", .move = "bubble"},
+    {.line = "squirtle", .move = "tackle"},
+    {.line = "magikarp", .move = "bite"},
+    {.line = "magikarp", .move = "twister"},
+    {.line = "magikarp", .move = "tackle"},
+};
+
+
+//  The first species of `species`'s line.
+std::string_view line_of(std::string_view species){
+    for (const Evolution& evolution : EVOLUTIONS){
+        if (evolution.evolution.into == species){
+            return line_of(evolution.species);
+        }
+    }
+    return species;
+}
+
+bool knows(const PartyMember& member, std::string_view move){
+    return std::ranges::any_of(member.moves, [move](const KnownMove& known){
+        return known.move == move;
+    });
+}
+
+std::optional<size_t> slot_of(const PartyMember& member, std::string_view move){
+    for (size_t slot = 0; slot < member.moves.size(); slot++){
+        if (member.moves[slot].move == move){
+            return slot;
+        }
+    }
+    return std::nullopt;
+}
+
+//  The next level-up move past `moves_through_level` that it doesn't know.
+const LevelUpMove* next_move(const PartyMember& member){
+    for (const LevelUpMove& entry : LEVEL_UP_MOVES){
+        if (entry.species == member.species && entry.level > member.moves_through_level && !knows(member, entry.move)){
+            return &entry;
+        }
+    }
+    return nullptr;
+}
+
+KnownMove at_full_pp(std::string_view move){
+    return KnownMove{.move = std::string(move), .pp = max_pp(move)};
+}
+
+//  The slot the plan gives `move`, over a full move list: the first of
+//  its rules' moves the member knows.
+std::optional<size_t> forget_slot_for(const PartyMember& member, std::string_view move){
+    const std::string_view line = line_of(member.species);
+    for (const LearnRule& rule : LEARN_RULES){
+        if (rule.line != line || rule.move != move){
+            continue;
+        }
+        if (const std::optional<size_t> slot = slot_of(member, rule.replaces)){
+            return slot;
+        }
+    }
+    return std::nullopt;
+}
+
+//  Learns, or answers the prompt for, each of its moves at exactly `level`.
+void take_level(PartyMember& member, uint8_t level){
+    for (const LevelUpMove& entry : LEVEL_UP_MOVES){
+        if (entry.species != member.species || entry.level != level || knows(member, entry.move)){
+            continue;
+        }
+        if (member.moves.size() < MAX_MOVES){
+            member.moves.emplace_back(at_full_pp(entry.move));
+        }else if (std::optional<size_t> slot = forget_slot_for(member, entry.move)){
+            member.moves[*slot] = at_full_pp(entry.move);
+        }
+    }
+    member.moves_through_level = level;
+}
+
+//  How well `move` hits `defender`, in tenths: 40 is 4x, 5 is 0.5x.
+size_t effectiveness(const MoveData& move, const SpeciesData& defender){
+    size_t tenths = type_effectiveness(move.type, defender.first);
+    if (defender.second != defender.first){
+        tenths = tenths * type_effectiveness(move.type, defender.second) / 10;
+    }
+    return tenths;
+}
+
+//  `move` may do nothing to `foe`, which must be in species_data(): its
+//  ability may make it immune (ability_immunity()), it is a Water move on a
+//  Water foe (Water Absorb heals off it on Swimmer Roland's Poliwhirl,
+//  console B, 2026-11-13; the user's rule: never Water on Water), or it is
+//  not super effective on Shedinja (Wonder Guard).
+bool useless_against(const MoveData& move, std::string_view foe){
+    const SpeciesData& types = *species_data(foe);
+    const bool water_on_water = move.type == PokemonType::WATER
+        && (types.first == PokemonType::WATER || types.second == PokemonType::WATER);
+    const bool wonder_guard = foe == "shedinja" && effectiveness(move, types) <= 10;
+    return ability_immunity(foe) == move.type || water_on_water || wonder_guard;
+}
+
+//  In Gen 3 a move's type makes it physical or special.
+bool physical(PokemonType type){
+    switch (type){
+    case PokemonType::NORMAL:
+    case PokemonType::FIGHTING:
+    case PokemonType::FLYING:
+    case PokemonType::POISON:
+    case PokemonType::GROUND:
+    case PokemonType::ROCK:
+    case PokemonType::BUG:
+    case PokemonType::GHOST:
+    case PokemonType::STEEL:
+        return true;
+    default:
+        return false;
+    }
+}
+
+//  A side's attacking or defending stat where the stats aren't known: the
+//  same for both, so only power and the multipliers tell moves apart.
+constexpr double EVEN_STAT = 100;
+//  The level taken while the member's isn't known.
+constexpr int DEFAULT_LEVEL = 50;
+
+//  `move`'s Gen 3 damage on `foe` (pret src/battle_util.c
+//  CalculateBaseDamage, without the random roll and critical hits), 0 when
+//  it may do nothing; halved for a two-turn move. `foe` must be in species_data().
+double damage(const PartyMember& member, const MoveData& move, std::string_view move_name, std::string_view foe, const AttackContext& context){
+    if (!move.damaging || useless_against(move, foe)){
+        return 0;
+    }
+    const bool is_physical = physical(move.type);
+    double attack = EVEN_STAT;
+    if (member.stats){
+        attack = is_physical ? member.stats->attack : member.stats->sp_attack;
+    }
+    attack = std::floor(attack * stage_multiplier(is_physical ? context.attack_stage : context.sp_attack_stage));
+    double defense = EVEN_STAT;
+    if (context.foe){
+        defense = std::max(1, is_physical ? context.foe->defense : context.foe->sp_defense);
+    }
+    double power = move.power;
+    if (may_have_thick_fat(foe) && (move.type == PokemonType::FIRE || move.type == PokemonType::ICE)){
+        power = std::floor(power / 2);
+    }
+    const int level = battle_level(member) > 0 ? battle_level(member) : DEFAULT_LEVEL;
+    double hit = std::floor(std::floor(std::floor(2.0 * level / 5 + 2) * power * attack / defense) / 50) + 2;
+    const SpeciesData* types = species_data(member.species);
+    if (types != nullptr && (types->first == move.type || types->second == move.type)){
+        hit = std::floor(hit * 1.5);
+    }
+    hit = std::floor(hit * static_cast<double>(effectiveness(move, *species_data(foe))) / 10);
+    return takes_two_turns(move_name) ? hit / 2 : hit;
+}
+
+//  The member's slots in the plan's order: its line's attacks first, as
+//  ATTACKS lists them, then the rest in slot order.
+std::vector<size_t> attack_order(const PartyMember& member){
+    std::vector<size_t> order;
+    const std::string_view line = line_of(member.species);
+    for (const Attack& attack : ATTACKS){
+        const std::optional<size_t> slot = attack.line == line ? slot_of(member, attack.move) : std::nullopt;
+        if (slot && std::ranges::find(order, *slot) == order.end()){
+            order.push_back(*slot);
+        }
+    }
+    for (size_t slot = 0; slot < member.moves.size(); slot++){
+        if (std::ranges::find(order, slot) == order.end()){
+            order.push_back(slot);
+        }
+    }
+    return order;
+}
+
+} // namespace
+
+
+std::optional<LevelEvolution> level_evolution(std::string_view species){
+    for (const Evolution& evolution : EVOLUTIONS){
+        if (evolution.species == species){
+            return evolution.evolution;
+        }
+    }
+    return std::nullopt;
+}
+
+uint8_t max_pp(std::string_view move){
+    const MoveData* data = move_data(move);
+    return data == nullptr ? 0 : data->pp;
+}
+
+bool does_damage(std::string_view move){
+    const MoveData* data = move_data(move);
+    return data != nullptr && data->damaging;
+}
+
+PartyMember new_member(std::string_view species, uint8_t level){
+    PartyMember member{
+        .species = std::string(species), .moves = {}, .moves_through_level = level, .moves_read = false,
+        .level = 0, .stats = std::nullopt,
+    };
+    for (const LevelUpMove& entry : LEVEL_UP_MOVES){
+        if (entry.species != species || entry.level > level || knows(member, entry.move)){
+            continue;
+        }
+        if (member.moves.size() == MAX_MOVES){
+            member.moves.erase(member.moves.begin());
+        }
+        member.moves.emplace_back(at_full_pp(entry.move));
+    }
+    return member;
+}
+
+PartyMember grown_to(PartyMember member, uint8_t level){
+    for (uint8_t at = static_cast<uint8_t>(member.moves_through_level + 1); at <= level; at++){
+        take_level(member, at);
+        const std::optional<LevelEvolution> evolution = level_evolution(member.species);
+        if (evolution && evolution->level <= at){
+            evolve(member);
+            //  The new species learns its moves of the level it evolved at.
+            take_level(member, at);
+        }
+    }
+    return member;
+}
+
+PartyMember story_lead_after_brock(){
+    return grown_to(new_member("squirtle", 5), 13);
+}
+
+uint8_t battle_level(const PartyMember& member){
+    return std::max(member.level, member.moves_through_level);
+}
+
+PartyMember member_from_summary(
+    std::string_view species, uint8_t level, const std::vector<SummaryMove>& moves,
+    const std::optional<Stats>& stats
+){
+    PartyMember member{
+        .species = std::string(species), .moves = {}, .moves_through_level = level, .moves_read = true,
+        .level = level, .stats = stats,
+    };
+    for (const SummaryMove& read : moves){
+        const uint8_t full = max_pp(read.move);
+        const uint8_t pp = read.pp >= 0 ? static_cast<uint8_t>(std::min<int>(read.pp, 255)) : static_cast<uint8_t>(full / 2);
+        member.moves.emplace_back(KnownMove{.move = read.move, .pp = pp});
+    }
+    return member;
+}
+
+LearnDecision learn_move(PartyMember& member){
+    while (member.moves.size() < MAX_MOVES){
+        const LevelUpMove* learned = next_move(member);
+        if (learned == nullptr){
+            break;
+        }
+        member.moves.emplace_back(at_full_pp(learned->move));
+        member.moves_through_level = learned->level;
+    }
+    const LevelUpMove* offered = next_move(member);
+    if (offered == nullptr){
+        return LearnDecision{};
+    }
+    member.moves_through_level = offered->level;
+    LearnDecision decision{.move = std::string(offered->move), .forget_slot = forget_slot_for(member, offered->move)};
+    if (decision.forget_slot){
+        member.moves[*decision.forget_slot] = at_full_pp(offered->move);
+    }
+    return decision;
+}
+
+void evolve(PartyMember& member){
+    if (const std::optional<LevelEvolution> evolution = level_evolution(member.species)){
+        member.species = std::string(evolution->into);
+        member.stats.reset();
+    }
+}
+
+std::optional<size_t> attack_slot(const PartyMember& member){
+    if (member.moves.size() < MAX_MOVES && !member.moves_read){
+        return std::nullopt;
+    }
+    const std::string_view line = line_of(member.species);
+    for (const Attack& attack : ATTACKS){
+        if (attack.line != line){
+            continue;
+        }
+        const std::optional<size_t> slot = slot_of(member, attack.move);
+        if (slot && member.moves[*slot].pp > 0){
+            return slot;
+        }
+    }
+    for (size_t slot = 0; slot < member.moves.size(); slot++){
+        if (does_damage(member.moves[slot].move) && member.moves[slot].pp > 0){
+            return slot;
+        }
+    }
+    for (size_t slot = 0; slot < member.moves.size(); slot++){
+        if (member.moves[slot].pp > 0){
+            return slot;
+        }
+    }
+    return TOP_LEFT_MOVE;
+}
+
+double most_damage_against(const PartyMember& member, std::string_view foe, const AttackContext& context){
+    if (species_data(foe) == nullptr){
+        return 0;
+    }
+    double most = 0;
+    for (const KnownMove& known_move : member.moves){
+        const MoveData* data = move_data(known_move.move);
+        if (data != nullptr && known_move.pp > 0){
+            most = std::max(most, damage(member, *data, known_move.move, foe, context));
+        }
+    }
+    return most;
+}
+
+std::optional<size_t> attack_slot_against(
+    const PartyMember& member, const std::vector<std::string>& foes, const AttackContext& context
+){
+    const std::optional<size_t> plan = attack_slot(member);
+    std::vector<std::string> known;
+    std::ranges::copy_if(foes, std::back_inserter(known), [](const std::string& foe){
+        return species_data(foe) != nullptr;
+    });
+    if (known.empty() || !plan){
+        return plan;
+    }
+    std::optional<size_t> best;
+    double best_damage = 0;
+    for (size_t slot : attack_order(member)){
+        const KnownMove& known_move = member.moves[slot];
+        const MoveData* data = move_data(known_move.move);
+        if (data == nullptr || known_move.pp <= 0){
+            continue;
+        }
+        double total = 0;
+        for (const std::string& foe : known){
+            total += damage(member, *data, known_move.move, foe, context);
+        }
+        const bool more_pp = best && total == best_damage && known_move.pp > member.moves[*best].pp;
+        if (total > 0 && (total > best_damage || more_pp)){
+            best = slot;
+            best_damage = total;
+        }
+    }
+    if (best){
+        return best;
+    }
+    //  No damaging move does anything to them: the first move with PP
+    //  left that isn't wasted on them, a status move included, before the
+    //  plan's attack (which may be the Water move that heals them).
+    for (size_t slot : attack_order(member)){
+        const MoveData* data = move_data(member.moves[slot].move);
+        const bool wasted = data != nullptr && data->damaging && std::ranges::all_of(known, [data](const std::string& foe){
+            return useless_against(*data, foe);
+        });
+        if (member.moves[slot].pp > 0 && !wasted){
+            return slot;
+        }
+    }
+    return plan;
+}
+
+void learn_taught(std::string_view move, std::string_view forgot, PartyMember& member){
+    const KnownMove taught{.move = std::string(move), .pp = max_pp(move)};
+    if (!forgot.empty()){
+        for (KnownMove& known : member.moves){
+            if (known.move == forgot){
+                known = taught;
+                return;
+            }
+        }
+    }
+    if (member.moves.size() < MAX_MOVES && !knows(member, move)){
+        member.moves.emplace_back(taught);
+    }
+}
+
+size_t attack_pp(const PartyMember& member){
+    size_t pp = 0;
+    for (const KnownMove& known : member.moves){
+        if (does_damage(known.move)){
+            pp += known.pp;
+        }
+    }
+    return pp;
+}
+
+void spend_pp(PartyMember& member, size_t slot){
+    if (slot < member.moves.size() && member.moves[slot].pp > 0){
+        member.moves[slot].pp--;
+    }
+}
+
+void no_pp_left(PartyMember& member, size_t slot){
+    if (slot < member.moves.size()){
+        member.moves[slot].pp = 0;
+    }
+}
+
+void restore_pp(PartyMember& member){
+    for (KnownMove& known : member.moves){
+        known.pp = max_pp(known.move);
+    }
+}
+void add_pp(PartyMember& member, uint8_t amount){
+    for (KnownMove& known : member.moves){
+        known.pp = static_cast<uint8_t>(std::min<int>(known.pp + amount, max_pp(known.move)));
+    }
+}
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

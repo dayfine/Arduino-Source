@@ -1,0 +1,322 @@
+{
+  "format": "frlg-league-foes/1",
+  "source": "PokemonSimulation 4a79ccc data/runs/pokeguy-leafgreen-15934/battle-reference.json; stats from engines/frlg-showdown (pokemon-showdown Gen 3, teamMember)",
+  "moves": {
+    "aerial-ace": { "type": "flying", "power": 60, "accuracy": 101, "priority": 0, "physical": true, "two_turn": false },
+    "air-cutter": { "type": "flying", "power": 55, "accuracy": 95, "priority": 0, "physical": true, "two_turn": false },
+    "amnesia": { "type": "psychic", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "ancient-power": { "type": "rock", "power": 60, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "attract": { "type": "normal", "power": 0, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "bite": { "type": "dark", "power": 60, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "blizzard": { "type": "ice", "power": 120, "accuracy": 70, "priority": 0, "physical": false, "two_turn": false },
+    "body-slam": { "type": "normal", "power": 85, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "brick-break": { "type": "fighting", "power": 75, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "bulk-up": { "type": "fighting", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "confuse-ray": { "type": "ghost", "power": 0, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "counter": { "type": "fighting", "power": 0, "accuracy": 100, "priority": -5, "physical": true, "two_turn": false },
+    "cross-chop": { "type": "fighting", "power": 100, "accuracy": 80, "priority": 0, "physical": true, "two_turn": false },
+    "curse": { "type": "???", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "dive": { "type": "water", "power": 60, "accuracy": 100, "priority": 0, "physical": false, "two_turn": true },
+    "double-edge": { "type": "normal", "power": 120, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "double-slap": { "type": "normal", "power": 15, "accuracy": 85, "priority": 0, "physical": true, "two_turn": false, "hits": [ 2, 5 ] },
+    "double-team": { "type": "normal", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "dragon-rage": { "type": "dragon", "power": 0, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false, "fixed_damage": 40 },
+    "dream-eater": { "type": "psychic", "power": 100, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "earthquake": { "type": "ground", "power": 100, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "extreme-speed": { "type": "normal", "power": 80, "accuracy": 100, "priority": 1, "physical": true, "two_turn": false },
+    "facade": { "type": "normal", "power": 70, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "feather-dance": { "type": "flying", "power": 0, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "flamethrower": { "type": "fire", "power": 95, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "foresight": { "type": "normal", "power": 0, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "future-sight": { "type": "psychic", "power": 80, "accuracy": 90, "priority": 0, "physical": false, "two_turn": false },
+    "growth": { "type": "normal", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "hail": { "type": "ice", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "hydro-pump": { "type": "water", "power": 120, "accuracy": 80, "priority": 0, "physical": false, "two_turn": false },
+    "hyper-beam": { "type": "normal", "power": 150, "accuracy": 90, "priority": 0, "physical": true, "two_turn": false },
+    "hypnosis": { "type": "psychic", "power": 0, "accuracy": 60, "priority": 0, "physical": false, "two_turn": false },
+    "ice-beam": { "type": "ice", "power": 95, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "ice-punch": { "type": "ice", "power": 75, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "iron-tail": { "type": "steel", "power": 100, "accuracy": 75, "priority": 0, "physical": true, "two_turn": false },
+    "lovely-kiss": { "type": "normal", "power": 0, "accuracy": 75, "priority": 0, "physical": false, "two_turn": false },
+    "mach-punch": { "type": "fighting", "power": 40, "accuracy": 100, "priority": 1, "physical": true, "two_turn": false },
+    "mean-look": { "type": "normal", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "mega-kick": { "type": "normal", "power": 120, "accuracy": 75, "priority": 0, "physical": true, "two_turn": false },
+    "nightmare": { "type": "ghost", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "outrage": { "type": "dragon", "power": 90, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "poison-fang": { "type": "poison", "power": 50, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "protect": { "type": "normal", "power": 0, "accuracy": 101, "priority": 3, "physical": false, "two_turn": false },
+    "psychic": { "type": "psychic", "power": 90, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "recover": { "type": "normal", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "reflect": { "type": "psychic", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "roar": { "type": "normal", "power": 0, "accuracy": 100, "priority": -6, "physical": false, "two_turn": false },
+    "rock-tomb": { "type": "rock", "power": 50, "accuracy": 80, "priority": 0, "physical": true, "two_turn": false },
+    "safeguard": { "type": "normal", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "sand-attack": { "type": "ground", "power": 0, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "sand-tomb": { "type": "ground", "power": 15, "accuracy": 70, "priority": 0, "physical": true, "two_turn": false },
+    "scary-face": { "type": "normal", "power": 0, "accuracy": 90, "priority": 0, "physical": false, "two_turn": false },
+    "screech": { "type": "normal", "power": 0, "accuracy": 85, "priority": 0, "physical": false, "two_turn": false },
+    "shadow-ball": { "type": "ghost", "power": 80, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "shadow-punch": { "type": "ghost", "power": 60, "accuracy": 101, "priority": 0, "physical": true, "two_turn": false },
+    "sky-uppercut": { "type": "fighting", "power": 85, "accuracy": 90, "priority": 0, "physical": true, "two_turn": false },
+    "sludge-bomb": { "type": "poison", "power": 90, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "solar-beam": { "type": "grass", "power": 120, "accuracy": 100, "priority": 0, "physical": false, "two_turn": true },
+    "spikes": { "type": "ground", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "strength": { "type": "normal", "power": 80, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "sunny-day": { "type": "fire", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "surf": { "type": "water", "power": 95, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "synthesis": { "type": "grass", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false },
+    "take-down": { "type": "normal", "power": 90, "accuracy": 85, "priority": 0, "physical": true, "two_turn": false },
+    "thrash": { "type": "normal", "power": 90, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "thunder-wave": { "type": "electric", "power": 0, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "toxic": { "type": "poison", "power": 0, "accuracy": 85, "priority": 0, "physical": false, "two_turn": false },
+    "twister": { "type": "dragon", "power": 40, "accuracy": 100, "priority": 0, "physical": false, "two_turn": false },
+    "whirlwind": { "type": "normal", "power": 0, "accuracy": 100, "priority": -6, "physical": false, "two_turn": false },
+    "wing-attack": { "type": "flying", "power": 60, "accuracy": 100, "priority": 0, "physical": true, "two_turn": false },
+    "yawn": { "type": "normal", "power": 0, "accuracy": 101, "priority": 0, "physical": false, "two_turn": false }
+  },
+  "trainers": {
+    "TRAINER_ELITE_FOUR_LORELEI": {
+      "items": {
+        "full-restore": 2
+      },
+      "party": [
+        {
+          "species": "dewgong",
+          "level": 52,
+          "ability": "thickfat",
+          "stats": { "hp": 171, "atk": 93, "def": 103, "spa": 93, "spd": 119, "spe": 93 },
+          "held_item": null,
+          "moves": [ "ice-beam", "surf", "hail", "safeguard" ]
+        },
+        {
+          "species": "cloyster",
+          "level": 51,
+          "ability": "shellarmor",
+          "stats": { "hp": 127, "atk": 117, "def": 203, "spa": 96, "spd": 72, "spe": 91 },
+          "held_item": null,
+          "moves": [ "spikes", "protect", "hail", "dive" ]
+        },
+        {
+          "species": "slowbro",
+          "level": 52,
+          "ability": "oblivious",
+          "stats": { "hp": 176, "atk": 107, "def": 135, "spa": 124, "spd": 103, "spe": 45 },
+          "held_item": null,
+          "moves": [ "ice-beam", "surf", "amnesia", "yawn" ]
+        },
+        {
+          "species": "jynx",
+          "level": 54,
+          "ability": "oblivious",
+          "stats": { "hp": 150, "atk": 75, "def": 59, "spa": 145, "spd": 135, "spe": 110 },
+          "held_item": null,
+          "moves": [ "ice-punch", "double-slap", "lovely-kiss", "attract" ]
+        },
+        {
+          "species": "lapras",
+          "level": 54,
+          "ability": "waterabsorb",
+          "stats": { "hp": 220, "atk": 113, "def": 107, "spa": 101, "spd": 123, "spe": 94 },
+          "held_item": "sitrus-berry",
+          "moves": [ "confuse-ray", "ice-beam", "surf", "body-slam" ]
+        }
+      ]
+    },
+    "TRAINER_ELITE_FOUR_BRUNO": {
+      "items": {
+        "full-restore": 2
+      },
+      "party": [
+        {
+          "species": "onix",
+          "level": 51,
+          "ability": "rockhead",
+          "stats": { "hp": 112, "atk": 66, "def": 183, "spa": 50, "spd": 72, "spe": 81 },
+          "held_item": null,
+          "moves": [ "earthquake", "rock-tomb", "iron-tail", "roar" ]
+        },
+        {
+          "species": "hitmonchan",
+          "level": 53,
+          "ability": "keeneye",
+          "stats": { "hp": 131, "atk": 132, "def": 104, "spa": 58, "spd": 137, "spe": 101 },
+          "held_item": null,
+          "moves": [ "sky-uppercut", "mach-punch", "rock-tomb", "counter" ]
+        },
+        {
+          "species": "hitmonlee",
+          "level": 53,
+          "ability": "limber",
+          "stats": { "hp": 131, "atk": 148, "def": 77, "spa": 58, "spd": 137, "spe": 113 },
+          "held_item": null,
+          "moves": [ "mega-kick", "foresight", "brick-break", "facade" ]
+        },
+        {
+          "species": "onix",
+          "level": 54,
+          "ability": "rockhead",
+          "stats": { "hp": 118, "atk": 69, "def": 194, "spa": 47, "spd": 75, "spe": 96 },
+          "held_item": null,
+          "moves": [ "double-edge", "earthquake", "iron-tail", "sand-tomb" ]
+        },
+        {
+          "species": "machamp",
+          "level": 56,
+          "ability": "guts",
+          "stats": { "hp": 183, "atk": 150, "def": 111, "spa": 103, "spd": 117, "spe": 83 },
+          "held_item": "sitrus-berry",
+          "moves": [ "cross-chop", "bulk-up", "scary-face", "rock-tomb" ]
+        }
+      ]
+    },
+    "TRAINER_ELITE_FOUR_AGATHA": {
+      "items": {
+        "full-restore": 2
+      },
+      "party": [
+        {
+          "species": "gengar",
+          "level": 54,
+          "ability": "levitate",
+          "stats": { "hp": 145, "atk": 100, "def": 86, "spa": 161, "spd": 102, "spe": 126 },
+          "held_item": null,
+          "moves": [ "shadow-punch", "confuse-ray", "toxic", "double-team" ]
+        },
+        {
+          "species": "golbat",
+          "level": 54,
+          "ability": "innerfocus",
+          "stats": { "hp": 161, "atk": 107, "def": 96, "spa": 91, "spd": 91, "spe": 129 },
+          "held_item": null,
+          "moves": [ "confuse-ray", "poison-fang", "air-cutter", "bite" ]
+        },
+        {
+          "species": "haunter",
+          "level": 53,
+          "ability": "levitate",
+          "stats": { "hp": 126, "atk": 73, "def": 68, "spa": 142, "spd": 86, "spe": 108 },
+          "held_item": null,
+          "moves": [ "hypnosis", "dream-eater", "curse", "mean-look" ]
+        },
+        {
+          "species": "arbok",
+          "level": 56,
+          "ability": "intimidate",
+          "stats": { "hp": 150, "atk": 117, "def": 108, "spa": 84, "spd": 110, "spe": 111 },
+          "held_item": null,
+          "moves": [ "sludge-bomb", "screech", "iron-tail", "bite" ]
+        },
+        {
+          "species": "gengar",
+          "level": 58,
+          "ability": "levitate",
+          "stats": { "hp": 155, "atk": 87, "def": 92, "spa": 190, "spd": 109, "spe": 150 },
+          "held_item": "sitrus-berry",
+          "moves": [ "shadow-ball", "sludge-bomb", "hypnosis", "nightmare" ]
+        }
+      ]
+    },
+    "TRAINER_ELITE_FOUR_LANCE": {
+      "items": {
+        "full-restore": 2
+      },
+      "party": [
+        {
+          "species": "gyarados",
+          "level": 56,
+          "ability": "intimidate",
+          "stats": { "hp": 189, "atk": 161, "def": 110, "spa": 97, "spd": 119, "spe": 112 },
+          "held_item": null,
+          "moves": [ "hyper-beam", "dragon-rage", "twister", "bite" ]
+        },
+        {
+          "species": "dragonair",
+          "level": 54,
+          "ability": "shedskin",
+          "stats": { "hp": 146, "atk": 111, "def": 91, "spa": 96, "spd": 96, "spe": 96 },
+          "held_item": null,
+          "moves": [ "hyper-beam", "safeguard", "dragon-rage", "outrage" ]
+        },
+        {
+          "species": "dragonair",
+          "level": 54,
+          "ability": "shedskin",
+          "stats": { "hp": 146, "atk": 111, "def": 91, "spa": 96, "spd": 96, "spe": 96 },
+          "held_item": null,
+          "moves": [ "hyper-beam", "safeguard", "thunder-wave", "outrage" ]
+        },
+        {
+          "species": "aerodactyl",
+          "level": 58,
+          "ability": "rockhead",
+          "stats": { "hp": 178, "atk": 129, "def": 106, "spa": 92, "spd": 109, "spe": 173 },
+          "held_item": null,
+          "moves": [ "hyper-beam", "ancient-power", "wing-attack", "scary-face" ]
+        },
+        {
+          "species": "dragonite",
+          "level": 60,
+          "ability": "innerfocus",
+          "stats": { "hp": 197, "atk": 183, "def": 137, "spa": 143, "spd": 157, "spe": 107 },
+          "held_item": "sitrus-berry",
+          "moves": [ "hyper-beam", "safeguard", "outrage", "wing-attack" ]
+        }
+      ]
+    },
+    "TRAINER_CHAMPION_FIRST_BULBASAUR": {
+      "items": {
+        "full-restore": 4
+      },
+      "party": [
+        {
+          "species": "pidgeot",
+          "level": 59,
+          "ability": "keeneye",
+          "stats": { "hp": 185, "atk": 117, "def": 111, "spa": 105, "spd": 105, "spe": 130 },
+          "held_item": null,
+          "moves": [ "aerial-ace", "feather-dance", "sand-attack", "whirlwind" ]
+        },
+        {
+          "species": "alakazam",
+          "level": 57,
+          "ability": "synchronize",
+          "stats": { "hp": 147, "atk": 71, "def": 73, "spa": 176, "spd": 130, "spe": 159 },
+          "held_item": null,
+          "moves": [ "psychic", "future-sight", "recover", "reflect" ]
+        },
+        {
+          "species": "rhydon",
+          "level": 59,
+          "ability": "lightningrod",
+          "stats": { "hp": 211, "atk": 176, "def": 147, "spa": 83, "spd": 76, "spe": 70 },
+          "held_item": null,
+          "moves": [ "take-down", "earthquake", "rock-tomb", "scary-face" ]
+        },
+        {
+          "species": "gyarados",
+          "level": 59,
+          "ability": "intimidate",
+          "stats": { "hp": 199, "atk": 153, "def": 127, "spa": 94, "spd": 141, "spe": 118 },
+          "held_item": null,
+          "moves": [ "hydro-pump", "dragon-rage", "bite", "thrash" ]
+        },
+        {
+          "species": "arcanine",
+          "level": 61,
+          "ability": "intimidate",
+          "stats": { "hp": 199, "atk": 158, "def": 121, "spa": 159, "spd": 108, "spe": 139 },
+          "held_item": null,
+          "moves": [ "extreme-speed", "flamethrower", "roar", "bite" ]
+        },
+        {
+          "species": "venusaur",
+          "level": 63,
+          "ability": "overgrow",
+          "stats": { "hp": 193, "atk": 127, "def": 129, "spa": 165, "spd": 135, "spe": 125 },
+          "held_item": "sitrus-berry",
+          "moves": [ "solar-beam", "synthesis", "sunny-day", "growth" ]
+        }
+      ]
+    }
+  }
+}

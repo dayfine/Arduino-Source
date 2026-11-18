@@ -81,3 +81,6 @@ Packages/*
 # Local agent/linter environments.
 .venv-code-health/
 __pycache__/
+
+# External PokemonSimulation tools/data cache; prepared maps live in ignored Packages.
+.pokesim-map-source/

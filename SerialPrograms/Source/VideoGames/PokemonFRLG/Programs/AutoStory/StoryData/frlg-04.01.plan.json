@@ -1,0 +1,140 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "04.01",
+    "title": "Pewter Center, then Route 3's trainers",
+    "start": {"map": "PewterCity", "tiles": [[17, 26]], "facing": "south"},
+    "events": [
+      {
+        "id": "pewter_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PewterCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "in by the door below the player"
+      },
+      {
+        "id": "heal_pewter",
+        "kind": "heal",
+        "why": "full HP"
+      },
+      {
+        "id": "west_of_janice_line",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route3", "tiles": [[13, 8]]}
+        },
+        "why": "out of Pewter by row 21, east into Route 3, short of Janice's line"
+      },
+      {
+        "id": "below_colton_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 1}]
+        },
+        "why": "to (14, 7), in the ledges' gap"
+      },
+      {
+        "id": "colton_line",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (14, 6), in Colton's line"
+      },
+      {
+        "id": "bug_catcher_colton",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_COLTON",
+          "foes": ["caterpie", "weedle", "caterpie"]
+        },
+        "declared_after": {"map": "Route3", "tiles": [[14, 6]], "facing": "north"},
+        "why": "his Bug Pokemon; Colton stops at (13, 6)"
+      },
+      {
+        "id": "past_ben",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 3}, {"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 6}]
+        },
+        "why": "up to row 3 above Ben, down at x 18 east of his line, to (24, 5)"
+      },
+      {
+        "id": "greg_line",
+        "kind": "step",
+        "args": {
+          "direction": "east"
+        },
+        "why": "onto (25, 5), below Greg"
+      },
+      {
+        "id": "bug_catcher_greg",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_GREG",
+          "foes": ["weedle", "kakuna", "caterpie", "metapod"]
+        },
+        "declared_after": {"map": "Route3", "tiles": [[25, 5]], "facing": "east"},
+        "why": "his Bug Pokemon; Greg is already next to the player"
+      },
+      {
+        "id": "above_james_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "east", "tiles": 11}]
+        },
+        "why": "along row 5 to the wall at (36, 5)"
+      },
+      {
+        "id": "james_line",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "why": "onto (36, 6), at the end of James's line"
+      },
+      {
+        "id": "bug_catcher_james",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_JAMES",
+          "foes": ["caterpie", "metapod"]
+        },
+        "declared_after": {"map": "Route3", "tiles": [[36, 6]], "facing": "south"},
+        "why": "his Bug Pokemon; James stops at (35, 6)"
+      },
+      {
+        "id": "save_spot",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "south", "tiles": 2}]
+        },
+        "why": "down to (36, 8), beside the wall east of it"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Route 3's trainers (Route3 map.json): the way east meets three of them. Bug Catcher Colton (12, 6) faces east, sight 3: the only way north past the row 7 ledges is the gap at x 14..15, below his line. Youngster Ben (17, 4) faces south, sight 2, so the way east keeps to row 3 past him. Bug Catcher Greg (25, 4) faces south, sight 2, over the way east along row 5. Bug Catcher James (32, 6) faces east, sight 4, over the way down at x 35..36. The others are kept out of: Lass Janice (19, 9) sees west along row 9 to x 14, Lass Sally (30, 3) west along row 3 to x 25, and Youngster Calvin (29, 10) west along row 10. Each line is stepped into on its own, so no leg is cut; the trainer walks up to the player, who stays put facing the way they stepped."
+      ],
+      "west_of_janice_line": [
+        "Up from row 9 west of Janice's line, which ends at x 14."
+      ],
+      "save_spot": [
+        "Saved here, the trainers behind, so a failure on the way to Route 4 doesn't fight them again."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

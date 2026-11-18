@@ -1,0 +1,69 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "12.02",
+    "title": "Koga, the SOULBADGE and TM06 Toxic",
+    "start": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"},
+    "events": [
+      {
+        "id": "lead_lv39_for_koga",
+        "kind": "game_action",
+        "action": "level",
+        "args": {"slot": 1, "min": 39},
+        "why": "the precondition for Koga: the lead at least Lv39, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, koga: C2 setup to Sp. Atk +1 and outspeed with X items, from 34/122 HP: 1191/1700 wins, 70.1%, 64.5% to 75.2%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
+        "id": "count_bag_for_koga",
+        "kind": "game_action",
+        "action": "count_items",
+        "args": {
+          "items": ["super-potion", "antidote", "full-heal"]
+        },
+        "why": "the Items pocket as the save leaves it, read into the bag's counts for the battle's medicine and cures; no Mart on the way: 12.01 stocked the bag before the gym, and a blackout reloads this save with the bag as it was"
+      },
+      {
+        "id": "challenge_koga",
+        "kind": "talk",
+        "why": "Koga (7, 13)"
+      },
+      {
+        "id": "koga",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_KOGA",
+          "foes": ["koffing", "muk", "koffing", "weezing"],
+          "policy": "goal-based-setup",
+          "setup_spa": 1,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": false,
+          "foe_threats": [
+            [30, 21, 18, 168, 84, 1, 1],
+            [48, 0, 4, 66, 33, 0, 0],
+            [30, 21, 18, 168, 84, 1, 1],
+            [56, 38, 37, 78, 39, 1, 0]
+          ]
+        },
+        "declared_after": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"},
+        "why": "Koga (TRAINER_LEADER_KOGA), fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +1 and outspeed by X items, medicine and cures by safety; the doc's koga row, foe_threats the rows PokemonSimulation's planning_risk() gives for each foe leading against the entry state, 34/122): Koffing Lv37, Muk Lv39, Koffing Lv37, Weezing Lv43 (pokeguy: Surf, two on Muk through Minimize, Weezing at 4 HP, 1:16:34 to 1:18:03); then the SOULBADGE and TM06 Toxic, read to the overworld with the battle's text"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Koga (7, 13), talked to from the west, from the save beside him (12.01): Koffing, Muk, Koffing, Weezing; his NPC medicine is two Hyper Potions and a Full Heal. The lead picks Surf (2x nothing here, the strongest move); pokeguy's Weezing took him to 4/126 HP with Sludge while Koga healed it.",
+        "Bag for a retry: a blackout or a lost fight reloads this save with the bag as 12.01 left it, and 12.01's heals after Kayden and Kirk spend Super Potions. count_bag_for_koga reads the Items pocket; unless it holds PokeGuy's 5 Super Potions and a cure for poison (an Antidote, or a Full Heal: the Fuchsia Mart sells no Antidote), the row walks out of the gym by 12.01's legs backwards, to the Mart and back (the Mart's trip and the gym's legs as in 12.01; Kayden and Kirk are beaten, Koga is not, so every other trainer's line is still live and the legs are the same ones to walls), buys the shortfall, and ends west of Koga again. Console B lost to Koga on 2026-11-12 with 6 Potions, 1 Super Potion and no cure.",
+        "A boss battle is its own checkpoint (user, 2026-11-12): Koga's fight is all this row does. It ends west of Koga after the SOULBADGE and TM06 text, and saves there; 12.02b goes on to the Warden."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"}
+    }
+  }
+}

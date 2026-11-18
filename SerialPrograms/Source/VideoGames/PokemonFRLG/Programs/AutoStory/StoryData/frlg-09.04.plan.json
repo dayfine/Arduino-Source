@@ -1,0 +1,29 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "09.04",
+    "title": "after Gift RNG: save with the Eevee",
+    "start": {"map": "CeladonCity_Condominiums_RoofRoom", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "leave_gift_summary",
+        "kind": "game_action",
+        "action": "leave_gift_summary",
+        "declared_after": {"map": "CeladonCity_Condominiums_RoofRoom", "tiles": [[7, 4]], "facing": "north"},
+        "why": "the Eevee's summary Gift RNG left open, or HOME"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "live_start": true,
+    "notes": {
+      "checkpoint": [
+        "Gift RNG takes the Eevee from its ball without moving the player and leaves its summary open, or HOME. This saves the shiny where 09.03 ended. A run started here with Gift RNG's handoff on loads the save facing the ball and runs Gift RNG first."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

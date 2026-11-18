@@ -1,0 +1,116 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "17.03",
+    "title": "Viridian Gym: Takashi, to Giovanni",
+    "start": {
+      "map": "ViridianCity_Gym",
+      "tiles": [
+        [
+          15,
+          7
+        ]
+      ],
+      "facing": "north"
+    },
+    "start_flags": [
+      "trainer_beaten:ViridianCity_Gym/cooltrainer_m@13,7",
+      "trainer_at:ViridianCity_Gym/cooltrainer_m@13,7=14,7"
+    ],
+    "events": [
+      {
+        "id": "right_of_takashi",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity_Gym",
+            "tiles": [
+              [
+                11,
+                2
+              ]
+            ],
+            "facing": "west"
+          }
+        },
+        "why": "planned from Warren's (15, 7) through the gym, the spinners ridden as planner moves (ViridianCity_Gym's arrow glyphs, PokemonFRLG_OverworldSpin.h): below the up arrow (19, 15), up column 19 to (19, 3), the left arrow (19, 2) west along row 2 to the stop tile (11, 2), beside Takashi (10, 2) on his right, out of his line (column 10, (10, 3..5)); the walk ends on a localized tile before the talk"
+      },
+      {
+        "id": "challenge_takashi",
+        "kind": "talk",
+        "why": "Takashi (10, 2), from his right: fought where he stands, so he walks nowhere and stays on (10, 2) after"
+      },
+      {
+        "id": "takashi",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BLACK_BELT_TAKASHI",
+          "foes": [
+            "machoke",
+            "machop",
+            "machoke",
+            "machoke"
+          ]
+        },
+        "declared_after": {
+          "map": "ViridianCity_Gym",
+          "tiles": [
+            [
+              11,
+              2
+            ]
+          ],
+          "facing": "west"
+        },
+        "why": "Takashi (TRAINER_BLACK_BELT_TAKASHI): Machoke Lv38, Machop Lv38, Machoke Lv38, Machoke Lv43; beaten, he sees no one on column 10 after",
+        "flags_after": [
+          "trainer_beaten:ViridianCity_Gym/black_belt@10,2"
+        ]
+      },
+      {
+        "id": "below_giovanni",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "ViridianCity_Gym",
+            "tiles": [
+              [
+                2,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "planned from Takashi's right (11, 2), down the spinners (the right arrow (11, 3) and the down arrow (18, 3), the only way off row 2 with Takashi on (10, 2)) and round to below Giovanni (2, 2), facing him; beaten, Takashi sees no one"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts on (15, 7) after Warren's battle in 17.02: he stands on (14, 7) since (start_flags, as 17.02's battle sets them). Takashi is fought from his right, (11, 2), which the arrows (19, 14) and (19, 2) slide the player to: from his line (10, 5) he walked up to (10, 4) and stood across the only way north to Giovanni (console B, 2026-11-15 16:52). Fought from the side he stays on (10, 2), and the way north up column 10 is open.",
+        "Ends at (2, 3) facing Giovanni (2, 2): the save in front of him, as for the other leaders."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "ViridianCity_Gym",
+        "tiles": [
+          [
+            2,
+            3
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

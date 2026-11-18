@@ -1,0 +1,127 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "18.02b",
+    "title": "Out of Saffron Gym by Escape Rope, Fly to Saffron's Center and heal",
+    "start": {
+      "map": "SaffronCity_Gym",
+      "tiles": [
+        [
+          14,
+          12
+        ]
+      ],
+      "facing": "north"
+    },
+    "start_flags": [
+      "silph_cleared"
+    ],
+    "events": [
+      {
+        "id": "escape_rope",
+        "kind": "game_action",
+        "action": "use_item",
+        "args": {
+          "item": "escape-rope"
+        },
+        "declared_after": {
+          "map": "SaffronCity",
+          "tiles": [
+            [
+              46,
+              13
+            ]
+          ],
+          "facing": "south"
+        },
+        "why": "out of Saffron Gym from Sabrina's room, as 16.06 out of Silph Co.: SaffronCity_Gym allows it (pokefirered map.json: allow_escaping true), and the rope takes the player to the escape warp, set when 16.06b walked north into the gym's door (46, 12) from Saffron (overworld.c UpdateEscapeWarp(): the tile below the door, (46, 13)). The bag has 3 by now: 4 at 16.06, less its rope"
+      },
+      {
+        "id": "fly_saffron",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "SaffronCity",
+          "species": "pidgey"
+        },
+        "declared_after": {
+          "map": "SaffronCity",
+          "tiles": [
+            [
+              24,
+              39
+            ]
+          ],
+          "facing": "south"
+        },
+        "why": "the Pidgey flies to Saffron City, landing below the Pokemon Center's door (24, 38) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_SAFFRON_CITY), as 18.03"
+      },
+      {
+        "id": "below_center_door",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "SaffronCity",
+            "tiles": [
+              [
+                24,
+                39
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "turn to face the Center's door (24, 38) from the landing"
+      },
+      {
+        "id": "saffron_nurse",
+        "kind": "game_action",
+        "action": "center_enter",
+        "declared_after": {
+          "map": "SaffronCity_PokemonCenter_1F",
+          "tiles": [
+            [
+              7,
+              4
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
+      },
+      {
+        "id": "heal_saffron",
+        "kind": "heal",
+        "why": "full HP and PP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts in front of Sabrina, where 18.02 ends after her battle and saves.",
+        "Out by Escape Rope and Fly, not back by the four pads and the gym's door: that walk was about 40 tiles over four pads (user, 2026-11-15: every Center trip flies once Fly is learned, and a building that allows an Escape Rope is left by rope). Before that, the walk round the city's blocks to the Center was about 80 tiles for a straight line of 48 (console B, 2026-11-15).",
+        "Ends at Saffron's nurse, facing her: 18.03's start.",
+        "Starts with silph_cleared, as 16.06b: Silph Co.'s Giovanni (16.05) sent the Rockets out of Saffron City, so the rope's landing (46, 13), where one of them stood, is free."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "SaffronCity_PokemonCenter_1F",
+        "tiles": [
+          [
+            7,
+            4
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

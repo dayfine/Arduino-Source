@@ -1,0 +1,72 @@
+/*  AutoStory Abilities
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  The GAME steps beyond walking and talking that later checkpoints name
+ *  in the table: MART (a budgeted buy list), TEACH (a TM or HM), LEVEL (a
+ *  member's level checked), GRIND (wild battles to a level) and
+ *  CHOICE(fossil). Each is an action of a GAME step; this runs the one a
+ *  step names with the game steps it is given.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonFRLG_AutoStoryAbilities_H
+#define PokemonAutomation_PokemonFRLG_AutoStoryAbilities_H
+
+#include <optional>
+#include "Common/Cpp/Logging/AbstractLogger.h"
+#include "CommonFramework/Tools/VideoStream.h"
+#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
+#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "PokemonFRLG_AutoStoryChoice.h"
+#include "PokemonFRLG_AutoStoryGrind.h"
+#include "PokemonFRLG_AutoStoryMart.h"
+#include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryPartyMember.h"
+#include "PokemonFRLG_AutoStoryPartyRoster.h"
+#include "PokemonFRLG_AutoStoryTeach.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+//  The game steps the abilities take.
+struct StoryAbilities{
+    MemberReader members;
+    MartActions& mart;
+    MartSell mart_sell;
+    TeachActions& teach;
+    GrindActions& grind;
+    ChoiceActions& choice;
+    //  Where a TEACH naming a species finds it; empty reads the members in turn.
+    SpeciesFinder species = {};
+    //  Where a TEACH of a field move records who learned it; none records nothing.
+    PartyCache* party = nullptr;
+    //  The lead as the battles know it: a TEACH to party slot 1 puts the
+    //  move in it (learn_taught()); none changes nothing.
+    PartyMember* lead = nullptr;
+};
+
+//  A MART, TEACH, LEVEL, GRIND or fossil step with `abilities`: nothing for
+//  another action. A GRIND that meets a shiny throws
+//  ProgramFinishedException, with a screenshot from `stream` if given, so
+//  the segment stops without reloading. Any other end but success is a
+//  failed Outcome; a MART that buys nothing because the money doesn't
+//  cover it, and a TEACH whose TM isn't in the TM CASE, succeed, with the
+//  reason logged. Those, a TEACH of a move the member knows and a LEVEL
+//  reached change nothing in the game (Outcome::changed_nothing).
+std::optional<Pokemon::Outcome> run_ability_game_step(
+    Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step, StoryAbilities& abilities
+);
+
+
+//  These steps' tests, with the Mart's, TEACH's, GRIND's and the fossil's.
+void add_tests_AutoStoryAbilities(UnitTestDatabase& database);
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

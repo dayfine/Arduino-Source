@@ -1,0 +1,126 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "18.02",
+    "title": "Saffron Gym: Sabrina and the MARSHBADGE",
+    "start": {
+      "map": "SaffronCity_Gym",
+      "tiles": [
+        [
+          14,
+          12
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "lead_lv46_for_sabrina",
+        "kind": "game_action",
+        "action": "level",
+        "args": {
+          "slot": 1,
+          "min": 46
+        },
+        "why": "the precondition for Sabrina: the lead at least Lv46, pokeguy's Blastoise here (PokemonSimulation docs/battles/pokeguy-conditions.md, sabrina: from 33/143 HP, 98.3% of the sims win, 90.1% to 100.0%); at his level or above, those sims stand for this fight and no new one is needed; below it, the run stops here, before the fight"
+      },
+      {
+        "id": "challenge_sabrina",
+        "kind": "talk",
+        "why": "Sabrina (14, 11)"
+      },
+      {
+        "id": "sabrina",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_SABRINA",
+          "foes": [
+            "kadabra",
+            "mr-mime",
+            "venomoth",
+            "alakazam"
+          ],
+          "policy": "goal-based-setup",
+          "setup_spa": 0,
+          "setup_accuracy": 0,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [
+              84,
+              0,
+              5,
+              57,
+              28,
+              0,
+              0
+            ],
+            [
+              71,
+              0,
+              3,
+              45,
+              22,
+              0,
+              0
+            ],
+            [
+              73,
+              12,
+              12,
+              26,
+              13,
+              0,
+              0
+            ],
+            [
+              108,
+              47,
+              47,
+              96,
+              48,
+              0,
+              0
+            ]
+          ]
+        },
+        "declared_after": {
+          "map": "SaffronCity_Gym",
+          "tiles": [
+            [
+              14,
+              12
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Sabrina (TRAINER_LEADER_SABRINA): Kadabra Lv38, Mr. Mime Lv37, Venomoth Lv38, Alakazam Lv43 (pokeguy: Water Pulse, Surf, Bite and Blizzard, 1:33:30 to 1:34:38); then the MARSHBADGE and TM04 Calm Mind. Fought by pokeguy's C2 (PokemonSimulation docs/battles/pokeguy-conditions.md, sabrina: goal-based-setup with no Sp. Atk goal, X Speed to outspeed Alakazam, Guard Spec first; 98.3% of the doc's sims from 33/143 HP); foe_threats are planning_risk() for each foe leading against the doc's entry (Blastoise Lv46)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Sabrina (14, 11), talked to from below, from the save in front of her (18.01): Kadabra Lv38, Mr. Mime Lv37, Venomoth Lv38, Alakazam Lv43 (sParty_LeaderSabrina); then the MARSHBADGE and TM04 Calm Mind. PokeGuy has Blastoise at Lv46 here (pokeguy-route.md, section 14).",
+        "A boss battle is its own checkpoint (user, 2026-11-12): it ends in front of her after the MARSHBADGE and TM04 text, and saves there; 18.02b goes on out of the gym."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {
+        "map": "SaffronCity_Gym",
+        "tiles": [
+          [
+            14,
+            12
+          ]
+        ],
+        "facing": "north"
+      }
+    }
+  }
+}

@@ -1,0 +1,965 @@
+/*  Overworld Route
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <algorithm>
+#include <format>
+#include <functional>
+#include <ranges>
+#include <string>
+#include <unordered_map>
+#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/Navigation/Pokemon_ConnectedMaps.h"
+#include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
+#include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "Pokemon/Navigation/Pokemon_LegPlanner.h"
+#include "PokemonFRLG_OverworldGatedRoute.h"
+#include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldObjects.h"
+#include "PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_OverworldSpin.h"
+#include "PokemonFRLG_OverworldStepChecks.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+namespace{
+
+
+using Pokemon::ConnectedMaps;
+using Pokemon::MapPlace;
+
+int find_map(const std::vector<MapData>& maps, const std::string& name){
+    const std::optional<size_t> index = ConnectedMaps(maps).find(name);
+    return index ? (int)*index : -1;
+}
+
+//  The player on one of the loaded maps.
+struct Located{
+    int map = 0;
+    PlayerState state;
+
+    bool operator==(const Located& other) const{
+        return map == other.map
+            && state.position == other.state.position
+            && state.elevation == other.state.elevation
+            && state.surfing == other.state.surfing;
+    }
+};
+struct LocatedHash{
+    size_t operator()(const Located& player) const{
+        return (((std::hash<TilePos>()(player.state.position) * 31 + player.map) * 16
+            + player.state.elevation) * 2) + (player.state.surfing ? 1 : 0);
+    }
+};
+
+//  What pressing a direction once does to the player.
+struct Transition{
+    Located next;
+    RouteAction action = RouteAction::WALK;
+    bool warped = false;
+    //  The way the warp left the player facing (arrival_facing()), if not
+    //  the way they moved.
+    std::optional<Direction> facing;
+    bool dismounted = false;     //  stepped off the water onto land
+    //  The step landed on a spinner, which slid the player on: how far,
+    //  and the way they last moved.
+    std::optional<SpinSlide> spin;
+};
+
+//  The player taking `warp`, or nothing if it leads off the loaded maps.
+std::optional<Transition> take_warp(const std::vector<MapData>& maps, const MapWarp* warp){
+    if (warp == nullptr){
+        return std::nullopt;
+    }
+    const std::optional<MapPlace> arrival = ConnectedMaps(maps).warp_arrival(*warp);
+    if (!arrival){
+        return std::nullopt;
+    }
+    const int destination = (int)arrival->map;
+    const MapData& map = maps[destination];
+    TilePos position = arrival->tile;
+    Transition transition;
+    transition.facing = arrival_facing(map, position);
+    if (walks_out_on_arrival(map, position)){
+        position = position.next(Direction::SOUTH);
+    }
+    transition.next.map = destination;
+    transition.next.state = PlayerState{position, elevation_at(map, position), false};
+    transition.warped = true;
+    return transition;
+}
+
+//  Walking off the map's edge onto the map connected there, if it is loaded.
+std::optional<Transition> cross_edge(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
+    const std::optional<MapPlace> across = ConnectedMaps(maps).across_edge(MapPlace{(size_t)player.map, player.state.position}, direction);
+    if (!across){
+        return std::nullopt;
+    }
+    const MapData& to = maps[across->map];
+    const StepKind kind = classify_step_onto(map, player.state, direction, to, across->tile);
+    if (kind == StepKind::BLOCKED){
+        return std::nullopt;
+    }
+    Transition transition;
+    transition.next.map = (int)across->map;
+    transition.next.state = after_step_onto(map, player.state, to, across->tile, kind);
+    transition.action = kind == StepKind::START_SURF ? RouteAction::SURF : RouteAction::WALK;
+    transition.dismounted = kind == StepKind::STOP_SURFING;
+    return transition;
+}
+
+//  Pressing `direction` once (field_control_avatar.c): an exit mat or a door
+//  warps without the player moving, a step onto a ladder or cave entrance
+//  warps after it, and anything else is a step by the collision rules.
+std::optional<Transition> press(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
+    const TilePos here = player.state.position;
+    if (exit_mat(map, here) == direction){
+        return take_warp(maps, warp_at(map, here));
+    }
+    const TilePos ahead = here.next(direction);
+    if (direction == Direction::NORTH && is_door(map, ahead) && !player.state.surfing){
+        return take_warp(maps, warp_at(map, ahead));
+    }
+
+    if (!in_bounds(map, ahead)){
+        return cross_edge(maps, player, direction);
+    }
+
+    const StepKind kind = classify_step(map, player.state, direction);
+    if (kind == StepKind::BLOCKED){
+        return std::nullopt;
+    }
+    Transition transition;
+    transition.next = player;
+    transition.next.state = after_step(map, player.state, direction, kind);
+    transition.action = kind == StepKind::START_SURF ? RouteAction::SURF : RouteAction::WALK;
+    transition.dismounted = kind == StepKind::STOP_SURFING;
+    const TilePos landed = transition.next.state.position;
+    if (transition.action == RouteAction::WALK && warps_on_step(map, landed) && warp_at(map, landed) != nullptr){
+        return take_warp(maps, warp_at(map, landed));
+    }
+    if (transition.action == RouteAction::WALK && spin_direction(map, landed)){
+        transition.spin = spin_slide(map, transition.next.state);
+        if (!transition.spin){
+            return std::nullopt;
+        }
+        transition.next.state = transition.spin->end;
+    }
+    return transition;
+}
+
+//  Whether pressing `direction` takes a warp to a map that isn't loaded,
+//  which press() refuses as if it were a wall.
+bool warps_off_loaded_maps(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
+    const TilePos here = player.state.position;
+    const TilePos ahead = here.next(direction);
+    const MapWarp* warp = nullptr;
+    if (exit_mat(map, here) == direction){
+        warp = warp_at(map, here);
+    }else if (direction == Direction::NORTH && is_door(map, ahead) && !player.state.surfing){
+        warp = warp_at(map, ahead);
+    }else if (in_bounds(map, ahead) && warps_on_step(map, ahead) && classify_step(map, player.state, direction) != StepKind::BLOCKED){
+        warp = warp_at(map, ahead);
+    }
+    return warp != nullptr && !take_warp(maps, warp);
+}
+
+//  Whether holding `direction` from `here` reads a sign: one walked into
+//  moving north or south shows its message (pokefirered
+//  TrySetUpWalkIntoSignpostScript()).
+bool reads_sign_ahead(const MapData& map, TilePos here, Direction direction){
+    return tile_at(map, here.next(direction)) == TileKind::SIGN
+        && (direction == Direction::NORTH || direction == Direction::SOUTH);
+}
+
+//  Whether holding `direction` stops the player where they are: a wall, or
+//  water they'd need to Surf onto. A leg that ends there can be
+//  held for longer than it takes, and walked again after an interruption. A
+//  person who stands on their tile (no wander box) counts: Giovanni on
+//  (2, 2) stops a hold up Viridian Gym's column 2 on (2, 3), and the walk
+//  checked "north 3" to him as an open leg that might have ended short
+//  (console B, 2026-11-15 21:39). One who may wander off doesn't, nor a
+//  trainer not yet beaten (with_trainers_beaten()), whose line a hold to
+//  them walks up (17.03's right_of_takashi would go up column 10 into
+//  Takashi's), and neither does an edge to a map that isn't loaded.
+bool stops_at(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const std::optional<Transition> transition = press(maps, player, direction);
+    if (transition){
+        return transition->action == RouteAction::SURF;
+    }
+    //  Nor does a warp to a map that isn't loaded: the player takes it (console
+    //  B, 2026-11-02, "west 5 (to wall)" rode Route 4's Pokemon Center
+    //  escalator up to 2F).
+    if (warps_off_loaded_maps(maps, player, direction)){
+        return false;
+    }
+    const MapData& map = maps[player.map];
+    const TilePos ahead = player.state.position.next(direction);
+    //  Held into a sign moving north or south, the game shows the sign's
+    //  message: the player stops, but the walk is interrupted (console B,
+    //  2026-11-01, the poster on the bedroom's wall).
+    if (reads_sign_ahead(map, player.state.position, direction)){
+        return false;
+    }
+    //  Held into a ledge the way it faces, the player hops down it (console
+    //  B, 2026-11-01, Viridian City: "south 2 (to wall)" from the Pokemon
+    //  Center hopped the ledge two rows down). Routes don't hop ledges, so
+    //  none is held into.
+    if (is_ledge(map, ahead)){
+        return false;
+    }
+    if (in_bounds(map, ahead)){
+        const MapObject* object = object_at(map, ahead);
+        return object == nullptr || (!object->wander && !object->trainer);
+    }
+    for (const MapConnection& connection : map.connections){
+        if (connection.side == direction){
+            return false;
+        }
+    }
+    return true;
+}
+
+//  Whether `player` at the edge of their map faces a wall on the loaded map
+//  connected there (Cinnabar Island's north wall below Route 21's beach):
+//  press() finds the step blocked.
+bool wall_over_edge(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const MapData& map = maps[player.map];
+    if (in_bounds(map, player.state.position.next(direction)) || press(maps, player, direction)){
+        return false;
+    }
+    for (const MapConnection& connection : map.connections){
+        if (connection.side == direction){
+            return find_map(maps, connection.to_map) >= 0;
+        }
+    }
+    return false;
+}
+
+//  The search state: a player, the way they face (4 stands for "not known
+//  yet", before the first step), and whether they are in the middle of a leg
+//  that could go on, as opposed to just stopped by a warp or Surf.
+//  The game's step rules for the shared leg planner.
+class StepModel{
+public:
+    using State = Located;
+    using StateHash = LocatedHash;
+
+    //  With `only_map`, no step leaves that map; the other maps still tell
+    //  where a hold stops (an edge onto a wall, a door's warp).
+    StepModel(const std::vector<MapData>& maps, const RouteCosts& costs, std::optional<int> only_map = std::nullopt)
+        : m_maps(maps)
+        , m_costs(costs)
+        , m_only_map(only_map)
+    {}
+
+    std::optional<Pokemon::Step<State>> press(const State& state, Direction direction) const{
+        const std::optional<Transition> transition = PokemonFRLG::press(m_maps, state, direction);
+        if (!transition || (transition->action == RouteAction::SURF && route_cost(m_costs, RouteCost::SURF) < 0)){
+            return std::nullopt;
+        }
+        if (m_only_map && transition->next.map != *m_only_map){
+            return std::nullopt;
+        }
+        Pokemon::Step<State> step;
+        step.next = transition->next;
+        step.action = transition->action == RouteAction::SURF ? ACTION_SURF : 0;
+        //  Leaving the water doesn't end the leg: the player held on lands
+        //  and walks on, so a leg over a sand bar to its far bank ends where
+        //  the water stops them (RouteStep::lands_after).
+        //  A slide ends the leg: the hold must let go on the spinner.
+        step.ends_leg = transition->warped || transition->spin;
+        step.warped = transition->warped;
+        step.facing = transition->facing.value_or(direction);
+        if (transition->spin){
+            step.facing = transition->spin->facing;
+            step.extra_cost += transition->spin->tiles * route_cost(m_costs, RouteCost::TILE);
+        }
+        if (transition->action == RouteAction::SURF){
+            step.extra_cost += route_cost(m_costs, RouteCost::SURF);
+        }
+        if (transition->warped){
+            step.extra_cost += route_cost(m_costs, RouteCost::WARP);
+        }
+        if (is_tall_grass(m_maps[step.next.map], step.next.state.position)){
+            step.extra_cost += route_cost(m_costs, RouteCost::GRASS_TILE);
+            step.wild = true;
+        }
+        if (step.next.state.surfing){
+            step.wild = true;
+        }
+        if (seen_by_trainer(step.next)){
+            step.extra_cost += route_cost(m_costs, RouteCost::SIGHT_TILE);
+        }
+        if (in_trainer_line(step.next)){
+            step.extra_cost += route_cost(m_costs, RouteCost::LINE_TILE);
+        }
+        return step;
+    }
+    bool held_at(const State& state, Direction direction) const{
+        return stops_at(m_maps, state, direction);
+    }
+    int open_stop_risk(const State& state, Direction direction) const{
+        if (state.state.surfing){
+            return route_cost(m_costs, RouteCost::OPEN_WATER_STOP);
+        }
+        if (reads_sign_ahead(m_maps[state.map], state.state.position, direction)){
+            return route_cost(m_costs, RouteCost::SIGN_OVERSHOOT);
+        }
+        const std::optional<Transition> past = PokemonFRLG::press(m_maps, state, direction);
+        if (!past || !seen_by_trainer(past->next)){
+            return 0;
+        }
+        return route_cost(m_costs, RouteCost::SIGHT_OVERSHOOT);
+    }
+    //  A tile on the water from a wall is placed for certain, so it
+    //  pays neither OPEN_WILD_STOP nor OPEN_WATER_STOP: the way to start a
+    //  hold down a column with no wall of its own is a wall and a tile on
+    //  (12.03 run 7, console B 2026-11-13 13:31: south 5, west 1, north 3
+    //  and east 2 round Route21_South's rocks to a wall on column 6
+    //  instead). Only the water: on land and in caves, plans then took runs
+    //  of single tiles over longer holds to walls (Mt. Moon, Victory Road).
+    std::optional<int> tap_stop_risk(const State& state, Direction direction) const{
+        if (!state.state.surfing){
+            return std::nullopt;
+        }
+        const std::optional<Transition> past = PokemonFRLG::press(m_maps, state, direction);
+        return past && seen_by_trainer(past->next) ? route_cost(m_costs, RouteCost::SIGHT_OVERSHOOT) : 0;
+    }
+
+    //  RouteCost::OPEN_CHECK for an open leg of `run` tiles to `stop`, walked
+    //  `facing`, before a leg `next` (none: the walk ends): the walk finds
+    //  the player at walls after it unless the leg after it places them
+    //  from each tile it may have ended on, up to OPEN_LEG_SHORTFALL short.
+    //  Not on the water, which OPEN_WATER_STOP weighs.
+    int open_check_risk(const State& stop, Direction facing, int run, std::optional<Direction> next) const{
+        if (run < 2 || stop.state.surfing){
+            return 0;
+        }
+        const int cost = route_cost(m_costs, RouteCost::OPEN_CHECK);
+        if (!next){
+            return cost;
+        }
+        const std::optional<Transition> ahead = PokemonFRLG::press(m_maps, stop, *next);
+        if (ahead && ahead->spin){
+            return cost;
+        }
+        const std::string& map = m_maps[stop.map].name;
+        const std::optional<WallHold> hold = hold_to_wall(m_maps, MapPosition{map, stop.state.position}, /*surfing=*/false, *next);
+        if (!hold){
+            return 0;
+        }
+        const Direction behind = (Direction)(((int)facing + 2) % 4);
+        TilePos back = stop.state.position;
+        for (int c = 1; c < run && c <= OPEN_LEG_SHORTFALL; c++){
+            back = back.next(behind);
+            const std::optional<WallHold> from = hold_to_wall(m_maps, MapPosition{map, back}, /*surfing=*/false, *next);
+            if (!from || !(from->end == hold->end || from->tiles == 0)){
+                return cost;
+            }
+        }
+        return 0;
+    }
+
+    static constexpr int ACTION_SURF = 1;
+
+private:
+    bool seen_by_trainer(const State& state) const{
+        const MapData& map = m_maps[state.map];
+        return std::ranges::any_of(map.objects, [&](const MapObject& object){
+            return trainer_may_see(map, object, state.state.position);
+        });
+    }
+    //  Whether a trainer who stands and looks one way sees `state`'s tile.
+    bool in_trainer_line(const State& state) const{
+        const MapData& map = m_maps[state.map];
+        return std::ranges::any_of(map.objects, [&](const MapObject& object){
+            return object.trainer && !object.wander && object.trainer->looks.size() == 1
+                && trainer_may_see(map, object, state.state.position);
+        });
+    }
+
+    const std::vector<MapData>& m_maps;
+    const RouteCosts& m_costs;
+    std::optional<int> m_only_map;
+};
+
+//  The maps through each gate state a search reaches, resolved once.
+class GateMaps{
+public:
+    explicit GateMaps(const std::vector<MapData>& maps)
+        : m_maps(maps)
+        , m_gated(has_gates(maps))
+    {}
+
+    const std::vector<MapData>& at(const Pokemon::GateState& gates) const{
+        if (!m_gated){
+            return m_maps;
+        }
+        auto iter = m_resolved.find(gates);
+        if (iter == m_resolved.end()){
+            iter = m_resolved.emplace(gates, resolve_maps(m_maps, gates)).first;
+        }
+        return iter->second;
+    }
+
+private:
+    const std::vector<MapData>& m_maps;
+    bool m_gated;
+    //  Nodes keep their addresses, so a reference stays good while the
+    //  search adds states.
+    mutable std::unordered_map<Pokemon::GateState, std::vector<MapData>> m_resolved;
+};
+
+//  StepModel for the gated planner (Pokemon_GatedPlanner.h): the same step
+//  rules over the maps as the gates make them.
+class GatedStepModel{
+public:
+    using State = Located;
+    using StateHash = LocatedHash;
+
+    GatedStepModel(const GateMaps& maps, const RouteCosts& costs, std::optional<int> only_map)
+        : m_maps(maps)
+        , m_costs(costs)
+        , m_only_map(only_map)
+    {}
+
+    std::optional<Pokemon::Step<State>> press(const State& state, Direction direction, const Pokemon::GateState& gates) const{
+        return StepModel(m_maps.at(gates), m_costs, m_only_map).press(state, direction);
+    }
+    bool held_at(const State& state, Direction direction, const Pokemon::GateState& gates) const{
+        return StepModel(m_maps.at(gates), m_costs).held_at(state, direction);
+    }
+    int open_stop_risk(const State& state, Direction direction, const Pokemon::GateState& gates) const{
+        return StepModel(m_maps.at(gates), m_costs).open_stop_risk(state, direction);
+    }
+    std::optional<int> tap_stop_risk(const State& state, Direction direction, const Pokemon::GateState& gates) const{
+        return StepModel(m_maps.at(gates), m_costs).tap_stop_risk(state, direction);
+    }
+    int open_check_risk(const State& stop, Direction facing, int run, std::optional<Direction> next, const Pokemon::GateState& gates) const{
+        return StepModel(m_maps.at(gates), m_costs).open_check_risk(stop, facing, run, next);
+    }
+    Pokemon::MapPlace place_of(const State& state) const{
+        return Pokemon::MapPlace{(size_t)state.map, state.state.position};
+    }
+
+private:
+    const GateMaps& m_maps;
+    const RouteCosts& m_costs;
+    std::optional<int> m_only_map;
+};
+
+Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
+    Pokemon::LegCosts leg_costs;
+    leg_costs.per_tile = route_cost(costs, RouteCost::TILE);
+    leg_costs.per_turn = route_cost(costs, RouteCost::TURN);
+    leg_costs.per_open_stop = route_cost(costs, RouteCost::OPEN_STOP);
+    leg_costs.per_open_wild_stop = route_cost(costs, RouteCost::OPEN_WILD_STOP);
+    return leg_costs;
+}
+
+//  The tiles the slide at the end of WALK `leg` takes, if it ends on a
+//  spinner: only a leg's last step can slide (StepModel ends the leg).
+std::optional<int> last_spin_tiles(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
+    Located player = leg.start;
+    std::optional<Transition> transition;
+    for (int c = 0; c < leg.tiles; c++){
+        transition = press(maps, player, leg.direction);
+        if (!transition){
+            return std::nullopt;
+        }
+        player = transition->next;
+    }
+    if (!transition || !transition->spin){
+        return std::nullopt;
+    }
+    return transition->spin->tiles;
+}
+
+//  The step of WALK `leg` that lands the player off the water, counted
+//  from 1, or 0 if none does.
+int landing_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
+    if (!leg.start.state.surfing){
+        return 0;
+    }
+    Located player = leg.start;
+    for (int c = 1; c <= leg.tiles; c++){
+        const std::optional<Transition> transition = press(maps, player, leg.direction);
+        if (!transition){
+            return 0;
+        }
+        if (transition->dismounted){
+            return c;
+        }
+        player = transition->next;
+    }
+    return 0;
+}
+
+//  Whether WALK `step` ends on stairs at the side of a room, or an exit
+//  mat, going another way than its warp is taken, and not at a wall. The
+//  press the warp's way finds the warp only if the leg ended on its tile:
+//  a tile off, it meets the wall beside the stairs. So the leg is tapped, a
+//  tap a tile checked to have moved (10.05 tower_6f_stairs: "south 3
+//  (open)" onto Pokemon Tower 5F's stairs (18, 10) ended a tile short;
+//  console B, 2026-11-12 03:41).
+bool onto_warp_sideways(const MapData& map, const RouteStep& step){
+    const std::optional<Direction> taken = exit_mat(map, step.end.point);
+    return taken && *taken != step.direction && !step.warps && !step.to_wall && !step.spin_tiles;
+}
+
+//  Taps an open leg onto the tile a switch is pressed from: a hold that
+//  ends a tile off presses nothing ("east 4 (open)" to Pokemon Mansion 3F's
+//  statue tile (12, 6) ran a tile long; console B, 2026-11-13 19:17, 13.01
+//  mansion_holes). tap_from_known_tile() then taps the open legs before it.
+void tap_onto_switches(std::vector<RouteStep>& route){
+    for (size_t c = route.size(); c-- > 1;){
+        if (route[c].action != RouteAction::PRESS_SWITCH){
+            continue;
+        }
+        size_t before = c - 1;
+        while (before > 0 && route[before].action == RouteAction::FACE){
+            before--;
+        }
+        RouteStep& step = route[before];
+        if (step.action == RouteAction::WALK && !step.surfing && !step.warps && !step.to_wall && !step.spin_tiles){
+            step.tapped = true;
+        }
+    }
+}
+
+//  Taps the open legs before each tapped leg in `route`, back to the start
+//  or a leg that ends where the walk knows the player is (a wall, a warp),
+//  so a leg onto stairs from the side starts from a known tile (Pokemon
+//  Tower 2F's "west 12" before "south 4" onto the stairs (4, 10)).
+void tap_from_known_tile(std::vector<RouteStep>& route){
+    for (size_t c = route.size(); c-- > 1;){
+        if (!route[c].tapped){
+            continue;
+        }
+        for (size_t before = c; before-- > 0;){
+            RouteStep& step = route[before];
+            if (step.action == RouteAction::FACE){
+                continue;
+            }
+            if (step.action != RouteAction::WALK || step.surfing || step.warps || step.to_wall || step.spin_tiles || step.tapped){
+                break;
+            }
+            step.tapped = true;
+        }
+    }
+}
+
+RouteAction route_action(const Pokemon::Leg<Located>& leg){
+    switch (leg.kind){
+    case Pokemon::LegKind::WALK:
+        return RouteAction::WALK;
+    case Pokemon::LegKind::ACTION:
+        switch (leg.action){
+        case Pokemon::ACTION_OPEN_GATE:
+            return RouteAction::OPEN_GATE;
+        case Pokemon::ACTION_PRESS_SWITCH:
+            return RouteAction::PRESS_SWITCH;
+        default:
+            return RouteAction::SURF;
+        }
+    case Pokemon::LegKind::FACE:
+        return RouteAction::FACE;
+    }
+    return RouteAction::WALK;
+}
+
+RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
+    RouteStep step;
+    step.action = route_action(leg);
+    step.direction = leg.direction;
+    const bool gate = step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH;
+    step.tiles = leg.kind == Pokemon::LegKind::FACE || gate ? 0 : leg.tiles;
+    step.warps = leg.warps;
+    step.surfing = leg.start.state.surfing;
+    step.walk_only = !maps[leg.start.map].allow_running;
+    step.to_wall = leg.to_wall;
+    step.facing_after = leg.facing_after;
+    step.end = MapPosition{maps[leg.end.map].name, leg.end.state.position};
+    if (leg.kind != Pokemon::LegKind::FACE){
+        //  Tall grass on any map the leg crosses, or the water. Counted on the
+        //  start map only, "north 22" from Pallet Town through Route 1's grass
+        //  wasn't watched for battles (console B, 2026-11-01).
+        step.wild = !gate && (leg.wild || leg.start.state.surfing || leg.kind == Pokemon::LegKind::ACTION);
+    }
+    if (leg.kind == Pokemon::LegKind::WALK){
+        step.spin_tiles = last_spin_tiles(maps, leg);
+        step.lands_after = landing_step(maps, leg);
+        //  A leg that lands and goes on to a wall over the map's edge ends
+        //  there as at a wall on its own map. Only for these: other legs
+        //  keep the edges they were planned with.
+        if (step.lands_after > 0 && !step.warps && wall_over_edge(maps, leg.end, step.direction)){
+            step.to_wall = true;
+        }
+        step.to_wall = step.to_wall && !step.spin_tiles;
+        step.tapped = !step.surfing && onto_warp_sideways(maps[leg.end.map], step);
+        step.off_exit_mat = step.warps && exit_mat(maps[leg.start.map], leg.start.state.position) == step.direction;
+        step.sign_ahead = !step.to_wall && !step.warps && reads_sign_ahead(maps[leg.end.map], leg.end.state.position, step.direction);
+    }
+    const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
+    for (int c : std::views::iota(1, (int)tiles.size()) | std::views::filter([&](int n){ return tiles[n].map != tiles[n - 1].map; })){
+        step.connection_steps.push_back(c);
+    }
+    return step;
+}
+
+} // namespace
+
+
+
+std::optional<OverworldPress> predict_overworld_press(
+    const std::vector<MapData>& maps, const OverworldPose& from, Direction direction
+){
+    const int map = find_map(maps, from.position.map);
+    if (map < 0){
+        return std::nullopt;
+    }
+    const Located start{map, {from.position.point, from.elevation, from.surfing}};
+    const auto next = press(maps, start, direction);
+    if (!next){
+        return std::nullopt;
+    }
+    return OverworldPress{
+        .pose = {
+            .position = {maps[next->next.map].name, next->next.state.position},
+            .elevation = next->next.state.elevation,
+            .surfing = next->next.state.surfing,
+            .facing = next->spin ? next->spin->facing : next->facing.value_or(direction),
+        },
+        .warped = next->warped,
+    };
+}
+
+namespace{
+
+//  plan_overworld_route(), with no step off `only_map` if given.
+std::optional<std::vector<RouteStep>> plan_route_on(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteGoal& goal,
+    const RouteCosts& costs,
+    std::optional<Direction> start_facing,
+    std::optional<int> only_map
+){
+    const int start_map = find_map(maps, start.map);
+    const int goal_map = find_map(maps, goal.position.map);
+    if (start_map < 0 || goal_map < 0){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Route between maps that aren't loaded.");
+    }
+    Located first;
+    first.map = start_map;
+    first.state.position = start.point;
+    first.state.elevation = elevation_at(maps[start_map], start.point);
+    first.state.surfing = is_water(maps[start_map], start.point);
+
+    const StepModel model(maps, costs, only_map);
+    const auto legs = Pokemon::plan_legs(
+        model, first, start_facing,
+        std::function<bool(const Located&)>([&](const Located& player){
+            return player.map == goal_map && player.state.position == goal.position.point;
+        }),
+        goal.facing, to_leg_costs(costs)
+    );
+    if (!legs){
+        return std::nullopt;
+    }
+
+    std::vector<RouteStep> route;
+    for (const Pokemon::Leg<Located>& leg : *legs){
+        route.push_back(to_route_step(maps, leg));
+    }
+    tap_from_known_tile(route);
+    return route;
+}
+
+//  The map a route from `start` to `goal` stays on if any route does:
+//  theirs, when they share it. The game resets a map's objects when the
+//  player leaves it: 19.04b's below_ladder went out of Victory Road 1F's
+//  cave mouth onto Route 23 and back in, and the boulder pushed onto the
+//  floor switch stood on (7, 18) again, where a leg ran into it (console
+//  B, 2026-11-16, run 3). The other maps stay loaded: planned on the map
+//  alone, an edge onto a wall or a door's warp read as no wall, and 12.03
+//  planned a leg on the water into Cinnabar's north wall as open.
+std::optional<int> shared_map(const std::vector<MapData>& maps, const MapPosition& start, const RouteGoal& goal){
+    if (start.map != goal.position.map){
+        return std::nullopt;
+    }
+    const int map = find_map(maps, start.map);
+    return map < 0 ? std::nullopt : std::optional<int>(map);
+}
+
+} // namespace
+
+std::optional<std::vector<RouteStep>> plan_overworld_route(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteGoal& goal,
+    const RouteCosts& costs,
+    std::optional<Direction> start_facing
+){
+    if (const std::optional<int> map = shared_map(maps, start, goal)){
+        if (std::optional<std::vector<RouteStep>> route = plan_route_on(maps, start, goal, costs, start_facing, map)){
+            return route;
+        }
+    }
+    return plan_route_on(maps, start, goal, costs, start_facing, std::nullopt);
+}
+
+
+namespace{
+
+//  `legs` as route steps, each read on the maps its gates make.
+std::vector<RouteStep> gated_route_steps(const GateMaps& gate_maps, const std::vector<Pokemon::Leg<Pokemon::GatedState<Located>>>& legs){
+    std::vector<RouteStep> route;
+    for (const Pokemon::Leg<Pokemon::GatedState<Located>>& gated : legs){
+        Pokemon::Leg<Located> leg{
+            .kind = gated.kind, .action = gated.action, .direction = gated.direction, .tiles = gated.tiles,
+            .warps = gated.warps, .to_wall = gated.to_wall, .wild = gated.wild, .facing_after = gated.facing_after,
+            .start = gated.start.inner, .end = gated.end.inner,
+        };
+        RouteStep step = to_route_step(gate_maps.at(gated.start.gates), leg);
+        step.gate_change = Pokemon::gate_change_of(gated);
+        route.push_back(std::move(step));
+    }
+    return route;
+}
+
+} // namespace
+
+namespace{
+
+//  Where a gated route starts: the tile, the gates as they stand, and the
+//  way the player faces, if known.
+struct GatedRouteStart{
+    const MapPosition& position;
+    const Pokemon::GateState& gates;
+    std::optional<Direction> facing;
+};
+
+//  plan_overworld_route_gated() on maps with gates, with no step off
+//  `only_map` if given.
+std::optional<std::vector<RouteStep>> plan_gated_route_on(
+    const std::vector<MapData>& maps,
+    const GatedRouteStart& from,
+    const RouteGoal& goal,
+    const Pokemon::GateRules& rules,
+    const RouteCosts& costs,
+    std::optional<int> only_map
+){
+    const int start_map = find_map(maps, from.position.map);
+    const int goal_map = find_map(maps, goal.position.map);
+    if (start_map < 0 || goal_map < 0){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Route between maps that aren't loaded.");
+    }
+    const GateMaps gate_maps(maps);
+    const std::vector<MapData>& first_maps = gate_maps.at(from.gates);
+    Pokemon::GatedStart<Located> first;
+    first.state.map = start_map;
+    first.state.state = PlayerState{from.position.point, elevation_at(first_maps[start_map], from.position.point), is_water(first_maps[start_map], from.position.point)};
+    first.gates = from.gates;
+    first.facing = from.facing;
+    const Pokemon::ConnectedMaps world(maps);
+    const GatedStepModel model(gate_maps, costs, only_map);
+    const auto legs = Pokemon::plan_gated_legs(
+        model, world, rules, first,
+        Pokemon::GatedGoal<Located>{
+            .at_goal = [&](const Located& player){
+                return player.map == goal_map && player.state.position == goal.position.point;
+            },
+            .facing = goal.facing,
+        },
+        to_leg_costs(costs)
+    );
+    if (!legs){
+        return std::nullopt;
+    }
+
+    std::vector<RouteStep> route = gated_route_steps(gate_maps, *legs);
+    tap_onto_switches(route);
+    tap_from_known_tile(route);
+    return route;
+}
+
+} // namespace
+
+std::optional<std::vector<RouteStep>> plan_overworld_route_gated(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteGoal& goal,
+    const Pokemon::GateState& gates,
+    const Pokemon::GateRules& rules,
+    const RouteCosts& costs,
+    std::optional<Direction> start_facing
+){
+    if (!has_gates(maps)){
+        return plan_overworld_route(maps, start, goal, costs, start_facing);
+    }
+    if (const std::optional<int> map = shared_map(maps, start, goal)){
+        if (std::optional<std::vector<RouteStep>> route = plan_gated_route_on(maps, {start, gates, start_facing}, goal, rules, costs, map)){
+            return route;
+        }
+    }
+    return plan_gated_route_on(maps, {start, gates, start_facing}, goal, rules, costs, std::nullopt);
+}
+
+
+namespace{
+
+//  Further than any straight line on a map.
+constexpr int MAX_HOLD_TILES = 128;
+
+std::optional<Located> locate(const std::vector<MapData>& maps, const MapPosition& position, bool surfing){
+    const int map = find_map(maps, position.map);
+    if (map < 0){
+        return std::nullopt;
+    }
+    Located player;
+    player.map = map;
+    player.state = PlayerState{position.point, elevation_at(maps[map], position.point), surfing};
+    return player;
+}
+
+//  A plain step: no warp, no Surf, no getting off the water.
+std::optional<Located> plain_step(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    const std::optional<Transition> transition = press(maps, player, direction);
+    if (!transition || transition->warped || transition->dismounted || transition->spin || transition->action != RouteAction::WALK){
+        return std::nullopt;
+    }
+    return transition->next;
+}
+
+} // namespace
+
+
+namespace{
+
+//  Holding north into a ledge stops the player: the maps don't keep which way
+//  a ledge faces, but FRLG's face south, east or west (pokefirered has no
+//  MB_JUMP_NORTH on any map these load). Only finding the player again
+//  relies on this; routes never hold into a ledge (stops_at()).
+bool ledge_stops_north(const std::vector<MapData>& maps, const Located& player, Direction direction){
+    return direction == Direction::NORTH && is_ledge(maps[player.map], player.state.position.next(direction));
+}
+
+} // namespace
+
+std::optional<WallHold> hold_to_wall(
+    const std::vector<MapData>& maps,
+    const MapPosition& from, bool surfing, Direction direction
+){
+    std::optional<Located> player = locate(maps, from, surfing);
+    WallHold hold;
+    hold.walk_only = player && !maps[player->map].allow_running;
+    for (int c = 0; player && c <= MAX_HOLD_TILES; c++){
+        if (stops_at(maps, *player, direction) || ledge_stops_north(maps, *player, direction)){
+            hold.end = MapPosition{maps[player->map].name, player->state.position};
+            hold.tiles = c;
+            return hold;
+        }
+        player = plain_step(maps, *player, direction);
+        if (player){
+            const MapData& map = maps[player->map];
+            hold.wild = hold.wild || is_tall_grass(map, player->state.position) || player->state.surfing;
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<MapPosition> leg_tiles(
+    const std::vector<MapData>& maps,
+    const MapPosition& start, const RouteStep& step
+){
+    std::vector<MapPosition> tiles{start};
+    std::optional<Located> player = locate(maps, start, step.surfing);
+    const int along = step.tiles - (step.warps || step.spin_tiles ? 1 : 0);
+    for (int c = 0; player && c < along; c++){
+        player = plain_step(maps, *player, step.direction);
+        if (player){
+            tiles.push_back(MapPosition{maps[player->map].name, player->state.position});
+        }
+    }
+    return tiles;
+}
+
+namespace{
+
+//  `step`'s tiles from `player`, on `maps` as the gates now make them.
+void follow_step(const std::vector<MapData>& maps, Located& player, const RouteStep& step){
+    for (int c = 0; c < step.tiles; c++){
+        const std::optional<Transition> transition = press(maps, player, step.direction);
+        if (!transition || transition->action != step.action){
+            throw InternalProgramError(
+                nullptr, PA_CURRENT_FUNCTION,
+                "Step refused at " + to_string(MapPosition{maps[player.map].name, player.state.position}) + ": " + to_string(step)
+            );
+        }
+        player = transition->next;
+    }
+    const MapPosition position{maps[player.map].name, player.state.position};
+    if (!(position == step.end)){
+        throw InternalProgramError(
+            nullptr, PA_CURRENT_FUNCTION,
+            "Ended at " + to_string(position) + " instead of " + to_string(step.end)
+        );
+    }
+}
+
+} // namespace
+
+MapPosition follow_overworld_route(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const std::vector<RouteStep>& route,
+    const Pokemon::GateState& start_gates
+){
+    Pokemon::GateState gates = start_gates;
+    //  Only maps with gates are copied to read through them.
+    const bool gated = has_gates(maps);
+    std::vector<MapData> resolved;
+    if (gated){
+        resolved = resolve_maps(maps, gates);
+    }
+    Located player;
+    player.map = find_map(maps, start.map);
+    if (player.map < 0){
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Route from a map that isn't loaded: " + start.map);
+    }
+    player.state.position = start.point;
+    player.state.elevation = elevation_at(maps[player.map], start.point);
+    player.state.surfing = is_water(maps[player.map], start.point);
+
+    for (const RouteStep& step : route){
+        if (step.action == RouteAction::FACE){
+            continue;
+        }
+        if (step.action == RouteAction::OPEN_GATE || step.action == RouteAction::PRESS_SWITCH){
+            Pokemon::apply_gate_change(gates, step.gate_change);
+            if (gated){
+                resolved = resolve_maps(maps, gates);
+            }
+            continue;
+        }
+        follow_step(gated ? resolved : maps, player, step);
+    }
+    return MapPosition{maps[player.map].name, player.state.position};
+}
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

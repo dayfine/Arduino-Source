@@ -1,0 +1,160 @@
+/*  AutoStory Supplies
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  What the story carries into a battle: the healing items, the lead's
+ *  status, HP and moves, and the foes it knows; and when to see the nurse.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonFRLG_AutoStorySupplies_H
+#define PokemonAutomation_PokemonFRLG_AutoStorySupplies_H
+
+#include <cstddef>
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
+#include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
+#include "PokemonFRLG_AutoStoryBattlePolicyData.h"
+#include "PokemonFRLG_AutoStoryLeagueBudget.h"
+#include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryStartMenu.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+//  A status condition, as far as the story treats them: the ones it carries
+//  items for, and the rest, which only a nurse cures.
+enum class StatusCondition{
+    NONE,
+    POISON,
+    PARALYSIS,
+    SLEEP,
+    OTHER,      //  BRN, FRZ
+};
+//  String representation of a status condition.
+std::string_view status_name(StatusCondition status);
+//  The cure for a status, by PokemonSimulation's pokeguy-conditions.md CURES
+//  table ("parlyz-heal" for PARALYSIS); "" for none. The battle policy and
+//  the story's own battles both cure by it.
+std::string_view cure_of(StatusCondition status);
+
+//  The healing items in the Items pocket, in the order they were bought:
+//  Potions, Antidotes, then Parlyz Heals; Awakenings from Cerulean's Mart.
+struct Supplies{
+    int potions = 0;
+    int super_potions = 0;
+    int antidotes = 0;
+    int parlyz_heals = 0;
+    int awakenings = 0;
+    //  Not bought by the story: counted when the bag read at a checkpoint's
+    //  start shows some.
+    int full_heals = 0;
+    //  The Items pocket's order, by slug (see read_item_list_name()): the
+    //  order bought, or as read from the bag, with "" for a row whose name
+    //  couldn't be read. A counted item with none left takes no row; the
+    //  others always take theirs, until other_counts says the last is used.
+    std::vector<std::string> pocket = {"potion", "antidote", "parlyz-heal"};
+    //  The counts the bag read for the items the story doesn't count (an
+    //  X Special), by slug; an item missing here has an unknown count.
+    std::map<std::string, int> other_counts = {};
+    //  The counts above come from a read of the Items pocket in this run by
+    //  a step that acts on them (set_from_bag()), kept since by the story's
+    //  own counting. False for the counts a checkpoint's row guesses or a
+    //  reloaded save carries, and after any step that changes the pocket
+    //  uncounted (items_pocket_change()): a battle or a recovery reads the
+    //  pocket itself before it uses them. A check's read
+    //  (read_bag_supplies()) never sets them.
+    bool counts_read = false;
+    //  The starter's status at the last battle screen that showed it, and
+    //  not cured since.
+    StatusCondition status = StatusCondition::NONE;
+    //  The starter's HP bar wasn't green (or was red) at the last battle
+    //  screen that showed it, and no Potion or nurse healed it since.
+    bool hurt = false;
+    bool hp_red = false;
+    //  The starter's HP bar's filled share at the last battle screen that
+    //  showed it, 1 after the nurse or a Potion on the overworld.
+    double hp_fill = 1.0;
+    //  The bar's filled share as last measured on a battle screen (1 after
+    //  the nurse), unlike hp_fill not raised by a Potion's guess; nothing
+    //  while none was (a checkpoint loaded from a save). And the HP the
+    //  items used on the lead since then heal.
+    std::optional<double> measured_fill = std::nullopt;
+    int healed_since_measured = 0;
+    //  The starter's moves and their PP, as far as the story knows them:
+    //  a new game's Squirtle unless a checkpoint's row says otherwise.
+    PartyMember lead = new_member("squirtle", 5);
+    //  Party slots (from 0, the lead) that are never sent in when the lead
+    //  faints, so they gain no EXP and learn or evolve nothing: a member
+    //  kept for later, or one the user keeps for a trade.
+    std::vector<size_t> protected_slots = {};
+    //  The party of the trainer the battle step fights, as its plan lists
+    //  it (the step's "foes"): the lead's attacks are chosen against it
+    //  while the one out isn't known. Empty otherwise; wild battles never
+    //  use it.
+    std::vector<std::string> foes = {};
+    //  That trainer, as its plan names it (the step's "trainer"), "" otherwise.
+    std::string trainer = {};
+    //  The items that battle uses on the lead from its first turn, in the
+    //  plan's order and before any attack (the step's "use_items": PokeGuy's
+    //  X Specials against the Tower rival), each once its pocket row is
+    //  known; a quantity counts down as they are used. Empty otherwise.
+    std::vector<Pokemon::StoryItem> battle_items = {};
+    //  How that battle is fought by PokeGuy's policy, if its step names one
+    //  (BattlePolicyKind::NONE otherwise: the story's own recovery).
+    BattlePolicy policy = {};
+    //  The items the battle going on may spend; none: no cap.
+    std::optional<FightBudget> budget = std::nullopt;
+    //  How carefully that battle is fought (default_battle_risk()).
+    BattleRisk risk = BattleRisk::LOW;
+    //  The species of the trainer's Pokemon out, as read at the last battle
+    //  menu (read_trainer_foe()), "" if not read: the lead's attacks are
+    //  chosen against it.
+    std::string foe_out = {};
+    //  The species of the player's Pokemon out at the last battle menu of a
+    //  trainer's battle (read_own_battler()), "" if not read.
+    std::string own_out = {};
+    //  The wild Pokemon of the battle going on, as read at its first battle
+    //  menu (read_wild_foes()): the lead's attacks are chosen against it.
+    //  Empty when it wasn't read; trainer battles never use it.
+    std::vector<std::string> wild_foes = {};
+    //  The Repel a use_item step used last, or found still on, and the
+    //  START menu it was used from: when "REPEL's effect wore off..."
+    //  stops a leg, another is used (renew_repel()). "" before any, and
+    //  after the nurse, where the walk it was for ends.
+    std::string repel = {};
+    StartMenu repel_menu = StartMenu::FULL;
+};
+
+//  The nurse healed the party: HP, status and PP.
+void healed_by_nurse(Supplies& supplies);
+
+//  The lead's attacks are low on PP: the nurse before a fight that needs them.
+bool attacks_low_on_pp(const Supplies& supplies);
+
+//  Before a trainer's battle, once the items are used: the nurse for HP
+//  not green (no Potion left to heal it), a status no item cured, or
+//  attacks low on PP. Yellow HP counts (console B, 2026-11-03: 17/55 HP
+//  and no Potion into Miguel's battle, which only red would have stopped).
+bool nurse_before_battle(const Supplies& supplies);
+
+//  After a battle, or at a checkpoint's start, the items to use on the
+//  starter in order, as slugs: for PSN an Antidote, for PAR a Parlyz Heal,
+//  else a Full Heal; then a Potion for HP not green, or for a status still
+//  uncured once the bar is under 3/4 (poison drains it as the story walks).
+//  Only items left; the nurse takes the rest (nurse_before_battle()).
+std::vector<std::string> recovery_items(const Supplies& supplies);
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

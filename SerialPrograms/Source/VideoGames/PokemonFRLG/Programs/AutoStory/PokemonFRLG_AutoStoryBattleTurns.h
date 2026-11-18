@@ -1,0 +1,128 @@
+/*  AutoStory Battle Turns
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  What the battle loop decides each turn and at each prompt: the turn's
+ *  choice and what came of it, and the answer to a YES/NO.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonFRLG_AutoStoryBattleTurns_H
+#define PokemonAutomation_PokemonFRLG_AutoStoryBattleTurns_H
+
+#include <cstddef>
+#include <map>
+#include <optional>
+#include <set>
+#include <string>
+#include "Common/Cpp/Time.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryParty.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+
+//  High-level action chosen for a battle turn.
+enum class TurnChoice{
+    RUN,
+    POTION,
+    ANTIDOTE,
+    AWAKENING,
+    //  One of the plan's battle items (an X Special), on the lead.
+    BATTLE_ITEM,
+    //  A medicine of the battle policy (Super Potion, Full Restore, a cure)
+    //  on the lead through the party list.
+    MEDICINE,
+    MOVE,
+    //  The lead back in through POKEMON and SHIFT: a Roar or Whirlwind
+    //  dragged it out (lead_on_field()).
+    SWITCH_LEAD,
+    //  A League fight's try ends here (TurnAction::try_end), mid-battle:
+    //  the League loop soft resets to the fight's save.
+    END_TRY,
+};
+
+//  Before a battle of `kind`'s first turn: whether it reads the Items pocket
+//  itself, its counts a row's guess (Supplies::counts_read), unless it only
+//  runs. Console B, 2026-11-15, 19.01: the rival was fought with 0 Potions
+//  and no X item from the counts a skipped check left.
+inline bool battle_needs_bag_read(const Supplies& supplies, BattleKind kind){
+    return !supplies.counts_read && kind != BattleKind::WILD_RUN;
+}
+
+//  Decided battle action including slot or item index.
+struct TurnAction{
+    TurnChoice choice = TurnChoice::MOVE;
+    //  For MOVE, the move list's slot.
+    size_t slot = BOTTOM_LEFT_MOVE;
+    //  Why a Potion was or wasn't used, for the log; empty when none was
+    //  weighed (green HP, awake).
+    std::string heal_reason = {};
+    //  For BATTLE_ITEM, the item's slug.
+    std::string item = {};
+    //  For END_TRY, how the try ends (ROARED, EARLY_RESET).
+    std::optional<BattleEnd> try_end = std::nullopt;
+};
+
+//  What came of a TurnAction.
+enum class TurnResult{
+    DONE,
+    //  An item not used (another item in its row), or a move the game said
+    //  has no PP left.
+    NOT_DONE,
+    //  The game turned the move down although it has PP left: a foe's
+    //  Disable (console B, 2026-11-03, Mt. Moon: Miguel's Grimer disabled
+    //  Water Gun, and the loop chose it 17 more times while no turn passed).
+    //  Its PP comes back, and it isn't chosen for as long as Disable can
+    //  last (pret: 2 to 5 turns).
+    REFUSED,
+};
+
+//  Binary prompt decision.
+enum class YesNo{
+    YES,
+    NO,
+};
+
+//  A battle screen as the loop reads it, for the evolution check.
+struct BattleTextScreen{
+    //  The battle's text box, its gold and white frame included: the
+    //  black below a small map or at a map's edge passes for its blue alone.
+    bool text_box = false;
+    //  The battle menu or an HP box.
+    bool hp_box = false;
+    //  The text waits for a button.
+    bool arrow = false;
+    //  A YES/NO box.
+    bool yes_no = false;
+    //  The overworld of a cave dark without Flash (dark_cave_screen()),
+    //  whose black reads as the text box.
+    bool dark_cave = false;
+};
+
+//  `screen` as the battle loop reads it for the evolution check.
+BattleTextScreen read_text_screen(const ImageViewRGB32& screen);
+
+
+//  Answer to an in-battle prompt dialogue.
+struct PromptAnswer{
+    YesNo answer = YesNo::NO;
+    //  After YES to "Delete a move?": the slot to forget on the move list
+    //  that opens, its cursor on the top move.
+    std::optional<size_t> forget_slot = {};
+    //  With forget_slot: the lead once the move is learned, to keep only if
+    //  the move list opened (console B, 2026-11-03: a YES/NO read where no
+    //  move list followed was taken as Bite over Tail Whip, and the loop
+    //  later chose Tail Whip for Bite).
+    std::optional<PartyMember> learned = {};
+};
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

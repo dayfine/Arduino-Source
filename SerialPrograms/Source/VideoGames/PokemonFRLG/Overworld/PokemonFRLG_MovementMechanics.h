@@ -1,0 +1,87 @@
+/*  Movement Mechanics
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  How FireRed and LeafGreen move the player for a press of the D-pad, as
+ *  measured on the console, and the presses the walker sends because of
+ *  it. The overworld walker (OverworldWalkSteps, AutoStory's step_once())
+ *  presses by this table, and OverworldSim moves its player by the same
+ *  rules.
+ *
+ *  Taps measured on console B (2026-11-09, Route 10's Pokemon Center 1F,
+ *  D-pad presses with a 700ms release, tiles counted by exact frame match
+ *  against reference shots), 140 of 140 alike:
+ *  -   From a standstill, a tap of 16 to 133ms while the player faces
+ *      another way only turns them, never steps (pokefirered turns in 8
+ *      frames).
+ *  -   The same tap while they face its way takes exactly one step.
+ *  -   No tap was dropped.
+ *  Repeated step taps (66ms each, after a turn tap and a 1000ms wait):
+ *  -   A step tap that starts within STEP_TAP_LOCKOUT of the previous step
+ *      tap's start is ignored.
+ *  -   Taps with no release between them are one hold: after a turn, 3 of
+ *      them took 0 or 1 steps.
+ *  After a battle (console B, 2026-11-09 15:50, 08.01 winston_line): a
+ *  step tap sent as flee_battle() returned, on the black's end, was lost;
+ *  one more tap by hand stepped.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonFRLG_MovementMechanics_H
+#define PokemonAutomation_PokemonFRLG_MovementMechanics_H
+
+#include <cstddef>
+#include "Common/Cpp/Time.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
+#include "PokemonFRLG_MovementStepPresses.h"
+#include "PokemonFRLG_MovementTurnPresses.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+namespace MovementMechanics{
+
+
+//  The game.
+
+//  Walking: a tile per 16 frames at 60 fps (console B, 2026-11-09).
+inline constexpr Milliseconds TILE_TIME = Pokemon::FRLG_MOVE_MECHANICS.walk.tile.across;
+//  Running with B held: a tile per 8 frames (console B, 2026-11-02, video
+//  of run 04.01).
+inline constexpr Milliseconds RUN_TILE_TIME = Pokemon::FRLG_MOVE_MECHANICS.run.tile.across;
+//  Surfing: a tile per 8 frames.
+inline constexpr Milliseconds SURF_TILE_TIME(133);
+//  Hopping a ledge: 32 frames for the two tiles, walking or running
+//  (pokefirered DoJumpSpriteMovement(), JUMP_DISTANCE_FAR). Running, a hold
+//  timed by its tiles spends two of them on the hop and ends a tile short
+//  (console B, 2026-11-14 20:23 and 20:27, 15.01: "south 8" down Route 7's
+//  column 8 ended on row 9). Two walking tiles' time to the millisecond:
+//  a walking hold over a ledge ends where the game's does (cp0007-r..t).
+inline constexpr Milliseconds LEDGE_HOP_TIME = TILE_TIME * 2;
+//  The longest tap measured to only turn a player facing another way, and
+//  to take exactly one step for one facing its way.
+inline constexpr Milliseconds LONGEST_TAP(133);
+//  A step tap that starts sooner than this after the previous step tap
+//  started is ignored. Measured between 566ms (66ms taps 500ms apart: the
+//  2nd of 3 ignored, 3 of 3 times) and 666ms (600 to 900ms apart: 8 of 8
+//  worked).
+inline constexpr Milliseconds STEP_TAP_LOCKOUT(620);
+//  The shortest step tap spacing, start to start, measured to work.
+inline constexpr Milliseconds STEP_TAP_SPACING_WORKED(666);
+//  After a battle's black ends, the overworld fades in and the game ignores
+//  the D-pad this long. Not measured: pokefirered's fade from black is 16
+//  frames, then the field takes input; a tap sent at once was lost.
+inline constexpr Milliseconds BATTLE_EXIT_LOCKOUT(500);
+
+
+static_assert(TURN_TAP <= LONGEST_TAP && FACE_HOLD <= LONGEST_TAP && STEP_TAP <= LONGEST_TAP);
+static_assert(STEP_TAP + STEP_TAP_RELEASE > STEP_TAP_SPACING_WORKED);
+static_assert(STEP_TAP_SPACING_WORKED > STEP_TAP_LOCKOUT);
+static_assert(AFTER_BATTLE_QUIET > BATTLE_EXIT_LOCKOUT);
+
+
+} // namespace MovementMechanics
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

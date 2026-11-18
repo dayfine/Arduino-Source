@@ -1,0 +1,413 @@
+/*  AutoStory Healing
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <algorithm>
+#include <cmath>
+#include <format>
+#include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_AutoStoryBattlePolicy.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
+#include "PokemonFRLG_AutoStoryItemsPocket.h"
+#include "PokemonFRLG_AutoStoryParty.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonFRLG{
+
+namespace{
+
+constexpr int POTION_HP = 20;
+constexpr int SUPER_POTION_HP = 50;
+constexpr int HYPER_POTION_HP = 200;
+//  The player's HP bar's width in pixels: its fill is read to one.
+constexpr int HP_BAR_PIXELS = 48;
+//  The most items heal_to_full() uses: more than a full bar takes.
+constexpr int MAX_HEAL_ITEMS = 12;
+//  The PP an Elixir restores to each move (pokefirered items.json).
+constexpr uint8_t ELIXIR_PP = 10;
+
+} // namespace
+
+
+int healing_hp(const std::string& item){
+    if (item == "potion"){
+        return POTION_HP;
+    }
+    if (item == "super-potion"){
+        return SUPER_POTION_HP;
+    }
+    if (item == "hyper-potion"){
+        return HYPER_POTION_HP;
+    }
+    return 0;
+}
+
+void measured_hp(Supplies& supplies, double fill){
+    supplies.measured_fill = fill;
+    supplies.healed_since_measured = 0;
+}
+
+void took_recovery_item(Supplies& supplies, const std::string& item){
+    spend_item(supplies, item);
+    if (item == "full-restore"){
+        supplies.hurt = false;
+        supplies.hp_red = false;
+        supplies.hp_fill = 1.0;
+        supplies.status = StatusCondition::NONE;
+        measured_hp(supplies, 1.0);
+        return;
+    }
+    if (item == "elixir"){
+        add_pp(supplies.lead, ELIXIR_PP);
+        return;
+    }
+    if (item == "max-elixir"){
+        restore_pp(supplies.lead);
+        return;
+    }
+    if (const int healed = healing_hp(item); healed > 0){
+        //  One Potion (20 HP) takes a starter of the early levels from red
+        //  to green; the bar can't be read again on the overworld. The HP
+        //  is counted against the last measured bar (missing_hp()).
+        supplies.hurt = false;
+        supplies.hp_red = false;
+        supplies.hp_fill = 1.0;
+        supplies.healed_since_measured += healed;
+    }else{
+        supplies.status = StatusCondition::NONE;
+    }
+}
+
+std::optional<int> missing_hp(const Supplies& supplies, int fallback_max_hp){
+    if (!supplies.measured_fill){
+        return std::nullopt;
+    }
+    const int max_hp = supplies.lead.stats && supplies.lead.stats->hp > 0 ? supplies.lead.stats->hp : fallback_max_hp;
+    const double fill = *supplies.measured_fill;
+    const int missing = fill >= 1.0 ? 0 : (int)std::ceil((1.0 - fill) * max_hp + (double)max_hp / HP_BAR_PIXELS);
+    return missing - supplies.healed_since_measured;
+}
+
+bool hp_at_least_percent(const Supplies& supplies, int fallback_max_hp, int percent){
+    const std::optional<int> missing = missing_hp(supplies, fallback_max_hp);
+    if (!missing){
+        return false;
+    }
+    const int max_hp = supplies.lead.stats && supplies.lead.stats->hp > 0 ? supplies.lead.stats->hp : fallback_max_hp;
+    return (max_hp - *missing) * 100 >= percent * max_hp;
+}
+
+std::optional<int> heal_to_full(
+    Supplies& supplies, int fallback_max_hp, const std::function<bool(const std::string& item)>& use,
+    std::string_view first_item
+){
+    const std::optional<int> before = missing_hp(supplies, fallback_max_hp);
+    if (!first_item.empty() && before && *before > 0 && bag_count(supplies, first_item) > 0){
+        use(std::string(first_item));
+    }
+    for (int c = 0; c < MAX_HEAL_ITEMS; c++){
+        const std::optional<int> missing = missing_hp(supplies, fallback_max_hp);
+        if (!missing || *missing <= 0){
+            return missing;
+        }
+        //  A Hyper Potion (counted when the bag read shows some) for more
+        //  than a Super Potion heals; else the smallest that covers it.
+        std::string item;
+        if (*missing > SUPER_POTION_HP && bag_count(supplies, "hyper-potion") > 0){
+            item = "hyper-potion";
+        }else if (*missing > POTION_HP && supplies.super_potions > 0){
+            item = "super-potion";
+        }else if (supplies.potions > 0){
+            item = "potion";
+        }else if (supplies.super_potions > 0){
+            item = "super-potion";
+        }else{
+            return missing;
+        }
+        if (!use(item)){
+            break;
+        }
+    }
+    return missing_hp(supplies, fallback_max_hp);
+}
+
+int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string& item){
+    const int held = supplies.potions * POTION_HP + supplies.super_potions * SUPER_POTION_HP;
+    const int each = healing_hp(item);
+    if (each <= 0 || held >= cover_hp){
+        return 0;
+    }
+    return (cover_hp - held + each - 1) / each;
+}
+
+int fill_shortfall(const Supplies& supplies, int target, const std::string& item){
+    return std::max(0, target - item_count(supplies, item));
+}
+
+
+namespace{
+
+//  Blastoise at Lv39 (pokeguy's lead into Koga), its maximum HP known.
+constexpr int LEAD_MAX_HP = 122;
+
+Supplies bag(int potions, int super_potions){
+    Supplies supplies;
+    supplies.potions = potions;
+    supplies.super_potions = super_potions;
+    supplies.pocket = {"potion", "super-potion"};
+    return supplies;
+}
+
+//  The fake bag use: every item is used, as the console's
+//  use_recovery_item() takes it into the supplies.
+bool use_from_bag(Supplies& supplies, const std::string& item){
+    took_recovery_item(supplies, item);
+    return true;
+}
+
+struct HealingCase{
+    std::string name;
+    std::function<UnitTestResult()> body;
+};
+
+class Test_AutoStoryHealing : public UnitTest{
+public:
+    explicit Test_AutoStoryHealing(HealingCase test_case)
+        : UnitTest(std::format("PokemonFRLG::AutoStoryHealing - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return m_case.body();
+    }
+
+private:
+    HealingCase m_case;
+};
+
+//  Kayden's Hypno leaves the bar at 3/10: Super Potions and a Potion heal
+//  it to full (with a bar pixel over), and the check before Koga passes.
+UnitTestResult test_hard_hit_healed(){
+    Supplies supplies = bag(2, 3);
+    measured_hp(supplies, 0.30);
+    const std::optional<int> before = missing_hp(supplies, LEAD_MAX_HP);
+    if (before != 88){
+        return std::format("Missing {} HP at 3/10 of 122, expected 88 (85.4 and a bar pixel).", before.value_or(-1));
+    }
+    const std::optional<int> after = heal_to_full(supplies, LEAD_MAX_HP, [&](const std::string& item){
+        return use_from_bag(supplies, item);
+    });
+    if (!after || *after > 0){
+        return std::format("Still missing {} HP after healing.", after.value_or(-1));
+    }
+    if (supplies.super_potions != 1 || supplies.potions != 2){
+        return std::format("Used {} Super Potions and {} Potions, expected 2 and none.", 3 - supplies.super_potions, 2 - supplies.potions);
+    }
+    return true;
+}
+
+//  Out of Potions and Super Potions: the HP stays missing, which the check
+//  before Koga fails on.
+UnitTestResult test_out_of_potions(){
+    Supplies supplies = bag(1, 0);
+    measured_hp(supplies, 0.50);
+    const std::optional<int> after = heal_to_full(supplies, LEAD_MAX_HP, [&](const std::string& item){
+        return use_from_bag(supplies, item);
+    });
+    if (!after || *after <= 0){
+        return "Healed to full with one Potion from half of 122 HP.";
+    }
+    return supplies.potions == 0 ? UnitTestResult(true) : UnitTestResult("The Potion wasn't used.");
+}
+
+//  A full bar needs nothing; no measurement since the load is unknown; the
+//  summary's maximum HP wins over the plan's.
+UnitTestResult test_missing_hp_edges(){
+    Supplies supplies = bag(0, 0);
+    if (missing_hp(supplies, LEAD_MAX_HP)){
+        return "A bar never measured gave a missing HP.";
+    }
+    measured_hp(supplies, 1.0);
+    if (missing_hp(supplies, LEAD_MAX_HP) != 0){
+        return "A full bar misses HP.";
+    }
+    measured_hp(supplies, 0.5);
+    supplies.lead.stats = Stats{.hp = 100};
+    if (missing_hp(supplies, LEAD_MAX_HP) != 53){
+        return std::format("Half of a 100 HP bar: {} missing, expected 53.", missing_hp(supplies, LEAD_MAX_HP).value_or(-1));
+    }
+    return true;
+}
+
+//  The heal before Bruno and Agatha (heal_to_full's below_percent 50): HP
+//  the bar showed, against the share it must reach to skip the heal.
+struct HpShareCase{
+    std::string_view name;
+    struct Input{
+        std::optional<double> fill;
+        int percent;
+    } input;
+    struct Expectation{
+        bool at_least;
+    } expectation;
+};
+
+const HpShareCase HP_SHARE_CASES[] = {
+    {"Bruno's entry on console B, 117 of 165: no heal", {.fill = 117.0 / 165, .percent = 50}, {.at_least = true}},
+    {"PokeGuy's Agatha entry, 45 of 165: heal", {.fill = 45.0 / 165, .percent = 50}, {.at_least = false}},
+    {"no bar measured since the load: heal", {.fill = std::nullopt, .percent = 50}, {.at_least = false}},
+    {"a full bar at the default 100: no heal", {.fill = 1.0, .percent = 100}, {.at_least = true}},
+};
+
+UnitTestResult test_hp_at_least_percent(){
+    for (const HpShareCase& test : HP_SHARE_CASES){
+        Supplies supplies = bag(0, 0);
+        supplies.lead.stats = Stats{.hp = 165};
+        if (test.input.fill){
+            measured_hp(supplies, *test.input.fill);
+        }
+        if (hp_at_least_percent(supplies, /*fallback_max_hp=*/165, test.input.percent) != test.expectation.at_least){
+            return std::format("{}: expected {}.", test.name, test.expectation.at_least ? "at least" : "below");
+        }
+    }
+    return true;
+}
+
+//  PokeGuy's bag after Agatha (docs/battles/pokeguy-conditions.md lance:
+//  Full Restores 12 to 11), read at the checkpoint's start.
+Supplies league_bag(int full_restores){
+    Supplies supplies = bag(4, 4);
+    supplies.pocket = {"potion", "super-potion", "full-restore", "elixir"};
+    supplies.other_counts = {{"elixir", 1}};
+    if (full_restores > 0){
+        supplies.other_counts["full-restore"] = full_restores;
+    }
+    return supplies;
+}
+
+//  After Agatha, at 98 of 168: one Full Restore heals it all, no Potion.
+//  With none in the bag, the Potions as before.
+UnitTestResult test_full_restore_after_agatha(){
+    constexpr int LANCE_MAX_HP = 168;
+    Supplies supplies = league_bag(12);
+    measured_hp(supplies, 98.0 / LANCE_MAX_HP);
+    supplies.status = StatusCondition::POISON;
+    const std::optional<int> after = heal_to_full(supplies, LANCE_MAX_HP, [&](const std::string& item){
+        return use_from_bag(supplies, item);
+    }, "full-restore");
+    if (after != 0 || supplies.other_counts["full-restore"] != 11 || supplies.potions != 4 || supplies.super_potions != 4){
+        return std::format(
+            "{} HP missing, {} Full Restores, {} Potions, {} Super Potions; expected 0, 11, 4, 4.",
+            after.value_or(-1), supplies.other_counts["full-restore"], supplies.potions, supplies.super_potions
+        );
+    }
+    if (supplies.status != StatusCondition::NONE){
+        return "The Full Restore left the poison.";
+    }
+    Supplies none = league_bag(0);
+    measured_hp(none, 98.0 / LANCE_MAX_HP);
+    const std::optional<int> potions = heal_to_full(none, LANCE_MAX_HP, [&](const std::string& item){
+        return use_from_bag(none, item);
+    }, "full-restore");
+    if (!potions || *potions > 0 || none.super_potions != 2){
+        return std::format("No Full Restore: {} HP missing, {} Super Potions used; expected 0 and 2.", potions.value_or(-1), 4 - none.super_potions);
+    }
+    Supplies full = league_bag(12);
+    measured_hp(full, 1.0);
+    heal_to_full(full, LANCE_MAX_HP, [&](const std::string& item){
+        return use_from_bag(full, item);
+    }, "full-restore");
+    return full.other_counts["full-restore"] == 12 ? UnitTestResult(true) : UnitTestResult("A Full Restore spent on full HP.");
+}
+
+//  PokeGuy's Elixir after Lance (league-pp-requirements.md): Surf 3 to 13,
+//  Blizzard 0 to 5 (its full PP), Bite 19 to 25; the bag's last Elixir
+//  takes its row.
+UnitTestResult test_elixir_after_lance(){
+    Supplies supplies = league_bag(11);
+    supplies.lead.moves = {{"bite", 19}, {"surf", 3}, {"blizzard", 0}, {"strength", 15}};
+    took_recovery_item(supplies, "elixir");
+    const std::vector<uint8_t> expected = {25, 13, 5, 15};
+    for (size_t slot = 0; slot < expected.size(); slot++){
+        if (supplies.lead.moves[slot].pp != expected[slot]){
+            return std::format("{} at {} PP after the Elixir, expected {}.", supplies.lead.moves[slot].move, supplies.lead.moves[slot].pp, expected[slot]);
+        }
+    }
+    if (supplies.other_counts.contains("elixir") || std::ranges::find(supplies.pocket, "elixir") != supplies.pocket.end()){
+        return "The last Elixir still has its count or its row.";
+    }
+    return true;
+}
+
+//  A Hyper Potion in the bag heals more than a Super Potion's 50 missing
+//  HP (user, 2026-11-15: the between-fight heal uses them if present);
+//  under that, the Super Potions as before, the Hyper Potion kept.
+UnitTestResult test_hyper_potion(){
+    Supplies supplies = bag(0, 2);
+    supplies.pocket.push_back("hyper-potion");
+    supplies.other_counts = {{"hyper-potion", 1}};
+    measured_hp(supplies, 0.30);
+    const std::optional<int> after = heal_to_full(supplies, LEAD_MAX_HP, [&](const std::string& item){
+        return use_from_bag(supplies, item);
+    });
+    if (after != std::optional<int>(-112) || supplies.other_counts.contains("hyper-potion") || supplies.super_potions != 2){
+        return std::format(
+            "{} HP missing, {} Hyper Potions, {} Super Potions; expected -112 (one Hyper Potion for 88), none, 2.",
+            after.value_or(-1), supplies.other_counts.contains("hyper-potion") ? supplies.other_counts["hyper-potion"] : 0, supplies.super_potions
+        );
+    }
+    Supplies small = bag(0, 2);
+    small.pocket.push_back("hyper-potion");
+    small.other_counts = {{"hyper-potion", 1}};
+    measured_hp(small, 0.80);
+    heal_to_full(small, LEAD_MAX_HP, [&](const std::string& item){
+        return use_from_bag(small, item);
+    });
+    if (small.other_counts["hyper-potion"] != 1 || small.super_potions != 1){
+        return std::format("27 HP missing: {} Hyper Potions and {} Super Potions left, expected 1 and 1.", small.other_counts["hyper-potion"], small.super_potions);
+    }
+    return true;
+}
+
+//  The Fuchsia Mart buys Super Potions so the bag covers a full bar.
+UnitTestResult test_cover_shortfall(){
+    struct Case{
+        int potions;
+        int super_potions;
+        int expected;
+    };
+    const Case cases[] = {
+        {0, 0, 3},
+        {2, 0, 2},
+        {5, 1, 0},
+        {0, 3, 0},
+    };
+    for (const Case& test : cases){
+        const int buy = hp_cover_shortfall(bag(test.potions, test.super_potions), LEAD_MAX_HP, "super-potion");
+        if (buy != test.expected){
+            return std::format("{} Potions, {} Super Potions: buy {}, expected {}.", test.potions, test.super_potions, buy, test.expected);
+        }
+    }
+    return true;
+}
+
+} // namespace
+
+void add_tests_AutoStoryHealing(UnitTestDatabase& database){
+    database.add<Test_AutoStoryHealing>(HealingCase{"Kayden hits hard: healed to full before Koga", test_hard_hit_healed});
+    database.add<Test_AutoStoryHealing>(HealingCase{"out of Potions: the HP stays missing", test_out_of_potions});
+    database.add<Test_AutoStoryHealing>(HealingCase{"missing HP: unknown, full, the summary's maximum", test_missing_hp_edges});
+    database.add<Test_AutoStoryHealing>(HealingCase{"before an Elite Four fight: a heal only below half HP", test_hp_at_least_percent});
+    database.add<Test_AutoStoryHealing>(HealingCase{"the Mart buys the shortfall for a full bar", test_cover_shortfall});
+    database.add<Test_AutoStoryHealing>(HealingCase{"a Full Restore after Agatha, Potions without one", test_full_restore_after_agatha});
+    database.add<Test_AutoStoryHealing>(HealingCase{"an Elixir after Lance: 10 PP each, at most full", test_elixir_after_lance});
+    database.add<Test_AutoStoryHealing>(HealingCase{"a Hyper Potion for more than a Super Potion heals", test_hyper_potion});
+}
+
+
+
+} // namespace PokemonFRLG
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

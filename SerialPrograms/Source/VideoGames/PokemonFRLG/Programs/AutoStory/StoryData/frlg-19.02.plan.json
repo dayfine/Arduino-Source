@@ -1,0 +1,75 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "19.02",
+    "title": "Route 22's north gate: the Boulder Badge guard, onto Route 23",
+    "start": {
+      "map": "Route22",
+      "tiles": [[33, 5]],
+      "facing": "west"
+    },
+    "events": [
+      {
+        "id": "above_route22_ledge",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route22", "tiles": [[18, 7]], "facing": "south"}
+        },
+        "why": "west along the road's north side (row 5, the rival's tiles) to above the ledge row (15..21, 8): the north-west part, with the gate's door, is reached over this ledge and by no other way on foot (the gap at (36, 8) and (37, 8) leads only to the east grass)"
+      },
+      {
+        "id": "route22_ledge_hop",
+        "kind": "step",
+        "args": {"direction": "south"},
+        "declared_after": {"map": "Route22", "tiles": [[18, 9]], "facing": "south"},
+        "why": "the ledge (18, 8): a hop over it onto the grass (18, 9) below"
+      },
+      {
+        "id": "below_gate_guard_trigger",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route22_NorthEntrance", "tiles": [[7, 3]], "facing": "north"}
+        },
+        "why": "through the grass and west along the road's west part to the north gate's door (8, 5) and in, up the hall to (7, 3), short of the guard's trigger at (7, 2) (Route22_NorthEntrance map.json coord_event)"
+      },
+      {
+        "id": "gate_guard_trigger",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route22_NorthEntrance", "tiles": [[7, 2]], "facing": "north"},
+        "why": "onto (7, 2): Route22_NorthEntrance_EventScript_BoulderBadgeGuardTrigger (VAR_MAP_SCENE_ROUTE23 is 0) turns the guard at (8, 2) to the player"
+      },
+      {
+        "id": "gate_guard_scene",
+        "kind": "scene",
+        "declared_after": {"map": "Route22_NorthEntrance", "tiles": [[7, 2]], "facing": "north"},
+        "why": "the guard recognizes the BOULDERBADGE (the text, a fanfare, A) and sets VAR_MAP_SCENE_ROUTE23 to 1 (route23.inc Route23_EventScript_RecognizeBoulderBadgeTrigger); a player without it is walked back down instead, which the row does not expect: 17.04 has all eight"
+      },
+      {
+        "id": "gate_north_door",
+        "kind": "step",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route23", "tiles": [[8, 153]], "facing": "north"},
+        "why": "through the gate's north door (7, 1) onto Route 23's south end (8, 153)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts where 19.01 ends: Route 22 (33, 5), the rival gone (VAR_MAP_SCENE_ROUTE22 is 4). The gate's guard is a trigger, not a talk: with all eight badges there is one message and no movement.",
+        "Ends on Route 23's south end (8, 153), where the first of the seven badge guards (Cascade, at (15, 149)) is ahead: Route 23's guards, its water (Surf, HM03 taught in 12.01), Strength's teach over Water Pulse (pokeguy, D3) and Victory Road are not authored here."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "Route23", "tiles": [[8, 153]], "facing": "north"}
+    }
+  }
+}

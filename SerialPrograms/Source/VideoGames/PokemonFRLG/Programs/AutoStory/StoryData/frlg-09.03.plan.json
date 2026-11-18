@@ -1,0 +1,55 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "09.03",
+    "title": "Celadon Mansion: the TEA on 1F, then the roof room, saved facing the Eevee's ball",
+    "start": {"map": "CeladonCity", "tiles": [[34, 22]], "facing": "south"},
+    "events": [
+      {
+        "id": "above_tea_woman",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_Condominiums_1F", "tiles": [[2, 8]], "facing": "south"}
+        },
+        "why": "from outside the Game Corner in by Celadon Mansion's front door (30, 11) to above the old woman (2, 9), west of the Nidoran's zone (3..7, 7..9)"
+      },
+      {
+        "id": "tea",
+        "kind": "talk",
+        "why": "the old woman gives the TEA (CeladonCity_Condominiums_1F_EventScript_TeaWoman, FLAG_GOT_TEA), for the Saffron gate guards (15.01)"
+      },
+      {
+        "id": "facing_eevee_ball",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_Condominiums_RoofRoom", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "out of the front door again and round to the back door (30, 4), whose part of 1F has the stairs: up 2F and 3F to the roof, down into the roof room at (2, 12), and below the Eevee's ball (7, 3)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "handoff": "gift_rng",
+    "gift": "eevee",
+    "notes": {
+      "checkpoint": [
+        "PokeGuy takes the TEA and the Eevee after the Rocket Hideout and before Route 16's house. Celadon Mansion (CeladonCity_Condominiums_* map.json): 1F's stairs (4, 2) or (12, 2) to 2F, 3F, and 3F's (4, 2) or (12, 2) up to the roof; the roof's door (2, 12) leads down into the roof room, whose Eevee's ball (7, 3) is CeladonCity_Condominiums_RoofRoom_EventScript_EeveeBall. 1F's Clefairy (4..6, 13) and Nidoran (3..7, 7..9) wander."
+      ],
+      "facing_eevee_ball": [
+        "Gift RNG starts from a save facing the ball."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "position": {"map": "CeladonCity_Condominiums_RoofRoom", "tiles": [[7, 4]], "facing": "north"},
+      "items": {"TEA": 1}
+    }
+  }
+}
