@@ -27,7 +27,6 @@ namespace{
 
 struct ScreenEventsCase{
     struct Input{
-        std::string name;
         //  The frame's colour; none for no frame.
         std::optional<uint32_t> color;
     };
@@ -36,6 +35,7 @@ struct ScreenEventsCase{
         ScreenEvents events;
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -43,7 +43,7 @@ struct ScreenEventsCase{
 class Test_AutoStoryScreenEvents : public UnitTest{
 public:
     explicit Test_AutoStoryScreenEvents(ScreenEventsCase test_case)
-        : UnitTest(std::format("PokemonFRLG::AutoStoryScreenEvents - {}", test_case.input.name))
+        : UnitTest(std::format("PokemonFRLG::AutoStoryScreenEvents - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
@@ -71,15 +71,18 @@ private:
 
 const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     {
-        .input = {"no frame shows nothing", std::nullopt},
+        .name = "no frame shows nothing",
+        .input = {std::nullopt},
         .expectation = {{}},
     },
     {
-        .input = {"a black screen is a black fade only", 0xff000000},
+        .name = "a black screen is a black fade only",
+        .input = {0xff000000},
         .expectation = {{ScreenEvent::FADE_BLACK}},
     },
     {
-        .input = {"a white screen is a white fade only", 0xffffffff},
+        .name = "a white screen is a white fade only",
+        .input = {0xffffffff},
         .expectation = {{ScreenEvent::FADE_WHITE}},
     },
 };

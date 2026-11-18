@@ -8,7 +8,9 @@
 #include <format>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
+#include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "Pokemon_StoryEvents.h"
+#include "Pokemon_StoryOutcomeClass.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -80,10 +82,11 @@ Outcome outcome_unchanged(){
     return outcome;
 }
 
-Outcome outcome_failed(std::string failure, std::string detail){
+Outcome outcome_failed(std::string failure, std::string detail, std::optional<StoryFailureClass> failure_class){
     Outcome outcome;
     outcome.failure = std::move(failure);
     outcome.detail = std::move(detail);
+    outcome.failure_class = failure_class;
     return outcome;
 }
 std::string to_string(const Outcome& outcome){
@@ -350,16 +353,19 @@ Outcome run_event(EventRun& run){
             }
             outcome = std::move(*stop);
         }
-        log_status(std::format("failed: {}", to_string(outcome)), run);
+        log_status(std::format("failed: {}", to_string_with_class(outcome)), run);
         return outcome;
     }
 }
 
 
-//  What the exception being handled says, for a log line.
+//  What the exception being handled says, for a log line, with its class
+//  when the engine knows it.
 std::string current_exception_text(){
     try{
         throw;
+    }catch (OperationFailedException& e){
+        return std::format("{}: {} ({})", e.name(), e.message(), story_failure_class_tag(StoryFailureClass::OPERATION_FAILED));
     }catch (Exception& e){
         return std::format("{}: {}", e.name(), e.message());
     }catch (std::exception& e){
@@ -387,7 +393,7 @@ CheckpointReport stop_checkpoint(EventLogger& log, const std::string& id, Outcom
     std::string where = report.failed_event == 0
         ? ""
         : std::format(" at {} {}", report.failed_event, report.failed_name);
-    log(checkpoint_log_line(id, std::format("failed{}: {}", where, to_string(failure))));
+    log(checkpoint_log_line(id, std::format("failed{}: {}", where, to_string_with_class(failure))));
     report.failure = std::move(failure);
     return report;
 }

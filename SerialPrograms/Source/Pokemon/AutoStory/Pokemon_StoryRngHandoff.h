@@ -55,12 +55,12 @@ RngHandoffMode rng_handoff_mode(const RngHandoffOptions& options);
 //  How an RNG program's call ended, as the story needs it.
 struct RngHandoffResult{
     //  Empty: the game stands where the story goes on. Otherwise why it does not.
-    std::string failure;
+    std::string failure = {};
     //  What a success did, for the log: the resets used, the target hit.
-    std::string summary;
+    std::string summary = {};
     //  Not empty (and no failure): the program ended where the user takes
     //  over, with this for them. The run stops without an error report.
-    std::string user_turn;
+    std::string user_turn = {};
 
     bool succeeded() const;
 };

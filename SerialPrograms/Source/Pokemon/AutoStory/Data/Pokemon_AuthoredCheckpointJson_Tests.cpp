@@ -34,8 +34,8 @@ enum class Failure{
 };
 
 struct AuthoredCase{
+    std::string name;
     struct Input{
-        std::string name;
         std::string json;
         std::string game = "frlg";
         bool resource = false;
@@ -54,21 +54,21 @@ struct AuthoredCase{
 };
 
 const AuthoredCase CASES[] = {
-    {.input = {.name = "FRLG envelope", .json = FRLG}, .expectation = {}},
-    {.input = {.name = "BDSP embedded resource", .json = BDSP, .game = "bdsp", .resource = true}, .expectation = {
+    {.name = "FRLG envelope", .input = {.json = FRLG}, .expectation = {}},
+    {.name = "BDSP embedded resource", .input = {.json = BDSP, .game = "bdsp", .resource = true}, .expectation = {
         .checkpoint = "01.03", .execution = R"({"on_failure":"reload_and_retry","saves_in":"Oreburgh City"})", .events = {"roark"}}},
-    {.input = {.name = "FRLG embedded resource", .json = FRLG, .resource = true}, .expectation = {}},
-    {.input = {.name = "wrong game", .json = BDSP}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "empty expected game", .json = FRLG, .game = ""}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "missing resource", .json = FRLG, .resource = true, .file = "absent"}, .expectation = {.failure = Failure::MISSING_RESOURCE}},
-    {.input = {.name = "invalid embedded JSON", .json = "{", .resource = true}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "wrong format", .json = R"({"format":"future","game":"frlg","checkpoint":{},"execution":{}})"}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "missing execution", .json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{}})"}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "same count wrong field", .json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{},"extra":{}})"}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "extra envelope field", .json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{},"execution":{},"extra":0})"}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "execution must be object", .json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"x","title":"X","events":[]},"execution":false})"}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "invalid common action", .json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"x","title":"X","events":[{"id":"bad","kind":"magic"}]},"execution":{}})"}, .expectation = {.failure = Failure::PARSE}},
-    {.input = {.name = "execution stays game owned", .json = R"({"format":"pokesim-authored-checkpoint/1","game":"future","checkpoint":{"id":"x","title":"X","events":[]},"execution":{"zero":0,"false":false,"null":null}})", .game = "future"}, .expectation = {
+    {.name = "FRLG embedded resource", .input = {.json = FRLG, .resource = true}, .expectation = {}},
+    {.name = "wrong game", .input = {.json = BDSP}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "empty expected game", .input = {.json = FRLG, .game = ""}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "missing resource", .input = {.json = FRLG, .resource = true, .file = "absent"}, .expectation = {.failure = Failure::MISSING_RESOURCE}},
+    {.name = "invalid embedded JSON", .input = {.json = "{", .resource = true}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "wrong format", .input = {.json = R"({"format":"future","game":"frlg","checkpoint":{},"execution":{}})"}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "missing execution", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{}})"}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "same count wrong field", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{},"extra":{}})"}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "extra envelope field", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{},"execution":{},"extra":0})"}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "execution must be object", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"x","title":"X","events":[]},"execution":false})"}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "invalid common action", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"x","title":"X","events":[{"id":"bad","kind":"magic"}]},"execution":{}})"}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "execution stays game owned", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"future","checkpoint":{"id":"x","title":"X","events":[]},"execution":{"zero":0,"false":false,"null":null}})", .game = "future"}, .expectation = {
         .checkpoint = "x", .execution = R"({"zero":0,"false":false,"null":null})", .events = {}}},
 };
 
@@ -116,7 +116,7 @@ std::string check_case(const AuthoredCase& test){
         Loaded actual;
         actual.checkpoint = test.input.resource
             ? load_authored_checkpoint(files, test.input.file, test.input.game, keep_execution(actual.execution))
-            : read_authored_checkpoint(parse_json(test.input.json), test.input.game, test.input.name, keep_execution(actual.execution));
+            : read_authored_checkpoint(parse_json(test.input.json), test.input.game, test.name, keep_execution(actual.execution));
         return check_loaded(actual, test);
     }catch (const ParseException& error){
         return test.expectation.failure == Failure::PARSE ? "" : std::format("Unexpected parse failure: {}", error.message());
@@ -131,7 +131,7 @@ std::string check_case(const AuthoredCase& test){
 class AuthoredJsonTest : public UnitTest{
 public:
     explicit AuthoredJsonTest(AuthoredCase test)
-        : UnitTest(std::format("Pokemon::AuthoredCheckpointJson - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::AuthoredCheckpointJson - {}", test.name))
         , m_case(std::move(test))
     {}
 
@@ -172,7 +172,7 @@ int main(){
     int failed = 0;
     for (const auto& test : PokemonAutomation::Pokemon::CASES){
         const std::string error = PokemonAutomation::Pokemon::check_case(test);
-        std::cout << test.input.name << ": " << (error.empty() ? "PASS" : error) << '\n';
+        std::cout << test.name << ": " << (error.empty() ? "PASS" : error) << '\n';
         failed += !error.empty();
     }
     return failed != 0;

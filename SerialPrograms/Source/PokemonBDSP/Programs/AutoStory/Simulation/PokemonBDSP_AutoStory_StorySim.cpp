@@ -11,6 +11,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_CenterVisit.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
@@ -88,67 +89,103 @@ SimBeat sim_fade(std::string what, Milliseconds length, WarpFade fade){
     return {.what = std::move(what), .length = length, .overworld = true, .moving = false, .fade = fade};
 }
 
-std::string play_scene(const SimScene& scene, const TalkOverRule& rule){
-    const Milliseconds press = TALK_OVER_HOLD + talk_over_release(rule);
-    TalkOver judge(rule);
-    const WallClock start = WallClock();
-    WallClock now = start;
-    WallClock beat_start = start;
-    size_t beat = 0;
-    const auto at = [&]{
-        return std::format("{} ms in, at beat {} of {}", std::chrono::duration_cast<Milliseconds>(now - start).count(), beat + 1, scene.size());
-    };
-    while (now - start < TALK_OVER_LIMIT){
-        while (beat < scene.size() && !scene[beat].line && now - beat_start >= scene[beat].length){
-            beat_start += scene[beat].length;
-            beat++;
+namespace{
+
+//  run_settle()'s looks and presses on a scripted scene, on a clock of its
+//  own: each press, held and released, moves it on.
+class SceneSettleIO : public Pokemon::SettleIO{
+public:
+    explicit SceneSettleIO(const SimScene& scene)
+        : m_scene(scene)
+    {}
+
+    virtual Pokemon::SettleLook look() override{
+        while (m_beat < m_scene.size() && !m_scene[m_beat].line && m_now - m_beat_start >= m_scene[m_beat].length){
+            m_beat_start += m_scene[m_beat].length;
+            m_beat++;
         }
         ScreenEvents look{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL, ScreenEvent::PLAYER_STILL};
-        if (beat < scene.size()){
-            const SimBeat& shown = scene[beat];
+        if (m_beat < m_scene.size()){
+            const SimBeat& shown = m_scene[m_beat];
             look = {};
             look.set(ScreenEvent::DIALOG_BOX, shown.line);
             look.set(ScreenEvent::PLAYER_CAN_MOVE, shown.overworld);
             look.set(ScreenEvent::SCREEN_STILL, !shown.moving);
             look.set(ScreenEvent::PLAYER_STILL, !shown.at_player);
-
             look.merge(fade_events(shown.fade));
         }
-        switch (judge.look(look, now)){
-        case SceneMove::DONE:
-            return beat < scene.size() ? std::format("judged over {} ({})", at(), scene[beat].what) : "";
-        case SceneMove::BATTLE:
-            return "read a battle " + at();
-        case SceneMove::NEXT:
-        case SceneMove::B:
-            //  Either press closes a line; nothing else answers one.
-            if (beat < scene.size() && scene[beat].line){
-                beat++;
-                beat_start = now + press;
-            }
-            break;
-        }
-        now += press;
+        return {look, m_now};
     }
-    return "never judged over: " + at() + ", " + judge.describe();
+    //  Either press closes a line; nothing else answers one.
+    virtual void press(SceneMove, Milliseconds wait) override{
+        const Milliseconds press = TALK_OVER_HOLD + wait;
+        if (m_beat < m_scene.size() && m_scene[m_beat].line){
+            m_beat++;
+            m_beat_start = m_now + press;
+        }
+        m_now += press;
+    }
+    virtual bool flee_battle() override{
+        return false;
+    }
+    virtual void log(std::string_view) override{}
+
+    //  Where the scene is: "" past its last beat.
+    std::string at() const{
+        if (m_beat >= m_scene.size()){
+            return "";
+        }
+        return std::format("{} ms in, at beat {} of {} ({})",
+            std::chrono::duration_cast<Milliseconds>(m_now - WallClock()).count(), m_beat + 1, m_scene.size(), m_scene[m_beat].what);
+    }
+
+private:
+    const SimScene& m_scene;
+    WallClock m_now = WallClock();
+    WallClock m_beat_start = WallClock();
+    size_t m_beat = 0;
+};
+
+} // namespace
+
+std::string play_scene(const SimScene& scene, const Pokemon::SettleRule& rule){
+    SceneSettleIO io(scene);
+    const Pokemon::SettleEnd end = Pokemon::run_settle(rule, "scene", io);
+    switch (end.result){
+    case Pokemon::SettleEnd::Result::QUIET:
+        return io.at().empty() ? "" : std::format("judged over {}", io.at());
+    case Pokemon::SettleEnd::Result::BATTLE:
+        return std::format("read a battle {}", io.at());
+    case Pokemon::SettleEnd::Result::TIMED_OUT:
+        break;
+    }
+    return std::format("never judged over: {}, {}", io.at(), end.text);
 }
 } // namespace detail
 
-//  Plays the step's scene knob through TalkOver if it has one. Without, a
-//  scene may take us to another map (Mom walks us out, 00.04): with a
-//  dialogue open the stub scene plays it. Otherwise only a door fades.
+//  Plays the step's scene knob through the program's settle if it has one.
+//  Without, a scene may take us to another map (Mom walks us out, 00.04):
+//  with a dialogue open the stub scene plays it. Otherwise only a door
+//  fades, and a Center's slow fade-in (SimCenterDoors::fade_in) plays.
 void SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, const std::string&){
     const bool fade = kind == SettleKind::AFTER_WARP;
-    m_misses.fading_in = false;
+    const bool fading_in = std::exchange(m_misses.fading_in, false);
     const auto scene = m_knobs.scenes.find(m_step);
     if (scene != m_knobs.scenes.end()){
         m_misses.fade_unseen = false;
         m_sim.end_dialogue();
-        const std::string early = play_scene(scene->second, {.warp = fade, .door = kind == SettleKind::DOOR});
+        const std::string early = play_scene(scene->second, settle_rule(kind));
         if (!early.empty()){
             m_route.note(label + ": talk-over " + early + ".", RouteNote::FAILURE);
         }
         return;
+    }
+    const auto center = m_knobs.centers.find(m_step);
+    if (fading_in && center != m_knobs.centers.end() && center->second.fade_in > 0ms){
+        const std::string early = play_scene({sim_fade("the Center's fade-in", center->second.fade_in)}, settle_rule(kind));
+        if (!early.empty()){
+            m_route.note(std::format("{}: settle {}.", label, early), RouteNote::FAILURE);
+        }
     }
     const bool scene_fades = m_sim.player().dialog && m_far_side();
     if (fade && ((!m_sim.player().warped && !scene_fades) || m_misses.fade_unseen)){
@@ -595,21 +632,75 @@ std::string SimExecutor::off_pose(const Pose& pose) const{
     return std::format("ended at {} ({}), not on {}.", to_string(player.pos), describe(m_sim.world(), at), Pokemon::to_string(pose));
 }
 
-//  The program's run into the Center: past its door, the inside shows, a missed fade or not.
+namespace{
+
+//  The program's Center visit on the simulation: the run in is the sim's,
+//  the doors behave as SimCenterDoors says, and the nurse is not played;
+//  the walk to her fails while the inside still fades in. The run out does
+//  not move the player: the sim's maps have no warps' destinations.
+class SimCenterVisit : public BdspCenterVisit{
+public:
+    SimCenterVisit(StoryStepIO& io, bool run, GridSim& sim, SimMisses& misses, const SimCenterDoors& doors, std::string label)
+        : BdspCenterVisit(io, run)
+        , m_sim(sim)
+        , m_misses(misses)
+        , m_doors(doors)
+        , m_label(std::move(label))
+    {}
+
+    //  Past the door the inside shows and fades in, its fade seen or not.
+    virtual WarpSeen walk_in() override{
+        const WarpSeen seen = BdspCenterVisit::walk_in();
+        if (!m_sim.player().warped.has_value()){
+            return seen;
+        }
+        m_misses.fade_unseen = false;
+        m_misses.fading_in = true;
+        return m_doors.late_fade ? WarpSeen{} : seen;
+    }
+    virtual void line_up_and_walk_in() override{
+        throw GridSimFailure{std::format("{}: no door north of {}", m_label, to_string(m_sim.player().pos))};
+    }
+    virtual Pokemon::CenterPlace place() override{
+        const bool inside = m_out ? m_doors.stays_inside : m_sim.player().warped.has_value();
+        return inside ? Pokemon::CenterPlace::INSIDE : Pokemon::CenterPlace::OUTSIDE;
+    }
+    virtual void heal() override{
+        if (m_misses.fading_in){
+            throw GridSimFailure{std::format("{}: walked to the nurse while the Center was still fading in.", m_label)};
+        }
+    }
+    //  Short of the door, a false fade (r143a).
+    virtual WarpSeen walk_out() override{
+        m_out = true;
+        if (m_doors.late_fade && !m_doors.stays_inside){
+            return {};
+        }
+        return {.fade = WarpFade::BLACK};
+    }
+    virtual void log(std::string_view line) override{
+        m_io.route().note(std::string(line), RouteNote::LOG);
+    }
+
+private:
+    GridSim& m_sim;
+    SimMisses& m_misses;
+    const SimCenterDoors& m_doors;
+    std::string m_label;
+    bool m_out = false;
+};
+
+} // namespace
+
+//  The program's Center visit (run_center_visit()) on the simulation.
 Outcome SimExecutor::heal(RunState& state, const StoryStep& step){
     if (!sync(state.pose)){
         return Pokemon::outcome_ok();
     }
-    run_into_center(m_io, m_walks.can_run(), [this]{
-        m_misses.fade_unseen = false;
-        return m_sim.player().warped.has_value();
-    }, [&]{
-        throw GridSimFailure{step.name + ": no door north of " + to_string(m_sim.player().pos)};
-    }, step.name);
-    if (m_misses.fading_in){
-        return Pokemon::outcome_failed("heal", step.name + ": walked to the nurse while the Center was still fading in.");
-    }
-    return Pokemon::outcome_ok();
+    static const SimCenterDoors PLAIN_DOORS;
+    const auto doors = m_knobs.centers.find(step.name);
+    SimCenterVisit visit(m_io, m_walks.can_run(), m_sim, m_misses, doors == m_knobs.centers.end() ? PLAIN_DOORS : doors->second, step.name);
+    return Pokemon::run_center_visit(step.name, visit);
 }
 
 //  The battle is not played. The speeches after it are, when the knobs
@@ -618,7 +709,7 @@ Outcome SimExecutor::heal(RunState& state, const StoryStep& step){
 Outcome SimExecutor::battle(RunState&, const StoryStep& step){
     const auto scene = m_knobs.scenes.find(step.name);
     if (scene != m_knobs.scenes.end()){
-        const std::string early = play_scene(scene->second, {});
+        const std::string early = play_scene(scene->second, settle_rule(SettleKind::TALK));
         if (!early.empty()){
             return Pokemon::outcome_failed("talk_over", step.name + ": " + early);
         }
