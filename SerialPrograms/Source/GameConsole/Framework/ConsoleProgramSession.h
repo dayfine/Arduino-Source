@@ -45,6 +45,7 @@ public:
 protected:
     virtual std::unique_ptr<ProgramEnvironment> make_env(const ProgramInfo& program_info) override;
     virtual void internal_run_program(ProgramEnvironment& env) override;
+    virtual std::optional<std::vector<PrecheckReport>> internal_run_prechecks(ProgramEnvironment& env) override;
 
 
 private:
