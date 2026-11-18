@@ -76,6 +76,7 @@
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideoutLift.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
+#include "PokemonFRLG_AutoStoryMovedTrainers.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStorySimBudget.h"
@@ -200,11 +201,12 @@ std::set<std::string> start_flag_set(const StoryCheckpoint& row){
 //  sweep_maps() as row `row` starts: the gyms cleared before it with no
 //  trainer left to see the player, nor the trainers its start_flags have
 //  beaten (16.03: the Rocket by 5F's corridor, whom 16.02's walk fights),
-//  and no Rocket left once its start_flags have Silph Co. cleared.
+//  each standing where its start_flags say he walked up to (17.04: Warren
+//  on (14, 7)), and no Rocket left once its start_flags have Silph Co. cleared.
 std::vector<MapData> row_maps(const StoryCheckpoint& row){
     const std::set<std::string> start_flags = start_flag_set(row);
     const std::vector<MapData>& base = start_flags.contains(std::string(SILPH_CLEARED_FLAG)) ? cleared_sweep_maps() : sweep_maps();
-    std::vector<MapData> maps = with_trainers_beaten(base, beaten_trainers(start_flags));
+    std::vector<MapData> maps = with_trainers_beaten(with_trainers_moved(base, moved_trainers(start_flags)), beaten_trainers(start_flags));
     const std::set<std::string> cleared = gyms_cleared_before(row);
     for (MapData& map : maps){
         if (!cleared.contains(map.name)){
