@@ -8,6 +8,7 @@
 #include <format>
 #include <string>
 #include <utility>
+#include "PokemonLZA_AutoStoryZone1Map.h"
 #include "PokemonLZA_AutoStoryGateWalk.h"
 
 namespace PokemonAutomation{
@@ -34,8 +35,11 @@ constexpr Milliseconds GATE_PIN_EVERY(2000);
 //  not get on: the leg to the 60 spot covered 7 a second (console B,
 //  2026-11-16).
 constexpr double GATE_PIN_STILL = 2;
-//  This many looks in a row without the lead's panel: out of the zone.
+//  This many looks in a row without the lead's panel: ask the map whether
+//  the walk is out of the zone.
 constexpr size_t OUT_OF_ZONE_LOOKS = 2;
+//  The map pin out of the zone on this many reads in a row: out.
+constexpr size_t OUT_OF_ZONE_PIN_READS = 2;
 //  The screen's width in degrees of view, for the steer: a guess.
 constexpr double VIEW_DEGREES = 60;
 //  Closer to the middle than this, the gate is dead ahead.
@@ -181,22 +185,34 @@ GateSight seen_on(GateSight sight, const Pokemon::Observation<Pokemon::ZonePose>
 }
 
 //  The walk's end on `look`, if it is one: the gate's A prompt, or out of
-//  the zone (`without_panel` looks in a row without the lead's panel).
+//  the zone: the lead's panel gone on OUT_OF_ZONE_LOOKS looks in a row
+//  (`zone`) and the map pin out of it (check_out_of_zone_1() by `pin`).
+//  When the map does not say out, the panel's count in `zone` starts
+//  again.
 std::optional<Pokemon::Outcome> walk_end(
-    PlzaBackend& backend, const MinimapArrowReader& arrow, const Pokemon::Observation<Pokemon::ZonePose>& look,
-    size_t without_panel, Milliseconds walked, std::string_view readings
+    PlzaBackend& backend, const MinimapArrowReader& arrow, const PinReader& pin, const Pokemon::Observation<Pokemon::ZonePose>& look,
+    Milliseconds walked, std::string_view readings, ZonePresence& zone
 ){
     if (look.events.has(PokemonAutomation::ScreenEvent::INTERACT_PROMPT)){
         log_gate_prompt(backend, arrow, walked, readings);
         return Pokemon::outcome_ok();
     }
-    if (without_panel >= OUT_OF_ZONE_LOOKS){
+    if (zone.without_panel < OUT_OF_ZONE_LOOKS){
+        return std::nullopt;
+    }
+    const Pokemon::Outcome out = check_out_of_zone_1(backend, pin);
+    if (out.succeeded()){
         backend.log(std::format(
-            "[PLZA] walk_to_zone_gate_entrance: out of the zone after {} ms, the lead's panel gone ({})",
+            "[PLZA] walk_to_zone_gate_entrance: out of the zone after {} ms, the lead's panel gone and the map pin out ({})",
             walked.count(), readings
         ));
         return Pokemon::outcome_ok();
     }
+    backend.log(std::format(
+        "[PLZA] walk_to_zone_gate_entrance: the lead's panel gone after {} ms, but not out of the zone by the map ({}): walking on ({})",
+        walked.count(), out.failure, readings
+    ));
+    zone.without_panel = 0;
     return std::nullopt;
 }
 
@@ -224,6 +240,27 @@ Pokemon::Outcome face_walk_heading(PlzaBackend& backend, const MinimapArrowReade
 } // namespace
 
 
+Pokemon::Outcome check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin){
+    std::string reads;
+    for (size_t read = 1; read <= OUT_OF_ZONE_PIN_READS; read++){
+        const std::optional<MapPoint> at = pin ? pin() : std::nullopt;
+        if (!at){
+            const std::string detail = std::format(
+                "no map pin on read {} of {}{}", read, OUT_OF_ZONE_PIN_READS, reads.empty() ? "" : std::format(" (before: {})", reads)
+            );
+            backend.log(std::format("[PLZA] out of Wild Zone 1 not known: {}", detail));
+            return Pokemon::outcome_failed("zone_unread", std::format("out of Wild Zone 1 not known: {}", detail));
+        }
+        reads += std::format("{}({:.0f}, {:.0f})", reads.empty() ? "" : ", ", at->x, at->y);
+        if (pin_in_zone_1(*at)){
+            backend.log(std::format("[PLZA] still in Wild Zone 1: the map pin reads {}", reads));
+            return Pokemon::outcome_failed("in_wild_zone", std::format("still in Wild Zone 1: the map pin reads {}", reads));
+        }
+    }
+    backend.log(std::format("[PLZA] out of Wild Zone 1: the map pin reads {}", reads));
+    return Pokemon::outcome_ok();
+}
+
 Pokemon::Outcome walk_to_zone_gate_entrance(
     PlzaBackend& backend, const MinimapArrowReader& arrow, const LookReader& gate, const PinReader& pin,
     const GateWalk& walk
@@ -244,7 +281,7 @@ Pokemon::Outcome walk_to_zone_gate_entrance(
         }
         zone = presence_on(zone, look);
         const std::optional<Pokemon::Outcome> end = walk_end(
-            backend, arrow, look, zone.without_panel, walked, gate_readings(sight.seen, looks, sight.last)
+            backend, arrow, pin, look, walked, gate_readings(sight.seen, looks, sight.last), zone
         );
         if (end){
             return *end;

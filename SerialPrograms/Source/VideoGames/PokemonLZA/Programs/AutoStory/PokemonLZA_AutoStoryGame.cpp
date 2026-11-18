@@ -116,6 +116,7 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("battle_then_catch")),
         console_only(game_spec("catch_in_zone")),
         console_only(game_spec("walk_back_to_zone_road")),
+        console_only(game_spec("check_out_of_zone_1")),
         console_only(game_spec("walk_to_unread_marker")),
         console_only(game_spec("claim_mable_research_reward")),
     };
@@ -695,10 +696,37 @@ enum class Chain{
     RELOAD,     //  from `row`'s start save
 };
 
+//  Off the platform, `row`'s start in `options` checked on the live
+//  screen (start_confirmed()): Chain::ON when it shows or `row` has none
+//  to check, else "chain_off_start". Logs the verdict.
+std::variant<Chain, Outcome> check_live_start(
+    PlzaBackend& backend, const SegmentRunOptions& options, const Pokemon::StoryCheckpoint& row, bool seen
+){
+    const CheckpointStart* start = find_start(options.starts, row.id);
+    if (start == nullptr || !options.read_start){
+        backend.log(std::format(
+            "[Checkpoint] {}: START UNCHECKED: {}; on from the live screen (autosave before it {})",
+            row.id, start == nullptr ? "its plan names no start signature" : "nothing reads the screen", seen ? "seen" : "not seen"
+        ));
+        return Chain::ON;
+    }
+    const StartSignature read = options.read_start(start->signature);
+    const std::string screen = std::format("the screen reads ({}), its start is ({})", to_string(read), to_string(start->signature));
+    if (start_confirmed(start->signature, read)){
+        backend.log(std::format("[Checkpoint] {}: START CHECKED: {}; on from the live screen", row.id, screen));
+        return Chain::ON;
+    }
+    backend.log(std::format("[Checkpoint] {}: START CHECK FAILED: {}; nothing run from there", row.id, screen));
+    return Pokemon::outcome_failed("chain_off_start", std::format("the run is not at {}'s start: {}", row.id, screen));
+}
+
 //  Chain::ON or RELOAD into `row`, `seen` whether the row before's
 //  autosave showed; a failure when only a reload would do and there is no
-//  save to load. Logs the decision.
-std::variant<Chain, Outcome> decide_chain(PlzaBackend& backend, const Pokemon::StoryCheckpoint& row, bool seen){
+//  save to load, or when the live screen is not at `row`'s start
+//  (check_live_start()). Logs the decision.
+std::variant<Chain, Outcome> decide_chain(
+    PlzaBackend& backend, const SegmentRunOptions& options, const Pokemon::StoryCheckpoint& row, bool seen
+){
     const auto no_save = [&](std::string_view why){
         backend.log(std::format("[Checkpoint] {}: no save at its start: {}", row.id, why));
         return Pokemon::outcome_failed("no_start_save", std::format(
@@ -710,11 +738,7 @@ std::variant<Chain, Outcome> decide_chain(PlzaBackend& backend, const Pokemon::S
         backend.log(std::format("[Checkpoint] {}: start check passed; on from the live screen", row.id));
         return Chain::ON;
     case StartCheck::UNCHECKED:
-        backend.log(std::format(
-            "[Checkpoint] {}: START UNCHECKED: nothing reads this row's start; on from the live screen (autosave before it {})",
-            row.id, seen ? "seen" : "not seen"
-        ));
-        return Chain::ON;
+        return check_live_start(backend, options, row, seen);
     case StartCheck::FAILED:
         break;
     }
@@ -753,7 +777,7 @@ Outcome reload_into(
             "{}: where the reload landed is not checked: {}; nothing pressed after the reload", row.id, why
         ));
     }
-    const StartSignature read = options.read_start();
+    const StartSignature read = options.read_start(start->signature);
     if (!run_start(std::span<const Pokemon::StoryCheckpoint>(&row, 1), std::span<const CheckpointStart>(start, 1), /*asked=*/0, read)){
         const std::string where = std::format(
             "the screen reads ({}), the start is ({}); nothing pressed after the reload", to_string(read), to_string(start->signature)
@@ -778,7 +802,7 @@ Outcome chain_into(
     const bool reload = options.reload_when_chained.contains(row.id);
     const std::variant<Chain, Outcome> chain = reload
         ? std::variant<Chain, Outcome>(Chain::RELOAD)
-        : decide_chain(backend, row, sightings.last_end_seen());
+        : decide_chain(backend, options, row, sightings.last_end_seen());
     if (const Outcome* failure = std::get_if<Outcome>(&chain)){
         return *failure;
     }

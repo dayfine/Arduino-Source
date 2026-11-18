@@ -42,6 +42,7 @@
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryBackend_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryBackups_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryChainStart_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBackupCardReader_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
@@ -83,6 +84,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryBackend(database);
     add_tests_AutoStoryGame(database);
     add_tests_AutoStoryBackups(database);
+    add_tests_AutoStoryChainStart(database);
     add_tests_AutoStoryBackupCardReader(database);
     add_tests_AutoStoryLines(database);
     add_tests_AutoStoryMenuSave(database);

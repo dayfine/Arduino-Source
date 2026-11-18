@@ -38,7 +38,9 @@ const StoryData& builtin_story_data();
 
 //  The built-in checkpoints whose plan names what the screen shows at
 //  their start (execution "start_signature"), read once, in story order.
-//  Throws ParseException when two name the same signature.
+//  Two may name the same signature: a chained run checks each row's own
+//  (start_confirmed()), and a reload that matches two earlier starts
+//  stops (checkpoint_at()).
 const std::vector<CheckpointStart>& builtin_checkpoint_starts();
 
 

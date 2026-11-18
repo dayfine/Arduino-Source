@@ -153,18 +153,9 @@ const std::vector<CheckpointStart>& builtin_checkpoint_starts(){
         std::vector<CheckpointStart> read;
         for (const auto& [name, text] : autostory_checkpoint_json()){
             const std::optional<CheckpointStart> start = read_checkpoint_start(text, name);
-            if (!start){
-                continue;
+            if (start){
+                read.push_back(*start);
             }
-            for (const CheckpointStart& other : read){
-                if (other.signature == start->signature){
-                    throw ParseException(std::format(
-                        "{}: start_signature ({}) is {}'s too: a start signature must name one checkpoint",
-                        name, to_string(start->signature), other.checkpoint
-                    ));
-                }
-            }
-            read.push_back(*start);
         }
         return read;
     }();

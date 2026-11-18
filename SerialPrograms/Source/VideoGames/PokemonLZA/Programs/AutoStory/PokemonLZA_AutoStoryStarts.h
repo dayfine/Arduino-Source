@@ -95,6 +95,15 @@ std::optional<size_t> run_start(
     size_t asked, const StartSignature& read
 );
 
+//  Whether `read`, the live screen a run chains on from, shows the start
+//  `known`: every field `known` names is read and agrees, but
+//  `registered`, which only the backup card shows. Stricter than a
+//  reload's match (checkpoint_at()), which needs only the fields both
+//  have: 03.08b's save in Wild Zone 1 read as 03.09's start (party 5) with
+//  the zone not read (console B, 2026-11-18 13:37). Starts may share a
+//  signature for this check; only a reload's match needs one checkpoint.
+bool start_confirmed(const StartSignature& known, const StartSignature& read);
+
 //  The signature's wild_zone by the player's pin on the full map
 //  (read_map_pin()): whether it is in Wild Zone 1 (pin_in_zone_1()).
 //  None when the pin was not read.
