@@ -7,7 +7,7 @@
  *  PlzaConsoleBackend (PokemonLZA_AutoStoryConsoleBackend.h).
  *
  *  Directions are the stick relative to the camera: north is straight on,
- *  east to the right. tap() turns that way (story_turn()); hold() walks.
+ *  east to the right. story_turn() turns that way; stick() walks.
  *
  */
 

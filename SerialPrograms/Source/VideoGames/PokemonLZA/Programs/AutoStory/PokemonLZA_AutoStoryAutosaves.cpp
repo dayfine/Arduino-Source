@@ -58,12 +58,6 @@ public:
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
         m_inner.press(button, hold, release);
     }
-    virtual void tap(Pokemon::Direction direction) override{
-        m_inner.tap(direction);
-    }
-    virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace pace) override{
-        m_inner.hold(direction, duration, pace);
-    }
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override{
         m_inner.stick(degrees, duration, release, pace);
     }

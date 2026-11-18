@@ -199,13 +199,6 @@ public:
         m_presses.push_back({m_shown, button_to_string(button)});
         m_now += hold + release;
     }
-    virtual void tap(Pokemon::Direction) override{
-        m_presses.push_back({m_shown, "tap"});
-    }
-    virtual void hold(Pokemon::Direction, Milliseconds duration, Pokemon::StoryPace) override{
-        m_presses.push_back({m_shown, "hold"});
-        m_now += duration;
-    }
     virtual void stick(double, Milliseconds duration, Milliseconds release, Pokemon::StoryPace) override{
         m_presses.push_back({m_shown, "stick"});
         m_now += duration + release;
@@ -914,7 +907,7 @@ const GoldenCase GOLDEN_CASES[] = {
 2.6s: party bar, A prompt
 )"},
         .expectation = {
-            .keys = {{"party bar", "hold"}, {"party bar, A prompt", "-"}},
+            .keys = {{"party bar", "stick"}, {"party bar, A prompt", "-"}},
             .verdict = "done", .end = "[PLZA] to_taunie: the end event after 2500 ms of the last leg.",
         },
     },

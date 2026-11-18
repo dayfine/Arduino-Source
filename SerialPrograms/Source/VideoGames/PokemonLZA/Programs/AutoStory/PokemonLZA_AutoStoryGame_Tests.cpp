@@ -493,7 +493,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "01.01", .first_step = 0, .steps = 2, .looks = walk_into_white_fade()},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 300ms, wait 250ms, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .inputs = "wait 300ms, wait 250ms, stick 0deg 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk",
             .line = "[PLZA] platform_to_plaza: the end event after 250 ms of the last leg.",
         },
     },
@@ -502,7 +502,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "01.01", .first_step = 0, .steps = 2, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, STILL, PLATFORM, WHITE_FADE}},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 300ms, wait 250ms, hold north 4500ms walk, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .inputs = "wait 300ms, wait 250ms, stick 0deg 4500ms walk, stick 0deg 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk",
             .line = "[PLZA] walk: the screen stayed still after the walk of leg 1/2 turn 0 walk 4500 ms; once more",
         },
     },
@@ -526,7 +526,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .inputs = repeated("wait 250ms", 29) +
-                ", hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+                ", stick 0deg 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk",
         },
     },
     {
@@ -537,7 +537,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, hold north 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .inputs = "wait 250ms, stick 0deg 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk",
         },
     },
     {
@@ -717,7 +717,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, hold north 250ms walk, hold north 250ms walk, wait 300ms",
+            .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms",
             .line = "[PLZA] approach_starter: the end event after 500 ms of the last leg.",
         },
     },
@@ -874,7 +874,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms",
+            .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms",
             .line = "[PLZA] to_battle_zone_gate: the end event after 500 ms of the last leg.",
         },
     },
@@ -913,7 +913,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -5deg 150ms walk, release 100ms, press L, hold north 2500ms walk, "
+            .inputs = "wait 250ms, press L, stick -5deg 150ms walk, release 100ms, press L, stick 0deg 2500ms walk, "
                 "press L, stick -85deg 150ms walk, release 100ms, press L",
             .line = "[PLZA] to_front_counter: the end event after the last turn.",
         },
@@ -933,7 +933,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = {CUTSCENE}},
         .expectation = {
             .verdict = "done",
-            .inputs = repeated("wait 250ms", 40) + ", press L, stick -15deg 150ms walk, release 100ms, press L, hold north 2000ms walk",
+            .inputs = repeated("wait 250ms", 40) + ", press L, stick -15deg 150ms walk, release 100ms, press L, stick 0deg 2000ms walk",
             .line = "[PLZA] to_room_202: nothing busy for 10000 ms and no sign of control; taken as control.",
         },
     },
@@ -992,7 +992,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms",
+            .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms",
             .line = "[PLZA] to_plaza_scene_prompt: the end event after 500 ms of the last leg.",
         },
     },
@@ -1003,7 +1003,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms, hold north 250ms walk, wait 300ms",
+            .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms, stick 0deg 250ms walk, wait 300ms",
             .line = "[PLZA] to_plaza_scene_prompt: the end event after 750 ms of the last leg.",
         },
     },
@@ -1017,7 +1017,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = std::format("wait 250ms, {}, wait 300ms", repeated("hold north 250ms walk", 8)),
+            .inputs = std::format("wait 250ms, {}, wait 300ms", repeated("stick 0deg 250ms walk", 8)),
             .line = "[PLZA] to_lobby_elevator: the end event after 2000 ms of the last leg.",
         },
     },
@@ -1041,7 +1041,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
         )},
-        .expectation = {.verdict = "done", .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms"},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms"},
     },
     {
         .name = "03.02b's talk presses nothing without Taunie's A prompt",
@@ -1163,7 +1163,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk",
+            .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk",
             .line = "[PLZA] off_the_roof: a scene (a text box) took control after 500 ms of the last leg: the walk stops.",
         },
     },
@@ -1243,8 +1243,8 @@ const RunCase RUN_CASES[] = {
         },
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, hold north 6500ms walk, "
-                "press L, stick -90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .inputs = "wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, stick 0deg 6500ms walk, "
+                "press L, stick -90deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk",
             .line = "[PLZA] to_research_lab: the end event after 250 ms of the last leg.",
         },
     },
@@ -1264,9 +1264,9 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -90deg 150ms walk, release 100ms, press L, hold north 700ms walk, "
-                "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 1300ms walk, "
-                "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
+            .inputs = "wait 250ms, press L, stick -90deg 150ms walk, release 100ms, press L, stick 0deg 700ms walk, "
+                "press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 1300ms walk, "
+                "press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk",
         },
     },
     {
