@@ -21,7 +21,6 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
@@ -87,11 +86,6 @@ std::optional<size_t> run_start(
     std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
     size_t asked, const StartSignature& read
 );
-
-//  The overworld fields of the signature on `screen`: talk_prompt and,
-//  when the party bar shows, party. A fading screen reads nothing.
-//  wild_zone needs the full map: wild_zone_from_map().
-StartSignature read_start_screen(const ImageViewRGB32& screen);
 
 //  The signature's wild_zone by the player's pin on the full map
 //  (read_map_pin()): whether it is in Wild Zone 1 (pin_in_zone_1()).

@@ -14,7 +14,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryBackupSave_H
 #define PokemonAutomation_PokemonLZA_AutoStoryBackupSave_H
 
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackups.h"
 
 namespace PokemonAutomation{

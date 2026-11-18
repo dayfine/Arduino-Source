@@ -55,9 +55,10 @@ struct NewGameLanguageInfo{
     Language ocr_language = Language::None;
     //  A part of its name as Confirm Choices shows it ("Deutsch", "Latino").
     std::string_view confirm_text;
-    //  The program can play it (Korean: not yet; its keyboard is Hangul,
-    //  which the Switch keyboard typer does not read).
-    bool supported = true;
+    //  The program can type a name on its keyboard (Korean: no; its
+    //  keyboard is Hangul, which the Switch keyboard typer does not read).
+    //  A run that starts on Confirm Choices types nothing.
+    bool keyboard_supported = true;
 };
 
 //  `language`'s row of the table above.
@@ -78,12 +79,14 @@ struct NewGameChoices{
     //  1 to 8: the look picker's portraits, left to right along the top
     //  row, then the bottom one.
     size_t look = 1;
-    //  Letters, digits and the symbols on the name keyboard's first page
-    //  (- / : ' , . ? !), at most the language's name_limit.
+    //  At most the language's name_limit characters. A run that types it
+    //  (one that starts before Confirm Choices) takes only letters, digits
+    //  and the symbols on the name keyboard's first page (- / : ' , . ? !).
     std::string name = "Kosmos";
 };
 
-//  Why `choices` cannot be played, before any press; nullopt when they can.
+//  Why `choices` cannot be played from any start screen, before any press;
+//  nullopt when they can.
 std::optional<std::string> new_game_problem(const NewGameChoices& choices);
 
 //  The presses that move the language list's cursor from entry `from` to

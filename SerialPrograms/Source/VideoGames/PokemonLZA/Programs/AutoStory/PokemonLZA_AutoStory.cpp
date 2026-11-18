@@ -23,7 +23,10 @@
 #include "Actions/PokemonLZA_AutoStoryBackupSave.h"
 #include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
+#include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
 #include "PokemonLZA_AutoStoryBackups.h"
+#include "PokemonLZA_AutoStoryConsoleBackend.h"
+#include "PokemonLZA_AutoStoryConsoleGame.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
@@ -90,7 +93,7 @@ const EnumDropdownDatabase<NewGameLanguage>& new_game_language_database(){
         {NewGameLanguage::German,              "de",      "Deutsch"},
         {NewGameLanguage::Italian,             "it",      "Italiano"},
         {NewGameLanguage::Japanese,            "ja",      "Japanese"},
-        {NewGameLanguage::Korean,              "ko",      "Korean (not supported yet)"},
+        {NewGameLanguage::Korean,              "ko",      "Korean (start on Confirm Choices)"},
         {NewGameLanguage::ChineseSimplified,   "zh-Hans", "Chinese (Simplified)"},
         {NewGameLanguage::ChineseTraditional,  "zh-Hant", "Chinese (Traditional)"},
     };
@@ -110,10 +113,14 @@ void check_new_game_choices(ConsoleHandle& console, const StoryCheckpoint& first
 
 //  Connects the controller for a run from `first_row`. 01.00 starts on a
 //  screen that proves the save is fresh, so it is checked before any press,
-//  the connect press included.
-void connect_controller(ConsoleHandle& console, ProControllerContext& context, const StoryCheckpoint& first_row){
+//  the connect press included, with the choices that depend on it (a name
+//  the program cannot type is fine on Confirm Choices).
+void connect_controller(ConsoleHandle& console, ProControllerContext& context, const StoryCheckpoint& first_row, const NewGameChoices& choices){
     if (story_row_starts_without_save(first_row)){
-        require_new_game_start(console, context);
+        const NewGameStart start = require_new_game_start(console, context);
+        if (const std::optional<std::string> problem = new_game_start_problem(start, choices)){
+            throw UserSetupError(console, *problem);
+        }
     }
     require_player(console, context, BUTTON_L);
 }
@@ -236,10 +243,6 @@ AutoStory::AutoStory()
         /*is_password=*/false, "<b>Player Name:</b><br>Letters, digits and - / : ' , . ? ! (the keyboard's first page); at most 12 characters, 6 in Japanese and Chinese.",
         LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"Kosmos", /*placeholder_text=*/"Kosmos"
     )
-    , CAPTURE_INTRO_SCREENS(
-        "<b>Developer: capture intro screens:</b><br>A separate collection mode, not a capture during a run: it ignores Game Language and, for each of the ten languages in turn (English first), closes the game, launches it from HOME and saves its screens up to the name keyboard to the Screenshots folder. Nothing is typed, so no save is made.",
-        LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false
-    )
     , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/1, /*min_value=*/1, /*max_value=*/5)
     , REWINDS_TO_BACKUP(std::string(REWINDS_TO_BACKUP_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/2, /*min_value=*/0, /*max_value=*/5)
     , LOAD_SAVE_FIRST(
@@ -259,7 +262,6 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(GAME_LANGUAGE);
     PA_ADD_OPTION(PLAYER_LOOK);
     PA_ADD_OPTION(PLAYER_NAME);
-    PA_ADD_OPTION(CAPTURE_INTRO_SCREENS);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(REWINDS_TO_BACKUP);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
@@ -269,11 +271,6 @@ AutoStory::AutoStory()
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
-    if (CAPTURE_INTRO_SCREENS){
-        require_player(env.console, context, BUTTON_L);
-        capture_intro_screens(env.console, context, PLAYER_LOOK);
-        return;
-    }
     const NewGameChoices new_game{.language = GAME_LANGUAGE, .look = PLAYER_LOOK, .name = PLAYER_NAME};
     const StoryData& story_data = builtin_story_data();
     const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
@@ -281,7 +278,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const size_t last = RANGE.end_index();
     check_checkpoint_range(env.console, first, last, rows.size());
     check_new_game_choices(env.console, rows[first], new_game);
-    connect_controller(env.console, context, rows[first]);
+    connect_controller(env.console, context, rows[first], new_game);
 
     StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     PlzaConsoleBackend backend(story);

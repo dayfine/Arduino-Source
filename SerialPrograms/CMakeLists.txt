@@ -103,6 +103,10 @@ option(PA_CORE_ONLY "Build only the GUI-free core (basic microcontroller functio
 # listing, so every file would be recompiled on every run.
 option(PA_ASSEMBLY_LISTINGS "Write an assembly listing of every source file to Assembly/ (MSVC and clang-cl only)" ON)
 
+# With PA_CORE_ONLY, also build SerialProgramsLogicTests: the unit tests that need no
+# Qt, OpenCV, ONNX Runtime, Tesseract or test images. See cmake/LogicTests.cmake.
+option(PA_LOGIC_TESTS "With PA_CORE_ONLY, build the logic-only unit tests (SerialProgramsLogicTests)" OFF)
+
 # Enable SDL by giving -DPA_SDL=ON on the CMake command line
 option(PA_SDL "Enable SDL library" OFF)
 
@@ -113,6 +117,13 @@ if(PA_CORE_ONLY)
     set(CMAKE_AUTOUIC OFF)
     include(cmake/SourceFiles.cmake)
     include(cmake/CoreLib.cmake)
+    if(PA_LOGIC_TESTS)
+        include(cmake/LogicTests.cmake)
+        # PLZA AutoStory's checkpoint files, which its logic tests read.
+        include(cmake/EmbedTextFiles.cmake)
+        pa_embed_text_files(LogicLib Source/VideoGames/PokemonLZA/Programs/AutoStory/StoryData
+            VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
+    endif()
     if(COMMAND_LINE_EXE)
         include(Source/CommandLine/CommandLineExecutable.cmake)
     endif()

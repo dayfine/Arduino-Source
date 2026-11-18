@@ -14,6 +14,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryStarts_Tests.h"
@@ -69,8 +70,7 @@ struct BuiltinCase{
 
 const BuiltinCase BUILTIN_CASES[] = {
     {
-        //  lab-B, 2026-11-16 13:57: the save at the Center counter, the run
-        //  asked for 03.08, and it searched Wild Zone 1 inside the Center.
+        //  A save at the Center counter asked for 03.08 searched the zone inside it.
         .name = "asked 03.08, the screen at the Center counter: from 03.06",
         .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false}},
         .expectation = {.from = "03.06"},
@@ -91,8 +91,7 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "stop"},
     },
     {
-        //  lab-B, 2026-11-16 21:05: the latest save was Mable's talk autosave
-        //  in her office (03.11), and its talk prompt read as 03.06's start.
+        //  Mable's talk autosave in her office (03.11) read as 03.06's start.
         .name = "asked 03.08, Mable's office with 5 in the party: stop",
         .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false, .party = 5}},
         .expectation = {.from = "stop"},
@@ -118,9 +117,7 @@ const BuiltinCase BUILTIN_CASES[] = {
         .input = {.asked = "03.08", .read = {.registered = 7}},
         .expectation = {.from = "stop"},
     },    {
-        //  lab-B, 2026-11-16 18:34: a save past 03.09, on the street by the
-        //  zone wall, read as in a wild zone; 03.08 ran as a no-op and
-        //  03.08b walked from the street.
+        //  A save on the street by the zone wall read as in a wild zone.
         .name = "asked 03.08, the street with five in the party: stop",
         .input = {.asked = "03.08", .read = {.talk_prompt = false, .wild_zone = true, .party = 5}},
         .expectation = {.from = "stop"},
@@ -146,8 +143,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.08b"},
     },
     {
-        //  console B, 2026-11-16 20:05:25: out of the far gate, the party
-        //  bar and no prompt.
         .name = "asked 03.09, the menu save out of the far gate: from 03.09",
         .input = {.asked = "03.09", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
         .expectation = {.from = "03.09"},
@@ -158,10 +153,8 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.09"},
     },
     {
-        //  console B, 2026-11-17 01:06: asked 03.09, 03.08b's menu save on
-        //  the street outside the far gate read the lead's panel as in a
-        //  wild zone, and 03.08b walked into the street's fence. The map
-        //  pin read (401, 225) there.
+        //  03.08b's menu save outside the far gate read the lead's panel as a
+        //  wild zone; the map pin read (401, 225).
         .name = "asked 03.09, 03.08b's menu save on the street by its map pin: from 03.09",
         .input = {.asked = "03.09", .read = {
             .talk_prompt = false, .wild_zone = wild_zone_from_map(MapPoint{.x = 401, .y = 225}), .party = 5,
@@ -289,8 +282,7 @@ UnitTestResult check_table(const TableCase& test){
 }
 
 
-//  wild_zone by the player's pin on the full map: pins read on console B
-//  ("[PLZA] map pin" lines, lab-B 2026-11-16 and 2026-11-17).
+//  wild_zone by the player's pin on the full map, on pins read on the console.
 struct MapPinCase{
     std::string name;
     struct Input{
@@ -311,7 +303,7 @@ const MapPinCase MAP_PIN_CASES[] = {
     {.name = "stuck at the north fence: in", .input = {.pin = MapPoint{.x = 358.9, .y = 227.3}}, .expectation = {.wild_zone = true}},
     {.name = "the patrol's stop 10: in", .input = {.pin = MapPoint{.x = 415.4, .y = 230.4}}, .expectation = {.wild_zone = true}},
     {
-        //  console B, 2026-11-17 01:06 and 01:07: 03.08b's menu save.
+        //  03.08b's menu save.
         .name = "the street outside the far gate: out",
         .input = {.pin = MapPoint{.x = 401, .y = 225}},
         .expectation = {.wild_zone = false},
@@ -337,9 +329,8 @@ UnitTestResult check_map_pin(const MapPinCase& test){
 }
 
 
-//  The console's frames, PokemonLZA/AutoStoryStarts/<file> (console B,
-//  2026-11-16 Italian, 2026-11-17 German), read with the map pin read
-//  there and placed for a run asked to start at `asked`.
+//  The console's frames, PokemonLZA/AutoStoryStarts/<file>, with the map pin
+//  read there, placed for a run asked to start at `asked`.
 struct FrameCase{
     std::string name;
     struct Input{
@@ -368,9 +359,7 @@ const FrameCase FRAME_CASES[] = {
         .expectation = {.from = "03.08"},
     },
     {
-        //  0309-start-facing-marker-de: 03.08b's menu save on the street
-        //  outside the far gate, the lead's panel up (console B,
-        //  2026-11-17 01:06); the map pin read (401, 225).
+        //  03.08b's menu save outside the far gate, the lead's panel up; pin (401, 225).
         .name = "the street outside the far gate, facing the marker: 03.09",
         .input = {.file = "German_0309_start_facing_marker.png", .asked = "03.09", .map_pin = MapPoint{.x = 401, .y = 225}},
         .expectation = {.from = "03.09"},

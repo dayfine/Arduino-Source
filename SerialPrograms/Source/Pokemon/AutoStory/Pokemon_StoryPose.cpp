@@ -27,21 +27,6 @@ std::string certainty_name(PoseCertainty certainty){
     return "?";
 }
 
-bool certainty_covers(PoseCertainty have, PoseCertainty need){
-    switch (need){
-    case PoseCertainty::UNKNOWN:
-        return true;
-    case PoseCertainty::SET:
-        return have != PoseCertainty::UNKNOWN;
-    case PoseCertainty::COLUMN:
-    case PoseCertainty::ROW:
-        return have == need || have == PoseCertainty::TILE;
-    case PoseCertainty::TILE:
-        return have == PoseCertainty::TILE;
-    }
-    return false;
-}
-
 std::string to_string(const Pose& pose){
     std::string text = pose.map.empty() ? "?" : pose.map;
     if (pose.where){

@@ -14,9 +14,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the tests of 03.08's way onto Wild Zone 1's road (ZoneStart)
-//  and of the walks between its stops (RoadWalkReads), replayed read by
-//  read.
+//  Registers the tests of 03.08's way onto Wild Zone 1's road (ZoneStart),
+//  replayed read by read.
 void add_tests_AutoStoryZone1Road(UnitTestDatabase& database);
 
 

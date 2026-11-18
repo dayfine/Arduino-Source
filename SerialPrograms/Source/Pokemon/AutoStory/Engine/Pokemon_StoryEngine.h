@@ -5,10 +5,11 @@
  *  The one story executor, for every game and both backends. A run of a
  *  checkpoint lints its steps against the game's actions (a problem fails
  *  the run before any input), runs them through the event layer
- *  (Pokemon_StoryEvents.h) with the step runner, and saves at the end of
- *  each checkpoint that passed (StoryGame::save: the game knows whether
- *  the row autosaved). A failed checkpoint is retried after the game's
- *  reload, when the reload returns to the save it started from.
+ *  (Pokemon_StoryEvents.h) with the step runner, and at the end of each
+ *  checkpoint that passed asks the game's save policy (StoryGame::save,
+ *  Pokemon_StorySavePolicy.h) whether the run is on a save. A failed
+ *  checkpoint is retried after the game's reload, when the reload returns
+ *  to the save it started from.
  *
  */
 
@@ -49,8 +50,8 @@ public:
         return m_registry;
     }
 
-    //  Runs `checkpoint` from `state` and, when it passed, saves
-    //  (StoryGame::save).
+    //  Runs `checkpoint` from `state` and, when it passed, asks the save
+    //  policy (StoryGame::save).
     StoryEngineReport run_checkpoint(const StoryCheckpoint& checkpoint, RunState& state);
 
     //  `checkpoints` in order from the save the game is on, each run with

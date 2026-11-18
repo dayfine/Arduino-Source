@@ -19,9 +19,9 @@ namespace Pokemon{
 
 //  One step of a checkpoint: an action, named for the log.
 struct Event{
-    std::string name;
-    std::string why;
-    Act act;
+    std::string name = {};
+    std::string why = {};
+    Act act = {};
 };
 
 

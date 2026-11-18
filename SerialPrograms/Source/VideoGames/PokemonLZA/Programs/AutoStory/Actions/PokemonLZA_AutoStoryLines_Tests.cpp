@@ -145,6 +145,8 @@ const MenuCase MENU_CASES[] = {
         .expectation = {.out = true, .inputs = "press B, press B"},
     },
     {
+        //  03.11's reward: B out of Mable's Research page lands on her talk
+        //  (console B, 2026-11-10).
         .name = "B until the talk after the menu",
         .input = {.looks = {nothing(Milliseconds(0)), dialog(Milliseconds(0))}, .presses = 5},
         .expectation = {.out = true, .inputs = "press B"},

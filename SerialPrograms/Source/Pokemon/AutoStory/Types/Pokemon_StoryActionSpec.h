@@ -25,19 +25,19 @@ namespace Pokemon{
 //  One argument an action takes. A missing optional one reads as `fallback`
 //  when it has one.
 struct StoryArgSpec{
-    std::string key;
+    std::string key = {};
     StoryArgType type = StoryArgType::WORD;
     bool required = false;
-    std::optional<StoryArgValue> fallback;
+    std::optional<StoryArgValue> fallback = {};
     //  What it is for, shown in lint errors.
-    std::string why;
+    std::string why = {};
 };
 
 //  An action: the kind of step it does, its name and the args it takes.
 struct StoryActionSpec{
     StoryStepKind kind = StoryStepKind::GAME;
-    std::string name;
-    std::vector<StoryArgSpec> args;
+    std::string name = {};
+    std::vector<StoryArgSpec> args = {};
     //  It reads or presses through screens only a console shows (menus, a
     //  keyboard, a battle AI): the engine refuses it on any other backend
     //  (StoryBackendKind) with the failure "console_only".

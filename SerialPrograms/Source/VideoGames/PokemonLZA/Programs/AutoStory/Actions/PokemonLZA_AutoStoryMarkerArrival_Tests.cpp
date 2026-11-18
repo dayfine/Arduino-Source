@@ -52,9 +52,7 @@ struct ArrivalCase{
     struct Input{
         MarkerProof proof = MarkerProof::NEAR_READ;
         std::vector<Look> looks = {};
-        //  The time from one look to the next: 0.64 s on the walk that
-        //  passed 03.09 in run 10 (console B, 2026-11-16 21:36:55 to
-        //  21:36:58).
+        //  The time from one look to the next on a passing walk: 0.64 s.
         Milliseconds look_period = 640ms;
     };
     Input input;
@@ -70,10 +68,8 @@ struct ArrivalCase{
 
 const ArrivalCase ARRIVAL_CASES[] = {
     {
-        //  console B, 2026-11-16 21:33:36 to 21:33:50 (run 9): 40 taken at
-        //  Wild Zone 1's exit, then "1", "0", "4" and "4" (the marker
-        //  showed 39) agreed on 4 with the exit pillar's "Esci" prompt up,
-        //  5.4 s after 40, and the walk passed there.
+        //  40 at Wild Zone 1's exit, then "1", "0", "4", "4" (it showed 39) agreed
+        //  on 4 with the exit's "Esci" prompt up: passed (03.09).
         .name = "03.09's walk: a read of 4 five seconds after 40 is a misread, so the exit's prompt is not the lab gate",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -86,8 +82,7 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  console B, 2026-11-16 21:36:55 to 21:36:58 (run 10, passed): 23
-        //  down to 12 at 0.64 s a look, 16 to 12 in one.
+        //  23 down to 12 at 0.64 s a look, 16 to 12 in one (passed).
         .name = "a walk at full pace: 23 down to 8, then a prompt, is at the objective",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -107,9 +102,7 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = 17, .near = true},
     },
     {
-        //  console B, 2026-11-16 17:34:33 to 17:34:37: 03.09's walk from
-        //  the far gate read "t", "", "1" and nothing more, and passed on
-        //  a prompt on the street 4 s in; 03.10 then failed from there.
+        //  03.09 from the far gate read "t", "", "1" and passed on a street prompt.
         .name = "03.09's walk with no distance taken: a prompt on the street is not the lab gate",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -118,9 +111,7 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  console B, 2026-11-14 21:27:50 to 21:28:12 (plza/autostory,
-        //  passed): 37 down to 13, then the gate's scene took the marker
-        //  away, and Ryon's dialog showed after the camera's sweep.
+        //  37 down to 13, then the gate's scene took the marker, then Ryon's dialog.
         .name = "03.09's walk that passed: 37 down to 13, the marker gone, then the dialog",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -132,10 +123,8 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = 15, .near = true},
     },
     {
-        //  console B, 2026-11-16 18:47:15 to 18:47:18: by a dialog on the
-        //  street (not the lab gate's scene), OCR read "E5", "41", "v1" and
-        //  "E6"; 5, 1 and 6 agreed and were taken, and the dialog passed
-        //  the walk at "6 to go". The gate's scene came 23 to go later.
+        //  OCR read "E5", "41", "v1", "E6" by a street dialog, 6 to go; the gate's
+        //  scene came 23 to go later.
         .name = "03.09's walk: junk single digits by a street dialog are not near the lab gate",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -147,9 +136,8 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  A prompt with the marker still up at 12 to go: the lab gate's
-        //  scene takes the marker away before its dialog (console B,
-        //  2026-11-14 and 2026-11-16 18:47:40 to 18:47:51).
+        //  A prompt with the marker still up at 12 to go: the lab gate's scene
+        //  takes the marker away before its dialog.
         .name = "a prompt with the marker up at 12 to go is not the objective",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -166,8 +154,7 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = 5, .near = true},
     },
     {
-        //  console B, 2026-11-16 18:47:37 to 18:47:51: 23 down to 12, the
-        //  marker gone, Ryon's dialog 10 s later: the lab gate's scene.
+        //  23 down to 12, the marker gone, Ryon's dialog 10 s later: the gate's scene.
         .name = "the lab gate's scene after 23 down to 12: the marker gone, then the dialog",
         .input = {
             .proof = MarkerProof::NO_FAR_READ,
@@ -194,9 +181,7 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  console B, 2026-11-14 21:28:33 to 21:28:36 (plza/autostory,
-        //  passed): up the lab's steps the digits never read, and the
-        //  door's "A Enter" showed on the fifth look.
+        //  Up the lab's steps the digits never read; "A Enter" on the fifth look.
         .name = "up the lab's steps: no digits on four looks, then the door's prompt",
         .input = {
             .proof = MarkerProof::NO_FAR_READ,
@@ -205,8 +190,7 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = 5, .near = true},
     },
     {
-        //  console B, 2026-11-16 17:34:39 to 17:34:44: from the street (the
-        //  walk before had passed early), 44 and 111 read, then a prompt.
+        //  From the street: 44 and 111 read, then a prompt.
         .name = "up the lab's steps from the street: 44 and 111 read, so a prompt is not the door",
         .input = {
             .proof = MarkerProof::NO_FAR_READ,

@@ -5,10 +5,8 @@
  */
 
 #include <array>
-#include <cctype>
-#include <map>
 #include <format>
-#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardEntryMappings.h"
+#include "Common/Cpp/Strings/Unicode.h"
 #include "PokemonLZA_AutoStoryNewGameChoices.h"
 
 namespace PokemonAutomation{
@@ -25,19 +23,6 @@ constexpr size_t LANGUAGE_LIST_SIZE = 2 * LANGUAGE_LIST_ROWS;
 //  The look picker: 2 rows of LOOK_COLUMNS portraits.
 constexpr size_t LOOK_COLUMNS = 4;
 constexpr size_t LOOK_COUNT = 2 * LOOK_COLUMNS;
-
-//  Whether every character of `name` has a key on the name keyboard's
-//  first page, which the Switch keyboard typer types (letters by their
-//  capital).
-bool on_keyboard(std::string_view name){
-    const std::map<char, KeyboardEntryPosition>& keys = KEYBOARD_POSITIONS(KeyboardLayout::QWERTY);
-    for (const char ch : name){
-        if (!keys.contains((char)std::toupper((unsigned char)ch))){
-            return false;
-        }
-    }
-    return true;
-}
 
 //  The presses from (column, row) `from` to `to` on a grid: across first,
 //  then up or down.
@@ -70,7 +55,7 @@ const NewGameLanguageInfo& new_game_language_info(NewGameLanguage language){
         {.tag = "de",      .list_entry = 4, .name_limit = 12, .ocr_language = Language::German,             .confirm_text = "Deutsch"},
         {.tag = "it",      .list_entry = 5, .name_limit = 12, .ocr_language = Language::Italian,            .confirm_text = "Italiano"},
         {.tag = "ja",      .list_entry = 6, .name_limit = 6,  .ocr_language = Language::Japanese,           .confirm_text = "\xe6\x97\xa5\xe6\x9c\xac"},
-        {.tag = "ko",      .list_entry = 7, .name_limit = 6,  .ocr_language = Language::Korean,             .confirm_text = "\xed\x95\x9c\xea\xb5\xad", .supported = false},
+        {.tag = "ko",      .list_entry = 7, .name_limit = 6,  .ocr_language = Language::Korean,             .confirm_text = "\xed\x95\x9c\xea\xb5\xad", .keyboard_supported = false},
         {.tag = "zh-Hans", .list_entry = 8, .name_limit = 6,  .ocr_language = Language::ChineseSimplified,  .confirm_text = "\xe7\xae\x80\xe4\xbd\x93"},
         {.tag = "zh-Hant", .list_entry = 9, .name_limit = 6,  .ocr_language = Language::ChineseTraditional, .confirm_text = "\xe7\xb9\x81\xe9\xab\x94"},
     }};
@@ -80,26 +65,17 @@ const NewGameLanguageInfo& new_game_language_info(NewGameLanguage language){
 
 std::optional<std::string> new_game_problem(const NewGameChoices& choices){
     const NewGameLanguageInfo& info = new_game_language_info(choices.language);
-    if (!info.supported){
-        return std::format("AutoStory: Korean ({}) is not supported yet: its name keyboard is Hangul.", info.tag);
-    }
     if (choices.look < 1 || choices.look > LOOK_COUNT){
         return std::format("AutoStory: the player look must be 1 to {}, not {}.", LOOK_COUNT, choices.look);
     }
     if (choices.name.empty()){
         return std::string("AutoStory: the player name is empty.");
     }
-    if (choices.name.size() > info.name_limit){
+    const size_t characters = utf8_to_utf32(choices.name).size();
+    if (characters > info.name_limit){
         return std::format(
             "AutoStory: the player name \"{}\" has {} characters; the game takes at most {} in this language ({}).",
-            choices.name, choices.name.size(), info.name_limit, info.tag
-        );
-    }
-    if (!on_keyboard(choices.name)){
-        return std::format(
-            "AutoStory: the player name \"{}\" has a character that is not on the name keyboard's first page "
-            "(letters, digits and - / : ' , . ? !).",
-            choices.name
+            choices.name, characters, info.name_limit, info.tag
         );
     }
     return std::nullopt;

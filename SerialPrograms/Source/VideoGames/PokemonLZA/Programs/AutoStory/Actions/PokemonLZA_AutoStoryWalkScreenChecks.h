@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryWalkScreenChecks_H
 #define PokemonAutomation_PokemonLZA_AutoStoryWalkScreenChecks_H
 
+#include <optional>
 #include <string_view>
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
@@ -44,21 +45,23 @@ void finish_walk(PlzaBackend& backend, std::string_view walk);
 //  (hold_last_leg()) until a look shows `end` (a fade, the box of a talk
 //  the walk runs into, or the A prompt of what it walks to), the leg's
 //  time as the upper bound. An A prompt ends it only when it shows again
-//  on a look 300 ms later, the stick let go; else the leg goes on. A black fade ends it too: the scene at the
-//  walk's end takes over. A last leg that only turns is looked at once,
-//  after the turn. Fails as "walk_no_end" if neither shows within it.
-//  `end` seen before `end_after` of the last leg (the plan's measured walk)
-//  does not end it: an NPC's A prompt beside the path is passed on the
-//  way, not the one the walk goes to (02.05's Alton, console B 2026-11-16).
+//  on a look 300 ms later, the stick let go; else the leg goes on. A black
+//  fade ends it too: the scene at the walk's end takes over. A last leg
+//  that only turns is looked at once, after the turn. Fails as
+//  "walk_no_end" if neither shows within it. `end` seen before `end_after`
+//  of the last leg (the plan's measured walk) does not end it: an NPC's A
+//  prompt beside the path is passed on the way, not the one the walk goes
+//  to (02.05's Alton). A walk of one straight leg to an A prompt with no
+//  `end_after` ends before walking on the prompt it starts at, steady
+//  300 ms (02.02's street scene can end at the gate).
+//  With no `end`, the walk ends when a scene takes control: something no
+//  walk may start on (a text box, text waiting for A, a fade) on two looks
+//  in a row, for a walk that runs off into a scene with no measured end
+//  (03.03's drop off the roof). Fails as "walk_no_scene" when control is
+//  still free at the end of the last leg.
 Pokemon::Outcome walk_until(
-    PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end, Milliseconds end_after
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, std::optional<ScreenEvent> end, Milliseconds end_after
 );
-
-//  Walks straight on, 250 ms at a time, until an A prompt shows
-//  (INTERACT_PROMPT: "A Leave" at the Battle Zone's gate) and shows again
-//  on a look 300 ms later, the stick let go; nothing if it shows already.
-//  Fails as "no_prompt" after `timeout` of walking without one.
-Pokemon::Outcome walk_to_prompt(PlzaBackend& backend, Milliseconds timeout);
 
 //  Whether a look shows `event` within `within`, looking every 250 ms and
 //  pressing nothing: "talk" presses A only on an A prompt

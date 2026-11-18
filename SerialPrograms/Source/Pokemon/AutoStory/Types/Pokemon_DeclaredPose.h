@@ -22,9 +22,9 @@ namespace Pokemon{
 //  In `place` ("LumioseCity"), at `spot` in it if set, heading `heading`
 //  degrees if set.
 struct ZoneDeclared{
-    std::string place;
-    std::optional<std::string> spot;
-    std::optional<int> heading;
+    std::string place = {};
+    std::optional<std::string> spot = {};
+    std::optional<int> heading = {};
 
     bool operator==(const ZoneDeclared& other) const = default;
 };

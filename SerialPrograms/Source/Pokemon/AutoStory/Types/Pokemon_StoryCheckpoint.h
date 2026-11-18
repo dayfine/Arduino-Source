@@ -23,11 +23,11 @@ namespace Pokemon{
 
 // Milestone row in the story table grouping related steps and starting pose.
 struct StoryCheckpoint{
-    std::string id;
-    std::string title;
+    std::string id = {};
+    std::string title = {};
     //  Where its starting save leaves the player; none for a new game.
-    std::optional<DeclaredPose> start;
-    std::vector<StoryStep> steps;
+    std::optional<DeclaredPose> start = {};
+    std::vector<StoryStep> steps = {};
     //  Its phase and verification (JSON "metadata"), which decide when a
     //  run of it may save.
     StoryCheckpointMetadata metadata = {};

@@ -29,8 +29,8 @@ namespace Pokemon{
 //  What a game reads from one checkpoint file.
 template <typename Checkpoint>
 struct StoryFileRow{
-    Checkpoint checkpoint;
-    StoryRowExecution execution;
+    Checkpoint checkpoint = {};
+    StoryRowExecution execution = {};
 };
 
 //  How a game reads its checkpoint files.
@@ -39,7 +39,7 @@ struct StoryFileReader{
     //  The file `text`'s checkpoint and shared execution fields
     //  (read_story_row_execution()); `source` names the file in errors.
     //  Throws ParseException when it is malformed.
-    std::function<StoryFileRow<Checkpoint>(std::string_view text, std::string_view source)> read;
+    std::function<StoryFileRow<Checkpoint>(std::string_view text, std::string_view source)> read = {};
     //  Whether a row starts with no save to load (a new game): it may not
     //  reload. None set: every row starts from a save.
     std::function<bool(const Checkpoint&)> starts_without_save = {};

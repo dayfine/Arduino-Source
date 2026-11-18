@@ -48,8 +48,7 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  The throw of plza/autostory's catches, which passed 03.07 on console B
-//  (2026-11-13): the banner showed 6.9 s after the throw (03.08).
+//  The throw that passed 03.07: the banner shows ~7 s after it (03.08).
 const BallThrowOptions STORY_THROW{
     .lock_on = Milliseconds(500),
     .aim = Milliseconds(1500),
@@ -62,7 +61,7 @@ constexpr Milliseconds LINES_LIMIT(30000);
 
 //  Whether a wild battle is on: its Run prompt, or the red alert bar with
 //  the eye at the top while a wild Pokemon attacks the player before the
-//  partner is out (03.08, console B 2026-11-14).
+//  partner is out (03.08).
 bool wild_battle_on(StoryEnv& env){
     env.context.wait_for_all_requests();
     const VideoSnapshot screen = env.env.console.video().snapshot();
@@ -138,8 +137,7 @@ Pokemon::Outcome battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_
 namespace{
 
 //  Walks toward the objective never go below this, read or not: 60 is
-//  just before the far gate, and past it is the city (console B,
-//  2026-11-16, a walk to 100 came out at 37).
+//  just before the far gate, and past it is the city.
 constexpr int ROAD_FLOOR = CATCH_SPOTS[std::size(CATCH_SPOTS) - 1] - ROAD_STOP_SLACK;
 
 //  The patrol's time in the zone and its visits to CATCH_SPOTS (5 rounds).
@@ -147,10 +145,10 @@ constexpr Milliseconds PATROL_LIMIT(600000);
 constexpr size_t PATROL_VISITS = 10;
 
 //  How long ZL is held for the lock to show before a stop gives up on the
-//  target: over 1.5 s at times (the user, console B 2026-11-14).
+//  target: over 1.5 s at times.
 constexpr Milliseconds LOCK_ON_WAIT(3000);
 //  A full flick of the right stick with ZL held moves the lock to the next
-//  target that way (the user, 2026-11-13).
+//  target that way.
 constexpr double TARGET_FLICK = 0.8;
 
 //  A catch stop's camera sweep (camera_sweep()): 4 looks, the turn between
@@ -163,7 +161,7 @@ constexpr Milliseconds SWEEP_LOOK_LIMIT(3000);
 
 //  A ZL lock-on and throw leave the camera looking steeply down: the
 //  right stick down held 1500 ms pins the pitch at its lowest, then up
-//  600 ms gives the walking pitch (console B, 2026-11-14).
+//  600 ms gives the walking pitch.
 void level_camera(StoryEnv& env){
     pbf_move_right_joystick(env.context, /*position=*/{0, -1}, /*hold=*/Milliseconds(1500), /*release=*/Milliseconds(100));
     pbf_move_right_joystick(env.context, /*position=*/{0, 1}, /*hold=*/Milliseconds(600), /*release=*/Milliseconds(300));
@@ -311,7 +309,7 @@ struct TargetChoice{
 //  With ZL held until the lock shows (LOCK_ON_WAIT at most), flicks the
 //  right stick right up to 3 times, reading each target's plate
 //  (LockTargetCycle), then flicks back to the nearest one not caught: the
-//  closer one is much more likely to be caught (the user, 2026-11-13).
+//  closer one is much more likely to be caught.
 TargetChoice choose_target(PlzaBackend& backend, HeldZl& held){
     LockTargetCycle cycle(4);
     std::optional<LockTarget> view = held.wait_for_plate(LOCK_ON_WAIT);
@@ -524,9 +522,8 @@ void fight_off(StoryEnv& env, PlzaBackend& backend){
     }
 }
 
-//  A wild Pokemon fighting the player (a Mareep often does, the user's
-//  walk on console B, 2026-11-13; Bunnelby, 2026-11-14): ZL locks on to it
-//  and reads its plate. Of a species already caught, it is fought off;
+//  A wild Pokemon fighting the player (Mareep, Bunnelby): ZL locks on to
+//  it and reads its plate. Of a species already caught, it is fought off;
 //  otherwise weaken_then_throw() until it is caught or gone.
 GrassCatches fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
     GrassCatches out;
@@ -655,8 +652,7 @@ std::optional<int> read_at_marker(StoryEnv& env, PlzaBackend& backend){
         backend.log("[PLZA] catch_in_zone: no objective marker found to read");
         return std::nullopt;
     }
-    //  Standing still: 24 looks, the digits flicker over leaves and sky
-    //  (console B, 2026-11-16 16:04: one "105" in 8 looks).
+    //  Standing still: 24 looks, the digits flicker over leaves and sky.
     return read_marker_distance(env, backend, ROAD_FLOOR, /*looks=*/24);
 }
 

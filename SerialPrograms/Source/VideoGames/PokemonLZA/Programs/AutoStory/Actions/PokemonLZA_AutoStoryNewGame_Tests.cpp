@@ -7,7 +7,6 @@
 #include <format>
 #include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
@@ -50,8 +49,13 @@ std::string press_text(const std::optional<std::vector<IntroKey>>& presses){
 }
 
 
+//  Hangul names: 6 and 7 characters of 3 UTF-8 bytes each.
+const std::string HANGUL_6 = "\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8\xec\x8a\xa4\xec\xbd\x94\xec\x8a\xa4";
+const std::string HANGUL_7 = "\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8\xec\x8a\xa4\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8";
+
+
 //  new_game_problem(): whether the program refuses the choices before any
-//  press.
+//  press, whatever screen the run starts on.
 struct ProblemCase{
     std::string name;
     struct Input{
@@ -97,15 +101,16 @@ const ProblemCase PROBLEM_CASES[] = {
         .expectation = {.refused = true},
     },
     {
-        .name = "Korean is not supported",
-        .input = {.choices = {.language = NewGameLanguage::Korean, .name = "Kosmos"}},
+        .name = "6 Hangul characters in Korean",
+        .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .expectation = {.refused = false},
+    },
+    {
+        .name = "7 Hangul characters in Korean",
+        .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_7}},
         .expectation = {.refused = true},
     },
     {.name = "an empty name", .input = {.choices = {.name = ""}}, .expectation = {.refused = true}},
-    {.name = "a space in the name", .input = {.choices = {.name = "Kos mos"}}, .expectation = {.refused = true}},
-    {.name = "digits and the first page's symbols", .input = {.choices = {.name = "a1-/:',.?!"}}, .expectation = {.refused = false}},
-    {.name = "an accented letter", .input = {.choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = true}},
-    {.name = "a symbol of the second page", .input = {.choices = {.name = "a#"}}, .expectation = {.refused = true}},
     {.name = "look 8", .input = {.choices = {.look = 8}}, .expectation = {.refused = false}},
     {.name = "look 0", .input = {.choices = {.look = 0}}, .expectation = {.refused = true}},
     {.name = "look 9", .input = {.choices = {.look = 9}}, .expectation = {.refused = true}},
@@ -131,6 +136,73 @@ public:
 
 private:
     const ProblemCase& m_test;
+};
+
+
+//  new_game_start_problem(): whether the program refuses the choices once it
+//  knows the start screen: from HOME or the language list it types the name,
+//  on Confirm Choices the name is typed already.
+struct StartProblemCase{
+    std::string name;
+    struct Input{
+        NewGameStart start = NewGameStart::LANGUAGE_LIST;
+        NewGameChoices choices;
+    };
+    Input input;
+    struct Expectation{
+        bool refused = false;
+    };
+    Expectation expectation;
+};
+
+const StartProblemCase START_PROBLEM_CASES[] = {
+    {.name = "the defaults from the language list", .input = {.choices = {}}, .expectation = {.refused = false}},
+    {
+        .name = "Korean from the language list",
+        .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .expectation = {.refused = true},
+    },
+    {
+        .name = "Korean from HOME",
+        .input = {.start = NewGameStart::HOME, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .expectation = {.refused = true},
+    },
+    {
+        .name = "Korean on Confirm Choices",
+        .input = {.start = NewGameStart::CONFIRM_CHOICES, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
+        .expectation = {.refused = false},
+    },
+    {.name = "a space in the name", .input = {.choices = {.name = "Kos mos"}}, .expectation = {.refused = true}},
+    {.name = "digits and the first page's symbols", .input = {.choices = {.name = "a1-/:',.?!"}}, .expectation = {.refused = false}},
+    {.name = "an accented letter", .input = {.choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = true}},
+    {
+        .name = "an accented letter on Confirm Choices",
+        .input = {.start = NewGameStart::CONFIRM_CHOICES, .choices = {.name = "Jos\xc3\xa9"}},
+        .expectation = {.refused = false},
+    },
+    {.name = "a symbol of the second page", .input = {.choices = {.name = "a#"}}, .expectation = {.refused = true}},
+};
+
+class Test_NewGameStartProblem : public UnitTest{
+public:
+    explicit Test_NewGameStartProblem(const StartProblemCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - new game choices by start screen: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::optional<std::string> problem = new_game_start_problem(m_test.input.start, m_test.input.choices);
+        if (problem.has_value() != m_test.expectation.refused){
+            return std::format(
+                "Expected {}, got {}.",
+                m_test.expectation.refused ? "a refusal" : "no problem",
+                problem ? *problem : std::string("no problem")
+            );
+        }
+        return true;
+    }
+
+private:
+    const StartProblemCase& m_test;
 };
 
 
@@ -187,106 +259,6 @@ private:
     const GridCase& m_test;
 };
 
-
-//  Capture mode's recording: change 4, at most one frame a second. Each
-//  frame is (ms since the launch, RMSD from the last saved; -1: none yet).
-struct RecorderCase{
-    std::string name;
-    struct Input{
-        std::vector<std::pair<int, double>> frames;
-    };
-    Input input;
-    struct Expectation{
-        std::string saved;      //  One letter per frame: s saved, . not.
-    };
-    Expectation expectation;
-};
-
-const RecorderCase RECORDER_CASES[] = {
-    {.name = "the first frame is saved", .input = {.frames = {{0, -1}}}, .expectation = {.saved = "s"}},
-    {
-        .name = "a still screen is saved once",
-        .input = {.frames = {{0, -1}, {1500, 1}, {3000, 2}}},
-        .expectation = {.saved = "s.."},
-    },
-    {
-        .name = "each new screen is saved",
-        .input = {.frames = {{0, -1}, {1500, 30}, {3000, 3}, {4500, 25}}},
-        .expectation = {.saved = "ss.s"},
-    },
-    {
-        .name = "a change within a second of the last save waits",
-        .input = {.frames = {{0, -1}, {500, 30}, {1250, 30}}},
-        .expectation = {.saved = "s.s"},
-    },
-};
-
-class Test_IntroRecorder : public UnitTest{
-public:
-    explicit Test_IntroRecorder(const RecorderCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - capture recording: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        IntroFrameRecorder recorder(/*change=*/4, /*every=*/Milliseconds(1000));
-        std::string saved;
-        for (const auto& [at, change] : m_test.input.frames){
-            const std::optional<double> from_saved = change < 0 ? std::nullopt : std::optional<double>(change);
-            saved += recorder.see(Milliseconds(at), from_saved) ? 's' : '.';
-        }
-        if (saved != m_test.expectation.saved){
-            return std::format("Expected {}, got {}.", m_test.expectation.saved, saved);
-        }
-        return true;
-    }
-
-private:
-    const RecorderCase& m_test;
-};
-
-
-//  Capture mode's file names, which sort each language's screens in order.
-struct CaptureFileCase{
-    std::string name;
-    struct Input{
-        NewGameLanguage language = NewGameLanguage::English;
-        std::string screen;
-    };
-    Input input;
-    struct Expectation{
-        std::string file;
-    };
-    Expectation expectation;
-};
-
-const CaptureFileCase CAPTURE_FILE_CASES[] = {
-    {.name = "a screen before the list", .input = {.language = NewGameLanguage::German, .screen = "03"}, .expectation = {.file = "de_03.png"}},
-    {.name = "Korean is captured", .input = {.language = NewGameLanguage::Korean, .screen = "keyboard"}, .expectation = {.file = "ko_keyboard.png"}},
-    {
-        .name = "Latin American Spanish",
-        .input = {.language = NewGameLanguage::SpanishLatinAmerica, .screen = "language-list"},
-        .expectation = {.file = "es-419_language-list.png"},
-    },
-};
-
-class Test_CaptureFile : public UnitTest{
-public:
-    explicit Test_CaptureFile(const CaptureFileCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - capture file: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::string file = intro_capture_file(m_test.input.language, m_test.input.screen);
-        if (file != m_test.expectation.file){
-            return std::format("Expected {}, got {}.", m_test.expectation.file, file);
-        }
-        return true;
-    }
-
-private:
-    const CaptureFileCase& m_test;
-};
-
 } // namespace
 
 
@@ -294,14 +266,11 @@ void add_tests_AutoStoryNewGame(UnitTestDatabase& database){
     for (const ProblemCase& test : PROBLEM_CASES){
         database.add<Test_NewGameProblem>(test);
     }
+    for (const StartProblemCase& test : START_PROBLEM_CASES){
+        database.add<Test_NewGameStartProblem>(test);
+    }
     for (const GridCase& test : GRID_CASES){
         database.add<Test_GridMoves>(test);
-    }
-    for (const RecorderCase& test : RECORDER_CASES){
-        database.add<Test_IntroRecorder>(test);
-    }
-    for (const CaptureFileCase& test : CAPTURE_FILE_CASES){
-        database.add<Test_CaptureFile>(test);
     }
 }
 

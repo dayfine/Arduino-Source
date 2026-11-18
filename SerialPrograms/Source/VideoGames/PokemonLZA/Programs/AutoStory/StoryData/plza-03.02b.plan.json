@@ -35,10 +35,11 @@
       {
         "id": "to_taunie",
         "kind": "game_action",
-        "why": "step 42: straight on through the arch to Taunie's \"A Talk\" (run 3's frame: she stands a few steps ahead, facing the player), 8 s at most",
-        "action": "walk_to_prompt",
+        "why": "step 42: straight on through the arch to Taunie's \"A Talk\" (run 3's frame: she stands a few steps ahead, facing the player), 8 s at most not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "action": "walk",
         "args": {
-          "timeout_ms": 8000
+          "legs": [[0, 8000]],
+          "end": "prompt"
         }
       },
       {

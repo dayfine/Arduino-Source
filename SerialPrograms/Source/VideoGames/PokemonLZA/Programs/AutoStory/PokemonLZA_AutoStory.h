@@ -48,7 +48,6 @@ private:
     EnumDropdownOption<NewGameLanguage> GAME_LANGUAGE;
     SimpleIntegerOption<uint8_t> PLAYER_LOOK;
     StringOption PLAYER_NAME;
-    BooleanCheckBoxOption CAPTURE_INTRO_SCREENS;
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
     SimpleIntegerOption<uint8_t> REWINDS_TO_BACKUP;
     BooleanCheckBoxOption LOAD_SAVE_FIRST;

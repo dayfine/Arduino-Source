@@ -759,72 +759,6 @@ private:
 };
 
 
-//  road_stops_to_gate(): back onto the road before the far gate.
-struct GateCase{
-    std::string name;
-    struct Input{
-        std::vector<int> spots;
-        std::optional<int> distance;
-    };
-    Input input;
-    struct Expectation{
-        std::vector<int> stops;
-    };
-    Expectation expectation;
-};
-
-const GateCase GATE_CASES[] = {
-    {
-        .name = "after a catch at 100: on to 60",
-        .input = {.spots = {std::begin(CATCH_SPOTS), std::end(CATCH_SPOTS)}, .distance = 100},
-        .expectation = {.stops = {60}},
-    },
-    {
-        .name = "before both spots: through both, furthest first",
-        .input = {.spots = {60, 100}, .distance = 130},
-        .expectation = {.stops = {100, 60}},
-    },
-    {
-        .name = "at 60: 60 again",
-        .input = {.spots = {100, 60}, .distance = 60},
-        .expectation = {.stops = {60}},
-    },
-    {
-        .name = "off the road nearer the gate (console B, last read 49): back to 60",
-        .input = {.spots = {100, 60}, .distance = 49},
-        .expectation = {.stops = {60}},
-    },
-    {
-        .name = "no distance read: every spot",
-        .input = {.spots = {100, 60}, .distance = std::nullopt},
-        .expectation = {.stops = {100, 60}},
-    },
-    {
-        .name = "no spots, no stops",
-        .input = {.spots = {}, .distance = 80},
-        .expectation = {.stops = {}},
-    },
-};
-
-class Test_RoadStopsToGate : public UnitTest{
-public:
-    explicit Test_RoadStopsToGate(const GateCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: road stops to the gate: {}", test_case.name))
-        , m_case(test_case)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::vector<int> stops = road_stops_to_gate(m_case.input.spots, m_case.input.distance);
-        if (stops != m_case.expectation.stops){
-            return std::format("Expected [{}], got [{}].", joined(m_case.expectation.stops), joined(stops));
-        }
-        return true;
-    }
-
-private:
-    const GateCase& m_case;
-};
-
-
 } // namespace
 
 
@@ -858,9 +792,6 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const StopsCase& item : STOPS_CASES){
         database.add<Test_AlternatingStops>(item);
-    }
-    for (const GateCase& item : GATE_CASES){
-        database.add<Test_RoadStopsToGate>(item);
     }
 }
 

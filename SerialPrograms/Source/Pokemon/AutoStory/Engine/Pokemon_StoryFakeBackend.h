@@ -68,7 +68,7 @@ public:
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
     virtual Observation<PoseType> observe() override;
-    virtual Outcome battle() override;
+    virtual Outcome battle(const StoryActionArgs& args) override;
     virtual void log(std::string_view line) override;
     virtual void log_detail(std::string_view line) override;
     virtual CancellableScope& scope() override;

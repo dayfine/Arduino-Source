@@ -99,11 +99,9 @@ std::optional<std::string> autosave_step_error(
 
 //  `game` with every action's looks noted in `sightings`, which must
 //  outlive it, a MENU_SAVE_ACTION step that succeeds noted as saved, and
-//  its save counting the autosave `sightings` saw in the
-//  checkpoint's last step ("[Save] <id>: the game autosaved (seen)"); one
-//  seen only before it saves nothing ("[Save] <id>: the game autosaved in
-//  <step>, before <next>"); else nothing saved (Pokemon::NOT_SAVED),
-//  worded by the plan's "save" in `rows`.
+//  as its save Pokemon::autosave_policy() on what `sightings` saw: a save
+//  when the autosave showed in the checkpoint's last step, none when only
+//  before it, else none worded by the plan's "save" in `rows`.
 Pokemon::StoryGame<Pokemon::ZonePose> with_autosave_sightings(
     Pokemon::StoryGame<Pokemon::ZonePose> game, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
 );

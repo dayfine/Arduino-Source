@@ -2,9 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Console frames (1920x1080) from CommandLineTests/PokemonLZA/. A frame
- *  of a folder names what it shows ("0076-interact_prompt+player_can_move.png",
- *  lab-B captures 2026-11-13).
+  *  Console frames (1920x1080) from CommandLineTests/PokemonLZA/. A frame
+  *  of a folder names what it shows ("0076-interact_prompt+player_can_move.png").
  *
  */
 
@@ -79,31 +78,25 @@ const FrameCase FRAME_CASES[] = {
         .expectation = {.events = {.interact_prompt = true, .can_move = true}},
     },
     {
-        //  console B, 2026-11-15: 01.02's battle area, the scene over;
-        //  "Parla" is Italian for "Talk", Ryon the man at the gate. No
-        //  Pokemon yet, so no party bar.
+        //  01.02's battle area (Italian "Parla": talk): no Pokemon, no party bar.
         .name = "the A Talk prompt on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
         .expectation = {.events = {.interact_prompt = true, .can_move = false}},
     },
     {
-        //  console B, 2026-11-16 23:11 (German, 02.05's start): Hotel Z's
-        //  lobby in control, one Pokemon and five empty slot frames, no
-        //  D-pad arrows; the walk waited 10 s of quiet.
+        //  Hotel Z's lobby in control (02.05, German): one Pokemon, five empty slots.
         .name = "the party bar of one Pokemon: five empty slot frames, no D-pad arrows",
         .input = {.path = "AutoStoryScreenEvents/de_0205_lobby_start_party1.png"},
         .expectation = {.events = {.interact_prompt = false, .can_move = true}},
     },
     {
-        //  console B, 2026-11-16 23:12: at the lobby's elevator door, "A
-        //  Aufzug nehmen" up and steady, the party bar of one under it.
+        //  "A Aufzug nehmen" at the lobby elevator, the party bar of one under it.
         .name = "the elevator's A prompt over the party bar of one on the German game",
         .input = {.path = "AutoStoryScreenEvents/de_0205_elevator_prompt_steady.png"},
         .expectation = {.events = {.interact_prompt = true, .can_move = true}},
     },
     {
-        //  console B, 2026-11-16: Wild Zone 1's road, four Pokemon and two
-        //  empty slot frames.
+        //  Wild Zone 1's road: four Pokemon and two empty slots.
         .name = "the party bar of four over a sunlit road",
         .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
         .expectation = {.events = {.interact_prompt = false, .can_move = true}},
@@ -124,33 +117,26 @@ struct BattleFrameCase{
 
 const BattleFrameCase BATTLE_FRAME_CASES[] = {
     {
-        //  console B, 2026-11-16 (03.02b run 4): Taunie's Totodile
-        //  attacking, the player not locked on, so no move list or its
-        //  hints; only Chikorita's panel at the bottom left shows the
-        //  battle. story_battle_start waited 90 s for it.
+        //  Taunie's Totodile attacking, not locked on: only Chikorita's panel
+        //  shows the battle (03.02b).
         .name = "a battle with the player not locked on: the panel, no move hints",
         .input = {.path = "AutoStoryScreenEvents/it_0302b_battle_no_lock_on.png"},
         .expectation = {.battle = true},
     },
     {
-        //  console B, 2026-11-16 18:44:57 (03.08b zone_1_to_far_gate): a
-        //  wild Mareep's "Ruggito" at Wild Zone 1's far pillar, the player
-        //  not locked on; the gate walk read no gate (gate_not_seen).
+        //  A wild Mareep's "Ruggito" at Wild Zone 1's far pillar, not locked on.
         .name = "a wild battle at the zone's pillar, not locked on",
         .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_wild_battle.png"},
         .expectation = {.battle = true},
     },
     {
-        //  console B, 2026-11-16 19:24 (03.08b zone_1_to_far_gate, run
-        //  3): Wild Zone 1's far pillar, no Pokemon out; the lead's panel
-        //  shows all through the zone, and read as a battle the gate walk
-        //  walked on into the pillar for 20 s.
+        //  Wild Zone 1's far pillar, no Pokemon out: the lead's panel is no battle.
         .name = "no battle at the zone's pillar with the lead's panel up",
         .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_no_battle.png"},
         .expectation = {.battle = false},
     },
     {
-        //  console B, 2026-11-16: Wild Zone 1's road at the 60 spot.
+        //  Wild Zone 1's road at the 60 spot.
         .name = "no battle on the zone's road with the lead's panel up",
         .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
         .expectation = {.battle = false},
@@ -192,11 +178,8 @@ struct DialogFrameCase{
 
 const DialogFrameCase DIALOG_FRAME_CASES[] = {
     {
-        //  console B, 2026-11-16 18:48 (03.10's first walk): Ryon at the
-        //  Research Lab's doors, "Allora, come va? Sei riuscita a
-        //  catturare cinque specie di Pokemon?", the lab gate's scene that
-        //  03.09 must play before it ends; a dialog, not a prompt, ends
-        //  03.09's walk to the gate (walk_to_marker()).
+        //  Ryon at the Research Lab's doors: the gate scene's dialog, which ends
+        //  03.09's walk (walk_to_unread_marker()).
         .name = "Ryon's five-species dialog at the lab gate on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0309_lab_gate_ryon_dialog.png"},
         .expectation = {.dialog = true, .interact_prompt = false},

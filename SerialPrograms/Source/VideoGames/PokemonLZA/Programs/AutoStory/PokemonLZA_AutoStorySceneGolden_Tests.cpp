@@ -15,6 +15,10 @@
  *  they read ("2 rows", "row 0": CHOICE_ROWS_READING, the highlighted
  *  CHOICE_SELECTED_READING).
  *
+ *  Walks and talks log no screens: their cases show the screens their log
+ *  lines name ("ended on: party bar, A prompt", "talk: started 250 ms
+ *  after A 1: text box"), at the time the step's inputs reach them.
+ *
  *  Each case's keys are its step's screen -> key table: what the step
  *  presses on each screen it meets, and why. One table for all steps, with
  *  the differences as per-step data, is the design these record:
@@ -203,7 +207,7 @@ public:
         }
         return golden_look(m_now, m_screens[m_shown].screen);
     }
-    virtual Pokemon::Outcome battle() override{
+    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{
         return Pokemon::outcome_ok();
     }
     virtual void log(std::string_view line) override{
@@ -235,7 +239,8 @@ struct ScreenKey{
 struct GoldenCase{
     std::string name;
     struct Input{
-        //  The built-in checkpoint and its step the screens played.
+        //  The built-in checkpoint and its step the screens played; no
+        //  step: the whole checkpoint, its steps' screens in turn.
         std::string_view checkpoint;
         std::string_view step;
         //  golden_screens()' lines.
@@ -578,15 +583,287 @@ const GoldenCase GOLDEN_CASES[] = {
             .verdict = "done", .end = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
     },
+    {
+        .name = "03.06 wild_zones_tutorial, French, B through the text and A on the card to control (passed 2026-11-17 14:28)",
+        .input = {.checkpoint = "03.06", .step = "wild_zones_tutorial", .screens = R"(
+0.0s: still
+0.3s: black fade, still
+1.0s: still
+2.1s: text box, still
+2.5s: text box
+2.9s: text box, advance arrow
+3.3s: text box
+3.7s: nothing
+5.7s: text box
+7.0s: text box, advance arrow
+7.4s: text box
+9.0s: nothing
+11.0s: text box
+11.8s: text box, advance arrow
+14.9s: tutorial card
+15.3s: still, tutorial card
+16.1s: nothing
+16.6s: text box
+18.3s: text box, advance arrow
+18.7s: nothing
+19.2s: black fade
+21.5s: still
+22.0s: party bar, still
+22.2s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                //  "a" presses nothing blind.
+                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
+                {"party bar", "-"}, {"party bar, still", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
+    {
+        .name = "03.06 wild_zones_tutorial, the HUD 45 s and no scene: not at its trigger (failed 2026-11-16 21:03)",
+        .input = {.checkpoint = "03.06", .step = "wild_zones_tutorial", .screens = R"(
+0.0s: party bar, still, controls hint
+0.3s: party bar, controls hint
+28.2s: party bar, still, controls hint
+28.5s: party bar, controls hint
+)"},
+        .expectation = {
+            .keys = {{"party bar, still, controls hint", "-"}, {"party bar, controls hint", "-"}},
+            .verdict = "failed: scene_never_started",
+            .end = "[Step] wild_zones_tutorial MASH/a: failed: scene_never_started: scene: the scene never started (player not at its "
+                "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
+                "the A prompt or the mission banner).",
+        },
+    },
+    {
+        .name = "03.07 after_catches, French, A on the subtitles' chevron, B on the text box, to control (passed 2026-11-17 14:31)",
+        .input = {.checkpoint = "03.07", .step = "after_catches", .screens = R"(
+0.0s: text box, advance arrow
+0.4s: nothing
+1.9s: advance arrow
+2.4s: nothing
+2.9s: text box
+3.7s: text box, advance arrow
+4.1s: nothing
+4.6s: text box
+10.1s: black fade
+12.2s: still
+12.5s: nothing
+13.0s: party bar, A prompt, controls hint
+)"},
+        .expectation = {
+            .keys = {
+                //  B: an A on the closing box restarts the talk.
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                //  A subtitle with no box: the text button, A.
+                {"advance arrow", "A"},
+                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
+                {"party bar, A prompt, controls hint", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on can_move.",
+        },
+    },
+    {
+        .name = "03.09 research_lab_gate, French, Ryon's scene to control (passed 2026-11-17 14:34)",
+        .input = {.checkpoint = "03.09", .step = "research_lab_gate", .screens = R"(
+0.0s: black fade, still
+1.3s: nothing
+7.4s: text box
+8.6s: text box, advance arrow
+9.0s: nothing
+14.1s: text box
+17.8s: nothing
+20.8s: advance arrow
+21.2s: nothing
+25.3s: black fade
+27.3s: still
+27.8s: party bar, still
+28.1s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, advance arrow", "B"}, {"advance arrow", "A"},
+                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
+                {"party bar", "-"}, {"party bar, still", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
+    {
+        .name = "03.09 research_lab_gate, the party bar and an A prompt 45 s and no scene (failed 2026-11-16 21:34)",
+        .input = {.checkpoint = "03.09", .step = "research_lab_gate", .screens = R"(
+0.0s: party bar, A prompt
+)"},
+        .expectation = {
+            .keys = {{"party bar, A prompt", "-"}},
+            .verdict = "failed: scene_never_started",
+            .end = "[Step] research_lab_gate MASH/a: failed: scene_never_started: scene: the scene never started (player not at its "
+                "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
+                "the A prompt or the mission banner).",
+        },
+    },
+    {
+        .name = "03.10 arrive_3f, French, a bare scene off the elevator to control (passed 2026-11-17 14:35)",
+        .input = {.checkpoint = "03.10", .step = "arrive_3f", .screens = R"(
+0.0s: nothing
+0.8s: black fade
+5.4s: still
+5.8s: nothing
+6.6s: text box, advance arrow
+7.0s: nothing
+10.7s: text box
+14.0s: text box, advance arrow
+14.4s: text box
+16.0s: nothing
+17.2s: black fade
+18.8s: still
+19.2s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                //  A bare scene: B on every look nothing reads.
+                {"nothing", "B"}, {"still", "B"},
+                {"black fade", "-"}, {"party bar", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
+    {
+        //  The walk's end screen is its logged "ended on" (the A prompt
+        //  9.6 s in on the console), here as the sum of its inputs.
+        .name = "03.04 into_pokemon_center, a timed walk whose last turn faces the nurse's A prompt (passed 2026-11-17 14:26)",
+        .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
+0.0s: party bar
+9.5s: party bar, A prompt
+)"},
+        .expectation = {
+            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
+            .verdict = "done", .end = "[PLZA] into_pokemon_center: the end event after the last turn.",
+        },
+    },
+    {
+        //  Chained from 03.03 with no reload: the legs ran along a building
+        //  wall, never still, and the last turn faced no prompt.
+        .name = "03.04 into_pokemon_center, no A prompt after the last turn (failed 2026-11-17 02:34)",
+        .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
+0.0s: party bar
+)"},
+        .expectation = {
+            .keys = {{"party bar", "L or stick or hold"}},
+            .verdict = "failed: walk_no_end",
+            .end = "[Step] into_pokemon_center GAME/walk: failed: walk_no_end: into_pokemon_center: no end event after the last turn",
+        },
+    },
+    {
+        .name = "03.05 back_to_nurse, a walk held until the A prompt holds (passed 2026-11-17 14:27)",
+        .input = {.checkpoint = "03.05", .step = "back_to_nurse", .screens = R"(
+0.0s: party bar
+2.6s: party bar, A prompt
+)"},
+        .expectation = {
+            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
+            .verdict = "done", .end = "[PLZA] back_to_nurse: ended on: party bar, A prompt",
+        },
+    },
+    {
+        .name = "03.06 out_of_pokemon_center, a timed walk, no end event (passed 2026-11-17 14:27)",
+        .input = {.checkpoint = "03.06", .step = "out_of_pokemon_center", .screens = R"(
+0.0s: party bar
+)"},
+        .expectation = {
+            .keys = {{"party bar", "L or stick or hold"}},
+            .verdict = "done", .end = "[PLZA] out_of_pokemon_center: legs done, screen now: player can move",
+        },
+    },
+    {
+        .name = "03.11 to_mable, a walk to her dialog that a black fade ends (passed 2026-11-17 14:36)",
+        .input = {.checkpoint = "03.11", .step = "to_mable", .screens = R"(
+0.0s: party bar
+5.6s: black fade
+)"},
+        .expectation = {
+            .keys = {{"party bar", "L or stick or hold"}, {"black fade", "-"}},
+            .verdict = "done", .end = "[PLZA] to_mable: a black fade after 1250 ms of the last leg: the scene takes over.",
+        },
+    },
+    {
+        .name = "03.02b to_taunie, straight on until her A prompt holds (passed 2026-11-16 03:47)",
+        .input = {.checkpoint = "03.02b", .step = "to_taunie", .screens = R"(
+0.0s: party bar
+2.6s: party bar, A prompt
+)"},
+        .expectation = {
+            .keys = {{"party bar", "hold"}, {"party bar, A prompt", "-"}},
+            .verdict = "done", .end = "[PLZA] to_taunie: the end event after 2500 ms of the last leg.",
+        },
+    },
+    {
+        //  The screens are the walk's logged end and the talk's logged
+        //  start.
+        .name = "03.05 talk_to_nurse, A at her A prompt, then her text box (passed 2026-11-17 14:27)",
+        .input = {.checkpoint = "03.05", .step = "talk_to_nurse", .screens = R"(
+0.0s: party bar, A prompt
+0.5s: text box
+)"},
+        .expectation = {
+            .keys = {{"party bar, A prompt", "A"}, {"text box", "-"}},
+            .verdict = "done", .end = "[PLZA] talk: started 250 ms after A 1: text box",
+        },
+    },
+    {
+        .name = "01.03 andi_battle, the battle code on the battle HUD (passed 2026-11-16 22:51)",
+        .input = {.checkpoint = "01.03", .step = "andi_battle", .screens = R"(
+0.0s: battle, controls hint
+)"},
+        .expectation = {
+            .keys = {{"battle, controls hint", "-"}},
+            .verdict = "done", .end = "[Step] andi_battle GAME/story_battle: ok",
+        },
+    },
+    {
+        //  The whole checkpoint, its steps' logged screens one after the
+        //  other: the walk's end, the talk's start, then heal_party's
+        //  screens from where the talk hands over (3.5 s on).
+        .name = "03.05 whole checkpoint: the walk to the nurse, the talk, her heal to control (passed 2026-11-17 14:27)",
+        .input = {.checkpoint = "03.05", .step = "", .screens = R"(
+0.0s: party bar
+2.6s: party bar, A prompt
+3.5s: text box, still
+3.9s: text box
+4.7s: text box, advance arrow
+5.1s: text box
+6.0s: nothing
+6.5s: text box, advance arrow
+6.9s: nothing
+7.9s: party bar
+8.4s: party bar, A prompt
+)"},
+        .expectation = {
+            .keys = {
+                {"party bar", "L or stick or hold"}, {"party bar, A prompt", "A"},
+                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
+                {"nothing", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
 };
 
-//  The built-in checkpoint `id` with only its step `step`.
+//  The built-in checkpoint `id` with only its step `step`; all of it with
+//  no `step`.
 StoryCheckpoint step_row(std::string_view id, std::string_view step){
     for (const StoryCheckpoint& row : builtin_story_data().checkpoints){
         if (row.id != id){
             continue;
         }
         StoryCheckpoint part = row;
+        if (step.empty()){
+            return part;
+        }
         std::erase_if(part.steps, [step](const Pokemon::StoryStep& candidate){
             return candidate.name != step;
         });
@@ -658,11 +935,11 @@ UnitTestResult check_golden(const GoldenCase& test, CancellableScope& scope){
         }
     }
     const StoryCheckpoint row = step_row(test.input.checkpoint, test.input.step);
-    if (row.steps.size() != 1){
+    if (row.steps.empty() || (!test.input.step.empty() && row.steps.size() != 1)){
         return std::format("no step {} in {}", test.input.step, test.input.checkpoint);
     }
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(builtin_story_data(), sightings);
+    const Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, builtin_story_data(), /*arrow=*/std::nullopt, sightings);
     GoldenBackend backend(screens, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
     Pokemon::RunState state;

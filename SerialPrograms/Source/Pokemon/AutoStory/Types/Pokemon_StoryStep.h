@@ -22,15 +22,15 @@ namespace Pokemon{
 // One step of a checkpoint: an action and its args.
 struct StoryStep{
     StoryStepKind kind = StoryStepKind::TALK;
-    std::string name;
-    std::string why;
+    std::string name = {};
+    std::string why = {};
 
     //  How the step does its kind: one of the game's actions; for a GAME
     //  step, the game's action. Empty is the kind's default action.
-    std::string action;
+    std::string action = {};
     //  The arguments the action reads, parsed against its spec when the
     //  game loads the step, with the spec's fallbacks filled in.
-    StoryActionArgs args;
+    StoryActionArgs args = {};
 
 };
 

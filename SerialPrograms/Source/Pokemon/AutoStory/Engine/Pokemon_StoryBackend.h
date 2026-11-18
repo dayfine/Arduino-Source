@@ -20,6 +20,7 @@
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/Navigation/Pokemon_Direction.h"
 #include "Pokemon_StoryPoseConcept.h"
 #include "Pokemon_ZonePose.h"
@@ -80,8 +81,9 @@ public:
     virtual Observation<PoseType> observe() = 0;
     //  Fights the battle on screen with the game's battle code, until it
     //  ends; a battle that cannot be won or does not end is a failed
-    //  Outcome.
-    virtual Outcome battle() = 0;
+    //  Outcome. `args` are the battle step's; a game that needs none
+    //  ignores them.
+    virtual Outcome battle(const StoryActionArgs& args) = 0;
     virtual void log(std::string_view line) = 0;
     //  A line for the file log only, not the stream's overlay: detail a
     //  watcher does not need (each screen of a scene). log() by default.

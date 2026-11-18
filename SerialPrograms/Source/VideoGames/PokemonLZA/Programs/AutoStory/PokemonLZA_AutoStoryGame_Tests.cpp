@@ -127,11 +127,18 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = ""},
     },
     {
+        .name = "a walk until a scene passes",
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(8000)}}}, {"end", std::string("scene")},
+        }}},
+        .expectation = {.errors = ""},
+    },
+    {
         .name = "a walk to an unknown end fails",
         .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
             {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("sideways")},
         }}},
-        .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\" or \"prompt\""},
+        .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\""},
     },
     {
         .name = "a walk with a time before its end but no end fails",
@@ -158,16 +165,7 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = ""},
     },
     {
-        .name = "a talk after walk_to_prompt passes",
-        .input = {
-            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}}},
-            .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
-        },
-        .expectation = {.errors = ""},
-    },
-    {
-        //  console B, 2026-11-16: 03.02's timed walk to Taunie stopped
-        //  short of her, and the talk's A found no one.
+        //  03.02's timed walk stopped short of Taunie (console B, 2026-11-16).
         .name = "a talk after a timed walk fails",
         .input = {
             .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
@@ -175,7 +173,7 @@ const LintCase LINT_CASES[] = {
             }}},
             .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
         },
-        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
+        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")"},
     },
     {
         .name = "a story battle after story_battle_start passes",
@@ -186,12 +184,12 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = ""},
     },
     {
-        //  console B, 2026-11-16 (03.02b run 2): the battle ran right after
-        //  the talk, with no battle on screen.
         .name = "a story battle right after a talk fails",
         .input = {
             .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+                }},
                 {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
             },
             .step = {.kind = Pokemon::StoryStepKind::GAME, .name = "b", .why = "", .action = "story_battle", .args = {}},
@@ -202,7 +200,9 @@ const LintCase LINT_CASES[] = {
         .name = "a scene after a talk passes",
         .input = {
             .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+                }},
                 {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
             },
             .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s", .why = "", .action = "a", .args = {}},
@@ -210,9 +210,7 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = ""},
     },
     {
-        //  console B, 2026-11-16: 03.04's talk_to_pokedex_screen played the
-        //  nurse's wrap-up and Taunie's scene to control, and the scene step
-        //  after it waited 45 s on the party bar for a scene already played.
+        //  03.04's talk_to_pokedex_screen already played Taunie's scene.
         .name = "a scene after talk_to_pokedex_screen fails",
         .input = {
             .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "talk_to_pokedex_screen", .args = {}}},
@@ -224,7 +222,9 @@ const LintCase LINT_CASES[] = {
         .name = "a scene after a scene fails",
         .input = {
             .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+                }},
                 {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
                 {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
             },
@@ -233,12 +233,12 @@ const LintCase LINT_CASES[] = {
         .expectation = {.errors = "01.01 s2: a scene must follow what starts it, not a, which plays its scenes through to control"},
     },
     {
-        //  plza/autostory ran 03.09's five_registered this way: control at
-        //  once after research_lab_gate's scene (console B, 2026-11-14 21:01).
         .name = "a bare scene after a scene passes: control ends it at once",
         .input = {
             .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk_to_prompt", .args = {}},
+                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
+                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
+                }},
                 {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
                 {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
             },
@@ -249,7 +249,7 @@ const LintCase LINT_CASES[] = {
     {
         .name = "a checkpoint's first step cannot be a talk",
         .input = {.step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}}},
-        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)"},
+        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")"},
     },
     {
         .name = "a walk with a heading passes",
@@ -260,7 +260,7 @@ const LintCase LINT_CASES[] = {
     },
     {
         .name = "a heading on a step that does not take one fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "walk_to_prompt", .args = {
+        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "climb_ladder", .args = {
             {"heading", int64_t(264)},
         }}},
         .expectation = {.errors = "01.01 step 1 p: unknown argument \"heading\""},
@@ -304,9 +304,7 @@ struct AutosaveStepCase{
 
 const AutosaveStepCase AUTOSAVE_STEP_CASES[] = {
     {
-        //  console B, 2026-11-16: 03.06 autosaved in wild_zones_tutorial and
-        //  went on to the gate; 03.07 reloaded that save and threw outside
-        //  Wild Zone 1.
+        //  03.07 reloaded 03.06's tutorial autosave, outside Wild Zone 1.
         .name = "an autosave before steps that move the player fails",
         .input = {
             .steps = {"wild_zones_tutorial", "to_zone_1_gate", "enter_zone_1"},
@@ -516,8 +514,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at platform_to_plaza: walk_no_end"},
     },
     {
-        //  console B, 2026-11-15: control came ~7 s after 01.01's scenes
-        //  had ended, with nothing on screen to show it was not there yet.
+        //  Control comes ~7 s after 01.01's scenes end (console B, 2026-11-15).
         .name = "a walk waits for control that comes 7 s after the scene",
         .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(28, CUTSCENE),
@@ -565,11 +562,8 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on controls_hint."},
     },
     {
-        //  console B, 2026-11-15 (English and Italian): after the ad, the
-        //  loading screen fades from black into the rival's talk, a second
-        //  black fade, Pancham; the mission banner (which the detector can
-        //  miss) comes before a third black fade, then control. 5 s quiet
-        //  after the banner, past the second fade, is not the end.
+        //  01.02: talk, fade, Pancham, banner, fade, control; 5 s quiet after the
+        //  banner is not the end.
         .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
@@ -725,8 +719,7 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  console B, 2026-11-16 22:47: with no party there is no party
-        //  bar, and the walk waited 10 s of quiet on the starter's prompt.
+        //  01.03 has no party, so no party bar.
         .name = "01.03's walk to Chikorita starts on the A prompt held a second with no party bar",
         .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {look({ScreenEvent::INTERACT_PROMPT})}},
         .expectation = {
@@ -750,8 +743,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at talk_to_starter: talk_no_scene"},
     },
     {
-        //  console B, 2026-11-16: 02.05's A at the elevator was lost and
-        //  the next step read the overworld for 120 s.
         .name = "a talk presses A again while the A prompt stays with nothing open",
         .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(7, A_PROMPT), {DIALOG}
@@ -768,10 +759,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at talk_to_starter: talk_no_prompt", .inputs = repeated("wait 250ms", 12)},
     },
     {
-        //  console B, 2026-11-16 23:11 (German, 02.05): the walk to the
-        //  elevator ended on a first glimpse of its prompt, the talk gave
-        //  up after 1 s with none, and "A Aufzug nehmen" stood steady a few
-        //  seconds later.
+        //  02.05 in German: the prompt came steady seconds after the walk ended.
         .name = "a talk waits for an A prompt that comes up 2 s in, then presses A",
         .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(8, party_bar(Milliseconds(0))), {A_PROMPT, A_PROMPT, DIALOG}
@@ -779,8 +767,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = std::format("{}, press A, wait 250ms", repeated("wait 250ms", 9))},
     },
     {
-        //  console B, 2026-11-16 (03.02b run 2): the talk counted as
-        //  started 0.4 s after A, and no battle followed.
+        //  03.02b: a talk counted as started 0.4 s after A, and no battle followed.
         .name = "a talk does not start on one moving look that the party bar follows",
         .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, A_PROMPT, CUTSCENE, party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at talk_to_starter: talk_no_scene"},
@@ -809,8 +796,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "battle"},
     },
     {
-        //  console B, 2026-11-16 (03.02b run 2): the battle code looked for
-        //  a battle for 2 min on the overworld.
         .name = "a story battle with no battle HUD in 10 s fails as battle_never_started, the battle code not run",
         .input = {.checkpoint = "01.03", .first_step = 3, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at andi_battle: battle_never_started", .inputs = repeated("wait 250ms", 40)},
@@ -852,9 +837,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "press B, wait 250ms", .line = "[Save] 02.01: not saved (save unverified)"},
     },
     {
-        //  console B, 2026-11-16 20:42: mash_to_move_hints pressed nothing on
-        //  Mable's mission and reward menus for 60 s; plza/autostory's bare
-        //  scene pressed B on every look and passed (2026-11-14 22:17).
+        //  mash_to_move_hints pressed nothing on Mable's menus for 60 s.
         .name = "03.11's leave_mable: B on every look through Mable's menus, done on the party bar held a second",
         .input = {.checkpoint = "03.11", .first_step = 3, .steps = 1, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(500)),
@@ -876,34 +859,41 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "wait 250ms"},
     },
     {
-        //  console B, 2026-11-13: 02.02 after the Brigitte battle walked
-        //  past the street scene's trigger and A-mashed for two minutes.
+        //  02.02 after the Brigitte battle walked past the scene's trigger.
         .name = "02.02's street scene fails when the party bar shows 45 s and it never starts",
         .input = {.checkpoint = "02.02", .first_step = 1, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(46000))}},
         .expectation = {.verdict = "failed at street_scene: scene_never_started", .inputs = "wait 250ms"},
     },
     {
         .name = "02.02 walks on to the gate's A prompt",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE, CUTSCENE, A_PROMPT}},
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
+        )},
         .expectation = {
             .verdict = "done",
-            .inputs = "hold north 250ms walk, hold north 250ms walk, wait 300ms",
-            .line = "[PLZA] walk_to_prompt: the A prompt shows after 500 ms of walking",
+            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms",
+            .line = "[PLZA] to_battle_zone_gate: the end event after 500 ms of the last leg.",
         },
     },
     {
-        .name = "walk_to_prompt walks on past an A prompt gone again 300 ms later",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE, A_PROMPT, CUTSCENE, A_PROMPT}},
+        //  From the save the street scene ends at the gate, its prompt up.
+        .name = "02.02's walk to the gate ends at once on the A prompt it starts at",
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {A_PROMPT}},
         .expectation = {
             .verdict = "done",
-            .inputs = "hold north 250ms walk, wait 300ms, hold north 250ms walk, wait 300ms",
-            .line = "[PLZA] walk_to_prompt: the A prompt shows after 500 ms of walking",
+            .inputs = "wait 250ms, wait 300ms",
+            .line = "[PLZA] to_battle_zone_gate: the A prompt shows before the walk: no walk.",
         },
+    },
+    {
+        .name = "a walk that turns first walks on past the A prompt it starts at",
+        .input = {.checkpoint = "03.05", .first_step = 0, .steps = 1, .looks = {A_PROMPT}},
+        .expectation = {.verdict = "done", .line = "[PLZA] back_to_nurse: the end event after 250 ms of the last leg."},
     },
     {
         .name = "02.02's walk to the gate fails with no A prompt",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {CUTSCENE}},
-        .expectation = {.verdict = "failed at to_battle_zone_gate: no_prompt"},
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at to_battle_zone_gate: walk_no_end"},
     },
     {
         .name = "02.03's lobby: A at the door's prompt until the fade, then the scene to the party bar",
@@ -995,7 +985,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02b walks on to the plaza scene's A prompt",
         .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT}
+            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
@@ -1004,12 +994,9 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  console B, 2026-11-16 23:11 (German, 02.05): the walk to the
-        //  elevator ended on a first glimpse of "A Aufzug nehmen", and the
-        //  talk after it found no prompt.
         .name = "a walk to an A prompt holds on past a glimpse gone again 300 ms later",
         .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT, party_bar(Milliseconds(0)), A_PROMPT}
+            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT, party_bar(Milliseconds(0)), A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
@@ -1018,13 +1005,8 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  console B, 2026-11-16 23:48 (German, 02.05, run 14): 750 ms into
-        //  the walk to the elevator, NPC Alton's "A Ansprechen" showed
-        //  beside the path and stood steady; the walk ended there, short of
-        //  the door, and the talk opened Alton's line. The elevator's
-        //  prompt shows at the door, about 2 s in. The first three looks
-        //  come before the walk's first slice (as in 03.02b's walk), so
-        //  Alton's prompt is seen 500 and 750 ms in, the door's at 2000 ms.
+        //  Alton's prompt shows beside the path 500-750 ms in (02.05, German); the
+        //  door's at 2000 ms. Three looks come before the first slice.
         .name = "02.05's walk to the elevator walks past a prompt before its measured time to the one at the door",
         .input = {.checkpoint = "02.05", .first_step = 0, .steps = 1, .looks = concat(
             std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))),
@@ -1042,9 +1024,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at to_plaza_scene_prompt: walk_no_end"},
     },
     {
-        //  console B, 2026-11-16 (run 3): the first prompt from the reload
-        //  spot starts a scene (a fade, the Smart Rotom card, a fade) that
-        //  hands control back at the arch, Taunie a few steps ahead.
         .name = "03.02b's plaza scene: A at its prompt, through the fades, done on the party bar held a second",
         .input = {.checkpoint = "03.02b", .first_step = 1, .steps = 1, .looks = {
             A_PROMPT, BLACK_FADE,
@@ -1056,12 +1035,12 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.02b walks on from the arch to Taunie's A prompt",
-        .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), A_PROMPT}},
-        .expectation = {.verdict = "done", .inputs = "hold north 250ms walk, hold north 250ms walk, wait 300ms"},
+        .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = concat(
+            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
+        )},
+        .expectation = {.verdict = "done", .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk, wait 300ms"},
     },
     {
-        //  console B, 2026-11-16: the walk stopped short of Taunie, under
-        //  the Quartiere Verde arch, and the talk's A found no one.
         .name = "03.02b's talk presses nothing without Taunie's A prompt",
         .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {
@@ -1070,8 +1049,7 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  console B, 2026-11-16: A at Taunie dimmed the screen into a
-        //  "Smart Rotom" card, with no text box: her talk had started.
+        //  Taunie's talk opens on a Smart Rotom card, with no text box.
         .name = "03.02b's talk to Taunie starts on a tutorial card with no text box",
         .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {
             A_PROMPT, A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {TUTORIAL_CARD_READING}),
@@ -1105,8 +1083,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA story_battle_start] done on battle."},
     },
     {
-        //  console B, 2026-11-16 (run 3): the scene before Taunie handed
-        //  control back with no battle, and the battle start waited 90 s.
         .name = "a battle start that ends in control, the party bar held 5 s, fails at once",
         //  The fade's wait takes the first look after it: the party bar's
         //  5 s run from the look after that.
@@ -1148,10 +1124,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "press A, press A, wait 250ms"},
     },
     {
-        //  console B, 2026-11-16 (03.02b run 5): the "Map & Missions" card
-        //  (2 pages) over the map app. A turns its pages and closes it on
-        //  the last; B turns back, so A and B in turn held it on page 1
-        //  for 120 s. Then B closes the map and goes through her talk.
+        //  03.02b's 2-page Map & Missions card: A turns its pages, B turns back.
         .name = "03.02b's map talk pages the Map & Missions card with A only, then B on the map and her talk",
         .input = {.checkpoint = "03.02b", .first_step = 8, .steps = 1, .looks = {
             look(/*events=*/{}, {TUTORIAL_CARD_READING}, Milliseconds(0)),
@@ -1177,6 +1150,35 @@ const RunCase RUN_CASES[] = {
             .inputs = "stick 90deg 600ms walk, release 300ms, stick 0deg 150ms walk, release 300ms, press A, "
                 "stick 0deg 5000ms walk, release 500ms",
         },
+    },
+    //  03.03's drop off the roof: the walk holds on until a scene takes control.
+    //  Looks: two for control, one as the leg starts, one per 250 ms slice.
+    {
+        .name = "03.03's walk off the roof stops on two looks of a scene",
+        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {
+            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), DIALOG, DIALOG,
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, hold north 250ms walk, hold north 250ms walk",
+            .line = "[PLZA] off_the_roof: a scene (a text box) took control after 500 ms of the last leg: the walk stops.",
+        },
+    },
+    {
+        .name = "03.03's walk off the roof walks on past one look of a scene",
+        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {
+            party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)),
+            DIALOG, party_bar(Milliseconds(0)), BLACK_FADE, BLACK_FADE,
+        }},
+        .expectation = {
+            .verdict = "done",
+            .line = "[PLZA] off_the_roof: a scene (a fade) took control after 1000 ms of the last leg: the walk stops.",
+        },
+    },
+    {
+        .name = "03.03's walk off the roof fails when no scene takes control",
+        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .expectation = {.verdict = "failed at off_the_roof: walk_no_scene"},
     },
     {
         .name = "03.04's Pokedex: B at the app and at its text, done on the party bar held a second",
@@ -1228,16 +1230,17 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "03.09", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at to_research_lab: console_only", .inputs = "wait 250ms"},
     },
+    //  The arrow reads of a passing 03.04-03.11 run: 272 out of the gate, 254 after one turn.
     {
         .name = "03.09's walk faces the street first, then walks its legs into Ryon's dialog",
         .input = {
             .checkpoint = "03.09", .first_step = 0, .steps = 1,
             .looks = concat(std::vector<Observation<ZonePose>>(7, party_bar(Milliseconds(0))), {DIALOG}),
-            .arrow_reads = {180, 264},
+            .arrow_reads = {272, 254},
         },
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick 84deg 150ms walk, release 100ms, press L, hold north 6500ms walk, "
+            .inputs = "wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, hold north 6500ms walk, "
                 "press L, stick -90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
             .line = "[PLZA] to_research_lab: the end event after 250 ms of the last leg.",
         },
@@ -1258,7 +1261,7 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -90deg 150ms walk, release 100ms, press L, hold north 900ms walk, "
+            .inputs = "wait 250ms, press L, stick -90deg 150ms walk, release 100ms, press L, hold north 700ms walk, "
                 "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 1300ms walk, "
                 "press L, stick 90deg 150ms walk, release 100ms, press L, hold north 250ms walk",
         },
@@ -1286,8 +1289,8 @@ std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& read
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(
-        builtin_story_data(), sightings, scripted_arrow(test.input.arrow_reads)
+    const Pokemon::StoryGame<ZonePose> game = plza_story_game(
+        /*console=*/{}, builtin_story_data(), scripted_arrow(test.input.arrow_reads), sightings
     );
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
     Pokemon::StoryEngine<ZonePose> engine(game, backend);
@@ -1319,7 +1322,7 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 //  The console-less game with a reload that presses HOME, as the console's
 //  does first, and succeeds.
 Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows, AutosaveSightings& sightings){
-    Pokemon::StoryGame<ZonePose> game = make_plza_story_game_without_console(rows, sightings);
+    Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, rows, /*arrow=*/std::nullopt, sightings);
     game.reload = [](Pokemon::StoryBackend<ZonePose>& backend){
         backend.press(BUTTON_HOME, Milliseconds(80), Milliseconds(80));
         return Pokemon::outcome_ok();
@@ -1391,7 +1394,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
     const Pokemon::StoryGame<ZonePose> game = test.input.has_reload
         ? game_with_reload(story, sightings)
-        : make_plza_story_game_without_console(story, sightings);
+        : plza_story_game(/*console=*/{}, story, /*arrow=*/std::nullopt, sightings);
     Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
     const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
     const std::string verdict = loaded.succeeded() ? "done" : loaded.failure;
@@ -1472,9 +1475,6 @@ const ChainCase CHAIN_CASES[] = {
         .expectation = {.verdict = "failed at 01.02 chain: older_save", .reloads = 1},
     },
     {
-        //  console B, 2026-11-16: 03.06 autosaved in wild_zones_tutorial and
-        //  walked on to Wild Zone 1's gate; 03.07 reloaded that save, outside
-        //  the gate, and threw Poke Balls there.
         .name = "an autosave before the last step does not save the row: no save to reload the next from",
         .input = {
             .looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM},
@@ -1486,9 +1486,7 @@ const ChainCase CHAIN_CASES[] = {
         },
     },
     {
-        //  console B, 2026-11-16: 03.04 autosaved in pokedex_app and failed
-        //  in the step after it; the next run's 03.04 loaded that save,
-        //  outside the Center, and its walk to the Center found no prompt.
+        //  03.04's start save was its pokedex_app autosave, outside the Center.
         .name = "a run that autosaved and then failed does not reload: the save moved past its start",
         .input = {
             .looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, look(/*events=*/{}, {AUTOSAVE_READING}, Milliseconds(10000)), CUTSCENE},
@@ -1647,7 +1645,7 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
     },
     {
         .name = "another step that succeeds saves nothing",
-        .input = {.action = "walk_to_marker"},
+        .input = {.action = "walk_to_unread_marker"},
         .expectation = {.save = "no autosave seen"},
     },
 };
@@ -1713,9 +1711,7 @@ struct SightingsCase{
 
 const SightingsCase SIGHTINGS_CASES[] = {
     {
-        //  console B, 2026-11-16 22:58: 02.04's check-in autosave was still
-        //  up 1.2 s later on 02.05's first look, and 02.05's failure then
-        //  took its start save for gone and rewound to the backup save.
+        //  02.04's check-in autosave still up 1.2 s into 02.05 is 02.04's.
         .name = "a badge still up from the last checkpoint's autosave is not this checkpoint's",
         .input = {.looks = {
             {.step = "check_in", .badge = true, .at = Milliseconds(93500)},
@@ -1739,10 +1735,7 @@ const SightingsCase SIGHTINGS_CASES[] = {
         .expectation = {.seen_in = "take_elevator_up"},
     },
     {
-        //  console B, 2026-11-16 23:54: 02.07 ended on the mission banner
-        //  with no badge seen; 02.07's autosave on entering Room 202 was
-        //  still up on 03.01's first look, 37 ms in, and 03.01's failure
-        //  then took its start save for gone.
+        //  02.07's autosave still up 37 ms into 03.01 is 02.07's.
         .name = "a badge on a checkpoint's first look with none seen before it is the last checkpoint's save",
         .input = {.looks = {
             {.step = "first_evening", .badge = false, .at = Milliseconds(0)},

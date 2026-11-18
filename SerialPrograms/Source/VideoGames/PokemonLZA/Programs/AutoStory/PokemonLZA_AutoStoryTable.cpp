@@ -24,12 +24,8 @@ bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row){
 
 namespace{
 
-//  Whether `step` ends on an A prompt: a walk to "prompt", or
-//  walk_to_prompt.
+//  Whether `step` ends on an A prompt: a walk to "prompt".
 bool ends_on_prompt(const Pokemon::StoryStep& step){
-    if (step.action == "walk_to_prompt"){
-        return true;
-    }
     const auto end = step.args.find("end");
     if (step.action != "walk" || end == step.args.end()){
         return false;
@@ -56,7 +52,7 @@ std::vector<std::string> story_row_lead_in_errors(const Pokemon::StoryCheckpoint
         const Pokemon::StoryStep* before = index == 0 ? nullptr : &row.steps[index - 1];
         if (step.kind == Pokemon::StoryStepKind::TALK && (before == nullptr || !ends_on_prompt(*before))){
             errors.push_back(std::format(
-                "{}: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\", or walk_to_prompt)", step.name
+                "{}: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")", step.name
             ));
         }
         if (step.action == "story_battle" && (before == nullptr || before->action != "story_battle_start")){
