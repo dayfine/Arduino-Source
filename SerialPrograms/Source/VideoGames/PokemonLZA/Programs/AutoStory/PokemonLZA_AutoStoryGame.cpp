@@ -313,38 +313,10 @@ Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& b
 
 
 //  "mash_to_move_hints": through the scenes (B at a text box, A at a
-//  choice's top row and the advance chevron) until the player has control: the
-//  controls hint or the party bar held a second, an A prompt ("A Talk")
-//  held a second past "min_length_ms" (01.02's battle area: only the
-//  prompt to Ryon, and A there restarts his talk), or a main mission's
-//  banner on two looks
-//  (the step returns once it has gone, 10 s at most). With
-//  "end_after_black_fades", that many black fades lifted and settled end
-//  it, 5 s after the last one (or the controls hint, if it comes first),
-//  instead of the banner: 01.01's arrival goes ad, loading, a fade from
-//  black, the rival's talk, a second black fade, Pancham, the "MAIN
-//  MISSION 01" banner, a third black fade, then control (console B,
-//  2026-11-15, English and Italian; the banner detector missed the banner
-//  on the Italian game). The next step's walk waits for control (check_can_walk()).
-//  01.01's arrival takes ~240 s on the console, hence
-//  360 s. A text-free cutscene (01.01's city flyover, ~20 s) is not
-//  control: a minute with nothing busy fails the step. No blind A: the
-//  ad's subtitles show the advance chevron, which gets A like a text box,
-//  and a blind A at the end of a talk restarts it (01.02's battle area,
-//  console B 2026-11-15).
-//  "min_length_ms" holds the quiet failure off for a long still scene;
-//  "quiet_ms" is the quiet time, which with "quiet_is_control" ends the
-//  step with control (Hotel Z shows no party bar). "press_a_first" presses
-//  A at the prompt the scene starts from (press_through_prompt()), which
-//  would otherwise read as control at once. "scene_start_ms": the step
-//  plays a scene (SceneMachineConfig::start_window), so control with no
-//  scene seen for that long fails it ("scene_never_started") instead of
-//  passing at once: 03.09's lab_lobby, A at the door to its fade.
-//  "gap_press_ms": SceneMachineConfig::gap_press.
-//  "advance_with_a": A, not B, through the text. A B that lands as a
-//  choice box opens picks its last (cancel) row before any look can see
-//  the box, while an A there picks the top row, the default. 03.01's
-//  lobby: Alton asks until he gets the top answer (console B, 2026-11-17).
+//  choice's top row and the advance chevron) until the player has control
+//  (run_scene_machine(); the args are SceneMachineConfig's fields, their
+//  why strings in make_specs()). 01.01's arrival takes ~240 s, hence 360 s.
+//  No blind A: a blind A at the end of a talk restarts it.
 Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
         press_through_prompt(backend);
@@ -373,7 +345,7 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
 //  shows, which the next step answers (B: an A as the text ends could land
 //  on the choice). 01.02's Pancham scene takes ~60 s, hence 120 s.
 //  "advance_with_a" is for a talk that B closes: Hotel Z's elevator before
-//  "Which floor?" (02.05, console B 2026-11-10).
+//  "Which floor?" (02.05).
 Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     SceneMachineConfig config;
     config.stop_at_choice = true;
@@ -394,16 +366,12 @@ Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCa
     return run_scene_machine(backend, "scene", config, 120s);
 }
 
-//  A bare "scene" step ("mash"), as plza/autostory ran it
-//  (Actions/PokemonLZA_AutoStoryScenes.cpp:107, mash_scene() with B,
-//  CONTROL_ENDS; its SceneMash, PokemonLZA_AutoStoryScreenEvents.cpp:47):
-//  B at a box, A at a choice or a tutorial card, a fade or the party bar
-//  not held yet waited out, and B on every other look, which closes the
-//  menus a talk opens (03.11's Mable's mission and reward screens),
-//  until the party bar holds a second, at once if it does from the start;
-//  120 s at most. leave_mable passed this way on console B (2026-11-14
-//  22:17); mash_to_move_hints, which presses nothing there, sat 60 s on
-//  her menus (2026-11-16 20:42).
+//  A bare "scene" step ("mash"): B at a box, A at a choice or a tutorial
+//  card, a fade or the party bar not held yet waited out, and B on every
+//  other look, which closes the menus a talk opens (03.11's Mable's
+//  mission and reward screens), until the party bar holds a second, at
+//  once if it does from the start; 120 s at most. mash_to_move_hints,
+//  which presses nothing there, sat on her menus.
 Outcome mash_scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     SceneMachineConfig config;
     config.blind_press_after = 0ms;
@@ -429,7 +397,7 @@ Outcome battle_start_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryA
 }
 
 //  "story_battle": the backend's battle code, on the battle HUD within 10 s;
-//  else "battle_never_started" (03.02b looked 2 min on the overworld, 2026-11-16).
+//  else "battle_never_started", not 2 min of looks on the overworld.
 Outcome battle_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     if (!event_shows_within(backend, ScreenEvent::BATTLE_STARTED, 10s)){
         return Pokemon::outcome_failed("battle_never_started", "no battle HUD within 10 s");

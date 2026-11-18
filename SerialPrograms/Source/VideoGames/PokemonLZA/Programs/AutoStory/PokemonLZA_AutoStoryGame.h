@@ -37,75 +37,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Every action a PLZA checkpoint may name, GAME actions but for "talk":
-//
-//      "new_game_intro"        console_only: 01.00's first step, from HOME or
-//                              the language list to "Confirm Choices"
-//                              (play_new_game_intro())
-//      "confirm_new_game"      console_only: on the new game's "Confirm
-//                              Choices" (confirm_new_game_choices())
-//      "opening_to_platform"   the opening cutscene until the autosave badge
-//                              has shown and the station platform holds
-//      "wait_for_platform"     the station platform holds: a start check
-//      "walk"                  args "legs", [[turn, ms], ...] as
-//                              story_walk_move() reads them, "held",
-//                              "wait_ms", "end_after_ms" (no end before
-//                              that much of the last leg), and "end",
-//                              "fade_white", "fade_black", "dialog" or
-//                              "prompt" (an A prompt), and "heading", the
-//                              minimap heading faced (face_heading())
-//                              before the legs;
-//                              walked once the screen shows free control
-//                              (check_can_walk()), until its end event if it
-//                              has one (walk_until()), else until its legs
-//                              have run (finish_walk())
-//      "mash_to_move_hints"    B through scenes' text (A at a choice) until
-//                              the player has control
-//                              (run_scene_machine()): 01.01's arrival; args
-//                              "min_length_ms", no quiet failure before it,
-//                              "quiet_ms", "quiet_is_control" and
-//                              "press_a_first" (press_through_prompt())
-//      "walk_to_prompt"        straight on until an A prompt shows
-//      "text_to_choice"        B through a scene's text until its choice box
-//                              shows (run_scene_machine()); A with
-//                              "advance_with_a"
-//      "choose_0", "choose_1"  that row of the choice box on screen (0 the
-//                              top), by the D-pad from the highlighted row,
-//                              then A
-//      "talk" (TALK)           on the A prompt of what the player faces
-//                              (none: nothing pressed, "talk_no_prompt"),
-//                              A, then its scene under way
-//                              (scene_under_way(): text, a subtitle, a
-//                              card, a fade or a textless cutscene)
-//      "a" (MASH, "scene")     B through a scene's text (A at a choice)
-//                              until control; it must
-//                              start within 45 s
-//      "story_battle_start"    A through the talk before a story battle and
-//                              the battle tutorial's cards until the battle
-//                              HUD (run_scene_machine())
-//      "story_battle"          the battle, by the backend's battle(), on
-//                              the battle HUD within 10 s, else
-//                              "battle_never_started"; right after
-//                              "story_battle_start" (the lint)
-//      "talk_through_map_screen"   A on Taunie's talk and the Map &
-//                              Missions card, B on the first map (03.02b)
-//      "climb_ladder"          the side street's ladder (03.03)
-//      "talk_to_pokedex_screen"    B through the nurse's talk and the
-//                              Pokedex app (03.04)
-//      "run_to_gate"           console_only: straight on to a zone gate's A
-//                              prompt (upstream's
-//                              run_towards_gate_with_A_button()), args
-//                              "timeout_ms" and "heading", the minimap
-//                              heading faced first
-//      "leave_zone_gate"       console_only: A through a zone's gate on the
-//                              way out (upstream's leave_zone_gate())
-//      "catch_in_zone"         console_only: 03.08's way from Taunie's rocks
-//                              to the road's spot at 100, then a search
-//                              there until the party bar shows 5 species
-//      "walk_back_to_zone_road"    console_only: back onto Wild Zone 1's
-//                              road at the catch spot by the far gate
-//
-//  Later slices add rows here, each with its handler.
+//  Every action a PLZA checkpoint may name, with its args and their why
+//  strings; each handler's comment in the .cpp says what it does.
 const std::vector<Pokemon::StoryActionSpec>& plza_story_specs();
 
 //  What is wrong with `checkpoint` for PLZA's engine
