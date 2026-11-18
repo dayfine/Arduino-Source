@@ -352,11 +352,17 @@ void require_new_game_home(ConsoleHandle& console, ProControllerContext& context
         return home.detect_only(frame);
     };
     if (!wait_for_frame(console, context, on_home, 2000ms)){
+        //  An idle Switch dims HOME (screen saver), and HomeMenuDetector does
+        //  not match the dimmed screen. B wakes it and acts on nothing on HOME.
+        console.log("AutoStory intro: HOME not detected; pressing B once to wake a dimmed screen.");
+        pbf_press_button(context, BUTTON_B, /*hold=*/80ms, /*release=*/1000ms);
+    }
+    if (!wait_for_frame(console, context, on_home, 2000ms)){
         throw UserSetupError(
             console,
             std::format(
                 "AutoStory: 01.00a starts a new game (no save) from the Switch HOME (PLZA's tile among the first {}). "
-                "It is not on screen; nothing was pressed. {}",
+                "It is not on screen; pressed B once to wake the screen, nothing else was pressed. {}",
                 HOME_TILES_SEARCHED, NEW_GAME_BY_HAND_HINT
             )
         );
