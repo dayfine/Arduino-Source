@@ -769,9 +769,8 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
     const GrassCatches& result = patrol.catches;
     const SpeciesTally tally = species_tally(result, goal.new_species);
     backend.log(std::format(
-        "[PLZA] catch_in_zone: {} new species ({} by a plate only) in {} throws, {} locks on caught species only: {}; the party bar: {}",
-        result.found, result.found_by_plate, result.throws, result.caught_seen, species_tally_text(tally),
-        patrol.party_slots ? std::format("{} filled slots", *patrol.party_slots) : std::string("not read")
+        "[PLZA] catch_in_zone: {}",
+        catch_summary_text(result, patrol.party_slots, goal.new_species, goal.party_species)
     ));
     if (party_has_species(patrol.party_slots, goal.party_species)){
         return Pokemon::outcome_ok();

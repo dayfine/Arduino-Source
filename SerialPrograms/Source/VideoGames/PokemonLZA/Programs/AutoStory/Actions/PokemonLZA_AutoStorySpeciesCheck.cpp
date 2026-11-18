@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "PokemonLZA_AutoStorySpeciesCheck.h"
 
 namespace PokemonAutomation{
@@ -42,6 +43,20 @@ bool enough_species(SpeciesTally tally, std::optional<int> dex_count, int dex_ne
 
 bool party_has_species(std::optional<int> filled_slots, int dex_species){
     return filled_slots.has_value() && *filled_slots > 0 && *filled_slots >= dex_species;
+}
+
+std::string catch_summary_text(const GrassCatches& patrol, std::optional<int> filled_slots, int new_species, int party_species){
+    const std::string banners = std::format(
+        "the banners: {} new species ({} by a plate only) in {} throws, {} locks on caught species only",
+        patrol.found, patrol.found_by_plate, patrol.throws, patrol.caught_seen
+    );
+    if (filled_slots){
+        return std::format(
+            "the party bar: {} filled slots of {}: {}; {}",
+            *filled_slots, party_species, party_has_species(filled_slots, party_species) ? "done" : "short", banners
+        );
+    }
+    return std::format("the party bar: not read; {}: {}", banners, species_tally_text(species_tally(patrol, new_species)));
 }
 
 
