@@ -2,7 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_Transitions.h, unchanged; it includes this header.
+ *  Per-game fade thresholds (FadeProfile) and the transition kinds the tracker
+ *  reports. Their definitions are in Pokemon_Transitions.cpp.
  *
  */
 
@@ -10,12 +11,8 @@
 #define PokemonAutomation_Pokemon_FadeProfiles_H
 
 #include <cstdint>
-#include <functional>
-#include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonFramework/VideoPipeline/VideoFeed.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -64,7 +61,7 @@ struct FadeProfile{
 };
 
 //  BDSP. The uniform tier is the shared walk's (FADE_MAX_STDDEV_SUM, the
-//  Oreburgh Gate's textured floor is no fade, lab-B 2026-11-08); the partial
+//  Oreburgh Gate's textured floor is no fade); the partial
 //  tier is run_into_door()'s 60, which caught the doorway's dim fade frames.
 //  A cave mouth's fade is dim (45 to 64 a channel), hence the dark sum of 225.
 //  The flash and white-fade holds are provisional: no console frames of an

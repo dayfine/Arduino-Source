@@ -13,7 +13,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Registers unit tests for story action tables, the variant parser and the table executor.
+// Registers unit tests for story action tables, checkpoint lint and the table executor.
 void add_tests_StoryActions(UnitTestDatabase& database);
 
 

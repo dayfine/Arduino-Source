@@ -34,17 +34,12 @@
 #ifndef PokemonAutomation_Pokemon_StoryInterrupts_H
 #define PokemonAutomation_Pokemon_StoryInterrupts_H
 
-#include <cstddef>
-#include <functional>
-#include <map>
-#include <set>
 #include <string>
-#include <utility>
+#include "Pokemon_InterruptHandlers.h"
 #include "Pokemon_Interrupts.h"
-#include "Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon_StoryEvents.h"
 #include "Pokemon_StoryStepExecutor.h"
-#include "Pokemon_InterruptHandlers.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

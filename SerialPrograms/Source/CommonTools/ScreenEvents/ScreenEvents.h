@@ -2,38 +2,30 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What a story step can see on the screen, in words every game shares: a
- *  fade, a location banner, a dialogue box, a battle starting. Each game
- *  implements ScreenEventObserver with its own detectors; the judgements
- *  built on these events (Pokemon_SceneJudges.h) are then the same for all
- *  of them.
+ *  What an autonomous program can see on the screen, in words every game
+ *  shares: a fade, a location banner, a dialogue box, a battle starting.
+ *  Each game implements ScreenEventObserver with its own detectors; the
+ *  judgements built on these events are then the same for all of them.
  *
  *  An observer runs during a controller action as a ScreenEventWatcher
  *  (a VisualInferenceCallback for run_until), or is asked frame by frame.
  *
  */
 
-#ifndef PokemonAutomation_Pokemon_ScreenEvents_H
-#define PokemonAutomation_Pokemon_ScreenEvents_H
+#ifndef PokemonAutomation_CommonTools_ScreenEvents_ScreenEvents_H
+#define PokemonAutomation_CommonTools_ScreenEvents_ScreenEvents_H
 
 #include <atomic>
 #include <cstdint>
-#include <deque>
-#include <initializer_list>
-#include <optional>
-#include <string>
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Time.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
-#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
-#include "Pokemon_ScreenEventLog.h"
+#include "ScreenEventLog.h"
+#include "ScreenEventTypes.h"
 
 namespace PokemonAutomation{
-namespace Pokemon{
 
 
 //  A game's detectors, as events. Observers may keep state between frames
@@ -49,23 +41,6 @@ public:
 
     //  The boxes the detectors read, for the video overlay.
     virtual void make_overlays(VideoOverlaySet& items) const = 0;
-};
-
-
-//  A game's observer behind a look at the Switch itself: a frame showing
-//  the HOME menu shows SWITCH_HOME_MENU and nothing else, as a game's
-//  detectors may read HOME's plain screen as a quiet overworld (BDSP,
-//  lab-B 2026-11-09). Every other frame is the game's to read.
-class SwitchHomeObserver : public ScreenEventObserver{
-public:
-    SwitchHomeObserver(NintendoSwitch::ConsoleHandle& console, ScreenEventObserver& game);
-
-    virtual ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
-    virtual void make_overlays(VideoOverlaySet& items) const override;
-
-private:
-    ScreenEventObserver& m_game;
-    NintendoSwitch::HomeMenuDetector m_home;
 };
 
 
@@ -104,6 +79,5 @@ private:
 
 
 
-} // namespace Pokemon
-} // namespace PokemonAutomation
+}  // namespace PokemonAutomation
 #endif

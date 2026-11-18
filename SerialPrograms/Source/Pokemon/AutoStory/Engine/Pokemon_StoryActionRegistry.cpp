@@ -82,6 +82,7 @@ StoryActionRegistry<PoseType>::StoryActionRegistry(const StoryGame<PoseType>& ga
     : m_game(game)
     , m_actions(builtin_story_handlers<PoseType>())
     , m_game_problems(tile_arg_problems(game))
+    , m_pause(game.breakpoints, game.pause_point)
 {
     //  A game's action replaces the built-in of its kind and name in place,
     //  so a kind's default stays the built-in one's position.
@@ -172,7 +173,7 @@ Outcome StoryActionRegistry<PoseType>::dispatch(StoryBackend<PoseType>& backend,
         ));
     }
     const StoryActionArgs args = with_fallbacks(action->spec, step.args);
-    return action->handler(backend, StoryActionCall{.step = step, .args = args}, state);
+    return action->handler(backend, StoryActionCall{.step = step, .args = args, .pause = m_pause}, state);
 }
 
 

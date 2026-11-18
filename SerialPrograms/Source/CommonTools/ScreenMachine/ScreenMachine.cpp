@@ -30,36 +30,6 @@ const ScreenState* classify(const std::vector<ScreenState>& states, const ImageV
 } // namespace
 
 
-std::string_view screen_event_name(ScreenEvent event){
-    switch (event){
-    case ScreenEvent::FADE_BLACK:       return "fade_black";
-    case ScreenEvent::FADE_WHITE:       return "fade_white";
-    case ScreenEvent::TEXT_BOX:         return "text_box";
-    case ScreenEvent::BATTLE:           return "battle";
-    case ScreenEvent::CAN_MOVE:         return "can_move";
-    case ScreenEvent::STILL:            return "still";
-    case ScreenEvent::CHOICE_BOX:       return "choice_box";
-    case ScreenEvent::INTERACT_PROMPT:  return "interact_prompt";
-    }
-    return "unknown";
-}
-
-std::string describe(const ScreenEvents& events, std::string_view separator){
-    constexpr ScreenEvent ALL[] = {
-        ScreenEvent::FADE_BLACK, ScreenEvent::FADE_WHITE, ScreenEvent::TEXT_BOX,
-        ScreenEvent::BATTLE, ScreenEvent::CAN_MOVE, ScreenEvent::STILL,
-        ScreenEvent::CHOICE_BOX, ScreenEvent::INTERACT_PROMPT,
-    };
-    std::string text;
-    for (ScreenEvent event : ALL){
-        if (events.has(event)){
-            text += text.empty() ? "" : separator;
-            text += screen_event_name(event);
-        }
-    }
-    return text.empty() ? std::string("nothing") : text;
-}
-
 bool same_screen(const VideoSnapshot& a, const VideoSnapshot& b){
     if (!a || !b || a->width() != b->width() || a->height() != b->height()){
         return false;

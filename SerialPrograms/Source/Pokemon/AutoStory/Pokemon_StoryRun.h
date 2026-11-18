@@ -19,8 +19,8 @@
  *      run before anything is saved.
  *  -   The first checkpoint's own save at its start runs only for a new
  *      game: after a load the save is already there, and from the game as
- *      it is the place is unconfirmed (console B, 2026-11-11: a run on the
- *      HOME menu "saved" first).
+ *      it is the place is unconfirmed (the game may be on the HOME
+ *      menu).
  *  -   A failure leaves the game where it failed. Nothing here closes the
  *      game; the user (or the next run from the save) resumes from there.
  *

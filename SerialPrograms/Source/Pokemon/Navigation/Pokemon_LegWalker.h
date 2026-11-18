@@ -68,8 +68,7 @@ LegResult walk_leg_with(const LegSpec& leg, const LegCalls& calls, size_t max_in
 //  keeps whether it fired. A warp's fade can be over before the hold onto
 //  the warp ends, so a wait for it that starts after the hold sees nothing:
 //  the walk watches the hold with this, then waits on with the same watcher
-//  if it has not fired (FRLG 00.27, console B, 2026-11-09 01:41, the warp to
-//  CeruleanCity: the watch started 1.3 s into the hold and missed the fade).
+//  if it has not fired.
 class WatchAlong : public VisualInferenceCallback{
 public:
     explicit WatchAlong(VisualInferenceCallback& watcher)

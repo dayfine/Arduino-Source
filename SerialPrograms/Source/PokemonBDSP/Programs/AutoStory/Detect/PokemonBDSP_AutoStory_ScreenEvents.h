@@ -13,7 +13,7 @@
 
 #include <string>
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
@@ -36,13 +36,13 @@ enum class BattleCue{
 
 //  The shared events from BDSP's detectors. Not the choice box, the
 //  interact prompt or a battle's end: no AutoStory step reads them yet.
-class BdspScreenObserver : public Pokemon::ScreenEventObserver{
+class BdspScreenObserver : public ScreenEventObserver{
 public:
     //  `banner`: the expected map's banner name; LOCATION_BANNER is only it
     //  ("" for none).
     BdspScreenObserver(BattleCue cue, std::string banner);
 
-    virtual Pokemon::ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
+    virtual ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
     virtual void make_overlays(VideoOverlaySet& items) const override;
 
 private:

@@ -238,7 +238,7 @@ bool battle_follows(VideoStream& stream, ProControllerContext& context, Millisec
 constexpr Milliseconds WHITE_FLASH_BATTLE_WAIT = 8000ms;
 
 //  Records that the screen shows `events` now, in `log` if there is one.
-void record_now(Pokemon::ScreenEventLog* log, const Pokemon::ScreenEvents& events){
+void record_now(ScreenEventLog* log, const ScreenEvents& events){
     if (log != nullptr){
         log->record(events, current_time());
     }
@@ -246,15 +246,15 @@ void record_now(Pokemon::ScreenEventLog* log, const Pokemon::ScreenEvents& event
 
 //  What the late watch's watcher `ret` saw: 0 the encounter flash, 1 black,
 //  2 the battle menu, 3 the battle's text box.
-Pokemon::ScreenEvents late_watch_events(int ret){
+ScreenEvents late_watch_events(int ret){
     switch (ret){
     case 0:
-        return {Pokemon::ScreenEvent::FADE_WHITE};
+        return {ScreenEvent::FADE_WHITE};
     case 1:
-        return {Pokemon::ScreenEvent::FADE_BLACK};
+        return {ScreenEvent::FADE_BLACK};
     case 2:
     case 3:
-        return {Pokemon::ScreenEvent::BATTLE_STARTED};
+        return {ScreenEvent::BATTLE_STARTED};
     default:
         return {};
     }
@@ -267,7 +267,7 @@ Pokemon::ScreenEvents late_watch_events(int ret){
 //  longer, and run from it. Returns whether there was one.
 bool run_from_late_encounter(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label,
-    Pokemon::ScreenEventLog* events
+    ScreenEventLog* events
 ){
     VideoSnapshot before = stream.video().snapshot();
     WhiteScreenOverWatcher encounter_flash(COLOR_YELLOW, {0.1, 0.1, 0.8, 0.8});
@@ -285,7 +285,7 @@ bool run_from_late_encounter(
     if (!battle){
         return false;
     }
-    record_now(events, {Pokemon::ScreenEvent::BATTLE_STARTED});
+    record_now(events, {ScreenEvent::BATTLE_STARTED});
     stream.log("[Walk] " + label + ": wild battle after the walk; running.");
     escape(stream, context);
     context.wait_for_all_requests();
@@ -541,17 +541,17 @@ private:
     }
 
     //  What hold()'s watcher `ret` saw (see after_watchers()).
-    static Pokemon::ScreenEvents hold_events(int ret){
+    static ScreenEvents hold_events(int ret){
         switch (ret){
         case 0:
-            return {Pokemon::ScreenEvent::FADE_WHITE};
+            return {ScreenEvent::FADE_WHITE};
         case 1:
-            return {Pokemon::ScreenEvent::FADE_BLACK};
+            return {ScreenEvent::FADE_BLACK};
         case 2:
         case 4:
-            return {Pokemon::ScreenEvent::BATTLE_STARTED};
+            return {ScreenEvent::BATTLE_STARTED};
         case 3:
-            return {Pokemon::ScreenEvent::DIALOG_BOX};
+            return {ScreenEvent::DIALOG_BOX};
         default:
             return {};
         }
@@ -559,7 +559,7 @@ private:
 
     enum class BattleMovement{ NONE, STEP_MOVED };
     void escape_battle(const std::string& what, BattleMovement movement){
-        record_now(&m_result.events, {Pokemon::ScreenEvent::BATTLE_STARTED});
+        record_now(&m_result.events, {ScreenEvent::BATTLE_STARTED});
         m_result.wild_battles++;
         if (m_chunks <= 1 && movement == BattleMovement::NONE){
             m_result.origin = WalkOrigin::MAY_PRECEDE_LEG;

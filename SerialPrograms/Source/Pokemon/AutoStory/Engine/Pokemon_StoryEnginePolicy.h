@@ -52,6 +52,9 @@ struct StoryEngineReport{
     //  Checked after steps that completed.
     std::optional<PostconditionReport> postconditions = std::nullopt;
     bool saved = false;
+    //  A SAVE step among its steps saved: a reload now returns there, not
+    //  to the save the checkpoint started from.
+    bool saved_part_way = false;
 };
 
 

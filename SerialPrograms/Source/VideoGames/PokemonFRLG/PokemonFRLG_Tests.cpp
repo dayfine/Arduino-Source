@@ -8,7 +8,6 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/StaticGlobals.h"
-#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Inference/Box/PokemonFRLG_BoxCellOccupiedDetector.h"
 #include "Inference/Box/PokemonFRLG_BoxCellReader.h"
 #include "Inference/Box/PokemonFRLG_BoxGenderReader.h"
@@ -21,13 +20,16 @@
 #include "Inference/Menus/PokemonFRLG_PartyEmptySlotDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "Inference/PokemonFRLG_BallReader.h"
 #include "Inference/PokemonFRLG_BattleLevelUpReader.h"
 #include "Inference/PokemonFRLG_BattleSelectionArrowDetector.h"
 #include "Inference/PokemonFRLG_PartyLevelUpReader.h"
+#include "Inference/PokemonFRLG_PokemonSpriteReader.h"
 #include "Inference/PokemonFRLG_ShinySymbolDetector.h"
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
+#include "Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
 #include "Tests/TestUtils.h"
 
@@ -41,9 +43,11 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AdvanceWhiteDialogDetector(database);
     add_tests_AdvanceBattleDialogDetector(database);
     add_tests_BagDetector(database);
+    add_tests_BallReader(database);
     add_tests_BattleLevelUpReader(database);
     add_tests_BattleMenuDetector(database);
     add_tests_BattleMoveSelectionArrow(database);
+    add_tests_BattleSpriteReader(database);
     add_tests_BoxCellOccupiedDetector(database);
     add_tests_BoxCellReader(database);
     add_tests_BoxGenderReader(database);
@@ -60,6 +64,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_StatsReader(database);
     add_tests_SelectionDialogDetector(database);
     add_tests_ShinySymbolDetector(database);
+    add_tests_SummarySpriteReader(database);
     add_tests_TrainerIdReader(database);
     add_tests_WildEncounterReader(database);
     add_tests_AutoStoryScreenEvents(database);

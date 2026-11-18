@@ -19,7 +19,7 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "Controllers/Joystick.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "Pokemon/AutoStory/Pokemon_ScreenEvents.h"
+#include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonBDSP_AutoStory_WalkResult.h"
 
 namespace PokemonAutomation{
@@ -73,7 +73,7 @@ WalkResult walk_expecting(
 //  `events`, if given, records what was seen, timed.
 bool run_from_late_encounter(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape, const std::string& label,
-    Pokemon::ScreenEventLog* events = nullptr
+    ScreenEventLog* events = nullptr
 );
 
 //  walk_until() toward a wall the route was measured to end at. Seeing the

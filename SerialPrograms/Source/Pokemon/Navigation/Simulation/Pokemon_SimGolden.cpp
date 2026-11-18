@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <cstdlib>
 #include <format>
+#include <optional>
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Pokemon_SimGolden.h"
 
@@ -15,22 +16,6 @@ namespace Pokemon{
 
 
 namespace{
-
-//  `text` with every "\n" made "\r\n" and no "\r" of its own.
-std::string with_crlf(std::string_view text){
-    std::string out;
-    out.reserve(text.size() + text.size() / 16);
-    for (char ch : text){
-        if (ch == '\r'){
-            continue;
-        }
-        if (ch == '\n'){
-            out += '\r';
-        }
-        out += ch;
-    }
-    return out;
-}
 
 //  Line `begin` of `text` up to its "\n", without a "\r" at its end.
 std::string_view line_at(std::string_view text, size_t begin){
@@ -57,6 +42,21 @@ size_t next_line(std::string_view text, size_t begin){
 } // namespace
 
 
+std::string with_crlf(std::string_view text){
+    std::string out;
+    out.reserve(text.size() + text.size() / 16);
+    for (char ch : text){
+        if (ch == '\r'){
+            continue;
+        }
+        if (ch == '\n'){
+            out += '\r';
+        }
+        out += ch;
+    }
+    return out;
+}
+
 bool sim_golden_update_requested(){
     // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* value = std::getenv(std::string(SIM_GOLDEN_UPDATE_VARIABLE).c_str());
@@ -81,7 +81,7 @@ std::string sim_golden_text(std::string_view about, const std::vector<std::strin
     return out;
 }
 
-std::string first_golden_difference(std::string_view golden, std::string_view actual){
+std::optional<std::string> first_golden_difference(std::string_view golden, std::string_view actual){
     size_t a = 0;
     size_t b = 0;
     for (size_t line = 1; a < golden.size() || b < actual.size(); line++){
@@ -99,7 +99,7 @@ std::string first_golden_difference(std::string_view golden, std::string_view ac
         a = next_line(golden, a);
         b = next_line(actual, b);
     }
-    return "";
+    return std::nullopt;
 }
 
 UnitTestResult check_sim_golden(Logger& logger, const std::string& path, const std::string& text){
@@ -116,11 +116,11 @@ UnitTestResult check_sim_golden(Logger& logger, const std::string& path, const s
     if (!file_to_string(path, golden)){
         return std::format("No golden at {}: run with {}=1 to write it.", path, SIM_GOLDEN_UPDATE_VARIABLE);
     }
-    const std::string difference = first_golden_difference(golden, text);
-    if (!difference.empty()){
+    const std::optional<std::string> difference = first_golden_difference(golden, text);
+    if (difference.has_value()){
         return std::format(
             "{} differs from the simulation at {}\nRun with {}=1 to rewrite it if the change is meant.",
-            path, difference, SIM_GOLDEN_UPDATE_VARIABLE
+            path, *difference, SIM_GOLDEN_UPDATE_VARIABLE
         );
     }
     return true;

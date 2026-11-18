@@ -6,6 +6,7 @@
 
 #include <format>
 #include <string>
+#include "Pokemon/AutoStory/Pokemon_StoryOutcomeClass.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon_StoryStepRunner.h"
 
@@ -53,7 +54,7 @@ Outcome StoryStepRunner<PoseType>::act(const StoryStep& step, RunState& state){
     }
     m_backend.log(std::format(
         "[Step] {} {}: {}", step.name, step_label(step),
-        outcome.succeeded() ? "ok" : std::format("failed: {}", to_string(outcome))
+        outcome.succeeded() ? "ok" : std::format("failed: {}", to_string_with_class(outcome))
     ));
     return outcome;
 }

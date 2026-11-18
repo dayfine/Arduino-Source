@@ -55,7 +55,7 @@ enum class HashRecord{
 //  A look at B3F (12, 13) or wherever `map` is.
 Observation<GridPose> end_look(std::string map){
     Observation<GridPose> observation;
-    observation.events = ScreenEvents{ScreenEvent::CAN_MOVE};
+    observation.events = ScreenEvents{ScreenEvent::PLAYER_CAN_MOVE};
     observation.pose = GridPose{.map = std::move(map), .tiles = {{12, 13}}, .facing = Direction::NORTH};
     return observation;
 }
@@ -83,57 +83,59 @@ StoryGame<GridPose> engine_game(std::optional<int> candies){
 
 
 
-//  One engine run of 00.31 in `phase`, the player ending on `end_map`.
-struct EngineInput{
-    std::string_view name;
-    std::string_view phase;
-    HashRecord hash = HashRecord::MATCHING;
-    std::string_view steps = TALK_STEPS;
-    //  Where the talk leaves the player; empty: the talk opens no text.
-    std::string_view end_map = "RocketHideout_B3F";
-    std::optional<int> candies = 2;
-};
-
-//  The save mode chosen, the verdict, whether the game saved (each save
-//  logs "[Test] save") and a line the run logged.
-struct EngineExpectation{
-    StorySaveMode mode = StorySaveMode::NONE;
-    CheckpointVerdict verdict = CheckpointVerdict::PASSED;
-    size_t saves = 0;
-    std::string_view line = {};
-};
-
 struct EngineCase{
-    EngineInput input;
-    EngineExpectation expectation;
+    //  One engine run of 00.31 in `phase`, the player ending on `end_map`.
+    struct Input{
+        std::string_view phase;
+        HashRecord hash = HashRecord::MATCHING;
+        std::string_view steps = TALK_STEPS;
+        //  Where the talk leaves the player; empty: the talk opens no text.
+        std::string_view end_map = "RocketHideout_B3F";
+        std::optional<int> candies = 2;
+    };
+
+    //  The save mode chosen, the verdict, whether the game saved (each save
+    //  logs "[Test] save") and a line the run logged.
+    struct Expectation{
+        StorySaveMode mode = StorySaveMode::NONE;
+        CheckpointVerdict verdict = CheckpointVerdict::PASSED;
+        size_t saves = 0;
+        std::string_view line = {};
+    };
+
+    std::string_view name;
+    Input input;
+    Expectation expectation;
 };
 
 const EngineCase ENGINE_CASES[] = {
-    {.input = {.name = "testing never saves", .phase = "testing"},
+    {.name = "testing never saves", .input = {.phase = "testing"},
      .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase testing: save mode none"}},
-    {.input = {.name = "verification saves at the end", .phase = "verification"},
+    {.name = "verification saves at the end", .input = {.phase = "verification"},
      .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .saves = 1, .line = "[Save] 00.31: saved"}},
-    {.input = {.name = "reproduction saves", .phase = "reproduction"},
+    {.name = "reproduction saves", .input = {.phase = "reproduction"},
      .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .saves = 1, .line = "[Save] 00.31: phase reproduction: save mode per_checkpoint"}},
-    {.input = {.name = "stale steps_hash is testing", .phase = "verification", .hash = HashRecord::STALE},
+    {.name = "stale steps_hash is testing", .input = {.phase = "verification", .hash = HashRecord::STALE},
      .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase verification but steps_hash mismatch (recorded sha256:old, now "}},
-    {.input = {.name = "no steps_hash is testing", .phase = "reproduction", .hash = HashRecord::MISSING},
+    {.name = "no steps_hash is testing", .input = {.phase = "reproduction", .hash = HashRecord::MISSING},
      .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] 00.31: phase reproduction but steps_hash mismatch (recorded none, now "}},
-    {.input = {.name = "B4F false pass fails postconditions", .phase = "verification", .end_map = "RocketHideout_B4F"},
+    {.name = "B4F false pass fails postconditions", .input = {.phase = "verification", .end_map = "RocketHideout_B4F"},
      .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .verdict = CheckpointVerdict::FAILED, .saves = 0,
                      .line = "[Postcondition] 00.31 map: failed: expected RocketHideout_B3F, read RocketHideout_B4F"}},
-    {.input = {.name = "unread bag is not checked", .phase = "verification", .candies = std::nullopt},
+    {.name = "unread bag is not checked", .input = {.phase = "verification", .candies = std::nullopt},
      .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .saves = 1,
                      .line = "[Postcondition] 00.31: 3 passed, 0 failed, 1 not checked: incomplete"}},
-    {.input = {.name = "wrong candy count fails", .phase = "reproduction", .candies = 1},
+    {.name = "wrong candy count fails", .input = {.phase = "reproduction", .candies = 1},
      .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .verdict = CheckpointVerdict::FAILED, .saves = 0,
                      .line = "[Postcondition] 00.31 item RARE_CANDY: failed: expected 2, read 1"}},
-    {.input = {.name = "failed run never saves", .phase = "reproduction", .end_map = ""},
+    {.name = "failed run never saves", .input = {.phase = "reproduction", .end_map = ""},
      .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .verdict = CheckpointVerdict::FAILED, .saves = 0,
                      .line = "[Save] 00.31: run failed: not saved"}},
-    {.input = {.name = "save step skipped while verifying", .phase = "verification", .steps = SAVE_STEPS},
+    {.name = "save step skipped while testing", .input = {.phase = "testing", .steps = SAVE_STEPS},
+     .expectation = {.mode = StorySaveMode::NONE, .saves = 0, .line = "[Save] save step skipped: save mode none"}},
+    {.name = "save step skipped while verifying", .input = {.phase = "verification", .steps = SAVE_STEPS},
      .expectation = {.mode = StorySaveMode::AFTER_VERIFICATION, .saves = 1, .line = "[Save] save step skipped: save mode after_verification"}},
-    {.input = {.name = "save step saves in reproduction", .phase = "reproduction", .steps = SAVE_STEPS},
+    {.name = "save step saves in reproduction", .input = {.phase = "reproduction", .steps = SAVE_STEPS},
      .expectation = {.mode = StorySaveMode::PER_CHECKPOINT, .saves = 2, .line = "[Step] save_here SAVE/default: ok"}},
 };
 
@@ -144,7 +146,7 @@ std::vector<Observation<GridPose>> engine_looks(std::string_view end_map){
         return {end_look("RocketHideout_B3F")};
     }
     Observation<GridPose> text;
-    text.events = ScreenEvents{ScreenEvent::TEXT_BOX};
+    text.events = ScreenEvents{ScreenEvent::DIALOG_BOX};
     return {std::move(text), end_look(std::string(end_map))};
 }
 
@@ -166,7 +168,7 @@ std::string check_engine(const EngineCase& test, CancellableScope& scope){
     FakeStoryBackend<GridPose> backend({.looks = engine_looks(test.input.end_map)}, scope);
     StoryEngine<GridPose> engine(game, backend);
     StoryCheckpoint checkpoint = read_story_checkpoint(
-        parse_json(checkpoint_0031(test.input.phase, test.input.steps)), test.input.name, engine.registry().specs()
+        parse_json(checkpoint_0031(test.input.phase, test.input.steps)), test.name, engine.registry().specs()
     );
     if (test.input.hash != HashRecord::MISSING){
         checkpoint.metadata.verified = StoryVerification{
@@ -188,7 +190,7 @@ std::string check_engine(const EngineCase& test, CancellableScope& scope){
 class StoryEngineSaveTest : public UnitTest{
 public:
     explicit StoryEngineSaveTest(EngineCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine save - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine save - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
@@ -201,40 +203,40 @@ private:
 
 
 
-//  Two checkpoints' events, hashed with the built-in actions.
-struct HashInput{
-    std::string_view name;
-    std::string_view a;
-    std::string_view b;
-};
-
-//  Whether they hash the same, and `a`'s hash when pinned: a change to it
-//  means every recorded verification goes stale.
-struct HashExpectation{
-    bool same = true;
-    std::optional<std::string_view> hash_a = std::nullopt;
-};
-
 struct HashCase{
-    HashInput input;
-    HashExpectation expectation;
+    //  Two checkpoints' events, hashed with the built-in actions.
+    struct Input{
+        std::string_view a;
+        std::string_view b;
+    };
+
+    //  Whether they hash the same, and `a`'s hash when pinned: a change to it
+    //  means every recorded verification goes stale.
+    struct Expectation{
+        bool same = true;
+        std::optional<std::string_view> hash_a = std::nullopt;
+    };
+
+    std::string_view name;
+    Input input;
+    Expectation expectation;
 };
 
 inline constexpr std::string_view ROUTE_B3F = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 13]]}}}])";
 
 const HashCase HASH_CASES[] = {
-    {.input = {.name = "pinned", .a = ROUTE_B3F, .b = ROUTE_B3F},
+    {.name = "pinned", .input = {.a = ROUTE_B3F, .b = ROUTE_B3F},
      .expectation = {.same = true, .hash_a = "sha256:13bc877c960a15cd0ed2f37248fa8336308b048a865623dde7654d41ac7147b8"}},
-    {.input = {.name = "whitespace is not hashed", .a = R"([{"id": "t", "kind": "talk"}])", .b = R"([ { "id":"t",  "kind":"talk" } ])"},
+    {.name = "whitespace is not hashed", .input = {.a = R"([{"id": "t", "kind": "talk"}])", .b = R"([ { "id":"t",  "kind":"talk" } ])"},
      .expectation = {.same = true}},
-    {.input = {.name = "why differs", .a = R"([{"id": "t", "kind": "talk", "why": "a"}])", .b = R"([{"id": "t", "kind": "talk", "why": "b"}])"},
+    {.name = "why differs", .input = {.a = R"([{"id": "t", "kind": "talk", "why": "a"}])", .b = R"([{"id": "t", "kind": "talk", "why": "b"}])"},
      .expectation = {.same = false}},
-    {.input = {.name = "written fallback differs", .a = R"([{"id": "f", "kind": "battle"}])", .b = R"([{"id": "f", "kind": "battle", "args": {"may_lose": false}}])"},
+    {.name = "written fallback differs", .input = {.a = R"([{"id": "f", "kind": "battle"}])", .b = R"([{"id": "f", "kind": "battle", "args": {"may_lose": false}}])"},
      .expectation = {.same = false}},
-    {.input = {.name = "another target differs", .a = ROUTE_B3F,
+    {.name = "another target differs", .input = { .a = ROUTE_B3F,
                .b = R"([{"id": "go", "kind": "route", "args": {"target": {"map": "RocketHideout_B3F", "tiles": [[12, 14]]}}}])"},
      .expectation = {.same = false}},
-    {.input = {.name = "another step name differs", .a = R"([{"id": "t", "kind": "talk"}])", .b = R"([{"id": "u", "kind": "talk"}])"},
+    {.name = "another step name differs", .input = {.a = R"([{"id": "t", "kind": "talk"}])", .b = R"([{"id": "u", "kind": "talk"}])"},
      .expectation = {.same = false}},
 };
 
@@ -244,8 +246,8 @@ std::string hash_of(std::string_view events, std::string_view source){
 }
 
 std::string check_hash(const HashCase& test){
-    const std::string a = hash_of(test.input.a, test.input.name);
-    const std::string b = hash_of(test.input.b, test.input.name);
+    const std::string a = hash_of(test.input.a, test.name);
+    const std::string b = hash_of(test.input.b, test.name);
     if ((a == b) != test.expectation.same){
         return std::format("{}{}: {}, {}", "expected the hashes ", (test.expectation.same ? "equal" : "different"), a, b);
     }
@@ -258,7 +260,7 @@ std::string check_hash(const HashCase& test){
 class StoryStepsHashTest : public UnitTest{
 public:
     explicit StoryStepsHashTest(HashCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine steps_hash - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine steps_hash - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -271,35 +273,35 @@ private:
 
 
 
-//  A checkpoint's "metadata", read.
-struct MetadataInput{
-    std::string_view name;
-    std::string_view metadata;
-};
-
-//  The error the read throws (contained), or what it read.
-struct MetadataExpectation{
-    std::string_view error = {};
-    StoryPhase phase = StoryPhase::TESTING;
-    std::string_view steps_hash = {};
-    size_t items = 0;
-};
-
 struct MetadataCase{
-    MetadataInput input;
-    MetadataExpectation expectation;
+    //  A checkpoint's "metadata", read.
+    struct Input{
+        std::string_view metadata;
+    };
+
+    //  The error the read throws (contained), or what it read.
+    struct Expectation{
+        std::string_view error = {};
+        StoryPhase phase = StoryPhase::TESTING;
+        std::string_view steps_hash = {};
+        size_t items = 0;
+    };
+
+    std::string_view name;
+    Input input;
+    Expectation expectation;
 };
 
 const MetadataCase METADATA_CASES[] = {
-    {.input = {.name = "none is testing", .metadata = ""},
+    {.name = "none is testing", .input = {.metadata = ""},
      .expectation = {.phase = StoryPhase::TESTING}},
-    {.input = {.name = "verified", .metadata = R"(, "metadata": {"phase": "verification", "verified": {"steps_hash": "sha256:ab", "build": "1", "date": "d", "runs": "3/3"}})"},
+    {.name = "verified", .input = {.metadata = R"(, "metadata": {"phase": "verification", "verified": {"steps_hash": "sha256:ab", "build": "1", "date": "d", "runs": "3/3"}})"},
      .expectation = {.phase = StoryPhase::VERIFICATION, .steps_hash = "sha256:ab"}},
-    {.input = {.name = "postconditions", .metadata = R"(, "metadata": {"phase": "reproduction", "postconditions": {"items": [{"item": "LIFT_KEY", "quantity": 1}]}})"},
+    {.name = "postconditions", .input = {.metadata = R"(, "metadata": {"phase": "reproduction", "postconditions": {"items": [{"item": "LIFT_KEY", "quantity": 1}]}})"},
      .expectation = {.phase = StoryPhase::REPRODUCTION, .items = 1}},
-    {.input = {.name = "unknown phase", .metadata = R"(, "metadata": {"phase": "tested"})"},
+    {.name = "unknown phase", .input = {.metadata = R"(, "metadata": {"phase": "tested"})"},
      .expectation = {.error = "unknown phase tested"}},
-    {.input = {.name = "unknown field", .metadata = R"(, "metadata": {"phase": "testing", "runs": 3})"},
+    {.name = "unknown field", .input = {.metadata = R"(, "metadata": {"phase": "testing", "runs": 3})"},
      .expectation = {.error = "unsupported field runs"}},
 };
 
@@ -328,7 +330,7 @@ std::string check_metadata(const MetadataCase& test){
 class StoryMetadataTest : public UnitTest{
 public:
     explicit StoryMetadataTest(MetadataCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine metadata - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine metadata - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -341,28 +343,28 @@ private:
 
 
 
-//  What a look showed, classified by ScreenMachine states that match on
-//  observations.
-struct ScreenInput{
-    std::string_view name;
-    std::vector<ScreenEvent> events;
-};
-
-//  The state matched; none when no state did.
-struct ScreenExpectation{
-    std::optional<std::string_view> state = std::nullopt;
-};
-
 struct ScreenCase{
-    ScreenInput input;
-    ScreenExpectation expectation;
+    //  What a look showed, classified by ScreenMachine states that match on
+    //  observations.
+    struct Input{
+        std::vector<ScreenEvent> events;
+    };
+
+    //  The state matched; none when no state did.
+    struct Expectation{
+        std::optional<std::string_view> state = std::nullopt;
+    };
+
+    std::string_view name;
+    Input input;
+    Expectation expectation;
 };
 
 const ScreenCase SCREEN_CASES[] = {
-    {.input = {.name = "battle first", .events = {ScreenEvent::BATTLE, ScreenEvent::TEXT_BOX}}, .expectation = {.state = "battle"}},
-    {.input = {.name = "text", .events = {ScreenEvent::TEXT_BOX}}, .expectation = {.state = "text"}},
-    {.input = {.name = "overworld", .events = {ScreenEvent::CAN_MOVE}}, .expectation = {.state = "overworld"}},
-    {.input = {.name = "image-only state skipped", .events = {ScreenEvent::FADE_WHITE}}, .expectation = {}},
+    {.name = "battle first", .input = {.events = {ScreenEvent::BATTLE_STARTED, ScreenEvent::DIALOG_BOX}}, .expectation = {.state = "battle"}},
+    {.name = "text", .input = {.events = {ScreenEvent::DIALOG_BOX}}, .expectation = {.state = "text"}},
+    {.name = "overworld", .input = {.events = {ScreenEvent::PLAYER_CAN_MOVE}}, .expectation = {.state = "overworld"}},
+    {.name = "image-only state skipped", .input = {.events = {ScreenEvent::FADE_WHITE}}, .expectation = {}},
 };
 
 ScreenState observation_state(std::string name, ScreenEvent event){
@@ -377,9 +379,9 @@ ScreenState observation_state(std::string name, ScreenEvent event){
 
 std::string check_screen(const ScreenCase& test){
     std::vector<ScreenState> states{
-        observation_state("battle", ScreenEvent::BATTLE),
-        observation_state("text", ScreenEvent::TEXT_BOX),
-        observation_state("overworld", ScreenEvent::CAN_MOVE),
+        observation_state("battle", ScreenEvent::BATTLE_STARTED),
+        observation_state("text", ScreenEvent::DIALOG_BOX),
+        observation_state("overworld", ScreenEvent::PLAYER_CAN_MOVE),
     };
     ScreenState image_only;
     image_only.name = "image_only";
@@ -390,7 +392,7 @@ std::string check_screen(const ScreenCase& test){
     states.push_back(std::move(image_only));
     ScreenObservation observation;
     for (ScreenEvent event : test.input.events){
-        observation.events.add(event);
+        observation.events.set(event, true);
     }
     const ScreenState* state = match_screen_state(states, observation);
     const std::string got = state ? state->name : "none";
@@ -400,7 +402,7 @@ std::string check_screen(const ScreenCase& test){
 class ScreenObservationTest : public UnitTest{
 public:
     explicit ScreenObservationTest(ScreenCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine screen observation - {}", test.input.name))
+        : UnitTest(std::format("Pokemon::StoryEngine screen observation - {}", test.name))
         , m_case(std::move(test))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

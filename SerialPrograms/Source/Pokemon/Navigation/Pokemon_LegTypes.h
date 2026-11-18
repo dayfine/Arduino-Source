@@ -2,7 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Split out of Pokemon_LegWalker.h, unchanged; it includes this header.
+ *  A leg of a route walk: what to walk (LegSpec) and what the walk found (LegResult).
+ *  Pokemon_LegWalker.h builds on it.
  *
  */
 

@@ -66,7 +66,7 @@ struct PostconditionReport{
 
 //  Where `checkpoint` ends: its postconditions' position, else the last
 //  step's declared pose or target. Unset when a step after that moves the
-//  player in a way the plan does not place (taps of legs).
+//  player in a way the plan does not place (taps of legs, a single step).
 std::optional<GridPose> checkpoint_end_pose(const StoryCheckpoint& checkpoint);
 
 //  Checks the end position (map, tile among the pose's tiles, facing),
