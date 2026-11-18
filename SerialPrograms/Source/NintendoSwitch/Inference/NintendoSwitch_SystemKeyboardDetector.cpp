@@ -4,6 +4,8 @@
  *
  */
 
+#include <algorithm>
+#include <array>
 #include <cmath>
 #include <format>
 #include <string>
@@ -110,6 +112,50 @@ std::optional<SystemKeyboardKey> key_at(double x, double y){
     return SystemKeyboardKey{3, 11};
 }
 
+//  The key whose cell holds (x, y), for a point anywhere in KEYS_AREA: the
+//  columns left of the first and right of the right column belong to them.
+SystemKeyboardKey key_cell_at(double x, double y){
+    const double col = std::clamp((x - KEY_COL_X0) / KEY_COL_STEP, 0.0, 11.0);
+    return *key_at(KEY_COL_X0 + col * KEY_COL_STEP, y);
+}
+
+//  The cyan pixels in one key's cell, against all pixels of the cell.
+struct KeyCellPixels{
+    double area = 0;
+    double count = 0;
+    double sum_x = 0;
+    double sum_y = 0;
+};
+
+//  The cursor's border covers about a fifth of its key's cell. A key whose cell
+//  is more cyan than this is solid cyan, not the cursor: the dark theme's OK
+//  button once the field has text (0, 233, 211; 60% of its cell).
+constexpr double MAX_BORDER_SHARE = 0.35;
+
+//  The cyan pixels of each key's cell in `keys` (KEYS_AREA), by row and column.
+using KeyCells = std::array<std::array<KeyCellPixels, 12>, 5>;
+KeyCells cyan_pixels_by_key(const ImageViewRGB32& keys){
+    KeyCells cells{};
+    for (size_t y = 0; y < keys.height(); y++){
+        const double screen_y = KEYS_AREA.y + ((double)y + 0.5) / keys.height() * KEYS_AREA.height;
+        for (size_t x = 0; x < keys.width(); x++){
+            const double screen_x = KEYS_AREA.x + ((double)x + 0.5) / keys.width() * KEYS_AREA.width;
+            if (in_box(screen_x, screen_y, PAGE_LABELS)){
+                continue;
+            }
+            const SystemKeyboardKey key = key_cell_at(screen_x, screen_y);
+            KeyCellPixels& cell = cells[key.row][key.col];
+            cell.area++;
+            if (is_cursor_pixel(keys.pixel(x, y))){
+                cell.count++;
+                cell.sum_x += (double)x;
+                cell.sum_y += (double)y;
+            }
+        }
+    }
+    return cells;
+}
+
 }  // namespace
 
 
@@ -143,8 +189,8 @@ bool SystemKeyboardDetector::detect(const ImageViewRGB32& screen){
         const bool panel =
             is_grey(upper, /*min_rgb_sum=*/210, /*max_rgb_sum=*/300, max_panel_stddev) ||
             is_grey(lower, /*min_rgb_sum=*/210, /*max_rgb_sum=*/300, max_panel_stddev);
-        //  OK is flat grey (100, 100, 100) while the field is empty; its colour
-        //  with text is not captured yet, so any flat fill passes.
+        //  OK is flat grey (100, 100, 100) while the field is empty and solid
+        //  cyan (0, 233, 211) with text.
         return panel && ok.stddev.sum() < 10;
     }
     const bool panel =
@@ -161,21 +207,19 @@ bool SystemKeyboardDetector::detect(const ImageViewRGB32& screen){
 
 std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB32& screen){
     //  The cursor is a cyan border around one key. Neighbouring keys overlap that border,
-    //  so take the centroid of all cyan pixels and map it to the nearest key.
+    //  so take the centroid of all cyan pixels outside solid cyan keys and map it to
+    //  the nearest key.
     const ImageViewRGB32 keys = extract_box_reference(screen, KEYS_AREA);
+    const KeyCells cells = cyan_pixels_by_key(keys);
     double count = 0, sum_x = 0, sum_y = 0;
-    for (size_t y = 0; y < keys.height(); y++){
-        const double screen_y = KEYS_AREA.y + ((double)y + 0.5) / keys.height() * KEYS_AREA.height;
-        for (size_t x = 0; x < keys.width(); x++){
-            const double screen_x = KEYS_AREA.x + ((double)x + 0.5) / keys.width() * KEYS_AREA.width;
-            if (in_box(screen_x, screen_y, PAGE_LABELS)){
+    for (const auto& row : cells){
+        for (const KeyCellPixels& cell : row){
+            if (cell.count > MAX_BORDER_SHARE * cell.area){
                 continue;
             }
-            if (is_cursor_pixel(keys.pixel(x, y))){
-                count++;
-                sum_x += (double)x;
-                sum_y += (double)y;
-            }
+            count += cell.count;
+            sum_x += cell.sum_x;
+            sum_y += cell.sum_y;
         }
     }
     //  The border is about 0.18% of the screen; a few stray pixels are not a cursor.
@@ -191,8 +235,7 @@ std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB3
 bool system_keyboard_field_has_text(const ImageViewRGB32& screen){
     //  Left part of the backspace key, clear of its icon and of the cursor border.
     //  Light theme: light grey (221) with an empty field, dark grey (52) with
-    //  text. Dark theme: grey (100) with an empty field; its look with text is
-    //  not captured yet, so anything else counts as text.
+    //  text. Dark theme: grey (100) with an empty field, white (254) with text.
     const ImageStats stats = image_stats(extract_box_reference(screen, ImageFloatBox(0.878, 0.470, 0.008, 0.060)));
     if (keyboard_theme(screen) == KeyboardTheme::DARK){
         return !is_grey(stats, /*min_rgb_sum=*/255, /*max_rgb_sum=*/345);
@@ -327,6 +370,8 @@ void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
     //  The console's dark theme (Basic Black), console B 2026-11-18: the cyan
     //  ABC label must not pull the cursor read off "1".
     database.add<Test_SystemKeyboardDetector>(test_image_path("PLZA-English-Empty-Dark.png"), key_1, false);
+    //  "K" typed: OK turns solid cyan, which is not the cursor (on "8").
+    database.add<Test_SystemKeyboardDetector>(test_image_path("PLZA-English-Typed-Dark.png"), SystemKeyboardKey{0, 7}, true);
     for (std::string_view image : {"BDSP-Dialog.png", "HomeMenu.png", "HomeMenu-OnlineLicensePopup.png", "UserSelect.png"}){
         database.add<Test_SystemKeyboardDetector>(test_image_path(image), std::nullopt, false);
     }
