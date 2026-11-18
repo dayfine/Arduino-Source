@@ -46,33 +46,10 @@ constexpr Milliseconds PROMPT_IS_CONTROL = 1000ms;
 //  then finds none (02.05's elevator in German, console B 2026-11-16).
 constexpr Milliseconds PROMPT_STEADY_GAP = 300ms;
 
-//  After A at a prompt: how long a fade or text may take to show (a late
-//  fade starts 1.8 s after the A), how often it is looked for, and how many
-//  times A is pressed while the prompt stays with neither (a dropped A).
-constexpr Milliseconds PROMPT_TAKEN_WAIT = 3000ms;
-constexpr Milliseconds PROMPT_POLL = 250ms;
-constexpr size_t PROMPT_PRESSES = 3;
-
-//  Whether `look` shows that A at a prompt was taken: a fade, or text.
+//  Whether `look` shows that A at a door's prompt was taken: a fade, or
+//  text.
 bool prompt_taken(const ScreenObservation& look){
     return fade_shows(look) || look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
-}
-
-//  A at a prompt, then looks until a fade or text shows; returns whether
-//  the prompt still shows on the last look without either.
-bool press_at_prompt(PlzaBackend& backend){
-    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
-    bool prompt = true;
-    for (Milliseconds waited = 0ms; waited < PROMPT_TAKEN_WAIT; waited += PROMPT_POLL){
-        backend.scope().throw_if_cancelled();
-        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
-        if (prompt_taken(look)){
-            return false;
-        }
-        prompt = look.events.has(ScreenEvent::INTERACT_PROMPT);
-        backend.wait(PROMPT_POLL);
-    }
-    return prompt;
 }
 
 //  What no walk may start on, by name; empty when free.
@@ -104,17 +81,12 @@ bool prompt_steady(PlzaBackend& backend){
     return backend.observe().events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
-//  How long "talk" looks for its A prompt before A, how long it waits for
-//  its scene to start after A, and how often it looks. The prompt can take
-//  seconds to come up after the walk to it (02.05's elevator in German,
-//  console B 2026-11-16: none within 1 s, steady a few seconds later).
+//  How long "talk" looks for its A prompt before A, and how often it looks.
+//  The prompt can take seconds to come up after the walk to it (02.05's
+//  elevator in German, console B 2026-11-16: none within 1 s, steady a
+//  few seconds later).
 constexpr Milliseconds TALK_PROMPT_WAIT = 3000ms;
-constexpr Milliseconds TALK_WAIT = 5000ms;
 constexpr Milliseconds TALK_POLL = 250ms;
-//  A dropped A: the prompt still up this long after A with nothing open
-//  gets A again, up to TALK_PRESSES As in all.
-constexpr Milliseconds TALK_REPRESS_AFTER = 1000ms;
-constexpr size_t TALK_PRESSES = 3;
 
 //  Whether the A prompt shows on two looks in a row within
 //  TALK_PROMPT_WAIT: a walk that ends as it comes into reach can drift out
@@ -134,6 +106,114 @@ bool talk_prompt_settled(PlzaBackend& backend){
         backend.wait(TALK_POLL);
     }
 }
+
+//  How a_at_prompt() goes on after A at the A prompt the player stands at.
+struct AtPrompt{
+    //  What shows the game took A, and on how many looks in a row.
+    bool (*until)(const ScreenObservation& look);
+    size_t until_looks;
+    //  As in all, and how long after an A the prompt must still be up
+    //  with `until` not shown for the next.
+    size_t retries;
+    Milliseconds retry_gap;
+    //  How long it looks after the first A, at most. None: each A gets
+    //  `retry_gap`, decided on its last look, and ends there with the
+    //  prompt gone.
+    std::optional<Milliseconds> wait;
+    //  The release after each A.
+    Milliseconds release;
+    //  The name it logs an A again under.
+    std::string_view name;
+};
+
+//  How a_at_prompt() ended, after how many As, and its last look.
+enum class AtPromptEnd{
+    TAKEN,
+    PROMPT_STAYS,
+    NOTHING,
+};
+struct AtPromptResult{
+    AtPromptEnd end;
+    size_t presses;
+    Milliseconds since_press;
+    Pokemon::Observation<Pokemon::ZonePose> look;
+};
+
+//  A at a prompt, then a look every TALK_POLL until `at.until` shows on
+//  `at.until_looks` looks in a row (TAKEN); while the prompt stays up
+//  with nothing open `at.retry_gap` after A, A again, `at.retries` As at
+//  most (then PROMPT_STAYS). NOTHING: `at.wait` passed, or with no
+//  `at.wait`, the prompt gone at the end of an A's `at.retry_gap`.
+AtPromptResult a_at_prompt(PlzaBackend& backend, const AtPrompt& at){
+    backend.press(BUTTON_A, /*hold=*/160ms, at.release);
+    size_t presses = 1;
+    Milliseconds since_press(0);
+    size_t until_looks = 0;
+    for (Milliseconds waited(0); ; ){
+        backend.scope().throw_if_cancelled();
+        Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        until_looks = at.until(look) ? until_looks + 1 : 0;
+        if (until_looks >= at.until_looks){
+            return {AtPromptEnd::TAKEN, presses, since_press, std::move(look)};
+        }
+        const bool prompt_stays = until_looks == 0 && look.events.has(ScreenEvent::INTERACT_PROMPT);
+        bool again = false;
+        if (!at.wait && since_press + TALK_POLL >= at.retry_gap){
+            backend.wait(TALK_POLL);
+            since_press += TALK_POLL;
+            if (!prompt_stays){
+                return {AtPromptEnd::NOTHING, presses, since_press, std::move(look)};
+            }
+            again = true;
+        }
+        if (at.wait && prompt_stays && since_press >= at.retry_gap){
+            again = true;
+        }
+        if (again){
+            if (presses >= at.retries){
+                return {AtPromptEnd::PROMPT_STAYS, presses, since_press, std::move(look)};
+            }
+            backend.log(std::format(
+                "[PLZA] {}: the A prompt still up {} ms after A {} with nothing open; A again", at.name, since_press.count(), presses
+            ));
+            backend.press(BUTTON_A, /*hold=*/160ms, at.release);
+            presses++;
+            since_press = Milliseconds(0);
+            continue;
+        }
+        if (at.wait && waited >= *at.wait){
+            return {AtPromptEnd::NOTHING, presses, since_press, std::move(look)};
+        }
+        backend.wait(TALK_POLL);
+        waited += TALK_POLL;
+        since_press += TALK_POLL;
+    }
+}
+
+//  "talk"'s A: its scene under way on two looks in a row within 5 s, A
+//  again every second the prompt stays up with nothing open, 3 As at most.
+const AtPrompt TALK{
+    .until = scene_under_way,
+    .until_looks = 2,
+    .retries = 3,
+    .retry_gap = 1000ms,
+    .wait = 5000ms,
+    .release = 240ms,
+    .name = "talk",
+};
+
+//  A door's A: a fade or text within 3 s (a late fade starts 1.8 s after
+//  the A), A again while the prompt stays with neither (a dropped A), 3
+//  As at most.
+const AtPrompt THROUGH_PROMPT{
+    .until = prompt_taken,
+    .until_looks = 1,
+    .retries = 3,
+    .retry_gap = 3000ms,
+    .wait = std::nullopt,
+    .release = 400ms,
+    .name = "press_through_prompt",
+};
 
 //  Whether walk_until() of `move` to `end` from `end_after` ends before
 //  its first leg on the A prompt it starts at: a walk of one straight leg
@@ -296,49 +376,29 @@ Pokemon::Outcome talk_at_prompt(PlzaBackend& backend){
             "talk_no_prompt", std::format("no A prompt on two looks within {} ms: not at what the talk is for", TALK_PROMPT_WAIT.count())
         );
     }
-    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
-    size_t presses = 1;
-    Milliseconds since_press(0);
-    size_t scene_looks = 0;
-    for (Milliseconds waited(0); ; ){
-        backend.scope().throw_if_cancelled();
-        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
-        scene_looks = scene_under_way(look) ? scene_looks + 1 : 0;
-        if (scene_looks >= 2){
-            backend.log_detail(std::format("[PLZA] talk: started {} ms after A {}: {}", since_press.count(), presses, describe_scene_look(look)));
-            return Pokemon::outcome_ok();
-        }
-        const bool prompt_stays = scene_looks == 0 && look.events.has(ScreenEvent::INTERACT_PROMPT);
-        if (prompt_stays && since_press >= TALK_REPRESS_AFTER){
-            if (presses >= TALK_PRESSES){
-                return Pokemon::outcome_failed("talk_no_scene", std::format(
-                    "the A prompt still up with nothing open after {} As: the game took none", presses
-                ));
-            }
-            backend.log(std::format(
-                "[PLZA] talk: the A prompt still up {} ms after A {} with nothing open; A again", since_press.count(), presses
-            ));
-            backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
-            presses++;
-            since_press = Milliseconds(0);
-            continue;
-        }
-        if (waited >= TALK_WAIT){
-            break;
-        }
-        backend.wait(TALK_POLL);
-        waited += TALK_POLL;
-        since_press += TALK_POLL;
+    const AtPromptResult result = a_at_prompt(backend, TALK);
+    switch (result.end){
+    case AtPromptEnd::TAKEN:
+        backend.log_detail(std::format(
+            "[PLZA] talk: started {} ms after A {}: {}", result.since_press.count(), result.presses, describe_scene_look(result.look)
+        ));
+        return Pokemon::outcome_ok();
+    case AtPromptEnd::PROMPT_STAYS:
+        return Pokemon::outcome_failed("talk_no_scene", std::format(
+            "the A prompt still up with nothing open after {} As: the game took none", result.presses
+        ));
+    case AtPromptEnd::NOTHING:
+        break;
     }
-    return Pokemon::outcome_failed("talk_no_scene", std::format("nothing started within {} ms of A: the HUD stayed", TALK_WAIT.count()));
+    return Pokemon::outcome_failed("talk_no_scene", std::format("nothing started within {} ms of A: the HUD stayed", TALK.wait->count()));
 }
 
 void press_through_prompt(PlzaBackend& backend){
-    for (size_t press = 1; press <= PROMPT_PRESSES; press++){
-        if (!press_at_prompt(backend)){
-            return;
-        }
-        backend.log(std::format("[PLZA] press_through_prompt: the prompt is still up {} ms after A {}", PROMPT_TAKEN_WAIT.count(), press));
+    const AtPromptResult result = a_at_prompt(backend, THROUGH_PROMPT);
+    if (result.end == AtPromptEnd::PROMPT_STAYS){
+        backend.log(std::format(
+            "[PLZA] press_through_prompt: the prompt is still up {} ms after A {}", result.since_press.count(), result.presses
+        ));
     }
 }
 
