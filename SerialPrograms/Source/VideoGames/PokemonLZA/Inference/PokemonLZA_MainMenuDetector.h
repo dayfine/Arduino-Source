@@ -47,6 +47,9 @@ public:
 };
 
 
+//  The box the selection arrow at Save shows in on the main menu.
+ImageFloatBox main_menu_save_arrow_box();
+
 void add_tests_MainMenuDetector(UnitTestDatabase& database);
 
 
