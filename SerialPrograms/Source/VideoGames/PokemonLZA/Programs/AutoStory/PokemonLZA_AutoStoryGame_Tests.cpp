@@ -57,7 +57,7 @@ struct AutosaveStepCase{
     std::string name;
     struct Input{
         std::vector<std::string> steps;
-        bool autosave_row = false;
+        bool marked_autosave = false;
         std::optional<std::string> autosave_step = std::nullopt;
     };
     Input input;
@@ -84,7 +84,7 @@ const AutosaveStepCase AUTOSAVE_STEP_CASES[] = {
         .name = "an autosave in the last step passes",
         .input = {
             .steps = {"toward_zone_1_gate", "wild_zones_tutorial"},
-            .autosave_row = true,
+            .marked_autosave = true,
             .autosave_step = "wild_zones_tutorial",
         },
         .expectation = {.error = ""},
@@ -98,7 +98,7 @@ UnitTestResult check_autosave_step(const AutosaveStepCase& test, CancellableScop
     for (const std::string& name : test.input.steps){
         checkpoint.steps.push_back(StoryStep{.name = name});
     }
-    const std::optional<std::string> error = autosave_step_error(checkpoint, test.input.autosave_row, test.input.autosave_step);
+    const std::optional<std::string> error = autosave_step_error(checkpoint, test.input.marked_autosave, test.input.autosave_step);
     const std::string got = error.value_or("");
     if (got != test.expectation.error){
         return std::format("expected \"{}\", got \"{}\"", test.expectation.error, got);
@@ -145,6 +145,15 @@ std::vector<ScreenObservation> walk_into_white_fade(){
     return {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE};
 }
 
+//  `count` party bar looks `every` apart from the start.
+std::vector<ScreenObservation> party_bars(Milliseconds every, size_t count){
+    std::vector<ScreenObservation> looks;
+    for (size_t index = 0; index < count; index++){
+        looks.push_back(party_bar(every * (int64_t)index));
+    }
+    return looks;
+}
+
 std::vector<ScreenObservation> concat(std::vector<ScreenObservation> first, const std::vector<ScreenObservation>& then){
     first.insert(first.end(), then.begin(), then.end());
     return first;
@@ -157,7 +166,7 @@ std::string repeated(std::string_view text, size_t times){
 
 //  Steps [first_step, first_step + steps) of built-in checkpoint `id`,
 //  bound to `tools`.
-StoryCheckpoint builtin_row(const PlzaStoryTools& tools, std::string_view id, size_t first_step, size_t steps){
+StoryCheckpoint builtin_row(PlzaConsoleHooks& tools, std::string_view id, size_t first_step, size_t steps){
     for (StoryCheckpoint& row : load_plza_story(tools).checkpoints){
         if (row.id == id){
             row.steps.erase(row.steps.begin(), row.steps.begin() + (std::ptrdiff_t)first_step);
@@ -420,6 +429,15 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at off_the_roof: walk_no_scene"},
     },
+    {
+        //  2026-11-19 03.03, ES-LA: 250 ms run slices took 111 ms; the leg ended 3.6 s in.
+        .name = "03.03's walk off the roof holds its last leg 8000 ms of game time, though a run slice takes less",
+        .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = concat(
+            party_bars(Milliseconds(111), 60),
+            {look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(6700)), look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(6800))}
+        )},
+        .expectation = {.verdict = "done"},
+    },
     //  Arrow reads from a passing run: 272 out of the gate, 254 after one turn.
     {
         .name = "03.09's walk faces the street first, then walks its legs into Ryon's dialog",
@@ -452,7 +470,7 @@ std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& read
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    PlzaStoryTools tools{.arrow = scripted_arrow(test.input.arrow_reads), .sightings = &sightings};
+    PlzaConsoleHooks tools{.arrow = scripted_arrow(test.input.arrow_reads), .sightings = &sightings};
     tools.battle = [](PlzaBackend&) -> std::optional<Pokemon::StoryFailure>{
         return std::nullopt;
     };
@@ -485,7 +503,7 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 
 //  The reload presses HOME, as the console's does first, and says the game
 //  is at the failed checkpoint's start.
-Pokemon::StoryGame game_with_reload(const StoryRows& rows, AutosaveSightings& sightings){
+Pokemon::StoryGame game_with_reload(const MarkedCheckpoints& rows, AutosaveSightings& sightings){
     Pokemon::StoryGame game = plza_story_game(rows, sightings);
     game.reload = [](PlzaBackend& backend, const StoryCheckpoint& failed) -> std::optional<std::string>{
         backend.press(BUTTON_HOME, Milliseconds(80), Milliseconds(80));
@@ -495,11 +513,11 @@ Pokemon::StoryGame game_with_reload(const StoryRows& rows, AutosaveSightings& si
 }
 
 //  A step named `name` running `action` with no args, bound to `tools`.
-StoryStep plan_step(const PlzaStoryTools& tools, std::string name, std::string_view action){
+StoryStep plan_step(PlzaConsoleHooks& tools, std::string name, std::string_view action){
     return StoryStep{.name = std::move(name), .action = std::string(action), .run = plza_story_actions(tools).at(std::string(action))(JsonObject())};
 }
 
-StoryCheckpoint one_step_row(const PlzaStoryTools& tools, std::string id, std::string action){
+StoryCheckpoint one_step_row(PlzaConsoleHooks& tools, std::string id, std::string action){
     StoryCheckpoint row;
     row.id = std::move(id);
     row.title = "Test";
@@ -554,7 +572,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
     Pokemon::StoryGame game = test.input.has_reload ? game_with_reload(builtin_story_data(), sightings) : plza_story_game(builtin_story_data(), sightings);
     Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
-    const PlzaStoryTools tools;
+    PlzaConsoleHooks tools;
     const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, builtin_row(tools, test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
     const std::string verdict = !loaded ? "done" : loaded->code;
     if (verdict != test.expectation.verdict){
@@ -706,10 +724,10 @@ const ChainCase CHAIN_CASES[] = {
 
 UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    Pokemon::StoryGame game = game_with_reload(StoryRows{}, sightings);
+    Pokemon::StoryGame game = game_with_reload(MarkedCheckpoints{}, sightings);
     Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;
-    const PlzaStoryTools tools{.sightings = &sightings};
+    PlzaConsoleHooks tools{.sightings = &sightings};
     std::vector<StoryCheckpoint> rows;
     rows.push_back(one_step_row(tools, "01.01", test.input.first_actions[0]));
     for (size_t index = 1; index < test.input.first_actions.size(); index++){
@@ -722,14 +740,14 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     if (test.input.start){
         starts.push_back(CheckpointStart{.checkpoint = "01.02", .signature = *test.input.start});
     }
-    SegmentRunOptions options{.attempts_per_checkpoint = test.input.attempts, .starts = starts};
+    CheckpointRunOptions options{.attempts_per_checkpoint = test.input.attempts, .starts = starts};
     options.read_start = [&test](const StartSignature&){
         return test.input.landed;
     };
     if (test.input.reload_when_chained){
         options.reload_when_chained = {"01.02"};
     }
-    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_segments(game, rows, options, backend, state, sightings);
+    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_checkpoints(game, rows, options, backend, state, sightings);
     const std::string verdict = verdict_of(failure, rows, /*with_checkpoint=*/true);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
@@ -781,7 +799,7 @@ const NewGameChainCase NEW_GAME_CHAIN_CASES[] = {
 UnitTestResult check_new_game_chain(const NewGameChainCase& test, CancellableScope& scope){
     std::vector<std::string> steps_run;
     AutosaveSightings sightings;
-    PlzaStoryTools tools{.sightings = &sightings};
+    PlzaConsoleHooks tools{.sightings = &sightings};
     for (const std::string_view action : {"new_game_intro", "confirm_new_game"}){
         tools.console.emplace(std::string(action), [&steps_run, action](PlzaBackend&, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
             steps_run.emplace_back(action);
@@ -797,7 +815,8 @@ UnitTestResult check_new_game_chain(const NewGameChainCase& test, CancellableSco
     note_autosaves(rows, sightings);
     Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;
-    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_segments(game, rows, /*options=*/{}, backend, state, sightings);
+    CheckpointRunOptions options;
+    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_checkpoints(game, rows, options, backend, state, sightings);
     const std::string verdict = verdict_of(failure, rows, /*with_checkpoint=*/true);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
@@ -837,7 +856,7 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
 
 UnitTestResult check_menu_save(const MenuSaveCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    Pokemon::StoryGame game = plza_story_game(StoryRows{}, sightings);
+    Pokemon::StoryGame game = plza_story_game(MarkedCheckpoints{}, sightings);
     Pokemon::FakeStoryBackend backend({.looks = {}}, scope);
     StoryCheckpoint row;
     row.id = "T";

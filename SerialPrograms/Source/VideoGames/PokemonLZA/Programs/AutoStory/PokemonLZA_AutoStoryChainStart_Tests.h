@@ -14,7 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  run_plza_segments()'s start check between two chained rows.
+//  run_plza_checkpoints()'s start check between two chained rows.
 void add_tests_AutoStoryChainStart(UnitTestDatabase& database);
 
 

@@ -12,6 +12,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
 #include "PokemonLZA_AutoStoryGame.h"
 
 namespace PokemonAutomation{
@@ -19,15 +20,15 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The console's tools: its actions, the minimap arrow, lock-on and
+//  The console's hooks: its actions, the minimap arrow, lock-on and
 //  battle code. `env` and `sightings` must outlive them.
 //  `starter_turn`: the stick heading from 01.03's start to the starter picked.
-PlzaStoryTools plza_console_tools(StoryEnv& env, AutosaveSightings& sightings, double starter_turn);
+PlzaConsoleHooks plza_console_hooks(StoryEnv& env, AutosaveSightings& sightings, double starter_turn);
 
 //  plza_story_game() with the console's reload of the latest save, which
 //  says the game is at the failed checkpoint's start. `env` and
 //  `sightings` must outlive the game.
-Pokemon::StoryGame make_plza_story_game(StoryEnv& env, const StoryRows& rows, AutosaveSightings& sightings);
+Pokemon::StoryGame make_plza_story_game(StoryEnv& env, const MarkedCheckpoints& marked, AutosaveSightings& sightings);
 
 
 

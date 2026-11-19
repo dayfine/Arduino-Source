@@ -42,18 +42,18 @@ struct BackupSave{
     std::function<void()> cancel;
 };
 
-//  A run of `rows[first..last]` that may rewind up to `max_rewinds` times.
+//  A run of `checkpoints[first..last]` that may rewind up to `max_rewinds` times.
 struct RewindPlan{
-    std::span<Pokemon::StoryCheckpoint> rows;
+    std::span<Pokemon::StoryCheckpoint> checkpoints;
     size_t first = 0;
     size_t last = 0;
     //  Its `starts` name the checkpoints a backup card can rewind to.
-    SegmentRunOptions segments = {};
+    CheckpointRunOptions run_options = {};
     size_t max_rewinds = 0;
 };
 
 
-//  The row to play from by `read`. When it matches no start (a catch
+//  The checkpoint to play from by `read`. When it matches no start (a catch
 //  autosaves mid-zone), rewinds to `backup` if `plan.max_rewinds` allows.
 //  None: nothing may run.
 std::optional<size_t> start_or_rewind(
@@ -64,11 +64,11 @@ std::optional<size_t> start_or_rewind(
 //  on from the checkpoint the card names, at or before the failed one.
 //  Stops as "unknown_backup" (never loads an unknown backup), or, before
 //  the first backup exists, "no_backup_yet" unless the autosave was in the
-//  last step (then the next row runs from it). A failure with no autosave
+//  last step (then the next checkpoint runs from it). A failure with no autosave
 //  stops the run.
 std::optional<Pokemon::CheckpointFailure> run_plza_with_rewinds(
     Pokemon::StoryGame& game,
-    const RewindPlan& plan, const BackupSave& backup,
+    RewindPlan& plan, const BackupSave& backup,
     PlzaBackend& backend, AutosaveSightings& sightings, Pokemon::RunState& state
 );
 

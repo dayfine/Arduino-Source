@@ -25,6 +25,52 @@ namespace{
 //  How long each slice of the held last leg is, between looks for its end.
 constexpr Milliseconds HOLD_SLICE = 250ms;
 
+//  How long the last leg has been held. The leg is a time budget for its
+//  end, not a distance: overshoot is harmless, and falls and fades take
+//  game time. A run slice takes less time on a console than its length (the
+//  backend runs it faster), so the leg is held until its time has passed on
+//  the looks' clock too. A clock that stops (a script's repeated last look)
+//  leaves the slices' lengths to end it.
+class LastLegHold{
+public:
+    explicit LastLegHold(Milliseconds hold)
+        : m_hold(hold)
+    {}
+
+    bool holding() const{
+        return m_sliced < m_hold || (m_clock_runs && m_elapsed < m_hold);
+    }
+    //  The slices' lengths: the logs' and end_after's time.
+    Milliseconds sliced() const{
+        return m_sliced;
+    }
+    //  By the looks' clock, from the first slice; at least the budget once done.
+    Milliseconds elapsed() const{
+        return std::max(m_elapsed, m_hold);
+    }
+
+    void held_slice(Milliseconds slice, WallClock look_at){
+        m_sliced += slice;
+        if (!m_first_look){
+            m_first_look = look_at;
+            m_first_slice = slice;
+        }else{
+            m_clock_runs = look_at > m_last_look;
+        }
+        m_last_look = look_at;
+        m_elapsed = m_first_slice + std::chrono::duration_cast<Milliseconds>(look_at - *m_first_look);
+    }
+
+private:
+    Milliseconds m_hold;
+    Milliseconds m_sliced = 0ms;
+    Milliseconds m_elapsed = 0ms;
+    Milliseconds m_first_slice = 0ms;
+    std::optional<WallClock> m_first_look = std::nullopt;
+    WallClock m_last_look = WallClock::min();
+    bool m_clock_runs = false;
+};
+
 constexpr Milliseconds FREE_CONTROL_WAIT = 30000ms;
 constexpr Milliseconds FREE_CONTROL_LOOK = 250ms;
 //  Nothing busy this long, with no sign of control, is control where no
@@ -305,13 +351,15 @@ std::optional<Pokemon::StoryFailure> walk_until(
         return end_after_turn(backend, walk, *end);
     }
     size_t scene_looks = 0;
+    LastLegHold leg(hold);
     //  The slices stop the stick only as long as a look takes.
-    for (Milliseconds held = 0ms; held < hold;){
+    while (leg.holding()){
         backend.scope().throw_if_cancelled();
-        const Milliseconds slice = std::min(HOLD_SLICE, hold - held);
+        const Milliseconds slice = leg.sliced() < hold ? std::min(HOLD_SLICE, hold - leg.sliced()) : HOLD_SLICE;
         hold_last_leg(backend, move, slice);
-        held += slice;
         const ScreenObservation look = backend.observe();
+        leg.held_slice(slice, look.when);
+        const Milliseconds held = leg.sliced();
         if (!end){
             const std::string_view busy = not_free_control(look);
             scene_looks = busy.empty() ? 0 : scene_looks + 1;
@@ -329,9 +377,9 @@ std::optional<Pokemon::StoryFailure> walk_until(
         }
     }
     if (!end){
-        return Pokemon::StoryFailure{.code = "walk_no_scene", .detail = std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, hold.count())};
+        return Pokemon::StoryFailure{.code = "walk_no_scene", .detail = std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, leg.elapsed().count())};
     }
-    return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event within {} ms of the last leg", walk, hold.count())};
+    return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event within {} ms of the last leg", walk, leg.elapsed().count())};
 }
 
 std::optional<Pokemon::StoryFailure> talk_at_prompt(PlzaBackend& backend){

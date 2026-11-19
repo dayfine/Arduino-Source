@@ -40,7 +40,7 @@ public:
     //  one's first looks, so a badge within 5 s of one seen before the start,
     //  or first shown in the checkpoint's first 1.5 s, is not counted.
     void note(PlzaBackend& backend, const ScreenObservation& look);
-    //  A menu save (MENU_SAVE_ACTION) counts as an autosave seen in the step.
+    //  A menu save (PlzaAction::SAVE_FROM_MENU) counts as an autosave seen in the step.
     void saved(PlzaBackend& backend);
     //  The step under way, which note() and saved() name.
     void enter(std::string_view step){
@@ -68,14 +68,10 @@ private:
     bool m_earlier_badge_logged = false;
 };
 
-//  Saves from the menu where a checkpoint would otherwise end on an
-//  autosave the plan does not place (a catch's).
-inline constexpr std::string_view MENU_SAVE_ACTION = "save_from_menu";
-
-//  `autosave_step` must be `row`'s last step, and an "autosave" row must
+//  `autosave_step` must be `checkpoint`'s last step, and an "autosave" checkpoint must
 //  name it. Checked at plan load, not on the console.
 std::optional<std::string> autosave_step_error(
-    const Pokemon::StoryCheckpoint& row, bool autosave_row, std::optional<std::string_view> autosave_step
+    const Pokemon::StoryCheckpoint& checkpoint, bool marked_autosave, std::optional<std::string_view> autosave_step
 );
 
 //  Every step of `checkpoints` notes its looks in `sightings`, which must
@@ -84,9 +80,9 @@ void note_autosaves(std::span<Pokemon::StoryCheckpoint> checkpoints, AutosaveSig
 
 //  The program never saves: a checkpoint ends on a save when `sightings`
 //  saw the autosave in its last step ("[Save] <id>: the game autosaved
-//  (seen)"); else it logs why not, by what `rows` expected. `sightings`
+//  (seen)"); else it logs why not, by what `marked` expected. `sightings`
 //  must outlive it.
-decltype(Pokemon::StoryGame::save) autosave_policy(StoryRows rows, AutosaveSightings& sightings);
+decltype(Pokemon::StoryGame::save) autosave_policy(MarkedCheckpoints marked, AutosaveSightings& sightings);
 
 //  `game`'s reload, which says it is at no start once the checkpoint under
 //  way has autosaved: a retry from that save would start elsewhere. Both

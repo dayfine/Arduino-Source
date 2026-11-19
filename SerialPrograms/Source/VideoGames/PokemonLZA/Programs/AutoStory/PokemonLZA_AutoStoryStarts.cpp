@@ -88,8 +88,8 @@ bool start_matches(const StartSignature& known, const StartSignature& read){
     return shared;
 }
 
-bool row_matches(const StoryCheckpoint& row, std::span<const CheckpointStart> starts, const StartSignature& read){
-    const CheckpointStart* start = find_start(starts, row.id);
+bool checkpoint_matches(const StoryCheckpoint& checkpoint, std::span<const CheckpointStart> starts, const StartSignature& read){
+    const CheckpointStart* start = find_start(starts, checkpoint.id);
     return start != nullptr && start_matches(start->signature, read);
 }
 
@@ -97,18 +97,18 @@ bool row_matches(const StoryCheckpoint& row, std::span<const CheckpointStart> st
 
 
 std::optional<size_t> checkpoint_at(
-    std::span<const StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
+    std::span<const StoryCheckpoint> checkpoints, std::span<const CheckpointStart> starts,
     size_t asked, const StartSignature& read
 ){
-    if (asked >= rows.size()){
+    if (asked >= checkpoints.size()){
         return std::nullopt;
     }
-    if (row_matches(rows[asked], starts, read)){
+    if (checkpoint_matches(checkpoints[asked], starts, read)){
         return asked;
     }
     std::optional<size_t> found;
     for (size_t index = 0; index < asked; index++){
-        if (!row_matches(rows[index], starts, read)){
+        if (!checkpoint_matches(checkpoints[index], starts, read)){
             continue;
         }
         if (found){

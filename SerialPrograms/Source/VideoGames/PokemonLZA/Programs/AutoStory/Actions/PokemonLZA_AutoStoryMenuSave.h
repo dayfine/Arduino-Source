@@ -18,7 +18,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  MENU_SAVE_ACTION: X, R on the main menu (the save is no menu entry),
+//  PlzaAction::SAVE_FROM_MENU: X, R on the main menu (the save is no menu entry),
 //  confirm, then B back to the overworld; each screen is pressed only once
 //  it shows on two looks in a row. The first X of a save file opens the
 //  menu under a tutorial card, which gets A. Fails as "menu_save_timeout"

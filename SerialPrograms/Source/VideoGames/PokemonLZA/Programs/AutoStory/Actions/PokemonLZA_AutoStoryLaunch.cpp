@@ -31,10 +31,7 @@ bool highlighted_tile_is_plza(ConsoleHandle& console, ProControllerContext& cont
 } // namespace
 
 
-std::optional<size_t> find_plza_tile(
-    const std::function<bool()>& highlighted_is_plza,
-    const std::function<void()>& move_right
-){
+std::optional<size_t> find_plza_tile(MoveOnlyFunction<bool()> highlighted_is_plza, MoveOnlyFunction<void()> move_right){
     for (size_t tile = 0; tile < HOME_TILES_SEARCHED; tile++){
         if (tile > 0){
             move_right();

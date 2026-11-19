@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Story backend
+/*  PokemonLZA AutoStory - Heading
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -7,7 +7,7 @@
 #include <cmath>
 #include <cstdlib>
 #include <format>
-#include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryHeading.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
