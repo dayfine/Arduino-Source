@@ -58,7 +58,10 @@ std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const Image
     );
     ObjectiveMarker marker;
     marker.x = (best->min_x + best->max_x) / 2.0 / screen.width();
-    marker.distance = OCR::read_number_waterfill(logger, extract_box_reference(screen, digits), /*rgb32_min=*/0xffd0d0d0, /*rgb32_max=*/0xffffffff);
+    const int distance = OCR::read_number_waterfill(logger, extract_box_reference(screen, digits), /*rgb32_min=*/0xffd0d0d0, /*rgb32_max=*/0xffffffff);
+    if (distance > 0){
+        marker.distance = distance;
+    }
     return marker;
 }
 

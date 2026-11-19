@@ -20,8 +20,8 @@ namespace PokemonLZA{
 struct ObjectiveMarker{
     //  The hexagon's middle, 0 (left edge) to 1 (right edge).
     double x = 0;
-    //  The digits read; -1 when they did not read.
-    int distance = -1;
+    //  The digits above it; none when they did not read as a positive number.
+    std::optional<int> distance = std::nullopt;
 };
 
 //  The marker on `screen`, if it shows (the minimap's own marker aside).

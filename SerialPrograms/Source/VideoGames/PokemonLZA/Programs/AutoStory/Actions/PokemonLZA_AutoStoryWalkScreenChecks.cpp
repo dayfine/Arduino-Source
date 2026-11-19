@@ -91,8 +91,8 @@ bool prompt_taken(const ScreenObservation& look){
     return fade_shows(look) || look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
 }
 
-//  Empty when free.
-std::string_view not_free_control(const ScreenObservation& look){
+//  What keeps control from being free; none when it is.
+std::optional<std::string_view> not_free_control(const ScreenObservation& look){
     if (look.readings.contains(ADVANCE_ARROW_READING)){
         return "text waiting for A";
     }
@@ -102,7 +102,7 @@ std::string_view not_free_control(const ScreenObservation& look){
     if (fade_shows(look)){
         return "a fade";
     }
-    return "";
+    return std::nullopt;
 }
 
 //  The party bar, the station platform after the opening, or the
@@ -296,22 +296,22 @@ std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::s
     std::optional<Milliseconds> prompt_since;
     for (Milliseconds waited = 0ms; waited <= FREE_CONTROL_WAIT; waited += FREE_CONTROL_LOOK){
         const ScreenObservation look = backend.observe();
-        const std::string_view busy = not_free_control(look);
-        if (!busy.empty()){
-            last_busy = busy;
+        const std::optional<std::string_view> busy = not_free_control(look);
+        if (busy){
+            last_busy = *busy;
             quiet_since.reset();
         }else if (!quiet_since){
             quiet_since = waited;
         }
         const bool control_sign = control_shows(look) || start == WalkStart::AFTER_QUIET_CONTROL;
-        control_looks = busy.empty() && control_sign ? control_looks + 1 : 0;
+        control_looks = !busy && control_sign ? control_looks + 1 : 0;
         if (control_looks >= 2 && !control_shows(look)){
             backend.log(std::format("[PLZA] {}: nothing busy, and the step before ended in control: control.", walk));
         }
         if (control_looks >= 2){
             return std::nullopt;
         }
-        if (busy.empty() && look.events.has(ScreenEvent::INTERACT_PROMPT)){
+        if (!busy && look.events.has(ScreenEvent::INTERACT_PROMPT)){
             if (!prompt_since){
                 prompt_since = waited;
             }
@@ -365,11 +365,11 @@ std::optional<Pokemon::StoryFailure> walk_until(
         leg.held_slice(slice, look.when);
         const Milliseconds held = leg.sliced();
         if (!end){
-            const std::string_view busy = not_free_control(look);
-            scene_looks = busy.empty() ? 0 : scene_looks + 1;
-            if (scene_looks >= 2){
+            const std::optional<std::string_view> busy = not_free_control(look);
+            scene_looks = busy ? scene_looks + 1 : 0;
+            if (busy && scene_looks >= 2){
                 backend.log(std::format(
-                    "[PLZA] {}: a scene ({}) took control after {} ms of the last leg: the walk stops.", walk, busy, held.count()
+                    "[PLZA] {}: a scene ({}) took control after {} ms of the last leg: the walk stops.", walk, *busy, held.count()
                 ));
                 return std::nullopt;
             }
