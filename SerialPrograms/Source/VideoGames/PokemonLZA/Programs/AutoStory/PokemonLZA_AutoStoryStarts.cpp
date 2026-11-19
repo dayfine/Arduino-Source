@@ -98,6 +98,18 @@ bool row_matches(const StoryCheckpoint& row, std::span<const CheckpointStart> st
     return start != nullptr && start_matches(start->signature, read);
 }
 
+//  Whether `starts` names row `row`'s start with a place in it
+//  (checkpoint_at()) and `read` matches it.
+bool place_matches(const StoryCheckpoint& row, std::span<const CheckpointStart> starts, const StartSignature& read){
+    const CheckpointStart* start = find_start(starts, row.id);
+    if (start == nullptr){
+        return false;
+    }
+    const StartSignature& known = start->signature;
+    const bool place = known.registered || known.wild_zone || known.minimap;
+    return place && start_matches(known, read);
+}
+
 } // namespace
 
 
@@ -113,7 +125,7 @@ std::optional<size_t> checkpoint_at(
     }
     std::optional<size_t> found;
     for (size_t index = 0; index < asked; index++){
-        if (!row_matches(rows[index], starts, read)){
+        if (!place_matches(rows[index], starts, read)){
             continue;
         }
         if (found){
@@ -141,6 +153,18 @@ bool start_confirmed(const StartSignature& known, const StartSignature& read){
     return agrees(known.talk_prompt, read.talk_prompt) && agrees(known.wild_zone, read.wild_zone)
         && agrees(known.party, read.party) && agrees(known.minimap, read.minimap)
         && (known.talk_prompt || known.wild_zone || known.party || known.minimap);
+}
+
+bool start_reads_map(
+    std::span<const StoryCheckpoint> rows, std::span<const CheckpointStart> starts, size_t asked
+){
+    for (size_t index = 0; index <= asked && index < rows.size(); index++){
+        const CheckpointStart* start = find_start(starts, rows[index].id);
+        if (start != nullptr && (start->signature.wild_zone || start->signature.minimap)){
+            return true;
+        }
+    }
+    return false;
 }
 
 std::optional<bool> wild_zone_from_map(const std::optional<MapPoint>& pin){

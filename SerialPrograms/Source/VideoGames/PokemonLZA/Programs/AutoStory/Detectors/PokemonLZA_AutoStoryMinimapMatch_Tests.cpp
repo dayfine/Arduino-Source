@@ -38,18 +38,20 @@ constexpr double BOX_Y = 55;
 constexpr double BOX_SIZE = 132;
 constexpr size_t CELLS = 16;
 
-constexpr std::string_view START_REFERENCE = "plza-minimap-03.04-start";
+constexpr std::string_view START_REFERENCE = "03.04-start";
 
-//  The 03.04 start reference's cells, row by row.
-ReferenceCells start_reference(){
+//  The cells of the minimap reference `name` (ReferenceData/
+//  plza-minimap-<name>.json), row by row.
+ReferenceCells reference_cells(std::string_view name){
+    const std::string wanted = std::format("plza-minimap-{}", name);
     for (const auto& [file, text] : autostory_reference_json()){
-        if (file == START_REFERENCE){
+        if (file == wanted){
             const JsonValue json = parse_json(text);
             const JsonObject& grid = json.to_object_throw(file).get_object_throw("grid", file);
             return read_cell_grid(grid, CELLS, CELLS, file);
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No reference {}.", START_REFERENCE));
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No reference {}.", wanted));
 }
 
 //  A black 1280x720 screen with `cells` painted into the minimap's square,
@@ -77,6 +79,8 @@ ImageRGB32 painted_screen(const ReferenceCells& cells, double brightness, int sh
 struct MatchCase{
     std::string name;
     struct Input{
+        //  The reference painted onto the screen.
+        std::string reference = std::string(START_REFERENCE);
         double brightness = 1.0;
         int shift_cols = 0;
         int shift_rows = 0;
@@ -129,10 +133,35 @@ const std::vector<MatchCase> MATCH_CASES{
         .input = {.brightness = 0.8, .shift_cols = -2},
         .expectation = {.match = std::nullopt},
     },
+    //  The other checkpoint starts' minimaps (Spanish, console B,
+    //  2026-11-18), each at least 49 from every other: each is its own
+    //  place, not 03.04's Station Front.
+    {
+        .name = "03.03's courtyard 20% darker: 03.03's start",
+        .input = {.reference = "03.03-start", .brightness = 0.8},
+        .expectation = {.match = "03.03-start"},
+    },
+    {
+        .name = "03.05's street outside the Center 20% darker: 03.05's start",
+        .input = {.reference = "03.05-start", .brightness = 0.8},
+        .expectation = {.match = "03.05-start"},
+    },
+    {
+        .name = "03.07's street before the zone gate 20% darker: 03.07's start",
+        .input = {.reference = "03.07-start", .brightness = 0.8},
+        .expectation = {.match = "03.07-start"},
+    },
+    {
+        .name = "03.05's street moved one cell east: no match",
+        .input = {.reference = "03.05-start", .shift_cols = 1},
+        .expectation = {.match = std::nullopt},
+    },
 };
 
 UnitTestResult check_match(const MatchCase& test){
-    const ImageRGB32 screen = painted_screen(start_reference(), test.input.brightness, test.input.shift_cols, test.input.shift_rows);
+    const ImageRGB32 screen = painted_screen(
+        reference_cells(test.input.reference), test.input.brightness, test.input.shift_cols, test.input.shift_rows
+    );
     const std::optional<std::string> match = matching_minimap(screen);
     if (match != test.expectation.match){
         return std::format(
@@ -168,7 +197,7 @@ const std::vector<RecordCase> RECORD_CASES{
 };
 
 UnitTestResult check_record(const RecordCase& test){
-    const ImageRGB32 screen = painted_screen(start_reference(), test.input.brightness, /*shift_cols=*/0, /*shift_rows=*/0);
+    const ImageRGB32 screen = painted_screen(reference_cells(START_REFERENCE), test.input.brightness, /*shift_cols=*/0, /*shift_rows=*/0);
     const JsonValue json(minimap_reference_json(screen, "test"));
     const JsonObject& grid = json.to_object_throw("recorded").get_object_throw("grid", "recorded");
     const ReferenceCells recorded = read_cell_grid(grid, CELLS, CELLS, "recorded");

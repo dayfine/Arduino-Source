@@ -41,10 +41,11 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played step by step from a new game; starts at the MAIN MISSION 01 autosave"
+      "source": "played step by step from a new game; starts at the MAIN MISSION 01 autosave. Start signature: no A prompt; the party is empty, so no party bar (console B run logs 2026-11-16 to 18, the last look of 01.01's arrival_scenes: the controls hint, no A prompt, 11 runs)."
     }
   },
   "execution": {
-    "save": "unverified"
+    "save": "unverified",
+    "start_signature": {"talk_prompt": false}
   }
 }

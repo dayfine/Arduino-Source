@@ -73,11 +73,15 @@ const CheckpointStart* find_start(std::span<const CheckpointStart> starts, std::
 
 //  The index of the checkpoint the player is at, by the reading `read`:
 //  `asked` (an index of `rows`) when its start matches, else the one
-//  checkpoint before it whose start matches. A start matches when it and
+//  checkpoint before it whose start names a place (registered, wild_zone
+//  or minimap) and matches. A start matches when it and
 //  `read` share a field and agree on every field they share, and `read`
 //  has the start's minimap when it names one. None when no
 //  checkpoint up to `asked`, or more than one before it, matches: the
-//  position is unknown, and no checkpoint may run from there.
+//  position is unknown, and no checkpoint may run from there. A start of
+//  only a party and a prompt (02.02's, one in the party) is no place: it
+//  reads the same at a dozen starts, and would make the Center counter's
+//  reading (03.06's start) match more than one.
 std::optional<size_t> checkpoint_at(
     std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
     size_t asked, const StartSignature& read
@@ -103,6 +107,15 @@ std::optional<size_t> run_start(
 //  the zone not read (console B, 2026-11-18 13:37). Starts may share a
 //  signature for this check; only a reload's match needs one checkpoint.
 bool start_confirmed(const StartSignature& known, const StartSignature& read);
+
+//  Whether a run asked to start at `asked` (an index of `rows`) reads the
+//  player's pin on the full map for its start (PLUS opens it, B closes
+//  it): when a start up to `asked` names wild_zone or a minimap. Those
+//  starts are past 03.02b's Map & Missions card; before it the map does
+//  not open, and a run there reads the screen only.
+bool start_reads_map(
+    std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts, size_t asked
+);
 
 //  The signature's wild_zone by the player's pin on the full map
 //  (read_map_pin()): whether it is in Wild Zone 1 (pin_in_zone_1()).

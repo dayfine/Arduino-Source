@@ -46,11 +46,12 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Starts outside Wild Zone 1's gate, where 03.06's autosave in wild_zones_tutorial reloads (console B, 2026-11-16: 03.07 reloaded there and threw outside the zone when it began at catch_fletchling). Autosave: the game's autosave at after_catches, its last step, was seen in four run logs (console B, 2026-11-13); the menu save of plza/autostory is dropped."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Starts outside Wild Zone 1's gate, where 03.06's autosave in wild_zones_tutorial reloads (console B, 2026-11-16: 03.07 reloaded there and threw outside the zone when it began at catch_fletchling). Autosave: the game's autosave at after_catches, its last step, was seen in four run logs (console B, 2026-11-13); the menu save of plza/autostory is dropped. Start signature: the minimap before Wild Zone 1's gate (ReferenceData/plza-minimap-03.07-start.json, recorded by Record Start Minimaps on the chained start, Spanish, console B 2026-11-18 18:08); at least 58 from every other start minimap."
     }
   },
   "execution": {
     "save": "autosave",
-    "autosave_step": "after_catches"
+    "autosave_step": "after_catches",
+    "start_signature": {"minimap": "03.07-start"}
   }
 }

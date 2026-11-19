@@ -86,8 +86,10 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.02 at the autosave outside Hotel Z (console B, 2026-11-16), so a checkpoint starts where that save reloads. Starts outside Hotel Z after the Main Menu card; nothing reads that spot yet, so its start is unchecked. No save: the game does not autosave at its end (2026-11-15 save review)."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.02 at the autosave outside Hotel Z (console B, 2026-11-16), so a checkpoint starts where that save reloads. Starts outside Hotel Z after the Main Menu card; nothing reads that spot yet, so its start is unchecked. No save: the game does not autosave at its end (2026-11-15 save review). Start signature: one in the party (console B run logs 2026-11-16 to 18, the last look of 03.02: the party bar, 7 runs)."
     }
   },
-  "execution": {}
+  "execution": {
+    "start_signature": {"party": 1}
+  }
 }
