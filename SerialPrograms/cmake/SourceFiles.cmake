@@ -1512,17 +1512,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.cpp
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.h
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
@@ -1538,6 +1531,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
+    Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
