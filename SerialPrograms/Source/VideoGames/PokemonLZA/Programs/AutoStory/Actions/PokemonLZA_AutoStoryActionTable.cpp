@@ -171,8 +171,7 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
     if (walk.move.wait_first > 0ms){
         backend.wait(walk.move.wait_first);
     }
-    const WalkStart start = hooks.quiet_control_step ? WalkStart::AFTER_QUIET_CONTROL : WalkStart::UNKNOWN;
-    if (std::optional<StoryFailure> busy = check_can_walk(backend, name, start)){
+    if (std::optional<StoryFailure> busy = check_can_walk(backend, name)){
         return busy;
     }
     if (walk.heading){
@@ -196,8 +195,8 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
 
 //  01.01's arrival takes ~240 s, hence 360 s. No blind A: one at the end of
 //  a talk restarts it.
-Pokemon::StoryActionParser move_hints_action(PlzaConsoleHooks& hooks){
-    return [&hooks](const JsonObject& args) -> StoryStepRun{
+Pokemon::StoryActionParser move_hints_action(){
+    return [](const JsonObject& args) -> StoryStepRun{
         reject_unknown_keys(args, {
             "min_length_ms", "quiet_ms", "press_a_first", "quiet_is_control", "end_after_black_fades",
             "gap_press_ms", "advance_with_a",
@@ -215,15 +214,11 @@ Pokemon::StoryActionParser move_hints_action(PlzaConsoleHooks& hooks){
         if (const JsonValue* fades = args.get_value("end_after_black_fades")){
             config.end_after_black_fades = (size_t)fades->to_integer_throw();
         }
-        return [&hooks, press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
+        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
             if (press_a_first){
                 press_through_prompt(backend);
             }
-            std::optional<StoryFailure> failure = run_scene_machine(backend, "mash_to_move_hints", config, /*timeout=*/360s, state.step);
-            if (!failure && config.quiet_is_control){
-                hooks.quiet_control_step = state.step;
-            }
-            return failure;
+            return run_scene_machine(backend, "mash_to_move_hints", config, 360s, state.step);
         };
     };
 }
@@ -376,7 +371,7 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
         {action_name(PlzaAction::SCENE), no_args(scene_step)},
         {action_name(PlzaAction::MASH), no_args(mash_scene_step)},
-        {action_name(PlzaAction::MASH_TO_MOVE_HINTS), move_hints_action(hooks)},
+        {action_name(PlzaAction::MASH_TO_MOVE_HINTS), move_hints_action()},
         {action_name(PlzaAction::TEXT_TO_CHOICE), text_to_choice_action()},
         {action_name(PlzaAction::STORY_BATTLE_START), no_args([&hooks](PlzaBackend& backend, RunState& state){
             return story_battle_start_step(hooks, backend, state);
@@ -410,20 +405,6 @@ void add_console_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     }
 }
 
-//  Clears hooks.quiet_control_step after every step but the one that set
-//  it, so only the step right after sees it.
-StoryActionParser forgetting_quiet_control(PlzaConsoleHooks& hooks, StoryActionParser parser){
-    return [&hooks, parser = std::move(parser)](const JsonObject& args) mutable -> StoryStepRun{
-        return [&hooks, run = parser(args)](PlzaBackend& backend, RunState& state) mutable -> std::optional<StoryFailure>{
-            std::optional<StoryFailure> failure = run(backend, state);
-            if (hooks.quiet_control_step != state.step){
-                hooks.quiet_control_step.reset();
-            }
-            return failure;
-        };
-    };
-}
-
 } // namespace
 
 
@@ -431,9 +412,6 @@ StoryActions plza_story_actions(PlzaConsoleHooks& hooks){
     StoryActions actions;
     add_backend_actions(actions, hooks);
     add_console_actions(actions, hooks);
-    for (auto& [name, parser] : actions){
-        parser = forgetting_quiet_control(hooks, std::move(parser));
-    }
     return actions;
 }
 
