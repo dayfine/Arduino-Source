@@ -95,6 +95,11 @@ LegWalk walk_leg(StoryEnv& env, PlzaBackend& backend, const MapWaypoint& waypoin
         backend.scope().throw_if_cancelled();
         const MapLegMove move = leg.next(pin);
         if (move.step == MapLegStep::READ_AGAIN){
+            //  A short step on first: the map's cursor snaps onto a badge
+            //  next to the player, its ring over the player's arrow (the
+            //  zone's "1" at the 60 spot, console B, 2026-11-18).
+            backend.log("[PLZA] map pin not read: a short step, then the map again");
+            backend.stick(/*degrees=*/0, /*hold=*/300ms, /*release=*/300ms, Pokemon::StoryPace::WALK);
             pin = read_pin_on_map(env, backend);
             continue;
         }
