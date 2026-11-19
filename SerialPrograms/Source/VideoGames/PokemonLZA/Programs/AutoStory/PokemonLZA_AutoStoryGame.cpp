@@ -210,6 +210,14 @@ WalkArgs read_walk_args(const JsonObject& args){
     return walk;
 }
 
+//  With "turn_to_starter", the first leg turns to tools.starter_turn.
+WalkArgs aimed_at_starter(const PlzaStoryTools& tools, WalkArgs walk){
+    if (walk.turn_to_starter){
+        walk.move.legs.front().turn = tools.starter_turn;
+    }
+    return walk;
+}
+
 //  Starts only with free control. "heading" needs the arrow, else CONSOLE_ONLY.
 std::optional<StoryFailure> walk_step(const PlzaStoryTools& tools, const WalkArgs& walk, PlzaBackend& backend, std::string_view name){
     if (walk.move.wait_first > 0ms){
@@ -410,12 +418,7 @@ StoryActions plza_story_actions(const PlzaStoryTools& tools){
         {"opening_to_platform", platform_action(PlatformWait::AFTER_AUTOSAVE, 240000ms)},
         {"walk", [&tools](const JsonObject& args) -> StoryStepRun{
             return [&tools, walk = read_walk_args(args)](PlzaBackend& backend, RunState&){
-                if (!walk.turn_to_starter){
-                    return walk_step(tools, walk, backend, "walk");
-                }
-                WalkArgs aimed = walk;
-                aimed.move.legs.front().turn = tools.starter_turn;
-                return walk_step(tools, aimed, backend, "walk");
+                return walk_step(tools, aimed_at_starter(tools, walk), backend, "walk");
             };
         }},
         {"mash_to_move_hints", move_hints_action()},

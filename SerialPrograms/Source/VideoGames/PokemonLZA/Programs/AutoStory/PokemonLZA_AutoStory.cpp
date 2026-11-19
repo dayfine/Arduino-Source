@@ -413,8 +413,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const PlzaStoryTools tools = plza_console_tools(story, sightings, starter_turn(STARTER));
     StoryData story_data = load_plza_story(tools);
     note_autosaves(story_data.checkpoints, sightings);
-    walk_before(story_data.checkpoints, RUN_FROM, story);
     std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
+    walk_before(rows, RUN_FROM, story);
     const size_t first = RANGE.start_index();
     const size_t last = RANGE.end_index();
     check_checkpoint_range(env.console, first, last, rows.size());
@@ -424,7 +424,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     PlzaConsoleBackend backend(story);
     StoryGame game = make_plza_story_game(story, story_data, sightings);
     RunState state;
-
     const SegmentRunOptions segments{
         .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT, .reload_when_chained = story_data.reload_when_chained,
         .starts = builtin_checkpoint_starts(),
