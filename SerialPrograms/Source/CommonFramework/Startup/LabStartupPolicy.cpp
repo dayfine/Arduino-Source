@@ -7,10 +7,13 @@
 namespace PokemonAutomation{
 
 StartupPlan apply_lab_startup_policy(StartupPlan plan, const LabStartupPolicy& policy){
-    if (plan.mode != StartupMode::GUI){
+    if (plan.mode != StartupMode::GUI && plan.mode != StartupMode::HEADLESS){
         return plan;
     }
     if (policy.profiles == LabProfileMode::UNSUPPORTED){
+        if (plan.mode == StartupMode::HEADLESS){
+            return {.error = "--headless is supported only on macOS."};
+        }
         if (plan.profile || policy.bound_profile){
             return {.error = "Settings profiles are supported only on macOS."};
         }

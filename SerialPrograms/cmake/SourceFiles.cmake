@@ -807,6 +807,10 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/ButtonDiagram.h
     Source/CommonFramework/Windows/DpiScaler.cpp
     Source/CommonFramework/Windows/DpiScaler.h
+    Source/CommonFramework/Headless/HeadlessHost.cpp
+    Source/CommonFramework/Headless/HeadlessHost.h
+    Source/CommonFramework/Headless/HeadlessHost_Tests.cpp
+    Source/CommonFramework/Headless/HeadlessHost_Tests.h
     Source/CommonFramework/Windows/LabChannel.cpp
     Source/CommonFramework/Windows/LabChannel.h
     Source/CommonFramework/Windows/LabChannel_Tests.cpp

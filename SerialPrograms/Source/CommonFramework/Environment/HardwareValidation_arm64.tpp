@@ -14,7 +14,8 @@
 namespace PokemonAutomation{
 
 
-bool check_hardware(){
+bool check_hardware(StartupDialogs dialogs){
+    (void)dialogs;
     // TODO: write computer power check for Apple M-series computers
 
     return true;

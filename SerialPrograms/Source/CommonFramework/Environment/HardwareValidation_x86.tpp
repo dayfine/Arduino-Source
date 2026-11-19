@@ -11,36 +11,47 @@
 #include "HardwareValidation.h"
 
 namespace PokemonAutomation{
+namespace{
+
+void show_hardware_warning(const QString& message, StartupDialogs dialogs){
+    if (dialogs == StartupDialogs::LOG_ONLY){
+        return;
+    }
+    QMessageBox box;
+    box.warning(nullptr, "Warning", message);
+}
+
+} // namespace
 
 
-bool check_hardware(){
+bool check_hardware(StartupDialogs dialogs){
     if (!CPU_CAPABILITY_NATIVE.OK_08_Nehalem){
-        QMessageBox box;
-        box.critical(
-            nullptr,
-            "Error",
-            "This computer is too old to run this program.<br><br>"
-            "Please try a much newer computer.<br><br>"
-            "(Reason: SSE4.2 is required to run this program.)"
-        );
+        if (dialogs == StartupDialogs::SHOW){
+            QMessageBox box;
+            box.critical(
+                nullptr,
+                "Error",
+                "This computer is too old to run this program.<br><br>"
+                "Please try a much newer computer.<br><br>"
+                "(Reason: SSE4.2 is required to run this program.)"
+            );
+        }
         return false;
     }
 
     if (!CPU_CAPABILITY_NATIVE.OK_13_Haswell){
-        QMessageBox box;
         QString str;
         str += "This computer may not be powerful enough to run this program.<br><br>";
         str += "You can continue, but the program may not work correctly.<br>";
         str += "(i.e. Increased error rate. Fail to reliably detect shinies, etc...)<br><br>";
         str += "(Reason: Computers that lack AVX2 are likely to be too old and too slow to handle this program.)<br><br>";
         str += "Recommendation: Use a more powerful computer.";
-        box.warning(nullptr, "Warning", str);
+        show_hardware_warning(str, dialogs);
     }
 
     ProcessorSpecs specs = get_processor_specs();
 
     if (specs.threads < 4){
-        QMessageBox box;
         QString str;
         str += "This computer may not be powerful enough to run this program.<br><br>";
         str += "You can continue, but the program may not work correctly.<br>";
@@ -49,11 +60,10 @@ bool check_hardware(){
         str += QString::number(specs.threads);
         str += " vcores is a weak CPU.)<br><br>";
         str += "Recommendation: Use a more powerful computer.";
-        box.warning(nullptr, "Warning", str);
+        show_hardware_warning(str, dialogs);
     }
 
     if (specs.base_frequency < 2'000'000'000){
-        QMessageBox box;
         QString str;
         str += "This computer may not be powerful enough to run this program.<br><br>";
         str += "You can continue, but the program may not work correctly.<br>";
@@ -62,7 +72,7 @@ bool check_hardware(){
         str += QString::fromStdString(tostr_fixed(specs.base_frequency / 1000000000., 3));
         str += " GHz which is very slow.)<br><br>";
         str += "Recommendation: Use a more powerful computer.";
-        box.warning(nullptr, "Warning", str);
+        show_hardware_warning(str, dialogs);
     }
 
 #if (defined _WIN32) || (defined __linux)
@@ -71,7 +81,6 @@ bool check_hardware(){
         : 0;
     double efreq = (specs.cores + 0.2 * vcores) * specs.base_frequency;
     if (efreq < 8'000'000'000){
-        QMessageBox box;
         QString str;
         str += "This computer may not be powerful enough to run this program.<br><br>";
         str += "You can continue, but the program may not work correctly.<br>";
@@ -87,7 +96,7 @@ bool check_hardware(){
         str += QString::fromStdString(tostr_fixed(efreq / 1000000000., 3));
         str += " GHz<br><br>";
         str += "Recommendation: Use a more powerful computer.";
-        box.warning(nullptr, "Warning", str);
+        show_hardware_warning(str, dialogs);
     }
 #endif
 
