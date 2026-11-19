@@ -66,11 +66,7 @@ public:
 
 extern StaticGlobals STATIC_GLOBALS;
 
-//  True when running under --headless (no MainWindow/QWidget dialogs or persistent writes).
-bool is_headless_mode();
 
-//  Set headless mode once during startup before creating sessions.
-void set_headless_mode(bool enabled);
 
 }
 #endif

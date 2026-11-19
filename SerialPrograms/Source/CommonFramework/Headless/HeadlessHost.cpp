@@ -6,8 +6,12 @@
 
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <csignal>
+#include <cstdlib>
+#include <expected>
 #include <format>
+#include <functional>
 #include <QCoreApplication>
 #include <QEventLoop>
 #include <QMetaObject>
@@ -24,84 +28,122 @@
 #include "CommonFramework/ProgramSession.h"
 #include "GameConsole/Framework/ConsoleProgramSession.h"
 #include "GameConsole/Framework/ConsoleSystemSession.h"
+#include "GameConsole/Framework/MultiConsoleProgramSession.h"
+#include "GameConsole/Framework/MultiConsoleSystemSession.h"
 #include "PanelCatalog.h"
 #include "HeadlessHost.h"
 
 namespace PokemonAutomation{
 namespace{
 
-#if !defined(_WIN32)
-struct SignalPipeState{
-    int fds[2] = {-1, -1};
-    std::atomic<int> last_signal{0};
-};
+constexpr std::chrono::seconds READINESS_TIMEOUT{10};
+constexpr std::chrono::seconds STOP_TIMEOUT{5};
 
-SignalPipeState& signal_pipe_state(){
-    static SignalPipeState state;
-    return state;
-}
+#if !defined(_WIN32)
+std::atomic<int> g_signal_write_fd{-1}; // code-health: allow — POSIX signal handler write end
+std::atomic<int> g_last_signal{0};      // code-health: allow — POSIX signal handler signal number
 
 void posix_signal_handler(int sig){
-    SignalPipeState& state = signal_pipe_state();
-    state.last_signal.store(sig, std::memory_order_relaxed);
-    if (state.fds[1] >= 0){
+    g_last_signal.store(sig, std::memory_order_relaxed);
+    const int fd = g_signal_write_fd.load(std::memory_order_relaxed);
+    if (fd >= 0){
         const char byte = static_cast<char>(sig);
-        const ssize_t ignored = ::write(state.fds[1], &byte, /*nbyte=*/1);
+        const ssize_t ignored = ::write(fd, &byte, /*nbyte=*/1);
         (void)ignored;
     }
 }
 
-void install_signal_pipe(QSocketNotifier*& notifier_out, std::function<void(int)> on_signal){
-    SignalPipeState& state = signal_pipe_state();
-    if (::pipe(state.fds) != 0){
-        return;
-    }
-    for (int fd : state.fds){
-        const int flags = ::fcntl(fd, F_GETFL, /*arg=*/0);
-        if (flags >= 0){
-            ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+class SignalPipe final{
+public:
+    SignalPipe(Logger& logger, std::function<void(int)> on_signal){
+        if (::pipe(m_fds) != 0){
+            logger.log("Failed to create signal pipe; SIGINT/SIGTERM will terminate immediately.", COLOR_ORANGE);
+            return;
         }
-    }
-    std::signal(SIGINT, posix_signal_handler);
-    std::signal(SIGTERM, posix_signal_handler);
-    notifier_out = new QSocketNotifier(state.fds[0], QSocketNotifier::Read);
-    QObject::connect(notifier_out, &QSocketNotifier::activated, notifier_out, [on_signal = std::move(on_signal)]{
-        SignalPipeState& s = signal_pipe_state();
-        std::array<char, 64> buf;
-        while (::read(s.fds[0], buf.data(), buf.size()) > 0){
+        for (int fd : m_fds){
+            const int flags = ::fcntl(fd, F_GETFL, /*arg=*/0);
+            if (flags >= 0){
+                ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+            }
         }
-        on_signal(s.last_signal.load(std::memory_order_relaxed));
-    });
-}
+        g_signal_write_fd.store(m_fds[1], std::memory_order_release);
 
-void cleanup_signal_pipe(QSocketNotifier*& notifier){
-    std::signal(SIGINT, SIG_DFL);
-    std::signal(SIGTERM, SIG_DFL);
-    delete notifier;
-    notifier = nullptr;
-    SignalPipeState& state = signal_pipe_state();
-    for (int& fd : state.fds){
-        if (fd >= 0){
-            ::close(fd);
-            fd = -1;
+        struct sigaction sa{};
+        sa.sa_handler = posix_signal_handler;
+        sigemptyset(&sa.sa_mask);
+        if (::sigaction(SIGINT, &sa, &m_old_int) == 0){
+            m_installed_int = true;
+        }
+        if (::sigaction(SIGTERM, &sa, &m_old_term) == 0){
+            m_installed_term = true;
+        }
+
+        m_notifier = std::make_unique<QSocketNotifier>(m_fds[0], QSocketNotifier::Read);
+        QObject::connect(m_notifier.get(), &QSocketNotifier::activated, m_notifier.get(), [this, on_signal = std::move(on_signal)]{
+            std::array<char, 64> buf;
+            while (::read(m_fds[0], buf.data(), buf.size()) > 0){
+            }
+            on_signal(g_last_signal.load(std::memory_order_relaxed));
+        });
+    }
+
+    ~SignalPipe(){
+        if (m_installed_int){
+            ::sigaction(SIGINT, &m_old_int, nullptr);
+        }
+        if (m_installed_term){
+            ::sigaction(SIGTERM, &m_old_term, nullptr);
+        }
+        g_signal_write_fd.store(-1, std::memory_order_release);
+        m_notifier.reset();
+        for (int& fd : m_fds){
+            if (fd >= 0){
+                ::close(fd);
+                fd = -1;
+            }
         }
     }
-}
+
+private:
+    int m_fds[2] = {-1, -1};
+    struct sigaction m_old_int{};
+    struct sigaction m_old_term{};
+    bool m_installed_int = false;
+    bool m_installed_term = false;
+    std::unique_ptr<QSocketNotifier> m_notifier;
+};
 #endif
 
+bool system_controllers_ready(GameConsole::ConsoleSystemSession& system){
+    for (size_t i = 0; i < system.controllers(); i++){
+        if (!system.controller(i).ready()){
+            return false;
+        }
+    }
+    return true;
+}
+
 bool controller_ready(ProgramSession& program){
-    auto* console = dynamic_cast<GameConsole::ConsoleProgramSession*>(&program);
-    if (console == nullptr){
+    if (auto* console = dynamic_cast<GameConsole::ConsoleProgramSession*>(&program)){
+        return system_controllers_ready(console->system());
+    }
+    if (auto* multi = dynamic_cast<GameConsole::MultiConsoleProgramSession*>(&program)){
+        GameConsole::MultiConsoleSystemSession& sys = multi->system();
+        for (size_t i = 0; i < sys.active_consoles(); i++){
+            if (!system_controllers_ready(sys[i])){
+                return false;
+            }
+        }
         return true;
     }
-    GameConsole::ConsoleSystemSession& system = console->system();
-    return system.controllers() > 0 && system.controller(0).ready();
+    return true;
 }
 
 class HeadlessProgramObserver final : public ProgramSession::Listener{
 public:
-    HeadlessProgramObserver(QObject& context, std::function<void()> on_stopped)
-        : m_context(context)
+    HeadlessProgramObserver(ProgramSession& program, QObject& context, std::function<void()> on_stopped)
+        : m_program(program)
+        , m_context(context)
         , m_on_stopped(std::move(on_stopped))
     {}
 
@@ -110,29 +152,50 @@ public:
     virtual void state_change(ProgramState state) override{
         if (state == ProgramState::STOPPED){
             QMetaObject::invokeMethod(&m_context, [this]{
-                m_on_stopped();
+                if (m_program.current_state() == ProgramState::STOPPED){
+                    m_on_stopped();
+                }
             }, Qt::QueuedConnection);
         }
     }
 
     virtual void stats_update(const StatsTracker*, const StatsTracker*) override{}
 
-    virtual void error(const std::string& message) override{
-        if (message == "Unable to save stats."){
-            return;
-        }
+    virtual void error(const std::string&) override{
         m_saw_error.store(true, std::memory_order_release);
     }
 
     virtual void download_error(const std::string&) override{}
 
 private:
+    ProgramSession& m_program;
     QObject& m_context;
     std::function<void()> m_on_stopped;
     std::atomic<bool> m_saw_error{false};
 };
 
-int load_headless_panel(
+std::expected<JsonValue, std::string> merge_headless_options(
+    const JsonValue& base_panel_json,
+    const JsonValue& override_json
+){
+    const JsonObject* override_obj = override_json.to_object();
+    if (override_obj == nullptr){
+        return std::unexpected("Options file must contain a JSON object.");
+    }
+    if (override_obj->get_value("ConsoleSetup") != nullptr){
+        return std::unexpected("--options cannot override ConsoleSetup.");
+    }
+    JsonObject merged;
+    if (const JsonObject* base_obj = base_panel_json.to_object()){
+        merged = base_obj->clone();
+    }
+    for (const auto& [key, value] : *override_obj){
+        merged[key] = value.clone();
+    }
+    return JsonValue(std::move(merged));
+}
+
+HeadlessExit load_headless_panel(
     const std::vector<std::unique_ptr<PanelListDescriptor>>& lists,
     const HeadlessRunOptions& options,
     HeadlessHost& host,
@@ -141,42 +204,38 @@ int load_headless_panel(
     std::optional<PanelMatch> match = find_panel(lists, options.program_id);
     if (!match){
         logger.log(std::format("Unknown program identifier: \"{}\".", options.program_id), COLOR_RED);
-        return 4;
+        return HeadlessExit::BAD_REQUEST;
     }
     std::shared_ptr<const PanelDescriptor> descriptor(std::move(match->entry.descriptor));
-    const JsonValue* saved_panel = PERSISTENT_SETTINGS().panels.get_value(descriptor->identifier());
-    JsonValue panel_json = saved_panel != nullptr ? saved_panel->clone() : JsonValue();
-    if (options.options_path){
-        try{
-            const JsonValue override_json = load_json_file(*options.options_path);
-            std::string merge_error;
-            std::optional<JsonValue> merged = merge_headless_options(panel_json, override_json, merge_error);
-            if (!merged){
-                logger.log(merge_error, COLOR_RED);
-                return 4;
-            }
-            panel_json = std::move(*merged);
-        }catch (const Exception& e){
-            logger.log(std::format("Failed to read --options \"{}\": {}", *options.options_path, e.to_str()), COLOR_RED);
-            return 4;
-        }
+
+    JsonValue panel_json;
+    if (options.base_panel_json){
+        panel_json = options.base_panel_json->clone();
+    }else if (const JsonValue* saved = PERSISTENT_SETTINGS().panels.get_value(descriptor->identifier())){
+        panel_json = saved->clone();
     }
-    try{
-        if (!load_panel_session(descriptor, panel_json, host)){
-            logger.log("HeadlessHost declined panel load.", COLOR_RED);
-            return 4;
+    if (options.options_override){
+        std::expected<JsonValue, std::string> merged = merge_headless_options(panel_json, *options.options_override);
+        if (!merged){
+            logger.log(merged.error(), COLOR_RED);
+            return HeadlessExit::BAD_REQUEST;
         }
+        panel_json = std::move(*merged);
+    }
+
+    try{
+        load_panel_session(descriptor, panel_json, host);
     }catch (const UserSetupError& e){
         logger.log(std::format("Device setup error: {}", e.to_str()), COLOR_RED);
-        return 5;
+        return HeadlessExit::DEVICE;
     }catch (const Exception& e){
         logger.log(std::format("Failed to load program: {}", e.to_str()), COLOR_RED);
-        return 4;
+        return HeadlessExit::BAD_REQUEST;
     }
-    return 0;
+    return HeadlessExit::OK;
 }
 
-bool wait_for_controller_ready(ProgramSession& program, std::chrono::milliseconds timeout){
+bool wait_for_controller_ready(ProgramSession& program){
     if (controller_ready(program)){
         return true;
     }
@@ -192,83 +251,61 @@ bool wait_for_controller_ready(ProgramSession& program, std::chrono::millisecond
     QObject::connect(&timeout_timer, &QTimer::timeout, &ready_loop, [&]{
         ready_loop.quit();
     });
-    poll_timer.start(50);
-    timeout_timer.start(static_cast<int>(timeout.count()));
+    poll_timer.start(std::chrono::milliseconds(50));
+    timeout_timer.start(READINESS_TIMEOUT);
     ready_loop.exec();
     return controller_ready(program);
 }
 
-#if !defined(_WIN32)
-void attach_signal_handler(
-    QSocketNotifier*& signal_notifier,
-    std::optional<int>& signal_exit_code,
-    QTimer& stop_timer,
-    QEventLoop& run_loop,
-    ProgramSession& program,
-    std::chrono::milliseconds stop_timeout,
-    Logger& logger
-){
-    install_signal_pipe(signal_notifier, [&](int sig){
-        const int code = sig == SIGTERM ? 143 : 130;
-        if (signal_exit_code){
-            logger.log("Second signal received; exiting immediately.", COLOR_RED);
-            run_loop.exit(code);
-            return;
-        }
-        signal_exit_code = code;
-        logger.log("Signal received; stopping program...", COLOR_ORANGE);
-        program.stop_program();
-        QObject::connect(&stop_timer, &QTimer::timeout, &run_loop, [&run_loop, &logger, code]{
-            logger.log("Stop timeout expired; exiting.", COLOR_RED);
-            run_loop.exit(code);
-        });
-        stop_timer.start(static_cast<int>(stop_timeout.count()));
-    });
-}
-#endif
-
-int run_program_event_loop(
-    ProgramSession& program,
-    std::chrono::milliseconds stop_timeout,
-    Logger& logger
-){
+HeadlessExit run_program_event_loop(ProgramSession& program, bool handle_signals, Logger& logger){
     QEventLoop run_loop;
-    std::optional<int> signal_exit_code;
+    std::optional<HeadlessExit> signal_exit;
     QTimer stop_timer;
     stop_timer.setSingleShot(true);
 
-    HeadlessProgramObserver observer(run_loop, [&]{
+    HeadlessProgramObserver observer(program, run_loop, [&]{
         run_loop.quit();
     });
     program.add_listener(observer);
 
 #if !defined(_WIN32)
-    QSocketNotifier* signal_notifier = nullptr;
-    attach_signal_handler(
-        signal_notifier, signal_exit_code, stop_timer, run_loop, program, stop_timeout, logger
-    );
+    std::unique_ptr<SignalPipe> signal_pipe;
+    if (handle_signals){
+        signal_pipe = std::make_unique<SignalPipe>(logger, [&](int sig){
+            const HeadlessExit code = sig == SIGTERM ? HeadlessExit::SIGNAL_TERM : HeadlessExit::SIGNAL_INT;
+            if (signal_exit){
+                logger.log("Second signal received; exiting immediately.", COLOR_RED);
+                std::_Exit(static_cast<int>(code));
+            }
+            signal_exit = code;
+            logger.log("Signal received; stopping program...", COLOR_ORANGE);
+            program.stop_program();
+            QObject::connect(&stop_timer, &QTimer::timeout, &run_loop, [&logger, code]{
+                logger.log("Stop timeout expired; exiting immediately.", COLOR_RED);
+                std::_Exit(static_cast<int>(code));
+            });
+            stop_timer.start(STOP_TIMEOUT);
+        });
+    }
+#else
+    (void)handle_signals;
 #endif
 
     const std::string start_error = program.start_program();
-    int exit_code = 0;
     if (!start_error.empty()){
         logger.log(std::format("Failed to start program: {}", start_error), COLOR_RED);
-        exit_code = 5;
-    }else if (program.current_state() != ProgramState::STOPPED){
+        program.remove_listener(observer);
+        return HeadlessExit::DEVICE;
+    }
+    if (program.current_state() != ProgramState::STOPPED){
         run_loop.exec();
     }
 
-#if !defined(_WIN32)
-    cleanup_signal_pipe(signal_notifier);
-#endif
     program.remove_listener(observer);
-    if (exit_code != 0){
-        return exit_code;
+    if (signal_exit){
+        return *signal_exit;
     }
-    if (signal_exit_code){
-        return *signal_exit_code;
-    }
-    return observer.saw_error() ? 1 : 0;
+    return observer.saw_error() ? HeadlessExit::PROGRAM_ERROR : HeadlessExit::OK;
 }
 
 } // namespace
@@ -277,13 +314,6 @@ int run_program_event_loop(
 void HeadlessHost::clear_panel(){
     m_current_panel.reset();
     m_current_panel_descriptor.reset();
-}
-
-bool HeadlessHost::report_new_panel_intent(const PanelDescriptor& descriptor){
-    if (m_current_panel == nullptr){
-        return true;
-    }
-    return &m_current_panel->descriptor() != &descriptor;
 }
 
 void HeadlessHost::load_panel(
@@ -296,39 +326,14 @@ void HeadlessHost::load_panel(
 }
 
 
-std::optional<JsonValue> merge_headless_options(
-    const JsonValue& base_panel_json,
-    const JsonValue& override_json,
-    std::string& error
-){
-    const JsonObject* override_obj = override_json.to_object();
-    if (override_obj == nullptr){
-        error = "Options file must contain a JSON object.";
-        return std::nullopt;
-    }
-    if (override_obj->get_value("ConsoleSetup") != nullptr){
-        error = "--options cannot override ConsoleSetup.";
-        return std::nullopt;
-    }
-    JsonObject merged;
-    if (const JsonObject* base_obj = base_panel_json.to_object()){
-        merged = base_obj->clone();
-    }
-    for (const auto& [key, value] : *override_obj){
-        merged[key] = value.clone();
-    }
-    return JsonValue(std::move(merged));
-}
-
-
-int run_headless_program(
+HeadlessExit run_headless_program(
     const std::vector<std::unique_ptr<PanelListDescriptor>>& lists,
     const HeadlessRunOptions& options
 ){
     Logger& logger = global_logger_tagged();
     HeadlessHost host;
-    const int load_status = load_headless_panel(lists, options, host, logger);
-    if (load_status != 0){
+    const HeadlessExit load_status = load_headless_panel(lists, options, host, logger);
+    if (load_status != HeadlessExit::OK){
         return load_status;
     }
 
@@ -336,16 +341,16 @@ int run_headless_program(
     if (program == nullptr){
         logger.log(std::format("Panel \"{}\" is not a runnable program.", options.program_id), COLOR_RED);
         host.clear_panel();
-        return 4;
+        return HeadlessExit::BAD_REQUEST;
     }
 
-    if (!wait_for_controller_ready(*program, options.readiness_timeout)){
+    if (!wait_for_controller_ready(*program)){
         logger.log("Controller did not become ready before timeout.", COLOR_RED);
         host.clear_panel();
-        return 5;
+        return HeadlessExit::DEVICE;
     }
 
-    const int ret = run_program_event_loop(*program, options.stop_timeout, logger);
+    const HeadlessExit ret = run_program_event_loop(*program, options.handle_signals, logger);
     host.clear_panel();
     return ret;
 }

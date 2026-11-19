@@ -9,7 +9,6 @@
 #include "Common/Cpp/PanicDump.h"
 #include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
-#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Exceptions/FatalProgramException.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
@@ -211,9 +210,6 @@ void ProgramSession::load_historical_stats(){
     }
 }
 void ProgramSession::update_historical_stats_with_current(){
-    if (is_headless_mode()){
-        return;
-    }
     if (m_current_stats){
         m_logger.log("Saving historical stats...");
         bool ok = StatSet::update_file(

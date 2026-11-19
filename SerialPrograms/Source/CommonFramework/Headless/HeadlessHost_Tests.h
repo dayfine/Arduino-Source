@@ -11,7 +11,6 @@
 
 namespace PokemonAutomation{
 
-//  Register HeadlessHost and merge_headless_options() unit tests.
 void add_tests_HeadlessHost(UnitTestDatabase& database);
 
 } // namespace PokemonAutomation

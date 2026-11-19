@@ -120,7 +120,7 @@ int dispatch_startup(const StartupPlan& plan, const StartupHandlers& handlers){
     case StartupMode::GUI:
         return handlers.gui(plan);
     case StartupMode::HEADLESS:
-        return handlers.headless ? handlers.headless(plan) : 2;
+        return handlers.headless(plan);
     case StartupMode::TESTS:
         return handlers.tests(plan);
     case StartupMode::REJECTED:

@@ -8,14 +8,13 @@
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/CpuId/CpuId.h"
 #include "Common/Cpp/Hardware/Hardware.h"
-#include "CommonFramework/StaticGlobals.h"
 #include "HardwareValidation.h"
 
 namespace PokemonAutomation{
 namespace{
 
-void show_hardware_warning(const QString& message){
-    if (is_headless_mode()){
+void show_hardware_warning(const QString& message, StartupDialogs dialogs){
+    if (dialogs == StartupDialogs::LOG_ONLY){
         return;
     }
     QMessageBox box;
@@ -25,9 +24,9 @@ void show_hardware_warning(const QString& message){
 } // namespace
 
 
-bool check_hardware(){
+bool check_hardware(StartupDialogs dialogs){
     if (!CPU_CAPABILITY_NATIVE.OK_08_Nehalem){
-        if (!is_headless_mode()){
+        if (dialogs == StartupDialogs::SHOW){
             QMessageBox box;
             box.critical(
                 nullptr,
@@ -47,7 +46,7 @@ bool check_hardware(){
         str += "(i.e. Increased error rate. Fail to reliably detect shinies, etc...)<br><br>";
         str += "(Reason: Computers that lack AVX2 are likely to be too old and too slow to handle this program.)<br><br>";
         str += "Recommendation: Use a more powerful computer.";
-        show_hardware_warning(str);
+        show_hardware_warning(str, dialogs);
     }
 
     ProcessorSpecs specs = get_processor_specs();
@@ -61,7 +60,7 @@ bool check_hardware(){
         str += QString::number(specs.threads);
         str += " vcores is a weak CPU.)<br><br>";
         str += "Recommendation: Use a more powerful computer.";
-        show_hardware_warning(str);
+        show_hardware_warning(str, dialogs);
     }
 
     if (specs.base_frequency < 2'000'000'000){
@@ -73,7 +72,7 @@ bool check_hardware(){
         str += QString::fromStdString(tostr_fixed(specs.base_frequency / 1000000000., 3));
         str += " GHz which is very slow.)<br><br>";
         str += "Recommendation: Use a more powerful computer.";
-        show_hardware_warning(str);
+        show_hardware_warning(str, dialogs);
     }
 
 #if (defined _WIN32) || (defined __linux)
@@ -97,7 +96,7 @@ bool check_hardware(){
         str += QString::fromStdString(tostr_fixed(efreq / 1000000000., 3));
         str += " GHz<br><br>";
         str += "Recommendation: Use a more powerful computer.";
-        show_hardware_warning(str);
+        show_hardware_warning(str, dialogs);
     }
 #endif
 

@@ -88,7 +88,7 @@ const LabStartupCase LAB_STARTUP_CASES[] = {
      .expectation = {.mode = StartupMode::HEADLESS, .profile = "emu-1", .headless_calls = 1, .exit_code = 19}},
     {.input = {.name = "headless without profile on mac", .arguments = {"--headless", "--run", "UnitTestRunner"}, .policy = {LabProfileMode::REQUIRED}},
      .expectation = {.mode = StartupMode::REJECTED}},
-    {.input = {.name = "headless rejected off mac", .arguments = {"--headless", "--run", "UnitTestRunner"}, .policy = {}},
+    {.input = {.name = "headless rejected off mac", .arguments = {"--headless", "--profile", "emu-1", "--run", "UnitTestRunner"}, .policy = {}},
      .expectation = {.mode = StartupMode::REJECTED}},
 };
 

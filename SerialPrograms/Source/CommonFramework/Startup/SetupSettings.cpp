@@ -16,7 +16,6 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/GlobalAutoPaths.h"
-#include "CommonFramework/StaticGlobals.h"
 #include "SetupSettings.h"
 
 using std::cout;
@@ -77,13 +76,13 @@ void set_permissions(QObject& object){
 }
 
 
-bool check_resource_folder(Logger& logger){
+bool check_resource_folder(Logger& logger, StartupDialogs dialogs){
     if (Filesystem::exists(Filesystem::Path(RESOURCE_PATH()))){
         logger.log("Found Resource folder at " + RESOURCE_PATH());
         return true;
     }
     logger.log("No Resources/ folder at " + RESOURCE_PATH());
-    if (!is_headless_mode()){
+    if (dialogs == StartupDialogs::SHOW){
         QMessageBox box;
         box.setTextFormat(Qt::RichText);
         box.critical(
