@@ -533,8 +533,10 @@ it is (a hooked program):
 |---|---|---|
 | A checkpoint's save step (FRLG, BDSP; PLZA's manual saves) | `program_save` | that checkpoint's start |
 | A save the game makes itself at a point the plan declares: FRLG Hall of Fame, PLZA autosaves listed in the plan (catch, scene, check-in) | `game_save` | the declared place (PLZA checkpoints start at autosave points, so the next checkpoint's start) |
-| A backup load (PLZA title combo Up+B+X, plza/backup-retry): the program reads the backup card (registered count, play time) and maps it to a checkpoint start by its table | `backup_load` | the mapped checkpoint; no match leaves the fact `stale` / `backup_unmapped` |
+| A backup load (PLZA title combo Up+B+X, plza/lean #644): the program reads the backup card (registered count, play time) and maps it to a checkpoint start by its table | `backup_load` | the mapped checkpoint; no match leaves the fact `stale` / `backup_unmapped` |
 | An RNG program's save before resets | `program_save` | `checkpoint: null`, `place` = the program's own name for it |
+| No save on the console: the save-delete tool (`delete_save.sh`) reads the game's title back off Data Management and confirms the delete, or a new-game program finds no save at the title (PLZA 01.00a's "no save data" start) | `no_save` | `checkpoint: null`, `place: "none"`; a new-game row (01.00a) needs exactly this |
+| A save-screen read: a hooked program opens the in-game save screen (PLZA menu, R) and reads its location, play time and registered count, mapped to a checkpoint start by the same table as the backup card | `save_screen` | the mapped checkpoint; no match leaves the fact `stale` / `save_screen_unmapped` |
 
 The autosave detector is not a fact by itself: on 2026-11-16 the green zone walls fired it with
 no save. An autosave seen where the plan declares one writes the fact for that place; one seen
@@ -560,16 +562,22 @@ anything else.
 | A new app instance started after `saved_at` | daemon: `instance.id` with its `started_at` | `app_restarted` |
 
 A stale fact becomes known again only by a new fact. There is no "confirm by hand" in v1: after
-a hand session, the user saves at the checkpoint start and a program confirms it, or the program
-rewinds itself (backup load) and writes the fact.
+a hand session, the user saves at the checkpoint start and a program confirms it with a
+save-screen read (`save_screen`), or the program rewinds itself (backup load) and writes the fact.
+On 2026-11-18 the agent loaded the PLZA backup (03.06's Center) and saved from the menu by hand to
+pin the main save there; a `save_screen` read (Vert Sector 8, play time 0:33, registered 1) is
+what turns that hand save back into a known fact. The same day the user deleted the save by hand
+for a new game: `user_input` made it stale, and the new-game row's own title read (`no_save`)
+confirms it.
 
 **Record format.** `save_fact` stays `schema: 1`; the new fields are optional (an open object):
 `basis`, `place` (a name outside the story), `play_time` and `registered` (what the card read,
 PLZA), and `backup` (PLZA: the backup card's own `checkpoint`, `play_time`, `registered`, read at
 the last title visit). `run_id` is the run that wrote it. `save_resource` goes to `schema: 2`,
 since its `reason` enum changes: `known` names the fact's `basis` (`program_save`, `game_save`,
-`backup_load`) instead of `hooked_save`, and `stale` gains `user_input`, `run_ended_in_save_step`, `unexpected_autosave`,
-`backup_unmapped` and `app_restarted`. It also gains `game` (`at_save` / `moved` / `unknown`). The
+`backup_load`, `save_screen`, `no_save`) instead of `hooked_save`, and `stale` gains `user_input`,
+`run_ended_in_save_step`, `unexpected_autosave`, `backup_unmapped`, `save_screen_unmapped` and
+`app_restarted`. It also gains `game` (`at_save` / `moved` / `unknown`). The
 daemon is its only writer, so the switch is one PR; the stdio `console_status` client reads it
 through the same parser.
 
@@ -577,7 +585,7 @@ through the same parser.
 {"schema": 1, "game": "PokemonLZA", "slot": 0, "checkpoint": "03.08", "position": null,
  "saved_at": "2026-11-16T05:12:40.118Z", "run_id": "3c1e...", "basis": "backup_load",
  "registered": 4, "play_time": "1:12",
- "producer": {"program": "PokemonLZA:AutoStory", "build": "plza/backup-retry@43898fb8"}}
+ "producer": {"program": "PokemonLZA:AutoStory", "build": "plza/lean@446bc024e"}}
 ```
 
 **How the app reports it.** Through the Lab channel, not the log: a program calls one
@@ -609,7 +617,7 @@ failure frame path. It needs the app's `run_id` on transitions (#116).
 |---|---|---|
 | 6a | server | Contracts: `save_fact` optional fields, `save_resource` v2, `app_state` `input` and `instance.started_at`; goldens + invalid cases; the reader's new reasons against the fake lab |
 | 6b | app | `report_save` (save.json + saves.jsonl), `input.last_unhooked` from the keyboard, virtual controller, channel button lines and unhooked programs; native test against the 6a goldens |
-| 6c | app | Hooks: FRLG/BDSP checkpoint saves and FRLG Hall of Fame; PLZA declared autosaves and `backup_load` from plza/backup-retry's card mapping; unit tests of the mapping table and the declared-autosave rule |
+| 6c | app | Hooks: FRLG/BDSP checkpoint saves and FRLG Hall of Fame; PLZA declared autosaves and `backup_load` from plza/lean's (#644) card mapping, the same table for `save_screen`; `no_save` from `delete_save.sh` and 01.00a's title read; unit tests of the mapping table and the declared-autosave rule |
 | 6d | both | `save_at` in the AutoStory precheck lists and in `preflight_program`; refusal goldens |
 | 6e | server | `run_record`, `console://B/runs/{run_id}`, `run_ended`; after #116 |
 

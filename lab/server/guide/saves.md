@@ -16,6 +16,10 @@ the save past a checkpoint's start.
 - **PLZA rewinds and says where it landed.** After an autosave, the program loads the backup
   (title, Up+B+X), reads the backup card and maps it to a checkpoint start. If the card matches
   nothing, the save stays `stale` and the run stops.
+- **No save is a state too.** After you delete the save (or `delete_save.sh` does), the server
+  records `no_save`, and a new-game run (PLZA 01.00a) checks for exactly that.
+- **A hand save can be confirmed.** If you (or an agent) save by hand, the save goes `stale`; a
+  program then opens the save screen, reads where and when it was saved, and records it again.
 - **It notices when that stops being true.** Anything that could save without telling the
   server makes the save `stale`, with the reason: you playing (Start/Stop or the hold), keyboard
   input in the app, a controller batch, a program that does not report saves, an autosave the
