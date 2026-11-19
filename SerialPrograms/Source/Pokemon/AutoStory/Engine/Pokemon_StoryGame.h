@@ -11,6 +11,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <set>
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
@@ -25,6 +26,11 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
+//  What a run knows; a reload empties it.
+struct RunState{
+    std::set<std::string> flags = {};
+};
+
 //  The step an action runs and its args with fallbacks filled in; both live
 //  for the call only.
 struct StoryActionCall{
@@ -32,30 +38,25 @@ struct StoryActionCall{
     const StoryActionArgs& args;
 };
 
-//  An action's code. A succeeded action that knows where it left the player
-//  returns that pose in its Outcome.
-template <StoryPose PoseType>
-using StoryActionHandler = std::function<Outcome(StoryBackend<PoseType>& backend, const StoryActionCall& call, RunState& state)>;
+//  An action's code.
+using StoryActionHandler = std::function<Outcome(StoryBackend& backend, const StoryActionCall& call, RunState& state)>;
 
 //  An action: its spec and its code.
-template <StoryPose PoseType>
 struct StoryAction{
     StoryActionSpec spec = {};
-    StoryActionHandler<PoseType> handler = {};
+    StoryActionHandler handler = {};
 };
 
 //  What a game hands the story engine.
-template <StoryPose PoseType>
 struct StoryGame{
     //  "frlg", "bdsp", "plza".
     std::string id = {};
     //  A kind's first action is the one a step that names none runs.
-    std::vector<StoryAction<PoseType>> actions = {};
+    std::vector<StoryAction> actions = {};
     //  None: nothing saves.
-    StorySavePolicy<PoseType> save = {};
-    //  Back to the last save; may return the pose it left the player in.
-    //  None: a failed checkpoint is not retried.
-    std::function<Outcome(StoryBackend<PoseType>& backend)> reload = {};
+    StorySavePolicy save = {};
+    //  Back to the last save. None: a failed checkpoint is not retried.
+    std::function<Outcome(StoryBackend& backend)> reload = {};
     //  Runs of a checkpoint, counting the first, while a reload returns to
     //  its start.
     size_t attempts_per_checkpoint = 1;

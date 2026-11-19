@@ -9,10 +9,8 @@
 #ifndef PokemonAutomation_Pokemon_StoryOutcome_H
 #define PokemonAutomation_Pokemon_StoryOutcome_H
 
-#include <optional>
 #include <string>
 #include <string_view>
-#include "Pokemon_StoryPose.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -23,15 +21,13 @@ struct Outcome{
     //  Empty: success; otherwise a name that recoveries match.
     std::string failure = {};
     std::string detail = {};
-    //  Where a succeeded action left the player, when it knows.
-    std::optional<Pose> pose = {};
     //  A succeeded action that left the game as it found it (a read, a check).
     bool changed_nothing = false;
 
     bool succeeded() const;
 };
-//  Success; with a pose, the runner moves the run's pose to it.
-Outcome outcome_ok(std::optional<Pose> pose = std::nullopt);
+//  Success.
+Outcome outcome_ok();
 //  outcome_ok() with `changed_nothing`.
 Outcome outcome_unchanged();
 //  A failure named `failure`, with what was seen in `detail`.

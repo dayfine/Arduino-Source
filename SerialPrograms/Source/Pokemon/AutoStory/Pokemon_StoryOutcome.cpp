@@ -16,10 +16,8 @@ bool Outcome::succeeded() const{
     return failure.empty();
 }
 
-Outcome outcome_ok(std::optional<Pose> pose){
-    Outcome outcome;
-    outcome.pose = std::move(pose);
-    return outcome;
+Outcome outcome_ok(){
+    return Outcome{};
 }
 
 Outcome outcome_unchanged(){

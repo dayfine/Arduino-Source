@@ -21,32 +21,25 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  What a FakeStoryBackend shows and does.
-template <StoryPose PoseType>
+//  What a FakeStoryBackend shows.
 struct FakeStoryScript{
     //  observe()'s answers in order; the last repeats. None: an empty look.
-    std::vector<Observation<PoseType>> looks = {};
-    //  What it says it plays on: SCRIPT, or CONSOLE to run a console_only
-    //  action's code in a test.
-    StoryBackendKind kind = StoryBackendKind::SCRIPT;
-    //  How each battle() ends.
-    Outcome battle = outcome_ok();
+    std::vector<ScreenObservation> looks = {};
 };
 
 //  Records every input and log line; observe() plays the script.
 //  code-health: allow public_methods -- the backend calls it fakes plus the three recordings tests read; nothing to split
 //  code-health: allow test_only_api -- a test double: the scripted backend the engine and game tests run on
-template <StoryPose PoseType>
-class FakeStoryBackend : public StoryBackend<PoseType>{
+class FakeStoryBackend : public StoryBackend{
 public:
-    FakeStoryBackend(FakeStoryScript<PoseType> script, CancellableScope& scope)
+    FakeStoryBackend(FakeStoryScript script, CancellableScope& scope)
         : m_script(std::move(script))
         , m_scope(scope)
     {}
 
     //  Each input, in order: "press A", "press +" (by button_to_string()),
     //  "stick 90deg 150ms walk", "stick 90deg 150ms walk, release 300ms"
-    //  (a release only when not zero), "wait 100ms", "battle".
+    //  (a release only when not zero), "wait 100ms".
     const std::vector<std::string>& inputs() const{
         return m_inputs;
     }
@@ -59,9 +52,6 @@ public:
         return m_overlay_lines;
     }
 
-    virtual StoryBackendKind kind() const override{
-        return m_script.kind;
-    }
     virtual void press(NintendoSwitch::Button button, Milliseconds, Milliseconds) override{
         m_inputs.push_back(std::format("press {}", NintendoSwitch::button_to_string(button)));
     }
@@ -75,16 +65,12 @@ public:
     virtual void wait(Milliseconds duration) override{
         m_inputs.push_back(std::format("wait {}ms", duration.count()));
     }
-    virtual Observation<PoseType> observe() override{
+    virtual ScreenObservation observe() override{
         if (m_script.looks.empty()){
             return {};
         }
         const size_t look = m_next_look < m_script.looks.size() ? m_next_look++ : m_script.looks.size() - 1;
         return m_script.looks[look];
-    }
-    virtual Outcome battle(const StoryActionArgs&) override{
-        m_inputs.push_back("battle");
-        return m_script.battle;
     }
     virtual void log(std::string_view line) override{
         m_lines.emplace_back(line);
@@ -98,7 +84,7 @@ public:
     }
 
 private:
-    FakeStoryScript<PoseType> m_script;
+    FakeStoryScript m_script;
     CancellableScope& m_scope;
     size_t m_next_look = 0;
     std::vector<std::string> m_inputs;

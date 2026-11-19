@@ -9,11 +9,9 @@
 #include <format>
 #include <initializer_list>
 #include <limits>
-#include <memory>
 #include <set>
 #include <span>
 #include <utility>
-#include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -129,11 +127,6 @@ StoryArgValue read_arg(const JsonValue& value, const StoryArgSpec& spec, std::st
         return read_integer_rows(value, source);
     case StoryArgType::TIMED_LEGS:
         return read_timed_legs(value, source);
-    case StoryArgType::REGISTERED:
-        if (spec.kind == nullptr || !spec.kind->read){
-            throw ParseException(std::format("{}: argument \"{}\" has no registered kind", source, spec.key));
-        }
-        return spec.kind->read(value, source);
     }
     throw ParseException(std::format("{}: unsupported story arg type", source));
 }
@@ -180,39 +173,6 @@ StoryActionArgs read_args(
 }
 
 
-//  Reads "metadata" into `checkpoint`. A missing phase is testing.
-void read_metadata(const JsonValue& value, std::string_view source, StoryCheckpoint& checkpoint){
-    const JsonObject& root = fields(value, {"phase", "source"}, source);
-    if (const JsonValue* field = root.get_value("phase")){
-        const std::string name = field->to_string_throw();
-        const std::optional<StoryPhase> phase = read_story_phase(name);
-        if (!phase){
-            throw ParseException(std::format("{}: unknown phase {}", source, name));
-        }
-        checkpoint.metadata.phase = *phase;
-    }
-    if (const JsonValue* field = root.get_value("source")){
-        checkpoint.metadata.source = field->to_string_throw();
-    }
-}
-
-
-//  Read a declared pose (a checkpoint's "start"): a zone one,
-//  {"place": "LumioseCity", "spot": "HotelZ", "heading": 90} (spot and
-//  heading optional). Malformed and unknown fields fail.
-DeclaredPose read_declared_pose(const JsonValue& value, std::string_view source){
-    const JsonObject& root = fields(value, {"place", "spot", "heading"}, source);
-    ZoneDeclared result;
-    result.place = root.get_string_throw("place");
-    if (const JsonValue* field = root.get_value("spot")){
-        result.spot = field->to_string_throw(std::string(source));
-    }
-    if (const JsonValue* field = root.get_value("heading")){
-        result.heading = integer(*field, source);
-    }
-    return result;
-}
-
 //  Read a step, its args parsed against its action among `actions` (the
 //  game's) and their fallbacks filled in. Unknown fields, kinds, actions and args, mistyped
 //  values and missing required args fail.
@@ -241,8 +201,7 @@ StoryStep read_story_step(const JsonValue& value, std::string_view source, std::
 
 
 StoryCheckpoint read_story_checkpoint(
-    const JsonValue& value, std::string_view source,
-    std::span<const StoryActionSpec> actions, const StoryArgKind* declared_pose
+    const JsonValue& value, std::string_view source, std::span<const StoryActionSpec> actions
 ){
     const JsonObject& root = fields(value, {"id", "title", "start", "events", "metadata"}, source);
     StoryCheckpoint result;
@@ -251,9 +210,6 @@ StoryCheckpoint read_story_checkpoint(
         throw ParseException("Empty story checkpoint id.");
     }
     result.title = root.get_string_throw("title");
-    if (const JsonValue* start = root.get_value("start")){
-        result.start = declared_pose ? DeclaredPose(declared_pose->read(*start, source)) : read_declared_pose(*start, source);
-    }
     std::set<std::string> names;
     for (const JsonValue& event : root.get_array_throw("events")){
         StoryStep step = read_story_step(event, source, actions);
@@ -261,9 +217,6 @@ StoryCheckpoint read_story_checkpoint(
             throw ParseException("Empty or duplicate story event id.");
         }
         result.steps.push_back(std::move(step));
-    }
-    if (const JsonValue* metadata = root.get_value("metadata")){
-        read_metadata(*metadata, source, result);
     }
     return result;
 }
