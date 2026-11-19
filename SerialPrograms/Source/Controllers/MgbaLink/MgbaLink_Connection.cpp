@@ -176,7 +176,24 @@ uint64_t Connection::keys(uint64_t frame, uint16_t mask){
             COLOR_ORANGE
         );
     }
+    {
+        std::lock_guard<Mutex> lg(m_input_log_lock);
+        m_input_log.push_back(InputLogEntry{
+            .frame = frame + *late,
+            .mask = mask,
+        });
+    }
     return *late;
+}
+
+std::vector<InputLogEntry> Connection::input_log() const{
+    std::lock_guard<Mutex> lg(m_input_log_lock);
+    return m_input_log;
+}
+
+void Connection::clear_input_log(){
+    std::lock_guard<Mutex> lg(m_input_log_lock);
+    m_input_log.clear();
 }
 
 void Connection::fail(std::string message){
