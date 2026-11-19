@@ -50,6 +50,7 @@ std::optional<StoryFailure> run_step(
     std::string_view checkpoint_id, size_t number, StoryBackend& backend, StoryStep& step, RunState& state
 ){
     backend.log(event_log_line(checkpoint_id, number, step.name, "start"));
+    state.step = std::format("{}/{}", checkpoint_id, step.name);
     std::optional<StoryFailure> failure;
     try{
         backend.scope().throw_if_cancelled();

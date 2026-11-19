@@ -23,6 +23,8 @@ namespace Pokemon{
 //  What a run knows; a reload empties it.
 struct RunState{
     std::set<std::string> flags = {};
+    //  The step under way, "<checkpoint>/<step>", for its log lines.
+    std::string step = {};
 };
 
 //  A step's action with its args bound.
@@ -31,6 +33,8 @@ using StoryStepRun = MoveOnlyFunction<std::optional<StoryFailure>(StoryBackend& 
 struct StoryStep{
     std::string name = {};
     std::string why = {};
+    //  The plan's "action": what kind of step it is.
+    std::string action = {};
     StoryStepRun run = {};
 };
 

@@ -37,8 +37,8 @@ struct ReadCase{
         //  read fails.
         std::optional<std::string> log = std::nullopt;
     };
-    Input input = {};
-    Expectation expectation = {};
+    Input input;
+    Expectation expectation;
 };
 
 const ReadCase CASES[] = {
