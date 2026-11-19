@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Readers of the shared JSON wire form of the story data types (Types/):
- *  poses, steps and checkpoints, read strictly. This is
- *  the only layer that reads story JSON: a step comes out with its args
- *  typed and checked, and nothing after it parses.
+ *  Strict readers of the story data types' shared JSON form.
  *
  */
 
@@ -23,13 +20,10 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  Read the common checkpoint: its optional declared pose ("start", a zone
-//  one: {"place": "LumioseCity", "spot": "HotelZ", "heading": 90}, spot and
-//  heading optional) and its steps, each step's args parsed against its
-//  action among `actions` (the game's) and their fallbacks filled in.
-//  Unknown fields, kinds, actions and args, mistyped values and missing
-//  required args fail. A game whose poses are not zones passes
-//  `declared_pose`, which reads "start" instead.
+//  The checkpoint `value`, each step's args checked against `actions` with
+//  fallbacks filled in; throws ParseException naming `source` on anything
+//  unknown, mistyped or missing. `declared_pose` reads a "start" that is not
+//  a zone.
 StoryCheckpoint read_story_checkpoint(
     const JsonValue& value, std::string_view source,
     std::span<const StoryActionSpec> actions, const StoryArgKind* declared_pose = nullptr

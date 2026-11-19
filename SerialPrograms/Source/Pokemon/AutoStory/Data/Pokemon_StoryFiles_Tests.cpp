@@ -280,7 +280,7 @@ UnitTestResult check_segments(const SegmentsCase& test){
     StoryRows story;
     story.reload_when_chained = test.input.reload_when_chained;
     std::vector<std::string> segments;
-    for (const std::vector<StoryCheckpoint>& segment : story_run_segments<StoryCheckpoint>(rows, story)){
+    for (const std::vector<StoryCheckpoint>& segment : split_at_reloads<StoryCheckpoint>(rows, story)){
         segments.push_back(joined(ids(segment)));
     }
     std::string got;

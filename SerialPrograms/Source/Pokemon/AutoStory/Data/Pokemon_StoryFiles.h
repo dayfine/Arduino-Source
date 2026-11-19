@@ -2,11 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A game's story read from its checkpoint files, passed in by name and
- *  text. The game reads each file into its own checkpoint type; this reads
- *  the shared execution fields (Pokemon_StoryRowExecution.h) into the rows
- *  they mark, and checks what holds for every game: a row reloads only a
- *  save it can count on.
+ *  A game's story read from its built-in checkpoint files.
  *
  */
 
@@ -36,18 +32,17 @@ struct StoryFileRow{
 //  How a game reads its checkpoint files.
 template <typename Checkpoint>
 struct StoryFileReader{
-    //  The file `text`'s checkpoint and shared execution fields
-    //  (read_story_row_execution()); `source` names the file in errors.
-    //  Throws ParseException when it is malformed.
+    //  The file's checkpoint and shared execution fields; throws
+    //  ParseException naming `source` when it is malformed.
     std::function<StoryFileRow<Checkpoint>(std::string_view text, std::string_view source)> read = {};
-    //  Whether a row starts with no save to load (a new game): it may not
-    //  reload. None set: every row starts from a save.
+    //  Whether a row starts with no save to load (a new game). None: every
+    //  row starts from a save.
     std::function<bool(const Checkpoint&)> starts_without_save = {};
 };
 
-//  The story of the built-in checkpoint files `builtin`, in their order.
-//  Throws ParseException naming the file when a file does not parse, or a
-//  row reloads a save it cannot count on in the order the story plays.
+//  The story of the files `builtin`, in their order. Throws ParseException
+//  naming the file when it does not parse or reloads a save it cannot
+//  count on.
 template <typename Checkpoint>
 StoryData<Checkpoint> load_story_data(
     std::span<const EmbeddedJsonFile> builtin, const StoryFileReader<Checkpoint>& reader
@@ -58,12 +53,10 @@ StoryData<Checkpoint> load_story_data(
 template <typename Checkpoint>
 std::vector<Checkpoint> story_run_rows(std::span<const Checkpoint> rows, size_t first, size_t last);
 
-//  `rows` cut where a run reloads: a new segment starts at each row after
-//  the first that `story` marks reload_when_chained, and the run loads that
-//  row's start save (the autosave the row before ended on) before it. No
-//  segments for no rows.
+//  `rows` cut before each row after the first that `story` marks
+//  reload_when_chained, where a run reloads.
 template <typename Checkpoint>
-std::vector<std::vector<Checkpoint>> story_run_segments(std::span<const Checkpoint> rows, const StoryRows& story);
+std::vector<std::vector<Checkpoint>> split_at_reloads(std::span<const Checkpoint> rows, const StoryRows& story);
 
 
 
@@ -76,9 +69,8 @@ enum class RowSave{
 };
 
 //  Adds row `id` to the sets of `rows`. Throws ParseException naming
-//  `source` when it reloads and starts WITHOUT_SAVE or the row it follows
-//  (`previous`, none for the first row) does not end on the game's
-//  autosave: a reload loads the last save, which must be that autosave.
+//  `source` when it reloads but its start (the end of `previous`) is not an
+//  autosave.
 void add_story_row(
     std::string_view id, const StoryRowExecution& execution, RowSave start,
     std::optional<std::string_view> previous, std::string_view source, StoryRows& rows
@@ -118,15 +110,15 @@ std::vector<Checkpoint> story_run_rows(std::span<const Checkpoint> rows, size_t 
 }
 
 template <typename Checkpoint>
-std::vector<std::vector<Checkpoint>> story_run_segments(std::span<const Checkpoint> rows, const StoryRows& story){
-    std::vector<std::vector<Checkpoint>> segments;
+std::vector<std::vector<Checkpoint>> split_at_reloads(std::span<const Checkpoint> rows, const StoryRows& story){
+    std::vector<std::vector<Checkpoint>> ranges;
     for (const Checkpoint& row : rows){
-        if (segments.empty() || story.reload_when_chained.contains(row.id)){
-            segments.emplace_back();
+        if (ranges.empty() || story.reload_when_chained.contains(row.id)){
+            ranges.emplace_back();
         }
-        segments.back().push_back(row);
+        ranges.back().push_back(row);
     }
-    return segments;
+    return ranges;
 }
 
 

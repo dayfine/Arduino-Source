@@ -2,16 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Reading an authored checkpoint file: the shared
- *  StoryCheckpoint (Pokemon_StoryStepJson.h) in an envelope that names the
- *  game, plus the game's own execution object, which the game parses into
- *  its own type through a reader it passes in. Only parsing:
- *  nothing here binds or runs a step, and nothing read keeps JSON.
- *
- *  The envelope's "format" is "pokesim-authored-checkpoint/1": the
- *  files are written by PokemonSimulation's story tools, which plan
- *  and check a checkpoint's steps offline; a file written by hand uses the
- *  same name.
+ *  Reads an authored checkpoint file ("pokesim-authored-checkpoint/1").
  *
  */
 
@@ -32,8 +23,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  The game's reader of an envelope's execution object: it parses the
-//  object into the game's own type and throws ParseException when it is
+//  Parses an envelope's execution object; throws ParseException when it is
 //  malformed.
 using ExecutionReader = std::function<void(const JsonObject& execution, std::string_view source)>;
 

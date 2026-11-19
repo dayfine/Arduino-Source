@@ -2,12 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The execution fields of a checkpoint file (its JSON "execution") that
- *  every game reads the same way, and the sets of rows they mark: which
- *  rows end on the game's own autosave and which a run reloads before, and
- *  a game's story: its checkpoints and those rows. The game reads its other execution fields itself
- *  (Pokemon_AuthoredCheckpointJson.h); Pokemon_StoryFiles.h loads a story
- *  from its files.
+ *  The execution fields every game's checkpoint file shares.
  *
  */
 
@@ -34,8 +29,7 @@ enum class StoryReload{
     WHEN_CHAINED,   //  true: at plan boundaries
 };
 
-//  What a row's "save" says about the game's own save at its end. The
-//  program never saves for a row.
+//  What a row's "save" says about the game's own save at its end.
 enum class StoryRowSave{
     NONE,           //  left out: the game does not save at the row's end
     AUTOSAVE,       //  "autosave": a run's log showed the game autosave there
@@ -48,10 +42,8 @@ struct StoryRowExecution{
     StoryReload reload = StoryReload::NEVER;
 };
 
-//  The shared fields of `execution`: "save" and "reload_when_chained", each
-//  optional. Throws ParseException naming `where` for a
-//  malformed one, and for a field that is neither shared nor one of
-//  `game_fields`, which the game reads itself.
+//  The shared fields of `execution`. Throws ParseException naming `where`
+//  for a malformed field or one that is neither shared nor in `game_fields`.
 StoryRowExecution read_story_row_execution(
     const JsonObject& execution, std::string_view where, std::initializer_list<std::string_view> game_fields
 );
@@ -60,11 +52,9 @@ StoryRowExecution read_story_row_execution(
 //  The rows of a story the shared execution fields mark, by id.
 struct StoryRows{
     std::set<std::string, std::less<>> autosaves = {};
-    //  The StoryRowSave::UNVERIFIED rows, for a run to report the autosave
-    //  it sees there.
+    //  The StoryRowSave::UNVERIFIED rows.
     std::set<std::string, std::less<>> unverified_autosaves = {};
-    //  The WHEN_CHAINED rows; each comes after an autosave row, whose
-    //  autosave is its start save.
+    //  The WHEN_CHAINED rows; each comes after an autosave row.
     std::set<std::string, std::less<>> reload_when_chained = {};
 };
 
