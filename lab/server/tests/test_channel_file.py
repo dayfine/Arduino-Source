@@ -6,7 +6,7 @@ Run from the repo root: python3 -m unittest discover -s lab/server/tests -t lab/
 import os
 import unittest
 
-from pa_lab.channel import (AppError, ConsoleLine, DescribeProgram, ErrorKind, GameOpen, Journal, Preflight, SetOption,
+from pa_lab.channel import (AppError, ConsoleLine, DescribeProgram, ErrorKind, GameOpen, Journal, SetOption,
                             Snapshot, Start, Stop, await_answer)
 from pa_lab.channel_file import FileChannel, parse_journal
 from tests.fake_lab import FakeClock, FakeLab
@@ -40,8 +40,6 @@ class FileChannelTest(unittest.TestCase):
             dict(name='options then start', input=(SetOption(key='NOTIFICATIONS.Enabled', value=False),
                                                    SetOption(key='START_SEGMENT', value=3), Start(controller_wait_s=10)),
                  expectation='set NOTIFICATIONS.Enabled false\nset START_SEGMENT 3\nstart 10'),
-            dict(name='preflight', input=(Preflight(options={'START_SEGMENT': 3, 'LANGUAGE': 'en'}),),
-                 expectation='preflight {"LANGUAGE":"en","START_SEGMENT":3}'),
             dict(name='console lines', input=(ConsoleLine('press B 160 640'), ConsoleLine('shot after')),
                  expectation='press B 160 640\nshot after'),
         ]

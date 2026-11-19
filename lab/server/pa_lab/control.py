@@ -37,7 +37,6 @@ DEFAULT_TTL_S = 1200
 MAX_WAIT_S = 60.0
 DEFAULT_PAGE = 100
 MAX_PAGE = 500
-PREFLIGHT_KEEP_S = 86400  # a passed preflight's row; its token is good for far less (preflight.TOKEN_TTL_S)
 POLL_S = 0.2  # another process's writes are seen by polling; this process's wake the waiters
 
 
@@ -52,6 +51,21 @@ class Refused(Exception):
     def __init__(self, code: str, message: str, **extra: Any):
         super().__init__(message)
         self.refusal = dict(code=code, message=message, **extra)
+
+
+def start_check_failure(app: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """The `program_failed` event a stop carries when the app wrote a start check's failure with it
+    (`program.last_outcome`, written with the stop transition and cleared at the next start):
+    {'payload', 'request_id', 'at'}, or None. The app writes both in one state.json, so the outcome is
+    read only with a new stop transition and each is reported once."""
+    outcome = app['program'].get('last_outcome')
+    if not isinstance(outcome, dict) or outcome.get('outcome') != 'start_check_failed':
+        return None
+    payload = {'run_id': outcome['run_id'], 'verdict': 'start_check_failed', 'checkpoint': None,
+               'check': outcome['check'], 'message': outcome['message']}
+    if isinstance(outcome.get('evidence'), dict):
+        payload['evidence'] = outcome['evidence']
+    return {'payload': payload, 'request_id': outcome['request_id'], 'at': outcome['at']}
 
 
 class Retention:
@@ -292,7 +306,7 @@ class ControlPlane:
             return self._record(self._request_row(conn, client_id, req['tool'], req['request_id'])), True
 
     def action(self, client_id: str, tool: str, request_id: str) -> Optional[Dict[str, Any]]:
-        """What an action request (run, stop, preflight, cfr_batch) sent: console, instance_id, inbox_name, written_at."""
+        """What an action request (run, stop, cfr_batch) sent: console, instance_id, inbox_name, written_at."""
         row = self.db.read().execute('SELECT * FROM actions WHERE client_id = ? AND tool = ? AND request_id = ?',
                                      (client_id, tool, request_id)).fetchone()
         return None if row is None else {k: row[k] for k in row.keys()}
@@ -323,24 +337,7 @@ class ControlPlane:
         row = self._request_row(self.db.read(), client_id, tool, request_id)
         return None if row is None else row['token_hash']
 
-    # ---- preflights and save marks (Slice 5b) ---------------------------------------------------
-
-    def issue_preflight(self, console: str, request_id: str, token: str, binding: Dict[str, Any]) -> str:
-        """Stores a passed preflight under its token's hash; returns when it was issued."""
-        self._check_console(console)
-        with self._writing() as conn:
-            stamp = self._stamp()
-            conn.execute('INSERT INTO preflights (token_hash, console, request_id, binding, issued_at) '
-                         'VALUES (?, ?, ?, ?, ?)', (_hash(token), console, request_id, _json(binding), stamp))
-            return stamp
-
-    def preflight(self, token: str) -> Optional[Dict[str, Any]]:
-        """The stored preflight a token names: console, request_id, binding, issued_at; None if unknown."""
-        row = self.db.read().execute('SELECT * FROM preflights WHERE token_hash = ?', (_hash(token),)).fetchone()
-        if row is None:
-            return None
-        return {'console': row['console'], 'request_id': row['request_id'], 'binding': json.loads(row['binding']),
-                'issued_at': row['issued_at']}
+    # ---- save marks (Slice 5b) ------------------------------------------------------------------
 
     def mark_save_stale(self, console: str, reason: str, request_id: str) -> str:
         """Records that something (a cfr_batch) may have changed the game since the last save fact."""
@@ -442,7 +439,10 @@ class ControlPlane:
 
         - a new UI transition, or a hold that is on, revokes any agent lease and installs the user
           lease (no timeout); a hold that is gone ends nothing: only `release_user` does;
-        - a new stop transition is a `stopped` event with its source;
+        - a new stop transition is a `stopped` event with its source; when the app wrote a start
+          check's failure with it (`program.last_outcome`, the preflight split), also a
+          `program_failed` event (`verdict: start_check_failed`), under the request id of the
+          run_program that started the run;
         - a running lease ends (back to agent_idle with a fresh TTL) when its run's stop is
           reported or its app instance is gone.
         """
@@ -465,6 +465,10 @@ class ControlPlane:
                     self._append(conn, 'stopped', console, {'source': transition['source'],
                                                             'run_id': app['program']['run_id']},
                                  instance_id=instance, request_id=transition['request_id'], at=transition['at'])
+                    failure = start_check_failure(app)
+                    if failure is not None:
+                        self._append(conn, 'program_failed', console, failure['payload'], instance_id=instance,
+                                     request_id=failure['request_id'], at=failure['at'])
                 if transition['source'] == 'ui':
                     self._take_over(conn, console, transition['at'], 'ui_takeover', instance)
             self._apply_hold(conn, console, hold, instance)
@@ -501,9 +505,6 @@ class ControlPlane:
                     if now - timestamps.parse(row['completed_at']) > r.request_ttl_s]
             conn.executemany('DELETE FROM requests WHERE client_id = ? AND tool = ? AND request_id = ?', done)
             conn.executemany('DELETE FROM actions WHERE client_id = ? AND tool = ? AND request_id = ?', done)
-            expired = [row['token_hash'] for row in conn.execute('SELECT token_hash, issued_at FROM preflights')
-                       if now - timestamps.parse(row['issued_at']) > PREFLIGHT_KEEP_S]
-            conn.executemany('DELETE FROM preflights WHERE token_hash = ?', [(h,) for h in expired])
         self._appended = 0
         return {'events': events, 'requests': len(done), 'cursors': len(stale)}
 

@@ -156,15 +156,9 @@ class FakeApp:
         self.after = {}
         self._stopping_left = None
         self.hold = set()
-        # Slice 5b: the panel's current options, the proposed `preflight` command and console lines.
+        self.ignore = set()  # commands left in the inbox (the app busy for them only)
+        # Slice 5b: the panel's current options (`set` lines change them) and console lines.
         self.options = copy.deepcopy(CURRENT_OPTIONS)
-        self.check_outcomes = {}    # precheck name -> (status, message[, evidence]); default passed
-        self.invalid = None         # (key, message): the app's check_validity refuses the candidate
-        self.restore = True         # False: the app forgets to restore the prior options
-        self.preflight_id = None    # the program id the reply names (default: the selected panel)
-        self.cancel = False         # True: a panel change cancels the checks (#616's `cancelled` verdict)
-        self.staged_seen = []       # the options the prechecks ran against, per preflight
-        self.user_edit = None       # options a user sets in the panel during the checks (#601 keeps them)
         self.hash_options = True    # False: an app before #601, no program.options_hash anywhere
         self.line_fail = None       # (batch line index, error): that console line fails
         self.set_fail = None        # (key, error): that `set` line fails; the earlier ones stay applied
@@ -192,7 +186,8 @@ class FakeApp:
             self.continue_snapshot(pending)
         if self.serve:
             for request in sorted((self.lab.dir / 'inbox').glob('*.txt')):
-                self.pick_up(request)
+                if request.read_text(encoding='utf-8').splitlines()[-1].split()[0] not in self.ignore:
+                    self.pick_up(request)
 
     def pick_up(self, request):
         text = request.read_text(encoding='utf-8')
@@ -209,9 +204,6 @@ class FakeApp:
             return
         if words[0] in ('start', 'stop'):
             self.start_or_stop(request.stem, text, line, words[0])
-            return
-        if words[0] == 'preflight':
-            self.preflight(request.stem, line)
             return
         if words[0] in cfr.COMMANDS:
             self.console_lines(request.stem, text.splitlines()[1:])
@@ -266,51 +258,6 @@ class FakeApp:
         if command in self.after:
             self.after[command](self)
         self.finish(pending, printed)
-
-    def preflight(self, name, line):
-        """The proposed `preflight <JSON>` (pa_lab/preflight.py): stage, check, run the prechecks in
-        order up to the first failure, restore (unless `restore` is off), print one reply line."""
-        pending = {'name': name, 'line': line}
-        if 'preflight' in self.line_errors:  # today's app: no such command
-            self.finish(pending, '', self.line_errors['preflight'])
-            return
-        prior = copy.deepcopy(self.options)
-        candidate = json.loads(line.split(' ', 1)[1])
-        staged = copy.deepcopy(prior)
-        for key, value in candidate.items():
-            if isinstance(value, dict):
-                staged.setdefault(key, {}).update(value)
-            else:
-                staged[key] = value
-        self.options = staged
-        reply = {'schema': 1, 'id': self.preflight_id or self.lab.state['panel']['id'], 'checks': [],
-                 'failure': None, 'invalid': None, 'restored': True, 'verdict': 'passed'}
-        contract = json.loads(self.replies['describe_program'].split(' ', 1)[1])
-        if self.invalid is not None:
-            reply.update(verdict='invalid_options', invalid={'key': self.invalid[0], 'message': self.invalid[1]})
-        elif contract['prechecks'] == 'unsupported':
-            reply['verdict'] = 'unsupported'
-        elif self.cancel:
-            reply['verdict'] = 'cancelled'
-        else:
-            self.staged_seen.append(copy.deepcopy(staged))
-            for check in contract['prechecks']:
-                outcome = self.check_outcomes.get(check['name'], ('passed', ''))
-                reply['checks'].append({'name': check['name'], 'status': outcome[0], 'message': outcome[1]})
-                if outcome[0] == 'failed':
-                    reply.update(verdict='failed', failure=dict({'check': check['name'], 'message': outcome[1]},
-                                                                **({'evidence': outcome[2]} if len(outcome) > 2 else {})))
-                    break
-        if self.user_edit is not None:
-            self.options.update(self.user_edit)
-            reply.update(restored=False, edited_keys=sorted(self.user_edit))
-        elif self.restore:
-            self.options = prior
-        else:
-            reply['restored'] = False
-        if self.hash_options:
-            reply['options_hash'] = self.options_hash()  # what the program holds after the restore
-        self.finish(pending, 'preflight {}\n'.format(json.dumps(reply, sort_keys=True, separators=(',', ':'))))
 
     def options_hash(self):
         """#601's program.options_hash: SHA-256 of the program's full option JSON (any stable digest

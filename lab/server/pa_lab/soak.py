@@ -19,7 +19,7 @@ from pa_lab import timestamps
 from pa_lab.channel_file import REQUEST_PREFIX
 
 # The requests the daemon sends that change nothing, and so have no `actions` row:
-# `app_query.describe_program` (preflight_program sends it first), `app_query.game_open`, `shot`.
+# `app_query.describe_program` (run_program sends it first), `app_query.game_open`, `shot`.
 READ_ONLY_REQUESTS = ('describe_program', 'game_open', 'shot')
 
 TERMINAL_EVENTS = ('request_completed', 'request_failed')

@@ -8,7 +8,7 @@ here pushes). Every request must carry `Authorization: Bearer <token>`, a loopba
 Resources: `console://B/state` (console_state), `console://B/save` (save_resource).
 Tools: `shot`, `ensure_game`, `describe_program`, `game_open`; with a control plane also `acquire_console`,
 `renew_console`, `release_console`, `next_events` and `request_status`; with program actions
-(`serve --actions`, Slices 5a/5b) also `preflight_program`, `run_program`, `stop_program` and
+(`serve --actions`, Slices 5a/5b) also `run_program`, `stop_program` and
 `cfr_batch`, the only tools that start or stop a program or press a button.
 
 Read-only mode (`read_only=True`, `serve-stdio`): only `console_status` and the resources. Every tool
@@ -59,9 +59,10 @@ READ_INSTRUCTIONS = (
 INSTRUCTIONS = 'Read-only view of lab console B. ' + READ_INSTRUCTIONS
 
 ACTION_INSTRUCTIONS = (
-    'Lab console B. Reads need no lease. To start the selected program: acquire_console, preflight_program with '
-    'the panel and options, then run_program with the same panel, options and the preflight_token; stop_program '
-    'stops it. cfr_batch is for debugging only and marks the save stale. Give every call a new request_id '
+    'Lab console B. Reads need no lease. To start the selected program: acquire_console, then run_program with '
+    'the panel and options (it checks the console and the options first and presses nothing until it starts); '
+    'the program runs its own start checks first, and a failed one ends the run (a program_failed event with '
+    'verdict start_check_failed names it); stop_program stops it. cfr_batch is for debugging only and marks the save stale. Give every call a new request_id '
     '(retry with the same one), and follow a pending record with request_status or next_events. A refusal names '
     'the check that failed; when the user holds the console, stop and wait for them. ' + READ_INSTRUCTIONS)
 
@@ -106,8 +107,8 @@ TOOL_LIST = [
         'name': 'describe_program',
         'title': "The selected program's option contract",
         'description': "The selected program's id and the static contract of its options (keys, types, "
-                       'defaults, bounds, enum entries) and its prechecks (the string "unsupported" until the '
-                       'program declares them). Read-only; needs no lease. Refuses when the selected panel is '
+                       'defaults, bounds, enum entries) and its start checks (the string "unsupported" until '
+                       'the program reports them; run_program refuses such a program). Read-only; needs no lease. Refuses when the selected panel is '
                        'not a program.',
         'inputSchema': {
             'type': 'object',
@@ -203,33 +204,23 @@ LEASE_TOOLS = ('acquire_console', 'renew_console', 'release_console')
 _ACTING = {'readOnlyHint': False, 'destructiveHint': True, 'idempotentHint': True}
 
 ACTION_TOOL_LIST = [
-    {'name': 'preflight_program', 'title': "Run the selected program's start checks",
-     'description': 'Checks candidate options and runs the selected program\'s start checks without starting it, '
-                    'then puts the prior options back; presses no button except what a check needs to look (and '
-                    'returns to where it was). Needs the lease token. options are checked against describe_program '
-                    '(unknown keys, types, bounds, disabled entries) before anything is sent. A program that '
-                    'declares no checks is refused (prechecks_unsupported). Completed: the checks and a '
-                    'preflight_token for run_program, good for 120 s and only while the app instance, panel, '
-                    'options, last start/stop, save status and lease stay the same. Failed: precheck_failed names '
-                    'the check and what it needs.',
-     'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
-                             'panel': {'type': 'string', 'description': "'<Game>:<Program>', the selected program"},
-                             'options': {'type': 'object', 'description': 'option key -> value as describe_program '
-                                         'lists them; a group is an object; {} checks the current options'}},
-                            ['request_id', 'lease_token', 'panel', 'options']), 'annotations': _ACTING},
     {'name': 'run_program', 'title': 'Start the selected program',
-     'description': 'Starts the program selected in the app once per request_id, after loading options (the same '
-                    'panel and options as the preflight; the panel keeps them after the run). Needs the lease token '
-                    'and a current preflight_token (preflight_stale says what changed). panel must be the selected '
-                    'program id (this does not change the selection). Refused while the user holds the console, a '
-                    'program runs, the controller or video is not ready, or the app is not running. Returns the '
+     'description': 'Starts the program selected in the app once per request_id, after loading options (the panel '
+                    'keeps them after the run). Needs the lease token. Checks first and presses nothing when it '
+                    'refuses: panel must be the selected program id (this does not change the selection); options '
+                    'are checked against describe_program (unknown keys, types, bounds, disabled entries), and an '
+                    'option marked skips_check must be given as false; a program that reports no start checks is '
+                    'refused (prechecks_unsupported). Refused while the user holds the console, a program runs, the '
+                    'controller or video is not ready, or the app is not running. The program\'s own start checks '
+                    'run after the start: a failed one ends the run with a program_failed event (verdict '
+                    'start_check_failed, the check and its message), not a refusal. Returns the '
                     "request record: completed (the app shows this request's start; the lease is agent_running "
                     'until the run ends), failed, or pending (follow it with request_status or next_events).',
      'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
                              'panel': {'type': 'string', 'description': "'<Game>:<Program>', the selected program"},
-                             'options': {'type': 'object'},
-                             'preflight_token': {'type': 'string', 'description': 'from preflight_program'}},
-                            ['request_id', 'lease_token', 'panel', 'options', 'preflight_token']),
+                             'options': {'type': 'object', 'description': 'option key -> value as describe_program '
+                                         'lists them; a group is an object; {} keeps the panel\'s options'}},
+                            ['request_id', 'lease_token', 'panel', 'options']),
      'annotations': _ACTING},
     {'name': 'stop_program', 'title': 'Stop the running program',
      'description': 'Stops the running program once per request_id. Needs the lease token. Completed when the app '
@@ -241,7 +232,7 @@ ACTION_TOOL_LIST = [
      'description': 'Debugging only. Sends 1-200 console lines (press, dpad, stick, wait, taps, walk, shot, shots, '
                     'detect, wait_for, expect, game_open; numbers bounded, at most 60 s in all) once per '
                     'request_id, with the program stopped. Needs the lease token. Marks console://B/save stale '
-                    '(reason cfr_batch) and makes any preflight_token stale. Completed with outcome done, or '
+                    '(reason cfr_batch). Completed with outcome done, or '
                     'line_failed with failed_line and the error; output holds what the lines printed.',
      'inputSchema': _schema({'request_id': _REQUEST_ID, 'lease_token': _LEASE_TOKEN,
                              'lines': {'type': 'array', 'items': {'type': 'string'}, 'minItems': 1, 'maxItems': 200}},

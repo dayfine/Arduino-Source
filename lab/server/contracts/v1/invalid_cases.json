@@ -1822,8 +1822,7 @@
             "START_CHECKPOINT": "13.01",
             "END_CHECKPOINT": "13.02",
             "SAVE_MODE": "none"
-          },
-          "preflight_token": "example-preflight-token"
+          }
         }
       }
     },
@@ -1871,8 +1870,7 @@
             "START_CHECKPOINT": "13.01",
             "END_CHECKPOINT": "13.02",
             "SAVE_MODE": "none"
-          },
-          "preflight_token": "example-preflight-token"
+          }
         },
         "inbox_path": "/tmp/x.txt"
       }
@@ -1900,7 +1898,6 @@
             "END_CHECKPOINT": "13.02",
             "SAVE_MODE": "none"
           },
-          "preflight_token": "example-preflight-token",
           "row_index": 3
         }
       }
@@ -1911,33 +1908,7 @@
     }
   },
   {
-    "name": "run without preflight token",
-    "kind": "request",
-    "input": {
-      "json": {
-        "schema": 1,
-        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
-        "client_id": "claude:frlg-lane",
-        "tool": "run_program",
-        "console": "B",
-        "lease_token": "example-lease-token-not-real",
-        "arguments": {
-          "panel": "PokemonFRLG:AutoStory",
-          "options": {
-            "START_CHECKPOINT": "13.01",
-            "END_CHECKPOINT": "13.02",
-            "SAVE_MODE": "none"
-          }
-        }
-      }
-    },
-    "expectation": {
-      "path": "arguments.preflight_token",
-      "contains": "required field is missing"
-    }
-  },
-  {
-    "name": "run with a preflight token that is not a string",
+    "name": "run with a preflight token (removed by the preflight split)",
     "kind": "request",
     "input": {
       "json": {
@@ -1954,13 +1925,13 @@
             "END_CHECKPOINT": "13.02",
             "SAVE_MODE": "none"
           },
-          "preflight_token": 5
+          "preflight_token": "example-preflight-token"
         }
       }
     },
     "expectation": {
       "path": "arguments.preflight_token",
-      "contains": "expected a string"
+      "contains": "unknown field"
     }
   },
   {
@@ -1982,6 +1953,30 @@
             "SAVE_MODE": "none"
           },
           "preflight_token": "example-preflight-token"
+        }
+      }
+    },
+    "expectation": {
+      "path": "tool",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "preflight_program is no longer a tool",
+    "kind": "request",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+        "client_id": "claude:frlg-lane",
+        "tool": "preflight_program",
+        "console": "B",
+        "lease_token": "example-lease-token-not-real",
+        "arguments": {
+          "panel": "PokemonFRLG:GiftRng",
+          "options": {
+            "TARGET": "Lapras"
+          }
         }
       }
     },
@@ -2104,26 +2099,27 @@
     }
   },
   {
-    "name": "precheck refusal without check",
+    "name": "precheck_failed is no longer a refusal code",
     "kind": "refusal",
     "input": {
       "json": {
         "schema": 1,
         "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
-        "tool": "preflight_program",
+        "tool": "run_program",
         "refusal": {
           "code": "precheck_failed",
           "message": "Free party slots: needs 1 empty slot, found 0.",
           "evidence": {
             "needed": 1,
             "found": 0
-          }
+          },
+          "check": "free_party_slots"
         }
       }
     },
     "expectation": {
-      "path": "refusal.check",
-      "contains": "required for precheck_failed"
+      "path": "refusal.code",
+      "contains": "is not one of"
     }
   },
   {
@@ -2143,6 +2139,25 @@
     "expectation": {
       "path": "refusal.field",
       "contains": "required for invalid_arguments"
+    }
+  },
+  {
+    "name": "save_mismatch without its evidence",
+    "kind": "refusal",
+    "input": {
+      "json": {
+        "schema": 1,
+        "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+        "tool": "run_program",
+        "refusal": {
+          "code": "save_mismatch",
+          "message": "The save does not match."
+        }
+      }
+    },
+    "expectation": {
+      "path": "refusal.evidence",
+      "contains": "required for save_mismatch"
     }
   },
   {
@@ -2273,15 +2288,10 @@
             "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
             "payload": {
               "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
-              "tool": "preflight_program",
+              "tool": "run_program",
               "refusal": {
-                "code": "precheck_failed",
-                "check": "free_party_slots",
-                "message": "Free party slots: needs 1 empty slot, found 0.",
-                "evidence": {
-                  "needed": 1,
-                  "found": 0
-                }
+                "code": "prechecks_unsupported",
+                "message": "PokemonFRLG:GiftRng reports no start checks; the server runs only programs that report them."
               }
             }
           },
@@ -2383,15 +2393,10 @@
             "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
             "payload": {
               "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
-              "tool": "preflight_program",
+              "tool": "run_program",
               "refusal": {
-                "code": "precheck_failed",
-                "check": "free_party_slots",
-                "message": "Free party slots: needs 1 empty slot, found 0.",
-                "evidence": {
-                  "needed": 1,
-                  "found": 0
-                }
+                "code": "prechecks_unsupported",
+                "message": "PokemonFRLG:GiftRng reports no start checks; the server runs only programs that report them."
               }
             }
           }
@@ -2457,15 +2462,10 @@
             "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
             "payload": {
               "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
-              "tool": "preflight_program",
+              "tool": "run_program",
               "refusal": {
-                "code": "precheck_failed",
-                "check": "free_party_slots",
-                "message": "Free party slots: needs 1 empty slot, found 0.",
-                "evidence": {
-                  "needed": 1,
-                  "found": 0
-                }
+                "code": "prechecks_unsupported",
+                "message": "PokemonFRLG:GiftRng reports no start checks; the server runs only programs that report them."
               }
             }
           }
@@ -2524,6 +2524,172 @@
     "expectation": {
       "path": "request_id",
       "contains": "lower-case UUID"
+    }
+  },
+  {
+    "name": "start_check_failed without the check",
+    "kind": "event",
+    "input": {
+      "json": {
+        "schema": 1,
+        "seq": 1108,
+        "type": "program_failed",
+        "at": "2026-11-14T07:30:12.700Z",
+        "console": "B",
+        "instance_id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+        "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+        "payload": {
+          "run_id": null,
+          "verdict": "start_check_failed",
+          "checkpoint": null,
+          "message": "Free party slots: needs 1 empty slot, found 0.",
+          "evidence": {
+            "needed": 1,
+            "found": 0
+          }
+        }
+      }
+    },
+    "expectation": {
+      "path": "payload.check",
+      "contains": "required for start_check_failed"
+    }
+  },
+  {
+    "name": "last_outcome with an unknown outcome",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:20:05.310Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:GiftRng",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "program",
+            "request_id": null,
+            "at": "2026-11-14T06:20:04.880Z"
+          },
+          "last_outcome": {
+            "run_id": null,
+            "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+            "outcome": "crashed",
+            "check": "free_party_slots",
+            "message": "Free party slots: needs 1 empty slot, found 0.",
+            "evidence": {
+              "needed": 1,
+              "found": 0
+            },
+            "at": "2026-11-14T06:20:04.850Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:20:05.280Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "program.last_outcome.outcome",
+      "contains": "is not one of"
+    }
+  },
+  {
+    "name": "start_check_failed outcome without the check",
+    "kind": "app_state",
+    "input": {
+      "json": {
+        "schema": 1,
+        "written_at": "2026-11-14T06:20:05.310Z",
+        "instance": {
+          "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+          "pid": 4411,
+          "profile": "lab-B"
+        },
+        "panel": {
+          "id": "PokemonFRLG:GiftRng",
+          "kind": "program"
+        },
+        "program": {
+          "state": "stopped",
+          "run_id": null,
+          "last_transition": {
+            "action": "stop",
+            "source": "program",
+            "request_id": null,
+            "at": "2026-11-14T06:20:04.880Z"
+          },
+          "last_outcome": {
+            "run_id": null,
+            "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+            "outcome": "start_check_failed",
+            "message": "Free party slots: needs 1 empty slot, found 0.",
+            "evidence": {
+              "needed": 1,
+              "found": 0
+            },
+            "at": "2026-11-14T06:20:04.850Z"
+          }
+        },
+        "controller": {
+          "state": "ready"
+        },
+        "video": {
+          "state": "live",
+          "frame_seq": 918274,
+          "captured_at": "2026-11-14T06:20:05.280Z",
+          "signal": "unknown"
+        },
+        "observation": {
+          "game": {
+            "value": "unknown",
+            "observed_at": null
+          },
+          "screen": {
+            "value": "unknown",
+            "observed_at": null
+          }
+        },
+        "channel": {
+          "last_request": "fs012327",
+          "last_error": null,
+          "owner_claimed": false
+        }
+      }
+    },
+    "expectation": {
+      "path": "program.last_outcome.check",
+      "contains": "required field is missing"
     }
   }
 ]

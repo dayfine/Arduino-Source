@@ -10,7 +10,7 @@ import unittest
 from pa_lab import contracts
 from tests.control_fixtures import new_id
 from tests.test_actions import CLIENT, NEW_INSTANCE, ActionTest
-from tests.test_preflight import save_known
+from tests.test_actions import save_known
 
 
 def batch_request(token, lines, request_id=None):
