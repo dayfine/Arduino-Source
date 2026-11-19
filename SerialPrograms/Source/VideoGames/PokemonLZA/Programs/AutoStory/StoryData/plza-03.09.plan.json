@@ -44,11 +44,10 @@
       },
       {
         "id": "lab_lobby",
-        "why": "A Enter, the receptionist; autosave. The fade comes 0.5 s after A, so 3 s of control with no scene means not at the door",
+        "why": "A Enter (up_the_lab_steps ended on its prompt; A waits for the fade), the receptionist; autosave",
         "action": "mash_to_move_hints",
         "args": {
-          "press_a_first": true,
-          "scene_start_ms": 3000
+          "press_a_first": true
         }
       },
       {

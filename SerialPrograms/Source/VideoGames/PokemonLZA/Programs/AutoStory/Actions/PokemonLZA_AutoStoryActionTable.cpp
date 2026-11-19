@@ -199,7 +199,7 @@ Pokemon::StoryActionParser move_hints_action(){
     return [](const JsonObject& args) -> StoryStepRun{
         reject_unknown_keys(args, {
             "min_length_ms", "quiet_ms", "press_a_first", "quiet_is_control", "end_after_black_fades",
-            "scene_start_ms", "gap_press_ms", "advance_with_a",
+            "gap_press_ms", "advance_with_a",
         });
         SceneMachineConfig config;
         config.quiet = ms_or(args, "quiet_ms", 60s);
@@ -210,9 +210,6 @@ Pokemon::StoryActionParser move_hints_action(){
         }
         if (const std::optional<Milliseconds> gap = optional_ms(args, "gap_press_ms")){
             config.gap_press = *gap;
-        }
-        if (const std::optional<Milliseconds> start = optional_ms(args, "scene_start_ms")){
-            config.start_window = *start;
         }
         if (const JsonValue* fades = args.get_value("end_after_black_fades")){
             config.end_after_black_fades = (size_t)fades->to_integer_throw();

@@ -32,9 +32,9 @@
       },
       {
         "id": "wake_up",
-        "why": "sleep and wake up, until control facing the door; no party bar or prompt in the room, so quiet means control",
+        "why": "sleep and wake up, until the party bar shows, facing the door",
         "action": "mash_to_move_hints",
-        "args": {"quiet_ms": 3000, "min_length_ms": 20000, "quiet_is_control": true}
+        "args": {"min_length_ms": 20000}
       }
     ],
     "metadata": {
