@@ -115,9 +115,9 @@ std::optional<Pokemon::StoryFailure> run_story_move_but_last_walk(PlzaBackend& b
 
 void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds slice){
     if (move.style == StoryWalkStyle::HELD && !move.legs.empty()){
-        backend.stick(move.legs.back().turn, slice, /*release=*/0ms, Pokemon::StoryPace::WALK);
+        backend.stick(move.legs.back().turn, slice, /*release=*/0ms, Pokemon::StoryPace::RUN);
     }else{
-        backend.stick(/*degrees=*/0, slice, /*release=*/0ms, Pokemon::StoryPace::WALK);
+        backend.stick(/*degrees=*/0, slice, /*release=*/0ms, Pokemon::StoryPace::RUN);
     }
 }
 
