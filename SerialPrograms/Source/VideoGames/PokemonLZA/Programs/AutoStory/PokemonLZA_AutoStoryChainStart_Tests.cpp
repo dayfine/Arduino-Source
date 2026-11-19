@@ -41,7 +41,7 @@ ScreenObservation look_of(std::optional<std::string_view> reading){
 
 //  01.01's platform, then the looks off it.
 const std::vector<ScreenObservation> CHAIN_LOOKS = {
-    look_of(PLATFORM_READING), look_of(PLATFORM_READING),
+    look_of(CONTROLS_HINT_READING), look_of(CONTROLS_HINT_READING),
     look_of(std::nullopt), look_of(std::nullopt), look_of(std::nullopt), look_of(std::nullopt),
 };
 

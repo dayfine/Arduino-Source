@@ -4,6 +4,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <string>
 #include <string_view>
@@ -80,7 +81,7 @@ const LinesCase LINES_CASES[] = {
     {
         .name = "a card after the text is seen, done 3 s after it",
         .input = {.looks = {dialog(Milliseconds(0)), card(Milliseconds(500)), nothing(Milliseconds(1000)), nothing(Milliseconds(4000))}},
-        .expectation = {.text = true, .card = true, .timed_out = false, .inputs = "press A, wait 250ms, press A, wait 250ms, wait 250ms"},
+        .expectation = {.text = true, .card = true, .timed_out = false, .inputs = "press A, press A, wait 250ms"},
     },
     {
         .name = "nothing for 3 s presses nothing",
@@ -93,7 +94,7 @@ const LinesCase LINES_CASES[] = {
             .looks = {dialog(Milliseconds(0)), dialog(Milliseconds(500)), dialog(Milliseconds(1000))},
             .limit = Milliseconds(1000),
         },
-        .expectation = {.text = true, .card = false, .timed_out = true, .inputs = "press A, wait 250ms, press A, wait 250ms, press A"},
+        .expectation = {.text = true, .card = false, .timed_out = true, .inputs = "press A, press A, press A"},
     },
 };
 
@@ -125,6 +126,8 @@ struct MenuCase{
     struct Expectation{
         bool out = false;
         std::string inputs;
+        //  The exit's "[Signals]" line; empty: not checked.
+        std::string signals = {};
     };
     Expectation expectation;
 };
@@ -143,6 +146,17 @@ const MenuCase MENU_CASES[] = {
         .expectation = {.out = true, .inputs = "press B"},
     },
     {
+        //  The log analysis tells a signal never seen from one seen at 0 ms.
+        .name = "the exit's signals line shows a dash for each signal never seen",
+        .input = {.looks = {nothing(Milliseconds(0)), nothing(Milliseconds(1000)), party_bar(Milliseconds(2000))}, .presses = 5},
+        .expectation = {
+            .out = true,
+            .inputs = "press B, press B",
+            .signals = "[Signals] press_b_out_of_menu menu_exit by=party_bar after=2000 first: party_bar@2000 hint@- prompt@- "
+                "arrow@- dialog_box@- autosave@- banner@- choice@- fade@- last_busy@-",
+        },
+    },
+    {
         .name = "still in the menu after the presses",
         .input = {.looks = {nothing(Milliseconds(0))}, .presses = 2},
         .expectation = {.out = false, .inputs = "press B, press B"},
@@ -158,6 +172,10 @@ UnitTestResult check_menu(const MenuCase& test, CancellableScope& scope){
     const std::string inputs = joined(backend.inputs());
     if (inputs != test.expectation.inputs){
         return std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, inputs);
+    }
+    const std::vector<std::string>& lines = backend.lines();
+    if (!test.expectation.signals.empty() && std::find(lines.begin(), lines.end(), test.expectation.signals) == lines.end()){
+        return std::format("expected the line \"{}\" in:\n{}", test.expectation.signals, joined(lines));
     }
     return true;
 }

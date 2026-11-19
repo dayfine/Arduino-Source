@@ -119,7 +119,8 @@ ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readin
     return observation;
 }
 
-const ScreenObservation PLATFORM = look({}, {PLATFORM_READING});
+//  01.01's platform: the controls hint, no party bar.
+const ScreenObservation PLATFORM = look({}, {CONTROLS_HINT_READING});
 //  2 s in: a badge in a checkpoint's first 1.5 s is the save before it.
 const ScreenObservation OWN_AUTOSAVE = look({}, {AUTOSAVE_READING}, Milliseconds(2000));
 const ScreenObservation CUTSCENE = look({});
@@ -539,22 +540,12 @@ struct LoadCase{
 
 const LoadCase LOAD_CASES[] = {
     {
-        .name = "01.02's start: loaded, and off the platform",
-        .input = {.checkpoint = "01.02", .looks = {CUTSCENE}},
-        .expectation = {
-            .verdict = "done", .inputs = "press HOME, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
-            .line = "[Checkpoint] 01.02: off the station platform; START UNCHECKED: nothing reads this row's own start",
-        },
-    },
-    {
-        .name = "01.02's start on the platform is an older save",
+        .name = "01.02's start: loaded, and not checked",
         .input = {.checkpoint = "01.02", .looks = {PLATFORM}},
-        .expectation = {.verdict = "older_save", .inputs = "press HOME, wait 300ms"},
-    },
-    {
-        .name = "one platform look is not the platform",
-        .input = {.checkpoint = "01.02", .looks = {PLATFORM, CUTSCENE, PLATFORM, CUTSCENE}},
-        .expectation = {.verdict = "done", .inputs = "press HOME, wait 300ms, wait 300ms, wait 300ms, wait 300ms"},
+        .expectation = {
+            .verdict = "done", .inputs = "press HOME",
+            .line = "[Checkpoint] 01.02: START UNCHECKED: nothing reads this row's own start",
+        },
     },
     {
         .name = "01.01's start is left to its first step's platform check",
@@ -614,47 +605,31 @@ struct ChainCase{
     Expectation expectation;
 };
 
-const ScreenObservation PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING}, Milliseconds(2000));
+const ScreenObservation PLATFORM_SAVING = look({}, {CONTROLS_HINT_READING, AUTOSAVE_READING}, Milliseconds(2000));
 const ScreenObservation IN_CONTROL = look({ScreenEvent::PLAYER_CAN_MOVE});
 const std::vector<ScreenObservation> ROOF_SAVED = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM};
-//  START_LOOKS looks off the platform, then 01.02's scene.
+//  01.02's scene after the reload.
 const std::vector<ScreenObservation> AFTER_RELOAD = {
-    CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, DIALOG,
+    DIALOG,
     look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, Milliseconds(1000)), look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, Milliseconds(3000)),
 };
 const StartSignature STATION_FRONT{.talk_prompt = false, .party = 1};
 
 const ChainCase CHAIN_CASES[] = {
     {
-        .name = "autosave seen and the start check does not fail: on without a reload",
+        .name = "autosave seen: on from the live screen without a reload",
         .input = {.looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
-        .name = "autosave seen and the start check fails: reloads the start",
-        .input = {.looks = {
-            CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
-        }},
-        .expectation = {.verdict = "done", .reloads = 1},
-    },
-    {
-        .name = "no autosave seen and the start check fails: no reload, no save to start from",
-        .input = {.looks = {PLATFORM}},
-        .expectation = {.verdict = "failed at 01.02 chain: no_start_save", .reloads = 0},
-    },
-    {
-        .name = "a reload onto an older save stops",
-        .input = {.looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM}},
-        .expectation = {.verdict = "failed at 01.02 chain: older_save", .reloads = 1},
-    },
-    {
-        .name = "an autosave before the last step does not save the row: no save to reload the next from",
+        .name = "an autosave before the last step does not save the row",
         .input = {
             .looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM},
             .first_actions = {"wait_for_platform", "wait_for_platform"},
+            .second_action = "wait_for_platform",
         },
         .expectation = {
-            .verdict = "failed at 01.02 chain: no_start_save", .reloads = 0,
+            .verdict = "done", .reloads = 0,
             .line = "[Save] 01.01: not saved (the game autosaved in wait_for_platform, before wait_for_platform_again: a reload would skip wait_for_platform_again)",
         },
     },

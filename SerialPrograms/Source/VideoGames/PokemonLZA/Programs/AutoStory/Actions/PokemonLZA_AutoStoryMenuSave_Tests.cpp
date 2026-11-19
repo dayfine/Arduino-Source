@@ -64,8 +64,9 @@ ScreenObservation home(Milliseconds at){
     return look({ScreenEvent::SWITCH_HOME_MENU}, /*readings=*/{}, at);
 }
 
+//  01.01's platform: the controls hint, no party bar.
 ScreenObservation platform(Milliseconds at){
-    return look(/*events=*/{}, {PLATFORM_READING}, at);
+    return look(/*events=*/{}, {CONTROLS_HINT_READING}, at);
 }
 
 //  No detector reads the options screens.
