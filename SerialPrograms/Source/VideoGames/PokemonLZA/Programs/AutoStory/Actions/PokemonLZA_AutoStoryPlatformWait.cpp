@@ -28,7 +28,9 @@ struct PlatformProgress{
     size_t streak = 0;
     //  On the last look.
     bool text_waiting = false;
-    bool skip_pressed = false;
+    bool fade_shown = false;
+    //  When the picture came back after a fade, until Plus is held for it.
+    std::optional<WallClock> faded_in = std::nullopt;
 };
 
 //  True once the platform has held PLATFORM_LOOKS looks.
@@ -51,14 +53,28 @@ bool text_waiting_for_a(const ScreenObservation& look){
     return look.events.has(ScreenEvent::DIALOG_BOX) && look.readings.contains(ADVANCE_ARROW_READING);
 }
 
-//  The opening playing, not yet skipped: Plus at its start skips it to the
-//  platform (console B, 2026-11-19); one press, as Plus on the platform
-//  would open the map.
+//  A Plus held while the confirm screen still fades out does nothing (console
+//  B, 2026-11-19: held 4 ms into the step). The opening's "hold to skip"
+//  takes one this long after its picture fades in.
+constexpr Milliseconds OPENING_SKIP_AFTER_FADE_IN = 750ms;
+
+void track_fade_in(const ScreenObservation& look, PlatformProgress& progress){
+    const bool fade = fade_shows(look);
+    if (fade){
+        progress.faded_in.reset();
+    }else if (progress.fade_shown){
+        progress.faded_in = look.when;
+    }
+    progress.fade_shown = fade;
+}
+
+//  Once per fade-in, while the opening plays. Plus on the platform opens the
+//  map, so none once the platform or the autosave before it shows.
 bool opening_skip_due(const ScreenObservation& look, PlatformWait wait, const PlatformProgress& progress){
-    if (wait != PlatformWait::AFTER_AUTOSAVE || progress.skip_pressed || progress.autosave_seen){
+    if (wait != PlatformWait::AFTER_AUTOSAVE || progress.autosave_seen || !progress.faded_in){
         return false;
     }
-    return !text_shows(look) && !fade_shows(look) && !look.events.has(ScreenEvent::SCREEN_STILL) &&
+    return look.when - *progress.faded_in >= OPENING_SKIP_AFTER_FADE_IN && !text_shows(look) &&
         !look.readings.contains(PLATFORM_READING);
 }
 
@@ -87,10 +103,11 @@ std::optional<StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds
             backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
         }
         progress.text_waiting = text_now;
+        track_fade_in(look, progress);
         if (opening_skip_due(look, wait, progress)){
             backend.log("[PLZA] platform wait: the opening plays; Plus held to skip it");
             backend.press(BUTTON_PLUS, CUTSCENE_SKIP_HOLD, /*release=*/400ms);
-            progress.skip_pressed = true;
+            progress.faded_in.reset();
         }
         backend.wait(PLATFORM_POLL);
     }
