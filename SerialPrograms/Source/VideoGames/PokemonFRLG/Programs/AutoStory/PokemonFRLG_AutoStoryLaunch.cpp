@@ -14,6 +14,7 @@
 #include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -189,17 +190,71 @@ StoryLaunchPolicy frlg_launch_policy(
     return policy;
 }
 
-std::optional<Pokemon::StoryFailure> launch_frlg_save(ConsoleHandle& console, ProControllerContext& context){
-    FrlgLaunchBackend backend(console, context);
-    const StoryLaunchPolicy policy = frlg_launch_policy(
-        Pokemon::switch_launch_prompts(console),
-        {.handle_online_license_check = GameSettings::instance().HANDLE_ONLINE_LICENSE_CHECK}
+namespace{
+
+std::optional<Pokemon::StoryFailure> launch_frlg_save_emulator(ConsoleHandle& console, ProControllerContext& context){
+    console.log("Emulator device selected: soft-resetting GBA to reload save.", COLOR_BLUE);
+    //  GBA soft reset: A + B + Start + Select.
+    pbf_press_button(context, BUTTON_B | BUTTON_A | BUTTON_MINUS | BUTTON_PLUS, 360ms, 1440ms);
+    LoadMenuWatcher load_menu(COLOR_BLUE);
+    int ls = run_until<ProControllerContext>(
+        console, context,
+        [](ProControllerContext& ctx){
+            pbf_mash_button(ctx, BUTTON_A, 20000ms);
+        },
+        {load_menu}
     );
-    const Pokemon::StoryLaunchRequest request{
-        .save = Pokemon::StoryLaunchRequest::Save::LATEST,
-        .running = Pokemon::StoryLaunchRequest::Running::RESTART,
-    };
-    if (std::optional<Pokemon::StoryFailure> failed = Pokemon::launch_story_game(backend, policy, request)){
+    if (ls != 0){
+        return Pokemon::StoryFailure{
+            .code = std::string(Pokemon::STORY_LAUNCH_FAILED),
+            .detail = "frlg (emulator): load menu did not appear after soft reset",
+            .repeats = true,
+        };
+    }
+    context.wait_for_all_requests();
+    pbf_wait(context, 500ms);
+    context.wait_for_all_requests();
+    VideoSnapshot after_settle = console.video().snapshot();
+    //  At 2x speed, the final mash A may already have selected CONTINUE; only wait for
+    //  the black fade if the load menu is still on screen.
+    if (after_settle && LoadMenuDetector(COLOR_BLUE).detect(after_settle)){
+        pbf_press_button(context, BUTTON_A, 160ms, 320ms);
+        BlackScreenOverWatcher black_over(COLOR_RED);
+        int entered = wait_until(
+            console, context,
+            GameSettings::instance().ENTER_GAME_WAIT0,
+            {black_over}
+        );
+        if (entered != 0){
+            return Pokemon::StoryFailure{
+                .code = std::string(Pokemon::STORY_LAUNCH_FAILED),
+                .detail = "frlg (emulator): timed out waiting to enter game",
+                .repeats = true,
+            };
+        }
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
+std::optional<Pokemon::StoryFailure> launch_frlg_save(ConsoleHandle& console, ProControllerContext& context){
+    std::optional<Pokemon::StoryFailure> failed;
+    if (GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator){
+        failed = launch_frlg_save_emulator(console, context);
+    }else{
+        FrlgLaunchBackend backend(console, context);
+        const StoryLaunchPolicy policy = frlg_launch_policy(
+            Pokemon::switch_launch_prompts(console),
+            {.handle_online_license_check = GameSettings::instance().HANDLE_ONLINE_LICENSE_CHECK}
+        );
+        const Pokemon::StoryLaunchRequest request{
+            .save = Pokemon::StoryLaunchRequest::Save::LATEST,
+            .running = Pokemon::StoryLaunchRequest::Running::RESTART,
+        };
+        failed = Pokemon::launch_story_game(backend, policy, request);
+    }
+    if (failed){
         return failed;
     }
     try{
