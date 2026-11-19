@@ -28,6 +28,7 @@
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "PokemonLZA_AutoStoryMenuReadings.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
@@ -140,11 +141,6 @@ ScreenObservation choice(int selected, int rows = 2){
     return observation;
 }
 
-//  The platform held for the start check and the walk's free control.
-std::vector<ScreenObservation> walk_into_white_fade(){
-    return {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE};
-}
-
 //  `count` party bar looks `every` apart from the start.
 std::vector<ScreenObservation> party_bars(Milliseconds every, size_t count){
     std::vector<ScreenObservation> looks;
@@ -231,17 +227,17 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.01's walk plays a dropped leg again",
-        .input = {.checkpoint = "01.01", .first_step = 0, .steps = 2, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, STILL, PLATFORM, WHITE_FADE}},
+        .input = {.checkpoint = "01.01", .first_step = 2, .steps = 1, .looks = {PLATFORM, PLATFORM, PLATFORM, STILL, PLATFORM, WHITE_FADE}},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 300ms, wait 250ms, stick 0deg 4500ms run, stick 0deg 4500ms run, press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 250ms run",
+            .inputs = "wait 250ms, stick 0deg 4500ms run, stick 0deg 4500ms run, press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 250ms run",
             .line = "[PLZA] walk: the screen stayed still after the walk of leg 1/2 turn 0 walk 4500 ms; once more",
         },
     },
     {
         //  Control comes ~7 s after 01.01's scenes end (console B, 2026-11-15).
         .name = "a walk waits for control that comes 7 s after the scene",
-        .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = concat(
+        .input = {.checkpoint = "01.01", .first_step = 2, .steps = 1, .looks = concat(
             std::vector<ScreenObservation>(28, CUTSCENE),
             {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE}
         )},
@@ -253,12 +249,12 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.01's walk does not start in a text box",
-        .input = {.checkpoint = "01.01", .first_step = 1, .looks = {DIALOG}},
+        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {DIALOG}},
         .expectation = {.verdict = "failed at platform_to_plaza: walk_not_free"},
     },
     {
         .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second; Plus in the 5 s with no text",
-        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
+        .input = {.checkpoint = "01.01", .first_step = 3, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
@@ -282,7 +278,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "01.01's arrival fails after a minute with nothing going on",
-        .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
+        .input = {.checkpoint = "01.01", .first_step = 3, .looks = {
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(60000)),
         }},
@@ -791,7 +787,11 @@ struct NewGameChainCase{
 const NewGameChainCase NEW_GAME_CHAIN_CASES[] = {
     {
         .name = "01.00a, 01.00b and 01.01 in one run",
-        .input = {.rows = {"01.00a", "01.00b"}, .looks = concat({CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}, walk_into_white_fade())},
+        //  01.01: the platform for the start check, the text speed's menu, the walk's free control.
+        .input = {.rows = {"01.00a", "01.00b"}, .looks = {
+            CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, look({}, {MAIN_MENU_READING}), look({}, {MAIN_MENU_READING}),
+            CUTSCENE, CUTSCENE, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE,
+        }},
         .expectation = {.verdict = "done", .console_steps = "new_game_intro confirm_new_game"},
     },
 };
@@ -811,7 +811,7 @@ UnitTestResult check_new_game_chain(const NewGameChainCase& test, CancellableSco
     for (const std::string& id : test.input.rows){
         rows.push_back(builtin_row(tools, id, /*first_step=*/0, /*steps=*/std::numeric_limits<size_t>::max()));
     }
-    rows.push_back(builtin_row(tools, "01.01", /*first_step=*/0, /*steps=*/2));
+    rows.push_back(builtin_row(tools, "01.01", /*first_step=*/0, /*steps=*/3));
     note_autosaves(rows, sightings);
     Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;

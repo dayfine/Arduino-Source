@@ -13,6 +13,7 @@
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryMenuReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryMenuSave.h"
 #include "PokemonLZA_AutoStoryMenuSave_Tests.h"
 
@@ -63,6 +64,15 @@ ScreenObservation home(Milliseconds at){
     return look({ScreenEvent::SWITCH_HOME_MENU}, /*readings=*/{}, at);
 }
 
+ScreenObservation platform(Milliseconds at){
+    return look(/*events=*/{}, {PLATFORM_READING}, at);
+}
+
+//  No detector reads the options screens.
+ScreenObservation options(Milliseconds at){
+    return look(/*events=*/{}, /*readings=*/{}, at);
+}
+
 std::vector<ScreenObservation> twice(std::vector<ScreenObservation (*)(Milliseconds)> screens){
     std::vector<ScreenObservation> looks;
     Milliseconds at(0);
@@ -108,6 +118,14 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
             .failure = "",
             .inputs = "wait 250ms, press X, wait 250ms, press A, wait 250ms, press R, wait 250ms, press A, "
                 "wait 250ms, press B, wait 250ms, press B",
+        },
+    },
+    {
+        .name = "a menu opened before has no tutorial card: R saves",
+        .input = {.looks = twice({overworld, main_menu, save_button, text, main_menu, overworld})},
+        .expectation = {
+            .failure = "",
+            .inputs = "wait 250ms, press X, wait 250ms, press R, wait 250ms, press A, wait 250ms, press B, wait 250ms, press B",
         },
     },
     {
@@ -157,9 +175,37 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
     },
 };
 
-UnitTestResult check_menu_save(const MenuSaveCase& test, CancellableScope& scope){
+//  The blind presses from the main menu to the text speed, set to Fast.
+constexpr std::string_view TEXT_SPEED_ROWS = "press L, press Up, press A, press Down, press Right";
+
+const MenuSaveCase TEXT_SPEED_CASES[] = {
+    {
+        //  01.01 opens the save file's first menu, under the tutorial card.
+        .name = "the tutorial card gets A, then the rows, then B back to the platform",
+        .input = {.looks = twice({platform, card, main_menu, options, main_menu, platform})},
+        .expectation = {
+            .failure = "",
+            .inputs = std::format(
+                "wait 250ms, press X, wait 250ms, press A, wait 250ms, {}, wait 250ms, press B, wait 250ms, press B, wait 250ms",
+                TEXT_SPEED_ROWS
+            ),
+        },
+    },
+    {
+        .name = "a menu with no tutorial card gets the rows at once",
+        .input = {.looks = twice({overworld, main_menu, options, overworld})},
+        .expectation = {
+            .failure = "",
+            .inputs = std::format("wait 250ms, press X, wait 250ms, {}, wait 250ms, press B, wait 250ms", TEXT_SPEED_ROWS),
+        },
+    },
+};
+
+using MenuAction = std::optional<Pokemon::StoryFailure> (*)(PlzaBackend& backend);
+
+UnitTestResult check_menu_action(MenuAction action, const MenuSaveCase& test, CancellableScope& scope){
     Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
-    const std::optional<Pokemon::StoryFailure> outcome = save_from_menu(backend);
+    const std::optional<Pokemon::StoryFailure> outcome = action(backend);
     if ((outcome ? outcome->code : std::string()) != test.expectation.failure){
         return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, (outcome ? std::format("{}", *outcome) : std::string("ok")));
     }
@@ -178,7 +224,20 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        return check_menu_save(m_case, scope);
+        return check_menu_action(save_from_menu, m_case, scope);
+    }
+private:
+    MenuSaveCase m_case;
+};
+
+class TextSpeedTest : public UnitTest{
+public:
+    explicit TextSpeedTest(MenuSaveCase test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - set_text_speed_fast: {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        return check_menu_action(set_text_speed_fast, m_case, scope);
     }
 private:
     MenuSaveCase m_case;
@@ -190,6 +249,9 @@ private:
 void add_tests_AutoStoryMenuSave(UnitTestDatabase& database){
     for (const MenuSaveCase& test : MENU_SAVE_CASES){
         database.add<MenuSaveTest>(test);
+    }
+    for (const MenuSaveCase& test : TEXT_SPEED_CASES){
+        database.add<TextSpeedTest>(test);
     }
 }
 

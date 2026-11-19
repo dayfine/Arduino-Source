@@ -17,6 +17,11 @@
         }
       },
       {
+        "id": "text_speed_fast",
+        "why": "text speed to fast through the main menu's options; blind presses on the options screens, which no detector reads",
+        "action": "set_text_speed_fast"
+      },
+      {
         "id": "platform_to_plaza",
         "why": "down the platform, then right until the white fade into the arrival scenes. not planned: the platform has no map",
         "action": "walk",

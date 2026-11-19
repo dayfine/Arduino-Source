@@ -41,6 +41,8 @@ enum class PlzaAction{
     //  Saves from the menu where a checkpoint would otherwise end on an
     //  autosave the plan does not place (a catch's).
     SAVE_FROM_MENU,
+    //  Text speed to fast through the options, on 01.01's platform.
+    SET_TEXT_SPEED_FAST,
     //  Console only: off a console they fail as "console_only".
     NEW_GAME_INTRO,
     CONFIRM_NEW_GAME,
