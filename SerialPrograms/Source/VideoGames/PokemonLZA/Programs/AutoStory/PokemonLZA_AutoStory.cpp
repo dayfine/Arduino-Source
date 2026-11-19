@@ -89,6 +89,43 @@ void check_checkpoint_range(ConsoleHandle& console, size_t first, size_t last, s
     }
 }
 
+const EnumDropdownDatabase<StarterChoice>& starter_database(){
+    static const EnumDropdownDatabase<StarterChoice> database{
+        {StarterChoice::CHIKORITA, "chikorita", "Chikorita"},
+        {StarterChoice::TOTODILE,  "totodile",  "Totodile"},
+        {StarterChoice::TEPIG,     "tepig",     "Tepig"},
+    };
+    return database;
+}
+
+//  The stick heading from 01.03's start to each starter: Chikorita's -70 is
+//  from console B; the others keep #1933's stick angles relative to its
+//  Chikorita (-66, -50, -34).
+double starter_turn(StarterChoice starter){
+    switch (starter){
+    case StarterChoice::TOTODILE:
+        return -54;
+    case StarterChoice::TEPIG:
+        return -38;
+    case StarterChoice::CHIKORITA:
+        break;
+    }
+    return -70;
+}
+
+//  Before `run_from` (dash is not unlocked yet), each step's run legs walk.
+void walk_before(std::vector<StoryCheckpoint>& rows, const std::string& run_from, StoryEnv& story){
+    for (StoryCheckpoint& row : rows){
+        const bool walk_only = row.id < run_from;
+        for (StoryStep& step : row.steps){
+            step.run = [&story, walk_only, run = std::move(step.run)](PlzaBackend& backend, Pokemon::RunState& state) mutable{
+                story.walk_only = walk_only;
+                return run(backend, state);
+            };
+        }
+    }
+}
+
 const EnumDropdownDatabase<NewGameLanguage>& new_game_language_database(){
     static const EnumDropdownDatabase<NewGameLanguage> database{
         {NewGameLanguage::English,             "en",      "English"},
@@ -287,6 +324,12 @@ AutoStory::AutoStory()
         true
     )
     , RECORD_START_MINIMAPS(std::string(RECORD_START_MINIMAPS_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false)
+    , STARTER("<b>Starter:</b><br>The starter 01.03 picks.", starter_database(), LockMode::LOCK_WHILE_RUNNING, StarterChoice::CHIKORITA)
+    , RUN_FROM(
+        /*is_password=*/false,
+        "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk (the game has no dash yet).",
+        LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"02.01", /*placeholder_text=*/"02.01"
+    )
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -302,6 +345,8 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(REWINDS_TO_BACKUP);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
     PA_ADD_OPTION(RECORD_START_MINIMAPS);
+    PA_ADD_OPTION(STARTER);
+    PA_ADD_OPTION(RUN_FROM);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -311,9 +356,10 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const NewGameChoices new_game{.language = GAME_LANGUAGE, .look = PLAYER_LOOK, .name = PLAYER_NAME};
     StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     AutosaveSightings sightings;
-    const PlzaStoryTools tools = plza_console_tools(story, sightings);
+    const PlzaStoryTools tools = plza_console_tools(story, sightings, starter_turn(STARTER));
     StoryData story_data = load_plza_story(tools);
     note_autosaves(story_data.checkpoints, sightings);
+    walk_before(story_data.checkpoints, RUN_FROM, story);
     std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
     const size_t first = RANGE.start_index();
     const size_t last = RANGE.end_index();

@@ -56,6 +56,8 @@ struct PlzaStoryTools{
     std::function<std::optional<Pokemon::StoryFailure>(PlzaBackend& backend)> battle = {};
     //  Where a menu save counts as an autosave; none: nowhere.
     AutosaveSightings* sightings = nullptr;
+    //  The stick heading of a walk with "turn_to_starter" (01.03's starter pick).
+    double starter_turn = -70;
 };
 
 //  Every action a PLZA checkpoint may name, bound to `tools`, which must

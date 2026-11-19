@@ -43,6 +43,9 @@ struct StoryEnv{
     BattleAIOption& battle_ai;
     //  The language, look and name 01.00a picks (01.00b checks them).
     NewGameChoices new_game = {};
+    //  Set while a checkpoint before the one where B first runs plays: run
+    //  legs walk at their walk times.
+    bool walk_only = false;
 };
 
 //  The console's MinimapArrowReader.
