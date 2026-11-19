@@ -34,6 +34,11 @@
 #include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
 #include "CommonTools/ScreenMachine/ScreenMachine_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryChainStart_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.h"
 
 namespace PokemonAutomation{
 namespace{
@@ -44,6 +49,11 @@ UnitTestDatabase make_logic_tests(){
     Pokemon::add_tests_AutoStory(database);
     add_tests_ScreenEvents(database);
     add_tests_ScreenMachine(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryBackend(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryChainStart(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStoryGame(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStorySceneMachine(database);
+    NintendoSwitch::PokemonLZA::add_tests_AutoStorySceneReplay(database);
     return database;
 }
 

@@ -1,0 +1,107 @@
+/*  PokemonLZA AutoStory - Console backend
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  PLZA on the console for the engine's backend
+ *  (Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h).
+ *
+ *  Dash is a toggle in this game and the walks assume it is off, so
+ *  StoryPace::RUN walks too.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryConsoleBackend_H
+#define PokemonAutomation_PokemonLZA_AutoStoryConsoleBackend_H
+
+#include <string_view>
+#include "Common/Cpp/Time.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGameChoices.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionCompleteDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h"
+#include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryScreenEvents.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonLZA{
+
+
+//  The console a run plays on, for the actions only a console can do, and
+//  the battle AI its battles fight with.
+struct StoryEnv{
+    SingleSwitchProgramEnvironment& env;
+    ProControllerContext& context;
+    BattleAIOption& battle_ai;
+    //  01.00a's new game: the language, look and name to pick (01.00b checks them).
+    NewGameChoices new_game = {};
+};
+
+//  The console's MinimapArrowReader: get_facing_direction() on `env`.
+MinimapArrowReader minimap_arrow(StoryEnv& env);
+
+
+
+//  PLZA on the console: the controller and PlzaScreenObserver.
+//  code-health: allow public_methods -- the engine's backend calls; nothing PLZA adds
+class PlzaConsoleBackend : public PlzaBackend{
+public:
+    explicit PlzaConsoleBackend(StoryEnv& env);
+
+    virtual Pokemon::StoryBackendKind kind() const override{
+        return Pokemon::StoryBackendKind::CONSOLE;
+    }
+    virtual void press(Button button, Milliseconds hold, Milliseconds release) override;
+    virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override;
+    virtual void wait(Milliseconds duration) override;
+
+    //  Once the inputs are done: SWITCH_HOME_MENU alone on the Switch's
+    //  HOME (PLZA's detectors may read its plain screen as the game); else
+    //  PlzaScreenObserver's events on a frame (Pokemon::screen_observation()),
+    //  SCREEN_STILL when it barely differs from the frame of the look before,
+    //  and the readings PLATFORM_READING, AUTOSAVE_READING,
+    //  CONTROLS_HINT_READING, ADVANCE_ARROW_READING, and
+    //  MISSION_COMPLETE_READING or else MISSION_BANNER_READING (the card
+    //  has the banner's bar), TUTORIAL_CARD_READING (TutorialCardDetector's);
+    //  with CHOICE_BOX, CHOICE_ROWS_READING and
+    //  CHOICE_SELECTED_READING.
+    virtual Pokemon::Observation<Pokemon::ZonePose> observe() override;
+    //  fight_story_battle() with the run's battle AI, two minutes at most;
+    //  its failure as "battle_failed".
+    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
+
+    //  To the console's log and the stream's overlay log: the checkpoint and
+    //  the step under way, for whoever watches.
+    virtual void log(std::string_view line) override;
+    //  To the console's log only.
+    virtual void log_detail(std::string_view line) override;
+    virtual CancellableScope& scope() override;
+
+private:
+    StoryEnv& m_env;
+    HomeMenuDetector m_home;
+    PlzaScreenObserver m_observer;
+    PlatformArrivalDetector m_platform;
+    AutosaveDetector m_autosave;
+    ControlsHintDetector m_controls_hint;
+    AdvanceArrowDetector m_advance_arrow;
+    MainMissionBannerDetector m_mission_banner;
+    MissionCompleteDetector m_mission_complete;
+    VideoSnapshot m_previous;
+};
+
+
+
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif
