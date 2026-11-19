@@ -45,7 +45,7 @@ void BattlePanelDetector::make_overlays(VideoOverlaySet& items) const{
 }
 
 bool BattlePanelDetector::detect(const ImageViewRGB32& screen){
-    return sky_blue_share(screen, m_badge) >= BADGE_SHARE && share_of(screen, m_bar, hp_bar_pixel) >= BAR_SHARE;
+    return dim_cyan_share(screen, m_badge) >= BADGE_SHARE && share_of(screen, m_bar, hp_bar_pixel) >= BAR_SHARE;
 }
 
 

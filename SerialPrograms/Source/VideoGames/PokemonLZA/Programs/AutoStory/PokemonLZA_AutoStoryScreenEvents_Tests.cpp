@@ -117,6 +117,16 @@ const BattleFrameCase BATTLE_FRAME_CASES[] = {
         .expectation = {.battle = true},
     },
     {
+        .name = "the Tepig battle's start over light paving stone in Spanish, not locked on",
+        .input = {.path = "AutoStoryScreenEvents/es_0302b_tepig_battle_start.png"},
+        .expectation = {.battle = true},
+    },
+    {
+        .name = "the Tepig battle with the lead at 9 HP over light paving stone in Spanish",
+        .input = {.path = "AutoStoryScreenEvents/es_0302b_tepig_battle_low_hp.png"},
+        .expectation = {.battle = true},
+    },
+    {
         .name = "no battle at the zone's pillar with the lead's panel up",
         .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_no_battle.png"},
         .expectation = {.battle = false},

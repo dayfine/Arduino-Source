@@ -21,8 +21,9 @@ namespace PokemonLZA{
 
 
 //  Five 16 x 12 slots at x 405-513 (27 apart), y 806 on 1080p. A battle: one slot over
-//  20% triangle blue, and 3+ others 6-50% white with no blue. Measured: triangle
-//  0.39-0.44, dots 0.18-0.57; no other of 1403 PLZA frames has them.
+//  20% triangle blue, and 3+ others 6-50% white (neutral: channels within 30) with no
+//  blue. Measured: triangle 0.27-0.44, dots 0.06-0.38 (over light paving stone too); no
+//  other of 1203 PLZA test frames has them.
 class BattleMarkersDetector : public StaticScreenDetector{
 public:
     explicit BattleMarkersDetector(Color color = COLOR_BLUE);
