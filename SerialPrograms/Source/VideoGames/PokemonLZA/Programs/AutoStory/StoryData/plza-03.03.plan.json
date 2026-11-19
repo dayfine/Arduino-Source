@@ -9,6 +9,12 @@
     },
     "events": [
       {
+        "id": "taunie_runs_off",
+        "kind": "game_action",
+        "why": "the Main Missions card (A turns its pages), Taunie runs off; after a reload the card is gone and this ends on the move hints",
+        "action": "mash_to_move_hints"
+      },
+      {
         "id": "through_hotel_gate",
         "kind": "game_action",
         "why": "through the Hotel Z gate passage into the rock pile scene. not planned: no tile grid in Lumiose",
