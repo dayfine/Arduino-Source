@@ -407,6 +407,11 @@ def statement_checks(path, statements_, added, previous_signatures, new_file):
             errors.append(Finding(path, statement.line, rule(
                 f"{what} '{variable}'; make it const/constexpr or pass options down in a struct",
                 'TotW #103')))
+        if statement.namespace_scope and re.match(r'extern\s+template\b', text):
+            errors.append(Finding(path, statement.line, rule(
+                "'extern template'; define the template in the header, or drop the template "
+                'when one type uses it', 'TotW #103', 'fork AGENTS.md "Types, names and comments"'),
+                check='extern_template'))
         if header and statement.namespace_scope and is_forward_declaration(statement) \
                 and text.split()[-1] not in defined:
             finding = Finding(path, statement.line, rule(

@@ -84,6 +84,31 @@ functions. libclang would need a compilation database with Qt include paths
 to parse these headers; the scan only has to tell access sections, member
 functions and data apart. Classes split across `#if` branches are skipped.
 
+The #648 review checks were measured on 2026-11-18, each over the PR diff against `origin/main`
+(what CI reports) and over the whole tree (every class new). Hits per check, `extern_template` /
+`free_function` / `uncalled_method` / `one_user_alias` / `bool_with_failure`:
+
+| Tree | Diff vs `origin/main` | Whole tree |
+| --- | --- | --- |
+| `origin/main` | - | 0 / 10 / 592 / 14 / 4 |
+| `autostory/shared-core` before the review (84d9963a1, 91 files) | 5 / 2 / 9 / 6 / 3 | 5 / 12 / 600 / 20 / 7 |
+| `autostory/shared-core` after it (165c2a747, 84 files) | 0 / 0 / 4 / 5 / 0 | - |
+| `plza/lean` (288 files) | 5 / 2 / 10 / 10 / 3 | 5 / 12 / 601 / 24 / 7 |
+| `frlg/lean` (796 files) | 12 / 0 / 59 / 17 / 2 | 12 / 10 / 648 / 30 / 6 |
+
+Before the review, shared-core's diff reports every #648 site: `StoryEngine`, `registry()`,
+`run_checkpoint`, `EventLogger`, `CheckpointReport`, `StoryEngineReport` and the five
+`extern template`s; the review's fix moved `EventLogger` and `Act` into the headers the check
+named. `extern_template` has no hit upstream and no false one on the branches, so it fails.
+The others stay advisory: `free_function` reports upstream readers and handlers holding a
+`Logger&` plus models, and value wrappers (`DllSafeString`, `UiWrapper`); `uncalled_method`
+misses calls through `auto` values or template parameters (on shared-core 1 of 9:
+`ScreenMachineResult::succeeded`; a 7-hit `frlg/lean` sample had none, the rest of the whole-tree
+count is upstream kernels called through templates and legacy getters) and reports API whose
+caller comes later in a stack; `one_user_alias` reports upstream's per-architecture kernel
+aliases and per-game `ProControllerContext` shorthands; `bool_with_failure` reports only true
+pairs (upstream BDSP `success` + `failure_reason`), but its fix changes a type across call sites.
+
 ## Bypass tags
 
 ```cpp
@@ -95,8 +120,9 @@ void load_move_table(){
 `// code-health: allow <check>[,<check>] -- <justification>` lets the listed metrics of one
 function or class exceed their limit. Checks are the metric names in the table above:
 `file_lines`, `function_lines`, `nesting`, `parameters`, `public_methods`, `public_data`,
-`single_method_interface`, `header_symbols`. Six style findings take a tag too: `char_pointer`,
-`overload_prefix`, `out_param_order`, `string_concat`, `param_comment` and `test_only_api`, for a C API
+`single_method_interface`, `header_symbols`. Style findings that take a tag too: `char_pointer`,
+`overload_prefix`, `out_param_order`, `string_concat`, `param_comment`, `test_only_api`, `extern_template`,
+`free_function`, `uncalled_method`, `one_user_alias` and `bool_with_failure`, for a C API
 or a fixed interface that needs them; so do `learned_rule_test` and `special_case` (see
 [Systematic fixes](#systematic-fixes)). Other style and layering
 findings have no bypass.
@@ -104,7 +130,7 @@ findings have no bypass.
 - **Place it** on the function's or class's first line, or in the comment block directly above
   it (only `//` comment and `template` lines between). A `file_lines` tag goes in the first 20
   lines of the file, and so does a `header_symbols` tag. A style tag (`char_pointer`, `overload_prefix`,
-  `out_param_order`, `string_concat`, `param_comment`, `test_only_api`, `learned_rule_test`, `special_case`) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails. Style checks report only changed lines, so a style tag on a line the change left alone (a later PR in a stack) attaches if it covers a finding of the whole file.
+  `out_param_order`, `string_concat`, `param_comment`, `test_only_api`, `learned_rule_test`, `special_case` and the #648 checks) goes on the flagged line or in the comment block directly above it, and waives the finding whether it is an error or advisory. A tag that attaches to nothing fails. Style checks report only changed lines, so a style tag on a line the change left alone (a later PR in a stack) attaches if it covers a finding of the whole file.
 - **Justify it:** the text after `--`, on the tag line itself, must be at least 40 characters and 6 words,
   and say why splitting would make the code worse. Unknown checks, a missing or short
   justification, or a malformed tag fail.
@@ -146,7 +172,7 @@ lexer, not a parser: rules that need types stay in review.
 | `std::filesystem` (outside `Common/Cpp/Filesystem/`) | error | upstream AGENTS.md "Filesystem" |
 | `std::thread`/`jthread`, `std::*mutex`, `std::condition_variable`, `std::async` (outside `Common/Cpp/Concurrency/`) | error | upstream AGENTS.md "Concurrency"; TotW #197 |
 | Control flow: `) {`, `} else`, `else {`, `namespace X {`, brace on the next line, one-line `if`/`for`/`while`/`else` bodies | error | upstream AGENTS.md "Control flow formatting" |
-| Non-const namespace-scope variable or `extern` | error | TotW #103 |
+| Non-const namespace-scope variable or `extern`; `extern template` (define the template in the header, or drop it when one type uses it) | error (`extern template`: tag `extern_template`) | TotW #103; fork AGENTS.md "Types, names and comments" |
 | `new` / `delete` expressions (exempt: paths containing `alloc`, files including Qt headers, `operator new/delete`, `= delete`) | error | TotW #126 |
 | `std::bind` | error | TotW #108 |
 | `return std::move(name);` of a local or by-value/`&&` parameter (not `m_` members or `T&` names) | error | TotW #120 |
@@ -161,6 +187,10 @@ lexer, not a parser: rules that need types stay in review.
 | A comment whose first sentence describes the neighbouring function, none of its own | advisory | CONTRIBUTING; Google "Function Comments" |
 | A literal argument without a `/*param=*/` comment in a call of 3+ arguments: numbers (`2`, `0ms`, `1.5f`), `true`/`false`, `nullptr`, brace lists of those (`{0, 0}`, `{}`). With the callee declared once per arity in the same file, a comment naming another parameter too. Not reported: string/char literals, macros, `std::` calls, format/log calls (name contains format/print/log, or a string literal first), all-number tuples and `*Box`/`*Color`/`*Point`/`*Rect` constructors, a leading `nullptr` (null logger or Qt parent), a lone trailing duration in a call of at most 4 arguments (`save_button_shows(console, context, 5s)`); calls outside brace bodies (declarations, default arguments) (`param_comments.py`) | advisory (tag: `param_comment`) | Google "Function Arguments"; user review on fork #590 |
 | A public namespace-scope name a header adds (on an added line, new since the base) whose only users outside the header and its own .cpp are test files (`*_Tests.cpp`, `*_Test.cpp`, `Tests/`), or that only its own .cpp uses. Users: one `git grep -o -w` over tracked C++. Not reported: names nothing uses yet, names another kept public declaration of the header mentions (parameter, return or member type), `add_tests*` hooks, test headers (`exposure.py`) | advisory (tag: `test_only_api`) | user review on fork #590: test through the public function, or keep the helper in the .cpp's anonymous namespace |
+| A new class (no bases, not in a test file) with 1-2 public methods besides const getters, a constructor, no virtuals, all data private and at least half of it references, pointers or const (value members count as built from the constructor's arguments: a lexer cannot see the constructor) (`review_rules.py`) | advisory (tag: `free_function`) | fork AGENTS.md "Types, names and comments" (#648: `StoryEngine`) |
+| A public method a header adds to a class without bases, not virtual, that no file outside the class's .h/.cpp and tests calls as `.name`, `->name` or `::name`; a call counts only in a file that, or whose own header, names the class or includes its header. Not reported: `begin`/`end` and kin | advisory (tag: `uncalled_method`) | same (#648: `registry()`, `run_checkpoint`) |
+| A namespace-scope `using X = ...;` a header adds that one other header uses (or, with no header, one other module), counting files that include the header (`review_rules.py`) | advisory (tag: `one_user_alias`) | same (#648: `EventLogger`) |
+| A struct with a `bool` completed/passed/ok/succeeded/success/failed next to an `Outcome`, `*Report`, `*Result` or `*failure*`/`*error*` member: one `std::optional<Failure>` | advisory (tag: `bool_with_failure`) | same (#648: `CheckpointReport`, `StoryEngineReport`) |
 
 Advisories print as `Advisory:` lines and `::warning` annotations and never fail.
 

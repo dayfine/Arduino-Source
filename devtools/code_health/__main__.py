@@ -5,7 +5,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from . import allow, exposure, header_api, layering, learned_rules, param_comments, plan_lint, special_cases, style
+from . import allow, exposure, review_rules, header_api, layering, learned_rules, param_comments, plan_lint, special_cases, style
 from .classes import measure_classes
 from .cpp_text import normalize
 from .findings import annotations
@@ -26,6 +26,10 @@ class Repository:
         self.users = exposure.git_users(root)
         self._tests = None
         self._event_ids = None
+
+    def read(self, path):
+        file = self.root / path
+        return file.read_text(encoding='utf-8', errors='replace') if file.is_file() else ''
 
     @property
     def tests(self):
@@ -48,6 +52,7 @@ def style_findings(path, source, previous_source, repo):
     # later PR in a stack); see the README's Style table for the measured rates.
     notes += param_comments.check(path, source, previous_source)
     notes += exposure.check(path, source, previous_source, repo.users)
+    notes += review_rules.check(path, source, previous_source, repo.users, repo.read)
     added = style.added_lines(normalize(source).split('\n'),
                               None if previous_source is None else normalize(previous_source).split('\n'))
     if special_cases.autostory_code(path):

@@ -4,7 +4,7 @@ A tag on a function's or class's first line, or in the comment block directly ab
 that function's or class's listed metrics exceed their limit up to a hard ceiling. A
 `file_lines` or `header_symbols` tag goes in the first FILE_TAG_LINES lines. A STYLE_CHECKS tag
 (`char_pointer`, `overload_prefix`, `out_param_order`, `string_concat`, `param_comment`,
-`test_only_api`, `learned_rule_test`, `special_case`) waives that line finding
+`test_only_api`, `learned_rule_test`, `special_case` and the #648 review checks) waives that line finding
 on its own line or the line below its comment block. Every bypass is printed, quoting its
 justification, so reviewers see it; malformed, unknown or misplaced tags fail."""
 import re
@@ -15,7 +15,8 @@ from .findings import Finding
 
 # Style findings a tag can bypass; they attach like a function's tag, to the finding's line.
 STYLE_CHECKS = ('char_pointer', 'overload_prefix', 'out_param_order', 'string_concat', 'param_comment',
-                'test_only_api', 'learned_rule_test', 'special_case')
+                'test_only_api', 'learned_rule_test', 'special_case', 'extern_template', 'free_function',
+                'uncalled_method', 'one_user_alias', 'bool_with_failure')
 # File-level metrics: the tag goes in the first FILE_TAG_LINES lines.
 FILE_CHECKS = ('file_lines',) + tuple(HEADER_LIMITS)
 CHECKS = (('file_lines', 'function_lines', 'nesting', 'parameters') + tuple(CLASS_LIMITS)
