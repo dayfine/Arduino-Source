@@ -174,6 +174,8 @@ public:
     }
 
     virtual void download_error(const std::string&) override{}
+    virtual void download_added(std::shared_ptr<ResourceDownload>) override{}
+    virtual void all_downloads_done() override{}
 
 private:
     ProgramSession& m_program;
