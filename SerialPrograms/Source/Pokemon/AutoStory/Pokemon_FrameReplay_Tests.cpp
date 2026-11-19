@@ -192,14 +192,14 @@ UnitTestResult test_mgba_exported_folder_loads(){
     } cleanup{temp_dir};
 
     const WallClock t0 = current_time();
-    auto img0 = std::make_shared<ImageRGB32>(16, 16);
-    img0->fill(0xFF000000);
-    auto img1 = std::make_shared<ImageRGB32>(16, 16);
-    img1->fill(0xFFFFFFFF);
+    ImageRGB32 img0(16, 16);
+    img0.fill(0xFF000000);
+    ImageRGB32 img1(16, 16);
+    img1.fill(0xFFFFFFFF);
 
     const std::vector<VideoSnapshot> snapshots = {
-        VideoSnapshot(img0, t0),
-        VideoSnapshot(img1, t0 + Milliseconds(100)),
+        VideoSnapshot(std::move(img0), t0),
+        VideoSnapshot(std::move(img1), t0 + Milliseconds(100)),
     };
     const std::vector<MgbaLink::InputLogEntry> log = {
         {.frame = 100, .mask = 1},
