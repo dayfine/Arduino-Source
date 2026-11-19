@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/CancellableScope.h"
@@ -41,17 +42,16 @@ struct ScreenState{
 };
 
 
-//  How a run of states ended.
-struct ScreenMachineResult{
-    //  The terminal state that acted; empty when the run failed.
-    std::string terminal = {};
-    //  Why it failed; empty when it succeeded.
-    std::string failure = {};
-
-    bool succeeded() const{
-        return failure.empty();
-    }
+//  The run succeeded: this terminal state acted.
+struct ScreenMachineTerminal{
+    std::string state_name;
 };
+//  The run failed before a terminal state acted.
+struct ScreenMachineFailure{
+    std::string reason;
+};
+//  How a run of states ended.
+using ScreenMachineResult = std::variant<ScreenMachineTerminal, ScreenMachineFailure>;
 
 //  Runs `states` over looks from `observe` until a terminal one has acted,
 //  or fails after `timeout` of look time. Logs each change of state to `log`

@@ -149,25 +149,25 @@ ScreenMachineResult run_screen_machine(
             start = observation.when;
         }
         if (observation.when - *start > timeout){
-            return {.terminal = "", .failure = std::format("Did not finish within {}s.", timeout.count() / 1000)};
+            return ScreenMachineFailure{.reason = std::format("Did not finish within {}s.", timeout.count() / 1000)};
         }
         const ScreenState* state = match_screen_state(states, observation);
         if (state == nullptr){
-            return {.terminal = "", .failure = "The screen matches none of the known states."};
+            return ScreenMachineFailure{.reason = "The screen matches none of the known states."};
         }
         changes.screen(state->name, observation.when);
         std::optional<std::string> found = checks.problem(*state, observation);
         if (found){
-            return {.terminal = "", .failure = std::move(*found)};
+            return ScreenMachineFailure{.reason = std::move(*found)};
         }
         if (state->act){
             state->act();
         }
         if (state->terminal){
-            return {.terminal = state->name, .failure = ""};
+            return ScreenMachineTerminal{.state_name = state->name};
         }
     }
-    return {.terminal = "", .failure = std::format("Did not finish within {} looks.", MAX_LOOKS)};
+    return ScreenMachineFailure{.reason = std::format("Did not finish within {} looks.", MAX_LOOKS)};
 }
 
 

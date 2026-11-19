@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -246,7 +247,10 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
         return observation_of(look, start);
     };
     const ScreenMachineResult result = run_screen_machine(observe, scope, states, test.input.timeout, log);
-    const std::string end = result.succeeded() ? result.terminal : std::format("failed: {}", result.failure);
+    const ScreenMachineFailure* failure = std::get_if<ScreenMachineFailure>(&result);
+    const std::string end = failure != nullptr
+        ? std::format("failed: {}", failure->reason)
+        : std::get<ScreenMachineTerminal>(result).state_name;
     if (end != test.expectation.end){
         return std::format("expected \"{}\", got \"{}\"", test.expectation.end, end);
     }
