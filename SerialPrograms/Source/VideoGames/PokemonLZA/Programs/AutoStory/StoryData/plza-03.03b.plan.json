@@ -18,7 +18,7 @@
       },
       {
         "id": "climb_ladder",
-        "why": "sidestep right, face up, A Climb Up, hold up",
+        "why": "step along the wall until Climb Up shows, A, hold up",
         "action": "climb_ladder"
       },
       {

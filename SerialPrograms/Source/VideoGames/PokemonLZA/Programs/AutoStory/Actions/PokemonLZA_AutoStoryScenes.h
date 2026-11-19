@@ -25,8 +25,9 @@ namespace PokemonLZA{
 //  first map lacks. Fails as "map_talk_timeout" after 120 s.
 std::optional<Pokemon::StoryFailure> talk_through_map_screen(PlzaBackend& backend);
 
-//  03.03, facing the side street's wall. Reads nothing: the rooftop scene after it is the check.
-void climb_ladder(PlzaBackend& backend);
+//  03.03b, facing the side street's wall: steps along it until "Climb Up"
+//  shows, A, then climbs. Fails as "ladder_not_found" when no step shows it.
+std::optional<Pokemon::StoryFailure> climb_ladder(PlzaBackend& backend);
 
 //  "choose_<index>" (0 the top): A through text until a choice box shows, then
 //  moves to row `index` and presses A. Fails as "no_choice", "no_such_choice"
