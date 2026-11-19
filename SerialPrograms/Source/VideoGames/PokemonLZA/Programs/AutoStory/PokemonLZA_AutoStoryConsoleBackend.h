@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Dash is a toggle in this game and the walks assume it is off, so
- *  StoryPace::RUN walks too.
+ *  StoryPace::RUN holds B with the stick for the whole leg (a press
+ *  inside a leg toggles dash) and plays a walk time at run pace.
  *
  */
 
