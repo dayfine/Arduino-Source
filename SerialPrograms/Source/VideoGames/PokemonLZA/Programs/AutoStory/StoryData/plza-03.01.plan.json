@@ -20,9 +20,9 @@
       },
       {
         "id": "leave_room_202",
-        "why": "A Leave, until control in the 2F hall; no party bar or prompt there, so quiet means control",
+        "why": "A Leave, until the party bar shows in the 2F hall",
         "action": "mash_to_move_hints",
-        "args": {"press_a_first": true, "quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
+        "args": {"press_a_first": true, "min_length_ms": 5000}
       },
       {
         "id": "to_2f_elevator",

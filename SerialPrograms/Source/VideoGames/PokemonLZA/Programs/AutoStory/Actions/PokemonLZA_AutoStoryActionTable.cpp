@@ -171,7 +171,8 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
     if (walk.move.wait_first > 0ms){
         backend.wait(walk.move.wait_first);
     }
-    if (std::optional<StoryFailure> busy = check_can_walk(backend, name)){
+    const WalkStart start = hooks.quiet_control_step ? WalkStart::AFTER_QUIET_CONTROL : WalkStart::UNKNOWN;
+    if (std::optional<StoryFailure> busy = check_can_walk(backend, name, start)){
         return busy;
     }
     if (walk.heading){
@@ -195,11 +196,11 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
 
 //  01.01's arrival takes ~240 s, hence 360 s. No blind A: one at the end of
 //  a talk restarts it.
-Pokemon::StoryActionParser move_hints_action(){
-    return [](const JsonObject& args) -> StoryStepRun{
+Pokemon::StoryActionParser move_hints_action(PlzaConsoleHooks& hooks){
+    return [&hooks](const JsonObject& args) -> StoryStepRun{
         reject_unknown_keys(args, {
             "min_length_ms", "quiet_ms", "press_a_first", "quiet_is_control", "end_after_black_fades",
-            "scene_start_ms", "gap_press_ms", "advance_with_a",
+            "gap_press_ms", "advance_with_a",
         });
         SceneMachineConfig config;
         config.quiet = ms_or(args, "quiet_ms", 60s);
@@ -211,17 +212,18 @@ Pokemon::StoryActionParser move_hints_action(){
         if (const std::optional<Milliseconds> gap = optional_ms(args, "gap_press_ms")){
             config.gap_press = *gap;
         }
-        if (const std::optional<Milliseconds> start = optional_ms(args, "scene_start_ms")){
-            config.start_window = *start;
-        }
         if (const JsonValue* fades = args.get_value("end_after_black_fades")){
             config.end_after_black_fades = (size_t)fades->to_integer_throw();
         }
-        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
+        return [&hooks, press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
             if (press_a_first){
                 press_through_prompt(backend);
             }
-            return run_scene_machine(backend, "mash_to_move_hints", config, 360s, state.step);
+            std::optional<StoryFailure> failure = run_scene_machine(backend, "mash_to_move_hints", config, /*timeout=*/360s, state.step);
+            if (!failure && config.quiet_is_control){
+                hooks.quiet_control_step = state.step;
+            }
+            return failure;
         };
     };
 }
@@ -235,7 +237,7 @@ Pokemon::StoryActionParser text_to_choice_action(){
         config.stop_at_choice = true;
         config.text_button = flag(args, "advance_with_a") ? BUTTON_A : BUTTON_B;
         return [config](PlzaBackend& backend, RunState& state){
-            return run_scene_machine(backend, "text_to_choice", config, 120s, state.step);
+            return run_scene_machine(backend, "text_to_choice", config, /*timeout=*/120s, state.step);
         };
     };
 }
@@ -247,7 +249,7 @@ Pokemon::StoryActionParser text_to_choice_action(){
 std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
     SceneMachineConfig config;
     config.start_window = 45s;
-    return run_scene_machine(backend, "scene", config, 120s, state.step);
+    return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
 }
 
 //  B on every other look closes the menus a talk opens (Mable's mission and
@@ -257,12 +259,15 @@ std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState& stat
     config.blind_press_after = 0ms;
     config.blind_press_every = 0ms;
     config.blind_button = BUTTON_B;
-    return run_scene_machine(backend, "scene", config, 120s, state.step);
+    return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
 }
 
 
 //  As long as the start's lock-on holds ZL.
 constexpr Milliseconds BATTLE_LOCK_ON_HOLD = 2s;
+constexpr Milliseconds BATTLE_START_POLL = 250ms;
+//  Fails the step in seconds, not after 2 min of looks on the overworld.
+constexpr Seconds BATTLE_START_WAIT = 10s;
 
 //  A start that locked on and let go of ZL can leave the HUD down until ZL
 //  is held again, so `lock_on` also counts the move symbols under ZL.
@@ -276,8 +281,8 @@ bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lo
             return false;
         }
         if (!lock_on){
-            backend.wait(250ms);
-            waited += 250ms;
+            backend.wait(BATTLE_START_POLL);
+            waited += BATTLE_START_POLL;
             continue;
         }
         if ((*lock_on)(BATTLE_LOCK_ON_HOLD)){
@@ -288,12 +293,13 @@ bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lo
     }
 }
 
-//  "battle_never_started" after 10 s, not 2 min of looks on the overworld.
 std::optional<StoryFailure> battle_step(PlzaConsoleHooks& hooks, PlzaBackend& backend){
-    if (!battle_on_within(backend, hooks.lock_on, 10s)){
+    if (!battle_on_within(backend, hooks.lock_on, BATTLE_START_WAIT)){
         return StoryFailure{
             .code = "battle_never_started",
-            .detail = hooks.lock_on ? "no battle HUD and no move symbols under ZL within 10 s" : "no battle HUD within 10 s",
+            .detail = std::format(
+                "no battle HUD{} within {} s", hooks.lock_on ? " and no move symbols under ZL" : "", BATTLE_START_WAIT.count()
+            ),
         };
     }
     if (!hooks.battle){
@@ -310,7 +316,7 @@ std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState& state){
     config.text_button = BUTTON_B;
     config.blind_press_after = 0ms;
     config.blind_button = BUTTON_B;
-    return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s, state.step);
+    return run_scene_machine(backend, "talk_to_pokedex_screen", config, /*timeout=*/90s, state.step);
 }
 
 
@@ -323,7 +329,7 @@ StoryActionParser console_action(PlzaConsoleHooks& hooks, std::string_view name,
         return [&hooks, name, limit](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
             const auto action = hooks.console.find(name);
             if (action == hooks.console.end()){
-                return StoryFailure{.code = std::string(CONSOLE_ONLY), .detail = name + " runs only on a console", .repeats = true};
+                return StoryFailure{.code = std::string(CONSOLE_ONLY), .detail = std::format("{} runs only on a console", name), .repeats = true};
             }
             return action->second(backend, limit);
         };
@@ -342,7 +348,7 @@ std::optional<StoryFailure> story_battle_start_step(PlzaConsoleHooks& hooks, Plz
     SceneMachineConfig config;
     config.stop_at_battle = true;
     config.lock_on = hooks.lock_on;
-    return run_scene_machine(backend, "story_battle_start", config, 90s, state.step);
+    return run_scene_machine(backend, "story_battle_start", config, /*timeout=*/90s, state.step);
 }
 
 std::optional<StoryFailure> menu_save_step(PlzaConsoleHooks& hooks, PlzaBackend& backend){
@@ -370,7 +376,7 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
         {action_name(PlzaAction::SCENE), no_args(scene_step)},
         {action_name(PlzaAction::MASH), no_args(mash_scene_step)},
-        {action_name(PlzaAction::MASH_TO_MOVE_HINTS), move_hints_action()},
+        {action_name(PlzaAction::MASH_TO_MOVE_HINTS), move_hints_action(hooks)},
         {action_name(PlzaAction::TEXT_TO_CHOICE), text_to_choice_action()},
         {action_name(PlzaAction::STORY_BATTLE_START), no_args([&hooks](PlzaBackend& backend, RunState& state){
             return story_battle_start_step(hooks, backend, state);
@@ -404,6 +410,20 @@ void add_console_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     }
 }
 
+//  Clears hooks.quiet_control_step after every step but the one that set
+//  it, so only the step right after sees it.
+StoryActionParser forgetting_quiet_control(PlzaConsoleHooks& hooks, StoryActionParser parser){
+    return [&hooks, parser = std::move(parser)](const JsonObject& args) mutable -> StoryStepRun{
+        return [&hooks, run = parser(args)](PlzaBackend& backend, RunState& state) mutable -> std::optional<StoryFailure>{
+            std::optional<StoryFailure> failure = run(backend, state);
+            if (hooks.quiet_control_step != state.step){
+                hooks.quiet_control_step.reset();
+            }
+            return failure;
+        };
+    };
+}
+
 } // namespace
 
 
@@ -411,6 +431,9 @@ StoryActions plza_story_actions(PlzaConsoleHooks& hooks){
     StoryActions actions;
     add_backend_actions(actions, hooks);
     add_console_actions(actions, hooks);
+    for (auto& [name, parser] : actions){
+        parser = forgetting_quiet_control(hooks, std::move(parser));
+    }
     return actions;
 }
 

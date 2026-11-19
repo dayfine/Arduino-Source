@@ -131,7 +131,7 @@ const AfterThrowCase AFTER_THROW_CASES[] = {
         .name = "a miss with a plate not caught locking on again throws again at once",
         .input = {
             .seen = {.registered = false, .plate_caught = false, .target_gone = false},
-            .relocked = plate(0.51, 0.40, false),
+            .relocked = plate(/*x=*/0.51, /*y=*/0.40, /*caught=*/false),
         },
         .expectation = {.next = AfterThrow::THROW_AGAIN},
     },
@@ -148,7 +148,7 @@ const AfterThrowCase AFTER_THROW_CASES[] = {
         .name = "a plate of a caught species locking on after the throw looks again",
         .input = {
             .seen = {.registered = false, .plate_caught = false, .target_gone = false},
-            .relocked = plate(0.53, 0.42, true),
+            .relocked = plate(/*x=*/0.53, /*y=*/0.42, /*caught=*/true),
         },
         .expectation = {.next = AfterThrow::LOOK_AGAIN},
     },

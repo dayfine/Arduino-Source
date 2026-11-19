@@ -162,7 +162,7 @@ std::optional<Pokemon::StoryFailure> reload_into(
         "[Checkpoint] {}: reloads its start save when chained, whether or not {}'s autosave showed at its end ({})",
         checkpoint.id, previous.id, run.sightings.last_end_seen() ? "seen" : "not seen"
     ));
-    const std::optional<Pokemon::StoryFailure> control = check_can_walk(backend, std::format("the reload into {}", checkpoint.id));
+    const std::optional<Pokemon::StoryFailure> control = check_can_walk(backend, std::format("the reload into {}", checkpoint.id), WalkStart::UNKNOWN);
     if (control){
         backend.log(std::format("[Checkpoint] {}: control never came back after {}: no reload", checkpoint.id, previous.id));
         return control;

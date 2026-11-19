@@ -108,7 +108,6 @@ UnitTestResult check_autosave_step(const AutosaveStepCase& test, CancellableScop
 }
 
 
-
 //  `at`: after the scripts' common start.
 ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readings = {}, Milliseconds at = Milliseconds(0)){
     ScreenObservation observation;
@@ -285,9 +284,10 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at arrival_scenes: scene_quiet", .line = "[SceneQuirk] 01.01/arrival_scenes quiet fired"},
     },
     {
-        .name = "01.00b holds Plus once, on the opening's first moving look, and ends on its autosave",
-        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {BLACK_FADE, CUTSCENE, CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
-        .expectation = {.verdict = "done", .inputs = "wait 300ms, press +, wait 300ms, wait 300ms, wait 300ms, wait 300ms", .line = "[Save] 01.00b: the game autosaved (seen)"},
+        //  console B, 2026-11-19: a Plus 4 ms into the step, before the opening faded in, did nothing.
+        .name = "01.00b holds Plus 0.75 s after the opening fades in, not during the fade, and ends on its autosave",
+        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {BLACK_FADE, CUTSCENE, look(/*events=*/{}, /*readings=*/{}, Milliseconds(750)), OWN_AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .inputs = "wait 300ms, wait 300ms, press +, wait 300ms, wait 300ms, wait 300ms", .line = "[Save] 01.00b: the game autosaved (seen)"},
     },
     {
         .name = "01.02's choice fails when the highlight does not move",
@@ -349,27 +349,26 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = concat(std::vector<ScreenObservation>(50, CUTSCENE), {A_PROMPT})},
         .expectation = {
             .verdict = "done",
-            .inputs = repeated("wait 250ms", 40) + ", press L, stick -15deg 150ms walk, release 100ms, press L, "
-                + repeated("stick 0deg 250ms run", 8) + ", wait 300ms",
+            .inputs = std::format("{}, press L, stick -15deg 150ms walk, release 100ms, press L, {}, wait 300ms", repeated("wait 250ms", 40), repeated("stick 0deg 250ms run", 8)),
             .line = "[PLZA] walk: nothing busy for 10000 ms and no sign of control; taken as control.",
         },
     },
     {
-        .name = "02.05's ride to 2F: the hall's quiet is control",
-        .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = {
+        .name = "02.05's ride to 2F: the hall's quiet is control, so the walk after it starts on two quiet looks",
+        .input = {.checkpoint = "02.05", .first_step = 4, .steps = 2, .looks = concat({
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
             look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(6000)),
-        }},
+        }, concat(std::vector<ScreenObservation>(11, CUTSCENE), {A_PROMPT}))},
         .expectation = {
             .verdict = "done",
-            .inputs = "press B, wait 500ms",
-            .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
+            .inputs = std::format("press B, wait 500ms, wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, {}, wait 300ms", repeated("stick 0deg 250ms run", 8)),
+            .line = "[PLZA] walk: nothing busy, and the step before ended in control: control.",
         },
     },
     {
         .name = "02.06 with no autosave badge seen is not saved",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(21000)), party_bar(Milliseconds(22000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 02.06: not saved (the plan's autosave was not seen)"},
     },

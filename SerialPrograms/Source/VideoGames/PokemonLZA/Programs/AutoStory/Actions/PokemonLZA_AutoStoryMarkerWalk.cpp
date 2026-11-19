@@ -78,7 +78,7 @@ private:
     //  A dialog not near the objective gets B (B cannot start a talk again).
     bool at_objective(const ScreenObservation& look, const std::optional<ObjectiveMarker>& marker){
         const bool prompt = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX);
-        const std::optional<int> read = marker && marker->distance > 0 ? std::optional<int>(marker->distance) : std::nullopt;
+        const std::optional<int> read = marker ? marker->distance : std::nullopt;
         on_read(read, m_arrival.look(MarkerLook{
             .distance = read, .marker_shows = marker.has_value(), .prompt_or_dialog = prompt, .at = current_time(),
         }));
@@ -216,8 +216,8 @@ std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend, std
         const ScreenObservation look = backend.observe();
         if (look.frame && *look.frame){
             const std::optional<ObjectiveMarker> marker = read_objective_marker(env.env.console, *look.frame->frame);
-            if (marker && marker->distance > 0 && distance.read(marker->distance)){
-                backend.log(std::format("[PLZA] marker distance: {}", marker->distance));
+            if (marker && marker->distance && distance.read(*marker->distance)){
+                backend.log(std::format("[PLZA] marker distance: {}", *marker->distance));
                 return marker->distance;
             }
         }

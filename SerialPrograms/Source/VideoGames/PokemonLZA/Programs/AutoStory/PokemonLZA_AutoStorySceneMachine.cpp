@@ -54,9 +54,10 @@ constexpr Milliseconds STILL_WAIT = 10s;
 //  The longest a cutscene may hold one still frame.
 constexpr Milliseconds SCENE_STILL_WAIT = 60s;
 constexpr Milliseconds POLL = 250ms;
-//  "MAIN MISSION 01" shows ~3 s; 01.03's "MAIN MISSION 02" stays past 10 s
-//  and gets A.
-constexpr Milliseconds BANNER_GONE_WAIT = 10s;
+//  "MAIN MISSION 01" shows ~3 s, hence 3 s + 2 s. Every banner that ended a
+//  scene on console B through 2026-11-19 stayed the whole wait (then 10 s)
+//  and went at the first A.
+constexpr Milliseconds BANNER_GONE_WAIT = 5s;
 constexpr size_t BANNER_PRESSES = 3;
 constexpr Milliseconds BANNER_PRESS_EVERY = 1s;
 //  With end_after_black_fades: the Italian banner stays until A.

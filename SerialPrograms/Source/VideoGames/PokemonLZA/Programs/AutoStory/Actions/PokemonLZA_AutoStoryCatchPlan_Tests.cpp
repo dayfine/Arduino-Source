@@ -199,7 +199,7 @@ public:
         if (tally != want.tally){
             return std::format("Expected the tally {}, got {}.", species_tally_text(want.tally), species_tally_text(tally));
         }
-        const bool enough = enough_species(tally, in.dex_count, 5);
+        const bool enough = enough_species(tally, in.dex_count, /*dex_needed=*/5);
         if (enough != want.enough){
             return std::format("Expected enough: {}, got {}.", want.enough, enough);
         }

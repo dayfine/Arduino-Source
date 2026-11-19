@@ -52,6 +52,9 @@ struct PlzaConsoleHooks{
     AutosaveSightings* sightings = nullptr;
     //  The stick heading of a walk with "turn_to_starter" (01.03's starter pick).
     double starter_turn = -70;
+    //  The step, "<checkpoint>/<step>", that just ended taken as control on a
+    //  quiet screen; cleared once the next step ends.
+    std::optional<std::string> quiet_control_step = std::nullopt;
 };
 
 //  Every action a PLZA checkpoint may name, bound to `hooks`, which must

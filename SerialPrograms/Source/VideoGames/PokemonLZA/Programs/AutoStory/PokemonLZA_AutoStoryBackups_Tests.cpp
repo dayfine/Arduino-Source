@@ -220,9 +220,9 @@ std::string describe_runs(const std::vector<std::string>& lines){
         const std::string id = line.substr(13, colon - 13);
         const std::string_view text = std::string_view(line).substr(colon + 2);
         if (text.starts_with("passed on attempt")){
-            runs.push_back(id + " passed");
+            runs.push_back(std::format("{} passed", id));
         }else if (text.starts_with("failed at")){
-            runs.push_back(id + " failed");
+            runs.push_back(std::format("{} failed", id));
         }
     }
     return joined(runs, ", ");
