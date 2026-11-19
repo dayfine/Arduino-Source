@@ -236,9 +236,10 @@ const AtPrompt THROUGH_PROMPT{
     .name = "press_through_prompt",
 };
 
-//  Sideways from the facing: 5 left, then 11 right, back past the start.
-//  03.03b's ladder showed after 9 (console B, 2026-11-19).
-constexpr double PROMPT_SIDESTEPS[] = {-90, -90, -90, -90, -90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90};
+//  Sideways from the facing: 5 right, then 11 left, back past the start.
+//  03.03b's run leg stops left of the ladder: 3 of 3 runs on console B
+//  (2026-11-19) found it 4 steps right of the corner, after 5 steps left.
+constexpr double PROMPT_SIDESTEPS[] = {90, 90, 90, 90, 90, -90, -90, -90, -90, -90, -90, -90, -90, -90, -90, -90};
 
 //  Only a walk of one straight leg to the first A prompt ahead; one that
 //  turns, has earlier legs, or an `end_after` goes to a prompt elsewhere.
