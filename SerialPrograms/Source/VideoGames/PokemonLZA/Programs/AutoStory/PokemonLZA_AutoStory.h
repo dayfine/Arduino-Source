@@ -18,7 +18,7 @@
 #include "NintendoSwitch/Options/NintendoSwitch_GoHomeWhenDoneOption.h"
 #include "Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGameChoices.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

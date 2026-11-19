@@ -14,7 +14,7 @@
 #include <cstddef>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "PokemonLZA_AutoStoryNewGameChoices.h"
+#include "PokemonLZA_AutoStoryNewGame.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

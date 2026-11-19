@@ -47,25 +47,15 @@ constexpr MapWaypoint ZONE1_GATE_LINE{.name = "the far gate's line", .pin = {.x 
 constexpr MapWaypoint ZONE1_GATE_APPROACH{.name = "the far gate's approach", .pin = {.x = 376, .y = 252}, .provisional = true};
 
 
-std::string with_hint(std::string message, std::string_view hint){
-    if (hint.empty() || message.ends_with(hint)){
-        return message;
-    }
-    return std::format("{} {}", message, hint);
-}
-
-//  An OperationFailedException becomes a failed std::optional<Pokemon::StoryFailure>; its message and a
-//  UserSetupError's end with `hint`.
-PlzaConsoleAction new_game_handler(StoryEnv& env, std::string_view name, std::string_view hint, void (*step)(StoryEnv&)){
-    return [&env, name = std::string(name), hint, step](PlzaBackend& backend, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
+//  An OperationFailedException becomes a failed std::optional<Pokemon::StoryFailure>.
+PlzaConsoleAction new_game_handler(StoryEnv& env, std::string_view name, void (*step)(StoryEnv&)){
+    return [&env, name = std::string(name), step](PlzaBackend& backend, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
         try{
             step(env);
         }catch (OperationFailedException& e){
-            const std::string message = with_hint(e.message(), hint);
+            const std::string message = e.message();
             backend.log(std::format("[PLZA] {} failed: {}", name, message));
             return Pokemon::StoryFailure{.code = std::format("{}_failed", name), .detail = message};
-        }catch (UserSetupError& e){
-            throw UserSetupError(env.env.console, with_hint(e.message(), hint));
         }
         return std::nullopt;
     };
@@ -193,10 +183,10 @@ PlzaConsoleAction console_handler(StoryEnv& env, std::string_view name, ConsoleS
 
 PlzaConsoleActions plza_console_actions(StoryEnv& env){
     PlzaConsoleActions actions;
-    actions.emplace(action_name(PlzaAction::NEW_GAME_INTRO), new_game_handler(env, action_name(PlzaAction::NEW_GAME_INTRO), NEW_GAME_BY_HAND_HINT, [](StoryEnv& story){
+    actions.emplace(action_name(PlzaAction::NEW_GAME_INTRO), new_game_handler(env, action_name(PlzaAction::NEW_GAME_INTRO), [](StoryEnv& story){
         play_new_game_intro(story.env.console, story.context, story.new_game);
     }));
-    actions.emplace(action_name(PlzaAction::CONFIRM_NEW_GAME), new_game_handler(env, action_name(PlzaAction::CONFIRM_NEW_GAME), /*hint=*/"", [](StoryEnv& story){
+    actions.emplace(action_name(PlzaAction::CONFIRM_NEW_GAME), new_game_handler(env, action_name(PlzaAction::CONFIRM_NEW_GAME), [](StoryEnv& story){
         confirm_new_game_choices(story.env.console, story.context, story.new_game);
     }));
     actions.emplace(action_name(PlzaAction::RUN_TO_GATE), gate_handler(env, action_name(PlzaAction::RUN_TO_GATE), [](StoryEnv& story, PlzaBackend&, Milliseconds timeout){
