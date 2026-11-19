@@ -187,6 +187,53 @@ const BuiltinCase BUILTIN_CASES[] = {
         .input = {.asked = "03.11", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
         .expectation = {.from = "03.11"},
     },
+    {
+        .name = "asked 03.11, one in the party: stop",
+        .input = {.asked = "03.11", .read = {.talk_prompt = false, .party = 1}},
+        .expectation = {.from = "stop"},
+    },
+    {
+        //  01.03's start (an A prompt) and 02.02's (one in the party) read
+        //  the same, but name no place.
+        .name = "asked 03.08, the Center counter with one in the party: from 03.06",
+        .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false, .party = 1}},
+        .expectation = {.from = "03.06"},
+    },
+    {
+        .name = "asked 02.04, one in the party: from 02.04",
+        .input = {.asked = "02.04", .read = {.talk_prompt = false, .party = 1}},
+        .expectation = {.from = "02.04"},
+    },
+    {
+        .name = "asked 02.04, nothing read: stop",
+        .input = {.asked = "02.04", .read = {}},
+        .expectation = {.from = "stop"},
+    },
+    {
+        .name = "asked 03.03, the courtyard's minimap: from 03.03",
+        .input = {.asked = "03.03", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.03-start"}},
+        .expectation = {.from = "03.03"},
+    },
+    {
+        .name = "asked 03.05, the minimap outside the Center: from 03.05",
+        .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.05-start"}},
+        .expectation = {.from = "03.05"},
+    },
+    {
+        .name = "asked 03.05, Station Front's minimap: from 03.04",
+        .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.04-start"}},
+        .expectation = {.from = "03.04"},
+    },
+    {
+        .name = "asked 03.05, no minimap matched: stop",
+        .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1}},
+        .expectation = {.from = "stop"},
+    },
+    {
+        .name = "asked 03.07, the minimap before the zone gate: from 03.07",
+        .input = {.asked = "03.07", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.07-start"}},
+        .expectation = {.from = "03.07"},
+    },
 };
 
 UnitTestResult check_builtin(const BuiltinCase& test){
@@ -276,6 +323,22 @@ const TableCase TABLE_CASES[] = {
         .expectation = {.from = "C"},
     },
     {
+        .name = "an earlier start of only a prompt matches, the asked one does not: stop",
+        .input = {
+            .starts = {{.checkpoint = "A", .signature = {.talk_prompt = true}}, {.checkpoint = "C", .signature = IN_ZONE}},
+            .asked = "C", .read = AT_COUNTER,
+        },
+        .expectation = {.from = "stop"},
+    },
+    {
+        .name = "an earlier start of only a party matches, the asked one does not: stop",
+        .input = {
+            .starts = {{.checkpoint = "A", .signature = {.party = 1}}, {.checkpoint = "C", .signature = IN_ZONE}},
+            .asked = "C", .read = {.wild_zone = false, .party = 1},
+        },
+        .expectation = {.from = "stop"},
+    },
+    {
         .name = "a reading sharing no field with the asked start: stop",
         .input = {.starts = {{.checkpoint = "B", .signature = {.registered = 1}}}, .asked = "B", .read = AT_COUNTER},
         .expectation = {.from = "stop"},
@@ -298,6 +361,36 @@ UnitTestResult check_table(const TableCase& test){
     const std::string from = run_start_id(table_rows(), test.input.starts, test.input.asked, test.input.read);
     if (from != test.expectation.from){
         return std::format("expected {}, got {}", test.expectation.from, from);
+    }
+    return true;
+}
+
+
+//  Whether a run asked to start at a built-in checkpoint opens the full map
+//  for its start.
+struct MapReadCase{
+    std::string name;
+    struct Input{
+        std::string asked;
+    };
+    Input input;
+    struct Expectation{
+        bool reads_map;
+    };
+    Expectation expectation;
+};
+
+const MapReadCase MAP_READ_CASES[] = {
+    {.name = "02.04 in Hotel Z's lobby: the screen only", .input = {.asked = "02.04"}, .expectation = {.reads_map = false}},
+    {.name = "03.02b before the Map & Missions card: the screen only", .input = {.asked = "03.02b"}, .expectation = {.reads_map = false}},
+    {.name = "03.03, its start a minimap: the map", .input = {.asked = "03.03"}, .expectation = {.reads_map = true}},
+    {.name = "03.10 in the lab, after Wild Zone 1's starts: the map", .input = {.asked = "03.10"}, .expectation = {.reads_map = true}},
+};
+
+UnitTestResult check_map_read(const MapReadCase& test){
+    const bool reads_map = builtin_start_reads_map(test.input.asked);
+    if (reads_map != test.expectation.reads_map){
+        return std::format("expected {}, got {}", test.expectation.reads_map ? "the map" : "the screen only", reads_map ? "the map" : "the screen only");
     }
     return true;
 }
@@ -391,6 +484,28 @@ const FrameCase FRAME_CASES[] = {
         .input = {.file = "German_0309_start_facing_street.png", .asked = "03.09", .map_pin = MapPoint{.x = 401, .y = 225}},
         .expectation = {.from = "03.09"},
     },
+    //  Record Start Minimaps' frames of a Spanish new-game run (console B,
+    //  2026-11-18): the frames their minimap references were made from.
+    {
+        .name = "03.03's courtyard: 03.03",
+        .input = {.file = "Spanish_0303_start.png", .asked = "03.03", .map_pin = std::nullopt},
+        .expectation = {.from = "03.03"},
+    },
+    {
+        .name = "03.05's street outside the Center: 03.05",
+        .input = {.file = "Spanish_0305_start.png", .asked = "03.05", .map_pin = std::nullopt},
+        .expectation = {.from = "03.05"},
+    },
+    {
+        .name = "the Center counter, asked 03.08: 03.06",
+        .input = {.file = "Spanish_0306_start.png", .asked = "03.08", .map_pin = std::nullopt},
+        .expectation = {.from = "03.06"},
+    },
+    {
+        .name = "03.07's street before the zone gate: 03.07",
+        .input = {.file = "Spanish_0307_start.png", .asked = "03.07", .map_pin = std::nullopt},
+        .expectation = {.from = "03.07"},
+    },
 };
 
 UnitTestResult check_frame(const FrameCase& test){
@@ -434,6 +549,9 @@ void add_tests_AutoStoryStarts(UnitTestDatabase& database){
     }
     for (const TableCase& test : TABLE_CASES){
         database.add<CaseTest<TableCase, check_table>>("table", test);
+    }
+    for (const MapReadCase& test : MAP_READ_CASES){
+        database.add<CaseTest<MapReadCase, check_map_read>>("map read", test);
     }
     for (const MapPinCase& test : MAP_PIN_CASES){
         database.add<CaseTest<MapPinCase, check_map_pin>>("map pin", test);

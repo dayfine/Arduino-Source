@@ -203,24 +203,26 @@ StartSignature read_start_position(StoryEnv& story, PlzaBackend& backend){
 }
 
 //  The checkpoint a run asked to start at `plan.first` plays from: where the
-//  screen and the map say the player is (run_start()), `first` or an
-//  earlier checkpoint. Throws OperationFailedException, with a screenshot, as
-//  "start_position_unknown" when the position matches no start: no
-//  checkpoint's events run from the wrong place. When `plan.max_rewinds`
-//  allows, an unknown start first rewinds to `backup` (start_or_rewind()).
+//  screen, and the map once it opens (builtin_start_reads_map()), say the
+//  player is (run_start()), `first` or an earlier checkpoint. Throws
+//  OperationFailedException, with a screenshot, as "start_position_unknown"
+//  when the position matches no start: no checkpoint's events run from the
+//  wrong place. When `plan.max_rewinds` allows, an unknown start first
+//  rewinds to `backup` (start_or_rewind()).
 size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup){
     ConsoleHandle& console = story.env.console;
     const std::span<const StoryCheckpoint> rows = plan.rows;
     const size_t first = plan.first;
     const std::span<const CheckpointStart> starts = plan.starts;
     //  A row with no start signature runs as it is: no screen read, no map
-    //  (03.11's start indoors, the user 2026-11-17: "we don't need a start
-    //  check for this checkpoint").
+    //  (the new game's rows, before any save).
     if (find_start(starts, rows[first].id) == nullptr){
         console.log(std::format("AutoStory: {} has no start signature: running it, no start check", rows[first].id));
         return first;
     }
-    const StartSignature read = read_start_position(story, backend);
+    const StartSignature read = builtin_start_reads_map(rows[first].id)
+        ? read_start_position(story, backend)
+        : read_start_signature(console, story.context);
     const std::optional<size_t> from = start_or_rewind(backend, plan, read, backup);
     if (!from){
         OperationFailedExceptionWithScreenshot::fire(

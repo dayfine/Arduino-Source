@@ -11,7 +11,7 @@
       {
         "id": "chase_pancham",
         "kind": "game_action",
-        "why": "after Pancham, through the archway, around the starters into the scene. A 0 ms leg only turns. The sidestep around the starters (1000 ms) is not measured yet. The first turn is from where the player faces (L first), as from the save; 01.01's scenes leave the player turned to the boy, so a run from 01.01 should reload first (reload_when_chained), once 01.01's autosave is seen in a run log",
+        "why": "after Pancham, through the archway, around the starters into the scene. A 0 ms leg only turns. The sidestep around the starters (1000 ms) is not measured yet. The first turn is from where the player faces (L first), as from the save; 01.01's scenes leave the player turned to the boy, so a run from 01.01 should reload first (reload_when_chained), once 01.01's autosave is seen in a run log. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends where Pancham's scene takes over (pancham_cornered), with no one event: the last look of the console B run logs 2026-11-16 to 18 read a still screen in 7 runs, nothing in 3, a black fade in 1.",
         "action": "walk",
         "args": {
           "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
@@ -41,10 +41,11 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played step by step from a new game; starts at the MAIN MISSION 01 autosave"
+      "source": "played step by step from a new game; starts at the MAIN MISSION 01 autosave. Start signature: no A prompt; the party is empty, so no party bar (console B run logs 2026-11-16 to 18, the last look of 01.01's arrival_scenes: the controls hint, no A prompt, 11 runs)."
     }
   },
   "execution": {
-    "save": "unverified"
+    "save": "unverified",
+    "start_signature": {"talk_prompt": false}
   }
 }

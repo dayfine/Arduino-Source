@@ -43,9 +43,9 @@
       {
         "id": "to_room_202",
         "kind": "game_action",
-        "why": "step 29: to \"Room 202 / A Enter\". Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 29: to \"Room 202 / A Enter\". Measured 2026-11-08 on console B, walk not run. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; the walk ends on the door's A prompt (the last look of the console B run logs 2026-11-16 to 18: an A prompt, 8 runs), counted after 3/4 of the leg.",
         "action": "walk",
-        "args": {"legs": [[-15, 2000]]}
+        "args": {"legs": [[-15, 2000]], "end": "prompt", "end_after_ms": 1500}
       },
       {
         "id": "enter_room_202",
@@ -57,10 +57,11 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.04 at the autosave after the check-in scene (2026-11-13). Starts at that autosave: the lobby ~3 tiles in front of the elevator, facing it, holding the suitcase, Taunie beside, AZ at the counter (reloaded there on console B, 2026-11-13; 02.04 from there failed at talk_to_clerk). Ends at the autosave on entering Room 202. Save unverified: reloads put the player at the next checkpoint's start (console B, 2026-11-10/13), but no run log shows the autosave badge here."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.04 at the autosave after the check-in scene (2026-11-13). Starts at that autosave: the lobby ~3 tiles in front of the elevator, facing it, holding the suitcase, Taunie beside, AZ at the counter (reloaded there on console B, 2026-11-13; 02.04 from there failed at talk_to_clerk). Ends at the autosave on entering Room 202. Save unverified: reloads put the player at the next checkpoint's start (console B, 2026-11-10/13), but no run log shows the autosave badge here. Start signature: no A prompt (console B run logs 2026-11-16 to 18, the last look of 02.04: a still screen, no prompt, 8 runs)."
     }
   },
   "execution": {
-    "save": "unverified"
+    "save": "unverified",
+    "start_signature": {"talk_prompt": false}
   }
 }

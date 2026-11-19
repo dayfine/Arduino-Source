@@ -162,6 +162,19 @@ const std::vector<CheckpointStart>& builtin_checkpoint_starts(){
     return starts;
 }
 
+bool builtin_start_reads_map(std::string_view asked){
+    for (const Pokemon::StoryCheckpoint& row : builtin_story_data().checkpoints){
+        const CheckpointStart* start = find_start(builtin_checkpoint_starts(), row.id);
+        if (start != nullptr && (start->signature.wild_zone || start->signature.minimap)){
+            return true;
+        }
+        if (row.id == asked){
+            return false;
+        }
+    }
+    return false;
+}
+
 
 
 } // namespace PokemonLZA

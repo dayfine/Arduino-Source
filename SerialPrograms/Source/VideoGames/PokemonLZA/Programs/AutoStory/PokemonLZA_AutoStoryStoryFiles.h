@@ -13,6 +13,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryStoryFiles_H
 
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
@@ -42,6 +43,13 @@ const StoryData& builtin_story_data();
 //  (start_confirmed()), and a reload that matches two earlier starts
 //  stops (checkpoint_at()).
 const std::vector<CheckpointStart>& builtin_checkpoint_starts();
+
+//  Whether a run asked to start at the built-in checkpoint `asked` reads
+//  the player's pin on the full map for its start (PLUS opens it, B
+//  closes it): when a built-in start up to `asked` names wild_zone or a
+//  minimap. Those starts are past 03.02b's Map & Missions card; before it
+//  the map does not open, and a run there reads the screen only.
+bool builtin_start_reads_map(std::string_view asked);
 
 
 
