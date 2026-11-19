@@ -3,16 +3,20 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  03.08's waypoints in Wild Zone 1 on the full map (read_map_pin()):
- *  where its map legs (MapLeg) end.
+ *  where its map legs (MapLeg) end, and whether the player is out of the
+ *  zone.
  *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryZone1Map_H
 #define PokemonAutomation_PokemonLZA_AutoStoryZone1Map_H
 
+#include <functional>
 #include <optional>
 #include <string_view>
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -63,14 +67,15 @@ inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 3
 //  right pillar. 1 north of the (361, 253) read: both runs with no
 //  prompt ended at y 255, on the left pillar (console B, 2026-11-18).
 inline constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 361, .y = 252}, .provisional = false};
+//  On the far gate's line, ~15 pixels east of ZONE1_GATE_APPROACH: the leg
+//  from it to the approach point walks the gate's own heading, so the run
+//  starts on the line facing the gate. A leg in from the north (heading
+//  178) and a 90 degree turn there ended on the left pillar (console B,
+//  2026-11-18).
+inline constexpr MapWaypoint ZONE1_GATE_LINE{.name = "the far gate's line", .pin = {.x = 391, .y = 252}, .provisional = true};
 //  On the far gate's line, ~15 pixels before it: an exact start (no stop
 //  area) for the straight run to it. A run from (385, 253) or (378, 245),
 //  the 60 spot's loose ends, hit a pillar (console B, 2026-11-18).
-//  ~15 pixels further east on the same line: the leg from it to the
-//  approach point walks the gate's own heading, so the run starts on the
-//  line facing the gate. A leg in from the north (heading 178) and a 90
-//  degree turn there ended on the left pillar (console B, 2026-11-18).
-inline constexpr MapWaypoint ZONE1_GATE_LINE{.name = "the far gate's line", .pin = {.x = 391, .y = 252}, .provisional = true};
 inline constexpr MapWaypoint ZONE1_GATE_APPROACH{.name = "the far gate's approach", .pin = {.x = 376, .y = 252}, .provisional = true};
 //  From the rocks to the first catch spot: straight, past the rock on its
 //  right (a road entry leg before it took the left side).
@@ -86,6 +91,18 @@ std::optional<MapWaypoint> catch_spot_waypoint(int spot);
 //  and not at the map's centre, where the map puts a player out of every
 //  wild zone (see the .cpp for both).
 bool pin_in_zone_1(MapPoint pin);
+
+//  What reads the player's pin on the full map (read_pin_on_map()); none
+//  when it does not show.
+using PinReader = std::function<std::optional<MapPoint>()>;
+
+//  Whether the player is out of Wild Zone 1, by the map pin: `pin` read
+//  twice, out of the zone (pin_in_zone_1()) on both. Fails as
+//  "in_wild_zone" on a read in the zone and as "zone_unread" on a read
+//  with no pin or with no reader. Logs the verdict with the reads. 03.08b
+//  saved in the zone once (console B, 2026-11-18): its menu save waits for
+//  this.
+Pokemon::Outcome check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin);
 
 
 
