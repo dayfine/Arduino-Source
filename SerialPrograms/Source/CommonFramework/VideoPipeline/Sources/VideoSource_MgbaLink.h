@@ -17,10 +17,13 @@
 #define PokemonAutomation_VideoPipeline_VideoSource_MgbaLink_H
 
 #include <stdint.h>
+#include <chrono>
+#include <deque>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
@@ -59,6 +62,17 @@ ImageRGB32 compose_mgba_frame(
 //  or the host is not this machine ("127.0.0.1" or "localhost"): FRAME
 //  names a PNG on the bridge's disk, which this app opens as a local path.
 std::optional<std::pair<std::string, uint16_t>> parse_mgba_address(std::string_view address);
+
+
+//  Exports frames within `window` of the latest frame as "<ms>.png" in
+//  `folder` (compatible with Pokemon::ReplayFrameSource::from_folder()),
+//  plus "input_log.json" if `input_log` is non-empty. Returns exported count.
+size_t export_mgba_frame_replay(
+    const std::vector<VideoSnapshot>& frames,
+    const std::string& folder,
+    std::chrono::milliseconds window,
+    const std::vector<MgbaLink::InputLogEntry>& input_log = {}
+);
 
 
 
@@ -123,6 +137,13 @@ public:
     virtual VideoSnapshot snapshot_latest_blocking() override;
     virtual VideoSnapshot snapshot_recent_nonblocking(WallClock min_time) override;
 
+    //  Exports the last `window` of captured frames (and input log, if any)
+    //  into `folder` as "<ms>.png" files.
+    size_t export_frame_replay(
+        const std::string& folder,
+        std::chrono::milliseconds window = std::chrono::seconds(20)
+    ) const;
+
     virtual QWidget* make_display_QtWidget(QWidget* parent) override;
 
 private:
@@ -139,10 +160,11 @@ private:
     const std::string m_address;
     VideoFormatSet m_formats;
 
-    Mutex m_lock;
+    mutable Mutex m_lock;
     ConditionVariable m_cv;
     bool m_stopping = false;
     VideoSnapshot m_last;
+    std::deque<VideoSnapshot> m_history;
     //  The poller's open connection, if any; the destructor aborts it so it
     //  never waits out a reply timeout.
     MgbaLink::Connection* m_connection = nullptr;
