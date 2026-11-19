@@ -779,7 +779,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] into_pokemon_center: the end event after the last turn.",
+            .verdict = "done", .end = "[PLZA] walk: the end event after the last turn.",
         },
     },
     {
@@ -802,7 +802,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] back_to_nurse: ended on: party bar, A prompt",
+            .verdict = "done", .end = "[PLZA] walk: ended on: party bar, A prompt",
         },
     },
     {
@@ -812,7 +812,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}},
-            .verdict = "done", .end = "[PLZA] out_of_pokemon_center: legs done, screen now: player can move",
+            .verdict = "done", .end = "[PLZA] walk: legs done, screen now: player can move",
         },
     },
     {
@@ -823,7 +823,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"black fade", "-"}},
-            .verdict = "done", .end = "[PLZA] to_mable: a black fade after 1250 ms of the last leg: the scene takes over.",
+            .verdict = "done", .end = "[PLZA] walk: a black fade after 1250 ms of the last leg: the scene takes over.",
         },
     },
     {
@@ -834,7 +834,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "stick"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] to_taunie: the end event after 2500 ms of the last leg.",
+            .verdict = "done", .end = "[PLZA] walk: the end event after 2500 ms of the last leg.",
         },
     },
     {

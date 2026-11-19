@@ -123,7 +123,7 @@ UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& s
     std::vector<StoryCheckpoint> rows(2);
     rows[0].id = "01.01";
     rows[0].steps.push_back(Pokemon::StoryStep{
-        .name = "wait_for_platform", .run = plza_story_actions(tools).at("wait_for_platform")(JsonObject()),
+        .name = "wait_for_platform", .action = "wait_for_platform", .run = plza_story_actions(tools).at("wait_for_platform")(JsonObject()),
     });
     rows[1].id = "01.02";
     std::vector<CheckpointStart> starts;

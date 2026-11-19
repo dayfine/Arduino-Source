@@ -203,7 +203,7 @@ bool ends_before_walking(
     return true;
 }
 
-//  None: walk on.
+//  None: walk on. Set: the walk ends, with its failure if any.
 std::optional<std::optional<Pokemon::StoryFailure>> end_event_look(
     PlzaBackend& backend, std::string_view walk, const ScreenObservation& look,
     ScreenEvent end, Milliseconds held, Milliseconds end_after
@@ -222,11 +222,11 @@ std::optional<std::optional<Pokemon::StoryFailure>> end_event_look(
     if (look.events.has(end)){
         backend.log(std::format("[PLZA] {}: the end event after {} ms of the last leg.", walk, held.count()));
         backend.log_detail(std::format("[PLZA] {}: ended on: {}", walk, describe_scene_look(look)));
-        return std::nullopt;
+        return std::optional<Pokemon::StoryFailure>();
     }
     if (look.events.has(ScreenEvent::FADE_BLACK)){
         backend.log(std::format("[PLZA] {}: a black fade after {} ms of the last leg: the scene takes over.", walk, held.count()));
-        return std::nullopt;
+        return std::optional<Pokemon::StoryFailure>();
     }
     return std::nullopt;
 }

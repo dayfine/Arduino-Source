@@ -1081,7 +1081,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk",
-            .line = "[PLZA] off_the_roof: a scene (a text box) took control after 500 ms of the last leg: the walk stops.",
+            .line = "[PLZA] walk: a scene (a text box) took control after 500 ms of the last leg: the walk stops.",
         },
     },
     {
@@ -1092,7 +1092,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .line = "[PLZA] off_the_roof: a scene (a fade) took control after 1000 ms of the last leg: the walk stops.",
+            .line = "[PLZA] walk: a scene (a fade) took control after 1000 ms of the last leg: the walk stops.",
         },
     },
     {
@@ -1406,7 +1406,7 @@ const ChainCase CHAIN_CASES[] = {
         },
         .expectation = {
             .verdict = "failed at 01.02 chain: no_start_save", .reloads = 0,
-            .line = "[Save] 01.01: the game autosaved in wait_for_platform, before wait_for_platform_again: not saved, a reload would skip wait_for_platform_again",
+            .line = "[Save] 01.01: not saved (the game autosaved in wait_for_platform, before wait_for_platform_again: a reload would skip wait_for_platform_again)",
         },
     },
     {
@@ -1417,7 +1417,7 @@ const ChainCase CHAIN_CASES[] = {
             .attempts = 2,
         },
         .expectation = {
-            .verdict = "failed at 01.02 : reload_failed", .reloads = 0,
+            .verdict = "failed at 01.02 chain: start_unknown", .reloads = 0,
             .line = "[Save] 01.02: the game autosaved in wait_for_platform before the run failed: the latest save is past 01.02's start",
         },
     },

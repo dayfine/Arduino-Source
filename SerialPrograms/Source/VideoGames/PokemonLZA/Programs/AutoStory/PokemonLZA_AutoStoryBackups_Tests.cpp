@@ -125,7 +125,7 @@ std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestRow>& rows, co
         checkpoints[index].id = rows[index].id;
         checkpoints[index].title = "Test";
         for (const std::string& action : rows[index].actions){
-            checkpoints[index].steps.push_back(StoryStep{.name = action, .run = actions.at(action)(JsonObject())});
+            checkpoints[index].steps.push_back(StoryStep{.name = action, .action = action, .run = actions.at(action)(JsonObject())});
         }
     }
     return checkpoints;
