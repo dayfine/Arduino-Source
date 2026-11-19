@@ -15,7 +15,6 @@
 #include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "VideoGames/PokemonLZA/PokemonLZA_Settings.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
@@ -128,20 +127,21 @@ Outcome run_gate_step(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk)
     return run_to_gate(env, walk.timeout);
 }
 
-//  "aimed_run_to_gate": map legs to ZONE1_GATE_APPROACH, then up to 3
-//  runs (run_to_gate()), each facing the bearing from a fresh pin read to
-//  the far gate; a run with no A prompt (a pillar) backs off first.
+//  "aimed_run_to_gate": up to 3 runs (run_to_gate()), each after map legs
+//  along the far gate's line (ZONE1_GATE_LINE, ZONE1_GATE_APPROACH) and
+//  facing the bearing from the pin there to the gate. A run with no A
+//  prompt (a pillar) walks the legs again: a bearing from next to the gate
+//  is noise (47 degrees from (359, 255), out of the zone).
 Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
-    const MapWaypoint approach[] = {ZONE1_GATE_APPROACH};
-    const Outcome walked = walk_map_legs(env, backend, approach);
-    if (!walked.succeeded()){
-        return walked;
-    }
+    const MapWaypoint approach[] = {ZONE1_GATE_LINE, ZONE1_GATE_APPROACH};
     Outcome ran = Pokemon::outcome_ok();
     for (int runs = 0; runs < 3; runs++){
         if (runs > 0){
-            backend.log(std::format("[PLZA] aimed_run_to_gate: no prompt on run {}, backing off", runs));
-            pbf_move_left_joystick(env.context, {0, -1}, /*hold=*/500ms, /*release=*/300ms);
+            backend.log(std::format("[PLZA] aimed_run_to_gate: no prompt on run {}, back along the gate's line", runs));
+        }
+        const Outcome walked = walk_map_legs(env, backend, approach);
+        if (!walked.succeeded()){
+            return walked;
         }
         const std::optional<MapPoint> pin = read_pin_on_map(env, backend);
         if (!pin){
