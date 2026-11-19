@@ -3,7 +3,7 @@
   "game": "plza",
   "checkpoint": {
     "id": "03.03",
-    "title": "Over the rooftops to Station Front",
+    "title": "To the rock pile scene",
     "start": {
       "place": "LumioseCity"
     },
@@ -25,48 +25,18 @@
         "id": "rock_pile_scene",
         "why": "Taunie at the rocks blocking the street",
         "action": "mash_to_move_hints"
-      },
-      {
-        "id": "side_street_to_wall",
-        "why": "down the side street and across to the wall; ends in control against it. not planned: no tile grid in Lumiose",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 8000]]
-        }
-      },
-      {
-        "id": "climb_ladder",
-        "why": "sidestep right, face up, A Climb Up, hold up",
-        "action": "climb_ladder"
-      },
-      {
-        "id": "rooftop_scene",
-        "why": "Taunie on the roof",
-        "action": "mash_to_move_hints"
-      },
-      {
-        "id": "off_the_roof",
-        "why": "off the roof's edge to South Boulevard, until the scene there. not planned: no tile grid in Lumiose",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 8000]],
-          "end": "scene"
-        }
-      },
-      {
-        "id": "south_boulevard",
-        "why": "Taunie walks to the Pokemon Center, until Station Front",
-        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played from a new game. Start minimap recorded on the chained start"
+      "source": "played from a new game. Start minimap recorded on the chained start. Ends at the game's autosave in the rock pile scene (split 2026-11-19: a reload lands after it)"
     }
   },
   "execution": {
     "save": "autosave",
-    "autosave_step": "south_boulevard",
-    "start_signature": {"minimap": "03.03-start"}
+    "autosave_step": "rock_pile_scene",
+    "start_signature": {
+      "minimap": "03.03-start"
+    }
   }
 }

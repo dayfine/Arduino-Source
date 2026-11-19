@@ -421,13 +421,13 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.03's walk off the roof fails when no scene takes control",
-        .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .input = {.checkpoint = "03.03b", .first_step = 3, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at off_the_roof: walk_no_scene"},
     },
     {
         //  2026-11-19 03.03, ES-LA: 250 ms run slices took 111 ms; the leg ended 3.6 s in.
         .name = "03.03's walk off the roof holds its last leg 8000 ms of game time, though a run slice takes less",
-        .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = concat(
+        .input = {.checkpoint = "03.03b", .first_step = 3, .steps = 1, .looks = concat(
             party_bars(Milliseconds(111), 60),
             {look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(6700)), look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(6800))}
         )},
