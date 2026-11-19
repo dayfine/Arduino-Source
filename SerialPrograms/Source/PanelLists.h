@@ -8,7 +8,7 @@
 #define PokemonAutomation_ProgramTabs_H
 
 #include <QWidget>
-#include "PanelCatalog.h"
+#include "CommonFramework/Panels/PanelList.h"
 
 class QComboBox;
 
@@ -37,13 +37,14 @@ public:
     virtual QSize sizeHint() const override;
 
 private:
-    void add_dropdown_entry(const PanelListDescriptor& list, int index);
+    void add(std::unique_ptr<PanelListDescriptor> list);
     void change_list(int index);
 
 private:
     PanelHolder& m_holder;
 
-    PanelCatalog m_catalog;
+    std::vector<std::unique_ptr<PanelListDescriptor>> m_lists;
+    std::map<std::string, int> m_tab_map;
 
     QComboBox* m_dropdown;
 

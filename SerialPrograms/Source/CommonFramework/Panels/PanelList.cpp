@@ -35,13 +35,10 @@ PanelListDescriptor::PanelListDescriptor(
 }
 
 bool load_panel_session(
-    PanelHolder& holder,
     const std::shared_ptr<const PanelDescriptor>& descriptor,
-    const JsonValue& panel_json
+    const JsonValue& panel_json,
+    PanelHolder& holder
 ){
-    if (descriptor == nullptr){
-        return false;
-    }
     if (!holder.report_new_panel_intent(*descriptor)){
         return false;
     }
@@ -52,6 +49,7 @@ bool load_panel_session(
 }
 
 
-} // namespace PokemonAutomation
+
+}
 
 

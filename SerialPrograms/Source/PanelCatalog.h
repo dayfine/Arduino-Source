@@ -8,10 +8,8 @@
 #define PokemonAutomation_PanelCatalog_H
 
 #include <cstddef>
-#include <map>
 #include <memory>
 #include <optional>
-#include <string>
 #include <string_view>
 #include <vector>
 #include "CommonFramework/Panels/PanelList.h"
@@ -19,38 +17,21 @@
 namespace PokemonAutomation{
 
 
-//  Match returned by PanelCatalog::find_panel().
-struct PanelCatalogMatch{
+//  Every program category, in dropdown order.
+std::vector<std::unique_ptr<PanelListDescriptor>> make_all_panel_lists();
+
+
+//  A panel found by find_panel(), with the index of its list in `lists`.
+struct PanelMatch{
     size_t category_index;
-    std::string display_name;
-    std::shared_ptr<const PanelDescriptor> descriptor;
+    PanelEntry entry;
 };
 
-
-//  Widget-free catalog of all registered program categories and panels.
-class PanelCatalog{
-public:
-    PanelCatalog();
-    explicit PanelCatalog(std::vector<std::unique_ptr<PanelListDescriptor>> lists);
-
-    const std::vector<std::unique_ptr<PanelListDescriptor>>& lists() const{
-        return m_lists;
-    }
-
-    //  Find category index by category display name.
-    std::optional<size_t> find_category(std::string_view name) const;
-
-    //  Scan each category's panels() for `identifier` and convert the matching
-    //  entry's unique_ptr into an owning shared_ptr<const PanelDescriptor>.
-    std::optional<PanelCatalogMatch> find_panel(std::string_view identifier) const;
-
-private:
-    void add(std::unique_ptr<PanelListDescriptor> list);
-
-private:
-    std::vector<std::unique_ptr<PanelListDescriptor>> m_lists;
-    std::map<std::string, size_t, std::less<>> m_tab_map;
-};
+//  Scans each list's panels() for the panel with `identifier`.
+std::optional<PanelMatch> find_panel(
+    const std::vector<std::unique_ptr<PanelListDescriptor>>& lists,
+    std::string_view identifier
+);
 
 
 } // namespace PokemonAutomation

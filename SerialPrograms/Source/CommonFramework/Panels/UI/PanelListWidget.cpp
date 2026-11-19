@@ -97,9 +97,9 @@ void PanelListWidget::handle_panel_clicked(const std::string& text){
 //    cout << descriptor->display_name() << endl;
     try{
         if (!load_panel_session(
-            m_panel_holder,
             descriptor,
-            PERSISTENT_SETTINGS().panels[descriptor->identifier()]
+            PERSISTENT_SETTINGS().panels[descriptor->identifier()],
+            m_panel_holder
         )){
             return;
         }

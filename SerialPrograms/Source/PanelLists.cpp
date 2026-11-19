@@ -11,6 +11,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32_Qt.h"
 #include "CommonFramework/Windows/DpiScaler.h"
 #include "CommonFramework/Panels/UI/PanelListWidget.h"
+#include "PanelCatalog.h"
 #include "PanelLists.h"
 
 //#include <iostream>
@@ -45,15 +46,15 @@ ProgramSelect::ProgramSelect(QWidget& parent, PanelHolder& holder)
     layout->addWidget(m_dropdown);
 
 
-    const auto& lists = m_catalog.lists();
-    for (size_t c = 0; c < lists.size(); c++){
-        add_dropdown_entry(*lists[c], static_cast<int>(c));
+    for (std::unique_ptr<PanelListDescriptor>& list : make_all_panel_lists()){
+        add(std::move(list));
     }
+
 
     //  Load the 1st list by default.
     m_dropdown->setCurrentIndex(0);
     m_active_index = 0;
-    m_active_list = lists[0]->make_QWidget(*this, m_holder);
+    m_active_list = m_lists[0]->make_QWidget(*this, m_holder);
     layout->addWidget(m_active_list);
 
     connect(
@@ -73,18 +74,26 @@ void ProgramSelect::unlock(){
     m_active_list->setEnabled(true);
 }
 
-void ProgramSelect::add_dropdown_entry(const PanelListDescriptor& list, int index){
-    const ImageViewRGB32& icon = list.icon();
+void ProgramSelect::add(std::unique_ptr<PanelListDescriptor> list){
+    int index = m_dropdown->count();
+    const ImageViewRGB32& icon = list->icon();
     if (icon){
         m_dropdown->addItem(
             QIcon(QPixmap::fromImage(to_QImage_ref(icon))),
-            QString::fromStdString(list.name())
+            QString::fromStdString(list->name())
         );
     }else{
-        m_dropdown->addItem(QString::fromStdString(list.name()));
+        m_dropdown->addItem(QString::fromStdString(list->name()));
     }
 
-    if (!list.enabled()){
+    m_lists.emplace_back(std::move(list));
+    const PanelListDescriptor& back = *m_lists.back();
+    if (!m_tab_map.emplace(back.name(), index).second){
+        const std::string name = back.name();
+        m_lists.pop_back();
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Duplicate Category Name: " + name);
+    }
+    if (!back.enabled()){
         auto* model = qobject_cast<QStandardItemModel*>(m_dropdown->model());
         if (model != nullptr){
             QStandardItem* line_handle = model->item(index);
@@ -102,13 +111,12 @@ void ProgramSelect::load_persistent_panel(){
     if (str == nullptr){
         return;
     }
-    const std::optional<size_t> category = m_catalog.find_category(*str);
-    if (!category){
+    auto iter = m_tab_map.find(*str);
+    if (iter == m_tab_map.end()){
         return;
     }
-    const int index = static_cast<int>(*category);
-    m_dropdown->setCurrentIndex(index);
-    change_list(index);
+    m_dropdown->setCurrentIndex(iter->second);
+    change_list(iter->second);
     str = PERSISTENT_SETTINGS().panels.get_string(PanelListWidget::JSON_PROGRAM_PANEL);
     if (str != nullptr){
         m_active_list->set_panel(*str);
@@ -116,15 +124,15 @@ void ProgramSelect::load_persistent_panel(){
 }
 
 std::string ProgramSelect::select_program(const std::string& identifier){
-    std::optional<PanelCatalogMatch> match = m_catalog.find_panel(identifier);
+    const std::optional<PanelMatch> match = find_panel(m_lists, identifier);
     if (!match){
         return "No program with identifier \"" + identifier + "\".";
     }
     if (m_locked){
         return "A program is running.";
     }
-    change_list(static_cast<int>(match->category_index));
-    m_active_list->set_panel(match->display_name);
+    change_list((int)match->category_index);
+    m_active_list->set_panel(match->entry.display_name);
     return "";
 }
 
@@ -132,12 +140,11 @@ void ProgramSelect::change_list(int index){
     if (m_active_index == index && m_active_list != nullptr){
         return;
     }
-    const auto& lists = m_catalog.lists();
     m_dropdown->setCurrentIndex(index);
     m_active_index = index;
-    PERSISTENT_SETTINGS().panels["ProgramCategory"] = lists[index]->name();
+    PERSISTENT_SETTINGS().panels["ProgramCategory"] = m_lists[index]->name();
     delete m_active_list;
-    m_active_list = lists[index]->make_QWidget(*this, m_holder);
+    m_active_list = m_lists[index]->make_QWidget(*this, m_holder);
     m_active_list->setEnabled(!m_locked);
     layout()->addWidget(m_active_list);
 }
