@@ -757,14 +757,24 @@ void run_save_dialog(ConsoleHandle& console, ProControllerContext& context){
     );
 }
 
+void open_start_menu_save(ConsoleHandle& console, ProControllerContext& context){
+    open_start_menu_settled(console, context);
+    if (!move_start_cursor_to_save(console, context)){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT, "START menu: no cursor.", console
+        );
+    }
+    press(context, BUTTON_A, 1500ms);
+}
+
 } // namespace
 
 void save_game(
-    ConsoleHandle& console, ProControllerContext& context, StartMenu menu,
+    ConsoleHandle& console, ProControllerContext& context, StartMenu,
     Language language, const SavePlaceCheck& check
 ){
     console.log("Saving the game.");
-    open_start_menu_row(console, context, menu, start_menu_save_row(menu));
+    open_start_menu_save(console, context);
     //  The save card and "Would you like to save the game?"
     if (!wait_for_yes_no(console, context, 5000ms)){
         OperationFailedExceptionWithScreenshot::fire(
@@ -790,13 +800,7 @@ void save_game(
 }
 
 std::string read_save_place(ConsoleHandle& console, ProControllerContext& context, Language language){
-    open_start_menu_settled(console, context);
-    if (!move_start_cursor_to_save(console, context)){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT, "START menu: no cursor.", console
-        );
-    }
-    press(context, BUTTON_A, 1500ms);
+    open_start_menu_save(console, context);
     std::string place;
     if (wait_for_yes_no(console, context, 5000ms)){
         context.wait_for_all_requests();
