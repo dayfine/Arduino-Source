@@ -1,5 +1,7 @@
 > **DRAFT.** This page describes a feature that is not built yet. It is updated as it lands.
-> Status (2026-11-15): planned (Slice 7). Today `labrun.sh` launches the lab app.
+> Status (2026-11-18): planned (Slice 7) in the design doc (`docs/design/Agent-Integration.md` on branch `design/agent-integration`); not designed in [README.md](../README.md), no code. Today `labrun.sh` launches the lab app.
+
+[Back to the guide](../GUIDE.md)
 
 # The server runs the lab app
 

@@ -1,12 +1,14 @@
-> **DRAFT.** This page describes a feature that is only partly built. It is updated as each piece lands.
-> Status (2026-11-15): the check list and `describe_program` are built ([#485](https://github.com/dayfine/Arduino-Source/pull/485), [#511](https://github.com/dayfine/Arduino-Source/pull/511), [#512](https://github.com/dayfine/Arduino-Source/pull/512)); FRLG AutoStory's list is a design note ([#488](https://github.com/dayfine/Arduino-Source/pull/488)); the server side of running them before a start is built on branch `lab/server-slice-5b` ([actions.md](actions.md), Slice 5b), but the app cannot yet run them without starting the program, so today they still run only when the program starts.
+> **DRAFT.** The mechanism is built; no program uses it yet. It is updated as each piece lands.
+> Status (2026-11-18): the way a program declares its list, `describe_program` and the app's `preflight` command are in the lab build ([#504](https://github.com/dayfine/Arduino-Source/pull/504), [#511](https://github.com/dayfine/Arduino-Source/pull/511), [#601](https://github.com/dayfine/Arduino-Source/pull/601)); the server checks them ([#512](https://github.com/dayfine/Arduino-Source/pull/512), [#600](https://github.com/dayfine/Arduino-Source/pull/600)), served only by the HTTP server mode, not your sessions. **No program in the lab build declares a list yet**, so every program answers `unsupported`. FRLG RNG's free-party-slots check ([#485](https://github.com/dayfine/Arduino-Source/pull/485)) runs inside the program at Start, not as a declared list; FRLG AutoStory's list was a design note ([#488](https://github.com/dayfine/Arduino-Source/pull/488), closed).
+
+[Back to the guide](../GUIDE.md)
 
 # Start checks: what a program needs before it presses anything
 
 Every program can declare a short, named list of things that must be true before it starts:
 the game is in front, the screen has no black border, a party slot is free, the save is the
-one the program expects. Each check has a name and a one-line "needs" sentence, and none of
-them presses a button, resets, saves or changes an option.
+one the program expects. Each check has a name and a one-line "needs" sentence. A check may
+open a menu or go to HOME and back to look, but none resets, saves or changes an option.
 
 ## What you get
 
@@ -37,7 +39,7 @@ and the checks; the check part looks like this (shape sketch, field names may ch
  ]}
 ```
 
-A program with no list answers `"prechecks": "unsupported"`. When a check fails at Start, the
+A program with no list answers `"prechecks": "unsupported"` (today: every program). When a check fails at Start, the
 program stops before any reset with a message like
 `Free party slots: needs 1 empty slot, found 0.`
 

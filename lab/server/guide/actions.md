@@ -1,5 +1,7 @@
-> **DRAFT.** This page describes a feature that is only partly built. It is updated as each piece lands.
-> Status (2026-11-15): Slice 5a (`run_program`, `stop_program` under a lease) is built in [#592](https://github.com/dayfine/Arduino-Source/pull/592); Slice 5b's server side (`preflight_program`, options on `run_program`, `cfr_batch`) is built on branch `lab/server-slice-5b`, tested against a fake app only. Neither is merged or switched on. The app cannot yet run a program's start checks on request, so on the real console every preflight fails and no run can start; a console soak comes after that.
+> **DRAFT.** Built, not switched on. It is updated as each piece lands.
+> Status (2026-11-18): the server side is merged on `agents`: Slice 5a (`run_program`, `stop_program` under a lease, [#592](https://github.com/dayfine/Arduino-Source/pull/592)), Slice 5b (`preflight_program`, options on `run_program`, `cfr_batch`, [#600](https://github.com/dayfine/Arduino-Source/pull/600)), the app channel adapter ([#611](https://github.com/dayfine/Arduino-Source/pull/611)) and the user hold ([#609](https://github.com/dayfine/Arduino-Source/pull/609)). The app's `preflight` command ([#601](https://github.com/dayfine/Arduino-Source/pull/601), [#616](https://github.com/dayfine/Arduino-Source/pull/616)) is in the lab build. These tools are served only by `serve --actions`, which is not configured on this Mac; your sessions stay read-only. No program declares a start-check list yet, so every preflight is refused `prechecks_unsupported` and nothing can be started this way. The console-B soak has not been run.
+
+[Back to the guide](../GUIDE.md)
 
 # Actions: agents start and stop programs through the server
 
@@ -27,10 +29,10 @@ and the server decides whether it may.
 | Tool | What it does | Status |
 |---|---|---|
 | `acquire_console` / `renew_console` / `release_console` | take, extend and give back the lease | built (control plane) |
-| `preflight_program(panel, options)` | check the options, run the program's [start checks](start-checks.md) without starting it, put your options back; returns a token for `run_program` | server built (5b); the app command is fork #601, not yet in the lab build |
-| `run_program(panel, options, preflight_token)` | load the options and start the selected program once; only with a current token for the same options | built (5a + 5b), not switched on |
-| `stop_program()` | stop it once; stopping when nothing runs is a no-op, not an error | built in #592, not switched on |
-| `cfr_batch(lines)` | a short allowlisted controller batch, for debugging only; marks the save as stale | built (5b), not switched on |
+| `preflight_program(panel, options)` | check the options, run the program's [start checks](start-checks.md) without starting it, put your options back; returns a token for `run_program` | built (5b); the app command is in the lab build; refused `prechecks_unsupported` until a program lists its checks |
+| `run_program(panel, options, preflight_token)` | load the options and start the selected program once; only with a current token for the same options | built, not switched on |
+| `stop_program()` | stop it once; stopping when nothing runs is a no-op, not an error | built, not switched on |
+| `cfr_batch(lines)` | a short allowlisted controller batch, for debugging only; marks the save as stale | built, not switched on |
 
 There is deliberately no "switch game" tool: the app cannot yet pick a game on HOME by name.
 
@@ -131,8 +133,20 @@ have changed the game.
 
 ## Switching it on
 
-The session connection (`.mcp.json`) stays read-only until you decide otherwise. What is left
-before actions can be switched on: the app command that runs a program's start checks without
-starting it (with your options put back afterwards); a soak on console B that shows every action
-has exactly one record; then actions are enabled one program family at a time, starting with
-programs that list their start checks.
+The session connection (`.mcp.json`) stays read-only until you decide otherwise. Done: the
+server side and the app's `preflight` command (in the lab build). Left before actions can be
+switched on:
+
+1. At least one program declares its start checks (see [start-checks.md](start-checks.md));
+   until then every preflight is `prechecks_unsupported`.
+2. A server config (`~/.config/pa-lab/server.json` and a token) and a session connected to
+   `serve --actions`.
+3. The console-B soak ([README.md](../README.md#slice-5-acceptance-the-console-b-soak)): one real
+   run driven through the server, then `soak-check` shows every action has exactly one record.
+4. Your decision to switch it on, one program family at a time.
+
+## What you do
+
+- Nothing to allow an action. To stop one, click Stop in the app: that wins over any agent.
+- When done playing by hand, `hold.sh off` ([hold.md](hold.md)), or agents stay refused.
+- Decide when to switch actions on.

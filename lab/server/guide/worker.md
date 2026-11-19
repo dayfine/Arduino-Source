@@ -1,5 +1,7 @@
 > **DRAFT.** This page describes an optional feature that is not built yet. It is updated if it lands.
-> Status (2026-11-15): planned (Slice 8), optional.
+> Status (2026-11-18): planned (Slice 8), optional; no design in [README.md](../README.md), no code. Today builds go through `~/BDSPLab/heavy_gate.sh`.
+
+[Back to the guide](../GUIDE.md)
 
 # Local worker for routine operations
 

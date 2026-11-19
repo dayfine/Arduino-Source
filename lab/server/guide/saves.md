@@ -1,6 +1,7 @@
 > **DRAFT.** This page describes a feature that is not built yet. It is updated as it lands.
-> Status (2026-11-16): designed (Slice 6, [README.md](../README.md#slice-6-save-facts-design-not-built)).
-> `console://B/save` exists and usually says `unknown`.
+> Status (2026-11-18): designed (Slice 6, [README.md](../README.md#slice-6-save-facts-design-not-built), merged in [#621](https://github.com/dayfine/Arduino-Source/pull/621), including `no_save` and save-screen reads). No code yet: nothing writes a save fact, so `console://B/save` says `unknown` (`no_fact`).
+
+[Back to the guide](../GUIDE.md)
 
 # Save facts: knowing which save is on the console
 
@@ -64,3 +65,25 @@ PLZA 03.08 after a catch autosave, once the program rewound to the backup:
 If the autosave detector fires where the plan expects no autosave (for example on the green zone
 walls), you see `"status": "stale", "reason": "unexpected_autosave"`: the next run loads the
 backup instead of trusting the newest save.
+
+## Run records
+
+Designed (Slice 6e), after the app gives each run an id. Ask *"how did the last run go?"* and get
+one record: the program and options, the save it started from, start and end times, how it ended
+(the program, an error, a lab script, or you), the `[Checkpoint]` lines, the saves it wrote and the
+failure frame. Sketch, values made up:
+
+```json
+{"run_id": "3c1e...", "panel": "PokemonFRLG:AutoStory", "started_at": "2026-11-15T23:44:00.000Z",
+ "ended": {"source": "ui", "at": "2026-11-15T23:49:58.000Z"},
+ "save_at_start": {"status": "known", "checkpoint": "18.02"},
+ "checkpoints": ["18.02: failed on attempt 1"],
+ "failure_frame": ".../Screenshots/AutoStory/failures/....png"}
+```
+
+## What you do
+
+- Today: before a checkpoint run, check yourself which save is on the console.
+- Later: after playing by hand, save at the checkpoint's start and let a program confirm it, or
+  let the agent rerun the checkpoint before (which saves). The `save_at` check can be turned off
+  for your own Start; an agent cannot turn it off.
