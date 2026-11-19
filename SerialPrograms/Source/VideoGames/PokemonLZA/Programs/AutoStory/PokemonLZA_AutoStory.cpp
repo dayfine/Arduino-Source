@@ -34,6 +34,7 @@ const std::vector<std::unique_ptr<AutoStory_Checkpoint>>& ALL_AUTO_STORY_CHECKPO
         ret.emplace_back(std::make_unique<AutoStory_Checkpoint_01>());
         ret.emplace_back(std::make_unique<AutoStory_Checkpoint_02>());
         ret.emplace_back(std::make_unique<AutoStory_Checkpoint_03>());
+        ret.emplace_back(std::make_unique<AutoStory_Checkpoint_03b>());
         ret.emplace_back(std::make_unique<AutoStory_Checkpoint_04>());
         return ret;
     }();
@@ -94,7 +95,7 @@ AutoStory::AutoStory()
     )
     , END_CHECKPOINT(
         "<b>End Checkpoint:</b>", AUTO_STORY_CHECKPOINTS_SELECT_DATABASE(),
-        LockMode::LOCK_WHILE_RUNNING, "4"
+        LockMode::LOCK_WHILE_RUNNING, "5"
     )
     , START_DESCRIPTION("")
     , END_DESCRIPTION("")
