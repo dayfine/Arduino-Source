@@ -369,7 +369,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.06 with no autosave badge seen is not saved",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(21000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(21000)), party_bar(Milliseconds(22000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 02.06: not saved (the plan's autosave was not seen)"},
     },
