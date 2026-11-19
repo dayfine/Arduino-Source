@@ -197,7 +197,8 @@ std::optional<size_t> read_settled_look(ConsoleHandle& console, ProControllerCon
 //  The picker opens with no highlight, and the first tilt highlights a
 //  portrait that varies from launch to launch, so tilt until one reads.
 void pick_look(ConsoleHandle& console, ProControllerContext& context, size_t look){
-    if (!wait_for_frame(console, context, is_look_picker, 20000ms)){
+    FrameCheck check = is_look_picker;
+    if (!wait_for_frame(console, context, check, 20000ms)){
         fail(console, "the look picker did not show within 20 s of the language's A.");
     }
     const VideoSnapshot picker = snapshot(console, context);
@@ -228,7 +229,8 @@ void pick_look(ConsoleHandle& console, ProControllerContext& context, size_t loo
 
 //  Presses while the keyboard slides in are dropped.
 void wait_for_keyboard(ConsoleHandle& console, ProControllerContext& context){
-    if (!wait_for_frame(console, context, is_name_keyboard, 20000ms)){
+    FrameCheck check = is_name_keyboard;
+    if (!wait_for_frame(console, context, check, 20000ms)){
         fail(console, "the name keyboard did not show within 20 s of the look's A.");
     }
     context.wait_for(1000ms);
