@@ -45,7 +45,7 @@ bool party_has_species(std::optional<int> filled_slots, int dex_species){
     return filled_slots.has_value() && *filled_slots > 0 && *filled_slots >= dex_species;
 }
 
-std::optional<int> settled_party_slots(const std::function<std::optional<int>()>& read_look){
+std::optional<int> settled_party_slots(MoveOnlyFunction<std::optional<int>()> read_look){
     //  Looks are 250 ms apart.
     constexpr int FIRST_READ_LOOKS = 8;
     constexpr int HELD_LOOKS = 13;

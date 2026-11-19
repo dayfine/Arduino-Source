@@ -11,7 +11,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStorySpeciesCheck_H
 #define PokemonAutomation_PokemonLZA_AutoStorySpeciesCheck_H
 
-#include <functional>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include <optional>
 #include <string>
 #include <string_view>
@@ -67,7 +67,7 @@ bool party_has_species(std::optional<int> filled_slots, int dex_species);
 //  new member joins the bar seconds after its banner: 03.08 read 4 of 5
 //  slots and failed, and its retry at once read 5 (console B, 2026-11-18).
 //  None when no look shows the bar in 2 s; the last count after 8 s.
-std::optional<int> settled_party_slots(const std::function<std::optional<int>()>& read_look);
+std::optional<int> settled_party_slots(MoveOnlyFunction<std::optional<int>()> read_look);
 
 //  The party bar's verdict first, as it decides when read; the banner
 //  tally's verdict only when the bar was not read.

@@ -6,8 +6,8 @@
 
 #include <cctype>
 #include <format>
-#include <functional>
 #include <map>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/DebugDumper.h"
@@ -61,12 +61,12 @@ std::optional<std::string> name_typing_problem(const NewGameChoices& choices){
 }
 
 
-using FrameCheck = std::function<bool(const ImageViewRGB32& frame)>;
+using FrameCheck = MoveOnlyFunction<bool(const ImageViewRGB32& frame)>;
 
 constexpr std::string_view DUMP_FOLDER = "PokemonLZA/AutoStory/Intro";
 
 //  The logos before the language list take about 15 s, with no press needed.
-constexpr Milliseconds LAUNCH_LIMIT = 60000ms;
+constexpr Milliseconds LAUNCH_LIMIT = 60s;
 
 //  Faster taps on the language list are dropped.
 constexpr Milliseconds LANGUAGE_TAP_RELEASE = 600ms;
@@ -77,14 +77,14 @@ constexpr Milliseconds LOOK_TILT_RELEASE = 500ms;
 
 //  One + submits the name; Chinese keyboards first take one to "Accept" the typed text.
 constexpr size_t SUBMIT_PRESSES = 3;
-constexpr Milliseconds SUBMIT_WAIT = 5000ms;
+constexpr Milliseconds SUBMIT_WAIT = 5s;
 
 VideoSnapshot snapshot(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     return console.video().snapshot();
 }
 
-bool wait_for_frame(ConsoleHandle& console, ProControllerContext& context, const FrameCheck& check, Milliseconds timeout){
+bool wait_for_frame(ConsoleHandle& console, ProControllerContext& context, FrameCheck& check, Milliseconds timeout){
     const WallClock deadline = current_time() + timeout;
     while (true){
         const VideoSnapshot frame = snapshot(console, context);
@@ -280,7 +280,7 @@ void switch_to_letters(ConsoleHandle& console, ProControllerContext& context){
 }
 
 void submit_name(ConsoleHandle& console, ProControllerContext& context){
-    const FrameCheck confirm_choices = [](const ImageViewRGB32& frame){
+    FrameCheck confirm_choices = [](const ImageViewRGB32& frame){
         return read_confirm_choices_cursor(frame).has_value();
     };
     for (size_t pressed = 1; pressed <= SUBMIT_PRESSES; pressed++){
@@ -317,7 +317,7 @@ void type_name(ConsoleHandle& console, ProControllerContext& context, const NewG
 
 void require_new_game_home(ConsoleHandle& console, ProControllerContext& context){
     HomeMenuDetector home(console, COLOR_RED);
-    const FrameCheck on_home = [&home](const ImageViewRGB32& frame){
+    FrameCheck on_home = [&home](const ImageViewRGB32& frame){
         return home.detect_only(frame);
     };
     if (!wait_for_frame(console, context, on_home, 2000ms)){

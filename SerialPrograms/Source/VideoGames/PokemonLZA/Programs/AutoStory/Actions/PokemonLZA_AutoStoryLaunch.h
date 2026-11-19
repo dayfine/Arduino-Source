@@ -12,7 +12,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryLaunch_H
 
 #include <cstddef>
-#include <functional>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include <optional>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
@@ -27,10 +27,7 @@ constexpr size_t HOME_TILES_SEARCHED = 8;
 
 //  How many `move_right` calls put PLZA's tile under the cursor; nullopt if
 //  none of HOME_TILES_SEARCHED tiles is PLZA's.
-std::optional<size_t> find_plza_tile(
-    const std::function<bool()>& highlighted_is_plza,
-    const std::function<void()>& move_right
-);
+std::optional<size_t> find_plza_tile(MoveOnlyFunction<bool()> highlighted_is_plza, MoveOnlyFunction<void()> move_right);
 
 //  From the game or HOME: closes the running game, whichever it is, and
 //  launches PLZA up to its black screen. Throws UserSetupError, having

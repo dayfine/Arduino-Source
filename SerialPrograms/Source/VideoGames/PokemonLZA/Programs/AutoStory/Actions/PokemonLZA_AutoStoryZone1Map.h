@@ -11,7 +11,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryZone1Map_H
 #define PokemonAutomation_PokemonLZA_AutoStoryZone1Map_H
 
-#include <functional>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include <optional>
 #include <string_view>
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
@@ -63,7 +63,7 @@ bool pin_in_zone_1(MapPoint pin);
 
 //  Reads `pin` twice (none: the pin does not show); out only when both are. Fails as "in_wild_zone" on a
 //  read in the zone and as "zone_unread" on a read with no pin or reader.
-std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, const std::function<std::optional<MapPoint>()>& pin);
+std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, MoveOnlyFunction<std::optional<MapPoint>()> pin);
 
 
 
