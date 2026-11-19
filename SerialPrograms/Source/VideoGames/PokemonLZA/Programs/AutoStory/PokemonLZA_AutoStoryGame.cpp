@@ -471,6 +471,12 @@ enum class StartCheck{
     UNCHECKED,  //  off the platform; nothing checks the row's own start yet
 };
 
+//  "[Boundary] <id> start: <pinned>": what pins the start ("pinned by
+//  minimap", "unchecked"), the evidence for which start checks a run needs.
+void log_start_boundary(PlzaBackend& backend, std::string_view id, std::string_view pinned){
+    backend.log(std::format("[Boundary] {} start: {}", id, pinned));
+}
+
 //  Only the station platform is read so far.
 StartCheck check_start(PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
     if (first_step_checks_start(row)){
@@ -534,12 +540,14 @@ std::variant<Chain, Pokemon::StoryFailure> check_live_start(
             "[Checkpoint] {}: START UNCHECKED: {}; on from the live screen (autosave before it {})",
             row.id, start == nullptr ? "its plan names no start signature" : "nothing reads the screen", seen ? "seen" : "not seen"
         ));
+        log_start_boundary(backend, row.id, seen ? "pinned by sighting" : "unchecked");
         return Chain::ON;
     }
     const StartSignature read = options.read_start(start->signature);
     const std::string screen = std::format("the screen reads ({}), its start is ({})", to_string(read), to_string(start->signature));
     if (start_confirmed(start->signature, read)){
         backend.log(std::format("[Checkpoint] {}: START CHECKED: {}; on from the live screen", row.id, screen));
+        log_start_boundary(backend, row.id, "pinned by minimap");
         return Chain::ON;
     }
     backend.log(std::format("[Checkpoint] {}: START CHECK FAILED: {}; nothing run from there", row.id, screen));
@@ -560,6 +568,7 @@ std::variant<Chain, Pokemon::StoryFailure> decide_chain(
     switch (check_start(backend, row)){
     case StartCheck::PASSED:
         backend.log(std::format("[Checkpoint] {}: start check passed; on from the live screen", row.id));
+        log_start_boundary(backend, row.id, "pinned by platform");
         return Chain::ON;
     case StartCheck::UNCHECKED:
         return check_live_start(backend, options, row, seen);
@@ -610,6 +619,7 @@ std::optional<Pokemon::StoryFailure> reload_into(
         )};
     }
     backend.log(std::format("[Checkpoint] {}: the reload landed at its start ({})", row.id, to_string(read)));
+    log_start_boundary(backend, row.id, "pinned by minimap");
     return std::nullopt;
 }
 
@@ -634,6 +644,10 @@ std::optional<Pokemon::StoryFailure> chain_into(
         : load_checkpoint_start(game, backend, row);
     if (!loaded){
         state = Pokemon::RunState{};
+    }
+    if (!loaded && !reload){
+        //  The start save is the autosave seen at the row before's end.
+        log_start_boundary(backend, row.id, "pinned by sighting");
     }
     return loaded;
 }

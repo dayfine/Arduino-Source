@@ -197,6 +197,7 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
     //  The new game's rows, before any save.
     if (find_start(starts, rows[first].id) == nullptr){
         console.log(std::format("AutoStory: {} has no start signature: running it, no start check", rows[first].id));
+        backend.log(std::format("[Boundary] {} start: unchecked", rows[first].id));
         return first;
     }
     const StartSignature read = builtin_start_reads_map(rows[first].id)
@@ -220,6 +221,7 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
     }else{
         console.log(std::format("AutoStory: the screen ({}) is {}'s start", to_string(read), rows[first].id));
     }
+    backend.log(std::format("[Boundary] {} start: pinned by minimap", rows[*from].id));
     return *from;
 }
 
