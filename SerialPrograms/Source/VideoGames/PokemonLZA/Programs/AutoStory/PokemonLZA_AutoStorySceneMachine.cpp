@@ -284,25 +284,14 @@ bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservat
     return party_bar_is_control(config) && look.events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
-//  B where the party bar shows (an overworld talk), or once the step has
-//  seen the overworld after its scene: on a closing box B does nothing,
-//  where A restarts the talk (03.05's nurse) or starts one with someone
-//  beside the player (03.02b's Vinci, console B 2026-11-19).
-Button default_text_button(const SceneMachineConfig& config, const ScreenObservation& look, bool overworld_seen){
-    const bool overworld = overworld_seen || look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-    return party_bar_is_control(config) && overworld ? BUTTON_B : BUTTON_A;
+//  B where the party bar shows (an overworld talk): on a closing box B does
+//  nothing, where A restarts the talk (03.05's nurse).
+Button default_text_button(const SceneMachineConfig& config, const ScreenObservation& look){
+    return party_bar_is_control(config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) ? BUTTON_B : BUTTON_A;
 }
 
-Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look, bool overworld_seen){
-    return config.text_button.value_or(default_text_button(config, look, overworld_seen));
-}
-
-//  The HUD, or the mission banner where it is not part of the scene, with
-//  nothing busy: a battle reading under the party bar is not a scene
-//  (03.02b, console B 2026-11-19).
-bool overworld_shows(const SceneMachineConfig& config, const ScreenObservation& look){
-    const bool banner = !config.end_after_black_fades && look.readings.contains(MISSION_BANNER_READING);
-    return (hud_shows(look) || banner) && !busy(look);
+Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
+    return config.text_button.value_or(default_text_button(config, look));
 }
 
 void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
@@ -365,11 +354,9 @@ struct SceneClock{
     bool seen = false;
     //  The last look with a scene sign (scene_under_way(), or a Plus press)...
     WallClock last_sign = {};
-    //  An overworld_shows() look once the scene was under way: the talk beat
-    //  pauses from then until text, a fade or a choice that no blind press
-    //  since caused (03.02b's beat A started a talk 0.5 s after the party bar).
-    std::optional<WallClock> beat_paused_since = std::nullopt;
-    bool overworld_seen = false;
+    //  ...and with a sign of the overworld and none of a scene: the HUD or
+    //  the mission banner.
+    std::optional<WallClock> last_overworld = std::nullopt;
     std::optional<WallClock> last_blind_press = std::nullopt;
 };
 
@@ -441,13 +428,8 @@ public:
     //  "fade 2/3" ("fade 2" without end_after_black_fades).
     std::string black_fade_count() const;
 
-    //  The mission banner, and the overworld once the scene was under way.
-    struct Seen{
-        bool banner;
-        bool overworld;
-    };
-    Seen seen() const{
-        return {.banner = m_banner.seen, .overworld = m_scene.overworld_seen};
+    bool banner_seen() const{
+        return m_banner.seen;
     }
 
     //  The config fields that change what `screen`, classify()'s for
@@ -626,14 +608,14 @@ bool SceneTimeline::configured_press_due(WallClock now) const{
 }
 
 bool SceneTimeline::in_talk() const{
-    return m_scene.seen && !m_scene.beat_paused_since;
+    return m_scene.seen && (!m_scene.last_overworld || *m_scene.last_overworld < m_scene.last_sign);
 }
 
 //  Not after a battle's fade, as skip_due(), nor while a fade-in's Plus or
 //  its skip prompt may come.
 bool SceneTimeline::talk_beat_due(const ScreenObservation& look) const{
     const WallClock now = look.when;
-    if (!in_talk() || overworld_shows(m_config, look) || (m_config.stop_at_battle && m_lock_on.after_fade) || skip_window_open(now) || skip_pending(now)){
+    if (!in_talk() || (m_config.stop_at_battle && m_lock_on.after_fade) || skip_window_open(now) || skip_pending(now)){
         return false;
     }
     if (now - m_scene.last_busy < TALK_BEAT){
@@ -731,7 +713,7 @@ std::vector<std::string_view> SceneTimeline::fields_fired(SceneScreen screen, co
     add(configured && m_scene.last_blind_press.has_value(), "blind_press_every");
     add(blind && m_config.blind_button != BUTTON_A, "blind_button");
     add(screen == SceneScreen::DIALOG && !look.events.has(ScreenEvent::CHOICE_BOX) &&
-        dialog_button(m_config, look, m_scene.overworld_seen) != default_text_button(m_config, look, m_scene.overworld_seen), "text_button");
+        dialog_button(m_config, look) != default_text_button(m_config, look), "text_button");
     add(held_by_min_length(screen, look), "min_length");
     return fired;
 }
@@ -791,21 +773,12 @@ void SceneTimeline::record_control(const ScreenObservation& look){
     if (busy(look)){
         m_scene.last_busy = look.when;
     }
-    const bool overworld = overworld_shows(m_config, look);
-    const bool scene_sign = !overworld && scene_under_way(look);
-    if (overworld && m_scene.seen){
-        m_scene.overworld_seen = true;
-        if (!m_scene.beat_paused_since){
-            m_scene.beat_paused_since = look.when;
-        }
-    }
-    const bool pressed_since_pause = m_scene.beat_paused_since && m_scene.last_blind_press && *m_scene.last_blind_press >= *m_scene.beat_paused_since;
-    if (busy(look) && !pressed_since_pause){
-        m_scene.beat_paused_since.reset();
-    }
+    const bool scene_sign = scene_under_way(look);
     m_scene.seen = m_scene.seen || scene_sign;
     if (scene_sign){
         m_scene.last_sign = look.when;
+    }else if (hud_shows(look) || look.readings.contains(MISSION_BANNER_READING)){
+        m_scene.last_overworld = look.when;
     }
     const bool text = text_shows(look);
     track_since(party_bar_is_control(m_config) && party_bar_free(look), look.when, m_control.party_bar_since);
@@ -1020,9 +993,9 @@ void wait_until(PlzaBackend& backend, Milliseconds limit, Done&& done){
 
 //  A text box: dialog_button(). A choice: Up until the top row is
 //  highlighted (03.01's German lobby), then A.
-Button text_button(SceneLog& log, const SceneMachineConfig& config, const ScreenObservation& look, bool overworld_seen){
+Button text_button(SceneLog& log, const SceneMachineConfig& config, const ScreenObservation& look){
     if (!look.events.has(ScreenEvent::CHOICE_BOX)){
-        return dialog_button(config, look, overworld_seen);
+        return dialog_button(config, look);
     }
     const auto rows = look.readings.find(CHOICE_ROWS_READING);
     const auto selected = look.readings.find(CHOICE_SELECTED_READING);
@@ -1142,7 +1115,7 @@ void SceneRunner::perform(SceneAction action, const ScreenObservation& look){
         m_backend.press(BUTTON_B, PRESS_HOLD, PRESS_RELEASE);
         return;
     case SceneAction::PRESS_TEXT:{
-        const Button button = text_button(m_log, m_config, look, m_timeline.seen().overworld);
+        const Button button = text_button(m_log, m_config, look);
         log_text_press(button, look);
         m_backend.press(button, PRESS_HOLD, PRESS_RELEASE);
         return;
@@ -1382,7 +1355,7 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
     }
     if (config.end_after_black_fades){
         backend.log(std::format(
-            "[PLZA {}] the mission banner {}.", label, runner.timeline().seen().banner ? "showed" : "did not show (the detector may have missed it)"
+            "[PLZA {}] the mission banner {}.", label, runner.timeline().banner_seen() ? "showed" : "did not show (the detector may have missed it)"
         ));
     }
     return scene_outcome(backend, label, config, result);

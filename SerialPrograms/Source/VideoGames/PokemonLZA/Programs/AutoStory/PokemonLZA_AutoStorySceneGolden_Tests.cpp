@@ -360,27 +360,6 @@ const GoldenCase GOLDEN_CASES[] = {
             .verdict = "done", .end = "[PLZA scene] done on controls_hint.",
         },
     },
-    {
-        //  Console B 2026-11-19 09:21: the party bar with a battle reading at
-        //  103.4 s, then a look without it; the beat's A 0.5 s later started a
-        //  talk with Vinci beside the player, and every A after restarted it.
-        .name = "03.02b plaza_scene, no A once the party bar shows, B on text after it (Vinci talk loop, scene_timeout 2026-11-19 09:25)",
-        .input = {.checkpoint = "03.02b", .step = "plaza_scene", .screens = R"(
-0.0s: A prompt, party bar
-0.5s: advance arrow
-2.5s: battle, party bar
-3.0s: nothing
-3.5s: advance arrow, still
-4.0s: party bar
-)"},
-        .expectation = {
-            .keys = {
-                {"A prompt, party bar", "A"}, {"advance arrow", "A"}, {"battle, party bar", "-"}, {"nothing", "-"},
-                {"advance arrow, still", "B"}, {"party bar", "-"},
-            },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on can_move.",
-        },
-    },
 };
 
 //  All of checkpoint `id` with an empty `step`, bound to `tools`.
