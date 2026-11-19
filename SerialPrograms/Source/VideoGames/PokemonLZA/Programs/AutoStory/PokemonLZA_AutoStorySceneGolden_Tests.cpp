@@ -788,7 +788,7 @@ const GoldenCase GOLDEN_CASES[] = {
 12.0s: party bar, A prompt
 )"},
         .expectation = {
-            .keys = {{"party bar", "L or stick or hold"}},
+            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
             .verdict = "failed: walk_no_end",
             .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no end event after the last turn",
         },
