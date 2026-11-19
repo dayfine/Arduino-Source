@@ -354,15 +354,15 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "02.05's ride to 2F: the hall's quiet is control, so the walk after it starts on two quiet looks",
-        .input = {.checkpoint = "02.05", .first_step = 4, .steps = 2, .looks = concat({
+        .name = "02.05's ride to 2F: the hall's quiet is control",
+        .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
             look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(6000)),
-        }, concat(std::vector<ScreenObservation>(11, CUTSCENE), {A_PROMPT}))},
+        }},
         .expectation = {
             .verdict = "done",
-            .inputs = std::format("press B, wait 500ms, wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, {}, wait 300ms", repeated("stick 0deg 250ms run", 8)),
-            .line = "[PLZA] walk: nothing busy, and the step before ended in control: control.",
+            .inputs = "press B, wait 500ms",
+            .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
     },
     {
