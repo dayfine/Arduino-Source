@@ -176,6 +176,13 @@ constexpr std::string_view REWINDS_TO_BACKUP_LABEL =
     "The run then closes the game, opens the backup save's card at the title (Up + B + X), and when the card matches a checkpoint's start "
     "(\"start_signature\" in its plan), loads it and plays on from that checkpoint, up to this many times. An unknown backup is never loaded.";
 
+constexpr std::string_view LOAD_SAVE_FIRST_LABEL =
+    "Load the save first: a run from a checkpoint after 01.00b loads the latest save before it starts. "
+    "Off: it starts from wherever the game is, which must be that checkpoint's start.";
+
+constexpr std::string_view RUN_FROM_LABEL =
+    "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk (the game has no dash yet).";
+
 constexpr std::string_view RECORD_START_MINIMAPS_LABEL =
     "<b>Record Start Minimaps:</b><br>For developers: at each checkpoint's start, after its start check, save the frame and its minimap "
     "as plza-minimap-&lt;checkpoint&gt;-start.png and .json in the AutoStoryDev folder of the user files, "
@@ -369,20 +376,11 @@ AutoStory::AutoStory()
     )
     , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/1, /*min_value=*/1, /*max_value=*/5)
     , REWINDS_TO_BACKUP(std::string(REWINDS_TO_BACKUP_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/2, /*min_value=*/0, /*max_value=*/5)
-    , LOAD_SAVE_FIRST(
-        "Load the save first: a run from a checkpoint after 01.00b loads the latest save before it starts. "
-        "Off: it starts from wherever the game is, which must be that checkpoint's start.",
-        LockMode::LOCK_WHILE_RUNNING,
-        true
-    )
+    , LOAD_SAVE_FIRST(std::string(LOAD_SAVE_FIRST_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/true)
     , RECORD_START_MINIMAPS(std::string(RECORD_START_MINIMAPS_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false)
     , RELOAD_PROBE_AFTER(/*is_password=*/false, std::string(RELOAD_PROBE_AFTER_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"", /*placeholder_text=*/"03.03")
     , STARTER("<b>Starter:</b><br>The starter 01.03 picks.", starter_database(), LockMode::LOCK_WHILE_RUNNING, StarterChoice::CHIKORITA)
-    , RUN_FROM(
-        /*is_password=*/false,
-        "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk (the game has no dash yet).",
-        LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"02.01", /*placeholder_text=*/"02.01"
-    )
+    , RUN_FROM(/*is_password=*/false, std::string(RUN_FROM_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"02.01", /*placeholder_text=*/"02.01")
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
