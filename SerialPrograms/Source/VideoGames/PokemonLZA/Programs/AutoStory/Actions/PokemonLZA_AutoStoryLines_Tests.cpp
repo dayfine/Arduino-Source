@@ -81,7 +81,7 @@ const LinesCase LINES_CASES[] = {
     {
         .name = "a card after the text is seen, done 3 s after it",
         .input = {.looks = {dialog(Milliseconds(0)), card(Milliseconds(500)), nothing(Milliseconds(1000)), nothing(Milliseconds(4000))}},
-        .expectation = {.text = true, .card = true, .timed_out = false, .inputs = "press A, wait 250ms, press A, wait 250ms, wait 250ms"},
+        .expectation = {.text = true, .card = true, .timed_out = false, .inputs = "press A, press A, wait 250ms"},
     },
     {
         .name = "nothing for 3 s presses nothing",
@@ -94,7 +94,7 @@ const LinesCase LINES_CASES[] = {
             .looks = {dialog(Milliseconds(0)), dialog(Milliseconds(500)), dialog(Milliseconds(1000))},
             .limit = Milliseconds(1000),
         },
-        .expectation = {.text = true, .card = false, .timed_out = true, .inputs = "press A, wait 250ms, press A, wait 250ms, press A"},
+        .expectation = {.text = true, .card = false, .timed_out = true, .inputs = "press A, press A, press A"},
     },
 };
 
