@@ -46,7 +46,7 @@
         "id": "enter_room_202",
         "why": "A Enter, until control in the room; no party bar or prompt there",
         "action": "mash_to_move_hints",
-        "args": {"press_a_first": true, "quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
+        "args": {"press_a_first": true, "quiet_ms": 3000, "quiet_is_control": true}
       }
     ],
     "metadata": {
