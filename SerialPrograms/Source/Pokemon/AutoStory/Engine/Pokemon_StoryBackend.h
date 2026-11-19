@@ -26,7 +26,6 @@ enum class StoryPace{
     RUN,
 };
 
-//  code-health: allow public_methods -- the agreed backend boundary is these low-level calls; splitting them would make every action take two objects
 class StoryBackend{
 public:
     virtual ~StoryBackend() = default;
