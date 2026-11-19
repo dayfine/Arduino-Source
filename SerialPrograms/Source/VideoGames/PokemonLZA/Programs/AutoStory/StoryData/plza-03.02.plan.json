@@ -27,12 +27,11 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends outside Hotel Z at the autosave seen in leave_hotel_z, after the Main Menu card (console B, 2026-11-16: badge at 116 s in the step), so a checkpoint starts where that save reloads; 03.02b goes on to Taunie. Start signature: no A prompt (console B run logs 2026-11-16 to 18, the last look of 03.01: the party bar in 3 runs, nothing in 6, so the party is not read)."
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends outside Hotel Z at the autosave seen in leave_hotel_z, after the Main Menu card (console B, 2026-11-16: badge at 116 s in the step), so a checkpoint starts where that save reloads; 03.02b goes on to Taunie."
     }
   },
   "execution": {
     "save": "autosave",
-    "autosave_step": "leave_hotel_z",
-    "start_signature": {"talk_prompt": false}
+    "autosave_step": "leave_hotel_z"
   }
 }

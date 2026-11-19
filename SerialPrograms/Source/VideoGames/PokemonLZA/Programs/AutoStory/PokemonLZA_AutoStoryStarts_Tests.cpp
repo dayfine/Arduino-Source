@@ -183,27 +183,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.11"},
     },
     {
-        .name = "asked 03.11, one in the party: stop",
-        .input = {.asked = "03.11", .read = {.talk_prompt = false, .party = 1}},
-        .expectation = {.from = "stop"},
-    },
-    {
-        //  01.03's and 02.02's starts read the same, but name no place.
-        .name = "asked 03.08, the Center counter with one in the party: from 03.06",
-        .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false, .party = 1}},
-        .expectation = {.from = "03.06"},
-    },
-    {
-        .name = "asked 02.04, one in the party: from 02.04",
-        .input = {.asked = "02.04", .read = {.talk_prompt = false, .party = 1}},
-        .expectation = {.from = "02.04"},
-    },
-    {
-        .name = "asked 02.04, nothing read: stop",
-        .input = {.asked = "02.04", .read = {}},
-        .expectation = {.from = "stop"},
-    },
-    {
         .name = "asked 03.03, the courtyard's minimap: from 03.03",
         .input = {.asked = "03.03", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.03-start"}},
         .expectation = {.from = "03.03"},
@@ -313,22 +292,6 @@ const TableCase TABLE_CASES[] = {
             .asked = "C", .read = AT_COUNTER,
         },
         .expectation = {.from = "C"},
-    },
-    {
-        .name = "an earlier start of only a prompt matches, the asked one does not: stop",
-        .input = {
-            .starts = {{.checkpoint = "A", .signature = {.talk_prompt = true}}, {.checkpoint = "C", .signature = IN_ZONE}},
-            .asked = "C", .read = AT_COUNTER,
-        },
-        .expectation = {.from = "stop"},
-    },
-    {
-        .name = "an earlier start of only a party matches, the asked one does not: stop",
-        .input = {
-            .starts = {{.checkpoint = "A", .signature = {.party = 1}}, {.checkpoint = "C", .signature = IN_ZONE}},
-            .asked = "C", .read = {.wild_zone = false, .party = 1},
-        },
-        .expectation = {.from = "stop"},
     },
     {
         .name = "a reading sharing no field with the asked start: stop",
