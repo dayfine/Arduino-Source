@@ -48,8 +48,9 @@ inline constexpr double CATCH_STOP_RADIUS = 12;
 inline constexpr MapWaypoint ZONE1_ROCKS{.name = "Taunie's rocks", .pin = {.x = 476, .y = 224}, .provisional = false};
 //  The plaza by the green advertising column (marker 100, Scatterbug):
 //  (432, 238) read 93 and 91 (console B, 2026-11-18), so ~10 pixels on
-//  toward the rocks and a little north, as the user placed it.
-inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x = 442, .y = 233}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+//  toward the rocks, and 6 north of the road's middle (~5 marker units):
+//  the patrol ran too far left on the road (user, 2026-11-18).
+inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x = 442, .y = 227}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
 //  Before the far gate, Mareep's grass right of the road (marker 60), at
 //  (386, 252): targets show on the right from here, none from (370, 256).
 inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 252}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
