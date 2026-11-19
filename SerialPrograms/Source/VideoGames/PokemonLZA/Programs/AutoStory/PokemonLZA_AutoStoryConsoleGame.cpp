@@ -117,17 +117,9 @@ Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
 using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk);
 
 //  "run_to_gate": the walk's heading faced first, if any, then run_to_gate().
-//  With an aim, the heading is the bearing from the map pin to it.
 Outcome run_gate_step(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
-    std::optional<double> heading = walk.heading;
-    if (walk.aim){
-        const std::optional<MapPoint> pin = read_pin_on_map(env, backend);
-        if (pin){
-            heading = bearing(*pin, *walk.aim);
-        }
-    }
-    if (heading){
-        const Outcome faced = face_heading(backend, minimap_arrow(env), *heading);
+    if (walk.heading){
+        const Outcome faced = face_heading(backend, minimap_arrow(env), *walk.heading);
         if (!faced.succeeded()){
             return faced;
         }
@@ -151,7 +143,12 @@ Handler gate_handler(StoryEnv& env, std::string name, GateStep step){
             if (std::get<std::string>(aim->second) != "zone_1_far_gate"){
                 return Pokemon::outcome_failed("bad_aim", std::format("{}: no map point named {}", name, std::get<std::string>(aim->second)));
             }
-            walk.aim = ZONE1_FAR_GATE.pin;
+            //  The bearing from the map pin, the given heading when it is
+            //  not read.
+            const std::optional<MapPoint> pin = read_pin_on_map(env, backend);
+            if (pin){
+                walk.heading = bearing(*pin, ZONE1_FAR_GATE.pin);
+            }
         }
         try{
             return step(env, backend, walk);
