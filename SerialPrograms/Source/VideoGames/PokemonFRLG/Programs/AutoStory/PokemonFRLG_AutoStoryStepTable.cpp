@@ -165,6 +165,13 @@ Pokemon::StoryActionSpec grind_check_action_spec(){
     return spec;
 }
 
+Pokemon::StoryActionSpec nugget_farm_action_spec(){
+    return {.kind = StoryStepKind::GAME, .name = std::string(NUGGET_FARM_ACTION), .args = {
+        required_arg("count", StoryArgType::INTEGER, "how many Nuggets to farm by losing to the Nugget Bridge Rocket"),
+        required_arg("nurse", StoryArgType::GRID_POSE, "the Center nurse pose where whiteout wakes the player"),
+    }};
+}
+
 //  The variants of the built-in ROUTE, LEGS and STEP that move the player
 //  another way: running, riding, tapping, and into a trainer's line.
 std::vector<Pokemon::StoryActionSpec> movement_variant_specs(std::span<const Pokemon::StoryActionSpec> builtin){
@@ -284,6 +291,7 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
             pc_action_spec(), capture_action_spec(), fossil_action_spec(), level_action_spec(),
             mart_action_spec(), teach_action_spec(), grind_action_spec(), grind_check_action_spec(),
             slope_action_spec(), count_items_action_spec(), hall_of_fame_action_spec(),
+            nugget_farm_action_spec(),
         }){
             specs.push_back(std::move(spec));
         }

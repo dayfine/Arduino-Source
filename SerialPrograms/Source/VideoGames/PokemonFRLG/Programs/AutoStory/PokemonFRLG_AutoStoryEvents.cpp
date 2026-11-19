@@ -294,6 +294,8 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     //  poisoned and the story walked on with it uncured.
     if (end != BattleEnd::LOST){
         recover_after_battle(env.console, env.context, env.supplies, env.checks, env.language);
+    }else{
+        healed_by_nurse(env.supplies);
     }
     return Pokemon::outcome_ok();
 }
@@ -646,9 +648,49 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
     return Pokemon::outcome_ok(state.pose);
 }
 
+//  Farm Nuggets by walking from `nurse` to Route 24 (11, 16) facing north,
+//  stepping onto (11, 15) to trigger the Nugget Bridge Rocket, losing the
+//  battle, and waking back at the Center nurse.
+Outcome nugget_farm(StoryEnv& env, RunState& state, const StoryStep& step){
+    const int64_t count = arg<int64_t>(step, "count");
+    const Pokemon::Pose nurse_input = Pokemon::pose_of(arg<Pokemon::GridPose>(step, "nurse"));
+    const std::optional<StoryPose> nurse_pose = story_pose(nurse_input);
+    if (!nurse_pose){
+        return Pokemon::outcome_failed("bad_nurse", Pokemon::to_string(nurse_input));
+    }
+    const Pokemon::GridPose approach{"Route24", {TilePos{11, 16}}, Direction::NORTH};
+    for (int64_t i = 0; i < count; i++){
+        StoryStep walk;
+        walk.kind = StoryStepKind::ROUTE;
+        walk.name = step.name + "_walk";
+        walk.args = {{"target", approach}, {"fight_wild", false}};
+        const Outcome walked = walk_route(env, state, walk, run_story_maps(state.flags));
+        if (!walked.succeeded()){
+            return walked;
+        }
+        step_once(env.console, env.context, Direction::NORTH, Direction::NORTH, env.player_gender);
+        if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
+            return Pokemon::outcome_failed("no_battle");
+        }
+        const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
+        end_trainer_battle(env.supplies);
+        if (end != BattleEnd::LOST){
+            return Pokemon::outcome_failed("nugget_farm_not_lost");
+        }
+        mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+        wait_out_battle_exit(env.console, env.context);
+        healed_by_nurse(env.supplies);
+        state.pose = to_pose(*nurse_pose);
+    }
+    return Pokemon::outcome_ok(to_pose(*nurse_pose));
+}
+
 //  The GAME steps without a row of their own: a capture or a PC deposit or
 //  withdrawal, a MART, TEACH, LEVEL, GRIND or fossil CHOICE.
 Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
+    if (step.action == NUGGET_FARM_ACTION){
+        return nugget_farm(env, state, step);
+    }
     const Pokemon::Pose patch = state.pose;
     ConsoleCaptureActions capture(env.console, env.context, env.language, env.player_gender, [&]{ pace_trainer_battle(env, state, step, patch); });
     ConsolePcStorageActions pc(env.console, env.context, env.language);
