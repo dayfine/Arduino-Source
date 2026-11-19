@@ -18,8 +18,7 @@ bool StoryRegisteredArgValue::operator==(const StoryRegisteredArgValue& other) c
 }
 
 StoryArgType story_arg_type(const StoryArgValue& value){
-    //  The alternatives are declared in StoryArgType's order. A variant left
-    //  valueless by an exception would give variant_npos; none is kept.
+    //  The alternatives are declared in StoryArgType's order.
     return static_cast<StoryArgType>(value.index());
 }
 

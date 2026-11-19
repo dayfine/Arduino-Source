@@ -2,9 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What a checkpoint's JSON says about the checkpoint rather than how to
- *  play it: its phase (testing, verification or reproduction, below) and
- *  where it came from.
+ *  A checkpoint's phase and source.
  *
  */
 

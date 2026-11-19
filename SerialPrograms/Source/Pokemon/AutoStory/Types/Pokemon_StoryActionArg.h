@@ -2,12 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A step's action and its arguments (StoryStep::action, StoryStep::args),
- *  e.g. a walk's {"legs": [[0, 4500], [90, 10000]], "end": "fade_white"}. Each
- *  action declares the arguments it takes (Pokemon_StoryActionSpec.h), with their
- *  types and defaults; the JSON reader (Data/Pokemon_StoryStepJson.h)
- *  parses a step's args against them and fills in the defaults, so a typo
- *  fails at load instead of mid-run and nothing after it reads JSON.
+ *  A story step's typed arguments.
  *
  */
 
@@ -69,9 +64,8 @@ using StoryActionArgs = std::map<std::string, StoryArgValue, std::less<>>;
 //  The type `value` holds.
 StoryArgType story_arg_type(const StoryArgValue& value);
 
-//  The value of arg `key`, which the step's action requires or gives a
-//  fallback, so the loaded step has it. Throws InternalProgramError when it
-//  is missing or of another type: a step built without its action's spec.
+//  The value of arg `key`, which the action's spec requires or gives a
+//  fallback. Throws InternalProgramError when it is missing or mistyped.
 template <typename Type>
 const Type& story_arg(const StoryActionArgs& args, std::string_view key);
 

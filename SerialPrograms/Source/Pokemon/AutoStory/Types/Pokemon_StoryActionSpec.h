@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What an action declares: the kind of step it does, its name and the
- *  args it takes, with their types and fallbacks (Pokemon_StoryActionArg.h).
+ *  What an action declares: its step kind, name and args.
  *
  */
 
@@ -24,9 +23,8 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  An arg kind a game registers (StoryArgType::REGISTERED): its name and how
-//  its JSON reads. `read` throws ParseException naming `source` when the
-//  value is malformed. A game keeps its kinds alive as long as its specs.
+//  An arg kind a game registers (StoryArgType::REGISTERED). `read` throws
+//  ParseException on a malformed value. Must outlive the specs naming it.
 struct StoryArgKind{
     std::string name = {};
     std::function<StoryRegisteredArgValue(const JsonValue& value, std::string_view source)> read = {};
@@ -50,9 +48,7 @@ struct StoryActionSpec{
     StoryStepKind kind = StoryStepKind::GAME;
     std::string name = {};
     std::vector<StoryArgSpec> args = {};
-    //  It reads or presses through screens only a console shows (menus, a
-    //  keyboard, a battle AI): the engine refuses it on any other backend
-    //  (StoryBackendKind) with the failure "console_only".
+    //  It runs only on a console backend.
     bool console_only = false;
 };
 

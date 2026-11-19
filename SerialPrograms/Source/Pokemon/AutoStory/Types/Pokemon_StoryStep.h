@@ -2,9 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  One step of a game's story as plain data: its kind, the action that does
- *  it and the action's args. The shared JSON reader reads it
- *  (Data/Pokemon_StoryStepJson.h).
+ *  One step of a game's story as plain data.
  *
  */
 
@@ -19,17 +17,15 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// One step of a checkpoint: an action and its args.
+//  One step of a checkpoint: an action and its args.
 struct StoryStep{
     StoryStepKind kind = StoryStepKind::TALK;
     std::string name = {};
     std::string why = {};
 
-    //  How the step does its kind: one of the game's actions; for a GAME
-    //  step, the game's action. Empty is the kind's default action.
+    //  One of the game's actions of `kind`; empty: the kind's default.
     std::string action = {};
-    //  The arguments the action reads, parsed against its spec when the
-    //  game loads the step, with the spec's fallbacks filled in.
+    //  Checked against the action's spec when the step loads.
     StoryActionArgs args = {};
 
 };

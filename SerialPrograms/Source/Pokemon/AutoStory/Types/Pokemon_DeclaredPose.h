@@ -2,9 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A pose a checkpoint declares in its data (its start), as plain data. A
- *  game with no tile grid (PLZA) declares a place, a spot in it and a
- *  heading.
+ *  Where a checkpoint's data declares the player to be.
  *
  */
 
@@ -30,9 +28,7 @@ struct ZoneDeclared{
     bool operator==(const ZoneDeclared& other) const = default;
 };
 
-//  Where a checkpoint declares the player to be: a zone, or a pose of a kind
-//  the game registers (a tile game's map, tiles and facing), read by the
-//  StoryArgKind the game passes to the reader (Data/Pokemon_StoryStepJson.h).
+//  A zone, or a pose of a kind the game registers (StoryArgKind).
 using DeclaredPose = std::variant<ZoneDeclared, StoryRegisteredArgValue>;
 
 

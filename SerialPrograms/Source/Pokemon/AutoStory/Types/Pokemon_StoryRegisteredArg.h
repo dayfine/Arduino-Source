@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A value of an arg kind a game registers (StoryArgType::REGISTERED,
- *  StoryArgKind in Pokemon_StoryActionSpec.h), e.g. a tile game's grid pose
- *  or legs. The core only carries and compares it; the game's actions read
- *  it back with registered_arg() (Pokemon_StoryActionArg.h).
+ *  A value of an arg kind a game registers; the core only carries it.
  *
  */
 

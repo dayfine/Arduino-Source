@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The kinds of story step the games share. A game does each kind its own
- *  way, with its own actions.
+ *  The kinds of story step the games share.
  *
  */
 
@@ -16,7 +15,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Action category classification for individual story steps.
+//  What a step does; each game has its own actions for each kind.
 enum class StoryStepKind{
     NEW_GAME,   //  title screen (no save) to the first room
     OPTIONS,    //  the game's options as the story needs them
@@ -35,7 +34,7 @@ enum class StoryStepKind{
     GAME,       //  a step only this game has, named by `action`
 };
 
-// Returns the readable string representation of a story step kind.
+//  "TALK", "GAME": the enum's name.
 std::string story_step_kind_name(StoryStepKind kind);
 
 
