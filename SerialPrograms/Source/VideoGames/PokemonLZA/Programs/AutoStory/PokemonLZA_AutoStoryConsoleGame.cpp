@@ -15,6 +15,7 @@
 #include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "VideoGames/PokemonLZA/PokemonLZA_Settings.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
@@ -125,6 +126,37 @@ Outcome run_gate_step(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk)
         }
     }
     return run_to_gate(env, walk.timeout);
+}
+
+//  "aimed_run_to_gate": map legs to ZONE1_GATE_APPROACH, then up to 3
+//  runs (run_to_gate()), each facing the bearing from a fresh pin read to
+//  the far gate; a run with no A prompt (a pillar) backs off first.
+Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
+    const MapWaypoint approach[] = {ZONE1_GATE_APPROACH};
+    const Outcome walked = walk_map_legs(env, backend, approach);
+    if (!walked.succeeded()){
+        return walked;
+    }
+    Outcome ran = Pokemon::outcome_ok();
+    for (int runs = 0; runs < 3; runs++){
+        if (runs > 0){
+            backend.log(std::format("[PLZA] aimed_run_to_gate: no prompt on run {}, backing off", runs));
+            pbf_move_left_joystick(env.context, {0, -1}, /*hold=*/500ms, /*release=*/300ms);
+        }
+        const std::optional<MapPoint> pin = read_pin_on_map(env, backend);
+        if (!pin){
+            return Pokemon::outcome_failed("map_pin_not_read", "no map pin before the run to the far gate");
+        }
+        const Outcome faced = face_heading(backend, minimap_arrow(env), bearing(*pin, ZONE1_FAR_GATE.pin));
+        if (!faced.succeeded()){
+            return faced;
+        }
+        ran = run_to_gate(env, walk.timeout);
+        if (ran.succeeded()){
+            return ran;
+        }
+    }
+    return ran;
 }
 
 //  The handler of the gate walk `name` on the console `env`, its args
@@ -268,6 +300,7 @@ PlzaConsoleActions console_actions(StoryEnv& env){
         confirm_new_game_choices(story.env.console, story.context, story.new_game);
     }));
     actions.emplace("run_to_gate", gate_handler(env, "run_to_gate", run_gate_step));
+    actions.emplace("aimed_run_to_gate", gate_handler(env, "aimed_run_to_gate", aimed_gate_run));
     actions.emplace("walk_to_zone_gate_entrance", gate_handler(env, "walk_to_zone_gate_entrance", walk_to_zone_gate));
     for (const auto& [name, step] : console_steps()){
         actions.emplace(std::string(name), console_handler(env, name, step));
