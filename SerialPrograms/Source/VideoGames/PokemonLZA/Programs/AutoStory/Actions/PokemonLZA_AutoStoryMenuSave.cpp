@@ -12,6 +12,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryMenuReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryMenuSave.h"
 
 namespace PokemonAutomation{
@@ -181,9 +182,11 @@ std::optional<Pokemon::StoryFailure> back_to_overworld(PlzaBackend& backend){
     const size_t max_looks = MENU_SAVE_LIMIT / MENU_SAVE_POLL + 1;
     std::optional<WallClock> start;
     size_t overworld_looks = 0;
+    SignalProbe signals;
     for (size_t looks = 1; ; looks++){
         backend.scope().throw_if_cancelled();
         const ScreenObservation look = backend.observe();
+        signals.look(look);
         if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
             return Pokemon::game_not_running_failure();
         }
@@ -202,6 +205,8 @@ std::optional<Pokemon::StoryFailure> back_to_overworld(PlzaBackend& backend){
         overworld_looks++;
         if (overworld_looks >= MENU_SAVE_HELD_LOOKS){
             backend.log(std::format("[PLZA set_text_speed_fast] text speed set, back on the overworld at {:.1f}s", now.count() / 1000.0));
+            const bool party_bar = look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
+            backend.log_detail(signals.line("set_text_speed_fast", "text_speed_exit", party_bar ? "party_bar" : "hint"));
             return std::nullopt;
         }
         backend.wait(MENU_SAVE_POLL);

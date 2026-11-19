@@ -12,6 +12,7 @@
 #include <string_view>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 
 namespace PokemonAutomation{
@@ -297,8 +298,10 @@ std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::s
     int control_looks = 0;
     std::optional<Milliseconds> quiet_since;
     std::optional<Milliseconds> prompt_since;
+    SignalProbe signals;
     for (Milliseconds waited = 0ms; waited <= FREE_CONTROL_WAIT; waited += FREE_CONTROL_LOOK){
         const ScreenObservation look = backend.observe();
+        signals.look(look);
         const std::optional<std::string_view> busy = not_free_control(look);
         if (busy){
             last_busy = *busy;
@@ -308,6 +311,8 @@ std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::s
         }
         control_looks = !busy && control_shows(look) ? control_looks + 1 : 0;
         if (control_looks >= 2){
+            const bool party_bar = look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
+            backend.log_detail(signals.line(walk, "walk_control", party_bar ? "party_bar" : "hint"));
             return std::nullopt;
         }
         if (!busy && look.events.has(ScreenEvent::INTERACT_PROMPT)){
@@ -319,12 +324,14 @@ std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::s
         }
         if (prompt_since && waited - *prompt_since >= PROMPT_IS_CONTROL){
             backend.log(std::format("[PLZA] {}: the A prompt held {} ms with nothing busy: control.", walk, PROMPT_IS_CONTROL.count()));
+            backend.log_detail(signals.line(walk, "walk_control", /*by=*/"prompt"));
             return std::nullopt;
         }
         if (quiet_since && waited - *quiet_since >= QUIET_IS_CONTROL){
             backend.log(std::format(
                 "[PLZA] {}: nothing busy for {} ms and no sign of control; taken as control.", walk, QUIET_IS_CONTROL.count()
             ));
+            backend.log_detail(signals.line(walk, "walk_control", /*by=*/"quiet"));
             return std::nullopt;
         }
         backend.wait(FREE_CONTROL_LOOK);

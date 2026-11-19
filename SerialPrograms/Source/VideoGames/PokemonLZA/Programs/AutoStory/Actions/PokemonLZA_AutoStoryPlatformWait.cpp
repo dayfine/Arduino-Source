@@ -7,6 +7,7 @@
 #include <format>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryPlatformWait.h"
 
 namespace PokemonAutomation{
@@ -87,12 +88,15 @@ std::optional<StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds
     const size_t max_looks = (size_t)(timeout / PLATFORM_POLL) + 1;
     std::optional<WallClock> start;
     PlatformProgress progress;
+    SignalProbe signals;
     for (size_t looks = 0; looks < max_looks; looks++){
         backend.scope().throw_if_cancelled();
         const ScreenObservation look = backend.observe();
+        signals.look(look);
         start = start.value_or(look.when);
         if (platform_look(backend, look, wait, progress)){
             backend.log(std::format("[PLZA] platform wait: on the platform after {} looks", looks + 1));
+            backend.log_detail(signals.line("wait_for_platform", "platform", /*by=*/"hint"));
             return std::nullopt;
         }
         if (look.when - *start >= timeout){
