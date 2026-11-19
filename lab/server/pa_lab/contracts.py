@@ -416,11 +416,29 @@ def _save_status(obj, path, ctx):
         ctx.error(_join(path, 'reason'), "must be 'no_fact' when status is unknown")
 
 
+SAVE_MISMATCH_EVIDENCE = ('status', 'reason', 'since', 'checkpoint', 'game')
+
+
 def _refusal_detail(obj, path, ctx):
-    if obj.get('code') == 'precheck_failed' and not obj.get('check'):
-        ctx.error(_join(path, 'check'), 'required for precheck_failed (the failed check name)')
+    if obj.get('code') == 'save_mismatch':
+        evidence = obj.get('evidence')
+        if not isinstance(evidence, dict):
+            ctx.error(_join(path, 'evidence'), 'required for save_mismatch ({})'.format(
+                ', '.join(SAVE_MISMATCH_EVIDENCE)))
+        else:
+            for key in SAVE_MISMATCH_EVIDENCE:
+                if key not in evidence:
+                    ctx.error(_join(path, 'evidence.' + key), 'required for save_mismatch')
     if obj.get('code') == 'invalid_arguments' and not obj.get('field'):
         ctx.error(_join(path, 'field'), 'required for invalid_arguments (the offending argument)')
+
+
+def _start_check_detail(obj, path, ctx):
+    """program_failed: a start check's failure names the check and its message."""
+    if obj.get('verdict') == 'start_check_failed':
+        for key in ('check', 'message'):
+            if not obj.get(key):
+                ctx.error(_join(path, key), 'required for start_check_failed')
 
 
 def _request_lease(obj, path, ctx):
@@ -467,6 +485,8 @@ def _page_order(obj, path, ctx):
 
 # ---- version-1 specs ----------------------------------------------------------------------------
 
+# program.last_outcome.outcome: only a start check's failure so far (the preflight split, step 2).
+RUN_OUTCOMES = ('start_check_failed',)
 PROGRAM_STATES = ('stopped', 'running', 'stopping', 'not_ready', 'no_program')
 TRANSITION_SOURCES = ('ui', 'lab', 'program', 'error')
 CONSOLES = Enum('B')
@@ -503,6 +523,16 @@ APP_STATE = Obj([
         F('paused', Nullable(Str()), required=False, doc='legacy paused=: breakpoint label while waiting'),
         F('options_hash', Nullable(Str()), required=False,
           doc="SHA-256 of the selected program's full option JSON (#601); absent from older apps"),
+        F('last_outcome', Nullable(Obj([
+            F('run_id', Nullable(Str())),
+            F('request_id', Nullable(Uuid()), doc="the run_program request that started the run; null for a UI Start"),
+            F('outcome', Enum(*RUN_OUTCOMES)),
+            F('check', Str(), doc='the start check that failed'),
+            F('message', Str(), doc='one line for the user'),
+            F('evidence', AnyObject(), required=False),
+            F('at', Timestamp()),
+        ])), required=False, doc='how the run the last stop ended came out; written with that stop transition, '
+                                 'null after the next start; absent from older apps'),
     ])),
     F('controller', Obj([
         F('state', Enum('ready', 'not_connected', 'no_console'),
@@ -559,13 +589,12 @@ REFUSAL_CODES = (
     'unknown_panel', 'panel_not_program', 'panel_hidden',
     'program_running', 'program_not_stopped', 'controller_not_ready',
     'video_stale', 'video_bad_signal', 'timeout',
-    'prechecks_unsupported', 'precheck_failed', 'preflight_stale',
+    'prechecks_unsupported', 'save_mismatch',
 )
 
 REFUSAL = Obj([
     F('code', Enum(*REFUSAL_CODES)),
     F('message', Str(), doc='one line for the user'),
-    F('check', Str(), required=False, doc='precheck name, for precheck_failed'),
     F('field', Str(), required=False, doc='argument path, for invalid_arguments'),
     F('evidence', AnyObject(), required=False),
 ], rules=[_refusal_detail])
@@ -600,10 +629,7 @@ TOOL_ARGUMENTS: Dict[str, Spec] = {
     'acquire_console': Obj([F('owner', Str()), TTL], open=False),
     'renew_console': Obj([TTL], open=False),
     'release_console': Obj([], open=False),
-    'preflight_program': Obj([PANEL_ARG, F('options', AnyObject())], open=False),
-    'run_program': Obj([PANEL_ARG, F('options', AnyObject()),
-                        F('preflight_token', Str(), doc='from a passed preflight_program with the same panel and options')],
-                       open=False),
+    'run_program': Obj([PANEL_ARG, F('options', AnyObject())], open=False),
     'stop_program': Obj([], open=False),
     'cfr_batch': Obj([F('lines', ListOf(Str(), min_items=1, max_items=200))], open=False),
 }
@@ -650,8 +676,14 @@ EVENT_PAYLOADS: Dict[str, Spec] = {
                               F('result', AnyObject())]),
     'request_failed': Obj([F('request_id', Uuid()), F('tool', Enum(*TOOL_ARGUMENTS)), F('refusal', REFUSAL)]),
 }
-EVENT_PAYLOADS['program_failed'] = Obj([F('run_id', Nullable(Str())), F('verdict', Enum('failed')),
-                                        F('checkpoint', Nullable(Str()))])
+EVENT_PAYLOADS['program_failed'] = Obj([
+    F('run_id', Nullable(Str())),
+    F('verdict', Enum('failed', 'start_check_failed'), doc="start_check_failed: from the app's program.last_outcome"),
+    F('checkpoint', Nullable(Str())),
+    F('check', Str(), required=False, doc='the start check that failed; required for start_check_failed'),
+    F('message', Str(), required=False),
+    F('evidence', AnyObject(), required=False),
+], rules=[_start_check_detail])
 EVENT_PAYLOADS['video_back'] = Obj([F('frame_seq', Nullable(Int(minimum=0)))])
 EVENT_PAYLOADS['autosave'] = EVENT_PAYLOADS['save']
 

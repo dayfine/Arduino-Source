@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "written_at": "2026-11-14T06:20:05.310Z",
+  "instance": {
+    "id": "d8ea6a9d-1eab-4a40-b355-d88072b289a1",
+    "pid": 4411,
+    "profile": "lab-B"
+  },
+  "panel": {
+    "id": "PokemonFRLG:GiftRng",
+    "kind": "program"
+  },
+  "program": {
+    "state": "stopped",
+    "run_id": null,
+    "last_transition": {
+      "action": "stop",
+      "source": "program",
+      "request_id": null,
+      "at": "2026-11-14T06:20:04.880Z"
+    },
+    "last_outcome": {
+      "run_id": null,
+      "request_id": "9b1d7e44-6a2f-4c0e-8f13-2d5c8a90b6e1",
+      "outcome": "start_check_failed",
+      "check": "free_party_slots",
+      "message": "Free party slots: needs 1 empty slot, found 0.",
+      "evidence": {
+        "needed": 1,
+        "found": 0
+      },
+      "at": "2026-11-14T06:20:04.850Z"
+    }
+  },
+  "controller": {
+    "state": "ready"
+  },
+  "video": {
+    "state": "live",
+    "frame_seq": 918274,
+    "captured_at": "2026-11-14T06:20:05.280Z",
+    "signal": "unknown"
+  },
+  "observation": {
+    "game": {
+      "value": "unknown",
+      "observed_at": null
+    },
+    "screen": {
+      "value": "unknown",
+      "observed_at": null
+    }
+  },
+  "channel": {
+    "last_request": "fs012327",
+    "last_error": null,
+    "owner_claimed": false
+  }
+}

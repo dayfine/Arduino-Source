@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+  "tool": "run_program",
+  "refusal": {
+    "code": "prechecks_unsupported",
+    "message": "PokemonFRLG:GiftRng reports no start checks; the server runs only programs that report them."
+  }
+}

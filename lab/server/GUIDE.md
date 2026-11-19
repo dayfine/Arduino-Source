@@ -44,8 +44,8 @@ cannot name the game yet. **Built, needs the HTTP mode (not set up yet).**
 
 #### `describe_program`
 
-The selected program's options: keys, types, defaults, allowed values. Call before
-`preflight_program`. **Built, needs the HTTP mode (not set up yet).**
+The selected program's options: keys, types, defaults, allowed values, and its start checks.
+Call before `run_program`. **Built, needs the HTTP mode (not set up yet).**
 
 ### Your hold
 
@@ -71,17 +71,12 @@ Follow a pending request, or wait for the next event (run started, run ended, yo
 
 ### Run programs
 
-#### `preflight_program`
-
-Checks the options and runs the program's start checks without starting it; returns a token for
-`run_program`. Every program refuses today: none declares start checks yet. **Built, needs the
-HTTP mode with actions (not set up yet).**
-
 #### `run_program`
 
-Starts the selected program with the preflighted options. Needs the lease and a fresh preflight
-token, so nothing can start this way yet. **Built, needs the HTTP mode with actions (not set up
-yet).**
+Checks the console and the options, then starts the selected program with them, in one call.
+Presses nothing when it refuses. Needs the lease. The program then runs its own start checks; a
+failed one ends the run with a named result (`start_check_failed`). Every program refuses today:
+none reports start checks yet. **Built, needs the HTTP mode with actions (not set up yet).**
 
 #### `stop_program`
 
@@ -188,7 +183,7 @@ The refusal names the reason in one sentence. The common ones:
 - **`program_running`**: a program runs or is still stopping. Wait, or click Stop.
 - **`app_unavailable`**: the lab app is closed, hung (no state for 10 s), or the video is stale.
   Start it with `labrun.sh`, never the bare binary.
-- **`prechecks_unsupported`**: the program declares no start checks yet. Expected today.
+- **`prechecks_unsupported`**: the program reports no start checks yet. Expected today.
 - **`panel_not_program`** / **`invalid_arguments`**: wrong program selected, or an option it does
   not take. Check `describe_program`.
 

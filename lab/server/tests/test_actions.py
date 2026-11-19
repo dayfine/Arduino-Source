@@ -27,17 +27,9 @@ def stopped_app():
     return doc
 
 
-NO_TOKEN = 'pf1.never-issued'
-
-
 def run_request(token, request_id=None, panel=PANEL, options=None, **arguments):
     return {'schema': 1, 'request_id': request_id or new_id(), 'console': 'B', 'lease_token': token,
             'arguments': dict({'panel': panel, 'options': {} if options is None else options}, **arguments)}
-
-
-def preflight_request(token, request_id=None, panel=PANEL, options=None):
-    return {'schema': 1, 'request_id': request_id or new_id(), 'console': 'B', 'lease_token': token,
-            'arguments': {'panel': panel, 'options': {} if options is None else options}}
 
 
 def stop_request(token, request_id=None):
@@ -71,20 +63,8 @@ class ActionTest(unittest.TestCase):
     def run_program(self, request):
         return self.actions.run_program(CLIENT, request)
 
-    def preflight(self, request):
-        return self.actions.preflight_program(CLIENT, request)
-
-    def run_req(self, token, request_id=None, panel=PANEL, options=None, **arguments):
-        """A run request with a token from a preflight of the same panel and options made now; when
-        that preflight does not pass, a token never issued (for refusals checked before the token)."""
-        if 'preflight_token' not in arguments:
-            try:
-                record = self.preflight(preflight_request(token, panel=panel, options=options))
-            except control.Refused:
-                record = {'status': 'refused'}
-            passed = record['status'] == 'completed'
-            arguments['preflight_token'] = record['result']['preflight_token'] if passed else NO_TOKEN
-        return run_request(token, request_id, panel, options, **arguments)
+    def run_req(self, token, request_id=None, panel=PANEL, options=None):
+        return run_request(token, request_id, panel, options)
 
     def stop_program(self, request):
         return self.actions.stop_program(CLIENT, request)
@@ -93,6 +73,23 @@ class ActionTest(unittest.TestCase):
         record = self.run_program(self.run_req(token))
         self.assertEqual(record['status'], 'completed', record)
         return record
+
+    def action_written(self):
+        """Whether a request other than describe_program was written into the inbox (taken or not)."""
+        names = [p.name for p in (self.lab.dir / 'inbox').iterdir()] + [p.name for p in (self.lab.dir / 'done').iterdir()]
+        return any(name.startswith('palab_') and not name.startswith('palab_describe_program_') for name in names)
+
+    def send_except_describe(self, effect):
+        """A patch for FileChannel.send that lets describe_program through and applies `effect` (an
+        exception, or None for a write that silently never happens) to every other request."""
+        real = channel_file.FileChannel.send
+
+        def send(channel, name, *args):
+            if name.startswith('palab_describe_program_'):
+                return real(channel, name, *args)
+            if effect is not None:
+                raise effect
+        return mock.patch.object(channel_file.FileChannel, 'send', autospec=True, side_effect=send)
 
     def sent(self, command=None):
         """The start/stop requests the app took: [(request_id, command line)]."""
@@ -114,8 +111,11 @@ class ActionTest(unittest.TestCase):
                 for e in self.plane.next_events('reader', 'B', 0, limit=500)['events']]
 
     def on_first_sleep(self, hook):
-        """Runs `hook` once, at the first sleep after this call, before the app's own tick."""
+        """Runs `hook` once, at the first sleep after this call once an action request (not run_program's
+        describe_program read) is written, before the app's own tick."""
         def once():
+            if not self.action_written():
+                return
             self.clock.on_sleep.remove(once)
             hook()
         self.clock.on_sleep.insert(0, once)
@@ -127,8 +127,7 @@ class RunTests(ActionTest):
         request = self.run_req(token)
         record = self.run_program(request)
         self.assertEqual(record['status'], 'completed')
-        self.assertEqual(record['arguments'], {'panel': PANEL, 'options': {},
-                                               'preflight_token': request['arguments']['preflight_token']})
+        self.assertEqual(record['arguments'], {'panel': PANEL, 'options': {}})
         self.assertEqual(record['result']['correlated_by'], 'request_id')
         self.assertIsNone(record['result']['ended'])
         self.assertEqual(self.sent(), [(request['request_id'], 'start 10')])
@@ -163,7 +162,7 @@ class RunTests(ActionTest):
         seen = {}
         self.on_first_sleep(lambda: seen.update(
             duplicate=self.run_program(request),
-            other=self.run_program(run_request(token, preflight_token=NO_TOKEN))))
+            other=self.run_program(run_request(token))))
         record = self.run_program(request)
         self.assertEqual(seen['duplicate']['status'], 'pending')
         self.assertEqual((seen['other']['status'], seen['other']['refusal']['code']),
@@ -222,7 +221,7 @@ class RunTests(ActionTest):
                 setup, changes = case['input']
                 if setup is not None:
                     setup(self)
-                request = run_request(changes.pop('lease_token', token), preflight_token=NO_TOKEN, **changes)
+                request = run_request(changes.pop('lease_token', token), **changes)
                 record = self.run_program(request)
                 self.assertEqual((record['status'], record['refusal']['code']), ('refused', case['expectation']))
                 self.assertEqual(self.run_program(request), record)
@@ -398,11 +397,11 @@ class TicketTests(ActionTest):
     def test_a_request_the_app_never_took_is_withdrawn(self):
         token = self.acquired()
         request = self.run_req(token)
-        self.app.serve = False
+        self.app.ignore.add('start')
         record = self.run_program(request)
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'))
         self.assertEqual(self.inbox(), [])
-        self.app.serve = True
+        self.app.ignore.clear()
         self.clock.sleep(1)
         self.assertEqual(self.sent(), [])
         self.assertEqual(self.lab.state['program']['state'], 'stopped')
@@ -439,7 +438,7 @@ class LostRequestTests(ActionTest):
     def test_a_failed_inbox_write_is_a_refusal_and_blocks_nothing(self):
         token = self.acquired()
         request = self.run_req(token)
-        with mock.patch.object(channel_file.FileChannel, 'send', side_effect=OSError(28, 'No space left on device')):
+        with self.send_except_describe(OSError(28, 'No space left on device')):
             record = self.run_program(request)
         self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
         self.assertEqual(record['refusal']['evidence']['reason'], 'inbox_write_failed')
@@ -450,7 +449,7 @@ class LostRequestTests(ActionTest):
         """The daemon died between storing the record and writing the request."""
         token = self.acquired()
         request = self.run_req(token)
-        with mock.patch.object(channel_file.FileChannel, 'send'):
+        with self.send_except_describe(None):
             first = self.run_program(request)
         self.open_daemon()
         self.actions.settle_pending('B')
@@ -615,10 +614,11 @@ class McpTests(ActionTest):
                 server = mcp_server.LabMcp({'B': self.reader}, control_plane=self.plane,
                                            actions=self.actions if case['input']['actions'] else None)
                 names = [t['name'] for t in server.call('tools/list', {})['tools']]
-                self.assertEqual({'preflight_program', 'run_program', 'stop_program', 'cfr_batch'} <= set(names),
+                self.assertEqual({'run_program', 'stop_program', 'cfr_batch'} <= set(names),
                                  case['expectation'])
-                self.assertEqual(bool({'preflight_program', 'run_program', 'stop_program', 'cfr_batch'} & set(names)),
+                self.assertEqual(bool({'run_program', 'stop_program', 'cfr_batch'} & set(names)),
                                  case['expectation'])
+                self.assertNotIn('preflight_program', names)
 
     def test_read_only_mode_refuses_actions(self):
         with self.assertRaises(ValueError):
@@ -627,19 +627,14 @@ class McpTests(ActionTest):
     def test_run_and_stop_through_tools_call(self):
         server = mcp_server.LabMcp({'B': self.reader}, control_plane=self.plane, actions=self.actions)
         token = self.acquired()
-        checked = server.call('tools/call', {'name': 'preflight_program', 'arguments': {
+        run = server.call('tools/call', {'name': 'run_program', 'arguments': {
             'console': 'B', 'request_id': new_id(), 'lease_token': token, 'panel': PANEL, 'options': {}}},
             client=CLIENT)
-        self.assertFalse(checked['isError'], checked)
-        preflight_token = checked['structuredContent']['result']['preflight_token']
-        run = server.call('tools/call', {'name': 'run_program', 'arguments': {
-            'console': 'B', 'request_id': new_id(), 'lease_token': token, 'panel': PANEL, 'options': {},
-            'preflight_token': preflight_token}}, client=CLIENT)
         self.assertFalse(run['isError'], run)
         self.assertEqual(run['structuredContent']['status'], 'completed')
         refused = server.call('tools/call', {'name': 'run_program', 'arguments': {
-            'console': 'B', 'request_id': new_id(), 'lease_token': token, 'panel': PANEL, 'options': {},
-            'preflight_token': preflight_token}}, client=CLIENT)
+            'console': 'B', 'request_id': new_id(), 'lease_token': token, 'panel': PANEL, 'options': {}}},
+            client=CLIENT)
         self.assertTrue(refused['isError'])
         self.assertEqual(refused['structuredContent']['refusal']['code'], 'program_running')
         contracts.validate('refusal', refused['structuredContent'])
@@ -648,6 +643,13 @@ class McpTests(ActionTest):
         self.assertEqual(stop['structuredContent']['status'], 'completed')
         self.assertNotIn(token, str(server.call('tools/call', {'name': 'next_events', 'arguments': {
             'console': 'B', 'after_seq': 0, 'limit': 500}}, client=CLIENT)))
+
+
+def save_known(test):
+    """A save fact from before the test, so console://B/save is `known`."""
+    fact = golden('save_fact', 'frlg_checkpoint')
+    fact['saved_at'] = '2026-11-14T05:00:00.000Z'
+    return fact
 
 
 if __name__ == '__main__':
