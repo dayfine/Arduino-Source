@@ -116,21 +116,27 @@ const std::map<std::string, ReferenceCells, std::less<>>& minimap_references(){
 } // namespace
 
 
-std::optional<std::string> matching_minimap(const ImageViewRGB32& screen){
+std::vector<MinimapDistance> minimap_distances(const ImageViewRGB32& screen){
+    std::vector<MinimapDistance> distances;
     if (minimap_references().empty()){
-        return std::nullopt;
+        return distances;
     }
     const ReferenceCells ring = ring_of(grid_cells(screen, MINIMAP_BOX, MINIMAP_CELLS, MINIMAP_CELLS));
-    std::optional<std::string> closest;
-    double closest_distance = MINIMAP_MATCH_MAX;
     for (const auto& [name, reference] : minimap_references()){
-        const double distance = cells_rmsd(reference, gain_matched(reference, ring));
-        if (distance <= closest_distance){
-            closest = name;
-            closest_distance = distance;
-        }
+        distances.push_back(MinimapDistance{.reference = name, .distance = cells_rmsd(reference, gain_matched(reference, ring))});
     }
-    return closest;
+    std::stable_sort(distances.begin(), distances.end(), [](const MinimapDistance& a, const MinimapDistance& b){
+        return a.distance < b.distance;
+    });
+    return distances;
+}
+
+std::optional<std::string> matching_minimap(const ImageViewRGB32& screen){
+    const std::vector<MinimapDistance> distances = minimap_distances(screen);
+    if (distances.empty() || distances.front().distance > MINIMAP_MATCH_MAX){
+        return std::nullopt;
+    }
+    return distances.front().reference;
 }
 
 JsonObject minimap_reference_json(const ImageViewRGB32& screen, std::string_view source){

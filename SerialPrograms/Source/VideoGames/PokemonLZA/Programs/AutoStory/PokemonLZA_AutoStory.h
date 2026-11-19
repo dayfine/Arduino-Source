@@ -49,6 +49,7 @@ private:
     SimpleIntegerOption<uint8_t> REWINDS_TO_BACKUP;
     BooleanCheckBoxOption LOAD_SAVE_FIRST;
     BooleanCheckBoxOption RECORD_START_MINIMAPS;
+    StringOption RELOAD_PROBE_AFTER;
     BattleAIOption BATTLE_AI;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;

@@ -652,13 +652,43 @@ std::optional<Pokemon::StoryFailure> chain_into(
     return loaded;
 }
 
+//  After `rows[index]` passed: the next row, or with a Reload Probe after
+//  it (once), the row whose start the reload landed at.
+size_t row_after(
+    Pokemon::StoryGame& game, PlzaBackend& backend, const SegmentRunOptions& options,
+    std::span<const Pokemon::StoryCheckpoint> rows, size_t index, Pokemon::RunState& state, std::set<std::string>& probed
+){
+    const size_t next = index + 1;
+    const std::string& passed = rows[index].id;
+    if (next >= rows.size() || !game.reload || !options.reload_probe_after.contains(passed) || !probed.insert(passed).second){
+        return next;
+    }
+    if (!game.reload(backend, rows[next])){
+        backend.log(std::format("[ReloadProbe] after {}: the reload failed; on to {}", passed, rows[next].id));
+        return next;
+    }
+    state = Pokemon::RunState{};
+    if (options.log_landing){
+        options.log_landing(rows[index]);
+    }
+    const CheckpointStart* start = find_start(options.starts, rows[next].id);
+    const std::optional<size_t> from = start == nullptr || !options.read_start
+        ? std::nullopt
+        : checkpoint_at(rows, options.starts, next, options.read_start(start->signature));
+    backend.log(std::format(
+        "[ReloadProbe] after {}: on from {}", passed, from ? rows[*from].id : std::format("{}, no start matched", rows[next].id)
+    ));
+    return from.value_or(next);
+}
+
 } // namespace
 
 std::optional<Pokemon::CheckpointFailure> run_plza_segments(
     Pokemon::StoryGame& game, std::span<Pokemon::StoryCheckpoint> rows, const SegmentRunOptions& options,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 ){
-    for (size_t index = 0; index < rows.size(); index++){
+    std::set<std::string> probed;
+    for (size_t index = 0; index < rows.size(); index = row_after(game, backend, options, rows, index, state, probed)){
         Pokemon::StoryCheckpoint& row = rows[index];
         const bool start_saved = index == 0 || options.reload_when_chained.contains(row.id) || sightings.last_end_seen();
         if (index > 0){
