@@ -45,12 +45,11 @@ inline constexpr double CATCH_STOP_RADIUS = 12;
 //  marker distance times 1.2 from the "!".
 //  Taunie's rocks (marker 127): the pin read there before the leg off them.
 //  It decides where 03.08 starts (ZoneStart::leave()).
-//  The road entry is exact (no stop area): the leg after it starts there.
 inline constexpr MapWaypoint ZONE1_ROCKS{.name = "Taunie's rocks", .pin = {.x = 476, .y = 224}, .provisional = false};
-//  The road off the rocks (marker ~120).
-inline constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 456, .y = 231}, .provisional = true};
-//  The plaza by the green advertising column (marker 100, Scatterbug).
-inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x = 432, .y = 238}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+//  The plaza by the green advertising column (marker 100, Scatterbug):
+//  (432, 238) read 93 and 91 (console B, 2026-11-18), so ~10 pixels on
+//  toward the rocks and a little north, as the user placed it.
+inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x = 442, .y = 233}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
 //  Before the far gate, Mareep's grass right of the road (marker 60), at
 //  (386, 252): targets show on the right from here, none from (370, 256).
 inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 252}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
@@ -59,8 +58,9 @@ inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 3
 //  from wherever the catches left the player: a fixed 265 from (385, 253)
 //  ran into the gate's left pillar (console B, 2026-11-18).
 inline constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 313, .y = 253}, .provisional = true};
-//  From the rocks to the first catch spot.
-inline constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_ROAD_ENTRY, ZONE1_SPOT_100};
+//  From the rocks to the first catch spot: straight, past the rock on its
+//  right (a road entry leg before it took the left side).
+inline constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_SPOT_100};
 
 //  The waypoint of a catch spot of CATCH_SPOTS (100 or 60); none for any
 //  other distance.

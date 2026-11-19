@@ -27,6 +27,10 @@ namespace PokemonLZA{
 
 namespace{
 
+//  Fixed waypoints for the leg logic, apart from the map data's.
+constexpr MapWaypoint SPOT{.name = "the 100 spot", .pin = {.x = 432, .y = 238}, .stop_radius = CATCH_STOP_RADIUS};
+constexpr MapWaypoint ROAD{.name = "the road entry", .pin = {.x = 456, .y = 231}};
+
 std::string describe(const MapLegMove& move){
     switch (move.step){
     case MapLegStep::ARRIVED:
@@ -66,29 +70,29 @@ struct LegCase{
 const LegCase LEG_CASES[] = {
     {
         .name = "a read within the tolerance arrives",
-        .input = {.waypoint = ZONE1_SPOT_100, .reads = {MapPoint{.x = 435, .y = 236}}},
+        .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 435, .y = 236}}},
         .expectation = {.moves = "arrived"},
     },
     {
         //  25 pixels east-north-east: a walk west-south-west, 3.6 s at 7.0
         //  pixels a second.
         .name = "a read off the waypoint walks toward it, then arrives",
-        .input = {.waypoint = ZONE1_SPOT_100, .reads = {MapPoint{.x = 456, .y = 231}, MapPoint{.x = 433, .y = 239}}},
+        .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 456, .y = 231}, MapPoint{.x = 433, .y = 239}}},
         .expectation = {.moves = "walk 254 deg 3.6 s, arrived"},
     },
     {
         .name = "a read due south walks north",
-        .input = {.waypoint = ZONE1_SPOT_100, .reads = {MapPoint{.x = 432, .y = 258}}},
+        .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 432, .y = 258}}},
         .expectation = {.moves = "walk 0 deg 2.9 s"},
     },
     {
         .name = "a walk that ends short gets a correction",
-        .input = {.waypoint = ZONE1_SPOT_100, .reads = {MapPoint{.x = 456, .y = 231}, MapPoint{.x = 445, .y = 234}, MapPoint{.x = 431, .y = 238}}},
+        .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 456, .y = 231}, MapPoint{.x = 445, .y = 234}, MapPoint{.x = 431, .y = 238}}},
         .expectation = {.moves = "walk 254 deg 3.6 s, correction 1: walk 253 deg 1.9 s, arrived"},
     },
     {
         .name = "still off after the leg and two corrections: stops",
-        .input = {.waypoint = ZONE1_SPOT_100, .reads = {
+        .input = {.waypoint = SPOT, .reads = {
             MapPoint{.x = 456, .y = 231}, MapPoint{.x = 420, .y = 220},
             MapPoint{.x = 445, .y = 250}, MapPoint{.x = 420, .y = 225},
         }},
@@ -96,17 +100,17 @@ const LegCase LEG_CASES[] = {
     },
     {
         .name = "a missing read gets a second look",
-        .input = {.waypoint = ZONE1_SPOT_100, .reads = {std::nullopt, MapPoint{.x = 433, .y = 238}}},
+        .input = {.waypoint = SPOT, .reads = {std::nullopt, MapPoint{.x = 433, .y = 238}}},
         .expectation = {.moves = "read again, arrived"},
     },
     {
         .name = "two missing reads in a row stop",
-        .input = {.waypoint = ZONE1_SPOT_100, .reads = {std::nullopt, std::nullopt}},
+        .input = {.waypoint = SPOT, .reads = {std::nullopt, std::nullopt}},
         .expectation = {.moves = "read again, pin not read"},
     },
     {
         .name = "a missing read after a walk is not a correction",
-        .input = {.waypoint = ZONE1_SPOT_100, .reads = {MapPoint{.x = 456, .y = 231}, std::nullopt, MapPoint{.x = 445, .y = 234}}},
+        .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 456, .y = 231}, std::nullopt, MapPoint{.x = 445, .y = 234}}},
         .expectation = {.moves = "walk 254 deg 3.6 s, read again, correction 1: walk 253 deg 1.9 s"},
     },
     {
@@ -137,7 +141,7 @@ const LegCase LEG_CASES[] = {
     },
     {
         .name = "a walk past the road entry gets a correction back",
-        .input = {.waypoint = ZONE1_ROAD_ENTRY, .reads = {MapPoint{.x = 464, .y = 229}, MapPoint{.x = 448, .y = 233}}},
+        .input = {.waypoint = ROAD, .reads = {MapPoint{.x = 464, .y = 229}, MapPoint{.x = 448, .y = 233}}},
         .expectation = {.moves = "walk 256 deg 1.2 s, correction 1: walk 76 deg 1.2 s"},
     },
 };
