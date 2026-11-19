@@ -19,9 +19,12 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The level badge sky blue (about 140, 210, 235) at x 240-320, y 799-818 on 1080p over
-//  half its pixels, and the HP bar at x 236-440, y 882-902 over 80% fill or grey trough.
-//  In battle: badge 0.78, bar 0.95; overworld: at most 0.18 and 0.20.
+//  The level badge's blue (dim_cyan_share()) at x 240-320, y 799-818 on 1080p over half
+//  its pixels, and the HP bar at x 236-440, y 882-902 over 80% fill or grey trough. The
+//  badge is translucent: over grass and paving stone it is as dark as (80, 170, 190), with
+//  wider white "Nv." text in Spanish. In battle: badge 0.78-0.88, bar 0.88-0.95. The panel
+//  also shows in a wild zone, and 68 of 1203 PLZA test frames read as it: pair it with
+//  BattleMarkersDetector.
 class BattlePanelDetector : public StaticScreenDetector{
 public:
     explicit BattlePanelDetector(Color color = COLOR_GREEN);
