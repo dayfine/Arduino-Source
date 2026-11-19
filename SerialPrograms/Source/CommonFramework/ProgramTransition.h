@@ -32,6 +32,7 @@ enum class ProgramAction{
 enum class ActionSource{
     UI,             //  The Start/Stop button, or an integration (e.g. Discord).
     LAB,            //  A lab channel request.
+    CLI,            //  A --headless --run command-line launch.
     PROGRAM,        //  The program finished by itself.
     PROGRAM_ERROR,  //  The program ended with an error.
 };

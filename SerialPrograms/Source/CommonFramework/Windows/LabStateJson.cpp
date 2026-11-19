@@ -177,6 +177,8 @@ std::string_view source_name(ActionSource source){
         return "ui";
     case ActionSource::LAB:
         return "lab";
+    case ActionSource::CLI:
+        return "cli";
     case ActionSource::PROGRAM:
         return "program";
     case ActionSource::PROGRAM_ERROR:
