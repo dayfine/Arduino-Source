@@ -30,7 +30,7 @@ namespace{
 
 //  01.01's first step waits for the platform; a new game has no save to check.
 bool first_step_checks_start(const Pokemon::StoryCheckpoint& checkpoint){
-    return checkpoint_first_action(checkpoint) == ActionName::WAIT_FOR_PLATFORM || checkpoint_starts_without_save(checkpoint);
+    return checkpoint_first_action(checkpoint) == action_name(PlzaAction::WAIT_FOR_PLATFORM) || checkpoint_starts_without_save(checkpoint);
 }
 
 //  Right after a load the platform reads on the first two looks.

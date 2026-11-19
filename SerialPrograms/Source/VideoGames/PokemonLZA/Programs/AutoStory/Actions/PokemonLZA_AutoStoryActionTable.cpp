@@ -356,27 +356,27 @@ std::optional<StoryFailure> menu_save_step(PlzaConsoleHooks& hooks, PlzaBackend&
 //  The actions that need no console.
 void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     std::pair<std::string_view, StoryActionParser> table[] = {
-        {ActionName::WAIT_FOR_PLATFORM, platform_action(PlatformWait::PLATFORM_ONLY, /*fallback=*/180s)},
-        {ActionName::OPENING_TO_PLATFORM, platform_action(PlatformWait::AFTER_AUTOSAVE, /*fallback=*/240s)},
-        {ActionName::WALK, walk_action(hooks)},
-        {ActionName::TALK, no_args([](PlzaBackend& backend, RunState&){ return talk_at_prompt(backend); })},
-        {ActionName::TALK_THROUGH_MAP_SCREEN, no_args([](PlzaBackend& backend, RunState&){ return talk_through_map_screen(backend); })},
-        {ActionName::TALK_TO_POKEDEX_SCREEN, no_args(pokedex_step)},
-        {ActionName::CLIMB_LADDER, no_args([](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
+        {action_name(PlzaAction::WAIT_FOR_PLATFORM), platform_action(PlatformWait::PLATFORM_ONLY, /*fallback=*/180s)},
+        {action_name(PlzaAction::OPENING_TO_PLATFORM), platform_action(PlatformWait::AFTER_AUTOSAVE, /*fallback=*/240s)},
+        {action_name(PlzaAction::WALK), walk_action(hooks)},
+        {action_name(PlzaAction::TALK), no_args([](PlzaBackend& backend, RunState&){ return talk_at_prompt(backend); })},
+        {action_name(PlzaAction::TALK_THROUGH_MAP_SCREEN), no_args([](PlzaBackend& backend, RunState&){ return talk_through_map_screen(backend); })},
+        {action_name(PlzaAction::TALK_TO_POKEDEX_SCREEN), no_args(pokedex_step)},
+        {action_name(PlzaAction::CLIMB_LADDER), no_args([](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
             climb_ladder(backend);
             return std::nullopt;
         })},
-        {ActionName::CHOOSE_0, no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 0); })},
-        {ActionName::CHOOSE_1, no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
-        {ActionName::SCENE, no_args(scene_step)},
-        {ActionName::MASH, no_args(mash_scene_step)},
-        {ActionName::MASH_TO_MOVE_HINTS, move_hints_action()},
-        {ActionName::TEXT_TO_CHOICE, text_to_choice_action()},
-        {ActionName::STORY_BATTLE_START, no_args([&hooks](PlzaBackend& backend, RunState& state){
+        {action_name(PlzaAction::CHOOSE_0), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 0); })},
+        {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
+        {action_name(PlzaAction::SCENE), no_args(scene_step)},
+        {action_name(PlzaAction::MASH), no_args(mash_scene_step)},
+        {action_name(PlzaAction::MASH_TO_MOVE_HINTS), move_hints_action()},
+        {action_name(PlzaAction::TEXT_TO_CHOICE), text_to_choice_action()},
+        {action_name(PlzaAction::STORY_BATTLE_START), no_args([&hooks](PlzaBackend& backend, RunState& state){
             return story_battle_start_step(hooks, backend, state);
         })},
-        {ActionName::STORY_BATTLE, no_args([&hooks](PlzaBackend& backend, RunState&){ return battle_step(hooks, backend); })},
-        {ActionName::SAVE_FROM_MENU, no_args([&hooks](PlzaBackend& backend, RunState&){ return menu_save_step(hooks, backend); })},
+        {action_name(PlzaAction::STORY_BATTLE), no_args([&hooks](PlzaBackend& backend, RunState&){ return battle_step(hooks, backend); })},
+        {action_name(PlzaAction::SAVE_FROM_MENU), no_args([&hooks](PlzaBackend& backend, RunState&){ return menu_save_step(hooks, backend); })},
     };
     for (auto& [name, parser] : table){
         actions.emplace(name, std::move(parser));
@@ -386,17 +386,17 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
 //  The actions that run only on a console, bound to `hooks.console`.
 void add_console_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     std::pair<std::string_view, StoryActionParser> table[] = {
-        {ActionName::RUN_TO_GATE, console_action(hooks, ActionName::RUN_TO_GATE, /*timeout=*/8s)},
-        {ActionName::AIMED_RUN_TO_GATE, console_action(hooks, ActionName::AIMED_RUN_TO_GATE, /*timeout=*/4s)},
-        {ActionName::NEW_GAME_INTRO, console_action(hooks, ActionName::NEW_GAME_INTRO)},
-        {ActionName::CONFIRM_NEW_GAME, console_action(hooks, ActionName::CONFIRM_NEW_GAME)},
-        {ActionName::CATCH_TUTORIAL, console_action(hooks, ActionName::CATCH_TUTORIAL)},
-        {ActionName::BATTLE_THEN_CATCH, console_action(hooks, ActionName::BATTLE_THEN_CATCH)},
-        {ActionName::CATCH_IN_ZONE, console_action(hooks, ActionName::CATCH_IN_ZONE)},
-        {ActionName::WALK_BACK_TO_ZONE_ROAD, console_action(hooks, ActionName::WALK_BACK_TO_ZONE_ROAD)},
-        {ActionName::CHECK_OUT_OF_ZONE_1, console_action(hooks, ActionName::CHECK_OUT_OF_ZONE_1)},
-        {ActionName::WALK_TO_UNREAD_MARKER, console_action(hooks, ActionName::WALK_TO_UNREAD_MARKER)},
-        {ActionName::CLAIM_MABLE_RESEARCH_REWARD, console_action(hooks, ActionName::CLAIM_MABLE_RESEARCH_REWARD)},
+        {action_name(PlzaAction::RUN_TO_GATE), console_action(hooks, action_name(PlzaAction::RUN_TO_GATE), /*timeout=*/8s)},
+        {action_name(PlzaAction::AIMED_RUN_TO_GATE), console_action(hooks, action_name(PlzaAction::AIMED_RUN_TO_GATE), /*timeout=*/4s)},
+        {action_name(PlzaAction::NEW_GAME_INTRO), console_action(hooks, action_name(PlzaAction::NEW_GAME_INTRO))},
+        {action_name(PlzaAction::CONFIRM_NEW_GAME), console_action(hooks, action_name(PlzaAction::CONFIRM_NEW_GAME))},
+        {action_name(PlzaAction::CATCH_TUTORIAL), console_action(hooks, action_name(PlzaAction::CATCH_TUTORIAL))},
+        {action_name(PlzaAction::BATTLE_THEN_CATCH), console_action(hooks, action_name(PlzaAction::BATTLE_THEN_CATCH))},
+        {action_name(PlzaAction::CATCH_IN_ZONE), console_action(hooks, action_name(PlzaAction::CATCH_IN_ZONE))},
+        {action_name(PlzaAction::WALK_BACK_TO_ZONE_ROAD), console_action(hooks, action_name(PlzaAction::WALK_BACK_TO_ZONE_ROAD))},
+        {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), console_action(hooks, action_name(PlzaAction::CHECK_OUT_OF_ZONE_1))},
+        {action_name(PlzaAction::WALK_TO_UNREAD_MARKER), console_action(hooks, action_name(PlzaAction::WALK_TO_UNREAD_MARKER))},
+        {action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD), console_action(hooks, action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD))},
     };
     for (auto& [name, parser] : table){
         actions.emplace(name, std::move(parser));

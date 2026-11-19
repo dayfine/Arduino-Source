@@ -155,24 +155,24 @@ using ConsoleStep = std::optional<Pokemon::StoryFailure> (*)(StoryEnv& env, Plza
 
 const std::map<std::string_view, ConsoleStep>& console_steps(){
     static const std::map<std::string_view, ConsoleStep> steps{
-        {ActionName::CATCH_TUTORIAL, [](StoryEnv& env, PlzaBackend& backend){
+        {action_name(PlzaAction::CATCH_TUTORIAL), [](StoryEnv& env, PlzaBackend& backend){
             return catch_tutorial(env, backend, /*max_throws=*/6);
         }},
-        {ActionName::BATTLE_THEN_CATCH, [](StoryEnv& env, PlzaBackend& backend){
+        {action_name(PlzaAction::BATTLE_THEN_CATCH), [](StoryEnv& env, PlzaBackend& backend){
             return battle_then_catch(env, backend, /*max_rounds=*/6);
         }},
-        {ActionName::CATCH_IN_ZONE, [](StoryEnv& env, PlzaBackend& backend){
+        {action_name(PlzaAction::CATCH_IN_ZONE), [](StoryEnv& env, PlzaBackend& backend){
             //  5 registered species, 3 after the tutorial: 2 new; 12 throws.
             return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
         }},
-        {ActionName::WALK_BACK_TO_ZONE_ROAD, walk_back_to_zone_road},
-        {ActionName::CHECK_OUT_OF_ZONE_1, [](StoryEnv& env, PlzaBackend& backend){
+        {action_name(PlzaAction::WALK_BACK_TO_ZONE_ROAD), walk_back_to_zone_road},
+        {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), [](StoryEnv& env, PlzaBackend& backend){
             return check_out_of_zone_1(backend, [&env, &backend]{
                 return read_pin_on_map(env, backend);
             });
         }},
-        {ActionName::WALK_TO_UNREAD_MARKER, walk_to_unread_marker},
-        {ActionName::CLAIM_MABLE_RESEARCH_REWARD, claim_research_reward},
+        {action_name(PlzaAction::WALK_TO_UNREAD_MARKER), walk_to_unread_marker},
+        {action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD), claim_research_reward},
     };
     return steps;
 }
@@ -193,16 +193,16 @@ PlzaConsoleAction console_handler(StoryEnv& env, std::string_view name, ConsoleS
 
 PlzaConsoleActions plza_console_actions(StoryEnv& env){
     PlzaConsoleActions actions;
-    actions.emplace(ActionName::NEW_GAME_INTRO, new_game_handler(env, ActionName::NEW_GAME_INTRO, NEW_GAME_BY_HAND_HINT, [](StoryEnv& story){
+    actions.emplace(action_name(PlzaAction::NEW_GAME_INTRO), new_game_handler(env, action_name(PlzaAction::NEW_GAME_INTRO), NEW_GAME_BY_HAND_HINT, [](StoryEnv& story){
         play_new_game_intro(story.env.console, story.context, story.new_game);
     }));
-    actions.emplace(ActionName::CONFIRM_NEW_GAME, new_game_handler(env, ActionName::CONFIRM_NEW_GAME, /*hint=*/"", [](StoryEnv& story){
+    actions.emplace(action_name(PlzaAction::CONFIRM_NEW_GAME), new_game_handler(env, action_name(PlzaAction::CONFIRM_NEW_GAME), /*hint=*/"", [](StoryEnv& story){
         confirm_new_game_choices(story.env.console, story.context, story.new_game);
     }));
-    actions.emplace(ActionName::RUN_TO_GATE, gate_handler(env, ActionName::RUN_TO_GATE, [](StoryEnv& story, PlzaBackend&, Milliseconds timeout){
+    actions.emplace(action_name(PlzaAction::RUN_TO_GATE), gate_handler(env, action_name(PlzaAction::RUN_TO_GATE), [](StoryEnv& story, PlzaBackend&, Milliseconds timeout){
         return run_to_gate(story, timeout);
     }));
-    actions.emplace(ActionName::AIMED_RUN_TO_GATE, gate_handler(env, ActionName::AIMED_RUN_TO_GATE, aimed_gate_run));
+    actions.emplace(action_name(PlzaAction::AIMED_RUN_TO_GATE), gate_handler(env, action_name(PlzaAction::AIMED_RUN_TO_GATE), aimed_gate_run));
     for (const auto& [name, step] : console_steps()){
         actions.emplace(name, console_handler(env, name, step));
     }

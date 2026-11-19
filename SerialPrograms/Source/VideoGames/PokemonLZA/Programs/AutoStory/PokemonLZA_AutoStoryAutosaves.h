@@ -40,7 +40,7 @@ public:
     //  one's first looks, so a badge within 5 s of one seen before the start,
     //  or first shown in the checkpoint's first 1.5 s, is not counted.
     void note(PlzaBackend& backend, const ScreenObservation& look);
-    //  A menu save (ActionName::SAVE_FROM_MENU) counts as an autosave seen in the step.
+    //  A menu save (PlzaAction::SAVE_FROM_MENU) counts as an autosave seen in the step.
     void saved(PlzaBackend& backend);
     //  The step under way, which note() and saved() name.
     void enter(std::string_view step){

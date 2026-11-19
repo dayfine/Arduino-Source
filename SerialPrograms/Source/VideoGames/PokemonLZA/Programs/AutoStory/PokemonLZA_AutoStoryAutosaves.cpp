@@ -173,7 +173,7 @@ decltype(Pokemon::StoryGame::save) autosave_policy(MarkedCheckpoints marked, Aut
     return [marked = std::move(marked), &sightings](PlzaBackend& backend, const Pokemon::StoryCheckpoint& checkpoint) -> std::optional<Pokemon::StoryFailure>{
         const std::string_view last_step = checkpoint.steps.empty() ? std::string_view() : std::string_view(checkpoint.steps.back().name);
         const std::optional<std::string> first_step = sightings.finish(last_step);
-        const bool menu_save = !checkpoint.steps.empty() && checkpoint.steps.back().action == ActionName::SAVE_FROM_MENU;
+        const bool menu_save = !checkpoint.steps.empty() && checkpoint.steps.back().action == action_name(PlzaAction::SAVE_FROM_MENU);
         backend.log(std::format(
             "[Boundary] {} end: {}", checkpoint.id, !sightings.last_end_seen() ? "not seen" : menu_save ? "menu save" : "badge seen"
         ));
