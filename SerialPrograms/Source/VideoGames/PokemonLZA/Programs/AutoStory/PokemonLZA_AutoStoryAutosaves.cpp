@@ -9,6 +9,7 @@
 #include <string>
 #include <utility>
 #include "PokemonLZA_AutoStoryReadings.h"
+#include "PokemonLZA_AutoStoryActionNames.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 
 namespace PokemonAutomation{
@@ -25,10 +26,10 @@ constexpr Milliseconds AUTOSAVE_DEBOUNCE = 5000ms;
 //  Before the steps can have saved: a badge this early is the save before it.
 constexpr Milliseconds START_BADGE_WINDOW = 1500ms;
 
-std::optional<std::string_view> step_after(const Pokemon::StoryCheckpoint& row, std::string_view step){
-    for (size_t index = 0; index + 1 < row.steps.size(); index++){
-        if (row.steps[index].name == step){
-            return row.steps[index + 1].name;
+std::optional<std::string_view> step_after(const Pokemon::StoryCheckpoint& checkpoint, std::string_view step){
+    for (size_t index = 0; index + 1 < checkpoint.steps.size(); index++){
+        if (checkpoint.steps[index].name == step){
+            return checkpoint.steps[index + 1].name;
         }
     }
     return std::nullopt;
@@ -131,25 +132,25 @@ std::optional<std::string> AutosaveSightings::finish(std::string_view last_step)
 
 
 std::optional<std::string> autosave_step_error(
-    const Pokemon::StoryCheckpoint& row, bool autosave_row, std::optional<std::string_view> autosave_step
+    const Pokemon::StoryCheckpoint& checkpoint, bool marked_autosave, std::optional<std::string_view> autosave_step
 ){
     if (!autosave_step){
-        if (autosave_row){
-            return std::format("{}: \"save\": \"autosave\" needs \"autosave_step\", the step a run log showed the badge in", row.id);
+        if (marked_autosave){
+            return std::format("{}: \"save\": \"autosave\" needs \"autosave_step\", the step a run log showed the badge in", checkpoint.id);
         }
         return std::nullopt;
     }
     bool found = false;
-    for (const Pokemon::StoryStep& step : row.steps){
+    for (const Pokemon::StoryStep& step : checkpoint.steps){
         found = found || step.name == *autosave_step;
     }
     if (!found){
-        return std::format("{}: autosave_step {} is not one of its steps", row.id, *autosave_step);
+        return std::format("{}: autosave_step {} is not one of its steps", checkpoint.id, *autosave_step);
     }
-    if (const std::optional<std::string_view> next = step_after(row, *autosave_step)){
+    if (const std::optional<std::string_view> next = step_after(checkpoint, *autosave_step)){
         return std::format(
             "{}: the game autosaves in {}, before {}: the next checkpoint reloads that save, so end {} at {} and start the next one with {}",
-            row.id, *autosave_step, *next, row.id, *autosave_step, *next
+            checkpoint.id, *autosave_step, *next, checkpoint.id, *autosave_step, *next
         );
     }
     return std::nullopt;
@@ -168,11 +169,11 @@ void note_autosaves(std::span<Pokemon::StoryCheckpoint> checkpoints, AutosaveSig
     }
 }
 
-decltype(Pokemon::StoryGame::save) autosave_policy(StoryRows rows, AutosaveSightings& sightings){
-    return [rows = std::move(rows), &sightings](PlzaBackend& backend, const Pokemon::StoryCheckpoint& checkpoint) -> std::optional<Pokemon::StoryFailure>{
+decltype(Pokemon::StoryGame::save) autosave_policy(MarkedCheckpoints marked, AutosaveSightings& sightings){
+    return [marked = std::move(marked), &sightings](PlzaBackend& backend, const Pokemon::StoryCheckpoint& checkpoint) -> std::optional<Pokemon::StoryFailure>{
         const std::string_view last_step = checkpoint.steps.empty() ? std::string_view() : std::string_view(checkpoint.steps.back().name);
         const std::optional<std::string> first_step = sightings.finish(last_step);
-        const bool menu_save = !checkpoint.steps.empty() && checkpoint.steps.back().action == MENU_SAVE_ACTION;
+        const bool menu_save = !checkpoint.steps.empty() && checkpoint.steps.back().action == ActionName::SAVE_FROM_MENU;
         backend.log(std::format(
             "[Boundary] {} end: {}", checkpoint.id, !sightings.last_end_seen() ? "not seen" : menu_save ? "menu save" : "badge seen"
         ));
@@ -184,9 +185,9 @@ decltype(Pokemon::StoryGame::save) autosave_policy(StoryRows rows, AutosaveSight
         if (first_step){
             const std::string_view next = step_after(checkpoint, *first_step).value_or(last_step);
             why = std::format("the game autosaved in {}, before {}: a reload would skip {}", *first_step, next, next);
-        }else if (rows.unverified_autosaves.contains(checkpoint.id)){
+        }else if (marked.unverified_autosaves.contains(checkpoint.id)){
             why = "save unverified";
-        }else if (rows.autosaves.contains(checkpoint.id)){
+        }else if (marked.autosaves.contains(checkpoint.id)){
             why = "the plan's autosave was not seen";
         }
         backend.log(std::format("[Save] {}: not saved ({})", checkpoint.id, why));

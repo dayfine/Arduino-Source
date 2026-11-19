@@ -340,7 +340,7 @@ void require_new_game_home(ConsoleHandle& console, ProControllerContext& context
 
 std::optional<std::string> new_game_run_problem(std::span<const Pokemon::StoryCheckpoint> rows, const NewGameChoices& choices){
     for (const Pokemon::StoryCheckpoint& row : rows){
-        if (!story_row_makes_new_game_choices(row)){
+        if (!checkpoint_makes_new_game_choices(row)){
             continue;
         }
         if (const std::optional<std::string> problem = name_typing_problem(choices)){

@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Story backend Tests
+/*  PokemonLZA AutoStory - Heading Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -15,8 +15,8 @@
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
-#include "PokemonLZA_AutoStoryBackend.h"
-#include "PokemonLZA_AutoStoryBackend_Tests.h"
+#include "PokemonLZA_AutoStoryHeading.h"
+#include "PokemonLZA_AutoStoryHeading_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -171,7 +171,7 @@ private:
 } // namespace
 
 
-void add_tests_AutoStoryBackend(UnitTestDatabase& database){
+void add_tests_AutoStoryHeading(UnitTestDatabase& database){
     for (const FaceHeadingCase& test : FACE_HEADING_CASES){
         database.add<FaceHeadingTest>(test);
     }

@@ -14,6 +14,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryReadings.h"
@@ -107,9 +108,9 @@ const ChainStartCase CHAIN_START_CASES[] = {
 
 UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    Pokemon::StoryGame game = plza_story_game(StoryRows{}, sightings);
+    Pokemon::StoryGame game = plza_story_game(MarkedCheckpoints{}, sightings);
     Pokemon::FakeStoryBackend backend({.looks = CHAIN_LOOKS}, scope);
-    const PlzaStoryTools tools;
+    PlzaConsoleHooks tools;
     std::vector<StoryCheckpoint> rows(2);
     rows[0].id = "01.01";
     rows[0].steps.push_back(Pokemon::StoryStep{
@@ -120,7 +121,7 @@ UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& s
     if (test.input.start){
         starts.push_back(CheckpointStart{.checkpoint = "01.02", .signature = *test.input.start});
     }
-    SegmentRunOptions options{.starts = starts};
+    CheckpointRunOptions options{.starts = starts};
     options.read_start = [&test](const StartSignature&){
         return test.input.screen;
     };
@@ -129,7 +130,7 @@ UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& s
         started += started.empty() ? row.id : std::format(" {}", row.id);
     };
     Pokemon::RunState state;
-    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_segments(game, rows, options, backend, state, sightings);
+    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_checkpoints(game, rows, options, backend, state, sightings);
     const std::string verdict = !failure
         ? "done"
         : std::format("failed at {} {}: {}", failure->checkpoint_id, failure->event_index ? "step" : "chain", failure->failure.code);

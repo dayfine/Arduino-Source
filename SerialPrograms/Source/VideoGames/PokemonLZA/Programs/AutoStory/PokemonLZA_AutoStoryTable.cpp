@@ -17,17 +17,17 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-std::string_view story_row_first_action(const Pokemon::StoryCheckpoint& row){
-    return row.steps.empty() ? std::string_view() : std::string_view(row.steps.front().action);
+std::string_view checkpoint_first_action(const Pokemon::StoryCheckpoint& checkpoint){
+    return checkpoint.steps.empty() ? std::string_view() : std::string_view(checkpoint.steps.front().action);
 }
 
-bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row){
-    const std::string_view action = story_row_first_action(row);
+bool checkpoint_starts_without_save(const Pokemon::StoryCheckpoint& checkpoint){
+    const std::string_view action = checkpoint_first_action(checkpoint);
     return action == "new_game_intro" || action == "confirm_new_game";
 }
 
-bool story_row_makes_new_game_choices(const Pokemon::StoryCheckpoint& row){
-    return story_row_first_action(row) == "new_game_intro";
+bool checkpoint_makes_new_game_choices(const Pokemon::StoryCheckpoint& checkpoint){
+    return checkpoint_first_action(checkpoint) == "new_game_intro";
 }
 
 namespace{
@@ -60,7 +60,7 @@ bool plays_to_control(const LeadIn& step){
 
 } // namespace
 
-std::vector<std::string> story_row_lead_in_errors(const JsonObject& checkpoint){
+std::vector<std::string> checkpoint_lead_in_errors(const JsonObject& checkpoint){
     std::vector<std::string> errors;
     std::optional<LeadIn> before;
     for (const JsonValue& event : checkpoint.get_array_throw("events")){

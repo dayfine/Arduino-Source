@@ -942,7 +942,7 @@ const GoldenCase GOLDEN_CASES[] = {
 };
 
 //  All of checkpoint `id` with an empty `step`, bound to `tools`.
-StoryCheckpoint step_row(std::string_view id, std::string_view step, const PlzaStoryTools& tools){
+StoryCheckpoint step_row(std::string_view id, std::string_view step, PlzaConsoleHooks& tools){
     for (StoryCheckpoint& row : load_plza_story(tools).checkpoints){
         if (row.id != id){
             continue;
@@ -1019,7 +1019,7 @@ UnitTestResult check_golden(const GoldenCase& test, CancellableScope& scope){
         }
     }
     GoldenBackend backend(screens, test.input.symbols_from_watch, scope);
-    PlzaStoryTools tools;
+    PlzaConsoleHooks tools;
     tools.lock_on = [&backend](Milliseconds hold){
         return backend.watch_lock_on(hold);
     };

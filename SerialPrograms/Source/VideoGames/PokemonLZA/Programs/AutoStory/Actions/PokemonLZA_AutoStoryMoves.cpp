@@ -7,6 +7,7 @@
 #include <format>
 #include <string>
 #include <string_view>
+#include "PokemonLZA_AutoStoryHeading.h"
 #include "PokemonLZA_AutoStoryMoves.h"
 
 namespace PokemonAutomation{

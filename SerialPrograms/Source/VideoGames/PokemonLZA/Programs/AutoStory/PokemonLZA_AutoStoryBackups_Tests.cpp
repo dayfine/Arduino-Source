@@ -61,7 +61,7 @@ TestRow row(std::string id, std::vector<std::string> actions){
 }
 
 //  `rows` with their steps bound to `tools`, which must outlive them.
-std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestRow>& rows, const PlzaStoryTools& tools){
+std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestRow>& rows, PlzaConsoleHooks& tools){
     Pokemon::StoryActions actions = plza_story_actions(tools);
     std::vector<StoryCheckpoint> checkpoints(rows.size());
     for (size_t index = 0; index < rows.size(); index++){
@@ -181,8 +181,8 @@ const RewindCase REWIND_CASES[] = {
 
 //  A stand-in "catch_in_zone" that looks once, then fails its first
 //  `failed_catches` times: the real one runs only on a console.
-PlzaStoryTools rewind_tools(size_t failed_catches, std::string_view failure, size_t& catches){
-    PlzaStoryTools tools;
+PlzaConsoleHooks rewind_tools(size_t failed_catches, std::string_view failure, size_t& catches){
+    PlzaConsoleHooks tools;
     tools.console.emplace("catch_in_zone", [&catches, failed_catches, failure](PlzaBackend& backend, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
         backend.observe();
         if (catches++ < failed_catches){
@@ -273,7 +273,7 @@ struct RewindRun{
 UnitTestResult check_run(const RewindRun& run, const RewindExpectation& expected, CancellableScope& scope){
     AutosaveSightings sightings;
     size_t catches = 0;
-    PlzaStoryTools tools = rewind_tools(run.failed_catches, run.failure, catches);
+    PlzaConsoleHooks tools = rewind_tools(run.failed_catches, run.failure, catches);
     tools.sightings = &sightings;
     std::vector<StoryCheckpoint> rows = checkpoints_of(run.rows, tools);
     note_autosaves(rows, sightings);
@@ -286,8 +286,8 @@ UnitTestResult check_run(const RewindRun& run, const RewindExpectation& expected
     Pokemon::FakeStoryBackend backend({.looks = run.looks}, scope);
     Pokemon::RunState state;
     const std::vector<CheckpointStart> starts{{.checkpoint = "03.06", .signature = {.registered = 1}}};
-    const RewindPlan plan{
-        .rows = rows, .first = run.first, .last = run.last, .segments = {.attempts_per_checkpoint = 1, .starts = starts},
+    RewindPlan plan{
+        .checkpoints = rows, .first = run.first, .last = run.last, .run_options = {.attempts_per_checkpoint = 1, .starts = starts},
         .max_rewinds = run.max_rewinds,
     };
     const std::optional<Pokemon::CheckpointFailure> failure = run_plza_with_rewinds(game, plan, backup, backend, sightings, state);
@@ -473,7 +473,7 @@ UnitTestResult check_start(const StartCase& test, CancellableScope& scope){
     std::vector<std::string> calls;
     const BackupSave backup = recording_backup(test.input.card, calls);
     Pokemon::FakeStoryBackend backend({.looks = {}}, scope);
-    const PlzaStoryTools tools;
+    PlzaConsoleHooks tools;
     std::vector<StoryCheckpoint> rows = checkpoints_of(start_rows(), tools);
     const std::optional<size_t> asked = index_of(start_rows(), test.input.asked);
     if (!asked){
@@ -484,7 +484,7 @@ UnitTestResult check_start(const StartCase& test, CancellableScope& scope){
         {.checkpoint = "03.06", .signature = {.registered = 1, .talk_prompt = true, .wild_zone = false}},
         {.checkpoint = "03.08", .signature = {.wild_zone = true}},
     };
-    const RewindPlan plan{.rows = rows, .first = *asked, .last = *asked, .segments = {.starts = starts}, .max_rewinds = test.input.max_rewinds};
+    const RewindPlan plan{.checkpoints = rows, .first = *asked, .last = *asked, .run_options = {.starts = starts}, .max_rewinds = test.input.max_rewinds};
     const std::optional<size_t> index = start_or_rewind(backend, plan, test.input.read, backup);
     const std::optional<std::string> from = index ? std::optional<std::string>(rows[*index].id) : std::nullopt;
     if (from != test.expectation.from){

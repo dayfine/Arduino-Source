@@ -17,6 +17,7 @@
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryHeading.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{

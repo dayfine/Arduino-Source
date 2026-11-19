@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <chrono>
 #include <format>
-#include <functional>
 #include <optional>
 #include <set>
 #include <span>
@@ -75,16 +74,16 @@ namespace{
 const StringSelectDatabase& checkpoint_database(){
     static const StringSelectDatabase database = []{
         StringSelectDatabase entries;
-        for (const StoryCheckpoint& row : builtin_story_data().checkpoints){
-            entries.add_entry(StringSelectEntry(row.id, std::format("{} {}", row.id, row.title)));
+        for (const StoryCheckpoint& checkpoint : builtin_story_data().checkpoints){
+            entries.add_entry(StringSelectEntry(checkpoint.id, std::format("{} {}", checkpoint.id, checkpoint.title)));
         }
         return entries;
     }();
     return database;
 }
 
-void check_checkpoint_range(ConsoleHandle& console, size_t first, size_t last, size_t rows){
-    if (last >= rows){
+void check_checkpoint_range(ConsoleHandle& console, size_t first, size_t last, size_t checkpoints){
+    if (last >= checkpoints){
         throw UserSetupError(console, "The checkpoint selection is out of range: pick the start and end checkpoints again.");
     }
     if (first > last){
@@ -117,10 +116,10 @@ double starter_turn(StarterChoice starter){
 }
 
 //  Before `run_from` (dash is not unlocked yet), each step's run legs walk.
-void walk_before(std::vector<StoryCheckpoint>& rows, const std::string& run_from, StoryEnv& story){
-    for (StoryCheckpoint& row : rows){
-        const bool walk_only = row.id < run_from;
-        for (StoryStep& step : row.steps){
+void walk_before(std::vector<StoryCheckpoint>& checkpoints, const std::string& run_from, StoryEnv& story){
+    for (StoryCheckpoint& checkpoint : checkpoints){
+        const bool walk_only = checkpoint.id < run_from;
+        for (StoryStep& step : checkpoint.steps){
             step.run = [&story, walk_only, run = std::move(step.run)](PlzaBackend& backend, Pokemon::RunState& state) mutable{
                 story.walk_only = walk_only;
                 return run(backend, state);
@@ -146,14 +145,14 @@ const EnumDropdownDatabase<NewGameLanguage>& new_game_language_database(){
 }
 
 //  Throws UserSetupError, before any press, if `choices` cannot play the new game.
-void check_new_game_choices(ConsoleHandle& console, std::span<const StoryCheckpoint> rows, const NewGameChoices& choices){
-    if (rows.empty() || !story_row_starts_without_save(rows.front())){
+void check_new_game_choices(ConsoleHandle& console, std::span<const StoryCheckpoint> checkpoints, const NewGameChoices& choices){
+    if (checkpoints.empty() || !checkpoint_starts_without_save(checkpoints.front())){
         return;
     }
     if (const std::optional<std::string> problem = new_game_problem(choices)){
         throw UserSetupError(console, *problem);
     }
-    if (const std::optional<std::string> problem = new_game_run_problem(rows, choices)){
+    if (const std::optional<std::string> problem = new_game_run_problem(checkpoints, choices)){
         throw UserSetupError(console, *problem);
     }
 }
@@ -161,9 +160,9 @@ void check_new_game_choices(ConsoleHandle& console, std::span<const StoryCheckpo
 //  A new game's start screen proves the save is fresh, so it is checked
 //  before any press, the connect press included.
 void connect_controller(ConsoleHandle& console, ProControllerContext& context, const StoryCheckpoint& first_row){
-    if (story_row_makes_new_game_choices(first_row)){
+    if (checkpoint_makes_new_game_choices(first_row)){
         require_new_game_home(console, context);
-    }else if (story_row_starts_without_save(first_row)){
+    }else if (checkpoint_starts_without_save(first_row)){
         require_confirm_choices(console, context);
     }
     require_player(console, context, BUTTON_L);
@@ -195,16 +194,16 @@ constexpr std::string_view RELOAD_PROBE_AFTER_LABEL =
 
 //  A run after the new game starts from the latest save, not from wherever
 //  the game is. Throws OperationFailedException if it does not load.
-void load_first_save(ConsoleHandle& console, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& row){
-    const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, row);
+void load_first_save(ConsoleHandle& console, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& checkpoint){
+    const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, checkpoint);
     if (loaded){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("AutoStory: could not load the save for {}: {}", row.id, *loaded),
+            std::format("AutoStory: could not load the save for {}: {}", checkpoint.id, *loaded),
             console
         );
     }
-    console.log(std::format("AutoStory: loaded the latest save for {}.", row.id));
+    console.log(std::format("AutoStory: loaded the latest save for {}.", checkpoint.id));
 }
 
 //  The same reading on this many frames in a row, within the budget.
@@ -238,21 +237,21 @@ StartSignature read_start_position(StoryEnv& story, PlzaBackend& backend){
     return read;
 }
 
-//  The row to play from: `plan.first` or an earlier one, by where the player
+//  The checkpoint to play from: `plan.first` or an earlier one, by where the player
 //  stands. An unknown start rewinds to `backup` when `plan.max_rewinds`
 //  allows, else throws "start_position_unknown": nothing runs from the wrong place.
-size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup){
+size_t checked_first_checkpoint(StoryEnv& story, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup){
     ConsoleHandle& console = story.env.console;
-    const std::span<const StoryCheckpoint> rows = plan.rows;
+    const std::span<const StoryCheckpoint> checkpoints = plan.checkpoints;
     const size_t first = plan.first;
-    const std::span<const CheckpointStart> starts = plan.segments.starts;
-    //  The new game's rows, before any save.
-    if (find_start(starts, rows[first].id) == nullptr){
-        console.log(std::format("AutoStory: {} has no start signature: running it, no start check", rows[first].id));
-        backend.log(std::format("[Boundary] {} start: unchecked", rows[first].id));
+    const std::span<const CheckpointStart> starts = plan.run_options.starts;
+    //  The new game's checkpoints, before any save.
+    if (find_start(starts, checkpoints[first].id) == nullptr){
+        console.log(std::format("AutoStory: {} has no start signature: running it, no start check", checkpoints[first].id));
+        backend.log(std::format("[Boundary] {} start: unchecked", checkpoints[first].id));
         return first;
     }
-    const StartSignature read = builtin_start_reads_map(rows[first].id)
+    const StartSignature read = builtin_start_reads_map(checkpoints[first].id)
         ? read_start_position(story, backend)
         : read_start_signature(console, story.context);
     const std::optional<size_t> from = start_or_rewind(backend, plan, read, backup);
@@ -261,19 +260,19 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
             ErrorReportMode::NO_ERROR_REPORT,
             std::format(
                 "AutoStory: start_position_unknown: the screen ({}) matches no checkpoint start up to {}; nothing was run",
-                to_string(read), rows[first].id
+                to_string(read), checkpoints[first].id
             ),
             console
         );
     }
     if (*from != first){
         console.log(std::format(
-            "AutoStory: the save is at {}'s start ({}), not {}'s: running from {}", rows[*from].id, to_string(read), rows[first].id, rows[*from].id
+            "AutoStory: the save is at {}'s start ({}), not {}'s: running from {}", checkpoints[*from].id, to_string(read), checkpoints[first].id, checkpoints[*from].id
         ));
     }else{
-        console.log(std::format("AutoStory: the screen ({}) is {}'s start", to_string(read), rows[first].id));
+        console.log(std::format("AutoStory: the screen ({}) is {}'s start", to_string(read), checkpoints[first].id));
     }
-    backend.log(std::format("[Boundary] {} start: pinned by minimap", rows[*from].id));
+    backend.log(std::format("[Boundary] {} start: pinned by minimap", checkpoints[*from].id));
     return *from;
 }
 
@@ -338,18 +337,18 @@ void log_reload_landing(StoryEnv& story, PlzaBackend& backend, const StoryCheckp
     snapshot.frame->save(std::format("{}plza-reload-probe-after-{}-{}.png", folder, passed.id, now_to_filestring()));
 }
 
-std::function<void(const StoryCheckpoint& passed)> reload_landing_logger(StoryEnv& story, PlzaBackend& backend){
+CheckpointHook reload_landing_logger(StoryEnv& story, PlzaBackend& backend){
     return [&story, &backend](const StoryCheckpoint& passed){
         log_reload_landing(story, backend, passed);
     };
 }
 
-std::function<void(const StoryCheckpoint& row)> start_minimap_recorder(ConsoleHandle& console, bool record){
+CheckpointHook start_minimap_recorder(ConsoleHandle& console, bool record){
     if (!record){
         return {};
     }
-    return [&console](const StoryCheckpoint& row){
-        record_start_minimap(console, row.id);
+    return [&console](const StoryCheckpoint& checkpoint){
+        record_start_minimap(console, checkpoint.id);
     };
 }
 
@@ -408,21 +407,21 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const NewGameChoices new_game{.language = GAME_LANGUAGE, .look = PLAYER_LOOK, .name = PLAYER_NAME};
     StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     AutosaveSightings sightings;
-    const PlzaStoryTools tools = plza_console_tools(story, sightings, starter_turn(STARTER));
-    StoryData story_data = load_plza_story(tools);
+    PlzaConsoleHooks hooks = plza_console_hooks(story, sightings, starter_turn(STARTER));
+    StoryData story_data = load_plza_story(hooks);
     note_autosaves(story_data.checkpoints, sightings);
-    std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
-    walk_before(rows, RUN_FROM, story);
+    std::vector<StoryCheckpoint>& checkpoints = story_data.checkpoints;
+    walk_before(checkpoints, RUN_FROM, story);
     const size_t first = RANGE.start_index();
     const size_t last = RANGE.end_index();
-    check_checkpoint_range(env.console, first, last, rows.size());
-    check_new_game_choices(env.console, std::span<const StoryCheckpoint>(rows).subspan(first, last - first + 1), new_game);
-    connect_controller(env.console, context, rows[first]);
+    check_checkpoint_range(env.console, first, last, checkpoints.size());
+    check_new_game_choices(env.console, std::span<const StoryCheckpoint>(checkpoints).subspan(first, last - first + 1), new_game);
+    connect_controller(env.console, context, checkpoints[first]);
 
     PlzaConsoleBackend backend(story);
     StoryGame game = make_plza_story_game(story, story_data, sightings);
     RunState state;
-    const SegmentRunOptions segments{
+    RewindPlan plan{.checkpoints = checkpoints, .first = first, .last = last, .run_options = {
         .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT, .reload_when_chained = story_data.reload_when_chained,
         .starts = builtin_checkpoint_starts(),
         .read_start = [&story, &backend](const StartSignature& start){
@@ -430,14 +429,13 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         },
         .at_start = start_minimap_recorder(env.console, RECORD_START_MINIMAPS),
         .reload_probe_after = checkpoint_ids(std::string(RELOAD_PROBE_AFTER)), .log_landing = reload_landing_logger(story, backend),
-    };
-    RewindPlan plan{.rows = rows, .first = first, .last = last, .segments = segments, .max_rewinds = REWINDS_TO_BACKUP};
+    }, .max_rewinds = REWINDS_TO_BACKUP};
     const BackupSave backup = console_backup_save(story);
-    if (!story_row_starts_without_save(rows[first])){
+    if (!checkpoint_starts_without_save(checkpoints[first])){
         if (LOAD_SAVE_FIRST){
-            load_first_save(env.console, game, backend, rows[first]);
+            load_first_save(env.console, game, backend, checkpoints[first]);
         }
-        plan.first = checked_first_row(story, backend, plan, backup);
+        plan.first = checked_first_checkpoint(story, backend, plan, backup);
     }
 
     const std::optional<CheckpointFailure> failure = run_plza_with_rewinds(game, plan, backup, backend, sightings, state);
@@ -448,7 +446,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
             env.console
         );
     }
-    env.console.log(std::format("AutoStory: done through {}.", rows[last].id));
+    env.console.log(std::format("AutoStory: done through {}.", checkpoints[last].id));
     send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH);
     GO_HOME_WHEN_DONE.run_end_of_program(context);
 }

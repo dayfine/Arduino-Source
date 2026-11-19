@@ -55,12 +55,12 @@ struct CheckpointStart{
 //  Null if `starts` names none for `id`.
 const CheckpointStart* find_start(std::span<const CheckpointStart> starts, std::string_view id);
 
-//  `asked` (an index of `rows`) when its start matches `read`, else the one
+//  `asked` (an index of `checkpoints`) when its start matches `read`, else the one
 //  earlier checkpoint whose start matches. A match shares a field and agrees
 //  on all shared fields. None when
 //  no checkpoint, or more than one earlier one, matches.
 std::optional<size_t> checkpoint_at(
-    std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
+    std::span<const Pokemon::StoryCheckpoint> checkpoints, std::span<const CheckpointStart> starts,
     size_t asked, const StartSignature& read
 );
 
