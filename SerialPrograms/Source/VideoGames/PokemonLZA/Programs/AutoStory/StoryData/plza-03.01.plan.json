@@ -11,10 +11,12 @@
       {
         "id": "out_of_room_202",
         "kind": "game_action",
-        "why": "step 36: to the room door's \"A Leave\". Measured 2026-11-08 on console B, walk not run.",
+        "why": "step 36: to the room door's \"A Leave\". Measured 2026-11-08 on console B, walk not run. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; the walk ends on the door's A prompt (the last look of the console B run logs 2026-11-16 to 18: an A prompt, 13 runs), counted after 3/4 of the last leg.",
         "action": "walk",
         "args": {
-          "legs": [[0, 1000], [-45, 1000]]
+          "legs": [[0, 1000], [-45, 1000]],
+          "end": "prompt",
+          "end_after_ms": 750
         }
       },
       {

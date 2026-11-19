@@ -929,11 +929,12 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "press A"},
     },
     {
-        .name = "02.05's walk to room 202 starts after 10 s with nothing busy: the hall shows no party bar",
-        .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = {CUTSCENE}},
+        .name = "02.05's walk to room 202 starts after 10 s with nothing busy: the hall shows no party bar, then the door's A prompt",
+        .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = concat(std::vector<Observation<ZonePose>>(50, CUTSCENE), {A_PROMPT})},
         .expectation = {
             .verdict = "done",
-            .inputs = repeated("wait 250ms", 40) + ", press L, stick -15deg 150ms walk, release 100ms, press L, stick 0deg 2000ms walk",
+            .inputs = repeated("wait 250ms", 40) + ", press L, stick -15deg 150ms walk, release 100ms, press L, "
+                + repeated("stick 0deg 250ms walk", 8) + ", wait 300ms",
             .line = "[PLZA] to_room_202: nothing busy for 10000 ms and no sign of control; taken as control.",
         },
     },
