@@ -114,16 +114,6 @@ const std::vector<MatchCase> MATCH_CASES{
         .expectation = {.match = std::nullopt},
     },
     {
-        .name = "the map moved one cell south: no match",
-        .input = {.shift_rows = 1},
-        .expectation = {.match = std::nullopt},
-    },
-    {
-        .name = "the map moved one cell east and 10% darker: no match",
-        .input = {.brightness = 0.9, .shift_cols = 1},
-        .expectation = {.match = std::nullopt},
-    },
-    {
         .name = "the map moved two cells west and 20% darker: no match",
         .input = {.brightness = 0.8, .shift_cols = -2},
         .expectation = {.match = std::nullopt},

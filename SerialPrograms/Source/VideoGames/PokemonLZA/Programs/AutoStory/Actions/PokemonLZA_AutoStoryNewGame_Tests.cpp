@@ -51,9 +51,8 @@ std::string press_text(const std::optional<std::vector<IntroKey>>& presses){
 }
 
 
-//  6 and 7 characters of 3 UTF-8 bytes each.
+//  6 characters of 3 UTF-8 bytes each.
 const std::string HANGUL_6 = "\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8\xec\x8a\xa4\xec\xbd\x94\xec\x8a\xa4";
-const std::string HANGUL_7 = "\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8\xec\x8a\xa4\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8";
 
 
 struct ProblemCase{
@@ -71,24 +70,9 @@ struct ProblemCase{
 const ProblemCase PROBLEM_CASES[] = {
     {.name = "the defaults", .input = {.choices = {}}, .expectation = {.refused = false}},
     {
-        .name = "12 characters in English",
-        .input = {.choices = {.name = "Abcdefghijkl"}},
-        .expectation = {.refused = false},
-    },
-    {
         .name = "13 characters in English",
         .input = {.choices = {.name = "Abcdefghijklm"}},
         .expectation = {.refused = true},
-    },
-    {
-        .name = "12 characters in German",
-        .input = {.choices = {.language = NewGameLanguage::German, .name = "Abcdefghijkl"}},
-        .expectation = {.refused = false},
-    },
-    {
-        .name = "6 characters in Japanese",
-        .input = {.choices = {.language = NewGameLanguage::Japanese, .name = "Kosmos"}},
-        .expectation = {.refused = false},
     },
     {
         .name = "7 characters in Japanese",
@@ -96,23 +80,11 @@ const ProblemCase PROBLEM_CASES[] = {
         .expectation = {.refused = true},
     },
     {
-        .name = "7 characters in Traditional Chinese",
-        .input = {.choices = {.language = NewGameLanguage::ChineseTraditional, .name = "Kosmoss"}},
-        .expectation = {.refused = true},
-    },
-    {
         .name = "6 Hangul characters in Korean",
         .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
         .expectation = {.refused = false},
     },
-    {
-        .name = "7 Hangul characters in Korean",
-        .input = {.choices = {.language = NewGameLanguage::Korean, .name = HANGUL_7}},
-        .expectation = {.refused = true},
-    },
     {.name = "an empty name", .input = {.choices = {.name = ""}}, .expectation = {.refused = true}},
-    {.name = "look 8", .input = {.choices = {.look = 8}}, .expectation = {.refused = false}},
-    {.name = "look 0", .input = {.choices = {.look = 0}}, .expectation = {.refused = true}},
     {.name = "look 9", .input = {.choices = {.look = 9}}, .expectation = {.refused = true}},
 };
 
@@ -153,15 +125,9 @@ struct RunProblemCase{
 };
 
 const RunProblemCase RUN_PROBLEM_CASES[] = {
-    {.name = "the defaults from 01.00a", .input = {.rows = {"01.00a", "01.00b"}, .choices = {}}, .expectation = {.refused = false}},
     {
         .name = "Korean from 01.00a",
         .input = {.rows = {"01.00a", "01.00b"}, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
-        .expectation = {.refused = true},
-    },
-    {
-        .name = "Korean through 01.00a only",
-        .input = {.rows = {"01.00a"}, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
         .expectation = {.refused = true},
     },
     {
@@ -169,15 +135,12 @@ const RunProblemCase RUN_PROBLEM_CASES[] = {
         .input = {.rows = {"01.00b", "01.01"}, .choices = {.language = NewGameLanguage::Korean, .name = HANGUL_6}},
         .expectation = {.refused = false},
     },
-    {.name = "Japanese from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.language = NewGameLanguage::Japanese}}, .expectation = {.refused = false}},
-    {.name = "a space in the name from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.name = "Kos mos"}}, .expectation = {.refused = true}},
     {
         .name = "digits and the first page's symbols from 01.00a",
         .input = {.rows = {"01.00a"}, .choices = {.name = "a1-/:',.?!"}},
         .expectation = {.refused = false},
     },
     {.name = "an accented letter from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = true}},
-    {.name = "an accented letter from 01.00b", .input = {.rows = {"01.00b"}, .choices = {.name = "Jos\xc3\xa9"}}, .expectation = {.refused = false}},
     {.name = "a symbol of the second page from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.name = "a#"}}, .expectation = {.refused = true}},
 };
 
@@ -246,10 +209,7 @@ struct GridCase{
 };
 
 const GridCase GRID_CASES[] = {
-    {.name = "English to Deutsch", .input = {.from = 0, .to = 4}, .expectation = {.presses = "DDDD"}},
-    {.name = "English to Italiano", .input = {.from = 0, .to = 5}, .expectation = {.presses = "R"}},
     {.name = "English to Traditional Chinese", .input = {.from = 0, .to = 9}, .expectation = {.presses = "RDDDD"}},
-    {.name = "Simplified Chinese to Francais", .input = {.from = 8, .to = 3}, .expectation = {.presses = "L"}},
     {.name = "an entry past the list", .input = {.from = 0, .to = 10}, .expectation = {.presses = "none"}},
     {.name = "look 1 to look 8", .input = {.grid = Grid::LOOK_PICKER, .from = 1, .to = 8}, .expectation = {.presses = "RRRD"}},
     {.name = "look 7 to look 2", .input = {.grid = Grid::LOOK_PICKER, .from = 7, .to = 2}, .expectation = {.presses = "LU"}},

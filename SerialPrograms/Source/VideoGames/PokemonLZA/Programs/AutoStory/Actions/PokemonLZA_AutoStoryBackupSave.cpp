@@ -35,7 +35,7 @@ constexpr Milliseconds CARD_POLL = 500ms;
 //  As reload_latest_save().
 constexpr Milliseconds LOAD_SETTLE = 1000ms;
 
-std::optional<BackupCard> open_card(StoryEnv& env){
+std::optional<size_t> open_card(StoryEnv& env){
     ConsoleHandle& console = env.env.console;
     ProControllerContext& context = env.context;
     launch_plza_from_home(console, context);
@@ -55,7 +55,7 @@ std::optional<BackupCard> open_card(StoryEnv& env){
         }
         last = frame;
         if (const std::optional<size_t> registered = read_backup_card_registered(console.logger(), frame)){
-            return BackupCard{.registered = *registered};
+            return registered;
         }
     }
     console.log(std::format("[Rewind] no backup card read on {} looks", CARD_LOOKS));
@@ -84,13 +84,13 @@ void cancel(StoryEnv& env){
 
 BackupSave console_backup_save(StoryEnv& env){
     return BackupSave{
-        .open_card = [&env](PlzaBackend&){
+        .open_card = [&env]{
             return open_card(env);
         },
-        .load = [&env](PlzaBackend&){
+        .load = [&env]{
             return load(env);
         },
-        .cancel = [&env](PlzaBackend&){
+        .cancel = [&env]{
             cancel(env);
         },
     };

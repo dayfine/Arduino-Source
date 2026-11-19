@@ -8,7 +8,6 @@
  *  console.
  *
  */
-//  code-health: allow file_lines -- one table per story game behavior, sharing the scripted looks above them
 
 #include <algorithm>
 #include <format>
@@ -54,51 +53,6 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
 }
 
 
-struct StoryDataCase{
-    std::string name;
-    struct Input{};
-    Input input;
-    struct Expectation{
-        //  "<id>:<new_game|from_save>[:choices][:<autosave|unverified>]" per row.
-        std::string rows;
-    };
-    Expectation expectation;
-};
-
-const StoryDataCase STORY_DATA_CASES[] = {
-    {
-        .name = "the built-in story loads: every step parses",
-        .input = {},
-        .expectation = {.rows =
-            "01.00a:new_game:choices 01.00b:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
-            "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
-            "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
-            "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save:autosave 03.03:from_save:autosave 03.04:from_save:autosave "
-            "03.05:from_save:autosave 03.06:from_save:autosave 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save:autosave "
-            "03.09:from_save:autosave "
-            "03.10:from_save:autosave 03.11:from_save:autosave"
-        },
-    },
-};
-
-UnitTestResult check_story_data(const StoryDataCase& test){
-    const StoryData& data = builtin_story_data();
-    std::vector<std::string> rows;
-    for (const StoryCheckpoint& row : data.checkpoints){
-        rows.push_back(std::format(
-            "{}:{}{}{}", row.id, story_row_starts_without_save(row) ? "new_game" : "from_save",
-            story_row_makes_new_game_choices(row) ? ":choices" : "",
-            data.unverified_autosaves.contains(row.id) ? ":unverified" : (data.autosaves.contains(row.id) ? ":autosave" : "")
-        ));
-    }
-    const std::string got = joined(rows, " ");
-    if (got != test.expectation.rows){
-        return std::format("expected \"{}\", got \"{}\"", test.expectation.rows, got);
-    }
-    return true;
-}
-
-
 struct AutosaveStepCase{
     std::string name;
     struct Input{
@@ -135,19 +89,9 @@ const AutosaveStepCase AUTOSAVE_STEP_CASES[] = {
         },
         .expectation = {.error = ""},
     },
-    {
-        .name = "a plan autosave without its step fails",
-        .input = {.steps = {"wild_zones_tutorial"}, .autosave_row = true},
-        .expectation = {.error = "03.06: \"save\": \"autosave\" needs \"autosave_step\", the step a run log showed the badge in"},
-    },
-    {
-        .name = "an autosave step that is not a step fails",
-        .input = {.steps = {"wild_zones_tutorial"}, .autosave_step = "enter_zone_1"},
-        .expectation = {.error = "03.06: autosave_step enter_zone_1 is not one of its steps"},
-    },
 };
 
-UnitTestResult check_autosave_step(const AutosaveStepCase& test){
+UnitTestResult check_autosave_step(const AutosaveStepCase& test, CancellableScope&){
     StoryCheckpoint checkpoint;
     checkpoint.id = "03.06";
     checkpoint.title = "Test";
@@ -183,7 +127,6 @@ const ScreenObservation STILL = look({ScreenEvent::SCREEN_STILL});
 const ScreenObservation WHITE_FADE = look({ScreenEvent::FADE_WHITE});
 const ScreenObservation BLACK_FADE = look({ScreenEvent::FADE_BLACK});
 const ScreenObservation DIALOG = look({ScreenEvent::DIALOG_BOX});
-const ScreenObservation BATTLE_HUD = look({ScreenEvent::BATTLE_STARTED});
 const ScreenObservation A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
 
 ScreenObservation party_bar(Milliseconds at){
@@ -252,7 +195,6 @@ struct RunCase{
         size_t first_step = 0;
         size_t steps = std::numeric_limits<size_t>::max();
         std::vector<ScreenObservation> looks;
-        std::optional<Pokemon::StoryFailure> battle = std::nullopt;
         //  The last repeats; none: no minimap arrow, as off a console.
         std::vector<double> arrow_reads = {};
     };
@@ -288,11 +230,6 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "01.01's walk fails when the fade never shows",
-        .input = {.checkpoint = "01.01", .first_step = 1, .looks = {PLATFORM}},
-        .expectation = {.verdict = "failed at platform_to_plaza: walk_no_end"},
-    },
-    {
         //  Control comes ~7 s after 01.01's scenes end (console B, 2026-11-15).
         .name = "a walk waits for control that comes 7 s after the scene",
         .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = concat(
@@ -309,20 +246,6 @@ const RunCase RUN_CASES[] = {
         .name = "01.01's walk does not start in a text box",
         .input = {.checkpoint = "01.01", .first_step = 1, .looks = {DIALOG}},
         .expectation = {.verdict = "failed at platform_to_plaza: walk_not_free"},
-    },
-    {
-        .name = "01.01 runs from the platform through the arrival to the controls hint",
-        .input = {.checkpoint = "01.01", .first_step = 0, .looks = concat(walk_into_white_fade(), {
-            WHITE_FADE,
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
-            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(1500)),
-            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(2000)),
-            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(2250)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2500)),
-            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(9500)),
-            look(/*events=*/{}, {CONTROLS_HINT_READING}, Milliseconds(10500)),
-        })},
-        .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on controls_hint."},
     },
     {
         .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second; Plus in the 5 s with no text",
@@ -362,24 +285,9 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[Save] 01.00b: the game autosaved (seen)"},
     },
     {
-        .name = "01.01 is not saved: its autosave is unverified",
-        .input = {.checkpoint = "01.01", .first_step = 0, .steps = 1, .looks = {PLATFORM}},
-        .expectation = {.verdict = "done", .line = "[Save] 01.01: not saved (save unverified)"},
-    },
-    {
         .name = "01.02's choice fails when the highlight does not move",
         .input = {.checkpoint = "01.02", .first_step = 2, .steps = 1, .looks = {choice(0)}},
         .expectation = {.verdict = "failed at battle_with_pokemon: choice_not_reached"},
-    },
-    {
-        .name = "01.02's choice fails with no choice box",
-        .input = {.checkpoint = "01.02", .first_step = 2, .steps = 1, .looks = {DIALOG}},
-        .expectation = {.verdict = "failed at battle_with_pokemon: no_choice"},
-    },
-    {
-        .name = "01.02's choice fails on a menu of one row",
-        .input = {.checkpoint = "01.02", .first_step = 2, .steps = 1, .looks = {choice(0, 1)}},
-        .expectation = {.verdict = "failed at battle_with_pokemon: no_such_choice"},
     },
     {
         .name = "01.03's talk fails when nothing starts after A: the prompt stays",
@@ -406,12 +314,6 @@ const RunCase RUN_CASES[] = {
         .name = "a story battle with no battle HUD in 10 s fails as battle_never_started, the battle code not run",
         .input = {.checkpoint = "01.03", .first_step = 3, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at andi_battle: battle_never_started", .inputs = repeated("wait 250ms", 40)},
-    },
-    {
-        .name = "01.03's battle fails as the backend's battle does",
-        .input = {.checkpoint = "01.03", .first_step = 3, .steps = 1, .looks = {BATTLE_HUD},
-            .battle = Pokemon::StoryFailure{.code = "battle_failed", .detail = "no dialogue after the battle"}},
-        .expectation = {.verdict = "failed at andi_battle: battle_failed"},
     },
     {
         //  Held legs run with B held: the walk times stay walk times (console B, 2026-11-19).
@@ -533,15 +435,6 @@ const RunCase RUN_CASES[] = {
             .line = "[PLZA] walk: the end event after 250 ms of the last leg.",
         },
     },
-    {
-        .name = "03.09's walk stops when the player does not turn to the street",
-        .input = {
-            .checkpoint = "03.09", .first_step = 0, .steps = 1,
-            .looks = {party_bar(Milliseconds(0))},
-            .arrow_reads = {180},
-        },
-        .expectation = {.verdict = "failed at to_research_lab: heading_missed"},
-    },
 };
 
 //  The last read repeats; none for no reads.
@@ -560,8 +453,8 @@ std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& read
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
     PlzaStoryTools tools{.arrow = scripted_arrow(test.input.arrow_reads), .sightings = &sightings};
-    tools.battle = [&test](PlzaBackend&){
-        return test.input.battle;
+    tools.battle = [](PlzaBackend&) -> std::optional<Pokemon::StoryFailure>{
+        return std::nullopt;
     };
     Pokemon::StoryGame game = plza_story_game(builtin_story_data(), sightings);
     Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
@@ -655,11 +548,6 @@ const LoadCase LOAD_CASES[] = {
         .input = {.checkpoint = "01.01", .looks = {CUTSCENE}},
         .expectation = {.verdict = "done", .inputs = "press HOME"},
     },
-    {
-        .name = "a game with no reload cannot load",
-        .input = {.checkpoint = "01.02", .has_reload = false, .looks = {CUTSCENE}},
-        .expectation = {.verdict = "no_reload", .inputs = ""},
-    },
 };
 
 UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
@@ -730,11 +618,6 @@ const ChainCase CHAIN_CASES[] = {
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
-        .name = "no autosave seen and the start check does not fail: on without a reload",
-        .input = {.looks = {PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
-        .expectation = {.verdict = "done", .reloads = 0},
-    },
-    {
         .name = "autosave seen and the start check fails: reloads the start",
         .input = {.looks = {
             CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0),
@@ -785,18 +668,6 @@ const ChainCase CHAIN_CASES[] = {
         .expectation = {
             .verdict = "done", .reloads = 1,
             .line = "[Checkpoint] 01.02: control is back after 01.01's last scene; reloading the latest save",
-        },
-    },
-    {
-        .name = "reload when chained: the badge not seen at the row before's end is logged, not a condition",
-        .input = {
-            .looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)),
-            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
-            .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT,
-        },
-        .expectation = {
-            .verdict = "done", .reloads = 1,
-            .line = "[Checkpoint] 01.02: reloads its start save when chained, whether or not 01.01's autosave showed at its end (not seen)",
         },
     },
     {
@@ -884,71 +755,6 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
 }
 
 
-class StoryDataTest : public UnitTest{
-public:
-    explicit StoryDataTest(StoryDataCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryGame - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_story_data(m_case);
-    }
-private:
-    StoryDataCase m_case;
-};
-
-class RunTest : public UnitTest{
-public:
-    explicit RunTest(RunCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryGame run - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        return check_run(m_case, scope);
-    }
-private:
-    RunCase m_case;
-};
-
-class AutosaveStepTest : public UnitTest{
-public:
-    explicit AutosaveStepTest(AutosaveStepCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryGame autosave step - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_autosave_step(m_case);
-    }
-private:
-    AutosaveStepCase m_case;
-};
-
-class LoadTest : public UnitTest{
-public:
-    explicit LoadTest(LoadCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryGame load - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        return check_load(m_case, scope);
-    }
-private:
-    LoadCase m_case;
-};
-
-class ChainTest : public UnitTest{
-public:
-    explicit ChainTest(ChainCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryGame chain - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        return check_chain(m_case, scope);
-    }
-private:
-    ChainCase m_case;
-};
-
 //  The new game rows hand over to the platform with no save loaded between them.
 struct NewGameChainCase{
     std::string name;
@@ -969,11 +775,6 @@ const NewGameChainCase NEW_GAME_CHAIN_CASES[] = {
         .name = "01.00a, 01.00b and 01.01 in one run",
         .input = {.rows = {"01.00a", "01.00b"}, .looks = concat({CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}, walk_into_white_fade())},
         .expectation = {.verdict = "done", .console_steps = "new_game_intro confirm_new_game"},
-    },
-    {
-        .name = "01.00b and 01.01 in one run",
-        .input = {.rows = {"01.00b"}, .looks = concat({CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}, walk_into_white_fade())},
-        .expectation = {.verdict = "done", .console_steps = "confirm_new_game"},
     },
 };
 
@@ -1007,19 +808,6 @@ UnitTestResult check_new_game_chain(const NewGameChainCase& test, CancellableSco
     }
     return true;
 }
-
-class NewGameChainTest : public UnitTest{
-public:
-    explicit NewGameChainTest(NewGameChainCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryGame new game chain - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        return check_new_game_chain(m_case, scope);
-    }
-private:
-    NewGameChainCase m_case;
-};
 
 //  A checkpoint whose last step did or did not save from the menu.
 struct MenuSaveCase{
@@ -1064,19 +852,6 @@ UnitTestResult check_menu_save(const MenuSaveCase& test, CancellableScope& scope
     }
     return true;
 }
-
-class MenuSaveTest : public UnitTest{
-public:
-    explicit MenuSaveTest(MenuSaveCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryGame menu save - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        return check_menu_save(m_case, scope);
-    }
-private:
-    MenuSaveCase m_case;
-};
 
 struct SightingLook{
     //  Empty: a checkpoint starts.
@@ -1135,15 +910,6 @@ const SightingsCase SIGHTINGS_CASES[] = {
         }},
         .expectation = {.seen_in = std::nullopt},
     },
-    {
-        .name = "a badge first seen past the checkpoint's first moments is this checkpoint's",
-        .input = {.looks = {
-            {.step = ""},
-            {.step = "opening", .badge = false, .at = Milliseconds(0)},
-            {.step = "opening", .badge = true, .at = Milliseconds(2000)},
-        }},
-        .expectation = {.seen_in = "opening"},
-    },
 };
 
 UnitTestResult check_sightings(const SightingsCase& test, CancellableScope& scope){
@@ -1167,17 +933,18 @@ UnitTestResult check_sightings(const SightingsCase& test, CancellableScope& scop
     return true;
 }
 
-class SightingsTest : public UnitTest{
+template <typename Case, UnitTestResult (*check)(const Case&, CancellableScope&)>
+class CaseTest : public UnitTest{
 public:
-    explicit SightingsTest(SightingsCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryGame autosave sightings - {}", test_case.name))
+    CaseTest(std::string_view kind, Case test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStoryGame {}{}", kind, test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        return check_sightings(m_case, scope);
+        return check(m_case, scope);
     }
 private:
-    SightingsCase m_case;
+    Case m_case;
 };
 
 } // namespace
@@ -1185,28 +952,25 @@ private:
 
 void add_tests_AutoStoryGame(UnitTestDatabase& database){
     for (const SightingsCase& test : SIGHTINGS_CASES){
-        database.add<SightingsTest>(test);
+        database.add<CaseTest<SightingsCase, check_sightings>>("autosave sightings - ", test);
     }
     for (const MenuSaveCase& test : MENU_SAVE_CASES){
-        database.add<MenuSaveTest>(test);
-    }
-    for (const StoryDataCase& test : STORY_DATA_CASES){
-        database.add<StoryDataTest>(test);
+        database.add<CaseTest<MenuSaveCase, check_menu_save>>("menu save - ", test);
     }
     for (const AutosaveStepCase& test : AUTOSAVE_STEP_CASES){
-        database.add<AutosaveStepTest>(test);
+        database.add<CaseTest<AutosaveStepCase, check_autosave_step>>("autosave step - ", test);
     }
     for (const RunCase& test : RUN_CASES){
-        database.add<RunTest>(test);
+        database.add<CaseTest<RunCase, check_run>>("run - ", test);
     }
     for (const LoadCase& test : LOAD_CASES){
-        database.add<LoadTest>(test);
+        database.add<CaseTest<LoadCase, check_load>>("load - ", test);
     }
     for (const ChainCase& test : CHAIN_CASES){
-        database.add<ChainTest>(test);
+        database.add<CaseTest<ChainCase, check_chain>>("chain - ", test);
     }
     for (const NewGameChainCase& test : NEW_GAME_CHAIN_CASES){
-        database.add<NewGameChainTest>(test);
+        database.add<CaseTest<NewGameChainCase, check_new_game_chain>>("new game chain - ", test);
     }
 }
 

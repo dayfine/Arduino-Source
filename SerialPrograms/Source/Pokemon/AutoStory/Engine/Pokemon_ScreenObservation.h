@@ -2,8 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Bridges a ScreenEventObserver (ScreenEvents) to the story
- *  engine's look (ScreenObservation).
+ *  Turns what a console's screen detectors saw in one frame (ScreenEvents)
+ *  into the look a story backend returns (ScreenObservation).
  *
  */
 
@@ -17,9 +17,10 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  A ScreenEventObserver's events as one look for the story engine: the
-//  events the engine reads (not LOCATION_BANNER, BATTLE_ENDED or
-//  SWITCH_HOME_MENU), and CHOICE_BOX adds DIALOG_BOX. No time and no frame.
+//  The look for one frame's detected `events`. It keeps only the events
+//  story steps read; LOCATION_BANNER, BATTLE_ENDED and SWITCH_HOME_MENU are
+//  dropped. A choice box sits inside a dialog box, so CHOICE_BOX also sets
+//  DIALOG_BOX. The caller fills in the time and the frame.
 ScreenObservation screen_observation(const ScreenEvents& events);
 
 

@@ -13,7 +13,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
-#include "Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
 
@@ -135,7 +135,7 @@ std::optional<std::string> read_execution(
 
 
 StoryCheckpoint read_plza_checkpoint(
-    std::string_view text, std::string_view source, const Pokemon::StoryActions& actions, StoryRows& rows,
+    std::string_view text, std::string_view source, Pokemon::StoryActions& actions, StoryRows& rows,
     std::optional<std::string_view> previous
 ){
     const JsonValue file = parse_json(std::string(text));
@@ -143,13 +143,10 @@ StoryCheckpoint read_plza_checkpoint(
     for (const std::string& error : plan == nullptr ? std::vector<std::string>() : story_row_lead_in_errors(*plan)){
         throw ParseException(std::format("{}: {}", source, error));
     }
-    const JsonObject* execution = nullptr;
-    StoryCheckpoint checkpoint = Pokemon::read_authored_checkpoint(
-        file, "plza", source, [&execution](const JsonObject& block, std::string_view){ execution = &block; }, actions
-    );
+    StoryCheckpoint checkpoint = Pokemon::read_story_checkpoint(file, "plza", source, actions);
     try{
         const std::optional<std::string> autosave_step = read_execution(
-            *execution, checkpoint.id, story_row_starts_without_save(checkpoint), previous, rows
+            file.to_object_throw().get_object_throw("execution"), checkpoint.id, story_row_starts_without_save(checkpoint), previous, rows
         );
         if (const std::optional<std::string> error = autosave_step_error(checkpoint, rows.autosaves.contains(checkpoint.id), autosave_step)){
             throw ParseException(*error);
@@ -161,7 +158,7 @@ StoryCheckpoint read_plza_checkpoint(
 }
 
 StoryData load_plza_story(const PlzaStoryTools& tools){
-    const Pokemon::StoryActions actions = plza_story_actions(tools);
+    Pokemon::StoryActions actions = plza_story_actions(tools);
     StoryData data;
     for (const auto& [name, text] : autostory_checkpoint_json()){
         const std::optional<std::string_view> previous = data.checkpoints.empty()

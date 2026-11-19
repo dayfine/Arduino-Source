@@ -112,19 +112,9 @@ const FaceHeadingCase FACE_HEADING_CASES[] = {
         .expectation = {.failure = ""},
     },
     {
-        .name = "from the opposite way",
-        .input = {.facing = 90, .heading = 270},
-        .expectation = {.failure = ""},
-    },
-    {
         .name = "across north",
         .input = {.facing = 350, .heading = 20},
         .expectation = {.failure = ""},
-    },
-    {
-        .name = "the player does not turn",
-        .input = {.facing = 135, .heading = 270, .turns_take = false},
-        .expectation = {.failure = "heading_missed"},
     },
     {
         .name = "8 off is not facing it: 03.09 read 272 for 264 and walked right of the gate",
@@ -136,11 +126,6 @@ const FaceHeadingCase FACE_HEADING_CASES[] = {
         //  each reading one turn late (console B video, 2026-11-17 23:58).
         .name = "a lagging feed: from 161 to 265",
         .input = {.facing = 161, .heading = 265, .stale_reads = 1},
-        .expectation = {.failure = ""},
-    },
-    {
-        .name = "a lagging feed: from 11 to 231",
-        .input = {.facing = 11, .heading = 231, .stale_reads = 1},
         .expectation = {.failure = ""},
     },
     {

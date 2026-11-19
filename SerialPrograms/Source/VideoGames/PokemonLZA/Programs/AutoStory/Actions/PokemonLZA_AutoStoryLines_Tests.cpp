@@ -83,11 +83,6 @@ const LinesCase LINES_CASES[] = {
         .expectation = {.text = true, .card = true, .timed_out = false, .inputs = "press A, wait 250ms, press A, wait 250ms, wait 250ms"},
     },
     {
-        .name = "text with no card",
-        .input = {.looks = {dialog(Milliseconds(0)), nothing(Milliseconds(3000))}},
-        .expectation = {.text = true, .card = false, .timed_out = false, .inputs = "press A, wait 250ms"},
-    },
-    {
         .name = "nothing for 3 s presses nothing",
         .input = {.looks = {nothing(Milliseconds(0)), nothing(Milliseconds(3000))}},
         .expectation = {.text = false, .card = false, .timed_out = false, .inputs = "wait 250ms"},

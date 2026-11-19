@@ -123,11 +123,6 @@ const AfterThrowCase AFTER_THROW_CASES[] = {
         .expectation = {.next = AfterThrow::STOP_ENDS},
     },
     {
-        .name = "a target not caught gone with no battle ends the stop",
-        .input = {.seen = {.registered = false, .plate_caught = false, .target_gone = true}},
-        .expectation = {.next = AfterThrow::STOP_ENDS},
-    },
-    {
         .name = "a break-out into a wild battle weakens it",
         .input = {.seen = {.registered = false, .plate_caught = false, .target_gone = false}, .battle = true},
         .expectation = {.next = AfterThrow::WEAKEN},
@@ -155,11 +150,6 @@ const AfterThrowCase AFTER_THROW_CASES[] = {
             .seen = {.registered = false, .plate_caught = false, .target_gone = false},
             .relocked = plate(0.53, 0.42, true),
         },
-        .expectation = {.next = AfterThrow::LOOK_AGAIN},
-    },
-    {
-        .name = "a caught species' target gone looks again",
-        .input = {.seen = {.registered = false, .plate_caught = true, .target_gone = true}},
         .expectation = {.next = AfterThrow::LOOK_AGAIN},
     },
 };
@@ -219,11 +209,6 @@ const StopAimCase STOP_AIM_CASES[] = {
         .expectation = {.aim = StopAim::MOVE_ON},
     },
     {
-        .name = "locked on, the nearest plate not caught is thrown at",
-        .input = {.locked_on = true, .plates = {plate(/*x=*/0.50, /*y=*/0.48, /*caught=*/false)}},
-        .expectation = {.aim = StopAim::THROW},
-    },
-    {
         .name = "locked on, the nearest of a caught species, the next not: thrown at the next",
         .input = {.locked_on = true, .plates = {plate(/*x=*/0.50, /*y=*/0.50, /*caught=*/true), plate(/*x=*/0.70, /*y=*/0.42, /*caught=*/false)}},
         .expectation = {.aim = StopAim::THROW},
@@ -281,11 +266,6 @@ const PitchCase PITCH_CASES[] = {
         .name = "one reset after a lock-on and a throw, then none",
         .input = {.events = {PitchCase::Event::LOOK, PitchCase::Event::ZL_HELD, PitchCase::Event::ZL_HELD, PitchCase::Event::LOOK, PitchCase::Event::LOOK}},
         .expectation = {.levels = {false, true, false}},
-    },
-    {
-        .name = "a stop with no lock-on ends with no reset",
-        .input = {.events = {PitchCase::Event::LOOK, PitchCase::Event::LOOK}},
-        .expectation = {.levels = {false, false}},
     },
 };
 

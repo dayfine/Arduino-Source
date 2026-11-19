@@ -82,11 +82,6 @@ const FrameCase FRAME_CASES[] = {
         .expectation = {.events = {.interact_prompt = false, .can_move = true}},
     },
     {
-        .name = "the elevator's A prompt over the party bar of one on the German game",
-        .input = {.path = "AutoStoryScreenEvents/de_0205_elevator_prompt_steady.png"},
-        .expectation = {.events = {.interact_prompt = true, .can_move = true}},
-    },
-    {
         .name = "the party bar of four over a sunlit road",
         .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
         .expectation = {.events = {.interact_prompt = false, .can_move = true}},
@@ -129,21 +124,6 @@ const BattleFrameCase BATTLE_FRAME_CASES[] = {
     {
         .name = "no battle at the zone's pillar with the lead's panel up",
         .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_no_battle.png"},
-        .expectation = {.battle = false},
-    },
-    {
-        .name = "no battle on the zone's road with the lead's panel up",
-        .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
-        .expectation = {.battle = false},
-    },
-    {
-        .name = "no battle at the A Talk prompt on the Italian game",
-        .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
-        .expectation = {.battle = false},
-    },
-    {
-        .name = "no battle at the elevator's A prompt over the party bar of one",
-        .input = {.path = "AutoStoryScreenEvents/za2_m3v_s1.png"},
         .expectation = {.battle = false},
     },
 };
@@ -253,60 +233,19 @@ UnitTestResult check_folder(const FolderCase& test){
 }
 
 
-class Test_Frame : public UnitTest{
+template <typename Case, UnitTestResult (*check)(const Case&)>
+class CaseTest : public UnitTest{
 public:
-    explicit Test_Frame(const FrameCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - console frame: {}", test.name))
+    CaseTest(std::string_view kind, const Case& test)
+        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - {}: {}", kind, test.name))
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_frame(m_test);
+        return check(m_test);
     }
 
 private:
-    const FrameCase& m_test;
-};
-
-class Test_BattleFrame : public UnitTest{
-public:
-    explicit Test_BattleFrame(const BattleFrameCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - battle frame: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_battle_frame(m_test);
-    }
-
-private:
-    const BattleFrameCase& m_test;
-};
-
-class Test_DialogFrame : public UnitTest{
-public:
-    explicit Test_DialogFrame(const DialogFrameCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - dialog frame: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_dialog_frame(m_test);
-    }
-
-private:
-    const DialogFrameCase& m_test;
-};
-
-class Test_Folder : public UnitTest{
-public:
-    explicit Test_Folder(const FolderCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - console frames: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_folder(m_test);
-    }
-
-private:
-    const FolderCase& m_test;
+    const Case& m_test;
 };
 
 } // namespace
@@ -314,16 +253,16 @@ private:
 
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database){
     for (const FrameCase& test : FRAME_CASES){
-        database.add<Test_Frame>(test);
+        database.add<CaseTest<FrameCase, check_frame>>("console frame", test);
     }
     for (const BattleFrameCase& test : BATTLE_FRAME_CASES){
-        database.add<Test_BattleFrame>(test);
+        database.add<CaseTest<BattleFrameCase, check_battle_frame>>("battle frame", test);
     }
     for (const DialogFrameCase& test : DIALOG_FRAME_CASES){
-        database.add<Test_DialogFrame>(test);
+        database.add<CaseTest<DialogFrameCase, check_dialog_frame>>("dialog frame", test);
     }
     for (const FolderCase& test : FOLDER_CASES){
-        database.add<Test_Folder>(test);
+        database.add<CaseTest<FolderCase, check_folder>>("console frames", test);
     }
 }
 

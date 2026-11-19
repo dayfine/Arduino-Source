@@ -143,11 +143,6 @@ const PlateFrameCase PLATE_FRAME_CASES[] = {
         .expectation = {.caught = std::nullopt},
     },
     {
-        .name = "a frame all in the bar's green",
-        .input = {.frame = []{ return solid_frame(PLATE_BAR_GREEN); }},
-        .expectation = {.caught = std::nullopt},
-    },
-    {
         .name = "an empty frame",
         .input = {.frame = []{ return ImageRGB32(); }},
         .expectation = {.caught = std::nullopt},

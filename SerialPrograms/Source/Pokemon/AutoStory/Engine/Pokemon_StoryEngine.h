@@ -30,11 +30,12 @@ struct CheckpointFailure{
     StoryFailure failure = {};
 };
 
-//  Runs `checkpoints` in order from `state`; none when all passed. After a
-//  failure that does not repeat, game.reload says which checkpoint's start
-//  the game is at and the run goes on from there, until a checkpoint fails
-//  game.attempts_per_checkpoint times. A step that throws is logged and the
-//  exception passes through.
+//  Runs `checkpoints` in order from `state`. Returns std::nullopt when every
+//  checkpoint passed, else the failure that ended the run.
+//  After a failure that does not repeat, game.reload says which checkpoint's
+//  start the game is at and the run goes on from there, until a checkpoint
+//  fails game.attempts_per_checkpoint times. A step that throws is logged and
+//  the exception passes through.
 std::optional<CheckpointFailure> run_checkpoints(
     StoryBackend& backend, std::span<StoryCheckpoint> checkpoints,
     StoryGame& game, RunState& state

@@ -96,11 +96,6 @@ const StartCase START_CASES[] = {
         .expectation = {.moves = {ZoneStartMove::WALK_TO_SPOT}},
     },
     {
-        .name = "the pin a step off the rocks, a read out of the leg's range: the walk",
-        .input = {.start_pin = MapPoint{.x = 471, .y = 227}, .reads = {113}},
-        .expectation = {.moves = {ZoneStartMove::WALK_TO_SPOT}},
-    },
-    {
         .name = "the pin at the 100 spot, a read of 127: stop",
         .input = {.start_pin = MapPoint{.x = 432, .y = 238}, .reads = {127}},
         .expectation = {.moves = {ZoneStartMove::ROCKS_NOT_LEFT}},

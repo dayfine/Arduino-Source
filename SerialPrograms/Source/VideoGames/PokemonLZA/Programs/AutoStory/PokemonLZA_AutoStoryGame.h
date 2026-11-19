@@ -21,7 +21,7 @@
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"

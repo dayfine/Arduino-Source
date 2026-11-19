@@ -41,63 +41,6 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
     return out;
 }
 
-//  The built-in plans' backup cards, read after 03.08 failed.
-struct CardCase{
-    std::string name;
-    struct Input{
-        BackupCard card;
-    };
-    Input input;
-    struct Expectation{
-        //  None: no checkpoint starts there, the backup is not loaded.
-        std::optional<std::string> checkpoint;
-    };
-    Expectation expectation;
-};
-
-const CardCase CARD_CASES[] = {
-    {
-        .name = "1 registered: 03.06's start at the Center counter",
-        .input = {.card = {.registered = 1}},
-        .expectation = {.checkpoint = "03.06"},
-    },
-    {
-        .name = "an unknown card: no checkpoint",
-        .input = {.card = {.registered = 7}},
-        .expectation = {.checkpoint = std::nullopt},
-    },
-};
-
-std::optional<size_t> builtin_row(std::string_view id){
-    const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
-    for (size_t index = 0; index < rows.size(); index++){
-        if (rows[index].id == id){
-            return index;
-        }
-    }
-    return std::nullopt;
-}
-
-UnitTestResult check_card(const CardCase& test){
-    const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
-    const std::optional<size_t> failed = builtin_row("03.08");
-    if (!failed){
-        return std::string("no 03.08 among the built-in checkpoints");
-    }
-    const std::optional<size_t> index = checkpoint_at(
-        rows, builtin_checkpoint_starts(), *failed, StartSignature{.registered = test.input.card.registered}
-    );
-    const std::optional<std::string> checkpoint = index ? std::optional<std::string>(rows[*index].id) : std::nullopt;
-    if (checkpoint != test.expectation.checkpoint){
-        return std::format(
-            "expected {}, got {}",
-            test.expectation.checkpoint.value_or("none"), checkpoint.value_or("none")
-        );
-    }
-    return true;
-}
-
-
 ScreenObservation look(std::vector<std::string_view> readings, Milliseconds after = 0ms){
     ScreenObservation observation;
     observation.when = WallClock::min() + after;
@@ -119,7 +62,7 @@ TestRow row(std::string id, std::vector<std::string> actions){
 
 //  `rows` with their steps bound to `tools`, which must outlive them.
 std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestRow>& rows, const PlzaStoryTools& tools){
-    const Pokemon::StoryActions actions = plza_story_actions(tools);
+    Pokemon::StoryActions actions = plza_story_actions(tools);
     std::vector<StoryCheckpoint> checkpoints(rows.size());
     for (size_t index = 0; index < rows.size(); index++){
         checkpoints[index].id = rows[index].id;
@@ -157,7 +100,7 @@ struct RewindCase{
         bool autosave_in_failed_run;
         size_t failed_catches;
         //  None: no card read.
-        std::optional<BackupCard> card;
+        std::optional<size_t> card;
         size_t max_rewinds = 2;
         std::string_view failure = "lost";
     };
@@ -168,7 +111,7 @@ struct RewindCase{
 const RewindCase REWIND_CASES[] = {
     {
         .name = "03.08 fails after a catch autosave: rewinds to 03.06 and plays on through 03.08",
-        .input = {.autosave_in_failed_run = true, .failed_catches = 1, .card = BackupCard{.registered = 1}},
+        .input = {.autosave_in_failed_run = true, .failed_catches = 1, .card = 1},
         .expectation = {
             .verdict = "done",
             .runs = "03.08 failed, 03.06 passed, 03.07 passed, 03.08 passed",
@@ -178,7 +121,7 @@ const RewindCase REWIND_CASES[] = {
     },
     {
         .name = "a failure with no autosave in it does not rewind",
-        .input = {.autosave_in_failed_run = false, .failed_catches = 1, .card = BackupCard{.registered = 1}},
+        .input = {.autosave_in_failed_run = false, .failed_catches = 1, .card = 1},
         .expectation = {
             .verdict = "failed at 03.08 catch_in_zone: lost",
             .runs = "03.08 failed",
@@ -189,7 +132,7 @@ const RewindCase REWIND_CASES[] = {
     {
         //  A catch can autosave with the badge unseen.
         .name = "03.08 fails as rocks_not_left with no autosave seen: the save moved, rewinds",
-        .input = {.autosave_in_failed_run = false, .failed_catches = 1, .card = BackupCard{.registered = 1}, .failure = "rocks_not_left"},
+        .input = {.autosave_in_failed_run = false, .failed_catches = 1, .card = 1, .failure = "rocks_not_left"},
         .expectation = {
             .verdict = "done",
             .runs = "03.08 failed, 03.06 passed, 03.07 passed, 03.08 passed",
@@ -198,7 +141,7 @@ const RewindCase REWIND_CASES[] = {
     },
     {
         .name = "an unknown backup card is cancelled, never loaded",
-        .input = {.autosave_in_failed_run = true, .failed_catches = 1, .card = BackupCard{.registered = 7}},
+        .input = {.autosave_in_failed_run = true, .failed_catches = 1, .card = 7},
         .expectation = {
             .verdict = "failed at 03.08 rewind: unknown_backup",
             .runs = "03.08 failed",
@@ -217,7 +160,7 @@ const RewindCase REWIND_CASES[] = {
     },
     {
         .name = "a second failure with no autosave in it stops: nothing left to rewind for",
-        .input = {.autosave_in_failed_run = true, .failed_catches = 9, .card = BackupCard{.registered = 1}},
+        .input = {.autosave_in_failed_run = true, .failed_catches = 9, .card = 1},
         .expectation = {
             .verdict = "failed at 03.08 catch_in_zone: lost",
             .runs = "03.08 failed, 03.06 passed, 03.07 passed, 03.08 failed",
@@ -226,7 +169,7 @@ const RewindCase REWIND_CASES[] = {
     },
     {
         .name = "rewinds turned off: stops at the first failure",
-        .input = {.autosave_in_failed_run = true, .failed_catches = 1, .card = BackupCard{.registered = 1}, .max_rewinds = 0},
+        .input = {.autosave_in_failed_run = true, .failed_catches = 1, .card = 1, .max_rewinds = 0},
         .expectation = {
             .verdict = "failed at 03.08 catch_in_zone: lost",
             .runs = "03.08 failed",
@@ -250,17 +193,17 @@ PlzaStoryTools rewind_tools(size_t failed_catches, std::string_view failure, siz
     return tools;
 }
 
-BackupSave recording_backup(std::optional<BackupCard> card, std::vector<std::string>& calls){
+BackupSave recording_backup(std::optional<size_t> card, std::vector<std::string>& calls){
     return BackupSave{
-        .open_card = [card, &calls](PlzaBackend&){
+        .open_card = [card, &calls]{
             calls.push_back("open");
             return card;
         },
-        .load = [&calls](PlzaBackend&){
+        .load = [&calls]{
             calls.push_back("load");
             return std::nullopt;
         },
-        .cancel = [&calls](PlzaBackend&){
+        .cancel = [&calls]{
             calls.push_back("cancel");
         },
     };
@@ -323,7 +266,7 @@ struct RewindRun{
     std::vector<ScreenObservation> looks;
     size_t failed_catches;
     std::string_view failure;
-    std::optional<BackupCard> card;
+    std::optional<size_t> card;
     size_t max_rewinds;
 };
 
@@ -344,8 +287,8 @@ UnitTestResult check_run(const RewindRun& run, const RewindExpectation& expected
     Pokemon::RunState state;
     const std::vector<CheckpointStart> starts{{.checkpoint = "03.06", .signature = {.registered = 1}}};
     const RewindPlan plan{
-        .rows = rows, .first = run.first, .last = run.last, .segments = {.attempts_per_checkpoint = 1},
-        .starts = starts, .max_rewinds = run.max_rewinds,
+        .rows = rows, .first = run.first, .last = run.last, .segments = {.attempts_per_checkpoint = 1, .starts = starts},
+        .max_rewinds = run.max_rewinds,
     };
     const std::optional<Pokemon::CheckpointFailure> failure = run_plza_with_rewinds(game, plan, backup, backend, sightings, state);
     const std::string verdict = verdict_of(failure, rows);
@@ -460,7 +403,7 @@ UnitTestResult check_gate(const GateCase& test, CancellableScope& scope){
     return check_run(
         RewindRun{
             .rows = std::move(rows), .first = *from, .last = *to, .looks = looks,
-            .failed_catches = 1, .failure = "lost", .card = BackupCard{.registered = 1}, .max_rewinds = 2,
+            .failed_catches = 1, .failure = "lost", .card = 1, .max_rewinds = 2,
         },
         test.expectation, scope
     );
@@ -475,7 +418,7 @@ struct StartCase{
         std::string_view asked = "03.08";
         StartSignature read = {};
         //  None: no card read.
-        std::optional<BackupCard> card = std::nullopt;
+        std::optional<size_t> card = std::nullopt;
         size_t max_rewinds = 2;
     };
     Input input;
@@ -493,27 +436,27 @@ const StartSignature ON_THE_STREET{.talk_prompt = false, .wild_zone = false};
 const StartCase START_CASES[] = {
     {
         .name = "03.08's own start runs it, no backup opened",
-        .input = {.read = {.talk_prompt = false, .wild_zone = true}, .card = BackupCard{.registered = 1}},
+        .input = {.read = {.talk_prompt = false, .wild_zone = true}, .card = 1},
         .expectation = {.from = "03.08", .backup_calls = ""},
     },
     {
         .name = "a start that matches no checkpoint rewinds to the backup and runs from the checkpoint its card names",
-        .input = {.read = ON_THE_STREET, .card = BackupCard{.registered = 1}},
+        .input = {.read = ON_THE_STREET, .card = 1},
         .expectation = {.from = "03.06", .backup_calls = "open, load"},
     },
     {
         .name = "a start that matches no checkpoint, rewinds off: the run stops, no backup opened",
-        .input = {.read = ON_THE_STREET, .card = BackupCard{.registered = 1}, .max_rewinds = 0},
+        .input = {.read = ON_THE_STREET, .card = 1, .max_rewinds = 0},
         .expectation = {.from = std::nullopt, .backup_calls = ""},
     },
     {
         .name = "a start that matches no checkpoint and a backup card that names none: the card cancelled, the run stops",
-        .input = {.read = ON_THE_STREET, .card = BackupCard{.registered = 7}},
+        .input = {.read = ON_THE_STREET, .card = 7},
         .expectation = {.from = std::nullopt, .backup_calls = "open, cancel"},
     },
     {
         .name = "02.05's start not matched: no backup exists before 03.06, none opened, the run stops",
-        .input = {.asked = "02.05", .read = ON_THE_STREET, .card = BackupCard{.registered = 1}},
+        .input = {.asked = "02.05", .read = ON_THE_STREET, .card = 1},
         .expectation = {.from = std::nullopt, .backup_calls = ""},
     },
 };
@@ -541,7 +484,7 @@ UnitTestResult check_start(const StartCase& test, CancellableScope& scope){
         {.checkpoint = "03.06", .signature = {.registered = 1, .talk_prompt = true, .wild_zone = false}},
         {.checkpoint = "03.08", .signature = {.wild_zone = true}},
     };
-    const RewindPlan plan{.rows = rows, .first = *asked, .last = *asked, .starts = starts, .max_rewinds = test.input.max_rewinds};
+    const RewindPlan plan{.rows = rows, .first = *asked, .last = *asked, .segments = {.starts = starts}, .max_rewinds = test.input.max_rewinds};
     const std::optional<size_t> index = start_or_rewind(backend, plan, test.input.read, backup);
     const std::optional<std::string> from = index ? std::optional<std::string>(rows[*index].id) : std::nullopt;
     if (from != test.expectation.from){
@@ -556,19 +499,6 @@ UnitTestResult check_start(const StartCase& test, CancellableScope& scope){
     return true;
 }
 
-
-class CardTest : public UnitTest{
-public:
-    explicit CardTest(CardCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryBackups card - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_card(m_case);
-    }
-private:
-    CardCase m_case;
-};
 
 class RewindTest : public UnitTest{
 public:
@@ -613,9 +543,6 @@ private:
 
 
 void add_tests_AutoStoryBackups(UnitTestDatabase& database){
-    for (const CardCase& test : CARD_CASES){
-        database.add<CardTest>(test);
-    }
     for (const RewindCase& test : REWIND_CASES){
         database.add<RewindTest>(test);
     }

@@ -31,23 +31,15 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  What the backup card says about its save.
-struct BackupCard{
-    //  "Registered in the Pokedex".
-    size_t registered = 0;
-
-    bool operator==(const BackupCard&) const = default;
-};
-
-
 //  The console's backup save, as a run rewinds to it.
 struct BackupSave{
-    //  Relaunches the game and opens the card at the title; none when no card is read.
-    std::function<std::optional<BackupCard>(PlzaBackend&)> open_card;
+    //  Relaunches the game and opens the card at the title: its "Registered
+    //  in the Pokedex", none when no card is read.
+    std::function<std::optional<size_t>()> open_card;
     //  Fails as "backup_load_failed".
-    std::function<std::optional<Pokemon::StoryFailure>(PlzaBackend&)> load;
+    std::function<std::optional<Pokemon::StoryFailure>()> load;
     //  On the card: B, back to the title, nothing loaded.
-    std::function<void(PlzaBackend&)> cancel;
+    std::function<void()> cancel;
 };
 
 //  A run of `rows[first..last]` that may rewind up to `max_rewinds` times.
@@ -55,8 +47,8 @@ struct RewindPlan{
     std::span<Pokemon::StoryCheckpoint> rows;
     size_t first = 0;
     size_t last = 0;
+    //  Its `starts` name the checkpoints a backup card can rewind to.
     SegmentRunOptions segments = {};
-    std::span<const CheckpointStart> starts = {};
     size_t max_rewinds = 0;
 };
 

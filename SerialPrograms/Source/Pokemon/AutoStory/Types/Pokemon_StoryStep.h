@@ -2,7 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  One step of a game's story, ready to run.
+ *  One step of a checkpoint: an action of the game's, named by the plan,
+ *  with its args bound, ready to run. A checkpoint (StoryCheckpoint) is the
+ *  steps between two saves; the engine runs them in order, and the first
+ *  step that fails fails the checkpoint.
  *
  */
 

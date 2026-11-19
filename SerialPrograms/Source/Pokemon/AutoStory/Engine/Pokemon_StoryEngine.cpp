@@ -20,17 +20,6 @@ namespace Pokemon{
 namespace{
 
 
-//  "[Event] 00.04/2 to_lab: start": step `number` (from 1) of `checkpoint`,
-//  named `event`, and its status.
-std::string event_log_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status){
-    return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
-}
-
-//  "[Checkpoint] 00.04: done, 3 run".
-std::string checkpoint_log_line(std::string_view checkpoint, std::string_view text){
-    return std::format("[Checkpoint] {}: {}", checkpoint, text);
-}
-
 //  The text of the exception being handled.
 std::string current_exception_text(){
     try{
@@ -49,7 +38,7 @@ std::string current_exception_text(){
 std::optional<StoryFailure> run_step(
     std::string_view checkpoint_id, size_t number, StoryBackend& backend, StoryStep& step, RunState& state
 ){
-    backend.log(event_log_line(checkpoint_id, number, step.name, "start"));
+    backend.log(event_line(checkpoint_id, number, step.name, "start"));
     state.step = std::format("{}/{}", checkpoint_id, step.name);
     std::optional<StoryFailure> failure;
     try{
@@ -57,11 +46,11 @@ std::optional<StoryFailure> run_step(
         failure = step.run(backend, state);
     }catch (...){
         const std::string what = current_exception_text();
-        backend.log(event_log_line(checkpoint_id, number, step.name, std::format("failed: {}", what)));
-        backend.log(checkpoint_log_line(checkpoint_id, std::format("failed at {} {}: {}", number, step.name, what)));
+        backend.log(event_line(checkpoint_id, number, step.name, std::format("failed: {}", what)));
+        backend.log(checkpoint_failed_line(checkpoint_id, number, step.name, what));
         throw;
     }
-    backend.log(event_log_line(
+    backend.log(event_line(
         checkpoint_id, number, step.name, failure ? std::format("failed: {}", *failure) : "done"
     ));
     return failure;
@@ -77,14 +66,14 @@ std::optional<CheckpointFailure> run_once(
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
         std::optional<StoryFailure> failure = run_step(id, c + 1, backend, checkpoint.steps[c], state);
         if (failure){
-            backend.log(checkpoint_log_line(id, std::format("failed at {} {}: {}", c + 1, checkpoint.steps[c].name, *failure)));
+            backend.log(checkpoint_failed_line(id, c + 1, checkpoint.steps[c].name, std::format("{}", *failure)));
             return CheckpointFailure{.checkpoint_id = id, .event_index = c, .failure = std::move(*failure)};
         }
     }
-    backend.log(checkpoint_log_line(id, std::format("done, {} run", checkpoint.steps.size())));
+    backend.log(checkpoint_done_line(id, checkpoint.steps.size()));
     if (game.save){
         if (const std::optional<StoryFailure> failure = game.save(backend, checkpoint)){
-            backend.log(std::format("[Save] {}: save failed: {}", id, *failure));
+            backend.log(save_failed_line(id, std::format("{}", *failure)));
         }
     }
     return std::nullopt;
@@ -132,7 +121,7 @@ std::optional<CheckpointFailure> run_checkpoints(
         backend.log(checkpoint_reset_line(checkpoint.id, failed + 1, game.attempts_per_checkpoint));
         const std::optional<size_t> start = reload(backend, checkpoints, index, game, state);
         if (!start){
-            backend.log(checkpoint_log_line(checkpoint.id, "reloaded to no start of this run"));
+            backend.log(checkpoint_no_start_line(checkpoint.id));
             return CheckpointFailure{
                 .checkpoint_id = checkpoint.id,
                 .failure = {.code = "start_unknown", .detail = "the reload is at no start of this run"},

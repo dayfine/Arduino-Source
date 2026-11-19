@@ -2,9 +2,11 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The checkpoint log lines every game's AutoStory writes.
+ *  The log lines every game's AutoStory and the story engine write.
  *
  */
+
+// code-health: allow header_symbols -- every story log line format in one place, as review asked; each symbol is one line format
 
 #ifndef PokemonAutomation_Pokemon_StoryLog_H
 #define PokemonAutomation_Pokemon_StoryLog_H
@@ -68,6 +70,25 @@ std::string checkpoint_reset_line(
     std::optional<size_t> attempts = std::nullopt,
     CheckpointPrefix prefix_kind = CheckpointPrefix::ADD
 );
+
+//  The story engine's lines; `number` counts a checkpoint's steps from 1.
+//  A step starts or ends, with its status:
+//      [Event] 00.04/2 to_lab: start
+//      [Event] 00.04/2 to_lab: failed: no_fade: no white fade in 3 slices
+std::string event_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status);
+//  A checkpoint's step `number`, named `event`, failed for `reason`:
+//      [Checkpoint] 00.04: failed at 2 to_lab: no_fade: no white fade in 3 slices
+std::string checkpoint_failed_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view reason);
+//  Every one of a checkpoint's `events` steps passed:
+//      [Checkpoint] 00.04: done, 3 run
+std::string checkpoint_done_line(std::string_view checkpoint, size_t events);
+//  A reload after the checkpoint failed came back at no checkpoint start of
+//  the run:
+//      [Checkpoint] 00.04: reloaded to no start of this run
+std::string checkpoint_no_start_line(std::string_view checkpoint);
+//  The save after a passed checkpoint failed for `reason`:
+//      [Save] 00.04: save failed: save_error: the disk is full
+std::string save_failed_line(std::string_view checkpoint, std::string_view reason);
 
 //  `line` without its leading "[Tag] ", for the video overlay; a line with
 //  no tag is returned unchanged.
