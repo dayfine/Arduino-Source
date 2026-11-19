@@ -37,9 +37,9 @@ namespace PokemonAutomation{
 namespace{
 
 constexpr std::chrono::seconds READINESS_TIMEOUT{10};
-constexpr std::chrono::seconds STOP_TIMEOUT{5};
 
 #if !defined(_WIN32)
+constexpr std::chrono::seconds STOP_TIMEOUT{5};
 struct SignalState{
     std::atomic<int> write_fd{-1};
     std::atomic<int> last_signal{0};
