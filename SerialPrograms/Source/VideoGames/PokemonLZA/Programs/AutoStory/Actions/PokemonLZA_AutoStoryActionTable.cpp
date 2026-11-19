@@ -377,6 +377,7 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         })},
         {action_name(PlzaAction::STORY_BATTLE), no_args([&hooks](PlzaBackend& backend, RunState&){ return battle_step(hooks, backend); })},
         {action_name(PlzaAction::SAVE_FROM_MENU), no_args([&hooks](PlzaBackend& backend, RunState&){ return menu_save_step(hooks, backend); })},
+        {action_name(PlzaAction::SET_TEXT_SPEED_FAST), no_args([](PlzaBackend& backend, RunState&){ return set_text_speed_fast(backend); })},
     };
     for (auto& [name, parser] : table){
         actions.emplace(name, std::move(parser));

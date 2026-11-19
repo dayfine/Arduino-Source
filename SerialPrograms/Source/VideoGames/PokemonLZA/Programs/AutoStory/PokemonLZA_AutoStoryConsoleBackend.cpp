@@ -41,9 +41,9 @@ void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds re
     pbf_press_button(m_env.context, button, hold, release);
 }
 
-//  Console B 2026-11-19: Lumiose street to Wild Zone 1's gate, 19.4 s at walk
-//  pace, 8.6 s with B held, both ways.
-constexpr double RUN_SPEEDUP = 2.25;
+//  Console B 2026-11-19, measured on the full map at 03.04's start: walking
+//  covers 16.6 px/s and running 27.0 px/s, linear from 0.4 s to 4 s.
+constexpr double RUN_SPEEDUP = 1.65;
 
 void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace){
     const double radians = degrees * std::numbers::pi / 180.0;

@@ -30,6 +30,7 @@ std::string_view action_name(PlzaAction action){
         {PlzaAction::STORY_BATTLE_START, "story_battle_start"},
         {PlzaAction::STORY_BATTLE, "story_battle"},
         {PlzaAction::SAVE_FROM_MENU, "save_from_menu"},
+        {PlzaAction::SET_TEXT_SPEED_FAST, "set_text_speed_fast"},
         {PlzaAction::NEW_GAME_INTRO, "new_game_intro"},
         {PlzaAction::CONFIRM_NEW_GAME, "confirm_new_game"},
         {PlzaAction::RUN_TO_GATE, "run_to_gate"},
