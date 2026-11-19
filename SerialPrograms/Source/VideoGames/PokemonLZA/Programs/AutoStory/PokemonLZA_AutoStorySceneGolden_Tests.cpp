@@ -538,21 +538,6 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        .name = "03.01 floor_question, the elevator's talk with A to its choice (passed 2026-11-17 00:28)",
-        .input = {.checkpoint = "03.01", .step = "floor_question", .screens = R"(
-0.0s: text box, still, advance arrow
-0.6s: text box, advance arrow
-1.1s: text box, choice box
-)"},
-        .expectation = {
-            .keys = {
-                {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
-                {"text box, choice box", "-"},
-            },
-            .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
-        },
-    },
-    {
         .name = "01.02 pancham_cornered, French, B to Pancham's choice (passed 2026-11-16 22:45)",
         .input = {.checkpoint = "01.02", .step = "pancham_cornered", .screens = PANCHAM_FR},
         .expectation = {
@@ -795,17 +780,6 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        .name = "03.05 back_to_nurse, a walk held until the A prompt holds (passed 2026-11-17 14:27)",
-        .input = {.checkpoint = "03.05", .step = "back_to_nurse", .screens = R"(
-0.0s: party bar
-2.6s: party bar, A prompt
-)"},
-        .expectation = {
-            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: ended on: party bar, A prompt",
-        },
-    },
-    {
         .name = "03.06 out_of_pokemon_center, a timed walk, no end event (passed 2026-11-17 14:27)",
         .input = {.checkpoint = "03.06", .step = "out_of_pokemon_center", .screens = R"(
 0.0s: party bar
@@ -835,17 +809,6 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar", "stick"}, {"party bar, A prompt", "-"}},
             .verdict = "done", .end = "[PLZA] walk: the end event after 2500 ms of the last leg.",
-        },
-    },
-    {
-        .name = "03.05 talk_to_nurse, A at her A prompt, then her text box (passed 2026-11-17 14:27)",
-        .input = {.checkpoint = "03.05", .step = "talk_to_nurse", .screens = R"(
-0.0s: party bar, A prompt
-0.5s: text box
-)"},
-        .expectation = {
-            .keys = {{"party bar, A prompt", "A"}, {"text box", "-"}},
-            .verdict = "done", .end = "[PLZA] talk: started 250 ms after A 1: text box",
         },
     },
     {

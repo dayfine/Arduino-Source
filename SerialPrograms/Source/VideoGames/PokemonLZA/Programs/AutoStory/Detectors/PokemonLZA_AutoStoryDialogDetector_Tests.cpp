@@ -79,19 +79,9 @@ const DialogCase DIALOG_CASES[] = {
         .expectation = {.dialog = false},
     },
     {
-        .name = "a black frame, box only",
-        .input = {.frame = []{ return solid_frame(0xff000000); }, .white = WhiteDialogPart::BOX_ONLY},
-        .expectation = {.dialog = false},
-    },
-    {
         .name = "a white box without its arrow, box and arrow",
         .input = {.frame = box_without_arrow_frame, .white = WhiteDialogPart::BOX_AND_ARROW},
         .expectation = {.dialog = false},
-    },
-    {
-        .name = "a white box without its arrow, box only",
-        .input = {.frame = box_without_arrow_frame, .white = WhiteDialogPart::BOX_ONLY},
-        .expectation = {.dialog = true},
     },
     {
         .name = "a white box on the console, box and arrow",

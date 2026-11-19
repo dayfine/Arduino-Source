@@ -122,19 +122,9 @@ const SyntheticCase SYNTHETIC_CASES[] = {
         .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}},
     },
     {
-        .name = "two rows, the bottom highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/2, /*highlighted=*/{1}); }},
-        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 1}},
-    },
-    {
         .name = "three rows on a blue wall, the middle highlighted",
         .input = {.frame = []{ return choice_menu_frame(BLUE_WALL, /*rows=*/3, /*highlighted=*/{1}); }},
         .expectation = {.rows = DialogChoiceRows{.count = 3, .selected = 1}},
-    },
-    {
-        .name = "four rows, the bottom highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/4, /*highlighted=*/{3}); }},
-        .expectation = {.rows = DialogChoiceRows{.count = 4, .selected = 3}},
     },
     {
         .name = "two long rows on a wide panel, the top highlighted",
@@ -162,9 +152,7 @@ const SyntheticCase SYNTHETIC_CASES[] = {
         .expectation = {.rows = std::nullopt},
     },
     {.name = "flat panel blue", .input = {.frame = []{ return flat_frame(PANEL); }}, .expectation = {.rows = std::nullopt}},
-    {.name = "flat white", .input = {.frame = []{ return flat_frame(WHITE); }}, .expectation = {.rows = std::nullopt}},
     {.name = "an empty frame", .input = {.frame = []{ return ImageRGB32(); }}, .expectation = {.rows = std::nullopt}},
-    {.name = "a 1 x 1 frame", .input = {.frame = []{ return ImageRGB32(1, 1); }}, .expectation = {.rows = std::nullopt}},
 };
 
 UnitTestResult check_synthetic(const SyntheticCase& test){

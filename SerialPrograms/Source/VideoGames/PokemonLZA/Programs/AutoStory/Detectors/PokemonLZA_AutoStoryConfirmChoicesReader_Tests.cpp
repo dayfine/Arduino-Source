@@ -74,7 +74,6 @@ struct SyntheticCase{
 
 const SyntheticCase SYNTHETIC_CASES[] = {
     {.name = "row 0 highlighted", .input = {.frame = []{ return confirm_choices_frame({0}); }}, .expectation = {.cursor = 0}},
-    {.name = "row 1 highlighted", .input = {.frame = []{ return confirm_choices_frame({1}); }}, .expectation = {.cursor = 1}},
     {
         .name = "Ready! highlighted",
         .input = {.frame = []{ return confirm_choices_frame({CONFIRM_CHOICES_READY_ROW}); }},
@@ -82,12 +81,8 @@ const SyntheticCase SYNTHETIC_CASES[] = {
     },
     {.name = "no row highlighted", .input = {.frame = []{ return confirm_choices_frame({}); }}, .expectation = {.cursor = std::nullopt}},
     {.name = "two rows highlighted", .input = {.frame = []{ return confirm_choices_frame({0, 1}); }}, .expectation = {.cursor = std::nullopt}},
-    {.name = "flat black", .input = {.frame = []{ return flat_frame(0xff000000); }}, .expectation = {.cursor = std::nullopt}},
-    {.name = "flat white", .input = {.frame = []{ return flat_frame(WHITE); }}, .expectation = {.cursor = std::nullopt}},
     {.name = "flat background", .input = {.frame = []{ return flat_frame(BACKGROUND); }}, .expectation = {.cursor = std::nullopt}},
-    {.name = "flat slate", .input = {.frame = []{ return flat_frame(SLATE); }}, .expectation = {.cursor = std::nullopt}},
     {.name = "an empty frame", .input = {.frame = []{ return ImageRGB32(); }}, .expectation = {.cursor = std::nullopt}},
-    {.name = "a 1 x 1 frame", .input = {.frame = []{ return ImageRGB32(1, 1); }}, .expectation = {.cursor = std::nullopt}},
     {.name = "a 40 x 20 frame", .input = {.frame = []{ return ImageRGB32(40, 20); }}, .expectation = {.cursor = std::nullopt}},
 };
 

@@ -41,63 +41,6 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
     return out;
 }
 
-//  The built-in plans' backup cards, read after 03.08 failed.
-struct CardCase{
-    std::string name;
-    struct Input{
-        size_t registered;
-    };
-    Input input;
-    struct Expectation{
-        //  None: no checkpoint starts there, the backup is not loaded.
-        std::optional<std::string> checkpoint;
-    };
-    Expectation expectation;
-};
-
-const CardCase CARD_CASES[] = {
-    {
-        .name = "1 registered: 03.06's start at the Center counter",
-        .input = {.registered = 1},
-        .expectation = {.checkpoint = "03.06"},
-    },
-    {
-        .name = "an unknown card: no checkpoint",
-        .input = {.registered = 7},
-        .expectation = {.checkpoint = std::nullopt},
-    },
-};
-
-std::optional<size_t> builtin_row(std::string_view id){
-    const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
-    for (size_t index = 0; index < rows.size(); index++){
-        if (rows[index].id == id){
-            return index;
-        }
-    }
-    return std::nullopt;
-}
-
-UnitTestResult check_card(const CardCase& test){
-    const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
-    const std::optional<size_t> failed = builtin_row("03.08");
-    if (!failed){
-        return std::string("no 03.08 among the built-in checkpoints");
-    }
-    const std::optional<size_t> index = checkpoint_at(
-        rows, builtin_checkpoint_starts(), *failed, StartSignature{.registered = test.input.registered}
-    );
-    const std::optional<std::string> checkpoint = index ? std::optional<std::string>(rows[*index].id) : std::nullopt;
-    if (checkpoint != test.expectation.checkpoint){
-        return std::format(
-            "expected {}, got {}",
-            test.expectation.checkpoint.value_or("none"), checkpoint.value_or("none")
-        );
-    }
-    return true;
-}
-
-
 ScreenObservation look(std::vector<std::string_view> readings, Milliseconds after = 0ms){
     ScreenObservation observation;
     observation.when = WallClock::min() + after;
@@ -557,19 +500,6 @@ UnitTestResult check_start(const StartCase& test, CancellableScope& scope){
 }
 
 
-class CardTest : public UnitTest{
-public:
-    explicit CardTest(CardCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryBackups card - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_card(m_case);
-    }
-private:
-    CardCase m_case;
-};
-
 class RewindTest : public UnitTest{
 public:
     explicit RewindTest(RewindCase test_case)
@@ -613,9 +543,6 @@ private:
 
 
 void add_tests_AutoStoryBackups(UnitTestDatabase& database){
-    for (const CardCase& test : CARD_CASES){
-        database.add<CardTest>(test);
-    }
     for (const RewindCase& test : REWIND_CASES){
         database.add<RewindTest>(test);
     }

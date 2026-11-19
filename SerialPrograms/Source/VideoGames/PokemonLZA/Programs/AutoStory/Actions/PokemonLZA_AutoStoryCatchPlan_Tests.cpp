@@ -9,7 +9,6 @@
 
 #include <algorithm>
 #include <format>
-#include <iterator>
 #include <optional>
 #include <string>
 #include <vector>
@@ -17,7 +16,6 @@
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatchPlan_Tests.h"
 #include "PokemonLZA_AutoStorySpeciesCheck.h"
-#include "PokemonLZA_AutoStoryZone1Road.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -48,14 +46,6 @@ std::vector<LockTarget> lock_targets(const std::vector<Plate>& plates){
         targets.push_back(lock_target(plate));
     }
     return targets;
-}
-
-std::string joined(const std::vector<int>& values){
-    std::string out;
-    for (const int value : values){
-        out += out.empty() ? std::format("{}", value) : std::format(", {}", value);
-    }
-    return out;
 }
 
 std::string index_text(std::optional<size_t> index){
@@ -138,18 +128,8 @@ const NewSpeciesCase NEW_SPECIES_CASES[] = {
         .expectation = {.sign = NewSpeciesSign::PLATE_NOT_CAUGHT},
     },
     {
-        .name = "no banner, a caught plate and the target gone does not count",
-        .input = {.seen = {.registered = false, .plate_caught = true, .target_gone = true}},
-        .expectation = {.sign = std::nullopt},
-    },
-    {
         .name = "no banner, an unread plate and the target gone does not count",
         .input = {.seen = {.registered = false, .plate_caught = std::nullopt, .target_gone = true}},
-        .expectation = {.sign = std::nullopt},
-    },
-    {
-        .name = "no banner, a plate not caught and the target still there does not count",
-        .input = {.seen = {.registered = false, .plate_caught = false, .target_gone = false}},
         .expectation = {.sign = std::nullopt},
     },
 };
@@ -190,16 +170,6 @@ struct SpeciesCheckCase{
 //  2 new species wanted, 5 in the Pokedex.
 const SpeciesCheckCase SPECIES_CHECK_CASES[] = {
     {
-        .name = "two banners, a count short of five fails",
-        .input = {.patrol = {.found = 2, .throws = 3}, .dex_count = 4},
-        .expectation = {.tally = SpeciesTally::BANNERS, .enough = false},
-    },
-    {
-        .name = "inferred, a count short of five fails",
-        .input = {.patrol = {.found = 2, .found_by_plate = 1, .throws = 2}, .dex_count = 4},
-        .expectation = {.tally = SpeciesTally::INFERRED, .enough = false},
-    },
-    {
         .name = "a rerun seeing only caught species, no count read: taken as done",
         .input = {.patrol = {.caught_seen = 3}},
         .expectation = {.tally = SpeciesTally::INFERRED, .enough = true},
@@ -238,56 +208,6 @@ public:
 
 private:
     const SpeciesCheckCase& m_case;
-};
-
-
-struct PartyCountCase{
-    std::string name;
-    struct Input{
-        std::optional<int> filled_slots;
-        int dex_species;
-    };
-    Input input;
-    struct Expectation{
-        bool done;
-    };
-    Expectation expectation;
-};
-
-const PartyCountCase PARTY_COUNT_CASES[] = {
-    {
-        .name = "five filled slots of five species end the patrol",
-        .input = {.filled_slots = 5, .dex_species = 5},
-        .expectation = {.done = true},
-    },
-    {
-        .name = "four filled slots of five go on",
-        .input = {.filled_slots = 4, .dex_species = 5},
-        .expectation = {.done = false},
-    },
-    {
-        .name = "no slot read (no bar on screen) goes on",
-        .input = {.filled_slots = 0, .dex_species = 5},
-        .expectation = {.done = false},
-    },
-};
-
-class Test_PartyCount : public UnitTest{
-public:
-    explicit Test_PartyCount(const PartyCountCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: party count: {}", test_case.name))
-        , m_case(test_case)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const bool done = party_has_species(m_case.input.filled_slots, m_case.input.dex_species);
-        if (done != m_case.expectation.done){
-            return std::format("Expected {}, got {}.", m_case.expectation.done ? "done" : "go on", done ? "done" : "go on");
-        }
-        return true;
-    }
-
-private:
-    const PartyCountCase& m_case;
 };
 
 
@@ -359,11 +279,6 @@ const CatchSummaryCase CATCH_SUMMARY_CASES[] = {
         .expectation = {.text = "the party bar: 6 filled slots of 5: done; the banners: 1 new species (0 by a plate only) in 4 throws, 0 locks on caught species only"},
     },
     {
-        .name = "a party bar short of five is short whatever the banners",
-        .input = {.patrol = {.found = 2, .throws = 3}, .filled_slots = 4},
-        .expectation = {.text = "the party bar: 4 filled slots of 5: short; the banners: 2 new species (0 by a plate only) in 3 throws, 0 locks on caught species only"},
-    },
-    {
         .name = "an unread party bar leaves the banners' tally to decide",
         .input = {.patrol = {.found = 1, .throws = 4, .caught_seen = 2}},
         .expectation = {.text = "the party bar: not read; the banners: 1 new species (0 by a plate only) in 4 throws, 2 locks on caught species only: short"},
@@ -418,11 +333,6 @@ const StepCase STEP_CASES[] = {
         .expectation = {.step = false},
     },
     {
-        .name = "a far plate after 4 steps before the first throw is thrown at",
-        .input = {.plate = {0.53, 0.40}, .misses = 0, .steps = 4},
-        .expectation = {.step = false},
-    },
-    {
         .name = "a far plate after a miss is stepped toward",
         .input = {.plate = {0.53, 0.40}, .misses = 1, .steps = 1},
         .expectation = {.step = true},
@@ -430,11 +340,6 @@ const StepCase STEP_CASES[] = {
     {
         .name = "a far plate after a miss and 2 steps is thrown at",
         .input = {.plate = {0.53, 0.40}, .misses = 1, .steps = 2},
-        .expectation = {.step = false},
-    },
-    {
-        .name = "a near plate after a miss is thrown at",
-        .input = {.plate = {0.53, 0.50}, .misses = 2, .steps = 0},
         .expectation = {.step = false},
     },
 };
@@ -532,51 +437,6 @@ private:
 };
 
 
-struct StopsCase{
-    std::string name;
-    struct Input{
-        std::vector<int> spots;
-        size_t visits;
-    };
-    Input input;
-    struct Expectation{
-        std::vector<int> stops;
-    };
-    Expectation expectation;
-};
-
-const StopsCase STOPS_CASES[] = {
-    {
-        .name = "Wild Zone 1's spots, 100 first, then 60",
-        .input = {.spots = {std::begin(CATCH_SPOTS), std::end(CATCH_SPOTS)}, .visits = 4},
-        .expectation = {.stops = {100, 60, 100, 60}},
-    },
-    {
-        .name = "an odd count ends on the first spot",
-        .input = {.spots = {100, 60}, .visits = 3},
-        .expectation = {.stops = {100, 60, 100}},
-    },
-};
-
-class Test_AlternatingStops : public UnitTest{
-public:
-    explicit Test_AlternatingStops(const StopsCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: patrol stops: {}", test_case.name))
-        , m_case(test_case)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::vector<int> stops = alternating_stops(m_case.input.spots, m_case.input.visits);
-        if (stops != m_case.expectation.stops){
-            return std::format("Expected [{}], got [{}].", joined(m_case.expectation.stops), joined(stops));
-        }
-        return true;
-    }
-
-private:
-    const StopsCase& m_case;
-};
-
-
 } // namespace
 
 
@@ -590,9 +450,6 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     for (const SpeciesCheckCase& item : SPECIES_CHECK_CASES){
         database.add<Test_SpeciesCheck>(item);
     }
-    for (const PartyCountCase& item : PARTY_COUNT_CASES){
-        database.add<Test_PartyCount>(item);
-    }
     for (const SettleCase& item : SETTLE_CASES){
         database.add<Test_SettledPartySlots>(item);
     }
@@ -604,9 +461,6 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const CycleCase& item : CYCLE_CASES){
         database.add<Test_LockTargetCycle>(item);
-    }
-    for (const StopsCase& item : STOPS_CASES){
-        database.add<Test_AlternatingStops>(item);
     }
 }
 

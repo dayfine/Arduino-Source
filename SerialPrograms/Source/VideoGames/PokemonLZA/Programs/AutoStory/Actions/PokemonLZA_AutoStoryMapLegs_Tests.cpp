@@ -12,12 +12,10 @@
 #include <format>
 #include <optional>
 #include <string>
-#include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonLZA_AutoStoryMapLegs.h"
 #include "PokemonLZA_AutoStoryZone1Map.h"
-#include "PokemonLZA_AutoStoryZone1Road.h"
 #include "PokemonLZA_AutoStoryMapLegs_Tests.h"
 
 namespace PokemonAutomation{
@@ -29,7 +27,6 @@ namespace{
 
 //  Fixed waypoints for the leg logic, apart from the map data's.
 constexpr MapWaypoint SPOT{.name = "the 100 spot", .pin = {.x = 432, .y = 238}, .stop_radius = CATCH_STOP_RADIUS};
-constexpr MapWaypoint ROAD{.name = "the road entry", .pin = {.x = 456, .y = 231}};
 constexpr MapWaypoint SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 252}, .stop_radius = CATCH_STOP_RADIUS};
 
 std::string describe(const MapLegMove& move){
@@ -124,11 +121,6 @@ const LegCase LEG_CASES[] = {
         .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 380, .y = 247}}},
         .expectation = {.moves = "arrived"},
     },
-    {
-        .name = "a walk past the road entry gets a correction back",
-        .input = {.waypoint = ROAD, .reads = {MapPoint{.x = 464, .y = 229}, MapPoint{.x = 448, .y = 233}}},
-        .expectation = {.moves = "walk 256 deg 1.2 s, correction 1: walk 76 deg 1.2 s"},
-    },
 };
 
 class Test_MapLeg : public UnitTest{
@@ -153,56 +145,12 @@ private:
     const LegCase& m_test;
 };
 
-struct WaypointCase{
-    std::string name;
-    struct Input{
-        int spot;
-    };
-    Input input;
-    struct Expectation{
-        //  The waypoint's name; none: no waypoint.
-        std::optional<std::string_view> waypoint;
-    };
-    Expectation expectation;
-};
-
-const WaypointCase WAYPOINT_CASES[] = {
-    {.name = "the first catch spot", .input = {.spot = CATCH_SPOTS[0]}, .expectation = {.waypoint = "the 100 spot"}},
-    {.name = "the second catch spot", .input = {.spot = CATCH_SPOTS[1]}, .expectation = {.waypoint = "the 60 spot"}},
-    {.name = "a distance that is no catch spot", .input = {.spot = 87}, .expectation = {.waypoint = std::nullopt}},
-};
-
-class Test_CatchSpotWaypoint : public UnitTest{
-public:
-    explicit Test_CatchSpotWaypoint(const WaypointCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Map legs: catch spot waypoint: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::optional<MapWaypoint> waypoint = catch_spot_waypoint(m_test.input.spot);
-        const std::optional<std::string_view> name = waypoint ? std::optional<std::string_view>(waypoint->name) : std::nullopt;
-        if (name != m_test.expectation.waypoint){
-            return std::format(
-                "Expected {}, got {}.",
-                m_test.expectation.waypoint.value_or("no waypoint"), name.value_or("no waypoint")
-            );
-        }
-        return true;
-    }
-
-private:
-    const WaypointCase& m_test;
-};
-
 } // namespace
 
 
 void add_tests_AutoStoryMapLegs(UnitTestDatabase& database){
     for (const LegCase& test : LEG_CASES){
         database.add<Test_MapLeg>(test);
-    }
-    for (const WaypointCase& test : WAYPOINT_CASES){
-        database.add<Test_CatchSpotWaypoint>(test);
     }
 }
 

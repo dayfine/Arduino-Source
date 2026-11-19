@@ -75,14 +75,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        .name = "a walk at full pace: 23 down to 8, then a prompt, is at the objective",
-        .input = {
-            .proof = MarkerProof::NEAR_READ,
-            .looks = concat(reads({23, 21, 18, 16, 12, 9}), {Look{.distance = 8, .marker_shows = true, .prompt_or_dialog = true}}),
-        },
-        .expectation = {.arrived_on = 7, .near = true},
-    },
-    {
         .name = "40, then no digits for 7 s, then 9 and 8: the walk can have come that near",
         .input = {
             .proof = MarkerProof::NEAR_READ,

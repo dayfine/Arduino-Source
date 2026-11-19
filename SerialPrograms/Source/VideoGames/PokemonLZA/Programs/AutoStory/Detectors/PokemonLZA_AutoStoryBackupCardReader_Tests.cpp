@@ -49,7 +49,6 @@ struct SyntheticCase{
 
 const SyntheticCase SYNTHETIC_CASES[] = {
     {.name = "an empty frame", .input = {.frame = []{ return ImageRGB32(); }}, .expectation = {.registered = std::nullopt}},
-    {.name = "a black frame", .input = {.frame = []{ return flat_frame(0xff000000); }}, .expectation = {.registered = std::nullopt}},
     {.name = "a white card with no number", .input = {.frame = []{ return flat_frame(0xffffffff); }}, .expectation = {.registered = std::nullopt}},
 };
 

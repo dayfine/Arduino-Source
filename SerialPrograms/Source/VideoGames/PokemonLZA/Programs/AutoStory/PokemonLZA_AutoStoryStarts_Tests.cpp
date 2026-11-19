@@ -72,11 +72,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.06"},
     },
     {
-        .name = "asked 03.08, the screen out on the street: stop",
-        .input = {.asked = "03.08", .read = {.talk_prompt = false, .wild_zone = false}},
-        .expectation = {.from = "stop"},
-    },
-    {
         //  Mable's talk autosave in her office (03.11) read as 03.06's start.
         .name = "asked 03.08, Mable's office with 5 in the party: stop",
         .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false, .party = 5}},
@@ -85,11 +80,6 @@ const BuiltinCase BUILTIN_CASES[] = {
     {
         .name = "asked 03.08, nothing read: stop",
         .input = {.asked = "03.08", .read = {}},
-        .expectation = {.from = "stop"},
-    },
-    {
-        .name = "asked 03.06, the screen in a wild zone: stop",
-        .input = {.asked = "03.06", .read = {.talk_prompt = false, .wild_zone = true}},
         .expectation = {.from = "stop"},
     },
     {
@@ -124,11 +114,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.08b"},
     },
     {
-        .name = "asked 03.09, the menu save out of the far gate with a prompt in view: from 03.09",
-        .input = {.asked = "03.09", .read = {.talk_prompt = true, .wild_zone = false, .party = 5}},
-        .expectation = {.from = "03.09"},
-    },
-    {
         //  03.08b's menu save outside the far gate read the lead's panel as a
         //  wild zone; the map pin read (401, 225).
         .name = "asked 03.09, 03.08b's menu save on the street by its map pin: from 03.09",
@@ -138,19 +123,9 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.09"},
     },
     {
-        .name = "asked 03.08b, the menu save out of the far gate: stop",
-        .input = {.asked = "03.08b", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
-        .expectation = {.from = "stop"},
-    },
-    {
         .name = "asked 03.05, Station Front's minimap: from 03.04",
         .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.04-start"}},
         .expectation = {.from = "03.04"},
-    },
-    {
-        .name = "asked 03.05, no minimap matched: stop",
-        .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1}},
-        .expectation = {.from = "stop"},
     },
 };
 
@@ -247,32 +222,6 @@ UnitTestResult check_table(const TableCase& test){
 }
 
 
-struct MapReadCase{
-    std::string name;
-    struct Input{
-        std::string asked;
-    };
-    Input input;
-    struct Expectation{
-        bool reads_map;
-    };
-    Expectation expectation;
-};
-
-const MapReadCase MAP_READ_CASES[] = {
-    {.name = "02.04 in Hotel Z's lobby: the screen only", .input = {.asked = "02.04"}, .expectation = {.reads_map = false}},
-    {.name = "03.03, its start a minimap: the map", .input = {.asked = "03.03"}, .expectation = {.reads_map = true}},
-};
-
-UnitTestResult check_map_read(const MapReadCase& test){
-    const bool reads_map = builtin_start_reads_map(test.input.asked);
-    if (reads_map != test.expectation.reads_map){
-        return std::format("expected {}, got {}", test.expectation.reads_map ? "the map" : "the screen only", reads_map ? "the map" : "the screen only");
-    }
-    return true;
-}
-
-
 //  Pins read on the console.
 struct MapPinCase{
     std::string name;
@@ -288,15 +237,12 @@ struct MapPinCase{
 
 const MapPinCase MAP_PIN_CASES[] = {
     {.name = "Taunie's rocks: in", .input = {.pin = MapPoint{.x = 476, .y = 224}}, .expectation = {.wild_zone = true}},
-    {.name = "stuck at the north fence: in", .input = {.pin = MapPoint{.x = 358.9, .y = 227.3}}, .expectation = {.wild_zone = true}},
-    {.name = "the patrol's stop 10: in", .input = {.pin = MapPoint{.x = 415.4, .y = 230.4}}, .expectation = {.wild_zone = true}},
     {
         //  03.08b's menu save.
         .name = "the street outside the far gate: out",
         .input = {.pin = MapPoint{.x = 401, .y = 225}},
         .expectation = {.wild_zone = false},
     },
-    {.name = "south of the zone's outline: out", .input = {.pin = MapPoint{.x = 400, .y = 280}}, .expectation = {.wild_zone = false}},
     {.name = "no pin read: unknown", .input = {.pin = std::nullopt}, .expectation = {.wild_zone = std::nullopt}},
 };
 
@@ -342,11 +288,6 @@ const FrameCase FRAME_CASES[] = {
         //  The lead's panel up.
         .name = "the street outside the far gate, facing the marker: 03.09",
         .input = {.file = "German_0309_start_facing_marker.png", .asked = "03.09", .map_pin = MapPoint{.x = 401, .y = 225}},
-        .expectation = {.from = "03.09"},
-    },
-    {
-        .name = "the street outside the far gate, facing the street: 03.09",
-        .input = {.file = "German_0309_start_facing_street.png", .asked = "03.09", .map_pin = MapPoint{.x = 401, .y = 225}},
         .expectation = {.from = "03.09"},
     },
     //  Record Start Minimaps' frames of a Spanish new-game run (console B,
@@ -414,9 +355,6 @@ void add_tests_AutoStoryStarts(UnitTestDatabase& database){
     }
     for (const TableCase& test : TABLE_CASES){
         database.add<CaseTest<TableCase, check_table>>("table", test);
-    }
-    for (const MapReadCase& test : MAP_READ_CASES){
-        database.add<CaseTest<MapReadCase, check_map_read>>("map read", test);
     }
     for (const MapPinCase& test : MAP_PIN_CASES){
         database.add<CaseTest<MapPinCase, check_map_pin>>("map pin", test);

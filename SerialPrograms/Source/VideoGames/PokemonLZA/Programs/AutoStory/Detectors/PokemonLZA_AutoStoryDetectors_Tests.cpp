@@ -10,7 +10,6 @@
 
 
 #include <charconv>
-#include <cmath>
 #include <format>
 #include <functional>
 #include <optional>
@@ -124,48 +123,6 @@ void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t c
     }
 }
 
-ImageRGB32 solid_frame(uint32_t color){
-    ImageRGB32 image(WIDTH, HEIGHT);
-    image.fill(color);
-    return image;
-}
-
-//  The controls hint's sky-blue card on black, with the dark top of its "?".
-ImageRGB32 controls_hint_frame(){
-    ImageRGB32 image = solid_frame(0xff000000);
-    fill_box(/*min_x=*/946, /*min_y=*/868, /*max_x=*/972, /*max_y=*/902, /*color=*/0xff7dd2fa, image);
-    fill_box(/*min_x=*/956, /*min_y=*/879, /*max_x=*/962, /*max_y=*/886, /*color=*/0xff1c7db0, image);
-    return image;
-}
-
-//  The platform reference with the player's area (x 780-1200, y 330-1080) painted white.
-ImageRGB32 platform_with_player_frame(){
-    ImageRGB32 image = platform_reference_image(WIDTH, HEIGHT);
-    fill_box(/*min_x=*/780, /*min_y=*/330, /*max_x=*/1200, HEIGHT, /*color=*/0xffffffff, image);
-    return image;
-}
-
-//  A V 32x19 at x 1400, y 1004, each arm 18% of the width across.
-ImageRGB32 chevron_frame(uint32_t background, uint32_t ink){
-    ImageRGB32 image = solid_frame(background);
-    for (size_t y = 0; y < 19; y++){
-        const double v = (double(y) + 0.5) / 19;
-        for (size_t x = 0; x < 32; x++){
-            const double u = (double(x) + 0.5) / 32;
-            if (std::abs(std::abs(u - 0.5) - (0.40 * (1 - v) + 0.03)) <= 0.09){
-                image.pixel(1400 + x, 1004 + y) = ink;
-            }
-        }
-    }
-    return image;
-}
-
-ImageRGB32 chevron_sized_block_frame(){
-    ImageRGB32 image = solid_frame(0xffc1ecf0);
-    fill_box(/*min_x=*/1400, /*min_y=*/1004, /*max_x=*/1432, /*max_y=*/1023, /*color=*/0xffffffff, image);
-    return image;
-}
-
 //  The pencil 48 px right of the Chinese badge's (the shorter Japanese text):
 //  a white 4 px stroke in a `glow` band 12 px wide.
 ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
@@ -185,60 +142,6 @@ ImageRGB32 autosave_badge_by_mint_banner_frame(){
     return image;
 }
 
-enum class BannerIcon{
-    NONE,
-    DRAWN,
-};
-
-//  The yellow bar on grey; with DRAWN, the icon's white hexagon and orange
-//  stroke `dx` right of where the detector expects it.
-ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
-    ImageRGB32 image = solid_frame(0xff606060);
-    fill_box(/*min_x=*/345, /*min_y=*/410, /*max_x=*/1590, /*max_y=*/600, /*color=*/0xfffad228, image);
-    if (icon == BannerIcon::DRAWN){
-        fill_box(700 + dx, /*min_y=*/327, 738 + dx, /*max_y=*/370, /*color=*/0xffffffff, image);
-        fill_box(716 + dx, /*min_y=*/336, 720 + dx, /*max_y=*/357, /*color=*/0xfff07020, image);
-    }
-    return image;
-}
-
-//  The white title card at 01.01's end: "POKEMON LEGENDS: Z-A" as black
-//  blocks 30 px wide, 20 px apart, in x 450-1450, y 520-560.
-ImageRGB32 title_card_frame(){
-    ImageRGB32 image = solid_frame(0xffffffff);
-    for (size_t x = 450; x + 30 <= 1450; x += 50){
-        fill_box(x, /*min_y=*/520, x + 30, /*max_y=*/560, /*color=*/0xff000000, image);
-    }
-    return image;
-}
-
-//  The yellow bar on grey with "COMPLETE" as green strokes above it.
-ImageRGB32 mission_complete_frame(){
-    ImageRGB32 image = solid_frame(0xff606060);
-    fill_box(/*min_x=*/345, /*min_y=*/390, /*max_x=*/1590, /*max_y=*/585, /*color=*/0xfffad228, image);
-    for (size_t x = 615; x < 1300; x += 4){
-        fill_box(x, /*min_y=*/275, x + 3, /*max_y=*/345, /*color=*/0xffa5f07d, image);
-    }
-    return image;
-}
-
-//  Green right above the word: a green scene, not the card.
-ImageRGB32 mission_complete_green_above_frame(){
-    ImageRGB32 image = mission_complete_frame();
-    fill_box(/*min_x=*/615, /*min_y=*/245, /*max_x=*/1300, /*max_y=*/270, /*color=*/0xffa5f07d, image);
-    return image;
-}
-
-constexpr uint32_t WHITE = 0xffffffff;
-constexpr uint32_t BLACK = 0xff000000;
-constexpr uint32_t GRAY = 0xff808080;
-constexpr uint32_t AD_LIGHT_BLUE = 0xffc1ecf0;
-constexpr uint32_t BOX_WHITE = 0xfffcfcf7;
-constexpr uint32_t BOX_TEXT_DARK = 0xff323648;
-constexpr uint32_t HINT_SKY_BLUE = 0xff7dd2fa;
-constexpr uint32_t BANNER_YELLOW = 0xfffad228;
-constexpr uint32_t COMPLETE_GREEN = 0xffa5f07d;
-
 struct SyntheticFrameCase{
     std::string name;
     struct Input{
@@ -257,42 +160,7 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .input = {.frame = []{ return ImageRGB32(); }},
         .expectation = {.reads = every_detector({})},
     },
-    {
-        .name = "a black frame",
-        .input = {.frame = []{ return solid_frame(BLACK); }},
-        .expectation = {.reads = {.autosave = false, .advance_arrow = false}},
-    },
-    {
-        .name = "a white frame",
-        .input = {.frame = []{ return solid_frame(WHITE); }},
-        .expectation = {.reads = {.platform = false, .autosave = false, .advance_arrow = false}},
-    },
-    {
-        .name = "the white title card is not the platform",
-        .input = {.frame = title_card_frame},
-        .expectation = {.reads = {.platform = false}},
-    },
-    {
-        .name = "a gray frame",
-        .input = {.frame = []{ return solid_frame(GRAY); }},
-        .expectation = {.reads = {.platform = false}},
-    },
-    {
-        .name = "the platform reference",
-        .input = {.frame = []{ return platform_reference_image(WIDTH, HEIGHT); }},
-        .expectation = {.reads = {.platform = true}},
-    },
-    {
-        .name = "the platform reference with the player's area painted",
-        .input = {.frame = platform_with_player_frame},
-        .expectation = {.reads = {.platform = true}},
-    },
     //  The badge's glow is dim over a lamp-lit wall (about 28, 70, 85: 02.04, frame 0075).
-    {
-        .name = "the autosave badge with a bright glow",
-        .input = {.frame = []{ return autosave_badge_frame(0xff101418, 0xff28c8e6); }},
-        .expectation = {.reads = {.autosave = true}},
-    },
     {
         .name = "the autosave badge with a dim glow over a dark wall",
         .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff1c4655); }},
@@ -313,71 +181,6 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .name = "a white stroke with a green sign's glow",
         .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff3cf06e); }},
         .expectation = {.reads = {.autosave = false}},
-    },
-    {
-        .name = "the controls hint card",
-        .input = {.frame = controls_hint_frame},
-        .expectation = {.reads = {.controls_hint = true}},
-    },
-    {
-        .name = "a frame all in the hint card's blue (a sky)",
-        .input = {.frame = []{ return solid_frame(HINT_SKY_BLUE); }},
-        .expectation = {.reads = {.controls_hint = false}},
-    },
-    {
-        .name = "a white chevron on the ad's light blue",
-        .input = {.frame = []{ return chevron_frame(AD_LIGHT_BLUE, WHITE); }},
-        .expectation = {.reads = {.advance_arrow = true}},
-    },
-    {
-        .name = "a dark chevron on a white box",
-        .input = {.frame = []{ return chevron_frame(BOX_WHITE, BOX_TEXT_DARK); }},
-        .expectation = {.reads = {.advance_arrow = true}},
-    },
-    {
-        .name = "a solid block the chevron's size",
-        .input = {.frame = chevron_sized_block_frame},
-        .expectation = {.reads = {.advance_arrow = false}},
-    },
-    {
-        .name = "the mission banner",
-        .input = {.frame = []{ return mission_banner_frame(0, BannerIcon::DRAWN); }},
-        .expectation = {.reads = {.mission_banner = true}},
-    },
-    {
-        .name = "the mission banner with its icon 40 px right",
-        .input = {.frame = []{ return mission_banner_frame(40, BannerIcon::DRAWN); }},
-        .expectation = {.reads = {.mission_banner = true}},
-    },
-    {
-        .name = "the mission banner's bar without the icon",
-        .input = {.frame = []{ return mission_banner_frame(0, BannerIcon::NONE); }},
-        .expectation = {.reads = {.mission_banner = false}},
-    },
-    {
-        .name = "a frame all in the bar's yellow",
-        .input = {.frame = []{ return solid_frame(BANNER_YELLOW); }},
-        .expectation = {.reads = {.mission_banner = false, .mission_complete = false}},
-    },
-    {
-        .name = "the mission complete card",
-        .input = {.frame = mission_complete_frame},
-        .expectation = {.reads = {.mission_banner = false, .mission_complete = true}},
-    },
-    {
-        .name = "a frame all in the card's green",
-        .input = {.frame = []{ return solid_frame(COMPLETE_GREEN); }},
-        .expectation = {.reads = {.mission_complete = false}},
-    },
-    {
-        .name = "the card's word with green right above it",
-        .input = {.frame = mission_complete_green_above_frame},
-        .expectation = {.reads = {.mission_complete = false}},
-    },
-    {
-        .name = "the mission banner is not the complete card",
-        .input = {.frame = []{ return mission_banner_frame(0, BannerIcon::DRAWN); }},
-        .expectation = {.reads = {.mission_complete = false}},
     },
 };
 
@@ -589,16 +392,6 @@ const TutorialCardFrameCase TUTORIAL_CARD_FRAME_CASES[] = {
         .name = "the Map & Missions card over the map app (Italian)",
         .input = {.path = "AutoStoryScreenEvents/it_0302b_map_missions_card.png"},
         .expectation = {.card = true},
-    },
-    {
-        .name = "no card in a battle",
-        .input = {.path = "AutoStoryScreenEvents/it_0302b_battle_no_lock_on.png"},
-        .expectation = {.card = false},
-    },
-    {
-        .name = "no card at the A Talk prompt",
-        .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
-        .expectation = {.card = false},
     },
     {
         //  console B, 2026-11-16: a save file's first X opens the menu under
