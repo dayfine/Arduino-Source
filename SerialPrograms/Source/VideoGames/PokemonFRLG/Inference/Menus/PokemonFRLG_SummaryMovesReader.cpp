@@ -85,6 +85,7 @@ constexpr std::pair<std::string_view, std::string_view> MOVE_NAMES[] = {
     {"petal-dance", "Petal Dance"},
     {"aromatherapy", "Aromatherapy"},
     {"mega-drain", "Mega Drain"},
+    {"mega-kick", "Mega Kick"},
     {"magical-leaf", "Magical Leaf"},
     {"sand-attack", "Sand-Attack"},
     {"gust", "Gust"},
