@@ -10,7 +10,7 @@
     "events": [
       {
         "id": "to_mable",
-        "why": "from the 3F autosave (facing the desk) around the desk's left end into Mable's talk: left 0.7 s (0.9 s hits the wall), back 1.3 s, right until her dialog box. No turn first: chained runs take the same legs. not planned: no tile grid in Lumiose",
+        "why": "from the 3F autosave around the desk's left end into Mable's talk. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [

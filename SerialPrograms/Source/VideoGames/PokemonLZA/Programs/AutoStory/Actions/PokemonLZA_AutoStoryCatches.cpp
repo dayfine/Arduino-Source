@@ -503,20 +503,27 @@ GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_
     return out;
 }
 
-//  None when the bar does not read within 2 s (a text box or a fade on).
+//  See settled_party_slots().
 std::optional<int> read_party_slots(StoryEnv& env, PlzaBackend& backend){
     PartyBarDetector bar;
-    for (int looks = 0; looks < 8; looks++){
+    int looks = 0;
+    const std::optional<int> slots = settled_party_slots([&]() -> std::optional<int>{
+        if (looks++ > 0){
+            env.context.wait_for(Milliseconds(250));
+        }
         env.context.wait_for_all_requests();
         const VideoSnapshot frame = env.env.console.video().snapshot();
         if (frame && bar.detect(frame) && bar.filled_slots() > 0){
-            backend.log(std::format("[PLZA] catch_in_zone: the party bar shows {} filled slots", bar.filled_slots()));
             return bar.filled_slots();
         }
-        env.context.wait_for(Milliseconds(250));
+        return std::nullopt;
+    });
+    if (!slots){
+        backend.log("[PLZA] catch_in_zone: the party bar did not read within 2 s");
+        return std::nullopt;
     }
-    backend.log("[PLZA] catch_in_zone: the party bar did not read within 2 s");
-    return std::nullopt;
+    backend.log(std::format("[PLZA] catch_in_zone: the party bar shows {} filled slots, steady after {} looks", *slots, looks));
+    return slots;
 }
 
 bool face_marker(StoryEnv& env, PlzaBackend& backend){

@@ -10,7 +10,7 @@
     "events": [
       {
         "id": "chase_pancham",
-        "why": "after Pancham, through the archway, around the starters into the scene; a 0 ms leg only turns. The 1000 ms sidestep is a guess. 01.01's scenes leave the player facing the boy, so a run from 01.01 should reload first. not planned: no tile grid in Lumiose",
+        "why": "after Pancham, through the archway, around the starters into the scene; a 0 ms leg only turns. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
@@ -28,7 +28,7 @@
       },
       {
         "id": "battle_area",
-        "why": "until free control in the battle area: no hint or party bar yet, so control is Ryon's A Talk prompt held past 20 s. No A there: it restarts his talk",
+        "why": "until free control in the battle area: Ryon's A Talk prompt held past 20 s (no hint or party bar yet)",
         "action": "mash_to_move_hints",
         "args": {
           "min_length_ms": 20000

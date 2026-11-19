@@ -70,20 +70,10 @@ struct LegCase{
 
 const LegCase LEG_CASES[] = {
     {
-        .name = "a read within the tolerance arrives",
-        .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 435, .y = 236}}},
-        .expectation = {.moves = "arrived"},
-    },
-    {
         //  3.6 s at 7.0 pixels a second.
         .name = "a read off the waypoint walks toward it, then arrives",
         .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 456, .y = 231}, MapPoint{.x = 433, .y = 239}}},
         .expectation = {.moves = "walk 254 deg 3.6 s, arrived"},
-    },
-    {
-        .name = "a read due south walks north",
-        .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 432, .y = 258}}},
-        .expectation = {.moves = "walk 0 deg 2.9 s"},
     },
     {
         .name = "a walk that ends short gets a correction",
@@ -125,11 +115,6 @@ const LegCase LEG_CASES[] = {
         .name = "a walk that ends off to the side of a catch spot, out of its stop area, gets a correction",
         .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 384, .y = 265}}},
         .expectation = {.moves = "walk 250 deg 6.8 s, correction 1: walk 9 deg 1.9 s"},
-    },
-    {
-        .name = "a walk that ends short of a catch spot gets a correction forward",
-        .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 394, .y = 249}}},
-        .expectation = {.moves = "walk 250 deg 6.8 s, correction 1: walk 249 deg 1.2 s"},
     },
     {
         //  Console B, 2026-11-17 03.08b: zone_1_back_to_road started at

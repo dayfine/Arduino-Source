@@ -21,7 +21,8 @@ namespace PokemonLZA{
 
 //  The console's tools: its actions, the minimap arrow, lock-on and
 //  battle code. `env` and `sightings` must outlive them.
-PlzaStoryTools plza_console_tools(StoryEnv& env, AutosaveSightings& sightings);
+//  `starter_turn`: the stick heading from 01.03's start to the starter picked.
+PlzaStoryTools plza_console_tools(StoryEnv& env, AutosaveSightings& sightings, double starter_turn);
 
 //  plza_story_game() with the console's reload of the latest save, which
 //  says the game is at the failed checkpoint's start. `env` and

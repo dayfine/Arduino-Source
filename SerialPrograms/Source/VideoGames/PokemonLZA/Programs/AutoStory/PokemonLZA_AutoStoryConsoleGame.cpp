@@ -234,7 +234,7 @@ PlzaConsoleActions console_actions(StoryEnv& env){
 } // namespace
 
 
-PlzaStoryTools plza_console_tools(StoryEnv& env, AutosaveSightings& sightings){
+PlzaStoryTools plza_console_tools(StoryEnv& env, AutosaveSightings& sightings, double starter_turn){
     return PlzaStoryTools{
         .console = console_actions(env),
         .arrow = minimap_arrow(env),
@@ -248,6 +248,7 @@ PlzaStoryTools plza_console_tools(StoryEnv& env, AutosaveSightings& sightings){
             return std::nullopt;
         },
         .sightings = &sightings,
+        .starter_turn = starter_turn,
     };
 }
 

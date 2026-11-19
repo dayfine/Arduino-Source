@@ -14,7 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the story game's tests: built-in plans load, lint and run on a scripted backend.
+//  Registers the story game's tests: built-in plans load and run on a scripted backend.
 void add_tests_AutoStoryGame(UnitTestDatabase& database);
 
 

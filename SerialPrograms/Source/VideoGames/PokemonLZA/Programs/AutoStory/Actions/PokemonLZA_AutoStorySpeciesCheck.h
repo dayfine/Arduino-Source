@@ -11,6 +11,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStorySpeciesCheck_H
 #define PokemonAutomation_PokemonLZA_AutoStorySpeciesCheck_H
 
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -60,6 +61,13 @@ bool enough_species(SpeciesTally tally, std::optional<int> dex_count, int dex_ne
 //  The throws go only at species not caught, so the filled slots are the
 //  registered species. The banner is missed at times, so the bar decides.
 bool party_has_species(std::optional<int> filled_slots, int dex_species);
+
+//  The party bar's filled slots once one count has held for 3 s, reading a
+//  look at a time with `read_look` (none: no bar on that look). A catch's
+//  new member joins the bar seconds after its banner: 03.08 read 4 of 5
+//  slots and failed, and its retry at once read 5 (console B, 2026-11-18).
+//  None when no look shows the bar in 2 s; the last count after 8 s.
+std::optional<int> settled_party_slots(const std::function<std::optional<int>()>& read_look);
 
 //  The party bar's verdict first, as it decides when read; the banner
 //  tally's verdict only when the bar was not read.

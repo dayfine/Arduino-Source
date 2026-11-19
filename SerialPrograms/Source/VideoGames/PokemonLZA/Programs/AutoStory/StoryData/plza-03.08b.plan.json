@@ -31,7 +31,7 @@
       },
       {
         "id": "out_of_zone_1",
-        "why": "the save below must be out of the zone: the map pin on two reads, else stop unsaved; the lead's panel can vanish while still inside",
+        "why": "the save below must be out of the zone: the map pin on two reads, else stop unsaved",
         "action": "check_out_of_zone_1"
       },
       {

@@ -48,7 +48,7 @@ constexpr double RUN_SPEEDUP = 2.25;
 void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace){
     const double radians = degrees * std::numbers::pi / 180.0;
     const JoystickPosition position{std::sin(radians), std::cos(radians)};
-    if (pace != Pokemon::StoryPace::RUN){
+    if (pace != Pokemon::StoryPace::RUN || m_env.walk_only){
         m_run_end.reset();
         pbf_move_left_joystick(m_env.context, position, duration, release);
         return;
