@@ -28,11 +28,8 @@
       },
       {
         "id": "battle_area",
-        "why": "until free control in the battle area: Ryon's A Talk prompt held past 20 s (no hint or party bar yet)",
-        "action": "mash_to_move_hints",
-        "args": {
-          "min_length_ms": 20000
-        }
+        "why": "until free control in the battle area: Ryon's A Talk prompt held (no hint or party bar yet)",
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {

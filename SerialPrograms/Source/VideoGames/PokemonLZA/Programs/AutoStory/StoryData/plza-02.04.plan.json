@@ -21,9 +21,9 @@
       },
       {
         "id": "check_in",
-        "why": "through Taunie, AZ and check-in until control facing the elevator (autosave); ends on 5 s quiet, at least 30 s in",
+        "why": "through Taunie, AZ and check-in until control facing the elevator (autosave); no party bar shows until it ends",
         "action": "mash_to_move_hints",
-        "args": {"press_a_first": true, "quiet_ms": 5000, "min_length_ms": 30000, "quiet_is_control": true}
+        "args": {"press_a_first": true}
       }
     ],
     "metadata": {

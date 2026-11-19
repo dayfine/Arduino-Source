@@ -325,8 +325,8 @@ constexpr std::string_view PANCHAM_FR = R"(
 
 //  03.01 lobby_scene up to Alton's first choice (console B 2026-11-17
 //  00:12, German): B for the text then, one in flight as the choice
-//  opened. The run went on to loop on his choice; here the screen stays
-//  quiet after it, as once he has his answer.
+//  opened. The run went on to loop on his choice; here the party bar shows
+//  after it, as at the end of the lobby talk on 2026-11-19 09:19.
 constexpr std::string_view LOBBY_ALTON_DE = R"(
 0.0s: nothing
 0.5s: black fade
@@ -341,6 +341,7 @@ constexpr std::string_view LOBBY_ALTON_DE = R"(
 19.4s: text box
 19.9s: text box, choice box, 2 rows, row 0
 20.3s: nothing
+40.0s: party bar
 )";
 
 const GoldenCase GOLDEN_CASES[] = {
@@ -365,13 +366,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
-                //  Her mission and reward menus: only B closes them.
-                {"nothing", "B"}, {"still", "B"},
-                {"black fade", "-"},
-                {"party bar", "-"},
+                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"}, {"nothing", "B"}, {"still", "B"},
+                {"black fade", "-"}, {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -415,14 +413,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "B"}, {"text box, advance arrow", "B"},
-                //  The Pokedex screens: only B closes them.
-                {"nothing", "- or B"}, {"still", "- or B"},
-                {"tutorial card", "A"}, {"still, tutorial card", "A"},
-                {"white fade", "-"}, {"black fade", "-"},
-                {"party bar", "-"},
+                {"text box", "B"}, {"text box, advance arrow", "B"}, {"nothing", "B"}, {"still", "B"}, {"tutorial card", "A"},
+                {"still, tutorial card", "A"}, {"white fade", "-"}, {"black fade", "-"}, {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA talk_to_pokedex_screen] done on can_move.",
+            .verdict = "done", .end = "[PLZA talk_to_pokedex_screen] done on control.",
         },
     },
     {
@@ -451,12 +445,9 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                //  A: the talk ends in the battle, with no prompt to restart.
                 {"text box", "A"}, {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
-                //  The VS splash's subtitles show only the chevron.
-                {"still, advance arrow", "A"}, {"advance arrow", "A"},
-                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"},
-                {"battle, controls hint", "-"},
+                {"still, advance arrow", "A"}, {"advance arrow", "A"}, {"nothing", "A"}, {"still", "-"}, {"black fade", "-"},
+                {"battle, controls hint", "-"}
             },
             .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
         },
@@ -466,11 +457,8 @@ const GoldenCase GOLDEN_CASES[] = {
         .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START},
         .expectation = {
             .keys = {
-                {"text box, advance arrow", "A"}, {"text box", "A"},
-                {"tutorial card", "A"}, {"still, tutorial card", "A"},
-                //  No lock-on: the HUD shows within 3 s of the fade.
-                {"nothing", "-"}, {"black fade", "-"}, {"still", "-"},
-                {"battle, still", "-"},
+                {"text box, advance arrow", "A"}, {"text box", "A"}, {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                {"nothing", "A"}, {"black fade", "-"}, {"still", "-"}, {"battle, still", "-"}
             },
             .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
         },
@@ -481,10 +469,8 @@ const GoldenCase GOLDEN_CASES[] = {
         .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA, .symbols_from_watch = 1},
         .expectation = {
             .keys = {
-                {"text box, advance arrow", "A"},
-                {"tutorial card", "A"}, {"still, tutorial card", "A"},
-                {"nothing", "-"}, {"black fade", "-"},
-                {"party bar", "ZL"},
+                {"text box, advance arrow", "A"}, {"tutorial card", "A"}, {"still, tutorial card", "A"}, {"nothing", "A"},
+                {"black fade", "-"}, {"party bar", "ZL"}
             },
             .verdict = "done", .end = "[PLZA story_battle_start] done on locked_on.",
         },
@@ -496,10 +482,8 @@ const GoldenCase GOLDEN_CASES[] = {
         },
         .expectation = {
             .keys = {
-                {"text box, advance arrow", "A"},
-                {"tutorial card", "A"}, {"still, tutorial card", "A"},
-                {"nothing", "-"}, {"black fade", "-"},
-                {"party bar", "ZL or stick or L"},
+                {"text box, advance arrow", "A"}, {"tutorial card", "A"}, {"still, tutorial card", "A"}, {"nothing", "A"},
+                {"black fade", "-"}, {"party bar", "ZL or stick or L"}
             },
             .verdict = "done", .end = "[PLZA story_battle_start] lock-on 2/5: turned 90 degrees right, L, ZL held: the move symbols showed.",
         },
@@ -529,23 +513,19 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                //  B would close the elevator's talk.
-                {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
-                {"black fade, still", "-"}, {"still", "-"}, {"nothing", "-"},
-                {"text box, choice box", "-"},
+                {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"}, {"black fade, still", "-"},
+                {"still", "A"}, {"nothing", "A"}, {"text box, choice box", "-"}
             },
             .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
         },
     },
     {
-        .name = "01.02 pancham_cornered, French, B to Pancham's choice (passed 2026-11-16 22:45)",
+        .name = "01.02 pancham_cornered, French, B on the text to Pancham's choice (passed 2026-11-16 22:45)",
         .input = {.checkpoint = "01.02", .step = "pancham_cornered", .screens = PANCHAM_FR},
         .expectation = {
             .keys = {
-                //  B: an A as the text ends could land on the choice.
-                {"text box", "B"}, {"text box, advance arrow", "B"},
-                {"still", "-"}, {"nothing", "- or +"},
-                {"text box, choice box", "-"},
+                {"text box", "B"}, {"text box, advance arrow", "B"}, {"still", "A"}, {"nothing", "A"},
+                {"text box, choice box", "-"}
             },
             .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
         },
@@ -566,13 +546,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                //  B: an A on the closing box restarts the talk.
-                {"text box", "B"}, {"text box, advance arrow", "B"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
-                //  No A: it restarts Ryon's talk.
-                {"A prompt", "-"},
+                {"text box", "A"}, {"text box, advance arrow", "A"}, {"nothing", "A"}, {"still", "A"}, {"black fade", "-"},
+                {"A prompt", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on talk_prompt.",
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
         },
     },
     {
@@ -588,12 +565,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                //  B: an A on her closing box restarts her talk.
-                {"text box", "B"}, {"text box, still", "B"},
-                {"still", "-"}, {"nothing", "-"},
-                {"party bar", "-"}, {"party bar, A prompt", "-"},
+                {"text box", "A"}, {"text box, still", "A"}, {"still", "A"}, {"nothing", "A"}, {"party bar", "-"},
+                {"party bar, A prompt", "-"}
             },
-            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -601,16 +576,14 @@ const GoldenCase GOLDEN_CASES[] = {
         .input = {.checkpoint = "03.01", .step = "lobby_scene", .screens = LOBBY_ALTON_DE},
         .expectation = {
             .keys = {
-                //  A B landing as the choice opens would take its last row.
-                {"text box", "A"}, {"text box, advance arrow", "A"},
-                {"text box, choice box, 2 rows, row 0", "A"},
-                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"},
+                {"text box", "A"}, {"text box, advance arrow", "A"}, {"text box, choice box, 2 rows, row 0", "A"},
+                {"nothing", "A"}, {"still", "A"}, {"black fade", "-"}, {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
         },
     },
     {
-        .name = "03.06 wild_zones_tutorial, French, B through the text and A on the card to control (passed 2026-11-17 14:28)",
+        .name = "03.06 wild_zones_tutorial, French, A through the text and the card to control (passed 2026-11-17 14:28)",
         .input = {.checkpoint = "03.06", .step = "wild_zones_tutorial", .screens = R"(
 0.0s: still
 0.3s: black fade, still
@@ -639,12 +612,11 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
-                {"tutorial card", "A"}, {"still, tutorial card", "A"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
-                {"party bar", "-"}, {"party bar, still", "-"},
+                {"text box", "A"}, {"text box, still", "A"}, {"text box, advance arrow", "A"}, {"tutorial card", "A"},
+                {"still, tutorial card", "A"}, {"nothing", "A"}, {"still", "A"}, {"black fade", "-"}, {"black fade, still", "-"},
+                {"party bar", "-"}, {"party bar, still", "-"}
             },
-            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -656,15 +628,17 @@ const GoldenCase GOLDEN_CASES[] = {
 28.5s: party bar, controls hint
 )"},
         .expectation = {
-            .keys = {{"party bar, still, controls hint", "-"}, {"party bar, controls hint", "-"}},
+            .keys = {
+                {"party bar, still, controls hint", "-"}, {"party bar, controls hint", "-"}
+            },
             .verdict = "failed: scene_never_started",
             .end = "[Event] 03.06/1 wild_zones_tutorial: failed: scene_never_started: scene: the scene never started (player not at its "
-                "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
-                "the A prompt or the mission banner).",
+                "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar "
+                "or the A prompt).",
         },
     },
     {
-        .name = "03.07 after_catches, French, A on the subtitles' chevron, B on the text box, to control (passed 2026-11-17 14:31)",
+        .name = "03.07 after_catches, French, A on the subtitles' chevron and the text box, to control (passed 2026-11-17 14:31)",
         .input = {.checkpoint = "03.07", .step = "after_catches", .screens = R"(
 0.0s: text box, advance arrow
 0.4s: nothing
@@ -681,14 +655,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                //  B: an A on the closing box restarts the talk.
-                {"text box", "B"}, {"text box, advance arrow", "B"},
-                //  A subtitle with no box.
-                {"advance arrow", "A"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
-                {"party bar, A prompt, controls hint", "-"},
+                {"text box", "A"}, {"text box, advance arrow", "A"}, {"advance arrow", "A"}, {"nothing", "A"}, {"still", "A"},
+                {"black fade", "-"}, {"party bar, A prompt, controls hint", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on can_move.",
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
         },
     },
     {
@@ -710,11 +680,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "B"}, {"text box, advance arrow", "B"}, {"advance arrow", "A"},
-                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
-                {"party bar", "-"}, {"party bar, still", "-"},
+                {"text box", "A"}, {"text box, advance arrow", "A"}, {"advance arrow", "A"}, {"nothing", "A"}, {"still", "A"},
+                {"black fade", "-"}, {"black fade, still", "-"}, {"party bar", "-"}, {"party bar, still", "-"}
             },
-            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -723,11 +692,13 @@ const GoldenCase GOLDEN_CASES[] = {
 0.0s: party bar, A prompt
 )"},
         .expectation = {
-            .keys = {{"party bar, A prompt", "-"}},
+            .keys = {
+                {"party bar, A prompt", "-"}
+            },
             .verdict = "failed: scene_never_started",
             .end = "[Event] 03.09/1 research_lab_gate: failed: scene_never_started: scene: the scene never started (player not at its "
-                "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
-                "the A prompt or the mission banner).",
+                "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar "
+                "or the A prompt).",
         },
     },
     {
@@ -749,11 +720,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "B"}, {"text box, advance arrow", "B"},
-                {"nothing", "B or +"}, {"still", "B"},
-                {"black fade", "-"}, {"party bar", "-"},
+                {"text box", "B"}, {"text box, advance arrow", "B"}, {"nothing", "B"}, {"still", "B"}, {"black fade", "-"},
+                {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -875,11 +845,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"party bar", "L or stick or hold"}, {"party bar, A prompt", "A"},
-                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
-                {"nothing", "-"},
+                {"party bar", "L or stick"}, {"party bar, A prompt", "A"}, {"text box", "A"}, {"text box, still", "-"},
+                {"text box, advance arrow", "A"}, {"nothing", "A"}
             },
-            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -903,31 +872,14 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "B"}, {"advance arrow", "A"},
-                //  Plus once the cutscene, moving then still, has run 3 s.
-                {"nothing", "- or +"}, {"still", "- or +"}, {"black fade", "-"}, {"controls hint", "-"},
+                {"text box", "A"}, {"advance arrow", "A"}, {"nothing", "A"}, {"still", "A"}, {"black fade", "-"},
+                {"controls hint", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on controls_hint.",
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
         },
     },
     {
-        //  The controls hint is synthetic. Console B 2026-11-19 held such
-        //  stills 5-10 s with no Plus.
-        .name = "01.01 arrival_scenes, a cutscene still 3 s after the text gets Plus",
-        .input = {.checkpoint = "01.01", .step = "arrival_scenes", .screens = R"(
-0.0s: text box
-0.4s: nothing
-1.0s: still
-8.0s: text box
-9.0s: controls hint
-)"},
-        .expectation = {
-            .keys = {{"text box", "B"}, {"nothing", "-"}, {"still", "+"}, {"controls hint", "-"}},
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on controls_hint.",
-        },
-    },
-    {
-        .name = "01.02 battle_area, Italian, the A Parla prompt past 20 s ends the step (A there restarted the talk 2026-11-15 21:56)",
+        .name = "01.02 battle_area, Italian, the A Parla prompt held ends the step, with no A on it (A there restarted the talk 2026-11-15 21:56)",
         .input = {.checkpoint = "01.02", .step = "battle_area", .screens = R"(
 0.0s: text box
 1.2s: text box, advance arrow
@@ -950,10 +902,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "B"}, {"text box, advance arrow", "B"},
-                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"A prompt", "-"},
+                {"text box", "A"}, {"text box, advance arrow", "A"}, {"nothing", "A"}, {"still", "A"}, {"black fade", "-"},
+                {"A prompt", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on talk_prompt.",
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
         },
     },
     {
@@ -966,8 +918,10 @@ const GoldenCase GOLDEN_CASES[] = {
 46.0s: controls hint
 )"},
         .expectation = {
-            .keys = {{"black fade, still", "-"}, {"still", "-"}, {"nothing", "- or +"}, {"controls hint", "-"}},
-            .verdict = "done", .end = "[PLZA scene] done on controls_hint.",
+            .keys = {
+                {"black fade, still", "-"}, {"still", "A"}, {"nothing", "A"}, {"controls hint", "-"}
+            },
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
 };

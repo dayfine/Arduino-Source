@@ -32,11 +32,8 @@
       },
       {
         "id": "arrival_scenes",
-        "why": "arrival scenes to the MAIN MISSION 01 banner; ends once the third black fade settles, or on the controls hint",
-        "action": "mash_to_move_hints",
-        "args": {
-          "end_after_black_fades": 3
-        }
+        "why": "arrival scenes to the MAIN MISSION 01 banner; ends on the controls hint",
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {

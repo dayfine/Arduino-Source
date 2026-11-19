@@ -33,8 +33,7 @@
       {
         "id": "wake_up",
         "why": "sleep and wake up, until the party bar shows, facing the door",
-        "action": "mash_to_move_hints",
-        "args": {"min_length_ms": 20000}
+        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {

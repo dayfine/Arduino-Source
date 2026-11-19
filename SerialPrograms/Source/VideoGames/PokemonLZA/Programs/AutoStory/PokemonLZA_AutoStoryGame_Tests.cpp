@@ -253,38 +253,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at platform_to_plaza: walk_not_free"},
     },
     {
-        .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second; Plus in the 5 s with no text",
-        .input = {.checkpoint = "01.01", .first_step = 3, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
-            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
-            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(2500)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(3000)),
-            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(3500)),
-            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(4000)),
-            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(4250)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(4500)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(9500)),
-            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(10000)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(11000)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(11250)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(16250)),
-        }},
-        .expectation = {
-            .verdict = "done",
-            .inputs = "press B, wait 250ms, wait 250ms, press B, wait 250ms, wait 250ms, wait 500ms, press +, wait 250ms, wait 500ms",
-            .line = "[PlusSkip] 01.01/arrival_scenes pressed -> skipped",
-        },
-    },
-    {
-        .name = "01.01's arrival fails after a minute with nothing going on",
-        .input = {.checkpoint = "01.01", .first_step = 3, .looks = {
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(60000)),
-        }},
-        .expectation = {.verdict = "failed at arrival_scenes: scene_quiet", .line = "[SceneQuirk] 01.01/arrival_scenes quiet fired"},
-    },
-    {
         //  console B, 2026-11-19: a Plus 4 ms into the step, before the opening faded in, did nothing.
         .name = "01.00b holds Plus 0.75 s after the opening fades in, not during the fade, and ends on its autosave",
         .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {BLACK_FADE, CUTSCENE, look(/*events=*/{}, /*readings=*/{}, Milliseconds(750)), OWN_AUTOSAVE, PLATFORM, PLATFORM}},
@@ -352,18 +320,6 @@ const RunCase RUN_CASES[] = {
             .verdict = "done",
             .inputs = std::format("{}, press L, stick -15deg 150ms walk, release 100ms, press L, {}, wait 300ms", repeated("wait 250ms", 40), repeated("stick 0deg 250ms run", 8)),
             .line = "[PLZA] walk: nothing busy for 10000 ms and no sign of control; taken as control.",
-        },
-    },
-    {
-        .name = "02.05's ride to 2F: the hall's quiet is control",
-        .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
-            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(6000)),
-        }},
-        .expectation = {
-            .verdict = "done",
-            .inputs = "press B, wait 500ms",
-            .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
     },
     {
