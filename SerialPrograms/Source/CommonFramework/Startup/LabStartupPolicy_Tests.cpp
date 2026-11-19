@@ -24,6 +24,7 @@ struct LabStartupExpectation{
     std::optional<std::string> profile = std::nullopt;
     bool augment = false;
     int gui_calls = 0;
+    int headless_calls = 0;
     int test_calls = 0;
     int exit_code = 2;
     std::vector<std::string> qt_arguments = {};
@@ -83,6 +84,12 @@ const LabStartupCase LAB_STARTUP_CASES[] = {
      .expectation = {.mode = StartupMode::REJECTED}},
     {.input = {.name = "invalid build identity", .arguments = {}, .policy = {LabProfileMode::REQUIRED, "../lab-A"}},
      .expectation = {.mode = StartupMode::REJECTED}},
+    {.input = {.name = "headless with profile on mac", .arguments = {"--headless", "--profile", "emu-1", "--run", "UnitTestRunner"}, .policy = {LabProfileMode::REQUIRED}},
+     .expectation = {.mode = StartupMode::HEADLESS, .profile = "emu-1", .headless_calls = 1, .exit_code = 19}},
+    {.input = {.name = "headless without profile on mac", .arguments = {"--headless", "--run", "UnitTestRunner"}, .policy = {LabProfileMode::REQUIRED}},
+     .expectation = {.mode = StartupMode::REJECTED}},
+    {.input = {.name = "headless rejected off mac", .arguments = {"--headless", "--profile", "emu-1", "--run", "UnitTestRunner"}, .policy = {}},
+     .expectation = {.mode = StartupMode::REJECTED}},
 };
 
 // The GUI callback represents settings load, window restoration and hardware discovery.
@@ -103,14 +110,18 @@ UnitTestResult check_lab_startup_case(const LabStartupCase& test){
         return "Expected rejection reason exactly when startup is rejected.";
     }
     int gui_calls = 0;
+    int headless_calls = 0;
     int test_calls = 0;
     const int code = dispatch_startup(plan, {
         .gui = [&](const StartupPlan&){ gui_calls++; return 17; },
+        .headless = [&](const StartupPlan&){ headless_calls++; return 19; },
         .tests = [&](const StartupPlan&){ test_calls++; return 23; },
     });
-    if (gui_calls != expected.gui_calls || test_calls != expected.test_calls || code != expected.exit_code){
-        return std::format("Expected GUI calls {}, test calls {}, exit {}; read GUI calls {}, test calls {}, exit {}.",
-            expected.gui_calls, expected.test_calls, expected.exit_code, gui_calls, test_calls, code);
+    if (gui_calls != expected.gui_calls || headless_calls != expected.headless_calls ||
+        test_calls != expected.test_calls || code != expected.exit_code){
+        return std::format("Expected GUI calls {}, headless calls {}, test calls {}, exit {}; read GUI calls {}, headless calls {}, test calls {}, exit {}.",
+            expected.gui_calls, expected.headless_calls, expected.test_calls, expected.exit_code,
+            gui_calls, headless_calls, test_calls, code);
     }
     return true;
 }
