@@ -84,6 +84,11 @@ struct SegmentRunOptions{
     std::function<StartSignature(const StartSignature& start)> read_start = {};
     //  After the chain into a row, before its first step.
     std::function<void(const Pokemon::StoryCheckpoint& row)> at_start = {};
+    //  Dev (Reload Probe): after each of these rows passes, reload once, log
+    //  where it lands with `log_landing`, and go on from the row whose start
+    //  the screen shows.
+    std::set<std::string, std::less<>> reload_probe_after = {};
+    std::function<void(const Pokemon::StoryCheckpoint& passed)> log_landing = {};
 };
 
 //  Runs `rows` in order from the current save; none when all passed. A row

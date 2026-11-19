@@ -71,7 +71,7 @@ void PlzaConsoleBackend::wait(Milliseconds duration){
     m_env.context.wait_for(duration);
 }
 
-ScreenObservation PlzaConsoleBackend::observe(){
+void PlzaConsoleBackend::wait_for_inputs(){
     //  Look before the queued run ends, with time left to queue the next slice.
     if (m_run_end && *m_run_end - 80ms > current_time()){
         m_env.context.wait_until(*m_run_end - 80ms);
@@ -79,6 +79,10 @@ ScreenObservation PlzaConsoleBackend::observe(){
         m_env.context.wait_for_all_requests();
         m_run_end.reset();
     }
+}
+
+ScreenObservation PlzaConsoleBackend::observe(){
+    wait_for_inputs();
     VideoSnapshot frame = m_env.env.console.video().snapshot();
     ScreenObservation look;
     if (frame && m_home.detect(*frame.frame)){

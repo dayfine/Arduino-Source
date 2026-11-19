@@ -210,6 +210,14 @@ WalkArgs read_walk_args(const JsonObject& args){
     return walk;
 }
 
+//  With "turn_to_starter", the first leg turns to tools.starter_turn.
+WalkArgs aimed_at_starter(const PlzaStoryTools& tools, WalkArgs walk){
+    if (walk.turn_to_starter){
+        walk.move.legs.front().turn = tools.starter_turn;
+    }
+    return walk;
+}
+
 //  Starts only with free control. "heading" needs the arrow, else CONSOLE_ONLY.
 std::optional<StoryFailure> walk_step(const PlzaStoryTools& tools, const WalkArgs& walk, PlzaBackend& backend, std::string_view name){
     if (walk.move.wait_first > 0ms){
@@ -261,11 +269,11 @@ Pokemon::StoryActionParser move_hints_action(){
         if (const JsonValue* fades = args.get_value("end_after_black_fades")){
             config.end_after_black_fades = (size_t)fades->to_integer_throw();
         }
-        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState&){
+        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
             if (press_a_first){
                 press_through_prompt(backend);
             }
-            return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
+            return run_scene_machine(backend, "mash_to_move_hints", config, 360s, state.step);
         };
     };
 }
@@ -278,8 +286,8 @@ Pokemon::StoryActionParser text_to_choice_action(){
         SceneMachineConfig config;
         config.stop_at_choice = true;
         config.text_button = flag(args, "advance_with_a") ? BUTTON_A : BUTTON_B;
-        return [config](PlzaBackend& backend, RunState&){
-            return run_scene_machine(backend, "text_to_choice", config, 120s);
+        return [config](PlzaBackend& backend, RunState& state){
+            return run_scene_machine(backend, "text_to_choice", config, 120s, state.step);
         };
     };
 }
@@ -288,20 +296,20 @@ Pokemon::StoryActionParser text_to_choice_action(){
 //  B through the text (B cannot talk again once it ends). Fails as
 //  "scene_never_started" when the HUD shows 45 s with nothing else: the
 //  player is not at the scene's trigger.
-std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState&){
+std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
     SceneMachineConfig config;
     config.start_window = 45s;
-    return run_scene_machine(backend, "scene", config, 120s);
+    return run_scene_machine(backend, "scene", config, 120s, state.step);
 }
 
 //  B on every other look closes the menus a talk opens (Mable's mission and
 //  reward screens), which mash_to_move_hints sits on.
-std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState&){
+std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState& state){
     SceneMachineConfig config;
     config.blind_press_after = 0ms;
     config.blind_press_every = 0ms;
     config.blind_button = BUTTON_B;
-    return run_scene_machine(backend, "scene", config, 120s);
+    return run_scene_machine(backend, "scene", config, 120s, state.step);
 }
 
 
@@ -349,12 +357,12 @@ std::optional<StoryFailure> battle_step(const PlzaStoryTools& tools, PlzaBackend
 
 //  Blind B: no detector reads the Pokedex screens yet, and only B closes
 //  them (A plays the entry's motions).
-std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState&){
+std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState& state){
     SceneMachineConfig config;
     config.text_button = BUTTON_B;
     config.blind_press_after = 0ms;
     config.blind_button = BUTTON_B;
-    return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s);
+    return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s, state.step);
 }
 
 
@@ -390,11 +398,11 @@ void add_console_actions(StoryActions& actions, const PlzaStoryTools& tools){
 void add_scene_actions(StoryActions& actions, const PlzaStoryTools& tools){
     actions.emplace("mash", no_args(mash_scene_step));
     actions.emplace("a", no_args(scene_step));
-    actions.emplace("story_battle_start", no_args([&tools](PlzaBackend& backend, RunState&){
+    actions.emplace("story_battle_start", no_args([&tools](PlzaBackend& backend, RunState& state){
         SceneMachineConfig config;
         config.stop_at_battle = true;
         config.lock_on = tools.lock_on;
-        return run_scene_machine(backend, "story_battle_start", config, 90s);
+        return run_scene_machine(backend, "story_battle_start", config, 90s, state.step);
     }));
     actions.emplace("story_battle", no_args([&tools](PlzaBackend& backend, RunState&){
         return battle_step(tools, backend);
@@ -410,12 +418,7 @@ StoryActions plza_story_actions(const PlzaStoryTools& tools){
         {"opening_to_platform", platform_action(PlatformWait::AFTER_AUTOSAVE, 240000ms)},
         {"walk", [&tools](const JsonObject& args) -> StoryStepRun{
             return [&tools, walk = read_walk_args(args)](PlzaBackend& backend, RunState&){
-                if (!walk.turn_to_starter){
-                    return walk_step(tools, walk, backend, "walk");
-                }
-                WalkArgs aimed = walk;
-                aimed.move.legs.front().turn = tools.starter_turn;
-                return walk_step(tools, aimed, backend, "walk");
+                return walk_step(tools, aimed_at_starter(tools, walk), backend, "walk");
             };
         }},
         {"mash_to_move_hints", move_hints_action()},
@@ -482,6 +485,12 @@ enum class StartCheck{
     UNCHECKED,  //  off the platform; nothing checks the row's own start yet
 };
 
+//  "[Boundary] <id> start: <pinned>": what pins the start ("pinned by
+//  minimap", "unchecked"), the evidence for which start checks a run needs.
+void log_start_boundary(PlzaBackend& backend, std::string_view id, std::string_view pinned){
+    backend.log(std::format("[Boundary] {} start: {}", id, pinned));
+}
+
 //  Only the station platform is read so far.
 StartCheck check_start(PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
     if (first_step_checks_start(row)){
@@ -545,12 +554,14 @@ std::variant<Chain, Pokemon::StoryFailure> check_live_start(
             "[Checkpoint] {}: START UNCHECKED: {}; on from the live screen (autosave before it {})",
             row.id, start == nullptr ? "its plan names no start signature" : "nothing reads the screen", seen ? "seen" : "not seen"
         ));
+        log_start_boundary(backend, row.id, seen ? "pinned by sighting" : "unchecked");
         return Chain::ON;
     }
     const StartSignature read = options.read_start(start->signature);
     const std::string screen = std::format("the screen reads ({}), its start is ({})", to_string(read), to_string(start->signature));
     if (start_confirmed(start->signature, read)){
         backend.log(std::format("[Checkpoint] {}: START CHECKED: {}; on from the live screen", row.id, screen));
+        log_start_boundary(backend, row.id, "pinned by minimap");
         return Chain::ON;
     }
     backend.log(std::format("[Checkpoint] {}: START CHECK FAILED: {}; nothing run from there", row.id, screen));
@@ -571,6 +582,7 @@ std::variant<Chain, Pokemon::StoryFailure> decide_chain(
     switch (check_start(backend, row)){
     case StartCheck::PASSED:
         backend.log(std::format("[Checkpoint] {}: start check passed; on from the live screen", row.id));
+        log_start_boundary(backend, row.id, "pinned by platform");
         return Chain::ON;
     case StartCheck::UNCHECKED:
         return check_live_start(backend, options, row, seen);
@@ -621,6 +633,7 @@ std::optional<Pokemon::StoryFailure> reload_into(
         )};
     }
     backend.log(std::format("[Checkpoint] {}: the reload landed at its start ({})", row.id, to_string(read)));
+    log_start_boundary(backend, row.id, "pinned by minimap");
     return std::nullopt;
 }
 
@@ -646,7 +659,40 @@ std::optional<Pokemon::StoryFailure> chain_into(
     if (!loaded){
         state = Pokemon::RunState{};
     }
+    if (!loaded && !reload){
+        //  The start save is the autosave seen at the row before's end.
+        log_start_boundary(backend, row.id, "pinned by sighting");
+    }
     return loaded;
+}
+
+//  After `rows[index]` passed: the next row, or with a Reload Probe after
+//  it (once), the row whose start the reload landed at.
+size_t row_after(
+    Pokemon::StoryGame& game, PlzaBackend& backend, const SegmentRunOptions& options,
+    std::span<const Pokemon::StoryCheckpoint> rows, size_t index, Pokemon::RunState& state, std::set<std::string>& probed
+){
+    const size_t next = index + 1;
+    const std::string& passed = rows[index].id;
+    if (next >= rows.size() || !game.reload || !options.reload_probe_after.contains(passed) || !probed.insert(passed).second){
+        return next;
+    }
+    if (!game.reload(backend, rows[next])){
+        backend.log(std::format("[ReloadProbe] after {}: the reload failed; on to {}", passed, rows[next].id));
+        return next;
+    }
+    state = Pokemon::RunState{};
+    if (options.log_landing){
+        options.log_landing(rows[index]);
+    }
+    const CheckpointStart* start = find_start(options.starts, rows[next].id);
+    const std::optional<size_t> from = start == nullptr || !options.read_start
+        ? std::nullopt
+        : checkpoint_at(rows, options.starts, next, options.read_start(start->signature));
+    backend.log(std::format(
+        "[ReloadProbe] after {}: on from {}", passed, from ? rows[*from].id : std::format("{}, no start matched", rows[next].id)
+    ));
+    return from.value_or(next);
 }
 
 } // namespace
@@ -655,7 +701,8 @@ std::optional<Pokemon::CheckpointFailure> run_plza_segments(
     Pokemon::StoryGame& game, std::span<Pokemon::StoryCheckpoint> rows, const SegmentRunOptions& options,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 ){
-    for (size_t index = 0; index < rows.size(); index++){
+    std::set<std::string> probed;
+    for (size_t index = 0; index < rows.size(); index = row_after(game, backend, options, rows, index, state, probed)){
         Pokemon::StoryCheckpoint& row = rows[index];
         const bool start_saved = index == 0 || options.reload_when_chained.contains(row.id) || sightings.last_end_seen();
         if (index > 0){

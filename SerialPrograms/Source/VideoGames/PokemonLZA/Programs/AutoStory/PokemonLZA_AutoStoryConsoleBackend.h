@@ -76,6 +76,9 @@ public:
     virtual CancellableScope& scope() override;
 
 private:
+    //  Waits for the queued inputs, or during a run only until just before
+    //  it ends (m_run_end).
+    void wait_for_inputs();
     //  The main menu, its Save button and the map.
     void read_menus(const ImageViewRGB32& frame, ScreenObservation& look);
 

@@ -55,6 +55,7 @@ private:
     SimpleIntegerOption<uint8_t> REWINDS_TO_BACKUP;
     BooleanCheckBoxOption LOAD_SAVE_FIRST;
     BooleanCheckBoxOption RECORD_START_MINIMAPS;
+    StringOption RELOAD_PROBE_AFTER;
     EnumDropdownOption<StarterChoice> STARTER;
     StringOption RUN_FROM;
     BattleAIOption BATTLE_AI;

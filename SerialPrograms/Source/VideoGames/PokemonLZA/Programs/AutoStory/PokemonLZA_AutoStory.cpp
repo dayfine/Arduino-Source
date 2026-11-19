@@ -4,10 +4,12 @@
  *
  */
 
+#include <algorithm>
 #include <chrono>
 #include <format>
 #include <functional>
 #include <optional>
+#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -31,6 +33,7 @@
 #include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "Detectors/PokemonLZA_AutoStoryMinimapMatch.h"
+#include "Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 #include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
 #include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
@@ -178,6 +181,11 @@ constexpr std::string_view RECORD_START_MINIMAPS_LABEL =
     "as plza-minimap-&lt;checkpoint&gt;-start.png and .json in the AutoStoryDev folder of the user files, "
     "in the format of the minimap references. Nothing is saved where no minimap shows.";
 
+constexpr std::string_view RELOAD_PROBE_AFTER_LABEL =
+    "<b>Reload Probe After:</b><br>For developers: checkpoint ids, comma-separated (e.g. 03.03). After each passes, reload the latest save "
+    "once, log where it lands by the minimap references and the platform (\"[ReloadProbe]\") with a screenshot in the AutoStoryDev folder "
+    "of the user files, and go on from the checkpoint whose start the screen shows. Empty: off.";
+
 //  A run after the new game starts from the latest save, not from wherever
 //  the game is. Throws OperationFailedException if it does not load.
 void load_first_save(ConsoleHandle& console, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& row){
@@ -234,6 +242,7 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
     //  The new game's rows, before any save.
     if (find_start(starts, rows[first].id) == nullptr){
         console.log(std::format("AutoStory: {} has no start signature: running it, no start check", rows[first].id));
+        backend.log(std::format("[Boundary] {} start: unchecked", rows[first].id));
         return first;
     }
     const StartSignature read = builtin_start_reads_map(rows[first].id)
@@ -257,6 +266,7 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
     }else{
         console.log(std::format("AutoStory: the screen ({}) is {}'s start", to_string(read), rows[first].id));
     }
+    backend.log(std::format("[Boundary] {} start: pinned by minimap", rows[*from].id));
     return *from;
 }
 
@@ -283,6 +293,48 @@ void record_start_minimap(ConsoleHandle& console, std::string_view checkpoint){
     )));
     json.dump(std::format("{}{}.json", folder, name));
     console.log(std::format("AutoStory: {}: start minimap recorded as {}{}.json", checkpoint, folder, name));
+}
+
+//  "03.03, 03.08" as {"03.03", "03.08"}.
+std::set<std::string, std::less<>> checkpoint_ids(std::string_view text){
+    std::set<std::string, std::less<>> ids;
+    size_t begin = 0;
+    while (begin < text.size()){
+        const size_t end = std::min(text.find_first_of(", ", begin), text.size());
+        if (end > begin){
+            ids.emplace(text.substr(begin, end - begin));
+        }
+        begin = end + 1;
+    }
+    return ids;
+}
+
+//  "[ReloadProbe] after 03.03: landed at 03.04-start (platform no; 03.04-start 8.2,
+//  03.05-start 24.0, 03.03-start 31.5)", and the frame. Presses nothing.
+void log_reload_landing(StoryEnv& story, PlzaBackend& backend, const StoryCheckpoint& passed){
+    story.context.wait_for_all_requests();
+    const VideoSnapshot snapshot = story.env.console.video().snapshot();
+    if (!snapshot){
+        backend.log(std::format("[ReloadProbe] after {}: landed at unknown (no frame)", passed.id));
+        return;
+    }
+    const bool platform = PlatformArrivalDetector().detect(*snapshot.frame);
+    const std::vector<MinimapDistance> distances = minimap_distances(*snapshot.frame);
+    std::string scores = std::format("platform {}", platform ? "yes" : "no");
+    for (size_t index = 0; index < distances.size() && index < 3; index++){
+        scores += std::format("{} {} {:.1f}", index == 0 ? ";" : ",", distances[index].reference, distances[index].distance);
+    }
+    const std::string landed = platform ? "platform" : matching_minimap(*snapshot.frame).value_or("unknown");
+    backend.log(std::format("[ReloadProbe] after {}: landed at {} ({})", passed.id, landed, scores));
+    const std::string folder = start_minimaps_folder();
+    Filesystem::create_directories(Filesystem::Path(folder));
+    snapshot.frame->save(std::format("{}plza-reload-probe-after-{}-{}.png", folder, passed.id, now_to_filestring()));
+}
+
+std::function<void(const StoryCheckpoint& passed)> reload_landing_logger(StoryEnv& story, PlzaBackend& backend){
+    return [&story, &backend](const StoryCheckpoint& passed){
+        log_reload_landing(story, backend, passed);
+    };
 }
 
 std::function<void(const StoryCheckpoint& row)> start_minimap_recorder(ConsoleHandle& console, bool record){
@@ -324,6 +376,7 @@ AutoStory::AutoStory()
         true
     )
     , RECORD_START_MINIMAPS(std::string(RECORD_START_MINIMAPS_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false)
+    , RELOAD_PROBE_AFTER(/*is_password=*/false, std::string(RELOAD_PROBE_AFTER_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"", /*placeholder_text=*/"03.03")
     , STARTER("<b>Starter:</b><br>The starter 01.03 picks.", starter_database(), LockMode::LOCK_WHILE_RUNNING, StarterChoice::CHIKORITA)
     , RUN_FROM(
         /*is_password=*/false,
@@ -345,6 +398,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(REWINDS_TO_BACKUP);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
     PA_ADD_OPTION(RECORD_START_MINIMAPS);
+    PA_ADD_OPTION(RELOAD_PROBE_AFTER);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(RUN_FROM);
     PA_ADD_OPTION(BATTLE_AI);
@@ -359,8 +413,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const PlzaStoryTools tools = plza_console_tools(story, sightings, starter_turn(STARTER));
     StoryData story_data = load_plza_story(tools);
     note_autosaves(story_data.checkpoints, sightings);
-    walk_before(story_data.checkpoints, RUN_FROM, story);
     std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
+    walk_before(rows, RUN_FROM, story);
     const size_t first = RANGE.start_index();
     const size_t last = RANGE.end_index();
     check_checkpoint_range(env.console, first, last, rows.size());
@@ -370,15 +424,14 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     PlzaConsoleBackend backend(story);
     StoryGame game = make_plza_story_game(story, story_data, sightings);
     RunState state;
-
     const SegmentRunOptions segments{
-        .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT,
-        .reload_when_chained = story_data.reload_when_chained,
+        .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT, .reload_when_chained = story_data.reload_when_chained,
         .starts = builtin_checkpoint_starts(),
         .read_start = [&story, &backend](const StartSignature& start){
             return start.wild_zone ? read_start_position(story, backend) : read_start_signature(story.env.console, story.context);
         },
         .at_start = start_minimap_recorder(env.console, RECORD_START_MINIMAPS),
+        .reload_probe_after = checkpoint_ids(std::string(RELOAD_PROBE_AFTER)), .log_landing = reload_landing_logger(story, backend),
     };
     RewindPlan plan{
         .rows = rows, .first = first, .last = last, .segments = segments,
