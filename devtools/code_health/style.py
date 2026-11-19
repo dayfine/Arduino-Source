@@ -605,41 +605,6 @@ def template_order(path, parsed, changed):
     return errors
 
 
-def documented(lines, line):
-    """Accept adjacent // prose or a closed block comment, including Doxygen."""
-    if line < 2:
-        return False
-    above = lines[line - 2].strip()
-    if above.startswith('//'):
-        return bool(above.lstrip('/').strip())
-    if not above.endswith('*/'):
-        return False
-    for earlier in reversed(lines[:line - 1]):
-        if '/*' in earlier:
-            return True
-        if not earlier.strip().startswith(('*', '//')):
-            return False
-    return False
-
-
-def header_comments(path, lines, parsed, changed):
-    errors, documented_functions = [], set()
-    for statement, enclosing in scopes(parsed):
-        text = statement.text
-        if not statement.namespace_scope or statement.end == '}':
-            continue
-        if not text or re.match(r'(?:inline\s+)?namespace\b|(?:static_assert|extern\s*")', text):
-            continue
-        key = function_key(statement, enclosing)
-        has_comment = documented(lines, statement.line)
-        if has_comment and key:
-            documented_functions.add(key)
-        if statement.line in changed and not has_comment and key not in documented_functions:
-            errors.append(Finding(path, statement.line,
-                                  'header-comment: document each namespace-scope header symbol'))
-    return errors
-
-
 def structures(parsed):
     """Local aggregate definitions and their directly declared fields."""
     found = {}
@@ -876,6 +841,5 @@ def check(path, source, previous_source):
         errors += native_cases(path, '\n'.join(code), statements_, added)
     if path.endswith(HEADERS):
         errors += template_api(path, statements_, added)
-        errors += header_comments(path, raw_lines, statements_, added)
     warnings += comment_checks(path, raw_lines, statements_, added)
     return sorted(errors + more_errors, key=lambda f: f.line), sorted(warnings, key=lambda f: f.line)

@@ -252,7 +252,8 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
     removed, and compare `git diff --stat` with the estimate; cut what has no answer.
 - **Types, names and comments** (the user's review of fork PR #648; apply on every file of a
   chain, writing and reviewing):
-  - **Name a type for what it is**, then drop the comment that only restates the name.
+  - **Comments only when it's not obvious.** Name a type for what it is, then drop the
+    comment that only restates the name.
     #648: "An engine run of one checkpoint" became `CheckpointRunResult`, no comment.
   - **A name says what kind of value it holds:** index or count, 0- or 1-based.
     #648: `failed_event` became `failed_event_index`.
@@ -370,9 +371,9 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   Function templates in headers declare their public API before internal helper
   namespaces; internal helper templates are defined in place. Definitions stay
   in the same header; this is not permission to forward-declare external types.
-- **Header documentation:** comment every namespace-scope symbol, including
-  types, aliases, constants and internal helpers. A function definition may reuse
-  its documented declaration in the same header. Code Health checks changed symbols.
+- **Header documentation:** comment a header symbol only when its name and signature don't
+  already say what it is (user, 2026-11-18). No symbol needs a comment; Code Health doesn't
+  ask for one.
 - **Unsigned:** counts and indexes are `size_t` / `uint8_t` (Google prefers `int`).
   Match that, and see TotW #227 below.
 - **Callbacks:** APIs such as `run_until()` take `std::function<...>&&`. Match the API

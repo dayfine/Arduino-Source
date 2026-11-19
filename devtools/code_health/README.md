@@ -260,10 +260,6 @@ and declarations are enforced; untouched legacy declarations are grandfathered.
 - `template-api-internal`: internal helper templates are defined in place, with
   no separate forward declaration. A header containing only internal helpers
   needs no invented public API.
-- `header-comment`: document each added/changed namespace-scope header symbol,
-  including helper declarations, types, aliases, and constants. An immediately
-  adjacent `//` or block/Doxygen comment counts. A definition can reuse its own
-  documented declaration. Class members and namespaces themselves are excluded.
 - `test-case`: new/changed native `*_Tests.cpp` UnitTest classes take one aggregate case.
   That case has exactly three fields, in order: `name`, `input` and `expectation`.
   The name labels the case and is not part of what the code under test is given,

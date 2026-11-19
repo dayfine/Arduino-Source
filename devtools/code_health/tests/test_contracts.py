@@ -30,11 +30,9 @@ class ContractTests(unittest.TestCase):
         declaration = '// Identity.\ntemplate <typename T>\nT identity(T value);\n'
         self.assertFalse(any('template-api' in m for m in self.messages(declaration + body)))
 
-    def test_top_level_header_symbols_have_comments(self):
-        source = 'struct Limits{};\nusing Count = int;\nvoid run();\n'
-        self.assertEqual(3, sum('header-comment' in m for m in self.messages(source)))
-        documented = '// Search budget.\nstruct Limits{};\n// Number of tiles.\nusing Count = int;\n// Execute.\nvoid run();\n'
-        self.assertFalse(any('header-comment' in m for m in self.messages(documented)))
+    def test_header_symbols_whose_name_says_it_all_need_no_comment(self):
+        source = 'struct CheckpointRunResult{};\nusing Count = int;\nvoid run();\n'
+        self.assertEqual([], self.messages(source))
 
     def test_native_cases_separate_input_and_expectation_in_a_table(self):
         good = '''struct Case{
@@ -123,8 +121,8 @@ void f(){ const char* text = "} namespace Wrong"; }
     def test_unchanged_debt_is_grandfathered(self):
         old = 'namespace Old{\nstruct Limits{};\n}\n'
         self.assertEqual([], self.messages(old + '\n// unrelated edit\n', previous=old))
-        new = old.replace('struct Limits{};', 'struct NewLimits{};')
-        self.assertEqual(1, sum('header-comment' in m for m in self.messages(new, previous=old)))
+        new = old.replace('}\n', '} // namespace Wrong\n')
+        self.assertEqual(1, sum('namespace-close' in m for m in self.messages(new, previous=old)))
 
     def test_all_header_symbol_kinds_and_methods(self):
         source = '''// This block documents only First.
@@ -134,7 +132,6 @@ enum class Mode{ FIRST, SECOND };
 constexpr int COUNT = 3;
 template <typename T> struct Box{ void method(){}; T value; };
 '''
-        self.assertEqual(4, sum('header-comment' in m for m in self.messages(source)))
         self.assertFalse(any('template-api' in m for m in self.messages(source)))
 
     def test_block_comments_and_documented_redeclaration(self):
@@ -213,9 +210,6 @@ void add_tests(){ for (const auto& scenario : CASES){ database.add<Test_Value>(s
         source = "// Configuration.\nstruct Limits{ int budget; };\n"
         self.assertEqual([], self.messages(source))
         self.assertEqual([], self.messages('namespace A::B{\n} // namespace A::B\n'))
-
-    def test_empty_comments_do_not_document_a_header_symbol(self):
-        self.assertTrue(any('header-comment' in m for m in self.messages('//\nvoid run();\n')))
 
     def test_changed_native_test_class_is_checked(self):
         old = 'class Test_Value : public UnitTest{\npublic:\n    Test_Value(int input, int expected){}\n};\n'
