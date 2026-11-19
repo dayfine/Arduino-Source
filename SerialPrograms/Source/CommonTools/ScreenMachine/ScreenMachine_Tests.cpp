@@ -114,13 +114,13 @@ std::vector<ScreenState> test_states(std::vector<std::string>& acted){
 
 
 struct RunCase{
-    std::string name;
+    std::string name = {};
     struct Input{
         //  The looks, the last repeating.
         std::vector<Look> looks = {};
         Milliseconds timeout = 600s;
     };
-    Input input;
+    Input input = {};
     struct Expectation{
         //  The terminal state, or "failed: <failure>".
         std::string end = {};
@@ -129,7 +129,7 @@ struct RunCase{
         //  The log's lines, joined by "; "; none: not checked.
         std::optional<std::string> log = std::nullopt;
     };
-    Expectation expectation;
+    Expectation expectation = {};
 };
 
 const RunCase RUN_CASES[] = {

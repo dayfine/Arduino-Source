@@ -112,9 +112,9 @@ struct ScreenEventsCase{
     struct Expectation{
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_ScreenEvents : public UnitTest{
