@@ -64,13 +64,6 @@ std::optional<size_t> checkpoint_at(
     size_t asked, const StartSignature& read
 );
 
-//  checkpoint_at(), or `asked` when no plan names its start. None: the run
-//  must stop ("start_position_unknown").
-std::optional<size_t> run_start(
-    std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
-    size_t asked, const StartSignature& read
-);
-
 //  For a chained run: every field `known` names but `registered` (backup
 //  card only) is read and agrees. Stricter than checkpoint_at(), which an
 //  unread field lets match.

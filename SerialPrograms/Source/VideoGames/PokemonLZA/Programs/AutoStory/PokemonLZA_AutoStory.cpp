@@ -245,7 +245,7 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
     ConsoleHandle& console = story.env.console;
     const std::span<const StoryCheckpoint> rows = plan.rows;
     const size_t first = plan.first;
-    const std::span<const CheckpointStart> starts = plan.starts;
+    const std::span<const CheckpointStart> starts = plan.segments.starts;
     //  The new game's rows, before any save.
     if (find_start(starts, rows[first].id) == nullptr){
         console.log(std::format("AutoStory: {} has no start signature: running it, no start check", rows[first].id));
@@ -431,18 +431,16 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         .at_start = start_minimap_recorder(env.console, RECORD_START_MINIMAPS),
         .reload_probe_after = checkpoint_ids(std::string(RELOAD_PROBE_AFTER)), .log_landing = reload_landing_logger(story, backend),
     };
-    RewindPlan plan{
-        .rows = rows, .first = first, .last = last, .segments = segments,
-        .starts = builtin_checkpoint_starts(), .max_rewinds = REWINDS_TO_BACKUP,
-    };
+    RewindPlan plan{.rows = rows, .first = first, .last = last, .segments = segments, .max_rewinds = REWINDS_TO_BACKUP};
+    const BackupSave backup = console_backup_save(story);
     if (!story_row_starts_without_save(rows[first])){
         if (LOAD_SAVE_FIRST){
             load_first_save(env.console, game, backend, rows[first]);
         }
-        plan.first = checked_first_row(story, backend, plan, console_backup_save(story));
+        plan.first = checked_first_row(story, backend, plan, backup);
     }
 
-    const std::optional<CheckpointFailure> failure = run_plza_with_rewinds(game, plan, console_backup_save(story), backend, sightings, state);
+    const std::optional<CheckpointFailure> failure = run_plza_with_rewinds(game, plan, backup, backend, sightings, state);
     if (failure){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,

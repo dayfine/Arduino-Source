@@ -119,16 +119,6 @@ std::optional<size_t> checkpoint_at(
     return found;
 }
 
-std::optional<size_t> run_start(
-    std::span<const StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
-    size_t asked, const StartSignature& read
-){
-    if (asked < rows.size() && find_start(starts, rows[asked].id) == nullptr){
-        return asked;
-    }
-    return checkpoint_at(rows, starts, asked, read);
-}
-
 bool start_confirmed(const StartSignature& known, const StartSignature& read){
     const auto agrees = [](const auto& known_field, const auto& read_field){
         return !known_field || known_field == read_field;

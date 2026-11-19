@@ -46,7 +46,7 @@ std::string run_start_id(
     if (!asked_index){
         return std::format("no checkpoint {}", asked);
     }
-    const std::optional<size_t> from = run_start(rows, starts, *asked_index, read);
+    const std::optional<size_t> from = checkpoint_at(rows, starts, *asked_index, read);
     return from ? rows[*from].id : std::string("stop");
 }
 
@@ -184,11 +184,6 @@ const StartSignature AT_COUNTER{.talk_prompt = true, .wild_zone = false};
 const StartSignature IN_ZONE{.wild_zone = true};
 
 const TableCase TABLE_CASES[] = {
-    {
-        .name = "asked has no signature, the screen matches an earlier start: runs as asked",
-        .input = {.starts = {{.checkpoint = "A", .signature = AT_COUNTER}}, .asked = "C", .read = AT_COUNTER},
-        .expectation = {.from = "C"},
-    },
     {
         .name = "two earlier starts match the signed asked's screen: stop",
         .input = {

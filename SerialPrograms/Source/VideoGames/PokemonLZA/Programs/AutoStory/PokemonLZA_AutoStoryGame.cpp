@@ -622,7 +622,7 @@ std::optional<Pokemon::StoryFailure> reload_into(
         )};
     }
     const StartSignature read = options.read_start(start->signature);
-    if (!run_start(std::span<const Pokemon::StoryCheckpoint>(&row, 1), std::span<const CheckpointStart>(start, 1), /*asked=*/0, read)){
+    if (!checkpoint_at(std::span<const Pokemon::StoryCheckpoint>(&row, 1), std::span<const CheckpointStart>(start, 1), /*asked=*/0, read)){
         const std::string where = std::format(
             "the screen reads ({}), the start is ({}); nothing pressed after the reload", to_string(read), to_string(start->signature)
         );
