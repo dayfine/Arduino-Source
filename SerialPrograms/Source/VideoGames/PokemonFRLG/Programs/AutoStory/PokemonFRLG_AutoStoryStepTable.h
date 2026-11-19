@@ -16,6 +16,7 @@
 #include <functional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
@@ -26,6 +27,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+
+inline constexpr std::string_view NUGGET_FARM_ACTION = "nugget_farm";
 
 //  What does a step: one of FRLG's story actions.
 enum class StoryActionId{
