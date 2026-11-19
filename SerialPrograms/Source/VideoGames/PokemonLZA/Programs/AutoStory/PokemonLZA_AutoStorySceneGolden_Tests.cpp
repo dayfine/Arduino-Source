@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  */
-//  code-health: allow file_lines -- one golden table for the scene steps, sharing the recorded screens above it
+
 
 /*  Golden sequences: a scene step's screens as a console run logged them,
  *  played back through the built-in plan's step by time (the clock moves
