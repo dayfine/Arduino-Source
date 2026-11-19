@@ -12,6 +12,11 @@ On new classes, and on public members and aliases a header adds:
   no header, one other module) uses, counting files that include the header: it lives with that user.
 - `bool_with_failure`: a struct with a `bool` completed/passed/ok/... next to an `Outcome` or a
   `*failure*`/`*error*` member: one `std::optional<Failure>` instead.
+
+In any file, on added lines:
+- `enum_string_switch`: a `switch` over `Enum::VALUE` cases whose every case returns a string
+  literal (a hand-written enum-to-string function, #667 `screen_event_name`): use
+  `EnumStringMap<Enum>` (Common/Cpp/EnumStringMap.h). The reverse (string to enum) is not checked.
 """
 import re
 from pathlib import PurePosixPath
@@ -25,6 +30,11 @@ from .style import HEADERS, added_lines, rule, scopes, statements, strip_code
 CITE = 'fork AGENTS.md "Types, names and comments"'
 FLAGS = {'completed', 'passed', 'ok', 'succeeded', 'success', 'failed'}
 ITERATION = {'begin', 'end', 'cbegin', 'cend', 'rbegin', 'rend'}  # called by range-for
+SWITCH = re.compile(r'\bswitch\s*\(')
+CASE = re.compile(r'\b(?:case\s+[\w:]*::\w+|default)\s*:(?!:)')
+STRING_RETURN = re.compile(r'return\s*"[^"\n]*"\s*;')
+FUNCTION = re.compile(r'([A-Za-z_][\w:]*)\s*\([^;{}()]*\)\s*(?:const\s*)?(?:noexcept\s*)?\{')
+KEYWORDS = {'if', 'for', 'while', 'switch', 'catch'}
 ALIAS = re.compile(r'(?:template\s*<.*>\s*)?using\s+([A-Za-z_]\w*)\s*=')
 
 
@@ -138,6 +148,38 @@ def alias_findings(path, source, previous_source, added, users, read):
     return found
 
 
+def closing_brace(code, start):
+    """Index of the '}' matching the '{' at `start`, or -1."""
+    depth = 0
+    for i in range(start, len(code)):
+        depth += {'{': 1, '}': -1}.get(code[i], 0)
+        if depth == 0:
+            return i
+    return -1
+
+
+def enum_string_findings(path, source, added):
+    code = '\n'.join(strip_code(normalize(source)))
+    found = []
+    for match in SWITCH.finditer(code):
+        line = code.count('\n', 0, match.start()) + 1
+        open_brace = code.find('{', match.end())
+        close = closing_brace(code, open_brace) if open_brace >= 0 else -1
+        if line not in added or close < 0:
+            continue
+        body = code[open_brace + 1:close]
+        labels = CASE.findall(body)
+        rest = STRING_RETURN.sub('', CASE.sub('', body)).strip()
+        if rest or len(STRING_RETURN.findall(body)) < 2 or not any('::' in label for label in labels):
+            continue
+        functions = [f for f in FUNCTION.findall(code, 0, match.start()) if f not in KEYWORDS]
+        name = functions[-1].split('::')[-1] if functions else 'switch'
+        found.append(Finding(path, line, rule(
+            f"'{name}' maps enum values to string literals in a switch; use EnumStringMap<T> "
+            '(Common/Cpp/EnumStringMap.h)', 'user review on fork #667'), check='enum_string_switch'))
+    return found
+
+
 def check(path, source, previous_source, users, read):
     """Advisories on what this change adds. `users(names)` -> {name: files}; `read(file)` -> text."""
     added = added_lines(normalize(source).split('\n'),
@@ -146,4 +188,5 @@ def check(path, source, previous_source, users, read):
         return []
     found = class_findings(path, source, previous_source, added, users, read)
     found += alias_findings(path, source, previous_source, added, users, read)
+    found += enum_string_findings(path, source, added)
     return sorted(found, key=lambda f: f.line)

@@ -71,6 +71,20 @@ class ReviewRulesTests(unittest.TestCase):
                          findings('struct Report{\n    bool completed = false;\n    Outcome result;\n};'))
         self.assertEqual([], findings('struct Report{\n    bool saved = false;\n    Outcome result;\n};'))
 
+    def test_enum_to_string_switch(self):
+        # Fork #667 before its review: screen_event_name in CommonTools/ScreenEvents.
+        names = """std::string screen_event_name(ScreenEvent event){
+    switch (event){
+    case ScreenEvent::FADE_BLACK:       return "black fade";
+    case ScreenEvent::FADE_WHITE:
+    case ScreenEvent::DIALOG_BOX:       return "other";
+    }
+    return "?";
+}"""
+        self.assertEqual([('enum_string_switch', 'screen_event_name')], findings(names, path=CALLER))
+        computed = names.replace('return "other";', 'return describe(event);')
+        self.assertEqual([], findings(computed, path=CALLER))
+
 
 if __name__ == '__main__':
     unittest.main()
