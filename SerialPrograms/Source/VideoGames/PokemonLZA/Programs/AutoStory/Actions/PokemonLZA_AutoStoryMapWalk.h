@@ -12,7 +12,7 @@
 
 #include <optional>
 #include <span>
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h"
 #include "PokemonLZA_AutoStoryZone1Map.h"
 
@@ -27,7 +27,7 @@ std::optional<MapPoint> read_pin_on_map(StoryEnv& env, PlzaBackend& backend);
 
 //  A waypoint's last read is the next leg's first. Fails as
 //  "leg_off_target", "map_pin_not_read" or "heading_missed".
-Pokemon::Outcome walk_map_legs(StoryEnv& env, PlzaBackend& backend, std::span<const MapWaypoint> waypoints);
+std::optional<Pokemon::StoryFailure> walk_map_legs(StoryEnv& env, PlzaBackend& backend, std::span<const MapWaypoint> waypoints);
 
 
 

@@ -66,12 +66,12 @@ std::optional<BackupCard> open_card(StoryEnv& env){
     return std::nullopt;
 }
 
-Pokemon::Outcome load(StoryEnv& env){
+std::optional<Pokemon::StoryFailure> load(StoryEnv& env){
     if (!gamemenu_to_ingame(env.env.console, env.context, GameSettings::instance().ENTER_GAME_WAIT0)){
-        return Pokemon::outcome_failed("backup_load_failed", "the game did not reach the overworld from the backup card");
+        return Pokemon::StoryFailure{.code = "backup_load_failed", .detail = "the game did not reach the overworld from the backup card"};
     }
     env.context.wait_for(LOAD_SETTLE);
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 void cancel(StoryEnv& env){

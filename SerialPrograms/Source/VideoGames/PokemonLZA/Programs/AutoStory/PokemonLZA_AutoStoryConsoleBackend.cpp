@@ -17,7 +17,6 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBattles.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryMenuReadings.h"
@@ -41,23 +40,34 @@ void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds re
     pbf_press_button(m_env.context, button, hold, release);
 }
 
-void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace){
+//  Console B 2026-11-19: Lumiose street to Wild Zone 1's gate, 19.4 s at walk
+//  pace, 8.6 s with B held, both ways.
+constexpr double RUN_SPEEDUP = 2.25;
+
+void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace){
     const double radians = degrees * std::numbers::pi / 180.0;
-    pbf_move_left_joystick(m_env.context, {std::sin(radians), std::cos(radians)}, duration, release);
+    const JoystickPosition position{std::sin(radians), std::cos(radians)};
+    if (pace != Pokemon::StoryPace::RUN){
+        pbf_move_left_joystick(m_env.context, position, duration, release);
+        return;
+    }
+    const Milliseconds run(static_cast<int64_t>(duration.count() / RUN_SPEEDUP));
+    pbf_controller_state(m_env.context, BUTTON_B, DPAD_NONE, position, {}, run);
+    pbf_wait(m_env.context, release);
 }
 
 void PlzaConsoleBackend::wait(Milliseconds duration){
     m_env.context.wait_for(duration);
 }
 
-Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
+ScreenObservation PlzaConsoleBackend::observe(){
     m_env.context.wait_for_all_requests();
     VideoSnapshot frame = m_env.env.console.video().snapshot();
-    Pokemon::Observation<Pokemon::ZonePose> look;
+    ScreenObservation look;
     if (frame && m_home.detect(*frame.frame)){
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
-        static_cast<ScreenObservation&>(look) = Pokemon::screen_observation(m_observer.read(*frame.frame));
+        look = Pokemon::screen_observation(m_observer.read(*frame.frame));
         if (m_platform.detect(*frame.frame)){
             look.readings[std::string(PLATFORM_READING)] = 1;
         }
@@ -78,12 +88,7 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
         if (tutorial_card_shows(*frame.frame)){
             look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
         }
-        if (m_main_menu.detect(*frame.frame)){
-            look.readings[std::string(MAIN_MENU_READING)] = 1;
-        }
-        if (m_save_button.detect(*frame.frame)){
-            look.readings[std::string(MENU_SAVE_BUTTON_READING)] = 1;
-        }
+        read_menus(*frame.frame, look);
         if (look.events.has(ScreenEvent::CHOICE_BOX)){
             const std::optional<DialogChoiceRows> rows = read_dialog_choice_rows(*frame.frame);
             if (rows){
@@ -101,13 +106,16 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     return look;
 }
 
-Pokemon::Outcome PlzaConsoleBackend::battle(const Pokemon::StoryActionArgs&){
-    try{
-        fight_story_battle(m_env.env, m_env.env.console, m_env.context, m_env.battle_ai, /*timeout=*/120s);
-    }catch (OperationFailedException& e){
-        return Pokemon::outcome_failed("battle_failed", e.message());
+void PlzaConsoleBackend::read_menus(const ImageViewRGB32& frame, ScreenObservation& look){
+    if (m_main_menu.detect(frame)){
+        look.readings[std::string(MAIN_MENU_READING)] = 1;
     }
-    return Pokemon::outcome_ok();
+    if (m_save_button.detect(frame)){
+        look.readings[std::string(MENU_SAVE_BUTTON_READING)] = 1;
+    }
+    if (m_map.detect(frame)){
+        look.readings[std::string(MAP_READING)] = 1;
+    }
 }
 
 void PlzaConsoleBackend::log(std::string_view line){

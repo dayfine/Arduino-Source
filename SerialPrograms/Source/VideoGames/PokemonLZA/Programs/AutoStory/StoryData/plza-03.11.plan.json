@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "to_mable",
-        "kind": "game_action",
         "why": "from the 3F autosave (facing the desk) around the desk's left end into Mable's talk: left 0.7 s (0.9 s hits the wall), back 1.3 s, right until her dialog box. No turn first: chained runs take the same legs. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -33,24 +32,21 @@
       },
       {
         "id": "mable_talk",
-        "kind": "scene",
         "why": "Mable's research requests until control: A takes \"Yes\" and closes her \"Press X...\" line",
         "action": "a"
       },
       {
         "id": "rock_smash_tm",
-        "kind": "game_action",
         "why": "Mable's Research, Rewards: TM004 Rock Smash",
         "action": "claim_mable_research_reward"
       },
       {
         "id": "leave_mable",
-        "kind": "scene",
+        "action": "mash",
         "why": "through Mable's talk until control. Bare scene: B closes her mission and reward screens, which mash_to_move_hints sits on"
       },
       {
         "id": "save_in_mable_office",
-        "kind": "game_action",
         "why": "the game autosaves before the reward, so a menu save here for the next start",
         "action": "save_from_menu"
       }

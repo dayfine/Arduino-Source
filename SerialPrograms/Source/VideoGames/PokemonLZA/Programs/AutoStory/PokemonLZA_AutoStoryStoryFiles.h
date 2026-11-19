@@ -13,8 +13,10 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
+#include <optional>
+#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryTable.h"
 
@@ -27,7 +29,21 @@ namespace PokemonLZA{
 //  code-health: allow test_only_api -- the generated embed file (cmake/EmbedTextFiles.cmake) defines it from this declaration
 const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_json();
 
-//  Read once. Throws ParseException naming the file that does not parse.
+//  The plan file `text`, its steps parsed by `actions`; its execution block
+//  adds it to `rows` (`previous`: the row before it). Throws ParseException
+//  naming `source` when it does not parse, fails a step's lead-in, or
+//  autosaves short of its end.
+Pokemon::StoryCheckpoint read_plza_checkpoint(
+    std::string_view text, std::string_view source, const Pokemon::StoryActions& actions, StoryRows& rows,
+    std::optional<std::string_view> previous
+);
+
+//  The built-in story, its steps bound to `tools`, which must outlive it.
+//  Throws ParseException naming the file that does not parse.
+StoryData load_plza_story(const PlzaStoryTools& tools);
+
+//  load_plza_story() with no tools, read once: for the ids, the execution
+//  rows and the steps' names, not to run.
 const StoryData& builtin_story_data();
 
 //  The plans' "start_signature"s, read once, in story order; two may share one.

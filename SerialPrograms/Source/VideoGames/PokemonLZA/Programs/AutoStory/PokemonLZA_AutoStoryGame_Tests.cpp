@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <format>
+#include <span>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -21,9 +22,11 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
@@ -39,11 +42,8 @@ namespace PokemonLZA{
 
 namespace{
 
-using Pokemon::Observation;
-using Pokemon::StoryActionCall;
 using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
-using Pokemon::ZonePose;
 
 
 std::string joined(const std::vector<std::string>& texts, std::string_view separator){
@@ -68,7 +68,7 @@ struct StoryDataCase{
 
 const StoryDataCase STORY_DATA_CASES[] = {
     {
-        .name = "the built-in story loads and passes the lint",
+        .name = "the built-in story loads: every step parses",
         .input = {},
         .expectation = {.rows =
             "01.00a:new_game:choices 01.00b:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
@@ -86,10 +86,6 @@ UnitTestResult check_story_data(const StoryDataCase& test){
     const StoryData& data = builtin_story_data();
     std::vector<std::string> rows;
     for (const StoryCheckpoint& row : data.checkpoints){
-        const std::vector<std::string> lint = plza_story_lint(row);
-        if (!lint.empty()){
-            return std::format("{} fails the lint: {}", row.id, joined(lint, "; "));
-        }
         rows.push_back(std::format(
             "{}:{}{}{}", row.id, story_row_starts_without_save(row) ? "new_game" : "from_save",
             story_row_makes_new_game_choices(row) ? ":choices" : "",
@@ -104,16 +100,17 @@ UnitTestResult check_story_data(const StoryDataCase& test){
 }
 
 
+//  A plan's events, read as checkpoint 01.01 with an empty execution block.
 struct LintCase{
     std::string name;
     struct Input{
-        std::vector<StoryStep> before = {};
-        StoryStep step;
+        //  The events array's JSON.
+        std::string events;
     };
     Input input;
     struct Expectation{
-        //  Joined by "; ".
-        std::string errors;
+        //  The load's error; empty: it loads.
+        std::string error;
     };
     Expectation expectation;
 };
@@ -121,166 +118,106 @@ struct LintCase{
 const LintCase LINT_CASES[] = {
     {
         .name = "a walk to a white fade passes",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("fade_white")},
-        }}},
-        .expectation = {.errors = ""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 4500]], \"end\": \"fade_white\"}}"},
+        .expectation = {.error = ""},
     },
     {
         .name = "a walk until a scene passes",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(8000)}}}, {"end", std::string("scene")},
-        }}},
-        .expectation = {.errors = ""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 8000]], \"end\": \"scene\"}}"},
+        .expectation = {.error = ""},
     },
     {
         .name = "a walk to an unknown end fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"end", std::string("sideways")},
-        }}},
-        .expectation = {.errors = "01.01 w: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 4500]], \"end\": \"sideways\"}}"},
+        .expectation = {.error = "test: step w: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\""},
     },
     {
         .name = "a walk with a time before its end but no end fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end_after_ms", int64_t(1500)},
-        }}},
-        .expectation = {.errors = "01.01 w: \"end_after_ms\" needs an \"end\""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 3000]], \"end_after_ms\": 1500}}"},
+        .expectation = {.error = "test: step w: \"end_after_ms\" needs an \"end\""},
     },
     {
         .name = "a walk to an A prompt passes",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
-        }}},
-        .expectation = {.errors = ""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 3000]], \"end\": \"prompt\"}}"},
+        .expectation = {.error = ""},
     },
     {
         .name = "a talk after a walk to its A prompt passes",
-        .input = {
-            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-                {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
-            }}},
-            .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
-        },
-        .expectation = {.errors = ""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 3000]], \"end\": \"prompt\"}}, {\"id\": \"t\", \"action\": \"talk\"}"},
+        .expectation = {.error = ""},
     },
     {
-        //  03.02's timed walk stopped short of Taunie (console B, 2026-11-16).
         .name = "a talk after a timed walk fails",
-        .input = {
-            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-                {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}},
-            }}},
-            .step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
-        },
-        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")"},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 3000]]}}, {\"id\": \"t\", \"action\": \"talk\"}"},
+        .expectation = {.error = "test: t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")"},
     },
     {
         .name = "a story battle after story_battle_start passes",
-        .input = {
-            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "s", .why = "", .action = "story_battle_start", .args = {}}},
-            .step = {.kind = Pokemon::StoryStepKind::GAME, .name = "b", .why = "", .action = "story_battle", .args = {}},
-        },
-        .expectation = {.errors = ""},
+        .input = {.events = "{\"id\": \"s\", \"action\": \"story_battle_start\"}, {\"id\": \"b\", \"action\": \"story_battle\"}"},
+        .expectation = {.error = ""},
     },
     {
         .name = "a story battle right after a talk fails",
-        .input = {
-            .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
-                }},
-                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
-            },
-            .step = {.kind = Pokemon::StoryStepKind::GAME, .name = "b", .why = "", .action = "story_battle", .args = {}},
-        },
-        .expectation = {.errors = "01.01 b: a story battle must follow story_battle_start, which ends on the battle HUD"},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 3000]], \"end\": \"prompt\"}}, {\"id\": \"t\", \"action\": \"talk\"}, {\"id\": \"b\", \"action\": \"story_battle\"}"},
+        .expectation = {.error = "test: b: a story battle must follow story_battle_start, which ends on the battle HUD"},
     },
     {
         .name = "a scene after a talk passes",
-        .input = {
-            .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
-                }},
-                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
-            },
-            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s", .why = "", .action = "a", .args = {}},
-        },
-        .expectation = {.errors = ""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 3000]], \"end\": \"prompt\"}}, {\"id\": \"t\", \"action\": \"talk\"}, {\"id\": \"s\", \"action\": \"a\"}"},
+        .expectation = {.error = ""},
     },
     {
-        //  03.04's talk_to_pokedex_screen already played Taunie's scene.
         .name = "a scene after talk_to_pokedex_screen fails",
-        .input = {
-            .before = {{.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "talk_to_pokedex_screen", .args = {}}},
-            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s", .why = "", .action = "a", .args = {}},
-        },
-        .expectation = {.errors = "01.01 s: a scene must follow what starts it, not talk_to_pokedex_screen, which plays its scenes through to control"},
+        .input = {.events = "{\"id\": \"p\", \"action\": \"talk_to_pokedex_screen\"}, {\"id\": \"s\", \"action\": \"a\"}"},
+        .expectation = {.error = "test: s: a scene must follow what starts it, not talk_to_pokedex_screen, which plays its scenes through to control"},
     },
     {
         .name = "a scene after a scene fails",
-        .input = {
-            .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
-                }},
-                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
-                {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
-            },
-            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s2", .why = "", .action = "a", .args = {}},
-        },
-        .expectation = {.errors = "01.01 s2: a scene must follow what starts it, not a, which plays its scenes through to control"},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 3000]], \"end\": \"prompt\"}}, {\"id\": \"t\", \"action\": \"talk\"}, {\"id\": \"s1\", \"action\": \"a\"}, {\"id\": \"s2\", \"action\": \"a\"}"},
+        .expectation = {.error = "test: s2: a scene must follow what starts it, not a, which plays its scenes through to control"},
     },
     {
         .name = "a bare scene after a scene passes: control ends it at once",
-        .input = {
-            .before = {
-                {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-                    {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(3000)}}}, {"end", std::string("prompt")},
-                }},
-                {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}},
-                {.kind = Pokemon::StoryStepKind::MASH, .name = "s1", .why = "", .action = "a", .args = {}},
-            },
-            .step = {.kind = Pokemon::StoryStepKind::MASH, .name = "s2", .why = "", .action = "", .args = {}},
-        },
-        .expectation = {.errors = ""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 3000]], \"end\": \"prompt\"}}, {\"id\": \"t\", \"action\": \"talk\"}, {\"id\": \"s1\", \"action\": \"a\"}, {\"id\": \"s2\", \"action\": \"mash\"}"},
+        .expectation = {.error = ""},
     },
     {
         .name = "a checkpoint's first step cannot be a talk",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::TALK, .name = "t", .why = "", .action = "", .args = {}}},
-        .expectation = {.errors = "01.01 t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")"},
+        .input = {.events = "{\"id\": \"t\", \"action\": \"talk\"}"},
+        .expectation = {.error = "test: t: a talk must follow a step that ends on its A prompt (a walk to \"end\": \"prompt\")"},
     },
     {
         .name = "a walk with a heading passes",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "w", .why = "", .action = "walk", .args = {
-            {"legs", std::vector<Pokemon::StoryTimedLeg>{{.turn = 0, .walk = Milliseconds(4500)}}}, {"heading", int64_t(264)},
-        }}},
-        .expectation = {.errors = ""},
+        .input = {.events = "{\"id\": \"w\", \"action\": \"walk\", \"args\": {\"legs\": [[0, 4500]], \"heading\": 264}}"},
+        .expectation = {.error = ""},
     },
     {
         .name = "a heading on a step that does not take one fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "p", .why = "", .action = "climb_ladder", .args = {
-            {"heading", int64_t(264)},
-        }}},
-        .expectation = {.errors = "01.01 step 1 p: unknown argument \"heading\""},
+        .input = {.events = "{\"id\": \"p\", \"action\": \"climb_ladder\", \"args\": {\"heading\": 264}}"},
+        .expectation = {.error = "test: step p: unknown field \"heading\""},
     },
     {
         .name = "an action PLZA does not have fails",
-        .input = {.step = {.kind = Pokemon::StoryStepKind::GAME, .name = "m", .why = "", .action = "choose_7", .args = {}}},
-        .expectation = {.errors = "01.01 step 1 m: unknown action \"choose_7\" for GAME"},
+        .input = {.events = "{\"id\": \"m\", \"action\": \"choose_7\"}"},
+        .expectation = {.error = "test: step m: unknown action \"choose_7\""},
     },
 };
 
 UnitTestResult check_lint(const LintCase& test){
-    StoryCheckpoint checkpoint;
-    checkpoint.id = "01.01";
-    checkpoint.title = "Test";
-    checkpoint.steps = test.input.before;
-    checkpoint.steps.push_back(test.input.step);
-    const std::string got = joined(plza_story_lint(checkpoint), "; ");
-    if (got != test.expectation.errors){
-        return std::format("expected \"{}\", got \"{}\"", test.expectation.errors, got);
+    const std::string plan = std::format(
+        R"({{"format": "pokesim-authored-checkpoint/1", "game": "plza", "checkpoint": {{"id": "01.01", "title": "Test", "events": [{}]}}, "execution": {{}}}})",
+        test.input.events
+    );
+    const PlzaStoryTools tools;
+    StoryRows rows;
+    std::string got;
+    try{
+        read_plza_checkpoint(plan, "test", plza_story_actions(tools), rows, std::nullopt);
+    }catch (const ParseException& error){
+        got = error.message();
+    }
+    if (got != test.expectation.error){
+        return std::format("expected \"{}\", got \"{}\"", test.expectation.error, got);
     }
     return true;
 }
@@ -289,7 +226,7 @@ struct AutosaveStepCase{
     std::string name;
     struct Input{
         std::vector<std::string> steps;
-        Pokemon::StoryRowSave save = Pokemon::StoryRowSave::NONE;
+        bool autosave_row = false;
         std::optional<std::string> autosave_step = std::nullopt;
     };
     Input input;
@@ -316,14 +253,14 @@ const AutosaveStepCase AUTOSAVE_STEP_CASES[] = {
         .name = "an autosave in the last step passes",
         .input = {
             .steps = {"toward_zone_1_gate", "wild_zones_tutorial"},
-            .save = Pokemon::StoryRowSave::AUTOSAVE,
+            .autosave_row = true,
             .autosave_step = "wild_zones_tutorial",
         },
         .expectation = {.error = ""},
     },
     {
         .name = "a plan autosave without its step fails",
-        .input = {.steps = {"wild_zones_tutorial"}, .save = Pokemon::StoryRowSave::AUTOSAVE},
+        .input = {.steps = {"wild_zones_tutorial"}, .autosave_row = true},
         .expectation = {.error = "03.06: \"save\": \"autosave\" needs \"autosave_step\", the step a run log showed the badge in"},
     },
     {
@@ -338,9 +275,9 @@ UnitTestResult check_autosave_step(const AutosaveStepCase& test){
     checkpoint.id = "03.06";
     checkpoint.title = "Test";
     for (const std::string& name : test.input.steps){
-        checkpoint.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = name, .why = "", .action = "walk", .args = {}});
+        checkpoint.steps.push_back(StoryStep{.name = name});
     }
-    const std::optional<std::string> error = autosave_step_error(checkpoint, test.input.save, test.input.autosave_step);
+    const std::optional<std::string> error = autosave_step_error(checkpoint, test.input.autosave_row, test.input.autosave_step);
     const std::string got = error.value_or("");
     if (got != test.expectation.error){
         return std::format("expected \"{}\", got \"{}\"", test.expectation.error, got);
@@ -351,8 +288,8 @@ UnitTestResult check_autosave_step(const AutosaveStepCase& test){
 
 
 //  `at`: after the scripts' common start.
-Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> readings = {}, Milliseconds at = Milliseconds(0)){
-    Observation<ZonePose> observation;
+ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readings = {}, Milliseconds at = Milliseconds(0)){
+    ScreenObservation observation;
     observation.when = WallClock::min() + at;
     observation.events = events;
     for (std::string_view reading : readings){
@@ -361,36 +298,36 @@ Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> re
     return observation;
 }
 
-const Observation<ZonePose> PLATFORM = look({}, {PLATFORM_READING});
-const Observation<ZonePose> AUTOSAVE = look({}, {AUTOSAVE_READING});
+const ScreenObservation PLATFORM = look({}, {PLATFORM_READING});
+const ScreenObservation AUTOSAVE = look({}, {AUTOSAVE_READING});
 //  2 s in: a badge in a checkpoint's first 1.5 s is the save before it.
-const Observation<ZonePose> OWN_AUTOSAVE = look({}, {AUTOSAVE_READING}, Milliseconds(2000));
-const Observation<ZonePose> CUTSCENE = look({});
-const Observation<ZonePose> TEXT_FOR_A = look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING});
-const Observation<ZonePose> STILL = look({ScreenEvent::SCREEN_STILL});
-const Observation<ZonePose> WHITE_FADE = look({ScreenEvent::FADE_WHITE});
-const Observation<ZonePose> BLACK_FADE = look({ScreenEvent::FADE_BLACK});
-const Observation<ZonePose> DIALOG = look({ScreenEvent::DIALOG_BOX});
-const Observation<ZonePose> BATTLE_HUD = look({ScreenEvent::BATTLE_STARTED});
-const Observation<ZonePose> A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
+const ScreenObservation OWN_AUTOSAVE = look({}, {AUTOSAVE_READING}, Milliseconds(2000));
+const ScreenObservation CUTSCENE = look({});
+const ScreenObservation TEXT_FOR_A = look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING});
+const ScreenObservation STILL = look({ScreenEvent::SCREEN_STILL});
+const ScreenObservation WHITE_FADE = look({ScreenEvent::FADE_WHITE});
+const ScreenObservation BLACK_FADE = look({ScreenEvent::FADE_BLACK});
+const ScreenObservation DIALOG = look({ScreenEvent::DIALOG_BOX});
+const ScreenObservation BATTLE_HUD = look({ScreenEvent::BATTLE_STARTED});
+const ScreenObservation A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
 
-Observation<ZonePose> party_bar(Milliseconds at){
+ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
-Observation<ZonePose> choice(int selected, int rows = 2){
-    Observation<ZonePose> observation = look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX});
+ScreenObservation choice(int selected, int rows = 2){
+    ScreenObservation observation = look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX});
     observation.readings[std::string(CHOICE_ROWS_READING)] = rows;
     observation.readings[std::string(CHOICE_SELECTED_READING)] = selected;
     return observation;
 }
 
 //  The platform held for the start check and the walk's free control.
-std::vector<Observation<ZonePose>> walk_into_white_fade(){
+std::vector<ScreenObservation> walk_into_white_fade(){
     return {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE};
 }
 
-std::vector<Observation<ZonePose>> concat(std::vector<Observation<ZonePose>> first, const std::vector<Observation<ZonePose>>& then){
+std::vector<ScreenObservation> concat(std::vector<ScreenObservation> first, const std::vector<ScreenObservation>& then){
     first.insert(first.end(), then.begin(), then.end());
     return first;
 }
@@ -400,18 +337,36 @@ std::string repeated(std::string_view text, size_t times){
 }
 
 
-StoryCheckpoint builtin_row(std::string_view id, size_t first_step, size_t steps){
-    for (const StoryCheckpoint& row : builtin_story_data().checkpoints){
+//  Steps [first_step, first_step + steps) of built-in checkpoint `id`,
+//  bound to `tools`.
+StoryCheckpoint builtin_row(const PlzaStoryTools& tools, std::string_view id, size_t first_step, size_t steps){
+    for (StoryCheckpoint& row : load_plza_story(tools).checkpoints){
         if (row.id == id){
-            StoryCheckpoint part = row;
-            part.steps.erase(part.steps.begin(), part.steps.begin() + first_step);
-            if (steps < part.steps.size()){
-                part.steps.resize(steps);
+            row.steps.erase(row.steps.begin(), row.steps.begin() + (std::ptrdiff_t)first_step);
+            if (steps < row.steps.size()){
+                row.steps.resize(steps);
             }
-            return part;
+            return std::move(row);
         }
     }
     return {};
+}
+
+//  "done", or "failed at [<checkpoint> ]<step, or chain>: <code>".
+std::string verdict_of(const std::optional<Pokemon::CheckpointFailure>& failure, std::span<const StoryCheckpoint> rows, bool with_checkpoint){
+    if (!failure){
+        return "done";
+    }
+    std::string event = "chain";
+    for (const StoryCheckpoint& checkpoint : rows){
+        if (checkpoint.id == failure->checkpoint_id && failure->event_index){
+            event = checkpoint.steps[*failure->event_index].name;
+        }
+    }
+    if (!with_checkpoint){
+        return std::format("failed at {}: {}", event, failure->failure.code);
+    }
+    return std::format("failed at {} {}: {}", failure->checkpoint_id, event, failure->failure.code);
 }
 
 
@@ -421,8 +376,8 @@ struct RunCase{
         std::string checkpoint;
         size_t first_step = 0;
         size_t steps = std::numeric_limits<size_t>::max();
-        std::vector<Observation<ZonePose>> looks;
-        Pokemon::Outcome battle = Pokemon::outcome_ok();
+        std::vector<ScreenObservation> looks;
+        std::optional<Pokemon::StoryFailure> battle = std::nullopt;
         //  The last repeats; none: no minimap arrow, as off a console.
         std::vector<double> arrow_reads = {};
     };
@@ -473,7 +428,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .inputs = "wait 300ms, wait 250ms, stick 0deg 4500ms walk, press L, stick 90deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk",
-            .line = "[PLZA] platform_to_plaza: the end event after 250 ms of the last leg.",
+            .line = "[PLZA] walk: the end event after 250 ms of the last leg.",
         },
     },
     {
@@ -488,7 +443,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.01's walk ends on a black fade",
         .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, BLACK_FADE}},
-        .expectation = {.verdict = "done", .line = "[PLZA] platform_to_plaza: a black fade after 250 ms of the last leg: the scene takes over."},
+        .expectation = {.verdict = "done", .line = "[PLZA] walk: a black fade after 250 ms of the last leg: the scene takes over."},
     },
     {
         .name = "01.01's walk fails when the fade never shows",
@@ -499,7 +454,7 @@ const RunCase RUN_CASES[] = {
         //  Control comes ~7 s after 01.01's scenes end (console B, 2026-11-15).
         .name = "a walk waits for control that comes 7 s after the scene",
         .input = {.checkpoint = "01.01", .first_step = 1, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(28, CUTSCENE),
+            std::vector<ScreenObservation>(28, CUTSCENE),
             {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE}
         )},
         .expectation = {
@@ -544,7 +499,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on controls_hint."},
     },
     {
-        .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second",
+        .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second; Plus in the 5 s with no text",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
@@ -563,7 +518,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press B, wait 250ms, wait 250ms, press B, wait 250ms, wait 250ms, wait 500ms, wait 500ms, wait 250ms, wait 500ms",
+            .inputs = "press B, wait 250ms, wait 250ms, press B, wait 250ms, wait 250ms, wait 500ms, press +, wait 250ms, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done on fade_settled.",
         },
     },
@@ -686,12 +641,12 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.03 walks to Chikorita: a turn left, then on to its A prompt",
         .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(5, look(/*events=*/{}, {CONTROLS_HINT_READING})), {A_PROMPT}
+            std::vector<ScreenObservation>(5, look(/*events=*/{}, {CONTROLS_HINT_READING})), {A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, press L, stick -70deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms",
-            .line = "[PLZA] approach_starter: the end event after 500 ms of the last leg.",
+            .line = "[PLZA] walk: the end event after 500 ms of the last leg.",
         },
     },
     {
@@ -699,7 +654,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = {look({ScreenEvent::INTERACT_PROMPT})}},
         .expectation = {
             .verdict = "done",
-            .line = "[PLZA] approach_starter: the A prompt held 1000 ms with nothing busy: control.",
+            .line = "[PLZA] walk: the A prompt held 1000 ms with nothing busy: control.",
         },
     },
     {
@@ -720,7 +675,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "a talk presses A again while the A prompt stays with nothing open",
         .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(7, A_PROMPT), {DIALOG}
+            std::vector<ScreenObservation>(7, A_PROMPT), {DIALOG}
         )},
         .expectation = {
             .verdict = "done",
@@ -736,7 +691,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "a talk waits for an A prompt that comes up 2 s in, then presses A",
         .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(8, party_bar(Milliseconds(0))), {A_PROMPT, A_PROMPT, DIALOG}
+            std::vector<ScreenObservation>(8, party_bar(Milliseconds(0))), {A_PROMPT, A_PROMPT, DIALOG}
         )},
         .expectation = {.verdict = "done", .inputs = std::format("{}, press A, wait 250ms", repeated("wait 250ms", 9))},
     },
@@ -766,7 +721,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.03's battle is the backend's",
         .input = {.checkpoint = "01.03", .first_step = 3, .steps = 1, .looks = {BATTLE_HUD}},
-        .expectation = {.verdict = "done", .inputs = "battle"},
+        .expectation = {.verdict = "done", .inputs = ""},
     },
     {
         .name = "a story battle with no battle HUD in 10 s fails as battle_never_started, the battle code not run",
@@ -776,7 +731,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.03's battle fails as the backend's battle does",
         .input = {.checkpoint = "01.03", .first_step = 3, .steps = 1, .looks = {BATTLE_HUD},
-            .battle = Pokemon::outcome_failed("battle_failed", "no dialogue after the battle")},
+            .battle = Pokemon::StoryFailure{.code = "battle_failed", .detail = "no dialogue after the battle"}},
         .expectation = {.verdict = "failed at andi_battle: battle_failed"},
     },
     {
@@ -838,12 +793,12 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.02 walks on to the gate's A prompt",
         .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
+            std::vector<ScreenObservation>(5, party_bar(Milliseconds(0))), {A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms",
-            .line = "[PLZA] to_battle_zone_gate: the end event after 500 ms of the last leg.",
+            .line = "[PLZA] walk: the end event after 500 ms of the last leg.",
         },
     },
     {
@@ -853,13 +808,13 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, wait 300ms",
-            .line = "[PLZA] to_battle_zone_gate: the A prompt shows before the walk: no walk.",
+            .line = "[PLZA] walk: the A prompt shows before the walk: no walk.",
         },
     },
     {
         .name = "a walk that turns first walks on past the A prompt it starts at",
         .input = {.checkpoint = "03.05", .first_step = 0, .steps = 1, .looks = {A_PROMPT}},
-        .expectation = {.verdict = "done", .line = "[PLZA] back_to_nurse: the end event after 250 ms of the last leg."},
+        .expectation = {.verdict = "done", .line = "[PLZA] walk: the end event after 250 ms of the last leg."},
     },
     {
         .name = "02.02's walk to the gate fails with no A prompt",
@@ -877,13 +832,13 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.04's walk to the clerk: along the counter, then the turn to her A prompt",
         .input = {.checkpoint = "02.04", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(6, party_bar(Milliseconds(0))), {A_PROMPT}
+            std::vector<ScreenObservation>(6, party_bar(Milliseconds(0))), {A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, press L, stick -5deg 150ms walk, release 100ms, press L, stick 0deg 2500ms walk, "
                 "press L, stick -85deg 150ms walk, release 100ms, press L",
-            .line = "[PLZA] to_front_counter: the end event after the last turn.",
+            .line = "[PLZA] walk: the end event after the last turn.",
         },
     },
     {
@@ -898,12 +853,12 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "02.05's walk to room 202 starts after 10 s with nothing busy: the hall shows no party bar, then the door's A prompt",
-        .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = concat(std::vector<Observation<ZonePose>>(50, CUTSCENE), {A_PROMPT})},
+        .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = concat(std::vector<ScreenObservation>(50, CUTSCENE), {A_PROMPT})},
         .expectation = {
             .verdict = "done",
             .inputs = repeated("wait 250ms", 40) + ", press L, stick -15deg 150ms walk, release 100ms, press L, "
                 + repeated("stick 0deg 250ms walk", 8) + ", wait 300ms",
-            .line = "[PLZA] to_room_202: nothing busy for 10000 ms and no sign of control; taken as control.",
+            .line = "[PLZA] walk: nothing busy for 10000 ms and no sign of control; taken as control.",
         },
     },
     {
@@ -954,36 +909,36 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02b walks on to the plaza scene's A prompt",
         .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
+            std::vector<ScreenObservation>(5, party_bar(Milliseconds(0))), {A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms",
-            .line = "[PLZA] to_plaza_scene_prompt: the end event after 500 ms of the last leg.",
+            .line = "[PLZA] walk: the end event after 500 ms of the last leg.",
         },
     },
     {
         .name = "a walk to an A prompt holds on past a glimpse gone again 300 ms later",
         .input = {.checkpoint = "03.02b", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT, party_bar(Milliseconds(0)), A_PROMPT}
+            std::vector<ScreenObservation>(5, party_bar(Milliseconds(0))), {A_PROMPT, party_bar(Milliseconds(0)), A_PROMPT}
         )},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms, stick 0deg 250ms walk, wait 300ms",
-            .line = "[PLZA] to_plaza_scene_prompt: the end event after 750 ms of the last leg.",
+            .line = "[PLZA] walk: the end event after 750 ms of the last leg.",
         },
     },
     {
         //  Alton's prompt shows beside the path 500-750 ms in; the door's at 2000 ms.
         .name = "02.05's walk to the elevator walks past a prompt before its measured time to the one at the door",
         .input = {.checkpoint = "02.05", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))),
-            concat({A_PROMPT, A_PROMPT}, concat(std::vector<Observation<ZonePose>>(4, party_bar(Milliseconds(0))), {A_PROMPT}))
+            std::vector<ScreenObservation>(4, party_bar(Milliseconds(0))),
+            concat({A_PROMPT, A_PROMPT}, concat(std::vector<ScreenObservation>(4, party_bar(Milliseconds(0))), {A_PROMPT}))
         )},
         .expectation = {
             .verdict = "done",
             .inputs = std::format("wait 250ms, {}, wait 300ms", repeated("stick 0deg 250ms walk", 8)),
-            .line = "[PLZA] to_lobby_elevator: the end event after 2000 ms of the last leg.",
+            .line = "[PLZA] walk: the end event after 2000 ms of the last leg.",
         },
     },
     {
@@ -1004,7 +959,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.02b walks on from the arch to Taunie's A prompt",
         .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(5, party_bar(Milliseconds(0))), {A_PROMPT}
+            std::vector<ScreenObservation>(5, party_bar(Milliseconds(0))), {A_PROMPT}
         )},
         .expectation = {.verdict = "done", .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk, wait 300ms"},
     },
@@ -1126,7 +1081,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, stick 0deg 250ms walk, stick 0deg 250ms walk",
-            .line = "[PLZA] off_the_roof: a scene (a text box) took control after 500 ms of the last leg: the walk stops.",
+            .line = "[PLZA] walk: a scene (a text box) took control after 500 ms of the last leg: the walk stops.",
         },
     },
     {
@@ -1137,7 +1092,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .line = "[PLZA] off_the_roof: a scene (a fade) took control after 1000 ms of the last leg: the walk stops.",
+            .line = "[PLZA] walk: a scene (a fade) took control after 1000 ms of the last leg: the walk stops.",
         },
     },
     {
@@ -1198,14 +1153,14 @@ const RunCase RUN_CASES[] = {
         .name = "03.09's walk faces the street first, then walks its legs into Ryon's dialog",
         .input = {
             .checkpoint = "03.09", .first_step = 0, .steps = 1,
-            .looks = concat(std::vector<Observation<ZonePose>>(7, party_bar(Milliseconds(0))), {DIALOG}),
+            .looks = concat(std::vector<ScreenObservation>(7, party_bar(Milliseconds(0))), {DIALOG}),
             .arrow_reads = {272, 254},
         },
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, stick 0deg 6500ms walk, "
                 "press L, stick -90deg 150ms walk, release 100ms, press L, stick 0deg 250ms walk",
-            .line = "[PLZA] to_research_lab: the end event after 250 ms of the last leg.",
+            .line = "[PLZA] walk: the end event after 250 ms of the last leg.",
         },
     },
     {
@@ -1220,7 +1175,7 @@ const RunCase RUN_CASES[] = {
     {
         .name = "03.11's walk to Mable: its legs",
         .input = {.checkpoint = "03.11", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<Observation<ZonePose>>(8, party_bar(Milliseconds(0))), {DIALOG}
+            std::vector<ScreenObservation>(8, party_bar(Milliseconds(0))), {DIALOG}
         )},
         .expectation = {
             .verdict = "done",
@@ -1251,17 +1206,18 @@ std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& read
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = plza_story_game(
-        /*console=*/{}, builtin_story_data(), scripted_arrow(test.input.arrow_reads), /*lock_on=*/std::nullopt, sightings
-    );
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .battle = test.input.battle}, scope);
-    Pokemon::StoryEngine<ZonePose> engine(game, backend);
+    PlzaStoryTools tools{.arrow = scripted_arrow(test.input.arrow_reads), .sightings = &sightings};
+    tools.battle = [&test](PlzaBackend&){
+        return test.input.battle;
+    };
+    Pokemon::StoryGame game = plza_story_game(builtin_story_data(), sightings);
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;
-    const std::vector<StoryCheckpoint> rows{builtin_row(test.input.checkpoint, test.input.first_step, test.input.steps)};
-    const Pokemon::SegmentReport report = engine.run_segment("test", rows, 1, state);
-    const std::string verdict = report.completed
-        ? "done"
-        : std::format("failed at {}: {}", report.failed_event, report.failure.failure);
+    std::vector<StoryCheckpoint> rows;
+    rows.push_back(builtin_row(tools, test.input.checkpoint, test.input.first_step, test.input.steps));
+    note_autosaves(rows, sightings);
+    const std::optional<Pokemon::CheckpointFailure> failure = Pokemon::run_checkpoints(backend, rows, game, state);
+    const std::string verdict = verdict_of(failure, rows, /*with_checkpoint=*/false);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }
@@ -1281,21 +1237,27 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
 }
 
 
-//  The reload presses HOME, as the console's does first, and succeeds.
-Pokemon::StoryGame<ZonePose> game_with_reload(const Pokemon::StoryRows& rows, AutosaveSightings& sightings){
-    Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, rows, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt, sightings);
-    game.reload = [](Pokemon::StoryBackend<ZonePose>& backend){
+//  The reload presses HOME, as the console's does first, and says the game
+//  is at the failed checkpoint's start.
+Pokemon::StoryGame game_with_reload(const StoryRows& rows, AutosaveSightings& sightings){
+    Pokemon::StoryGame game = plza_story_game(rows, sightings);
+    game.reload = [](PlzaBackend& backend, const StoryCheckpoint& failed) -> std::optional<std::string>{
         backend.press(BUTTON_HOME, Milliseconds(80), Milliseconds(80));
-        return Pokemon::outcome_ok();
+        return failed.id;
     };
     return game;
 }
 
-StoryCheckpoint one_step_row(std::string id, std::string action){
+//  A step named `name` running `action` with no args, bound to `tools`.
+StoryStep plan_step(const PlzaStoryTools& tools, std::string name, std::string_view action){
+    return StoryStep{.name = std::move(name), .action = std::string(action), .run = plza_story_actions(tools).at(std::string(action))(JsonObject())};
+}
+
+StoryCheckpoint one_step_row(const PlzaStoryTools& tools, std::string id, std::string action){
     StoryCheckpoint row;
     row.id = std::move(id);
     row.title = "Test";
-    row.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = action, .why = "", .action = action, .args = {}});
+    row.steps.push_back(plan_step(tools, action, action));
     return row;
 }
 
@@ -1305,7 +1267,7 @@ struct LoadCase{
     struct Input{
         std::string checkpoint;     //  A built-in one.
         bool has_reload = true;
-        std::vector<Observation<ZonePose>> looks;
+        std::vector<ScreenObservation> looks;
     };
     Input input;
     struct Expectation{
@@ -1348,14 +1310,12 @@ const LoadCase LOAD_CASES[] = {
 };
 
 UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
-    const StoryData& story = builtin_story_data();
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = test.input.has_reload
-        ? game_with_reload(story, sightings)
-        : plza_story_game(/*console=*/{}, story, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt, sightings);
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
-    const Pokemon::Outcome loaded = load_checkpoint_start(game, backend, builtin_row(test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
-    const std::string verdict = loaded.succeeded() ? "done" : loaded.failure;
+    Pokemon::StoryGame game = test.input.has_reload ? game_with_reload(builtin_story_data(), sightings) : plza_story_game(builtin_story_data(), sightings);
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
+    const PlzaStoryTools tools;
+    const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, builtin_row(tools, test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
+    const std::string verdict = !loaded ? "done" : loaded->code;
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }
@@ -1380,7 +1340,7 @@ UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
 struct ChainCase{
     std::string name;
     struct Input{
-        std::vector<Observation<ZonePose>> looks;
+        std::vector<ScreenObservation> looks;
         //  A repeated action's step is named "<action>_again".
         std::vector<std::string> first_actions = {"wait_for_platform"};
         std::string second_action = "text_to_choice";
@@ -1400,11 +1360,11 @@ struct ChainCase{
     Expectation expectation;
 };
 
-const Observation<ZonePose> PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING}, Milliseconds(2000));
-const Observation<ZonePose> IN_CONTROL = look({ScreenEvent::PLAYER_CAN_MOVE});
-const std::vector<Observation<ZonePose>> ROOF_SAVED = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM};
+const ScreenObservation PLATFORM_SAVING = look({}, {PLATFORM_READING, AUTOSAVE_READING}, Milliseconds(2000));
+const ScreenObservation IN_CONTROL = look({ScreenEvent::PLAYER_CAN_MOVE});
+const std::vector<ScreenObservation> ROOF_SAVED = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, PLATFORM, PLATFORM};
 //  START_LOOKS looks off the platform, then 01.02's scene.
-const std::vector<Observation<ZonePose>> AFTER_RELOAD = {
+const std::vector<ScreenObservation> AFTER_RELOAD = {
     CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, DIALOG,
     look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, Milliseconds(1000)), look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, Milliseconds(3000)),
 };
@@ -1446,7 +1406,7 @@ const ChainCase CHAIN_CASES[] = {
         },
         .expectation = {
             .verdict = "failed at 01.02 chain: no_start_save", .reloads = 0,
-            .line = "[Save] 01.01: the game autosaved in wait_for_platform, before wait_for_platform_again: not saved, a reload would skip wait_for_platform_again",
+            .line = "[Save] 01.01: not saved (the game autosaved in wait_for_platform, before wait_for_platform_again: a reload would skip wait_for_platform_again)",
         },
     },
     {
@@ -1457,7 +1417,7 @@ const ChainCase CHAIN_CASES[] = {
             .attempts = 2,
         },
         .expectation = {
-            .verdict = "failed at 01.02 : reload_failed", .reloads = 0,
+            .verdict = "failed at 01.02 chain: start_unknown", .reloads = 0,
             .line = "[Save] 01.02: the game autosaved in wait_for_platform before the run failed: the latest save is past 01.02's start",
         },
     },
@@ -1522,15 +1482,18 @@ const ChainCase CHAIN_CASES[] = {
 
 UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = game_with_reload(Pokemon::StoryRows{}, sightings);
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
+    Pokemon::StoryGame game = game_with_reload(StoryRows{}, sightings);
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;
-    StoryCheckpoint first = one_step_row("01.01", test.input.first_actions[0]);
+    const PlzaStoryTools tools{.sightings = &sightings};
+    std::vector<StoryCheckpoint> rows;
+    rows.push_back(one_step_row(tools, "01.01", test.input.first_actions[0]));
     for (size_t index = 1; index < test.input.first_actions.size(); index++){
         const std::string& action = test.input.first_actions[index];
-        first.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = std::format("{}_again", action), .why = "", .action = action, .args = {}});
+        rows[0].steps.push_back(plan_step(tools, std::format("{}_again", action), action));
     }
-    const std::vector<StoryCheckpoint> rows{first, one_step_row("01.02", test.input.second_action)};
+    rows.push_back(one_step_row(tools, "01.02", test.input.second_action));
+    note_autosaves(rows, sightings);
     std::vector<CheckpointStart> starts;
     if (test.input.start){
         starts.push_back(CheckpointStart{.checkpoint = "01.02", .signature = *test.input.start});
@@ -1542,10 +1505,8 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     if (test.input.reload_when_chained){
         options.reload_when_chained = {"01.02"};
     }
-    const Pokemon::SegmentReport report = run_plza_segments(game, rows, options, backend, state, sightings);
-    const std::string verdict = report.completed
-        ? "done"
-        : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);
+    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_segments(game, rows, options, backend, state, sightings);
+    const std::string verdict = verdict_of(failure, rows, /*with_checkpoint=*/true);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }
@@ -1653,7 +1614,7 @@ struct NewGameChainCase{
     std::string name;
     struct Input{
         std::vector<std::string> rows;
-        std::vector<Observation<ZonePose>> looks;
+        std::vector<ScreenObservation> looks;
     };
     Input input;
     struct Expectation{
@@ -1677,28 +1638,26 @@ const NewGameChainCase NEW_GAME_CHAIN_CASES[] = {
 };
 
 UnitTestResult check_new_game_chain(const NewGameChainCase& test, CancellableScope& scope){
-    const StoryData& story = builtin_story_data();
     std::vector<std::string> steps_run;
-    PlzaConsoleActions console;
+    AutosaveSightings sightings;
+    PlzaStoryTools tools{.sightings = &sightings};
     for (const std::string_view action : {"new_game_intro", "confirm_new_game"}){
-        console.emplace(std::string(action), [&steps_run, action](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
+        tools.console.emplace(std::string(action), [&steps_run, action](PlzaBackend&, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
             steps_run.emplace_back(action);
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         });
     }
-    AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = plza_story_game(console, story, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt, sightings);
+    Pokemon::StoryGame game = plza_story_game(builtin_story_data(), sightings);
     std::vector<StoryCheckpoint> rows;
     for (const std::string& id : test.input.rows){
-        rows.push_back(builtin_row(id, /*first_step=*/0, /*steps=*/std::numeric_limits<size_t>::max()));
+        rows.push_back(builtin_row(tools, id, /*first_step=*/0, /*steps=*/std::numeric_limits<size_t>::max()));
     }
-    rows.push_back(builtin_row("01.01", /*first_step=*/0, /*steps=*/2));
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .kind = Pokemon::StoryBackendKind::CONSOLE}, scope);
+    rows.push_back(builtin_row(tools, "01.01", /*first_step=*/0, /*steps=*/2));
+    note_autosaves(rows, sightings);
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
     Pokemon::RunState state;
-    const Pokemon::SegmentReport report = run_plza_segments(game, rows, /*options=*/{}, backend, state, sightings);
-    const std::string verdict = report.completed
-        ? "done"
-        : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);
+    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_segments(game, rows, /*options=*/{}, backend, state, sightings);
+    const std::string verdict = verdict_of(failure, rows, /*with_checkpoint=*/true);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }
@@ -1722,59 +1681,46 @@ private:
     NewGameChainCase m_case;
 };
 
-//  A checkpoint whose last step saves from the menu.
+//  A checkpoint whose last step did or did not save from the menu.
 struct MenuSaveCase{
     std::string name;
     struct Input{
-        std::string action;
-        bool succeeds = true;
+        bool menu_saved = false;
     };
     Input input;
     struct Expectation{
-        //  "saved", or the failure's detail.
-        std::string save;
+        std::string line;
     };
     Expectation expectation;
 };
 
 const MenuSaveCase MENU_SAVE_CASES[] = {
     {
-        .name = "a menu save that succeeds saves the checkpoint",
-        .input = {.action = std::string(MENU_SAVE_ACTION)},
-        .expectation = {.save = "saved"},
+        .name = "a menu save in the last step saves the checkpoint",
+        .input = {.menu_saved = true},
+        .expectation = {.line = "[Save] T: the game autosaved (seen)"},
     },
     {
-        .name = "a menu save that fails saves nothing",
-        .input = {.action = std::string(MENU_SAVE_ACTION), .succeeds = false},
-        .expectation = {.save = "no autosave seen"},
-    },
-    {
-        .name = "another step that succeeds saves nothing",
-        .input = {.action = "walk_to_unread_marker"},
-        .expectation = {.save = "no autosave seen"},
+        .name = "no menu save: not saved",
+        .input = {.menu_saved = false},
+        .expectation = {.line = "[Save] T: not saved (no autosave seen)"},
     },
 };
 
 UnitTestResult check_menu_save(const MenuSaveCase& test, CancellableScope& scope){
-    const bool succeeds = test.input.succeeds;
-    Pokemon::StoryGame<ZonePose> inner;
-    inner.actions.push_back(Pokemon::StoryAction<ZonePose>{
-        .spec = {.kind = Pokemon::StoryStepKind::GAME, .name = test.input.action},
-        .handler = [succeeds](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
-            return succeeds ? Pokemon::outcome_ok() : Pokemon::outcome_failed("save_failed", "no save dialog");
-        },
-    });
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = with_autosave_sightings(inner, Pokemon::StoryRows{}, sightings);
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = {}}, scope);
-    const StoryCheckpoint row = one_step_row("T", test.input.action);
-    const Pokemon::StoryActionArgs args;
-    Pokemon::RunState state;
-    game.actions.front().handler(backend, StoryActionCall{.step = row.steps.front(), .args = args}, state);
-    const Pokemon::Outcome saved = game.save(backend, row);
-    const std::string save = saved.succeeded() ? "saved" : saved.detail;
-    if (save != test.expectation.save){
-        return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.save, save, joined(backend.lines(), "\n"));
+    Pokemon::StoryGame game = plza_story_game(StoryRows{}, sightings);
+    Pokemon::FakeStoryBackend backend({.looks = {}}, scope);
+    StoryCheckpoint row;
+    row.id = "T";
+    row.steps.push_back(StoryStep{.name = "save"});
+    sightings.enter("save");
+    if (test.input.menu_saved){
+        sightings.saved(backend);
+    }
+    game.save(backend, row);
+    if (std::find(backend.lines().begin(), backend.lines().end(), test.expectation.line) == backend.lines().end()){
+        return std::format("expected the line \"{}\" in:\n{}", test.expectation.line, joined(backend.lines(), "\n"));
     }
     return true;
 }
@@ -1862,14 +1808,15 @@ const SightingsCase SIGHTINGS_CASES[] = {
 
 UnitTestResult check_sightings(const SightingsCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = {}}, scope);
+    Pokemon::FakeStoryBackend backend({.looks = {}}, scope);
     for (const SightingLook& entry : test.input.looks){
         if (entry.step.empty()){
             sightings.finish("");
             sightings.restart();
             continue;
         }
-        sightings.note(backend, look(/*events=*/{}, entry.badge ? std::vector<std::string_view>{AUTOSAVE_READING} : std::vector<std::string_view>{}, entry.at), entry.step);
+        sightings.enter(entry.step);
+        sightings.note(backend, look(/*events=*/{}, entry.badge ? std::vector<std::string_view>{AUTOSAVE_READING} : std::vector<std::string_view>{}, entry.at));
     }
     if (sightings.seen_in() != test.expectation.seen_in){
         return std::format(

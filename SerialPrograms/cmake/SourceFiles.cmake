@@ -1612,21 +1612,15 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.h
@@ -1634,52 +1628,15 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy_Tests.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.h
-    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.cpp
-    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.h
-    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_MapUtil.h
-    Source/Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h
-    Source/Pokemon/AutoStory/Pokemon_StoryEvent.h
-    Source/Pokemon/AutoStory/Pokemon_StoryEvents.cpp
-    Source/Pokemon/AutoStory/Pokemon_StoryEvents.h
-    Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.cpp
-    Source/Pokemon/AutoStory/Pokemon_StoryEvents_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StoryFailure.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
-    Source/Pokemon/AutoStory/Pokemon_StoryOutcome.cpp
-    Source/Pokemon/AutoStory/Pokemon_StoryOutcome.h
-    Source/Pokemon/AutoStory/Pokemon_StoryPose.cpp
-    Source/Pokemon/AutoStory/Pokemon_StoryPose.h
-    Source/Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
+    Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryRegisteredArg.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
@@ -2580,12 +2537,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.cpp
@@ -3701,6 +3654,4 @@ list(APPEND LOGIC_TEST_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryChainStart_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.cpp
 )

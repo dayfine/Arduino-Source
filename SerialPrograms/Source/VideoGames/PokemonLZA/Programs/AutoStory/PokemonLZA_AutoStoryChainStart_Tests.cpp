@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryReadings.h"
@@ -27,12 +27,10 @@ namespace PokemonLZA{
 
 namespace{
 
-using Pokemon::Observation;
 using Pokemon::StoryCheckpoint;
-using Pokemon::ZonePose;
 
-Observation<ZonePose> look_of(std::optional<std::string_view> reading){
-    Observation<ZonePose> observation;
+ScreenObservation look_of(std::optional<std::string_view> reading){
+    ScreenObservation observation;
     observation.when = WallClock::min();
     if (reading){
         observation.readings[std::string(*reading)] = 1;
@@ -41,7 +39,7 @@ Observation<ZonePose> look_of(std::optional<std::string_view> reading){
 }
 
 //  01.01's platform, then the looks off it.
-const std::vector<Observation<ZonePose>> CHAIN_LOOKS = {
+const std::vector<ScreenObservation> CHAIN_LOOKS = {
     look_of(PLATFORM_READING), look_of(PLATFORM_READING),
     look_of(std::nullopt), look_of(std::nullopt), look_of(std::nullopt), look_of(std::nullopt),
 };
@@ -119,15 +117,15 @@ const ChainStartCase CHAIN_START_CASES[] = {
 
 UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = plza_story_game(
-        /*console=*/{}, Pokemon::StoryRows{}, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt, sightings
-    );
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = CHAIN_LOOKS}, scope);
-    StoryCheckpoint first{.id = "01.01", .title = "Test"};
-    first.steps.push_back(Pokemon::StoryStep{
-        .kind = Pokemon::StoryStepKind::GAME, .name = "wait_for_platform", .why = "", .action = "wait_for_platform", .args = {},
+    Pokemon::StoryGame game = plza_story_game(StoryRows{}, sightings);
+    Pokemon::FakeStoryBackend backend({.looks = CHAIN_LOOKS}, scope);
+    const PlzaStoryTools tools;
+    std::vector<StoryCheckpoint> rows(2);
+    rows[0].id = "01.01";
+    rows[0].steps.push_back(Pokemon::StoryStep{
+        .name = "wait_for_platform", .action = "wait_for_platform", .run = plza_story_actions(tools).at("wait_for_platform")(JsonObject()),
     });
-    const std::vector<StoryCheckpoint> rows{first, StoryCheckpoint{.id = "01.02", .title = "Test"}};
+    rows[1].id = "01.02";
     std::vector<CheckpointStart> starts;
     if (test.input.start){
         starts.push_back(CheckpointStart{.checkpoint = "01.02", .signature = *test.input.start});
@@ -141,10 +139,10 @@ UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& s
         started += started.empty() ? row.id : std::format(" {}", row.id);
     };
     Pokemon::RunState state;
-    const Pokemon::SegmentReport report = run_plza_segments(game, rows, options, backend, state, sightings);
-    const std::string verdict = report.completed
+    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_segments(game, rows, options, backend, state, sightings);
+    const std::string verdict = !failure
         ? "done"
-        : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);
+        : std::format("failed at {} {}: {}", failure->checkpoint_id, failure->event_index ? "step" : "chain", failure->failure.code);
     std::string log;
     bool has_line = test.expectation.line.empty();
     for (const std::string& line : backend.lines()){

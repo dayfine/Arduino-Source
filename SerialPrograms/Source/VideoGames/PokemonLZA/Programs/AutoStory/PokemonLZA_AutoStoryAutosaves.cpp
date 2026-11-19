@@ -16,9 +16,6 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-using Pokemon::Outcome;
-using Pokemon::StoryActionCall;
-using Pokemon::ZonePose;
 
 
 namespace{
@@ -40,15 +37,11 @@ std::optional<std::string_view> step_after(const Pokemon::StoryCheckpoint& row, 
 //  code-health: allow public_methods -- forwards every call of the engine's backend to the wrapped one unchanged
 class SightingBackend : public PlzaBackend{
 public:
-    SightingBackend(PlzaBackend& inner, AutosaveSightings& sightings, std::string_view step)
+    SightingBackend(PlzaBackend& inner, AutosaveSightings& sightings)
         : m_inner(inner)
         , m_sightings(sightings)
-        , m_step(step)
     {}
 
-    virtual Pokemon::StoryBackendKind kind() const override{
-        return m_inner.kind();
-    }
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
         m_inner.press(button, hold, release);
     }
@@ -58,13 +51,10 @@ public:
     virtual void wait(Milliseconds duration) override{
         m_inner.wait(duration);
     }
-    virtual Pokemon::Observation<ZonePose> observe() override{
-        Pokemon::Observation<ZonePose> look = m_inner.observe();
-        m_sightings.note(m_inner, look, m_step);
+    virtual ScreenObservation observe() override{
+        ScreenObservation look = m_inner.observe();
+        m_sightings.note(m_inner, look);
         return look;
-    }
-    virtual Outcome battle(const Pokemon::StoryActionArgs& args) override{
-        return m_inner.battle(args);
     }
     virtual void log(std::string_view line) override{
         m_inner.log(line);
@@ -79,7 +69,6 @@ public:
 private:
     PlzaBackend& m_inner;
     AutosaveSightings& m_sightings;
-    std::string_view m_step;
 };
 
 } // namespace
@@ -94,7 +83,8 @@ void AutosaveSightings::restart(){
     m_earlier_badge_logged = false;
 }
 
-void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<ZonePose>& look, std::string_view step){
+void AutosaveSightings::note(PlzaBackend& backend, const ScreenObservation& look){
+    const std::string& step = m_step;
     if (!m_origin){
         m_origin = look.when;
     }
@@ -123,7 +113,8 @@ void AutosaveSightings::note(PlzaBackend& backend, const Pokemon::Observation<Zo
     }
 }
 
-void AutosaveSightings::saved(PlzaBackend& backend, std::string_view step){
+void AutosaveSightings::saved(PlzaBackend& backend){
+    const std::string& step = m_step;
     if (!m_seen_in){
         m_seen_in = std::string(step);
     }
@@ -140,10 +131,10 @@ std::optional<std::string> AutosaveSightings::finish(std::string_view last_step)
 
 
 std::optional<std::string> autosave_step_error(
-    const Pokemon::StoryCheckpoint& row, Pokemon::StoryRowSave save, std::optional<std::string_view> autosave_step
+    const Pokemon::StoryCheckpoint& row, bool autosave_row, std::optional<std::string_view> autosave_step
 ){
     if (!autosave_step){
-        if (save == Pokemon::StoryRowSave::AUTOSAVE){
+        if (autosave_row){
             return std::format("{}: \"save\": \"autosave\" needs \"autosave_step\", the step a run log showed the badge in", row.id);
         }
         return std::nullopt;
@@ -165,43 +156,50 @@ std::optional<std::string> autosave_step_error(
 }
 
 
-Pokemon::StoryGame<ZonePose> with_autosave_sightings(
-    Pokemon::StoryGame<ZonePose> game, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
-){
-    for (Pokemon::StoryAction<ZonePose>& action : game.actions){
-        action.handler = [&sightings, handler = std::move(action.handler)](
-            Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState& state
-        ){
-            SightingBackend noted(backend, sightings, call.step.name);
-            Outcome outcome = handler(noted, call, state);
-            if (outcome.succeeded() && call.step.action == MENU_SAVE_ACTION){
-                sightings.saved(backend, call.step.name);
-            }
-            return outcome;
-        };
+void note_autosaves(std::span<Pokemon::StoryCheckpoint> checkpoints, AutosaveSightings& sightings){
+    for (Pokemon::StoryCheckpoint& checkpoint : checkpoints){
+        for (Pokemon::StoryStep& step : checkpoint.steps){
+            step.run = [&sightings, name = step.name, run = std::move(step.run)](PlzaBackend& backend, Pokemon::RunState& state) mutable{
+                sightings.enter(name);
+                SightingBackend noted(backend, sightings);
+                return run(noted, state);
+            };
+        }
     }
-    game.save = Pokemon::autosave_policy<ZonePose>(rows, [&sightings](const Pokemon::StoryCheckpoint& checkpoint){
-        const std::string_view last_step = checkpoint.steps.empty() ? std::string_view() : std::string_view(checkpoint.steps.back().name);
-        std::optional<std::string> first_step = sightings.finish(last_step);
-        return Pokemon::AutosaveSighting{.first_step = std::move(first_step), .at_end = sightings.last_end_seen()};
-    });
-    return game;
 }
 
-Pokemon::StoryGame<ZonePose> reloading_only_to_start(const Pokemon::StoryGame<ZonePose>& game, const AutosaveSightings& sightings){
-    Pokemon::StoryGame<ZonePose> guarded = game;
-    if (!game.reload){
-        return guarded;
-    }
-    guarded.reload = [reload = game.reload, &sightings](Pokemon::StoryBackend<ZonePose>& backend){
-        if (const std::optional<std::string>& step = sightings.seen_in()){
-            return Pokemon::outcome_failed("save_moved", std::format(
-                "the game autosaved in {} during the failed run: a reload would load past the checkpoint's start", *step
-            ));
+decltype(Pokemon::StoryGame::save) autosave_policy(StoryRows rows, AutosaveSightings& sightings){
+    return [rows = std::move(rows), &sightings](PlzaBackend& backend, const Pokemon::StoryCheckpoint& checkpoint) -> std::optional<Pokemon::StoryFailure>{
+        const std::string_view last_step = checkpoint.steps.empty() ? std::string_view() : std::string_view(checkpoint.steps.back().name);
+        const std::optional<std::string> first_step = sightings.finish(last_step);
+        if (sightings.last_end_seen()){
+            backend.log(std::format("[Save] {}: the game autosaved (seen)", checkpoint.id));
+            return std::nullopt;
         }
-        return reload(backend);
+        std::string why = "no autosave seen";
+        if (first_step){
+            const std::string_view next = step_after(checkpoint, *first_step).value_or(last_step);
+            why = std::format("the game autosaved in {}, before {}: a reload would skip {}", *first_step, next, next);
+        }else if (rows.unverified_autosaves.contains(checkpoint.id)){
+            why = "save unverified";
+        }else if (rows.autosaves.contains(checkpoint.id)){
+            why = "the plan's autosave was not seen";
+        }
+        backend.log(std::format("[Save] {}: not saved ({})", checkpoint.id, why));
+        return std::nullopt;
     };
-    return guarded;
+}
+
+decltype(Pokemon::StoryGame::reload) reloading_only_to_start(Pokemon::StoryGame& game, const AutosaveSightings& sightings){
+    return [&game, &sightings](PlzaBackend& backend, const Pokemon::StoryCheckpoint& failed) -> std::optional<std::string>{
+        if (const std::optional<std::string>& step = sightings.seen_in()){
+            backend.log(std::format(
+                "[Save] {}: the game autosaved in {} during the failed run: a reload would load past its start", failed.id, *step
+            ));
+            return std::nullopt;
+        }
+        return game.reload(backend, failed);
+    };
 }
 
 void log_moved_save(PlzaBackend& backend, const AutosaveSightings& sightings, std::string_view checkpoint){

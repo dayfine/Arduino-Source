@@ -11,7 +11,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryCatches_H
 #define PokemonAutomation_PokemonLZA_AutoStoryCatches_H
 
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h"
 
 namespace PokemonAutomation{
@@ -21,12 +21,12 @@ namespace PokemonLZA{
 
 //  03.07's first catch (Fletchling): caught once a "Battling wild Pokemon"
 //  card shows. Fails as "no_catch" after `max_throws` throws with no card.
-Pokemon::Outcome catch_tutorial(StoryEnv& env, PlzaBackend& backend, int max_throws);
+std::optional<Pokemon::StoryFailure> catch_tutorial(StoryEnv& env, PlzaBackend& backend, int max_throws);
 
 //  03.07's second catch (Bunnelby): rounds of attacks and a throw until a
 //  round after the first finds no target to lock on. Fails as
 //  "still_a_target" after `max_rounds`.
-Pokemon::Outcome battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_rounds);
+std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_rounds);
 
 //  `party_species`: the party bar's filled slots once `new_species` are
 //  caught.
@@ -42,12 +42,12 @@ struct ZoneCatchGoal{
 //  CATCH_SPOTS, throwing only at species not caught, until the party bar
 //  shows `goal.party_species`; unread, the tally of banners and plates
 //  decides. Fails as "short_of_species", still in the zone.
-Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal);
+std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal);
 
 //  Back onto the road at the 60 spot by a map leg: the marker is past the
 //  far gate behind the zone's fence, so a walk at the marker wanders off.
 //  Ends with the camera on the marker. Fails as walk_map_legs() does.
-Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend);
+std::optional<Pokemon::StoryFailure> walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend);
 
 
 

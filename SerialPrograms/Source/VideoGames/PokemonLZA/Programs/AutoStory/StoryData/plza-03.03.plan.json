@@ -10,13 +10,11 @@
     "events": [
       {
         "id": "taunie_runs_off",
-        "kind": "game_action",
         "why": "the Main Missions card (A turns its pages), Taunie runs off; after a reload the card is gone and this ends on the move hints",
         "action": "mash_to_move_hints"
       },
       {
         "id": "through_hotel_gate",
-        "kind": "game_action",
         "why": "through the Hotel Z gate passage into the rock pile scene. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -25,13 +23,11 @@
       },
       {
         "id": "rock_pile_scene",
-        "kind": "game_action",
         "why": "Taunie at the rocks blocking the street",
         "action": "mash_to_move_hints"
       },
       {
         "id": "side_street_to_wall",
-        "kind": "game_action",
         "why": "down the side street and across to the wall; ends in control against it. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -40,19 +36,16 @@
       },
       {
         "id": "climb_ladder",
-        "kind": "game_action",
         "why": "sidestep right, face up, A Climb Up, hold up",
         "action": "climb_ladder"
       },
       {
         "id": "rooftop_scene",
-        "kind": "game_action",
         "why": "Taunie on the roof",
         "action": "mash_to_move_hints"
       },
       {
         "id": "off_the_roof",
-        "kind": "game_action",
         "why": "off the roof's edge to South Boulevard, until the scene there. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -62,7 +55,6 @@
       },
       {
         "id": "south_boulevard",
-        "kind": "game_action",
         "why": "Taunie walks to the Pokemon Center, until Station Front",
         "action": "mash_to_move_hints"
       }

@@ -10,32 +10,28 @@
     "events": [
       {
         "id": "to_bed",
-        "kind": "game_action",
         "why": "to the bed's \"A Rest\"; an earlier prompt is passed on the way. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {"legs": [[45, 1500]], "held": true, "end": "prompt", "end_after_ms": 750}
       },
       {
         "id": "rest",
-        "kind": "talk",
+        "action": "talk",
         "why": "A Rest"
       },
       {
         "id": "rest_question",
-        "kind": "game_action",
         "why": "\"Rest until tomorrow morning?\" before the choice shows",
         "action": "text_to_choice",
         "args": {"advance_with_a": true}
       },
       {
         "id": "rest_until_morning",
-        "kind": "game_action",
         "why": "yes",
         "action": "choose_0"
       },
       {
         "id": "wake_up",
-        "kind": "game_action",
         "why": "sleep and wake up, until control facing the door; no party bar or prompt in the room, so quiet means control",
         "action": "mash_to_move_hints",
         "args": {"quiet_ms": 3000, "min_length_ms": 20000, "quiet_is_control": true}

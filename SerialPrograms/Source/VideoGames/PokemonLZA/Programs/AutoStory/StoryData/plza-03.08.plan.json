@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "catch_more_species",
-        "kind": "game_action",
         "why": "the lab gate needs five species, 3 after the tutorial: catch Scatterbug (road, marker 100) and Mareep (grass, 60). Off Taunie's rocks, checked by the map pin, then patrol 100, 60, ... (going to 100 respawns 60); 10 visits, 10 min, 12 throws at most. The party bar's count decides (5 = done), since the \"Registered!\" banner can be missed",
         "action": "catch_in_zone"
       }

@@ -15,7 +15,6 @@
 #include <optional>
 #include <span>
 #include <vector>
-#include "Common/Cpp/Time.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 
 namespace PokemonAutomation{
@@ -33,13 +32,6 @@ enum class SpotVisit{
 //  Turn back where a new species was caught: its species is the one there.
 SpotVisit spot_visit(int spot, std::span<const int> caught_at);
 
-//  How long the watcher must see the "Registered!" banner before it fires.
-inline constexpr Milliseconds REGISTERED_BANNER_HOLD(100);
-
-//  Watched past the throw's own 8 s: the banner showed 6.9 s in, with
-//  frames a second apart.
-inline constexpr Milliseconds REGISTERED_BANNER_TAIL(2000);
-
 //  What a catch stop does after a throw at a locked target.
 enum class AfterThrow{
     STOP_ENDS,
@@ -52,9 +44,6 @@ enum class AfterThrow{
     //  A sweep at the same stop finds the same target again.
     MOVE_ON,
 };
-
-//  So a target that keeps dodging does not take all of the patrol's throws.
-inline constexpr int THROWS_AT_ONE_TARGET = 3;
 
 //  `relocked`: the plate that locks on with ZL held after the throw.
 AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked, int throws_at_lock);

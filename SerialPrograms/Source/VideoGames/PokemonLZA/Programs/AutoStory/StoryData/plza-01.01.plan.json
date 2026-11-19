@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "on_platform",
-        "kind": "game_action",
         "why": "start check: on the platform with free control",
         "action": "wait_for_platform",
         "args": {
@@ -19,7 +18,6 @@
       },
       {
         "id": "platform_to_plaza",
-        "kind": "game_action",
         "why": "down the platform, then right until the white fade into the arrival scenes. not planned: the platform has no map",
         "action": "walk",
         "args": {
@@ -29,7 +27,6 @@
       },
       {
         "id": "arrival_scenes",
-        "kind": "game_action",
         "why": "arrival scenes to the MAIN MISSION 01 banner; ends once the third black fade settles (the banner can be missed), or on the controls hint",
         "action": "mash_to_move_hints",
         "args": {

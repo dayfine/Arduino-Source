@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <format>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -38,8 +39,6 @@ using namespace std::chrono_literals;
 
 namespace{
 
-using Pokemon::Observation;
-using Pokemon::ZonePose;
 
 
 std::string joined(const std::vector<std::string>& texts, std::string_view separator){
@@ -56,7 +55,7 @@ Milliseconds seconds_in_log(std::string_view text){
 
 //  `screen` as describe_scene_look() names it, plus a choice's "2 rows" and
 //  highlighted "row 0".
-Observation<ZonePose> golden_look(Milliseconds at, std::string_view screen){
+ScreenObservation golden_look(Milliseconds at, std::string_view screen){
     const std::pair<std::string_view, ScreenEvent> events[] = {
         {"black fade", ScreenEvent::FADE_BLACK}, {"white fade", ScreenEvent::FADE_WHITE},
         {"text box", ScreenEvent::DIALOG_BOX}, {"choice box", ScreenEvent::CHOICE_BOX},
@@ -68,7 +67,7 @@ Observation<ZonePose> golden_look(Milliseconds at, std::string_view screen){
         {"mission banner", MISSION_BANNER_READING}, {"mission complete", MISSION_COMPLETE_READING},
         {"tutorial card", TUTORIAL_CARD_READING},
     };
-    Observation<ZonePose> look;
+    ScreenObservation look;
     look.when = WallClock::min() + at;
     size_t from = 0;
     while (from < screen.size()){
@@ -149,9 +148,6 @@ public:
         return m_lines;
     }
 
-    virtual Pokemon::StoryBackendKind kind() const override{
-        return Pokemon::StoryBackendKind::SCRIPT;
-    }
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
         m_presses.push_back({m_shown, button_to_string(button)});
         m_now += hold + release;
@@ -163,7 +159,7 @@ public:
     virtual void wait(Milliseconds duration) override{
         m_now += duration;
     }
-    virtual Observation<ZonePose> observe() override{
+    virtual ScreenObservation observe() override{
         while (m_shown + 1 < m_screens.size() && m_screens[m_shown + 1].at <= m_now){
             m_shown++;
         }
@@ -171,9 +167,6 @@ public:
             return golden_look(m_now, "nothing");
         }
         return golden_look(m_now, m_screens[m_shown].screen);
-    }
-    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{
-        return Pokemon::outcome_ok();
     }
     virtual void log(std::string_view line) override{
         m_lines.emplace_back(line);
@@ -462,7 +455,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "A"}, {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
                 //  The VS splash's subtitles show only the chevron.
                 {"still, advance arrow", "A"}, {"advance arrow", "A"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"},
                 {"battle, controls hint", "-"},
             },
             .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
@@ -566,7 +559,7 @@ const GoldenCase GOLDEN_CASES[] = {
             .keys = {
                 //  B: an A as the text ends could land on the choice.
                 {"text box", "B"}, {"text box, advance arrow", "B"},
-                {"still", "-"}, {"nothing", "-"},
+                {"still", "-"}, {"nothing", "- or +"},
                 {"text box, choice box", "-"},
             },
             .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
@@ -626,7 +619,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 //  A B landing as the choice opens would take its last row.
                 {"text box", "A"}, {"text box, advance arrow", "A"},
                 {"text box, choice box, 2 rows, row 0", "A"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"},
             },
             .verdict = "done", .end = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
@@ -680,7 +673,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar, still, controls hint", "-"}, {"party bar, controls hint", "-"}},
             .verdict = "failed: scene_never_started",
-            .end = "[Step] wild_zones_tutorial MASH/a: failed: scene_never_started: scene: the scene never started (player not at its "
+            .end = "[Event] 03.06/1 wild_zones_tutorial: failed: scene_never_started: scene: the scene never started (player not at its "
                 "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
                 "the A prompt or the mission banner).",
         },
@@ -733,7 +726,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {
                 {"text box", "B"}, {"text box, advance arrow", "B"}, {"advance arrow", "A"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
                 {"party bar", "-"}, {"party bar, still", "-"},
             },
             .verdict = "done", .end = "[PLZA scene] done on can_move.",
@@ -747,7 +740,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar, A prompt", "-"}},
             .verdict = "failed: scene_never_started",
-            .end = "[Step] research_lab_gate MASH/a: failed: scene_never_started: scene: the scene never started (player not at its "
+            .end = "[Event] 03.09/1 research_lab_gate: failed: scene_never_started: scene: the scene never started (player not at its "
                 "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
                 "the A prompt or the mission banner).",
         },
@@ -772,7 +765,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {
                 {"text box", "B"}, {"text box, advance arrow", "B"},
-                {"nothing", "B"}, {"still", "B"},
+                {"nothing", "B or +"}, {"still", "B"},
                 {"black fade", "-"}, {"party bar", "-"},
             },
             .verdict = "done", .end = "[PLZA scene] done on can_move.",
@@ -786,7 +779,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] into_pokemon_center: the end event after the last turn.",
+            .verdict = "done", .end = "[PLZA] walk: the end event after the last turn.",
         },
     },
     {
@@ -798,7 +791,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}},
             .verdict = "failed: walk_no_end",
-            .end = "[Step] into_pokemon_center GAME/walk: failed: walk_no_end: into_pokemon_center: no end event after the last turn",
+            .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no end event after the last turn",
         },
     },
     {
@@ -809,7 +802,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] back_to_nurse: ended on: party bar, A prompt",
+            .verdict = "done", .end = "[PLZA] walk: ended on: party bar, A prompt",
         },
     },
     {
@@ -819,7 +812,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}},
-            .verdict = "done", .end = "[PLZA] out_of_pokemon_center: legs done, screen now: player can move",
+            .verdict = "done", .end = "[PLZA] walk: legs done, screen now: player can move",
         },
     },
     {
@@ -830,7 +823,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"black fade", "-"}},
-            .verdict = "done", .end = "[PLZA] to_mable: a black fade after 1250 ms of the last leg: the scene takes over.",
+            .verdict = "done", .end = "[PLZA] walk: a black fade after 1250 ms of the last leg: the scene takes over.",
         },
     },
     {
@@ -841,7 +834,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "stick"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] to_taunie: the end event after 2500 ms of the last leg.",
+            .verdict = "done", .end = "[PLZA] walk: the end event after 2500 ms of the last leg.",
         },
     },
     {
@@ -862,7 +855,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"battle, controls hint", "-"}},
-            .verdict = "done", .end = "[Step] andi_battle GAME/story_battle: ok",
+            .verdict = "done", .end = "[Event] 01.03/1 andi_battle: done",
         },
     },
     {
@@ -872,7 +865,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )", .symbols_from_watch = 1},
         .expectation = {
             .keys = {{"party bar", "ZL"}},
-            .verdict = "done", .end = "[Step] battle_tepig GAME/story_battle: ok",
+            .verdict = "done", .end = "[Event] 03.02b/1 battle_tepig: done",
         },
     },
     {
@@ -883,7 +876,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar", "ZL"}},
             .verdict = "failed: battle_never_started",
-            .end = "[Step] battle_tepig GAME/story_battle: failed: battle_never_started: no battle HUD and no move symbols under ZL "
+            .end = "[Event] 03.02b/1 battle_tepig: failed: battle_never_started: no battle HUD and no move symbols under ZL "
                 "within 10 s",
         },
     },
@@ -912,15 +905,86 @@ const GoldenCase GOLDEN_CASES[] = {
             .verdict = "done", .end = "[PLZA scene] done on can_move.",
         },
     },
+    {
+        //  From the black fade on; the controls hint at the end is synthetic.
+        .name = "01.01 arrival_scenes, Italian, Jacinthe's subtitles each after a quiet spell, then the controls hint (stopped as a loop 2026-11-15 22:27)",
+        .input = {.checkpoint = "01.01", .step = "arrival_scenes", .screens = R"(
+0.0s: black fade
+2.4s: nothing
+3.9s: still
+5.6s: nothing
+12.5s: advance arrow
+12.9s: nothing
+13.8s: text box
+14.3s: nothing
+24.4s: advance arrow
+24.8s: nothing
+34.2s: advance arrow
+34.7s: nothing
+39.7s: advance arrow
+40.6s: controls hint
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"advance arrow", "A"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"controls hint", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on controls_hint.",
+        },
+    },
+    {
+        .name = "01.02 battle_area, Italian, the A Parla prompt past 20 s ends the step (A there restarted the talk 2026-11-15 21:56)",
+        .input = {.checkpoint = "01.02", .step = "battle_area", .screens = R"(
+0.0s: text box
+1.2s: text box, advance arrow
+1.7s: nothing
+2.2s: text box
+3.0s: text box, advance arrow
+3.4s: nothing
+3.7s: text box
+5.6s: nothing
+7.1s: black fade
+12.8s: still
+13.2s: nothing
+13.7s: A prompt
+15.7s: nothing
+16.2s: text box
+17.0s: text box, advance arrow
+17.4s: nothing
+18.4s: A prompt
+22.4s: nothing
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"A prompt", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on talk_prompt.",
+        },
+    },
+    {
+        //  The controls hint after the cutscene is synthetic.
+        .name = "02.02 street_scene, English, a textless cutscene past the start window, then the controls hint (failed as scene_never_started 2026-11-15 23:23)",
+        .input = {.checkpoint = "02.02", .step = "street_scene", .screens = R"(
+0.0s: black fade, still
+3.8s: still
+4.9s: nothing
+46.0s: controls hint
+)"},
+        .expectation = {
+            .keys = {{"black fade, still", "-"}, {"still", "-"}, {"nothing", "- or +"}, {"controls hint", "-"}},
+            .verdict = "done", .end = "[PLZA scene] done on controls_hint.",
+        },
+    },
 };
 
-//  All of checkpoint `id` with an empty `step`.
-StoryCheckpoint step_row(std::string_view id, std::string_view step){
-    for (const StoryCheckpoint& row : builtin_story_data().checkpoints){
+//  All of checkpoint `id` with an empty `step`, bound to `tools`.
+StoryCheckpoint step_row(std::string_view id, std::string_view step, const PlzaStoryTools& tools){
+    for (StoryCheckpoint& row : load_plza_story(tools).checkpoints){
         if (row.id != id){
             continue;
         }
-        StoryCheckpoint part = row;
+        StoryCheckpoint part = std::move(row);
         if (step.empty()){
             return part;
         }
@@ -991,21 +1055,24 @@ UnitTestResult check_golden(const GoldenCase& test, CancellableScope& scope){
             return std::format("no key for the screen \"{}\"", screen.screen);
         }
     }
-    const StoryCheckpoint row = step_row(test.input.checkpoint, test.input.step);
+    GoldenBackend backend(screens, test.input.symbols_from_watch, scope);
+    PlzaStoryTools tools;
+    tools.lock_on = [&backend](Milliseconds hold){
+        return backend.watch_lock_on(hold);
+    };
+    tools.battle = [](PlzaBackend&) -> std::optional<Pokemon::StoryFailure>{
+        return std::nullopt;
+    };
+    StoryCheckpoint row = step_row(test.input.checkpoint, test.input.step, tools);
     if (row.steps.empty() || (!test.input.step.empty() && row.steps.size() != 1)){
         return std::format("no step {} in {}", test.input.step, test.input.checkpoint);
     }
-    GoldenBackend backend(screens, test.input.symbols_from_watch, scope);
-    const LockOnWatch lock_on = [&backend](Milliseconds hold){
-        return backend.watch_lock_on(hold);
-    };
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, builtin_story_data(), /*arrow=*/std::nullopt, lock_on, sightings);
-    Pokemon::StoryEngine<ZonePose> engine(game, backend);
+    Pokemon::StoryGame game = plza_story_game(builtin_story_data(), sightings);
     Pokemon::RunState state;
-    const Pokemon::SegmentReport report = engine.run_segment("test", std::vector<StoryCheckpoint>{row}, 1, state);
+    const std::optional<Pokemon::CheckpointFailure> failure = Pokemon::run_checkpoints(backend, std::span<StoryCheckpoint>(&row, 1), game, state);
     std::vector<std::string> wrong = wrong_presses(test, screens, backend);
-    const std::string verdict = report.completed ? "done" : std::format("failed: {}", report.failure.failure);
+    const std::string verdict = !failure ? "done" : std::format("failed: {}", failure->failure.code);
     if (verdict != test.expectation.verdict){
         wrong.push_back(std::format("ended \"{}\", expected \"{}\"", verdict, test.expectation.verdict));
     }else if (std::find(backend.lines().begin(), backend.lines().end(), test.expectation.end) == backend.lines().end()){

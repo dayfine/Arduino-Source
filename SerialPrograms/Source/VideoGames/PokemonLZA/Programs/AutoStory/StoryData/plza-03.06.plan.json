@@ -11,7 +11,6 @@
     "events": [
       {
         "id": "out_of_pokemon_center",
-        "kind": "game_action",
         "why": "guess: back out of the Center to where 03.04 left the player, facing the same way; these legs do not leave the Center. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -20,7 +19,6 @@
       },
       {
         "id": "center_to_zone_1",
-        "kind": "game_action",
         "why": "from the Pokemon Center toward Wild Zone 1's gate; ends in the street in control. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -29,7 +27,6 @@
       },
       {
         "id": "toward_zone_1_gate",
-        "kind": "game_action",
         "why": "toward the gate, into Taunie's scene. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -38,7 +35,6 @@
       },
       {
         "id": "wild_zones_tutorial",
-        "kind": "scene",
         "why": "Taunie on wild zones, the Wild Zones card",
         "action": "a"
       }

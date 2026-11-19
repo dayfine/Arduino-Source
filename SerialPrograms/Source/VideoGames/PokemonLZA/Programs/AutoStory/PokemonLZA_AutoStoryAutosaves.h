@@ -15,10 +15,13 @@
 #include <string>
 #include <string_view>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryRowExecution.h"
+#include <span>
+#include "Common/Cpp/MoveOnlyFunction.h"
+#include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,9 +39,13 @@ public:
     //  sighting. The last checkpoint's badge is often still up on the next
     //  one's first looks, so a badge within 5 s of one seen before the start,
     //  or first shown in the checkpoint's first 1.5 s, is not counted.
-    void note(PlzaBackend& backend, const Pokemon::Observation<Pokemon::ZonePose>& look, std::string_view step);
-    //  A menu save (MENU_SAVE_ACTION) counts as an autosave seen in `step`.
-    void saved(PlzaBackend& backend, std::string_view step);
+    void note(PlzaBackend& backend, const ScreenObservation& look);
+    //  A menu save (MENU_SAVE_ACTION) counts as an autosave seen in the step.
+    void saved(PlzaBackend& backend);
+    //  The step under way, which note() and saved() name.
+    void enter(std::string_view step){
+        m_step = std::string(step);
+    }
     //  Returns the step the badge last showed in.
     std::optional<std::string> finish(std::string_view last_step);
     bool last_end_seen() const{
@@ -50,6 +57,7 @@ public:
     }
 
 private:
+    std::string m_step;
     std::optional<WallClock> m_origin;
     std::optional<WallClock> m_last_badge;
     std::optional<std::string> m_seen_in;
@@ -67,20 +75,23 @@ inline constexpr std::string_view MENU_SAVE_ACTION = "save_from_menu";
 //  `autosave_step` must be `row`'s last step, and an "autosave" row must
 //  name it. Checked at plan load, not on the console.
 std::optional<std::string> autosave_step_error(
-    const Pokemon::StoryCheckpoint& row, Pokemon::StoryRowSave save, std::optional<std::string_view> autosave_step
+    const Pokemon::StoryCheckpoint& row, bool autosave_row, std::optional<std::string_view> autosave_step
 );
 
-//  `game` noting every look in `sightings` (which must outlive it), saving
-//  per Pokemon::autosave_policy() on what it saw.
-Pokemon::StoryGame<Pokemon::ZonePose> with_autosave_sightings(
-    Pokemon::StoryGame<Pokemon::ZonePose> game, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
-);
+//  Every step of `checkpoints` notes its looks in `sightings`, which must
+//  outlive them.
+void note_autosaves(std::span<Pokemon::StoryCheckpoint> checkpoints, AutosaveSightings& sightings);
 
-//  The reload fails as "save_moved" once the checkpoint under way has
-//  autosaved: a retry from that save would start elsewhere.
-Pokemon::StoryGame<Pokemon::ZonePose> reloading_only_to_start(
-    const Pokemon::StoryGame<Pokemon::ZonePose>& game, const AutosaveSightings& sightings
-);
+//  The program never saves: a checkpoint ends on a save when `sightings`
+//  saw the autosave in its last step ("[Save] <id>: the game autosaved
+//  (seen)"); else it logs why not, by what `rows` expected. `sightings`
+//  must outlive it.
+decltype(Pokemon::StoryGame::save) autosave_policy(StoryRows rows, AutosaveSightings& sightings);
+
+//  `game`'s reload, which says it is at no start once the checkpoint under
+//  way has autosaved: a retry from that save would start elsewhere. Both
+//  must outlive it.
+decltype(Pokemon::StoryGame::reload) reloading_only_to_start(Pokemon::StoryGame& game, const AutosaveSightings& sightings);
 
 //  After `checkpoint` failed: logs where it autosaved, if it did.
 void log_moved_save(PlzaBackend& backend, const AutosaveSightings& sightings, std::string_view checkpoint);

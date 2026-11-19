@@ -11,7 +11,6 @@
     "events": [
       {
         "id": "back_to_nurse",
-        "kind": "game_action",
         "why": "guess: these legs are from inside the Center and do not reach the nurse from outside. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -21,12 +20,11 @@
       },
       {
         "id": "talk_to_nurse",
-        "kind": "talk",
+        "action": "talk",
         "why": "A at the nurse"
       },
       {
         "id": "heal_party",
-        "kind": "scene",
         "why": "the heal (top answers), until control at the counter; the heal saves, so the title's backup save is this spot",
         "action": "a"
       }

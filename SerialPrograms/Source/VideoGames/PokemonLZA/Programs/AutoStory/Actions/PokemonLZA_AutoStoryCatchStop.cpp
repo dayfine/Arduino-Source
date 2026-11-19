@@ -12,6 +12,13 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+namespace{
+
+//  So a target that keeps dodging does not take all of the patrol's throws.
+constexpr int THROWS_AT_ONE_TARGET = 3;
+
+} // namespace
+
 SpotVisit spot_visit(int spot, std::span<const int> caught_at){
     const bool caught = std::find(caught_at.begin(), caught_at.end(), spot) != caught_at.end();
     return caught ? SpotVisit::TURN_BACK : SpotVisit::CATCH;

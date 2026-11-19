@@ -12,7 +12,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryMarkerWalk_H
 
 #include <optional>
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h"
 
 namespace PokemonAutomation{
@@ -23,7 +23,7 @@ namespace PokemonLZA{
 //  Walks on to the objective marker until an A prompt or a dialog shows near it
 //  (MarkerProof::NO_FAR_READ); one farther off is walked past. Fails as
 //  "objective_not_reached" when none shows near it.
-Pokemon::Outcome walk_to_unread_marker(StoryEnv& env, PlzaBackend& backend);
+std::optional<Pokemon::StoryFailure> walk_to_unread_marker(StoryEnv& env, PlzaBackend& backend);
 
 //  The objective marker's distance once MarkerDistance takes a read within `looks`
 //  frames; nullopt when it takes none (a marker half behind a rock misreads).

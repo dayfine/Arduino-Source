@@ -7,7 +7,6 @@
     "events": [
       {
         "id": "new_game",
-        "kind": "game_action",
         "why": "from HOME, game closed, no save: launch, then language, look and name from the panel; ends on Confirm Choices, unconfirmed",
         "action": "new_game_intro"
       }

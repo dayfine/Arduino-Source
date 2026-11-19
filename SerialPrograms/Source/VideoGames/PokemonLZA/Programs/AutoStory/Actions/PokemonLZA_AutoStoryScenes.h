@@ -11,7 +11,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryScenes_H
 #define PokemonAutomation_PokemonLZA_AutoStoryScenes_H
 
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
@@ -23,7 +23,7 @@ namespace PokemonLZA{
 //  rest of her talk, until the party bar holds with no text box. The map
 //  is not looked for: MapDetector needs the Travel Spots icon, which the
 //  first map lacks. Fails as "map_talk_timeout" after 120 s.
-Pokemon::Outcome talk_through_map_screen(PlzaBackend& backend);
+std::optional<Pokemon::StoryFailure> talk_through_map_screen(PlzaBackend& backend);
 
 //  03.03, facing the side street's wall. Reads nothing: the rooftop scene after it is the check.
 void climb_ladder(PlzaBackend& backend);
@@ -31,7 +31,7 @@ void climb_ladder(PlzaBackend& backend);
 //  "choose_<index>" (0 the top): A through text until a choice box shows, then
 //  moves to row `index` and presses A. Fails as "no_choice", "no_such_choice"
 //  or "choice_not_reached".
-Pokemon::Outcome choose_row(PlzaBackend& backend, int index);
+std::optional<Pokemon::StoryFailure> choose_row(PlzaBackend& backend, int index);
 
 
 

@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "into_pokemon_center",
-        "kind": "game_action",
         "why": "into the Pokemon Center to the nurse's \"A Talk\"; the last turn's 90 is a guess. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -20,12 +19,11 @@
       },
       {
         "id": "talk_to_nurse",
-        "kind": "talk",
+        "action": "talk",
         "why": "A at the nurse"
       },
       {
         "id": "pokedex_app",
-        "kind": "game_action",
         "why": "the Pokedex app, Chikorita's entry, the nurse, Taunie's scene outside (autosave), until control outside the Center",
         "action": "talk_to_pokedex_screen"
       }

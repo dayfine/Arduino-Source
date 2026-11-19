@@ -9,11 +9,12 @@
 
 #include <algorithm>
 #include <format>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryZone1Map.h"
 #include "PokemonLZA_AutoStoryZone1Map_Tests.h"
 
@@ -21,17 +22,16 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-using Pokemon::ZonePose;
 
 
 namespace{
 
-using FakeBackend = Pokemon::FakeStoryBackend<ZonePose>;
+using FakeBackend = Pokemon::FakeStoryBackend;
 
 //  Reads `pins` in turn, the last repeating; none when `pins` is empty.
-PinReader pins_of(const std::vector<MapPoint>& pins){
+std::function<std::optional<MapPoint>()> pins_of(const std::vector<MapPoint>& pins){
     if (pins.empty()){
-        return PinReader();
+        return nullptr;
     }
     return [pins, next = size_t(0)]() mutable -> std::optional<MapPoint>{
         const MapPoint pin = pins[std::min(next, pins.size() - 1)];
@@ -85,11 +85,11 @@ const OutOfZoneCase OUT_OF_ZONE_CASES[] = {
 };
 
 UnitTestResult check_out_of_zone(const OutOfZoneCase& test, CancellableScope& scope){
-    FakeBackend backend(Pokemon::FakeStoryScript<ZonePose>{.looks = {}, .kind = Pokemon::StoryBackendKind::SCRIPT}, scope);
-    const Pokemon::Outcome outcome = check_out_of_zone_1(backend, pins_of(test.input.pins));
-    const std::optional<std::string> failure = outcome.succeeded() ? std::nullopt : std::optional<std::string>(outcome.failure);
+    FakeBackend backend(Pokemon::FakeStoryScript{.looks = {}}, scope);
+    const std::optional<Pokemon::StoryFailure> outcome = check_out_of_zone_1(backend, pins_of(test.input.pins));
+    const std::optional<std::string> failure = !outcome ? std::nullopt : std::optional<std::string>(outcome->code);
     if (failure != test.expectation.failure){
-        return std::format("Expected {}, got {}.", test.expectation.failure.value_or("a pass"), to_string(outcome));
+        return std::format("Expected {}, got {}.", test.expectation.failure.value_or("a pass"), (outcome ? std::format("{}", *outcome) : std::string("ok")));
     }
     return true;
 }

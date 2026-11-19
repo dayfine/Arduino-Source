@@ -72,7 +72,7 @@ bool pin_in_zone_1(MapPoint pin){
     return inside(ZONE1_OUTLINE, pin);
 }
 
-Pokemon::Outcome check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin){
+std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, const std::function<std::optional<MapPoint>()>& pin){
     std::string reads;
     for (size_t read = 1; read <= OUT_OF_ZONE_PIN_READS; read++){
         const std::optional<MapPoint> at = pin ? pin() : std::nullopt;
@@ -81,16 +81,16 @@ Pokemon::Outcome check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin)
                 "no map pin on read {} of {}{}", read, OUT_OF_ZONE_PIN_READS, reads.empty() ? "" : std::format(" (before: {})", reads)
             );
             backend.log(std::format("[PLZA] out of Wild Zone 1 not known: {}", detail));
-            return Pokemon::outcome_failed("zone_unread", std::format("out of Wild Zone 1 not known: {}", detail));
+            return Pokemon::StoryFailure{.code = "zone_unread", .detail = std::format("out of Wild Zone 1 not known: {}", detail)};
         }
         reads += std::format("{}({:.0f}, {:.0f})", reads.empty() ? "" : ", ", at->x, at->y);
         if (pin_in_zone_1(*at)){
             backend.log(std::format("[PLZA] still in Wild Zone 1: the map pin reads {}", reads));
-            return Pokemon::outcome_failed("in_wild_zone", std::format("still in Wild Zone 1: the map pin reads {}", reads));
+            return Pokemon::StoryFailure{.code = "in_wild_zone", .detail = std::format("still in Wild Zone 1: the map pin reads {}", reads)};
         }
     }
     backend.log(std::format("[PLZA] out of Wild Zone 1: the map pin reads {}", reads));
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 

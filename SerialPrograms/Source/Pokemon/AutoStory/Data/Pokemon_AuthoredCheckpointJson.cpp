@@ -5,9 +5,9 @@
  */
 
 #include <format>
+#include <initializer_list>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
-#include "Pokemon_StoryStepJson.h"
 #include "Pokemon_AuthoredCheckpointJson.h"
 
 namespace PokemonAutomation{
@@ -36,7 +36,7 @@ void validate_json_fields(
 
 StoryCheckpoint read_authored_checkpoint(
     const JsonValue& value, std::string_view game, std::string_view source,
-    const ExecutionReader& read_execution, std::span<const StoryActionSpec> actions
+    const ExecutionReader& read_execution, const StoryActions& actions
 ){
     const JsonObject& root = value.to_object_throw(std::string(source));
     validate_json_fields(root, {"format", "game", "checkpoint", "execution"}, source);

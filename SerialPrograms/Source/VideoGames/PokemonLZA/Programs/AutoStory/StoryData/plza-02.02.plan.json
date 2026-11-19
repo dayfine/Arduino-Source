@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "to_blocked_street",
-        "kind": "game_action",
         "why": "on until the black fade into the street the trainers block. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -20,13 +19,11 @@
       },
       {
         "id": "street_scene",
-        "kind": "scene",
         "why": "a Pokemon drives the trainers off (no battle)",
         "action": "a"
       },
       {
         "id": "to_battle_zone_gate",
-        "kind": "game_action",
         "why": "to the gate's \"A Leave\". not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -36,18 +33,16 @@
       },
       {
         "id": "leave_battle_zone",
-        "kind": "talk",
+        "action": "talk",
         "why": "A at the gate; Taunie's first line ~3.5 s later"
       },
       {
         "id": "out_of_battle_zone",
-        "kind": "scene",
         "why": "Taunie: out of the Battle Zone",
         "action": "a"
       },
       {
         "id": "through_covered_passage",
-        "kind": "game_action",
         "why": "through the wooden door and the covered passage into the Hotel Z scene. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -57,7 +52,6 @@
       },
       {
         "id": "hotel_z_arrival",
-        "kind": "scene",
         "why": "the Hotel Z arrival scene",
         "action": "a"
       }

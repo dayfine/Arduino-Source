@@ -17,6 +17,7 @@
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonTools/ScreenMachine/ScreenMachine.h"
 #include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "PokemonLZA_AutoStoryMenuReadings.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 
@@ -34,8 +35,10 @@ enum class SceneScreen{
     BATTLE,
     FADE_BLACK,
     FADE_WHITE,
+    SKIP_PROMPT,    //  a choice right after SKIP_CUTSCENE: A on its default row
     CHOICE,
     DIALOG,         //  a box or the advance chevron
+    MAP,            //  Plus on free control opens it: B
     MISSION_COMPLETE,
     TUTORIAL_CARD,  //  only A turns its pages
     MISSION_BANNER, //  terminal on its second look
@@ -54,6 +57,7 @@ enum class SceneScreen{
     AWAITING_SCENE,
     NEVER_STARTED,
     QUIET_END,
+    SKIP_CUTSCENE,  //  moving with no text or HUD for SKIP_AFTER: Plus held SKIP_HOLD
     BLIND_PRESS,
     SCENE_MOVING,
     SCENE_STILL,
@@ -88,6 +92,9 @@ private:
     std::optional<WallClock> quiet_end_due() const;
 
     bool blind_press_due(WallClock now) const;
+    bool skip_due(const ScreenObservation& look) const;
+    //  classify_open() with nothing busy and no sign of control.
+    SceneScreen classify_idle(const ScreenObservation& look) const;
 
     bool fades_settled(WallClock now) const;
 
@@ -123,6 +130,12 @@ private:
     std::optional<WallClock> m_quiet_after_fade_since;
     size_t m_lock_ons = 0;
     bool m_locked_on = false;
+    //  Moving with no text, fade or HUD.
+    std::optional<WallClock> m_moving_since;
+    //  The last look with text, a fade or the HUD: a skip press waits for
+    //  one after the last, so a scene Plus does not skip gets one press.
+    WallClock m_last_skip_cue;
+    std::optional<WallClock> m_last_skip;
 };
 
 
@@ -154,6 +167,13 @@ constexpr Milliseconds LOCK_ON_AFTER = 3000ms;
 constexpr size_t LOCK_ON_ATTEMPTS = 5;
 //  TrainerBattle's attempt_one_attack() looks 1 s, the catches' sweep 1.5 s.
 constexpr Milliseconds LOCK_ON_HOLD = 2000ms;
+//  Upstream's AutoStory (#1933) holds Plus 2 s, then takes the skip
+//  prompt's default row with A. A talk's screen between two lines shows no
+//  text for up to 2.5 s (01.02's Pancham scene).
+constexpr Milliseconds SKIP_AFTER = 3000ms;
+constexpr Milliseconds SKIP_HOLD = 2000ms;
+//  From the look that pressed Plus: the hold, then the prompt.
+constexpr Milliseconds SKIP_PROMPT_WAIT = 5000ms;
 
 bool busy(const ScreenObservation& look){
     return text_shows(look) || fade_shows(look) || look.readings.contains(MISSION_COMPLETE_READING) ||
@@ -188,14 +208,15 @@ Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& 
 
 constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::BATTLE,
-    SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE, SceneScreen::CHOICE, SceneScreen::DIALOG,
+    SceneScreen::FADE_BLACK, SceneScreen::FADE_WHITE, SceneScreen::SKIP_PROMPT, SceneScreen::CHOICE, SceneScreen::DIALOG,
+    SceneScreen::MAP,
     SceneScreen::MISSION_COMPLETE, SceneScreen::TUTORIAL_CARD,
     SceneScreen::MISSION_BANNER, SceneScreen::BANNER_SHOWING, SceneScreen::BANNER_PRESS, SceneScreen::FADE_SETTLED,
     SceneScreen::CAN_MOVE, SceneScreen::PARTY_BAR,
     SceneScreen::CONTROLS_HINT, SceneScreen::HINT_SHOWING,
     SceneScreen::TALK_PROMPT, SceneScreen::PROMPT_SHOWING,
     SceneScreen::LOCKED_ON, SceneScreen::LOCK_ON, SceneScreen::ENDED_IN_CONTROL, SceneScreen::AWAITING_SCENE, SceneScreen::NEVER_STARTED, SceneScreen::QUIET_END,
-    SceneScreen::BLIND_PRESS, SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
+    SceneScreen::SKIP_CUTSCENE, SceneScreen::BLIND_PRESS, SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
 
 void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
@@ -210,7 +231,8 @@ void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
 std::string_view scene_screen_name(SceneScreen screen){
     constexpr std::pair<SceneScreen, std::string_view> NAMES[] = {
         {SceneScreen::BATTLE, "battle"}, {SceneScreen::FADE_BLACK, "fade_black"}, {SceneScreen::FADE_WHITE, "fade_white"},
-        {SceneScreen::CHOICE, "choice"}, {SceneScreen::DIALOG, "dialog"}, {SceneScreen::MISSION_COMPLETE, "mission_complete"},
+        {SceneScreen::SKIP_PROMPT, "skip_prompt"}, {SceneScreen::CHOICE, "choice"}, {SceneScreen::DIALOG, "dialog"},
+        {SceneScreen::MAP, "map"}, {SceneScreen::SKIP_CUTSCENE, "skip_cutscene"}, {SceneScreen::MISSION_COMPLETE, "mission_complete"},
         {SceneScreen::TUTORIAL_CARD, "tutorial_card"}, {SceneScreen::MISSION_BANNER, "mission_banner"},
         {SceneScreen::BANNER_SHOWING, "banner_showing"}, {SceneScreen::BANNER_PRESS, "banner_press"},
         {SceneScreen::FADE_SETTLED, "fade_settled"}, {SceneScreen::CAN_MOVE, "can_move"}, {SceneScreen::PARTY_BAR, "party_bar"},
@@ -239,7 +261,8 @@ bool scene_screen_terminal(SceneScreen screen){
 
 bool scene_screen_presses(SceneScreen screen){
     return screen == SceneScreen::DIALOG || screen == SceneScreen::MISSION_COMPLETE || screen == SceneScreen::TUTORIAL_CARD ||
-        screen == SceneScreen::BLIND_PRESS || screen == SceneScreen::BANNER_PRESS || screen == SceneScreen::LOCK_ON;
+        screen == SceneScreen::BLIND_PRESS || screen == SceneScreen::BANNER_PRESS || screen == SceneScreen::LOCK_ON ||
+        screen == SceneScreen::SKIP_CUTSCENE || screen == SceneScreen::SKIP_PROMPT || screen == SceneScreen::MAP;
 }
 
 //  "the controls hint, the party bar, the A prompt or the mission banner".
@@ -276,7 +299,8 @@ std::string expected_end(const SceneMachineConfig& config){
 //  The states logged on the overlay too; the rest go to the file log only.
 bool scene_screen_for_watcher(SceneScreen screen){
     return screen == SceneScreen::FADE_BLACK || screen == SceneScreen::BANNER_SHOWING || screen == SceneScreen::BANNER_PRESS ||
-        screen == SceneScreen::HINT_SHOWING;
+        screen == SceneScreen::HINT_SHOWING || screen == SceneScreen::SKIP_CUTSCENE || screen == SceneScreen::SKIP_PROMPT ||
+        screen == SceneScreen::MAP;
 }
 
 
@@ -286,6 +310,7 @@ SceneTimeline::SceneTimeline(SceneMachineConfig config, WallClock start)
     , m_last_busy(start)
     , m_start(start)
     , m_last_cue(start)
+    , m_last_skip_cue(start)
 {}
 
 std::optional<WallClock> SceneTimeline::quiet_end_due() const{
@@ -304,6 +329,16 @@ bool SceneTimeline::blind_press_due(WallClock now) const{
         return false;
     }
     return !m_last_blind_press || now - *m_last_blind_press >= m_config.blind_press_every;
+}
+
+//  Not after a battle's fade: its effects move with no HUD while the camera
+//  looks away (03.02b's Tepig battle). Not with blind presses: those are
+//  for menus no detector reads (03.04's Pokedex), not cutscenes.
+bool SceneTimeline::skip_due(const ScreenObservation& look) const{
+    if ((m_config.stop_at_battle && m_after_fade) || m_config.blind_press_after || !m_moving_since || look.when - *m_moving_since < SKIP_AFTER){
+        return false;
+    }
+    return !m_last_skip || *m_last_skip < m_last_skip_cue;
 }
 
 bool SceneTimeline::fades_settled(WallClock now) const{
@@ -345,11 +380,18 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (look.events.has(ScreenEvent::FADE_WHITE)){
         return SceneScreen::FADE_WHITE;
     }
+    const bool skip_pending = m_last_skip && look.when - *m_last_skip <= SKIP_PROMPT_WAIT && *m_last_skip >= m_last_skip_cue;
+    if (skip_pending && look.events.has(ScreenEvent::CHOICE_BOX)){
+        return SceneScreen::SKIP_PROMPT;
+    }
     if (m_config.stop_at_choice && look.events.has(ScreenEvent::CHOICE_BOX)){
         return SceneScreen::CHOICE;
     }
     if (text_shows(look)){
         return SceneScreen::DIALOG;
+    }
+    if (look.readings.contains(MAP_READING)){
+        return SceneScreen::MAP;
     }
     if (lock_on_due(look)){
         return SceneScreen::LOCK_ON;
@@ -398,9 +440,16 @@ SceneScreen SceneTimeline::classify_open(const ScreenObservation& look) const{
         }
         return SceneScreen::PROMPT_SHOWING;
     }
+    return classify_idle(look);
+}
+
+SceneScreen SceneTimeline::classify_idle(const ScreenObservation& look) const{
     const std::optional<WallClock> due = quiet_end_due();
     if (due && look.when >= *due){
         return SceneScreen::QUIET_END;
+    }
+    if (skip_due(look)){
+        return SceneScreen::SKIP_CUTSCENE;
     }
     if (blind_press_due(look.when)){
         return SceneScreen::BLIND_PRESS;
@@ -413,6 +462,15 @@ void SceneTimeline::record(const ScreenObservation& look){
     if (screen == SceneScreen::BLIND_PRESS){
         m_last_blind_press = look.when;
     }
+    if (screen == SceneScreen::SKIP_CUTSCENE){
+        m_last_skip = look.when;
+    }
+    if (busy(look) || hud_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
+        m_last_skip_cue = look.when;
+    }
+    const bool cutscene = !busy(look) && !hud_shows(look) && !look.events.has(ScreenEvent::SCREEN_STILL) &&
+        !look.readings.contains(MAP_READING) && !look.readings.contains(MISSION_BANNER_READING);
+    track_since(cutscene, look.when, m_moving_since);
     if (screen == SceneScreen::BANNER_PRESS){
         m_banner_presses++;
         m_last_banner_press = look.when;
@@ -460,7 +518,7 @@ std::string describe_look(const ScreenObservation& look){
     const std::pair<std::string_view, std::string_view> readings[] = {
         {CONTROLS_HINT_READING, "controls hint"}, {ADVANCE_ARROW_READING, "advance arrow"},
         {MISSION_BANNER_READING, "mission banner"}, {MISSION_COMPLETE_READING, "mission complete"},
-        {TUTORIAL_CARD_READING, "tutorial card"},
+        {TUTORIAL_CARD_READING, "tutorial card"}, {MAP_READING, "map"},
     };
     std::string text;
     const auto add = [&text](std::string_view name){
@@ -632,7 +690,8 @@ public:
             return;
         }
         if (scene_screen_presses(screen)){
-            m_backend.press(button_of(screen, look), /*hold=*/160ms, /*release=*/240ms);
+            const Milliseconds hold = screen == SceneScreen::SKIP_CUTSCENE ? SKIP_HOLD : 160ms;
+            m_backend.press(button_of(screen, look), hold, /*release=*/240ms);
             return;
         }
         wait(screen);
@@ -661,6 +720,10 @@ private:
             return look.events.has(ScreenEvent::CHOICE_BOX) ? choice_button(look) : dialog_button(m_config, look);
         case SceneScreen::BLIND_PRESS:
             return m_config.blind_button;
+        case SceneScreen::SKIP_CUTSCENE:
+            return BUTTON_PLUS;
+        case SceneScreen::MAP:
+            return BUTTON_B;
         default:
             return BUTTON_A;
         }
@@ -789,41 +852,42 @@ void wait_banner_gone(PlzaBackend& backend, std::string_view label){
     backend.log(std::format("[PLZA {}] the mission banner still shows after {} A presses; going on.", label, BANNER_PRESSES));
 }
 
-Pokemon::Outcome scene_outcome(
+std::optional<Pokemon::StoryFailure> scene_outcome(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, const ScreenMachineResult& result
 ){
     const std::string expected = expected_end(config);
-    if (!result.succeeded()){
-        const std::string_view kind = result.failure.starts_with("Did not finish") ? "scene_timeout" : "scene_stuck";
-        return Pokemon::outcome_failed(std::string(kind), std::format("{}: {} (expecting {}).", label, result.failure, expected));
+    if (const ScreenMachineFailure* failure = std::get_if<ScreenMachineFailure>(&result)){
+        const std::string_view kind = failure->reason.starts_with("Did not finish") ? "scene_timeout" : "scene_stuck";
+        return Pokemon::StoryFailure{.code = std::string(kind), .detail = std::format("{}: {} (expecting {}).", label, failure->reason, expected)};
     }
-    if (result.terminal == scene_screen_name(SceneScreen::NEVER_STARTED)){
-        return Pokemon::outcome_failed("scene_never_started", std::format(
+    const std::string& terminal = std::get<ScreenMachineTerminal>(result).state_name;
+    if (terminal == scene_screen_name(SceneScreen::NEVER_STARTED)){
+        return Pokemon::StoryFailure{.code = "scene_never_started", .detail = std::format(
             "{}: the scene never started (player not at its trigger?): the HUD up and no text, choice, battle or cutscene for {} ms (expecting {}).",
             label, config.start_window ? config.start_window->count() : 0, expected
-        ));
+        )};
     }
-    if (result.terminal == scene_screen_name(SceneScreen::ENDED_IN_CONTROL)){
-        return Pokemon::outcome_failed("scene_ended_in_control", std::format(
+    if (terminal == scene_screen_name(SceneScreen::ENDED_IN_CONTROL)){
+        return Pokemon::StoryFailure{.code = "scene_ended_in_control", .detail = std::format(
             "{}: the scene ended in control, the party bar up {} ms with nothing busy (expecting {}).",
             label, CONTROL_INSTEAD_HOLD.count(), expected
-        ));
+        )};
     }
-    if (result.terminal == scene_screen_name(SceneScreen::QUIET_END) && config.quiet_is_control){
+    if (terminal == scene_screen_name(SceneScreen::QUIET_END) && config.quiet_is_control){
         backend.log(std::format("[PLZA {}] done: quiet, taken as control.", label));
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
-    if (result.terminal == scene_screen_name(SceneScreen::QUIET_END)){
+    if (terminal == scene_screen_name(SceneScreen::QUIET_END)){
         //  A cutscene with no text, or control the detectors miss.
-        return Pokemon::outcome_failed("scene_quiet", std::format(
+        return Pokemon::StoryFailure{.code = "scene_quiet", .detail = std::format(
             "{}: nothing busy for {} ms and no sign of control (expecting {}).", label, config.quiet ? config.quiet->count() : 0, expected
-        ));
+        )};
     }
-    if (result.terminal == scene_screen_name(SceneScreen::MISSION_BANNER)){
+    if (terminal == scene_screen_name(SceneScreen::MISSION_BANNER)){
         wait_banner_gone(backend, label);
     }
-    backend.log(std::format("[PLZA {}] done on {}.", label, result.terminal));
-    return Pokemon::outcome_ok();
+    backend.log(std::format("[PLZA {}] done on {}.", label, terminal));
+    return std::nullopt;
 }
 
 } // namespace
@@ -855,11 +919,11 @@ bool scene_under_way(const ScreenObservation& look){
     return fade_shows(look) || !look.events.has(ScreenEvent::SCREEN_STILL);
 }
 
-Pokemon::Outcome run_scene_machine(
+std::optional<Pokemon::StoryFailure> run_scene_machine(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 ){
     backend.log(std::format("[PLZA {}] start, expecting {}.", label, expected_end(config)));
-    Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+    ScreenObservation look = backend.observe();
     bool first = true;
     SceneRunner runner(backend, label, config, look.when);
     std::vector<ScreenState> states;
@@ -884,7 +948,7 @@ Pokemon::Outcome run_scene_machine(
         first = false;
         return look;
     };
-    const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), states, timeout, /*log=*/nullptr);
+    const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), std::move(states), timeout, /*log=*/nullptr);
     runner.flush_log();
     if (config.end_after_black_fades){
         backend.log(std::format(

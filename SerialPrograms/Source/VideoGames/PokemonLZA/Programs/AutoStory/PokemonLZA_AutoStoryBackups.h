@@ -20,7 +20,7 @@
 #include <string>
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryGame.h"
@@ -45,14 +45,14 @@ struct BackupSave{
     //  Relaunches the game and opens the card at the title; none when no card is read.
     std::function<std::optional<BackupCard>(PlzaBackend&)> open_card;
     //  Fails as "backup_load_failed".
-    std::function<Pokemon::Outcome(PlzaBackend&)> load;
+    std::function<std::optional<Pokemon::StoryFailure>(PlzaBackend&)> load;
     //  On the card: B, back to the title, nothing loaded.
     std::function<void(PlzaBackend&)> cancel;
 };
 
 //  A run of `rows[first..last]` that may rewind up to `max_rewinds` times.
 struct RewindPlan{
-    std::span<const Pokemon::StoryCheckpoint> rows;
+    std::span<Pokemon::StoryCheckpoint> rows;
     size_t first = 0;
     size_t last = 0;
     SegmentRunOptions segments = {};
@@ -74,8 +74,8 @@ std::optional<size_t> start_or_rewind(
 //  the first backup exists, "no_backup_yet" unless the autosave was in the
 //  last step (then the next row runs from it). A failure with no autosave
 //  stops the run.
-Pokemon::SegmentReport run_plza_with_rewinds(
-    const Pokemon::StoryGame<Pokemon::ZonePose>& game,
+std::optional<Pokemon::CheckpointFailure> run_plza_with_rewinds(
+    Pokemon::StoryGame& game,
     const RewindPlan& plan, const BackupSave& backup,
     PlzaBackend& backend, AutosaveSightings& sightings, Pokemon::RunState& state
 );

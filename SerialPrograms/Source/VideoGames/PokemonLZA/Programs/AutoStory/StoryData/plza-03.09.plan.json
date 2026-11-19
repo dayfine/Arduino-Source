@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "to_research_lab",
-        "kind": "game_action",
         "why": "face the street by the minimap arrow (257), down it 6.5 s, left into the lab's gate (walk_to_marker sticks on the fence), held until Ryon's dialog, which shows 9-11 s after the marker goes, hence 13 s. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -30,24 +29,21 @@
       },
       {
         "id": "research_lab_gate",
-        "kind": "scene",
         "why": "Ryon at the lab gate; with five species he goes on, and a black fade puts the player at the lab's steps (~20 s)",
         "action": "a"
       },
       {
         "id": "five_registered",
-        "kind": "scene",
+        "action": "mash",
         "why": "until control; at once when research_lab_gate played the whole scene. Bare: \"a\" would wait 45 s for a scene"
       },
       {
         "id": "up_the_lab_steps",
-        "kind": "game_action",
         "why": "up the steps to the lab's \"A Enter\"; the marker's digits do not read on the steps, so the prompt counts unless digits over 20 were read",
         "action": "walk_to_unread_marker"
       },
       {
         "id": "lab_lobby",
-        "kind": "game_action",
         "why": "A Enter, the receptionist; autosave. The fade comes 0.5 s after A, so 3 s of control with no scene means not at the door",
         "action": "mash_to_move_hints",
         "args": {
@@ -57,7 +53,6 @@
       },
       {
         "id": "save_in_lab_lobby",
-        "kind": "game_action",
         "why": "no run saw the lobby's autosave, so a menu save for 03.10's start",
         "action": "save_from_menu"
       }

@@ -7,7 +7,6 @@
  */
 
 #include <format>
-#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -42,13 +41,10 @@ UnitTestResult test_set_and_describe(){
     if (fade_in(events) != WarpFade::WHITE){
         return "fade_events(WHITE) did not give a white fade";
     }
-    if (ScreenEvents::from_bits(events.bits()) != events){
-        return "from_bits(bits()) is not the same set";
+    if (std::format("{}", ScreenEvents()) != "nothing"){
+        return "an empty set does not print as nothing";
     }
-    if (describe(ScreenEvents()) != "nothing"){
-        return "an empty set does not describe as nothing";
-    }
-    return expect_equal("describe()", describe(events), "white fade, player can move");
+    return expect_equal("std::format()", std::format("{}", events), "white fade, player can move");
 }
 
 //  A screen filled with one colour, or a checkerboard of two.
@@ -64,10 +60,10 @@ ImageRGB32 screen_of(uint32_t a, uint32_t b){
 
 UnitTestResult test_fade_of_screen(){
     struct Row{
-        std::string name;
-        uint32_t a;
-        uint32_t b;
-        WarpFade fade;
+        std::string name = {};
+        uint32_t a = 0;
+        uint32_t b = 0;
+        WarpFade fade = WarpFade::NONE;
     };
     const std::vector<Row> rows = {
         {"black", 0xff000000, 0xff000000, WarpFade::BLACK},
@@ -79,7 +75,7 @@ UnitTestResult test_fade_of_screen(){
     for (const Row& row : rows){
         const WarpFade got = fade_of_screen(screen_of(row.a, row.b));
         if (got != row.fade){
-            return std::format("{}: expected {}, got {}", row.name, warp_fade_name(row.fade), warp_fade_name(got));
+            return std::format("{}: expected {}, got {}", row.name, WARP_FADE_NAMES().get_string(row.fade), WARP_FADE_NAMES().get_string(got));
         }
     }
     return true;
@@ -111,14 +107,14 @@ UnitTestResult test_same_screen(){
 
 struct ScreenEventsCase{
     struct Input{
-        std::function<UnitTestResult()> body;
+        UnitTestResult (*body)() = nullptr;
     };
     struct Expectation{
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_ScreenEvents : public UnitTest{
