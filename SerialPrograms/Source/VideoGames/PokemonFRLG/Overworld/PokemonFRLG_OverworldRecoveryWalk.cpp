@@ -54,7 +54,9 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     leg.tile_time = tile_time(step, speed);
     leg.stop_on_interrupt = !step.to_wall;
     leg.stop_if_blocked = step.to_wall;
-    leg.stalled_steps = step.connection_steps;
+    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator){
+        leg.stalled_steps = step.connection_steps;
+    }
     return leg;
 }
 
