@@ -227,10 +227,16 @@ bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t s
             break;
         }
         const size_t from = *cursor;
-        pbf_press_dpad(context, from < slot ? DPAD_DOWN : DPAD_UP, 160ms, 0ms);
-        cursor = read_move_list_cursor(console, context, from, MOVE_LIST_TIMEOUT);
-        if (!cursor){
-            break;
+        pbf_press_dpad(context, from < slot ? DPAD_DOWN : DPAD_UP, 160ms, 160ms);
+        std::optional<size_t> next = read_move_list_cursor(console, context, from, 1000ms);
+        if (next){
+            cursor = next;
+        }else{
+            const VideoSnapshot screen = console.video().snapshot();
+            cursor = screen ? read_summary_move_cursor(screen) : std::nullopt;
+            if (!cursor){
+                break;
+            }
         }
     }
     if (cursor != slot){
