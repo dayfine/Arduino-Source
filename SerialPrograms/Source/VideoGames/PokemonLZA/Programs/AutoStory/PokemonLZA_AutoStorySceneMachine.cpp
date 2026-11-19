@@ -57,10 +57,9 @@ constexpr Milliseconds STILL_WAIT = 10s;
 //  The longest a cutscene may hold one still frame.
 constexpr Milliseconds SCENE_STILL_WAIT = 60s;
 constexpr Milliseconds POLL = 250ms;
-//  In a talk (a scene sign seen, no overworld sign since), the screen still
-//  or moving gets A this often: a box with no advance arrow only the shadow
-//  box detector sees (03.01's letter over the moving lobby, console B
-//  2026-11-19). A on a running cutscene does nothing.
+//  In a talk (a scene sign seen, no overworld sign since), a quiet screen
+//  gets A this often: a box with no advance arrow (03.01's letter, console
+//  B 2026-11-19) only the shadow box detector sees.
 constexpr Milliseconds TALK_BEAT = 600ms;
 //  "MAIN MISSION 01" shows ~3 s, hence 3 s + 2 s. Every banner that ended a
 //  scene on console B through 2026-11-19 stayed the whole wait (then 10 s)
@@ -76,11 +75,9 @@ constexpr Milliseconds LOCK_ON_AFTER = 3s;
 constexpr size_t LOCK_ON_ATTEMPTS = 5;
 //  TrainerBattle's attempt_one_attack() looks 1 s, the catches' sweep 1.5 s.
 constexpr Milliseconds LOCK_ON_HOLD = 2s;
-//  Plus is held only on a cutscene's fade-in: once, this long after the
-//  picture shows (the opening skip). Later the scene may be a talk, where
-//  Plus did nothing (03.01's letter, console B 2026-11-19).
-constexpr Milliseconds FADE_IN_SKIP_AFTER = 500ms;
-constexpr Milliseconds FADE_IN_SKIP_UNTIL = 2s;
+//  A skip prompt's default row takes A. A talk's screen between two lines
+//  shows no text for up to 2.5 s (01.02's Pancham scene).
+constexpr Milliseconds SKIP_AFTER = 3s;
 //  From the look that pressed Plus: the hold, then the prompt.
 constexpr Milliseconds SKIP_PROMPT_WAIT = 5s;
 constexpr Milliseconds PRESS_HOLD = 160ms;
@@ -116,7 +113,7 @@ enum class SceneScreen{
     AWAITING_SCENE,
     NEVER_STARTED,
     QUIET_END,
-    SKIP_CUTSCENE,  //  a fade-in's picture FADE_IN_SKIP_AFTER on, no text or HUD: Plus held CUTSCENE_SKIP_HOLD
+    SKIP_CUTSCENE,  //  a cutscene with no text or HUD for SKIP_AFTER: Plus held CUTSCENE_SKIP_HOLD
     BLIND_PRESS,
     SCENE_MOVING,
     SCENE_STILL,
@@ -394,12 +391,9 @@ struct LockOnState{
     bool locked_on = false;
 };
 
-//  Cutscene skips, on a fade-in only.
+//  Cutscene skips: no text, fade or HUD, the screen moving or still.
 struct SkipState{
-    //  The last look showed a fade: the next is a fade-in.
-    bool fading = false;
-    //  The first look after the last fade.
-    std::optional<WallClock> faded_in = std::nullopt;
+    std::optional<WallClock> cutscene_since = std::nullopt;
     //  The last look with text, a fade or the HUD: a skip press waits for
     //  one after the last, so a scene Plus does not skip gets one press.
     WallClock last_cue = {};
@@ -451,12 +445,10 @@ private:
     bool configured_press_due(WallClock now) const;
     //  A scene sign seen and no overworld sign since.
     bool in_talk() const;
+    //  On a still look: a moving one is a scene sign itself.
     bool talk_beat_due(const ScreenObservation& look) const;
     bool blind_press_due(const ScreenObservation& look) const;
     bool skip_pending(WallClock now) const;
-    //  A fade-in whose Plus has not been held yet; no A meanwhile.
-    bool skip_window_open(WallClock now) const;
-    bool cutscene_look(const ScreenObservation& look) const;
     bool skip_due(const ScreenObservation& look) const;
     bool banner_press_due(WallClock now) const;
     bool lock_on_due(const ScreenObservation& look) const;
@@ -611,14 +603,13 @@ bool SceneTimeline::in_talk() const{
     return m_scene.seen && (!m_scene.last_overworld || *m_scene.last_overworld < m_scene.last_sign);
 }
 
-//  Not after a battle's fade, as skip_due(), nor while a fade-in's Plus or
-//  its skip prompt may come.
+//  Not after a battle's fade, as skip_due().
 bool SceneTimeline::talk_beat_due(const ScreenObservation& look) const{
     const WallClock now = look.when;
-    if (!in_talk() || (m_config.stop_at_battle && m_lock_on.after_fade) || skip_window_open(now) || skip_pending(now)){
+    if (!in_talk() || !look.events.has(ScreenEvent::SCREEN_STILL) || (m_config.stop_at_battle && m_lock_on.after_fade)){
         return false;
     }
-    if (now - m_scene.last_busy < TALK_BEAT){
+    if (now - m_scene.last_sign < TALK_BEAT){
         return false;
     }
     return !m_scene.last_blind_press || now - *m_scene.last_blind_press >= TALK_BEAT;
@@ -633,37 +624,15 @@ bool SceneTimeline::skip_pending(WallClock now) const{
     return m_skip.last_press && now - *m_skip.last_press <= SKIP_PROMPT_WAIT && *m_skip.last_press >= m_skip.last_cue;
 }
 
-//  Not in a talk step. Not after a battle's fade: its effects move with no
-//  HUD while the camera looks away (03.02b's Tepig battle). Not with
-//  blind_press_after: that is for menus no detector reads (03.04's
-//  Pokedex), not cutscenes. Not once text, a choice or the HUD showed.
-bool SceneTimeline::skip_window_open(WallClock now) const{
-    if (m_config.talk || (m_config.stop_at_battle && m_lock_on.after_fade) || m_config.blind_press_after){
-        return false;
-    }
-    if (m_skip.fading){
-        return true;
-    }
-    if (!m_skip.faded_in || now - *m_skip.faded_in >= FADE_IN_SKIP_UNTIL){
-        return false;
-    }
-    const bool pressed = m_skip.last_press && *m_skip.last_press >= *m_skip.faded_in;
-    return !pressed && m_skip.last_cue < *m_skip.faded_in;
-}
-
-//  A still frame is a cutscene too (console B 2026-11-19: 5-10 s holds),
-//  except where quiet is control: Plus there opens the map.
-bool SceneTimeline::cutscene_look(const ScreenObservation& look) const{
-    const bool still = look.events.has(ScreenEvent::SCREEN_STILL);
-    return !busy(look) && !hud_shows(look) && !(still && m_config.quiet_is_control) &&
-        !look.readings.contains(MAP_READING) && !look.readings.contains(MISSION_BANNER_READING);
-}
-
+//  Not after a battle's fade: its effects move with no HUD while the camera
+//  looks away (03.02b's Tepig battle). Not with blind_press_after: that is
+//  for menus no detector reads (03.04's Pokedex), not cutscenes. A talk's
+//  beat presses leave skipping on.
 bool SceneTimeline::skip_due(const ScreenObservation& look) const{
-    if (m_skip.fading || !skip_window_open(look.when) || look.when - *m_skip.faded_in < FADE_IN_SKIP_AFTER){
+    if ((m_config.stop_at_battle && m_lock_on.after_fade) || m_config.blind_press_after || !held_for(m_skip.cutscene_since, look.when, SKIP_AFTER)){
         return false;
     }
-    return cutscene_look(look);
+    return !m_skip.last_press || *m_skip.last_press < m_skip.last_cue;
 }
 
 bool SceneTimeline::banner_press_due(WallClock now) const{
@@ -752,12 +721,12 @@ void SceneTimeline::record_cutscene(const ScreenObservation& look){
     if (busy(look) || hud_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
         m_skip.last_cue = look.when;
     }
-    if (fade_shows(look)){
-        m_skip.fading = true;
-    }else if (m_skip.fading){
-        m_skip.fading = false;
-        m_skip.faded_in = look.when;
-    }
+    //  A still frame is a cutscene too (console B 2026-11-19: 5-10 s holds
+    //  with no Plus), except where quiet is control: Plus there opens the map.
+    const bool still = look.events.has(ScreenEvent::SCREEN_STILL);
+    const bool cutscene = !busy(look) && !hud_shows(look) && !(still && m_config.quiet_is_control) &&
+        !look.readings.contains(MAP_READING) && !look.readings.contains(MISSION_BANNER_READING);
+    track_since(cutscene, look.when, m_skip.cutscene_since);
 }
 
 void SceneTimeline::record_battle(SceneScreen screen, const ScreenObservation& look){
@@ -1021,7 +990,7 @@ std::optional<std::string_view> skip_outcome(SceneScreen screen, WallClock press
     if (screen == SceneScreen::MAP){
         return "map";
     }
-    if (!idle_screen(screen)){
+    if (screen != SceneScreen::SCENE_MOVING && screen != SceneScreen::SCENE_STILL && screen != SceneScreen::SKIP_CUTSCENE){
         return "skipped";
     }
     if (now - pressed >= SKIP_PROMPT_WAIT){

@@ -62,8 +62,6 @@ struct SceneMachineConfig{
     std::optional<Button> text_button = std::nullopt;
     //  The quiet end is control: Hotel Z shows no party bar or prompt.
     bool quiet_is_control = false;
-    //  A talk: A only, no Plus even on a fade-in (03.01's lobby).
-    bool talk = false;
     //  The step plays a scene: the HUD ends it only once a scene is under way.
     //  Fails ("scene_never_started") when the HUD shows this long with no
     //  scene: the player is not at the trigger.

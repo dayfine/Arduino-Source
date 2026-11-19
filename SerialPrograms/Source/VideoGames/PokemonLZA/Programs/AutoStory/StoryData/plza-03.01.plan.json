@@ -51,10 +51,10 @@
         "action": "choose_0"
       },
       {
-        "id": "lobby_talk",
-        "why": "the ride, Z-A Royale, the outfit, AZ, Lida; autosave. A talk: A only, no Plus (the letter shows no arrow over the moving lobby). 20 s quiet means control; Alton's choice is the top row",
+        "id": "lobby_scene",
+        "why": "the ride, Z-A Royale, the outfit, AZ, Lida; autosave. 20 s quiet means control; Alton's choice is the top row",
         "action": "mash_to_move_hints",
-        "args": {"quiet_ms": 20000, "quiet_is_control": true, "advance_with_a": true, "talk": true}
+        "args": {"quiet_ms": 20000, "quiet_is_control": true, "advance_with_a": true}
       }
     ],
     "metadata": {

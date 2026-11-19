@@ -141,6 +141,15 @@ ScreenObservation choice(int selected, int rows = 2){
     return observation;
 }
 
+//  `count` party bar looks `every` apart from the start.
+std::vector<ScreenObservation> party_bars(Milliseconds every, size_t count){
+    std::vector<ScreenObservation> looks;
+    for (size_t index = 0; index < count; index++){
+        looks.push_back(party_bar(every * (int64_t)index));
+    }
+    return looks;
+}
+
 std::vector<ScreenObservation> concat(std::vector<ScreenObservation> first, const std::vector<ScreenObservation>& then){
     first.insert(first.end(), then.begin(), then.end());
     return first;
@@ -148,15 +157,6 @@ std::vector<ScreenObservation> concat(std::vector<ScreenObservation> first, cons
 
 std::string repeated(std::string_view text, size_t times){
     return joined(std::vector<std::string>(times, std::string(text)), ", ");
-}
-
-//  `count` looks of `events`, `every` apart from `from`.
-std::vector<ScreenObservation> looks_every(ScreenEvents events, Milliseconds from, Milliseconds every, size_t count){
-    std::vector<ScreenObservation> looks;
-    for (size_t index = 0; index < count; index++){
-        looks.push_back(look(events, /*readings=*/{}, from + every * (int64_t)index));
-    }
-    return looks;
 }
 
 
@@ -253,20 +253,28 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at platform_to_plaza: walk_not_free"},
     },
     {
-        .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second; A on the moving scene, Plus only 0.5 s after a fade-in",
+        .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second; Plus in the 5 s with no text",
         .input = {.checkpoint = "01.01", .first_step = 3, .looks = {
-            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)), look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)), look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(2500)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(3000)), look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(3500)),
-            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(4000)), look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(4250)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(4500)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(9500)),
-            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(10000)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(11000)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(11250)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(11750)),
+            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(2500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(3000)),
+            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(3500)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(4000)),
+            look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(4250)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(4500)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(9500)),
+            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(10000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(11000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(11250)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(16250)),
         }},
-        .expectation = {.verdict = "done",
-            .inputs = "press A, wait 250ms, wait 250ms, press A, wait 250ms, wait 250ms, press A, press A, wait 250ms, wait 250ms, press +",
-            .line = "[PlusSkip] 01.01/arrival_scenes pressed -> skipped"},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, wait 250ms, wait 250ms, press A, wait 250ms, wait 250ms, wait 250ms, press +, wait 250ms, wait 250ms",
+            .line = "[PlusSkip] 01.01/arrival_scenes pressed -> skipped",
+        },
     },
     {
         .name = "01.01's arrival fails after a minute with nothing going on",
@@ -352,7 +360,11 @@ const RunCase RUN_CASES[] = {
             look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
             look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(6000)),
         }},
-        .expectation = {.verdict = "done", .inputs = "press A, press A", .line = "[PLZA mash_to_move_hints] done: quiet, taken as control."},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, wait 250ms",
+            .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
+        },
     },
     {
         //  Console B 2026-11-19: 03.01's letter shows no arrow; A turns a page (a moving look).
@@ -363,25 +375,7 @@ const RunCase RUN_CASES[] = {
             look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(4000)),
             look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(22000)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(23000)),
         }},
-        .expectation = {.verdict = "done", .inputs = repeated("press A", 6), .line = "[PLZA mash_to_move_hints] done: quiet, taken as control."},
-    },
-    {
-        //  Looks from console B 2026-11-19 08:55-09:01: the fade into the lobby,
-        //  text, then the letter's box with no arrow over the moving lobby for 24 s.
-        .name = "03.01 lobby_talk's letter over a moving lobby gets A every 600 ms, no Plus, until the party bar (scene_timeout 2026-11-19 09:01)",
-        .input = {.checkpoint = "03.01", .first_step = 6, .steps = 1, .looks = concat(
-            {
-                look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(500)),
-                look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(6800)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(7200)),
-                look(/*events=*/{}, /*readings=*/{}, Milliseconds(7800)), look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(13000)),
-                look(/*events=*/{}, /*readings=*/{}, Milliseconds(13500)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(14100)),
-                look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(18700)),
-            },
-            concat(looks_every(/*events=*/{}, /*from=*/Milliseconds(19300), /*every=*/Milliseconds(600), /*count=*/40), {party_bar(Milliseconds(43300)), party_bar(Milliseconds(45500))})
-        )},
-        .expectation = {.verdict = "done",
-            .inputs = std::format("wait 250ms, wait 250ms, press A, press A, press A, wait 250ms, press A, press A, {}, wait 250ms", repeated("press A", 40)),
-            .line = "[PLZA mash_to_move_hints] done on can_move."},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A, wait 250ms, press A, press A", .line = "[PLZA mash_to_move_hints] done: quiet, taken as control."},
     },
     {
         .name = "control with no sign after a scene's text (Hotel Z's hall) ends after the quiet window, A every 600 ms meanwhile",
@@ -455,7 +449,7 @@ const RunCase RUN_CASES[] = {
         //  2026-11-19 03.03, ES-LA: 250 ms run slices took 111 ms; the leg ended 3.6 s in.
         .name = "03.03's walk off the roof holds its last leg 8000 ms of game time, though a run slice takes less",
         .input = {.checkpoint = "03.03c", .first_step = 0, .steps = 1, .looks = concat(
-            looks_every({ScreenEvent::PLAYER_CAN_MOVE}, /*from=*/Milliseconds(0), /*every=*/Milliseconds(111), /*count=*/60),
+            party_bars(Milliseconds(111), 60),
             {look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(6700)), look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(6800))}
         )},
         .expectation = {.verdict = "done"},
