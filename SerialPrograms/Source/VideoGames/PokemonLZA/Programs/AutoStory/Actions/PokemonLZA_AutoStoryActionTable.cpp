@@ -48,6 +48,7 @@ constexpr std::string_view WALK_UNTIL_SCENE = "scene";
 constexpr std::pair<std::string_view, ScreenEvent> WALK_ENDS[] = {
     {"fade_white", ScreenEvent::FADE_WHITE},
     {"fade_black", ScreenEvent::FADE_BLACK},
+    {"dialog", ScreenEvent::DIALOG_BOX},
     {"prompt", ScreenEvent::INTERACT_PROMPT},
 };
 

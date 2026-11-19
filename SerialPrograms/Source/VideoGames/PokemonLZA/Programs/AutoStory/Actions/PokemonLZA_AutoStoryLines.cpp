@@ -55,14 +55,14 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
 
 namespace{
 
-//  The party bar or text on `look`, logged as the exit's "[Signals]" line.
+//  The party bar or a text box on `look`, logged as the exit's "[Signals]" line.
 bool out_of_menu(const ScreenObservation& look, PlzaBackend& backend, SignalProbe& signals){
     signals.look(look);
     const bool party_bar = look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-    if (!party_bar && !text_shows(look)){
+    if (!party_bar && !look.events.has(ScreenEvent::DIALOG_BOX)){
         return false;
     }
-    backend.log_detail(signals.line("press_b_out_of_menu", "menu_exit", party_bar ? "party_bar" : "arrow"));
+    backend.log_detail(signals.line("press_b_out_of_menu", "menu_exit", party_bar ? "party_bar" : "dialog_box"));
     return true;
 }
 

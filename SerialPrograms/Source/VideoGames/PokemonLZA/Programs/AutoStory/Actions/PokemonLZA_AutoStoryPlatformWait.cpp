@@ -52,7 +52,7 @@ bool platform_look(PlzaBackend& backend, const ScreenObservation& look, Platform
 
 //  The opening's last line ("Your train has arrived in Lumiose City!") waits for A.
 bool text_waiting_for_a(const ScreenObservation& look){
-    return look.readings.contains(ADVANCE_ARROW_READING);
+    return look.events.has(ScreenEvent::DIALOG_BOX) && look.readings.contains(ADVANCE_ARROW_READING);
 }
 
 //  A Plus held while the confirm screen still fades out does nothing (console

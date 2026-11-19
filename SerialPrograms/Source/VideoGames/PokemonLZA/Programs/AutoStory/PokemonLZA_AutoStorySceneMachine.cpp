@@ -43,9 +43,7 @@ namespace{
 //  Held this long is free control (two looks or more); the party bar also
 //  shows between a scene's lines, and A on a prompt restarts the talk (01.02).
 constexpr Milliseconds CONTROLS_HINT_HOLD = 1s;
-//  Twice the < 1 s a line types at fast speed: the party bar shows under
-//  the typing text, with no advance arrow yet.
-constexpr Milliseconds PARTY_BAR_HOLD = 2s;
+constexpr Milliseconds PARTY_BAR_HOLD = 1s;
 constexpr Milliseconds PROMPT_HOLD = 1s;
 //  With stop_at_battle or stop_at_choice, the party bar this long with
 //  nothing busy is the scene over with no battle or choice.
@@ -256,8 +254,8 @@ bool idle_screen(SceneScreen screen){
 
 
 bool busy(const ScreenObservation& look){
-    return text_shows(look) || fade_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX) ||
-        look.readings.contains(MISSION_COMPLETE_READING) || look.readings.contains(TUTORIAL_CARD_READING);
+    return text_shows(look) || fade_shows(look) || look.readings.contains(MISSION_COMPLETE_READING) ||
+        look.readings.contains(TUTORIAL_CARD_READING);
 }
 
 bool scene_shows(const ScreenObservation& look){
@@ -278,10 +276,9 @@ bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservat
     return party_bar_is_control(config) && look.events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
-//  B where the party bar shows (an overworld talk): on a closing box B does
-//  nothing, where A restarts the talk (03.05's nurse).
+//  On a closing box B does nothing, where A restarts the talk (03.05's nurse).
 Button default_text_button(const SceneMachineConfig& config, const ScreenObservation& look){
-    return party_bar_is_control(config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) ? BUTTON_B : BUTTON_A;
+    return party_bar_is_control(config) && look.events.has(ScreenEvent::DIALOG_BOX) ? BUTTON_B : BUTTON_A;
 }
 
 Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
@@ -492,7 +489,7 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (m_config.stop_at_choice && look.events.has(ScreenEvent::CHOICE_BOX)){
         return SceneScreen::CHOICE;
     }
-    if (text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
+    if (text_shows(look)){
         return SceneScreen::DIALOG;
     }
     if (look.readings.contains(MAP_READING)){
@@ -707,16 +704,17 @@ void SceneTimeline::record_control(const ScreenObservation& look){
         m_scene.last_busy = look.when;
     }
     m_scene.seen = m_scene.seen || scene_under_way(look);
-    const bool text = text_shows(look);
+    const bool box = look.events.has(ScreenEvent::DIALOG_BOX);
     track_since(party_bar_is_control(m_config) && party_bar_free(look), look.when, m_control.party_bar_since);
     const bool control_instead = !party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !busy(look);
     track_since(control_instead, look.when, m_control.party_bar_instead_since);
-    track_since(look.readings.contains(CONTROLS_HINT_READING) && !text, look.when, m_control.hint_since);
-    track_since(control_prompt_shows(m_config, look) && !text, look.when, m_control.prompt_since);
+    track_since(look.readings.contains(CONTROLS_HINT_READING) && !box, look.when, m_control.hint_since);
+    track_since(control_prompt_shows(m_config, look) && !box, look.when, m_control.prompt_since);
 }
 
 void SceneTimeline::record_banner(const ScreenObservation& look){
-    m_banner.looks = look.readings.contains(MISSION_BANNER_READING) && !text_shows(look) ? m_banner.looks + 1 : 0;
+    const bool box = look.events.has(ScreenEvent::DIALOG_BOX);
+    m_banner.looks = look.readings.contains(MISSION_BANNER_READING) && !box ? m_banner.looks + 1 : 0;
     m_banner.seen = m_banner.seen || m_banner.looks > 0;
     track_since(m_banner.looks > 0, look.when, m_banner.since);
     if (!m_banner.since){
@@ -736,7 +734,7 @@ void SceneTimeline::record_black_fades(const ScreenObservation& look){
 std::string describe_look(const ScreenObservation& look){
     const std::pair<ScreenEvent, std::string_view> events[] = {
         {ScreenEvent::FADE_BLACK, "black fade"}, {ScreenEvent::FADE_WHITE, "white fade"},
-        {ScreenEvent::CHOICE_BOX, "choice box"},
+        {ScreenEvent::DIALOG_BOX, "text box"}, {ScreenEvent::CHOICE_BOX, "choice box"},
         {ScreenEvent::BATTLE_STARTED, "battle"}, {ScreenEvent::PLAYER_CAN_MOVE, "party bar"},
         {ScreenEvent::INTERACT_PROMPT, "A prompt"}, {ScreenEvent::SCREEN_STILL, "still"},
     };
@@ -978,7 +976,7 @@ private:
     void perform(SceneAction action, const ScreenObservation& look);
     void wait(SceneAction action);
     void log_fields_fired(SceneScreen screen, const ScreenObservation& look);
-    //  "[Signals] <step> text_A|text_B by=arrow ...", not for a choice.
+    //  "[Signals] <step> text_A|text_B by=arrow|dialog_box ...", not for a choice.
     void log_text_press(Button button, const ScreenObservation& look);
     void log_skip(std::string_view outcome);
     //  Before all but the first, a quarter turn and L put the camera behind
@@ -1096,7 +1094,8 @@ void SceneRunner::log_fields_fired(SceneScreen screen, const ScreenObservation& 
 void SceneRunner::log_text_press(Button button, const ScreenObservation& look){
     if (!look.events.has(ScreenEvent::CHOICE_BOX)){
         //  Not through m_log: its detail() would cut the look counts short.
-        m_backend.log_detail(m_signals.line(m_step, button == BUTTON_B ? "text_B" : "text_A", /*by=*/"arrow"));
+        const std::string_view by = look.readings.contains(ADVANCE_ARROW_READING) ? "arrow" : "dialog_box";
+        m_backend.log_detail(m_signals.line(m_step, button == BUTTON_B ? "text_B" : "text_A", by));
     }
 }
 
@@ -1241,7 +1240,7 @@ std::string describe_scene_look(const ScreenObservation& look){
 }
 
 bool text_shows(const ScreenObservation& look){
-    return look.readings.contains(ADVANCE_ARROW_READING);
+    return look.events.has(ScreenEvent::DIALOG_BOX) || look.readings.contains(ADVANCE_ARROW_READING);
 }
 
 bool fade_shows(const ScreenObservation& look){
@@ -1249,7 +1248,7 @@ bool fade_shows(const ScreenObservation& look){
 }
 
 bool party_bar_free(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !busy(look);
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !look.events.has(ScreenEvent::DIALOG_BOX);
 }
 
 bool scene_under_way(const ScreenObservation& look){

@@ -18,7 +18,8 @@ namespace PokemonLZA{
 StartSignature read_start_screen(const ImageViewRGB32& screen){
     PlzaScreenObserver observer;
     const ScreenEvents events = observer.read(screen);
-    const bool unreadable = events.has(ScreenEvent::FADE_BLACK) || events.has(ScreenEvent::FADE_WHITE);
+    const bool unreadable = events.has(ScreenEvent::FADE_BLACK) || events.has(ScreenEvent::FADE_WHITE)
+        || events.has(ScreenEvent::DIALOG_BOX);
     if (unreadable){
         return StartSignature{};
     }

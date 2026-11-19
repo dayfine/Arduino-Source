@@ -36,9 +36,8 @@ public:
     void restart();
 
     //  "[Signals] <where> <decision> by=<signal> after=<ms> first: party_bar@<ms>
-    //  ... last_busy@<ms> shadow.dialog_box_at_decision=0|1": ms from the
-    //  wait's first look, "-" for never seen; the decision is on the last look.
-    //  Busy is the advance arrow, a fade or a choice.
+    //  ... last_busy@<ms>": ms from the wait's first look, "-" for never
+    //  seen; the decision is on the last look. Busy is text, a fade or a choice.
     std::string line(std::string_view where, std::string_view decision, std::string_view by) const;
 
 private:
@@ -46,7 +45,6 @@ private:
     WallClock m_last = WallClock::min();
     std::array<std::optional<WallClock>, PROBED_SIGNALS> m_first = {};
     std::optional<WallClock> m_last_busy;
-    bool m_dialog_box_last = false;
 };
 
 

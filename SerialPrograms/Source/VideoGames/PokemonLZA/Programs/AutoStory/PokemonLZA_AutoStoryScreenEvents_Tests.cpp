@@ -145,28 +145,32 @@ struct DialogFrameCase{
     };
     Input input;
     struct Expectation{
+        bool dialog = false;
         bool interact_prompt = false;
     };
     Expectation expectation;
 };
 
-//  No text box masks the A prompt: the text must not read as one.
 const DialogFrameCase DIALOG_FRAME_CASES[] = {
     {
         //  Ends 03.09's walk (walk_to_unread_marker()).
         .name = "Ryon's five-species dialog at the lab gate on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0309_lab_gate_ryon_dialog.png"},
-        .expectation = {.interact_prompt = false},
+        .expectation = {.dialog = true, .interact_prompt = false},
     },
 };
 
 UnitTestResult check_dialog_frame(const DialogFrameCase& test){
     const std::string path = std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), test.input.path);
     PlzaScreenObserver observer;
-    const bool prompt = observer.read(ImageRGB32(path)).has(ScreenEvent::INTERACT_PROMPT);
-    if (prompt != test.expectation.interact_prompt){
+    const ScreenEvents events = observer.read(ImageRGB32(path));
+    const bool dialog = events.has(ScreenEvent::DIALOG_BOX);
+    const bool prompt = events.has(ScreenEvent::INTERACT_PROMPT);
+    if (dialog != test.expectation.dialog || prompt != test.expectation.interact_prompt){
         return std::format(
-            "{}: expected A prompt {}; got {}", test.input.path, test.expectation.interact_prompt ? "yes" : "no", prompt ? "yes" : "no"
+            "{}: expected dialog {}, A prompt {}; got dialog {}, A prompt {}", test.input.path,
+            test.expectation.dialog ? "yes" : "no", test.expectation.interact_prompt ? "yes" : "no",
+            dialog ? "yes" : "no", prompt ? "yes" : "no"
         );
     }
     return true;

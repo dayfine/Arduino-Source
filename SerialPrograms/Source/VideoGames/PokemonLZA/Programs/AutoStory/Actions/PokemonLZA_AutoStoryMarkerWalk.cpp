@@ -10,7 +10,6 @@
 #include <optional>
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryMarkerArrival.h"
 #include "PokemonLZA_AutoStoryMarkerDistance.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
@@ -78,7 +77,7 @@ public:
 private:
     //  A dialog not near the objective gets B (B cannot start a talk again).
     bool at_objective(const ScreenObservation& look, const std::optional<ObjectiveMarker>& marker){
-        const bool prompt = look.events.has(ScreenEvent::INTERACT_PROMPT) || text_shows(look);
+        const bool prompt = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX);
         const std::optional<int> read = marker ? marker->distance : std::nullopt;
         on_read(read, m_arrival.look(MarkerLook{
             .distance = read, .marker_shows = marker.has_value(), .prompt_or_dialog = prompt, .at = current_time(),
@@ -95,7 +94,7 @@ private:
             ));
         }
         m_prompt_passed = prompt;
-        if (text_shows(look)){
+        if (look.events.has(ScreenEvent::DIALOG_BOX)){
             pbf_press_button(m_env.context, BUTTON_B, /*hold=*/160ms, /*release=*/240ms);
         }
         return false;
@@ -177,7 +176,7 @@ bool objective_reached(StoryEnv& env, PlzaBackend& backend, MarkerArrival& arriv
         arrival.look(MarkerLook{
             .distance = std::nullopt,
             .marker_shows = marker,
-            .prompt_or_dialog = look.events.has(ScreenEvent::INTERACT_PROMPT) || text_shows(look),
+            .prompt_or_dialog = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX),
             .at = current_time(),
         });
         if (arrival.arrived()){

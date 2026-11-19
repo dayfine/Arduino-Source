@@ -127,7 +127,7 @@ const ScreenObservation CUTSCENE = look({});
 const ScreenObservation STILL = look({ScreenEvent::SCREEN_STILL});
 const ScreenObservation WHITE_FADE = look({ScreenEvent::FADE_WHITE});
 const ScreenObservation BLACK_FADE = look({ScreenEvent::FADE_BLACK});
-const ScreenObservation DIALOG = look({}, {ADVANCE_ARROW_READING});
+const ScreenObservation DIALOG = look({ScreenEvent::DIALOG_BOX});
 const ScreenObservation A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
 
 ScreenObservation party_bar(Milliseconds at){
@@ -135,7 +135,7 @@ ScreenObservation party_bar(Milliseconds at){
 }
 
 ScreenObservation choice(int selected, int rows = 2){
-    ScreenObservation observation = look({ScreenEvent::CHOICE_BOX});
+    ScreenObservation observation = look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX});
     observation.readings[std::string(CHOICE_ROWS_READING)] = rows;
     observation.readings[std::string(CHOICE_SELECTED_READING)] = selected;
     return observation;
@@ -255,12 +255,12 @@ const RunCase RUN_CASES[] = {
     {
         .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second; Plus in the 5 s with no text",
         .input = {.checkpoint = "01.01", .first_step = 3, .looks = {
-            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(2500)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(3000)),
-            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(3500)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(3500)),
             look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(4000)),
             look(/*events=*/{}, {MISSION_BANNER_READING}, Milliseconds(4250)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(4500)),
@@ -272,7 +272,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 250ms, wait 250ms, press A, wait 250ms, wait 250ms, wait 500ms, press +, wait 250ms, wait 500ms",
+            .inputs = "press B, wait 250ms, wait 250ms, press B, wait 250ms, wait 250ms, wait 500ms, press +, wait 250ms, wait 500ms",
             .line = "[PlusSkip] 01.01/arrival_scenes pressed -> skipped",
         },
     },
@@ -357,19 +357,19 @@ const RunCase RUN_CASES[] = {
     {
         .name = "02.05's ride to 2F: the hall's quiet is control",
         .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = {
-            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
             look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(6000)),
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 500ms",
+            .inputs = "press B, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
     },
     {
         .name = "02.06 with no autosave badge seen is not saved",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
-            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)), party_bar(Milliseconds(21000)), party_bar(Milliseconds(22000)),
+            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(21000)), party_bar(Milliseconds(22000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 02.06: not saved (the plan's autosave was not seen)"},
     },
@@ -430,13 +430,13 @@ const RunCase RUN_CASES[] = {
         .name = "03.03's walk off the roof holds its last leg 8000 ms of game time, though a run slice takes less",
         .input = {.checkpoint = "03.03c", .first_step = 0, .steps = 1, .looks = concat(
             party_bars(Milliseconds(111), 60),
-            {look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(6700)), look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(6800))}
+            {look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(6700)), look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(6800))}
         )},
         .expectation = {.verdict = "done"},
     },
     //  Arrow reads from a passing run: 272 out of the gate, 254 after one turn.
     {
-        .name = "03.09's walk faces the street first, then walks its legs until Ryon's text takes control",
+        .name = "03.09's walk faces the street first, then walks its legs into Ryon's dialog",
         .input = {
             .checkpoint = "03.09", .first_step = 0, .steps = 1,
             .looks = concat(std::vector<ScreenObservation>(7, party_bar(Milliseconds(0))), {DIALOG}),
@@ -445,8 +445,8 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, stick 0deg 6500ms run, "
-                "press L, stick -90deg 150ms walk, release 100ms, press L, stick 0deg 250ms run, stick 0deg 250ms run",
-            .line = "[PLZA] walk: a scene (text waiting for A) took control after 500 ms of the last leg: the walk stops.",
+                "press L, stick -90deg 150ms walk, release 100ms, press L, stick 0deg 250ms run",
+            .line = "[PLZA] walk: the end event after 250 ms of the last leg.",
         },
     },
 };

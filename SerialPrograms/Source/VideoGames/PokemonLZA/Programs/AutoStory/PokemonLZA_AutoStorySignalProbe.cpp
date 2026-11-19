@@ -31,7 +31,7 @@ constexpr std::array<ProbedSignal, PROBED_SIGNALS> SIGNALS{{
     {"hint", [](const ScreenObservation& look){ return has(look, CONTROLS_HINT_READING); }},
     {"prompt", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::INTERACT_PROMPT); }},
     {"arrow", [](const ScreenObservation& look){ return has(look, ADVANCE_ARROW_READING); }},
-    {SHADOW_DIALOG_BOX_READING, [](const ScreenObservation& look){ return has(look, SHADOW_DIALOG_BOX_READING); }},
+    {"dialog_box", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::DIALOG_BOX); }},
     {"autosave", [](const ScreenObservation& look){ return has(look, AUTOSAVE_READING); }},
     {"banner", [](const ScreenObservation& look){ return has(look, MISSION_BANNER_READING); }},
     {"choice", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::CHOICE_BOX); }},
@@ -59,7 +59,6 @@ void SignalProbe::look(const ScreenObservation& look){
     if (text_shows(look) || fade_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
         m_last_busy = look.when;
     }
-    m_dialog_box_last = has(look, SHADOW_DIALOG_BOX_READING);
 }
 
 void SignalProbe::restart(){
@@ -73,8 +72,8 @@ std::string SignalProbe::line(std::string_view where, std::string_view decision,
         first += std::format(" {}@{}", SIGNALS[index].name, since(m_first[index], start));
     }
     return std::format(
-        "[Signals] {} {} by={} after={} first:{} last_busy@{} shadow.dialog_box_at_decision={}",
-        where, decision, by, since(m_last, start), first, since(m_last_busy, start), m_dialog_box_last ? 1 : 0
+        "[Signals] {} {} by={} after={} first:{} last_busy@{}",
+        where, decision, by, since(m_last, start), first, since(m_last_busy, start)
     );
 }
 

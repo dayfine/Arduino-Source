@@ -13,7 +13,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryLines.h"
 #include "PokemonLZA_AutoStoryLines_Tests.h"
 
@@ -37,7 +36,7 @@ ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readin
 }
 
 ScreenObservation dialog(Milliseconds at){
-    return look(/*events=*/{}, {ADVANCE_ARROW_READING}, at);
+    return look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, at);
 }
 
 ScreenObservation card(Milliseconds at){
@@ -154,7 +153,7 @@ const MenuCase MENU_CASES[] = {
             .out = true,
             .inputs = "press B, press B",
             .signals = "[Signals] press_b_out_of_menu menu_exit by=party_bar after=2000 first: party_bar@2000 hint@- prompt@- "
-                "arrow@- shadow.dialog_box@- autosave@- banner@- choice@- fade@- last_busy@- shadow.dialog_box_at_decision=0",
+                "arrow@- dialog_box@- autosave@- banner@- choice@- fade@- last_busy@-",
         },
     },
     {
