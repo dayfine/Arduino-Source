@@ -23,6 +23,7 @@
 #include "PokemonFRLG_AutoStoryRooms.h"
 #include "PokemonFRLG_AutoStorySlope.h"
 #include "PokemonFRLG_AutoStorySlopeRun.h"
+#include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTeachPlan.h"
 #include "PokemonFRLG_AutoStoryTrashCanLayout.h"
 
@@ -103,6 +104,7 @@ const std::vector<ItemsPocketChangeRow>& items_pocket_change_rows(){
         {StoryStepKind::GAME,       BAG_CHECK_ACTION,       ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       HALL_OF_FAME_ACTION,    ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       LEAGUE_TOP_UP_ACTION,   ItemsPocketChange::COUNTED},
+        {StoryStepKind::GAME,       NUGGET_FARM_ACTION,     ItemsPocketChange::STALE},
     };
     return ROWS;
 }
