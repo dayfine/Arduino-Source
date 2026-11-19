@@ -533,17 +533,17 @@ private:
     void read_battle_bag(){
         m_console.log("Battle: the Items pocket's counts are not known; reading it before the first turn.");
         //  The pocket's rows as counted, and its CANCEL.
-        const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
+        const std::optional<std::vector<BagRow>> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
         //  A read ends with the cursor on the top row.
         m_bag_cursor.row = 0;
-        if (rows.empty()){
+        if (!rows){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
                 "Battle: couldn't read the Items pocket; not fighting on unknown item counts.",
                 m_console
             );
         }
-        set_from_bag(m_supplies, rows);
+        set_from_bag(m_supplies, *rows);
     }
 
     void log_turn(const PartyStatus& status, const TurnAction& action){
