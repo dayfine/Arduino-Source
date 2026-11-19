@@ -81,6 +81,13 @@ number in the references file):
     nesting the change adds (T10).
 11. **Placement** - single-use helper exported to a shared module, game code in
     shared code, include order (T9); forward declarations (strict ban).
+12. **Simplicity** (AGENTS.md "Code conventions for PR branches", Simplicity) -
+    a class with no state where free functions do; a second constructor,
+    overload or parameter only tests use; a result/match/wrapper type with one
+    caller; a branch or null check no caller can reach; extracted code also
+    kept at the old site; a test that names no bug, or more than 1-3 tests on
+    a refactor. Estimate the simplest version's size (`+N/-M`) and list every
+    removable type, function and test with what replaces it.
 
 ## Step 4: Verify every finding before reporting it
 
@@ -116,6 +123,9 @@ Rank by severity, cap at about 10 findings; say how many minor ones you dropped.
 ...
 ### nit
 ...
+
+### simplicity
+Simplest version: about +N/-M (actual +X/-Y). Removable: <type/function/test> -> <replacement>.
 
 Not checked here: correctness (run /code-review), code_health limits, CI.
 ```

@@ -222,6 +222,33 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 
 ## Code conventions for PR branches
 
+- **Simplicity: read before writing code.** Write the smallest change that does the job; every
+  extra type, overload and test is review time someone spends for free. (Trigger: fork PR #660
+  came out +526/-82 where about +240/-60 did the job.)
+  - **Shape first.** Before coding, write the smallest version's shape (functions and types, rough
+    line count) in the plan or the first commit message: it gives the diff a budget.
+  - **Budget.** When `git diff --stat` passes about 1.5x the estimate, stop and cut before going on:
+    growth past the budget is almost always extras, not need.
+  - **Free functions over a class** unless there is state to own: a class with no state is two
+    functions plus ceremony.
+  - **One constructor.** No constructor, overload or parameter that exists only for tests; inject
+    the fake through the one real constructor, so tests run the code callers run.
+  - **No new types for one caller.** No result, match or wrapper type with a single user; return
+    the existing type or `std::optional`, so readers learn nothing new.
+  - **No unreachable branches.** No defensive check no caller can reach and no null check on a
+    reference or pointer the caller guarantees: dead branches read as real cases. Guard input
+    that really comes from outside (screens, files, users).
+  - **Move, don't copy-and-keep.** When code is extracted, the old site loses it in the same PR;
+    two copies drift.
+  - **No forward declarations** (see Dependencies): include the real header.
+  - **Tests earn their place.** Each test names the bug it catches. No tests of getters, the
+    standard library, or the code's own arithmetic or constants restated; a test that passes for
+    any implementation is not added. A refactor or extraction PR gets 1-3 tests: behavior is
+    unchanged, so most cases are already covered.
+  - **No header widened for tests.** Test through the public function, or keep the helper in the
+    .cpp's anonymous namespace (code health `test_only_api`).
+  - **Self-check before push.** List every new type, function and parameter with why it can't be
+    removed, and compare `git diff --stat` with the estimate; cut what has no answer.
 - **Match the repo's style:**
   - comments explain why, at the density of the surrounding code
   - `virtual ... override`
