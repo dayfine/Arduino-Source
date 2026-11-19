@@ -14,7 +14,6 @@
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include <optional>
 #include <string>
-#include <string_view>
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -50,9 +49,6 @@ enum class SpeciesTally{
 
 //  `wanted`: new species asked.
 SpeciesTally species_tally(const GrassCatches& patrol, int wanted);
-
-//  For the log.
-std::string_view species_tally_text(SpeciesTally tally);
 
 //  The Pokedex's count, when read, has `dex_needed`; unread, the tally is
 //  not SHORT.

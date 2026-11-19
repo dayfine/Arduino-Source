@@ -35,7 +35,6 @@
 #include "PokemonLZA_AutoStorySpeciesCheck.h"
 #include "PokemonLZA_AutoStoryZone1Map.h"
 #include "PokemonLZA_AutoStoryZone1Road.h"
-#include "PokemonLZA_AutoStoryZoneStart.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 
 namespace PokemonAutomation{
