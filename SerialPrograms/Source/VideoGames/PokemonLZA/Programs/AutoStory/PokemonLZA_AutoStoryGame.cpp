@@ -255,11 +255,11 @@ Pokemon::StoryActionParser move_hints_action(){
         if (const JsonValue* fades = args.get_value("end_after_black_fades")){
             config.end_after_black_fades = (size_t)fades->to_integer_throw();
         }
-        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState&){
+        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
             if (press_a_first){
                 press_through_prompt(backend);
             }
-            return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
+            return run_scene_machine(backend, "mash_to_move_hints", config, 360s, state.step);
         };
     };
 }
@@ -272,8 +272,8 @@ Pokemon::StoryActionParser text_to_choice_action(){
         SceneMachineConfig config;
         config.stop_at_choice = true;
         config.text_button = flag(args, "advance_with_a") ? BUTTON_A : BUTTON_B;
-        return [config](PlzaBackend& backend, RunState&){
-            return run_scene_machine(backend, "text_to_choice", config, 120s);
+        return [config](PlzaBackend& backend, RunState& state){
+            return run_scene_machine(backend, "text_to_choice", config, 120s, state.step);
         };
     };
 }
@@ -282,20 +282,20 @@ Pokemon::StoryActionParser text_to_choice_action(){
 //  B through the text (B cannot talk again once it ends). Fails as
 //  "scene_never_started" when the HUD shows 45 s with nothing else: the
 //  player is not at the scene's trigger.
-std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState&){
+std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
     SceneMachineConfig config;
     config.start_window = 45s;
-    return run_scene_machine(backend, "scene", config, 120s);
+    return run_scene_machine(backend, "scene", config, 120s, state.step);
 }
 
 //  B on every other look closes the menus a talk opens (Mable's mission and
 //  reward screens), which mash_to_move_hints sits on.
-std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState&){
+std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState& state){
     SceneMachineConfig config;
     config.blind_press_after = 0ms;
     config.blind_press_every = 0ms;
     config.blind_button = BUTTON_B;
-    return run_scene_machine(backend, "scene", config, 120s);
+    return run_scene_machine(backend, "scene", config, 120s, state.step);
 }
 
 
@@ -343,12 +343,12 @@ std::optional<StoryFailure> battle_step(const PlzaStoryTools& tools, PlzaBackend
 
 //  Blind B: no detector reads the Pokedex screens yet, and only B closes
 //  them (A plays the entry's motions).
-std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState&){
+std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState& state){
     SceneMachineConfig config;
     config.text_button = BUTTON_B;
     config.blind_press_after = 0ms;
     config.blind_button = BUTTON_B;
-    return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s);
+    return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s, state.step);
 }
 
 
@@ -384,11 +384,11 @@ void add_console_actions(StoryActions& actions, const PlzaStoryTools& tools){
 void add_scene_actions(StoryActions& actions, const PlzaStoryTools& tools){
     actions.emplace("mash", no_args(mash_scene_step));
     actions.emplace("a", no_args(scene_step));
-    actions.emplace("story_battle_start", no_args([&tools](PlzaBackend& backend, RunState&){
+    actions.emplace("story_battle_start", no_args([&tools](PlzaBackend& backend, RunState& state){
         SceneMachineConfig config;
         config.stop_at_battle = true;
         config.lock_on = tools.lock_on;
-        return run_scene_machine(backend, "story_battle_start", config, 90s);
+        return run_scene_machine(backend, "story_battle_start", config, 90s, state.step);
     }));
     actions.emplace("story_battle", no_args([&tools](PlzaBackend& backend, RunState&){
         return battle_step(tools, backend);

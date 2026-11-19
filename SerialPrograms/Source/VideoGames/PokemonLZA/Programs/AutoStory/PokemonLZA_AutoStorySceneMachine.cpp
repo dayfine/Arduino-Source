@@ -3,12 +3,14 @@
  *  From: https://github.com/PokemonAutomation/
  *
  */
+//  code-health: allow file_lines -- the [SceneQuirk] lines that show which config fields a run needs; deleting the fields they prove dead brings it back under the limit
 
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
 #include <format>
 #include <functional>
+#include <set>
 #include <stdint.h>
 #include <string>
 #include <string_view>
@@ -88,10 +90,17 @@ public:
         return m_banner_seen;
     }
 
+    //  The config fields that change what `screen`, classify()'s for
+    //  `look`, does; before record(look).
+    std::vector<std::string_view> fields_fired(SceneScreen screen, const ScreenObservation& look) const;
+
 private:
     std::optional<WallClock> quiet_end_due() const;
 
+    bool gap_press_due(WallClock now) const;
     bool blind_press_due(WallClock now) const;
+    //  A quiet end or a prompt end that only min_length holds off.
+    bool held_by_min_length(SceneScreen screen, const ScreenObservation& look) const;
     bool skip_due(const ScreenObservation& look) const;
     //  classify_open() with nothing busy and no sign of control.
     SceneScreen classify_idle(const ScreenObservation& look) const;
@@ -199,11 +208,12 @@ bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservat
 }
 
 //  On a closing box B does nothing, where A restarts the talk (03.05's nurse).
-Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
-    if (config.text_button){
-        return *config.text_button;
-    }
+Button default_text_button(const SceneMachineConfig& config, const ScreenObservation& look){
     return party_bar_is_control(config) && look.events.has(ScreenEvent::DIALOG_BOX) ? BUTTON_B : BUTTON_A;
+}
+
+Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
+    return config.text_button.value_or(default_text_button(config, look));
 }
 
 constexpr SceneScreen ALL_SCREENS[] = {
@@ -320,9 +330,13 @@ std::optional<WallClock> SceneTimeline::quiet_end_due() const{
     return std::max(m_quiet_from, m_last_busy + *m_config.quiet);
 }
 
-bool SceneTimeline::blind_press_due(WallClock now) const{
+bool SceneTimeline::gap_press_due(WallClock now) const{
     const bool pressed_since_cue = m_last_blind_press && *m_last_blind_press >= m_last_cue;
-    if (m_config.gap_press && m_scene_seen && !pressed_since_cue && now - m_last_cue >= *m_config.gap_press){
+    return m_config.gap_press && m_scene_seen && !pressed_since_cue && now - m_last_cue >= *m_config.gap_press;
+}
+
+bool SceneTimeline::blind_press_due(WallClock now) const{
+    if (gap_press_due(now)){
         return true;
     }
     if (!m_config.blind_press_after || now - m_last_cue < *m_config.blind_press_after){
@@ -365,6 +379,52 @@ std::string SceneTimeline::black_fade_count() const{
         return std::format("fade {}", m_black_fades);
     }
     return std::format("fade {}/{}", m_black_fades, *m_config.end_after_black_fades);
+}
+
+bool SceneTimeline::held_by_min_length(SceneScreen screen, const ScreenObservation& look) const{
+    if (look.when >= m_quiet_from){
+        return false;
+    }
+    if (screen == SceneScreen::PROMPT_SHOWING){
+        return m_prompt_since && look.when - *m_prompt_since >= PROMPT_HOLD;
+    }
+    const bool idle = screen == SceneScreen::SKIP_CUTSCENE || screen == SceneScreen::BLIND_PRESS ||
+        screen == SceneScreen::SCENE_MOVING || screen == SceneScreen::SCENE_STILL;
+    return idle && m_config.quiet && look.when >= m_last_busy + *m_config.quiet;
+}
+
+//  The states that only a config field makes.
+constexpr std::pair<SceneScreen, std::string_view> FIELD_STATES[] = {
+    {SceneScreen::QUIET_END, "quiet"}, {SceneScreen::AWAITING_SCENE, "start_window"}, {SceneScreen::NEVER_STARTED, "start_window"},
+    {SceneScreen::FADE_SETTLED, "end_after_black_fades"}, {SceneScreen::BANNER_PRESS, "end_after_black_fades"},
+    {SceneScreen::CHOICE, "stop_at_choice"}, {SceneScreen::BATTLE, "stop_at_battle"},
+    {SceneScreen::LOCK_ON, "stop_at_battle"}, {SceneScreen::LOCKED_ON, "stop_at_battle"},
+};
+
+std::vector<std::string_view> SceneTimeline::fields_fired(SceneScreen screen, const ScreenObservation& look) const{
+    std::vector<std::string_view> fired;
+    const auto add = [&fired](bool when, std::string_view field){
+        if (when){
+            fired.push_back(field);
+        }
+    };
+    for (const auto& [state, field] : FIELD_STATES){
+        add(state == screen, field);
+    }
+    const bool blind = screen == SceneScreen::BLIND_PRESS;
+    const bool gap = blind && gap_press_due(look.when);
+    add(screen == SceneScreen::QUIET_END && m_config.quiet_is_control, "quiet_is_control");
+    add(screen == SceneScreen::ENDED_IN_CONTROL, m_config.stop_at_battle ? "stop_at_battle" : "stop_at_choice");
+    //  Without it, the banner's second look ends the machine.
+    add(screen == SceneScreen::BANNER_SHOWING && m_config.end_after_black_fades && m_banner_looks >= 1, "end_after_black_fades");
+    add(gap, "gap_press");
+    add(blind && !gap, "blind_press_after");
+    add(blind && !gap && m_last_blind_press.has_value(), "blind_press_every");
+    add(blind && m_config.blind_button != BUTTON_A, "blind_button");
+    add(screen == SceneScreen::DIALOG && !look.events.has(ScreenEvent::CHOICE_BOX) &&
+        dialog_button(m_config, look) != default_text_button(m_config, look), "text_button");
+    add(held_by_min_length(screen, look), "min_length");
+    return fired;
 }
 
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
@@ -660,22 +720,29 @@ private:
 
 class SceneRunner{
 public:
-    SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
+    SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start, std::string_view step)
         : m_backend(backend)
         , m_config(config)
         , m_timeline(config, start)
         , m_log(backend, label, start)
+        , m_step(step)
     {}
 
     const SceneTimeline& timeline() const{
         return m_timeline;
     }
 
-    void flush_log(){
+    //  A Plus press still waiting for its outcome did nothing.
+    void finish(){
         m_log.flush();
+        if (m_skip_pressed){
+            log_skip("nothing");
+        }
     }
 
     void act(SceneScreen screen, const ScreenObservation& look){
+        log_fields_fired(screen, look);
+        note_skip_outcome(screen, look);
         m_timeline.record(look);
         std::string readings = describe_look(look);
         if (screen == SceneScreen::FADE_BLACK){
@@ -692,12 +759,48 @@ public:
         if (scene_screen_presses(screen)){
             const Milliseconds hold = screen == SceneScreen::SKIP_CUTSCENE ? SKIP_HOLD : 160ms;
             m_backend.press(button_of(screen, look), hold, /*release=*/240ms);
+            if (screen == SceneScreen::SKIP_CUTSCENE){
+                m_skip_pressed = look.when;
+            }
             return;
         }
         wait(screen);
     }
 
 private:
+    void log_fields_fired(SceneScreen screen, const ScreenObservation& look){
+        for (const std::string_view field : m_timeline.fields_fired(screen, look)){
+            if (m_fields_logged.insert(field).second){
+                m_log.flush();
+                m_backend.log_detail(std::format("[SceneQuirk] {} {} fired", m_step, field));
+            }
+        }
+    }
+
+    //  The look after a Plus press: its skip prompt, the map (Plus on
+    //  control), the cutscene still playing SKIP_PROMPT_WAIT on, or else
+    //  the cutscene over.
+    void note_skip_outcome(SceneScreen screen, const ScreenObservation& look){
+        if (!m_skip_pressed){
+            return;
+        }
+        if (screen == SceneScreen::SKIP_PROMPT){
+            log_skip("prompt");
+        }else if (screen == SceneScreen::MAP){
+            log_skip("map");
+        }else if (screen != SceneScreen::SCENE_MOVING && screen != SceneScreen::SCENE_STILL && screen != SceneScreen::SKIP_CUTSCENE){
+            log_skip("skipped");
+        }else if (look.when - *m_skip_pressed >= SKIP_PROMPT_WAIT){
+            log_skip("nothing");
+        }
+    }
+
+    void log_skip(std::string_view outcome){
+        m_skip_pressed.reset();
+        m_log.flush();
+        m_backend.log_detail(std::format("[PlusSkip] {} pressed -> {}", m_step, outcome));
+    }
+
     //  Before all but the first, a quarter turn and L put the camera behind
     //  the player (the backend has no camera stick).
     void lock_on(){
@@ -786,6 +889,9 @@ private:
     SceneMachineConfig m_config;
     SceneTimeline m_timeline;
     SceneLog m_log;
+    std::string m_step;
+    std::set<std::string_view> m_fields_logged;
+    std::optional<WallClock> m_skip_pressed;
 };
 
 //  A box or a card that A does not get past fails.
@@ -920,12 +1026,12 @@ bool scene_under_way(const ScreenObservation& look){
 }
 
 std::optional<Pokemon::StoryFailure> run_scene_machine(
-    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout, std::string_view step
 ){
     backend.log(std::format("[PLZA {}] start, expecting {}.", label, expected_end(config)));
     ScreenObservation look = backend.observe();
     bool first = true;
-    SceneRunner runner(backend, label, config, look.when);
+    SceneRunner runner(backend, label, config, look.when, step);
     std::vector<ScreenState> states;
     for (const SceneScreen screen : ALL_SCREENS){
         ScreenState state;
@@ -949,7 +1055,7 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
         return look;
     };
     const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), std::move(states), timeout, /*log=*/nullptr);
-    runner.flush_log();
+    runner.finish();
     if (config.end_after_black_fades){
         backend.log(std::format(
             "[PLZA {}] the mission banner {}.", label, runner.timeline().banner_seen() ? "showed" : "did not show (the detector may have missed it)"

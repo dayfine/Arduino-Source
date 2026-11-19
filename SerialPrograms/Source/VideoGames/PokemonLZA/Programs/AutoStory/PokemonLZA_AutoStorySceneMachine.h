@@ -89,8 +89,12 @@ std::string describe_scene_look(const ScreenObservation& look);
 //  looks. A choice takes its top row. Fails as "scene_quiet" (unless
 //  `quiet_is_control`), "scene_never_started", "scene_timeout" (by the looks'
 //  time) or "scene_stuck" (a state that recurs too often, or a frozen screen).
+//  For which config fields a run still needs, logs "[SceneQuirk] <step>
+//  <field> fired" the first time each changes what the machine does, and
+//  "[PlusSkip] <step> pressed -> prompt|skipped|map|nothing" per Plus held;
+//  `step` is "<checkpoint>/<step>".
 std::optional<Pokemon::StoryFailure> run_scene_machine(
-    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout, std::string_view step
 );
 
 

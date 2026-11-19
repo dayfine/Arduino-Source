@@ -345,7 +345,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {
             .verdict = "done",
             .inputs = "press B, wait 250ms, wait 250ms, press B, wait 250ms, wait 250ms, wait 500ms, press +, wait 250ms, wait 500ms",
-            .line = "[PLZA mash_to_move_hints] done on fade_settled.",
+            .line = "[PlusSkip] 01.01/arrival_scenes pressed -> skipped",
         },
     },
     {
@@ -354,7 +354,7 @@ const RunCase RUN_CASES[] = {
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)),
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(60000)),
         }},
-        .expectation = {.verdict = "failed at arrival_scenes: scene_quiet"},
+        .expectation = {.verdict = "failed at arrival_scenes: scene_quiet", .line = "[SceneQuirk] 01.01/arrival_scenes quiet fired"},
     },
     {
         .name = "01.00b ends on its autosave",
