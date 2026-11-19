@@ -148,9 +148,6 @@ void check_new_game_choices(ConsoleHandle& console, std::span<const StoryCheckpo
     if (checkpoints.empty() || !checkpoint_starts_without_save(checkpoints.front())){
         return;
     }
-    if (const std::optional<std::string> problem = new_game_problem(choices)){
-        throw UserSetupError(console, *problem);
-    }
     if (const std::optional<std::string> problem = new_game_run_problem(checkpoints, choices)){
         throw UserSetupError(console, *problem);
     }
