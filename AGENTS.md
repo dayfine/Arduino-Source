@@ -77,6 +77,7 @@ There are two different checks, and neither replaces the other:
 
 | What | Where | Use |
 |---|---|---|
+| AutoStory shared core plan (#648 shape S1-S17, landing order) | [autostory/SHARED_CORE.md](autostory/SHARED_CORE.md) | Agents on the core or its PLZA/FRLG merges follow it; one landing step per agent. |
 | BBQ notes and run records | [pokemon_sv/](pokemon_sv/) ([where to look first](#plans-and-state-where-to-look-first)) | Milestones, ledgers, runs. |
 | Harness and trial records | [harness/](harness/) | ccache trial, FRLG license notes, issue #40 state. |
 | Fork branch sync | launchd `com.dayfine.pa-sync`, 07:00: `~/Projects/pa-tools/sync_branches.py` | Needs `~/.zshenv` for `GH_TOKEN`. Logs: `~/Library/Logs/pa-sync/`. |
@@ -222,6 +223,72 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
 
 ## Code conventions for PR branches
 
+- **Simplicity: read before writing code.** Write the smallest change that does the job; every
+  extra type, overload and test is review time someone spends for free. (Trigger: fork PR #660
+  came out +526/-82 where about +240/-60 did the job.)
+  - **Shape first.** Before coding, write the smallest version's shape (functions and types, rough
+    line count) in the plan or the first commit message: it gives the diff a budget.
+  - **Budget.** When `git diff --stat` passes about 1.5x the estimate, stop and cut before going on:
+    growth past the budget is almost always extras, not need.
+  - **Free functions over a class** unless there is state to own: a class with no state is two
+    functions plus ceremony. A class whose only state is its constructor arguments is a free
+    function, or a `MoveOnlyFunction` seam where tests swap the behavior (#648).
+  - **One constructor.** No constructor, overload or parameter that exists only for tests; inject
+    the fake through the one real constructor, so tests run the code callers run.
+  - **No new types for one caller.** No result, match or wrapper type with a single user; return
+    the existing type or `std::optional`, so readers learn nothing new.
+  - **No unreachable branches.** No defensive check no caller can reach and no null check on a
+    reference or pointer the caller guarantees: dead branches read as real cases. Guard input
+    that really comes from outside (screens, files, users).
+  - **Move, don't copy-and-keep.** When code is extracted, the old site loses it in the same PR;
+    two copies drift.
+  - **No forward declarations** (see Dependencies): include the real header.
+  - **Tests earn their place.** Each test names the bug it catches. No tests of getters, the
+    standard library, or the code's own arithmetic or constants restated; a test that passes for
+    any implementation is not added. A refactor or extraction PR gets 1-3 tests: behavior is
+    unchanged, so most cases are already covered.
+  - **No header widened for tests.** Test through the public function, or keep the helper in the
+    .cpp's anonymous namespace (code health `test_only_api`).
+  - **Self-check before push.** List every new type, function and parameter with why it can't be
+    removed, and compare `git diff --stat` with the estimate; cut what has no answer.
+- **Types, names and comments** (the user's review of fork PR #648; apply on every file of a
+  chain, writing and reviewing):
+  - **Comments only when it's not obvious.** Name a type for what it is, then drop the
+    comment that only restates the name.
+    #648: "An engine run of one checkpoint" became `CheckpointRunResult`, no comment.
+  - **A name says what kind of value it holds:** index or count, 0- or 1-based.
+    #648: `failed_event` became `failed_event_index`.
+  - **A comment states the contract in 1-2 lines:** no mechanism, no edge-case lists, no log
+    formats. File headers are one line.
+  - **No vague words.** #648: "both backends" names the two (console, fake) or goes.
+  - **One result type per concept,** not parallel types that differ by a bool.
+    #648: `StoryEngineReport.passed` next to `CheckpointReport`.
+  - **No field derivable from others; make invalid states unrepresentable.**
+    #648: `completed` + `failure`, `failed_name` + `failure`, `events_run` became one
+    `std::optional<Failure>`.
+  - **A type or alias lives with its only user,** not in a shared types header.
+    #648: `EventLogger` in `Pokemon_StoryCheckpointTypes.h`. Read-only strings: `std::string_view`
+    (see Adopted, Strings).
+  - **Smallest public API:** no accessor without an outside caller, no second public method only
+    the class itself uses. #648: `registry()`, `run_checkpoint`.
+  - **Settings live with their owner,** not on every call.
+    #648: `attempts_per_checkpoint` moves to `StoryGame` / the run options.
+  - **The core does not bake in grouping:** it runs any range of checkpoints; a segment is an id
+    prefix for display. #648: `run_segment` became a range run.
+  - **No `extern template`:** define the template in the header, or drop the template when one
+    type uses it.
+  - **Every struct field gets `= {}`** (or another default): Windows clang errors on a designated
+    initializer that skips a field without one (see Construction, Initialize every scalar).
+    #648: the question on `CheckpointRun`'s fields.
+  - **Header order:** public declarations, then public definitions, then internal helpers.
+    #648: `save_checkpoint` is declared first; the internal templates go after `run_checkpoints`.
+  - **Test-only code lives under `Testing/`.** #648: `FakeBackend`.
+  - **Stored callables are `MoveOnlyFunction`,** not `std::function` (merges with the
+    `MoveOnlyFunction` seam above). #648: `StoryArgKind::read`.
+  - **Enum <-> string via `EnumStringMap`, and an enum is named for what it describes.**
+    #648: `StoryPhase` with hand-written name/read; the phase is a testing status.
+  - **Printing via `std::formatter<T>`; equality via `operator== = default`** (see Construction,
+    `= default`). #648: `pose_text`.
 - **Match the repo's style:**
   - comments explain why, at the density of the surrounding code
   - `virtual ... override`
@@ -317,9 +384,9 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   Function templates in headers declare their public API before internal helper
   namespaces; internal helper templates are defined in place. Definitions stay
   in the same header; this is not permission to forward-declare external types.
-- **Header documentation:** comment every namespace-scope symbol, including
-  types, aliases, constants and internal helpers. A function definition may reuse
-  its documented declaration in the same header. Code Health checks changed symbols.
+- **Header documentation:** comment a header symbol only when its name and signature don't
+  already say what it is (user, 2026-11-18). No symbol needs a comment; Code Health doesn't
+  ask for one.
 - **Unsigned:** counts and indexes are `size_t` / `uint8_t` (Google prefers `int`).
   Match that, and see TotW #227 below.
 - **Callbacks:** APIs such as `run_until()` take `std::function<...>&&`. Match the API

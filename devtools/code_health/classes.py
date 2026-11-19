@@ -5,7 +5,7 @@ by ';' and inline bodies. Unbalanced braces from #if branches make a class unmea
 rather than failing the run.
 """
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from lizard_languages import CLikeReader
 
@@ -35,6 +35,9 @@ class Member:
     static: bool = False
     const: bool = False    # const/static method, or const data: cannot mutate the object
     option: bool = False   # a config option or table cell field (type named *Option or *Cell)
+    name: str = ''
+    line: int = 0
+    text: str = ''         # the declaration's tokens, space-joined
 
 
 @dataclass(frozen=True)
@@ -167,8 +170,23 @@ def _close(tail):
     return len(tail)
 
 
-def classify(decl, access, class_name):
+def data_name(decl):
+    names = [t for t in decl[:next((k for k, t in enumerate(decl) if t in ('=', '{}', '[', ':')), len(decl))]
+             if IDENTIFIER.match(t)]
+    return names[-1] if names else ''
+
+
+def classify(decl, access, class_name, line=0):
     decl = strip_template(decl)
+    found = classify_decl(decl, access, class_name)
+    if found is None:
+        return None
+    paren = call_paren(decl)
+    name = data_name(decl) if paren is None or found.kind == 'type' else decl[paren - 1]
+    return replace(found, name=name, line=line, text=' '.join(decl))
+
+
+def classify_decl(decl, access, class_name):
     if not decl or decl[0] in SKIP_DECLARATIONS:
         return None
     if decl[0] in TYPE_KEYWORDS:
@@ -200,9 +218,11 @@ def classify(decl, access, class_name):
 
 def members(toks, start, end, pairs, keyword, class_name):
     access = 'private' if keyword == 'class' else 'public'
-    found, decl, paren_depth, k = [], [], 0, start
+    found, decl, paren_depth, k, line = [], [], 0, start, 0
     while k < end:
         text = toks[k][0]
+        if not decl:
+            line = toks[k][1]
         following = toks[k + 1][0] if k + 1 < end else ''
         if not decl:
             if text in ACCESS and following == ':':
@@ -228,7 +248,7 @@ def members(toks, start, end, pairs, keyword, class_name):
             is_function = paren_depth == 0 and call_paren(strip_template(decl)) is not None
             in_initializers = is_function and ':' in decl and decl[-1] not in (')', '{}')
             if is_function and not in_initializers and decl[-1] != '=':
-                member = classify(decl, access, class_name)
+                member = classify(decl, access, class_name, line)
                 if member:
                     found.append(member)
                 decl, k = [], close + 1
@@ -239,7 +259,7 @@ def members(toks, start, end, pairs, keyword, class_name):
             k = close + 1
             continue
         if text == ';' and paren_depth == 0:
-            member = classify(decl, access, class_name)
+            member = classify(decl, access, class_name, line)
             if member:
                 found.append(member)
             decl, k = [], k + 1

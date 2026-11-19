@@ -110,7 +110,8 @@ MIGRATIONS: List[List[str]] = [
         'ALTER TABLE actions ADD COLUMN answered_at TEXT',
     ],
     # 4 (Slice 5b): passed preflights, keyed by their token's hash, with what they were checked
-    # against; and the newest cfr_batch per console, which makes the save fact stale.
+    # against (unused since the preflight split: no tokens; kept so migrations stay append-only);
+    # and the newest cfr_batch per console, which makes the save fact stale.
     [
         """CREATE TABLE preflights (
             token_hash TEXT PRIMARY KEY,

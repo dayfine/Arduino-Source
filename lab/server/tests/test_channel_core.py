@@ -5,11 +5,10 @@ Run from the repo root: python3 -m unittest discover -s lab/server/tests -t lab/
 """
 
 import copy
-import json
 import unittest
 
 from pa_lab import actions, app_query, lab_reader, timestamps
-from pa_lab.channel import AppError, DescribeProgram, ErrorKind, GameOpen, Preflight, Start
+from pa_lab.channel import AppError, DescribeProgram, ErrorKind, GameOpen, Start
 from tests.control_fixtures import START, acquire, new_id, open_plane, temp_db_path
 from tests.fake_channel import FakeChannel, journal
 from tests.fake_lab import PRECHECKS, FakeClock, describe_reply, golden
@@ -24,10 +23,6 @@ def stopped_app():
     doc['written_at'] = START
     doc['video']['captured_at'] = START
     return doc
-
-
-PASSED = {'schema': 1, 'id': PANEL, 'verdict': 'passed', 'restored': True, 'failure': None, 'invalid': None,
-          'checks': [{'name': check['name'], 'status': 'passed', 'message': ''} for check in PRECHECKS]}
 
 
 def request(token, **arguments):
@@ -48,18 +43,13 @@ class CoreOverFakeChannelTest(unittest.TestCase):
         return self.plane.execute(CLIENT, acquire())['result']['lease_token']
 
     def run_request(self, token):
-        """A run request with the token of a preflight that passed just now."""
-        preflight = self.actions.preflight_program(CLIENT, request(token))
-        self.assertEqual(preflight['status'], 'completed', preflight)
-        return request(token, preflight_token=preflight['result']['preflight_token'])
+        return request(token)
 
     def answer(self, start):
-        """The app answers describe_program and preflight as a program with prechecks, and `start` the start."""
+        """The app answers describe_program as a program with start checks, and `start` the start."""
         def answer_with(commands, request_id):
             if commands == (DescribeProgram(),):
                 return journal(DescribeProgram, printed=[describe_reply(prechecks=PRECHECKS).strip()])
-            if commands == (Preflight(options={}),):
-                return journal(Preflight, printed=['preflight ' + json.dumps(PASSED)])
             return start(commands, request_id)
         self.channel.answer_with = answer_with
 

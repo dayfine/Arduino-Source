@@ -5,11 +5,57 @@ The local server designed in `docs/design/Agent-Integration.md` (fork #131, bran
 Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). Slice 3: the
 durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
 tickets and events in SQLite. Slice 5a: leased `run_program` and `stop_program`
-([below](#slice-5a-run_program-and-stop_program)); Slice 5b: `preflight_program`, options bound to
-its token, and `cfr_batch` ([below](#slice-5b-preflight_program-options-on-run_program-cfr_batch)).
+([below](#slice-5a-run_program-and-stop_program)); Slice 5b: options on `run_program` and `cfr_batch`
+([below](#slice-5b-preflight_program-options-on-run_program-cfr_batch)); the
+[preflight split](#preflight-split) (server side built) replaced Slice 5b's `preflight_program` with a
+server preflight inside `run_program`. Slice 6 (save facts) is a design
+([below](#slice-6-save-facts-design-not-built)).
 All are served only by `serve --actions`, which nothing is wired to yet.
 
-New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you today.
+New here? Start with [GUIDE.md](GUIDE.md), the user guide (what you can do with pa-lab today).
+The feature map, slice numbers and PRs live here, not in the guide.
+
+## Feature map
+
+Moved here from the user guide (2026-11-18), with the slices and PRs. **merged, unused** = code
+and unit tests merged on `agents`, never used end to end: served only by `serve --actions`, which
+no session is configured for, and the console-B soak has not been run.
+
+| Feature | State | Where |
+|---|---|---|
+| `console_status`, `console://B/state`, `console://B/save` | in use (`.mcp.json`, read-only); the save resource always `unknown` | [stdio mode](#read-only-stdio-mode-mcpjson), #528 |
+| User hold (`Lab/hold`) | in use: app (lab build, #608), lab scripts and the status read (#609); the `user` lease in the control plane is merged, unused | [GUIDE.md](GUIDE.md#your-hold) |
+| `shot`, `game_open`, `ensure_game`, `describe_program` | merged, unused; `ensure_game` always `game_unknown` (no game detector in the app) | Slice 2, #504 |
+| Leases, request records, events | merged, unused | Slice 3 |
+| `run_program`, `stop_program` | merged, unused | Slice 5a, #592, channel adapter #611 |
+| Options on `run_program`, `cfr_batch` | merged, unused | Slice 5b, #600 |
+| Server preflight in `run_program` (`preflight_program` and its token removed) | merged, unused; every program answers `prechecks_unsupported`. The app's `preflight` command (#601, #616) is unused, to be removed in a later app PR | [preflight split](#preflight-split), plan step 1 |
+| Program start checks | the declaring mechanism is merged (#504, #511, #512); no program declares a list. The server side reads `program.last_outcome` and emits `program_failed` / `start_check_failed`; no app writes it yet. FRLG RNG runs free party slots and black border inside the program at Start (`run_precheck()`, #485 and branch `upstream/frlg-free-party-slots`), not as a reported result; FRLG AutoStory's list was a design note (#488, closed) | [preflight split](#preflight-split) |
+| Console-B soak | `soak-check` merged; the soak has not been run | [Slice 5 acceptance](#slice-5-acceptance-the-console-b-soak) |
+| Save facts, `no_save`, save-screen reads | designed | [Slice 6](#slice-6-save-facts-design-not-built), #621 |
+| Run records | designed; needs the app's run ids (#116) | Slice 6e |
+| Server runs the lab app (launch the right build with the lab profile, crash handling, no second copy) | planned, not designed here | Slice 7, `docs/design/Agent-Integration.md` on `design/agent-integration` |
+| Local worker (builds and test runs queue behind the heavy gate and disk floor) | planned, optional, not designed here | Slice 8 |
+| Headless app | idea, designed elsewhere, not part of pa-lab | none |
+
+## Plan order
+
+Changed 2026-11-18 by the [preflight split](#preflight-split): the next step is
+programs reporting their start checks, ahead of the Slice 6 save facts.
+
+1. **Preflight split, server side.** Built: `run_program` runs the server preflight and Start in
+   one request; `preflight_program`, the token and the option restore are gone. Contract changes
+   listed [below](#contracts-the-split-changed).
+2. **Programs report their start checks as a run result.** The app reports a start check's
+   failure as the run's outcome (`start_check_failed`, the check's name, message, evidence);
+   `describe_program` lists the checks. FRLG RNG first (`black_border`, `free_party_slots`, from
+   its existing `run_precheck()`), then AutoStory's `game_screen`. This is what lets
+   `run_program` start anything.
+3. **Switch on and soak.** Server config and a session on `serve --actions`; the console-B soak;
+   then the user's decision, one program family at a time.
+4. **Slice 6, save facts** (6a-6c as designed); 6d becomes the server preflight's save check
+   (`save_mismatch`), not a program start check; 6e run records after #116.
+5. **Slice 7** (the server runs the lab app), then **Slice 8** (local worker, optional).
 
 | Path | What |
 |---|---|
@@ -29,7 +75,7 @@ New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you 
 | `pa_lab/tools.py`, `pa_lab/shot.py` | `ensure_game` (verification only) and `shot` (newer than the call) |
 | `pa_lab/mcp_server.py` | MCP over Streamable HTTP on `127.0.0.1`: bearer, Host/Origin, sessions, size caps |
 | `pa_lab/app_query.py` | `describe_program` and `game_open`: one-line reads through the app's channel (#504) |
-| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program`, `game_open`, `set` + `start`, `stop`, the proposed `preflight` and console lines, in temp dirs |
+| `tests/fake_lab.py` | A fake `Lab/` folder and a fake app answering `snapshot`, `describe_program`, `game_open`, `set` + `start`, `stop` and console lines, in temp dirs |
 | `tests/test_{lab_reader,ensure_game,shot,config,mcp_server}.py` | Slice 2's fake-lab tests |
 | `tests/test_app_query.py` | `describe_program` and `game_open` against the fake app |
 | `pa_lab/db.py` | The SQLite file: migrations (`PRAGMA user_version`), owner-only file, `BEGIN IMMEDIATE` writes |
@@ -37,8 +83,8 @@ New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you 
 | `tests/test_{db,control,control_concurrency,control_mcp}.py` | Slice 3's tests: restarts, threads and processes racing, kills mid-write |
 | `pa_lab/actions.py` | Slice 5a: `run_program` / `stop_program` through the control plane and the app's `start` / `stop` channel commands |
 | `tests/test_actions.py` | Slice 5a's refusals, retries and races against the fake app |
-| `pa_lab/preflight.py`, `pa_lab/cfr.py` | Slice 5b: options against the static contract, the `preflight` reply, the token's binding; the `cfr_batch` allowlist |
-| `tests/test_{preflight,cfr_batch,cfr}.py` | Slice 5b: option refusals, verdicts, restore, stale tokens; batches, the save mark; the allowlist |
+| `pa_lab/preflight.py`, `pa_lab/cfr.py` | The server preflight's option checks (static contract, `skips_check`) and the save hook; the `cfr_batch` allowlist |
+| `tests/test_{preflight,cfr_batch,cfr}.py` | The server preflight: option refusals, `describe_program` refusals, `set` + `start`, a start check's failure as `program_failed`; batches, the save mark; the allowlist |
 | `pa_lab/status.py`, `pa_lab/stdio_server.py`, `smoke_readonly.py` | Read-only stdio mode for `.mcp.json`: `console_status` ([below](#read-only-stdio-mode-mcpjson)) |
 | `tests/test_status_readonly.py` | `console_status` and the read-only gate against a fake profile |
 
@@ -319,7 +365,7 @@ with a silent gap.
 is a usage error.
 
 ```text
-run_program(console, request_id, lease_token, panel, options={}, preflight_token)   # options must be {} in 5a
+run_program(console, request_id, lease_token, panel, options={})   # options must be {} in 5a
 stop_program(console, request_id, lease_token)
 ```
 
@@ -333,7 +379,7 @@ stored as a `refused` record with a `request_failed` event, and nothing reaches 
 | the request's token holds the lease (idle or running) | `lease_invalid`, `lease_expired`, `console_held_by_user` (a UI Start/Stop or the operator) |
 | no earlier run/stop on the console is still pending | `program_not_stopped`, `evidence.pending_tool` |
 | `Lab/state.json` is live | `app_unavailable`, `evidence.reason` = the availability reason |
-| run: `options` is `{}` (`preflight_token` is required by the contract, not checked in 5a) | `invalid_arguments` (`options`) |
+| run: `options` is `{}` | `invalid_arguments` (`options`) |
 | run: `panel` is the selected program | `invalid_arguments`, field `panel`, `evidence.selected`; `panel_not_program` on the settings page |
 | run: `console://B/state`'s `blocked` (program state, controller, video) | `program_running`, `program_not_stopped` (loading), `controller_not_ready`, `video_stale`, `video_bad_signal` |
 | the channel's owner lock is not claimed (`channel.owner_claimed`) | `console_held_by_agent`, `evidence.reason: channel_owned` |
@@ -378,11 +424,15 @@ settles, an overdue lease expires at the next read. The outcomes:
 instance, after the start's `ok` line), not by id, and its `started_at` is unknown. A `run_id` on
 the stop transition, or the app keeping the start beside the stop, would make that match exact.
 
-**Changed by Slice 5b.** `run_program` checks its `preflight_token` (required in the v1 request
-contract; 5a took it unchecked) and takes `options`; the 5a refusal for a non-empty `options` is
-gone. See below.
+**Changed by Slice 5b and the [preflight split](#preflight-split).** `run_program` takes `options`
+(the 5a refusal for a non-empty `options` is gone) and runs the server preflight after the checks
+above.
 
 ## Slice 5b: `preflight_program`, options on `run_program`, `cfr_batch`
+
+**Superseded (built 2026-11-18)** by the [preflight split](#preflight-split):
+`preflight_program`, its token and the option restore are gone; the option checks moved into
+`run_program`, and `cfr_batch` stays. This section is the history of Slice 5b as first merged.
 
 Served with the 5a tools by `serve --actions`; still not wired to anything, and `.mcp.json` stays
 read-only. Each call is one request record on the same `begin_action` / inbox / settle path as 5a
@@ -481,18 +531,18 @@ Slice 5 is accepted when, over a real run on console B, every mutation has exact
 each inbox request the daemon wrote has one `actions` row, each `requests` row has one terminal
 event, and each UI Start/Stop shows up once. Run it yourself during a run you are making anyway:
 
-1. Use a lab build with #601, #608 and #616 (the app's `preflight`, the user hold, the cancel fix),
-   and a program that lists its start checks. Do it within a day of the run: `disk_gc.sh` prunes
+1. Use a lab build with #608 (the user hold) and a program that reports its start checks (plan
+   step 2). Do it within a day of the run: `disk_gc.sh` prunes
    `Lab/done/` and `Lab/outbox/`.
 2. Note the start, with milliseconds like the stored times (a `T0` without them would leave out
    the rows of its own second): `T0=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)` and
    `DB=~/.local/state/pa-lab/control.sqlite`.
 3. From `lab/server`, start the daemon with actions:
    `python3 -m pa_lab serve --config ~/.config/pa-lab/server.json --actions`.
-4. Through the MCP client, drive the run: `acquire_console`, `preflight_program`, `run_program`
-   with its token, `stop_program` (or let the run end), `release_console`. Along the way, once each:
-   resend a call with the same `request_id` (must return the stored record, write nothing); send
-   a `run_program` with a stale token (refused, nothing written); click Stop in the app during a
+4. Through the MCP client, drive the run: `acquire_console`, `run_program`, `stop_program` (or let
+   the run end), `release_console`. Along the way, once each: resend a call with the same
+   `request_id` (must return the stored record, write nothing); send a `run_program` with an
+   option out of range (refused, nothing written); click Stop in the app during a
    run (user takeover); restart the daemon while a `run_program` is pending; one short
    `cfr_batch` (`shot`, `press B`).
 5. Check, after the run, with the daemon stopped:
@@ -503,7 +553,7 @@ event, and each UI Start/Stop shows up once. Run it yourself during a run you ar
    - `pending`: requests left pending;
    - `done_without_action`: requests in `Lab/done/` the daemon wrote with no `actions` row. The
      read-only requests listed in `soak.READ_ONLY_REQUESTS` (such as the `describe_program` that
-     `preflight_program` sends first, and `shot`) have none and are skipped;
+     `run_program` sends first, and `shot`) have none and are skipped;
    - `action_without_done`: `actions` rows since `T0` without a `done/` file. Only an action that
      settled `timeout` with nothing sent (withdrawn, `never_sent`) may be here.
    Then by hand: each UI Start/Stop you clicked is one event:
@@ -511,9 +561,202 @@ event, and each UI Start/Stop shows up once. Run it yourself during a run you ar
 6. Pass: no mismatches. Note the counts (requests, actions, `done/` files, events) and any mismatch
    with its request id in the run record; a mismatch is a bug in the daemon, not in the run.
 
+## Preflight split
+
+Decided 2026-11-18 on the user guide review (#659). It replaces Slice 5b's `preflight_program`.
+User page: [GUIDE.md](GUIDE.md#run-programs). **Server side built** (plan step 1): `run_program`,
+the contracts below, and the `program_failed` event from `program.last_outcome`. The app side
+(plan step 2: programs that report start checks and write `last_outcome`) is not.
+
+**Why.** Slice 5b ran the program's prechecks on the app's worker without starting the program,
+then restored the user's options, and gave a token good for one start within 120 s. But most
+checks a program needs are in the game: FRLG RNG's free party slots open the party, the black
+border check reads the game picture, AutoStory needs the right screen. Running those apart from
+the run, then starting fresh, needs the staging, the option restore, `options_not_restored`, the
+token's binding and `preflight_stale`, and the state can still change in the window. So the work
+is split by whether it needs the game:
+
+| | Server preflight | Program start checks |
+|---|---|---|
+| When | inside `run_program`, before Start | the program's first step after Start |
+| Presses | nothing | may press (open a menu, go Home and back); never resets, saves or changes an option |
+| Checks | only what is readable from outside the game: app live (instance, heartbeat), the panel is the requested program, options valid against `describe_program`'s static contract, not held (hold, lease), no program running, controller ready, video live, the program reports start checks, the save fact matches the run's start (Slice 6) | the program's own list: `black_border`, `free_party_slots(n)`, `game_screen`, program-specific ones |
+| Failure | `run_program` refused, nothing sent; existing codes plus `save_mismatch` (evidence: the save resource's `status`, `reason`, `since`, `checkpoint`, `game`) | the run ends before any reset with outcome `start_check_failed`, `check`, `message`, `evidence` |
+| Same for the user's own Start | no (the user's Start is never refused by the server) | yes: the same list runs at every Start |
+
+**`run_program`.** One request: the 5a checks, the option validation from 5b, the save check (a
+hook that passes everything until Slice 6d), then `request <id>`, one `set KEY JSON` per
+option, `start 10`, as in 5b. The daemon reads `describe_program` first, outside the transaction
+(not on an exact retry, and not when the 5a checks will refuse anyway); its refusal is stored after
+the lease and 5a checks. No `preflight_token`; what was checked and what is started are one transaction, so there is no window to bind and
+nothing to restore (the panel keeps the options, as when a user sets them and clicks Start; a
+refused `set` still reports `evidence.applied_options` / `failed_option`). `stop_program` is
+unchanged. `describe_program` stays a read: options and the start-check list with each check's
+`needs` line; it no longer gates anything except `prechecks_unsupported`.
+
+**The run result.** The record of `run_program` completes when the program has started (5a). A
+start check runs after that, so its failure is the run's outcome, reported by the app and passed
+on by the server:
+
+- the app ends the program with outcome `start_check_failed` and writes it in `state.json` as
+  `program.last_outcome: {run_id, request_id, outcome, check, message, evidence, at}` (new
+  optional `app_state` v1 field), and the log line `[StartCheck] free_party_slots: failed`;
+- the server emits `program_failed` with `payload.verdict: "start_check_failed"` and `check`,
+  correlated to the `run_program` request by `request_id`;
+- `console_status` shows it as the last run's outcome; Slice 6e's run record carries it.
+
+A program reports start checks when it declares its list in `describe_program` and reports a
+failure this way; `run_program` refuses any other program (`prechecks_unsupported`), so a start
+failure never looks like a generic error. A program's option that skips a check (FRLG RNG's
+free party slots setting) is for the user's own Start; `run_program` refuses a candidate that
+turns a check off (`invalid_arguments`, `field: options.<key>`). `describe_program` marks such an
+option with `skips_check: "<check name>"` on a boolean entry (true skips the check), and a run's
+candidate must name it as `false`: left out, the panel's value would apply, and that may be true.
+
+How the server reads it (built): `program.last_outcome` is written in the same `state.json` as the
+stop transition that ended the run, and cleared (null) at the next start. On a new stop transition
+the control plane emits `stopped` as before and, when `last_outcome.outcome` is
+`start_check_failed`, a `program_failed` event (`verdict: start_check_failed`, `check`, `message`,
+`evidence`) with the event's `request_id` = `last_outcome.request_id` (null for a user's Start). A
+`run_program` record has already completed when the run started; the caller follows the run with
+`next_events`. `console_status` does not show it yet.
+
+**What went.** The tool `preflight_program`; `preflight_token` on `run_program`; the
+`preflights` table's use (migration 4 stays, the table unused); `preflight_stale`;
+`options_not_restored`. The app's `preflight` channel command (#601, #616) is unused, removed from
+the app in a later app PR. The `describe_program` in `soak.READ_ONLY_REQUESTS` stays: `run_program`
+now sends it first. `cfr_batch` stays as built and still marks the save stale.
+
+### Contracts the split changed
+
+Changed in place in version 1: nothing writes or serves these yet (no app has `last_outcome`, and
+`serve --actions` is not configured anywhere), so no client or app reads the removed values.
+Goldens and invalid cases first:
+
+| Contract | Change |
+|---|---|
+| `request/run_program.json`, `invalid_cases.json` | `arguments.preflight_token` dropped (the closed `run_program` arguments now refuse it: "run with a preflight token"); `preflight_program` left the tool enum ("preflight_program is no longer a tool") |
+| `refusal/prechecks_unsupported.json`, `refusal/save_mismatch.json` (were `refusal/precheck_failed.json`), `request_record/refused_run.json` (was `refused_preflight.json`) | `precheck_failed` and `preflight_stale` left the refusal enum ("precheck_failed is no longer a refusal code"), and so did the refusal's `check` field; `save_mismatch` joined it and needs `evidence.{status, reason, since, checkpoint, game}` ("save_mismatch without its evidence"); nothing refuses with it until Slice 6d |
+| `event/request_failed.json`, `event_page/after_1040.json` | their `preflight_program` / `precheck_failed` payloads are a `run_program` refusal (`prechecks_unsupported`) |
+| `event/program_failed_start_check.json` (new) | `payload.verdict` gains `start_check_failed`, which needs `check` and `message`; `evidence` optional ("start_check_failed without the check") |
+| `app_state/start_check_failed.json` (new) | optional `program.last_outcome: {run_id, request_id, outcome, check, message, evidence?, at}`, `outcome` one of `start_check_failed` ("last_outcome with an unknown outcome", "start_check_failed outcome without the check") |
+| `channel.md` | the `preflight` command line went |
+| code | `pa_lab/preflight.py` (the server preflight), `actions.py` (`run_program` describes first; `preflight_program` gone), `control.py` (`program_failed` from `last_outcome`; the token store gone), `mcp_server.py` (tool list), `soak.py`, `db.py` (the `preflights` table stays, unused) |
+
+## Slice 6: save facts (design, not built)
+
+Goal: the daemon knows which save is on console B and refuses a run that would start from the
+wrong one. User page: [GUIDE.md](GUIDE.md#saves). Today `console://B/save` reads
+`Lab/save.json` (nothing writes it yet) and goes `stale` on a UI Start/Stop or a `cfr_batch`.
+
+**What the fact means.** A save fact says what a reload gives: the game, the slot and the place
+(a checkpoint's start, or a named place outside the story). Moving in the game does not change
+it; only a save does. So "stale" means *the save may have changed and nobody recorded where*. A
+hooked program moving the player after its save leaves the fact `known`; the separate field
+`game` says whether the game in memory is still at the save (`at_save`), has moved (`moved`), or
+is not known (`unknown`). A run that reloads needs `known`; a run that starts in place
+(chained, no reload) needs `known` and `at_save`.
+
+**What makes it known.** Only the app writes a fact, and only from a program that knows where
+it is (a hooked program):
+
+| Event | `basis` | Place |
+|---|---|---|
+| A checkpoint's save step (FRLG, BDSP; PLZA's manual saves) | `program_save` | that checkpoint's start |
+| A save the game makes itself at a point the plan declares: FRLG Hall of Fame, PLZA autosaves listed in the plan (catch, scene, check-in) | `game_save` | the declared place (PLZA checkpoints start at autosave points, so the next checkpoint's start) |
+| A backup load (PLZA title combo Up+B+X, plza/lean #644): the program reads the backup card (registered count, play time) and maps it to a checkpoint start by its table | `backup_load` | the mapped checkpoint; no match leaves the fact `stale` / `backup_unmapped` |
+| An RNG program's save before resets | `program_save` | `checkpoint: null`, `place` = the program's own name for it |
+| No save on the console: the save-delete tool (`delete_save.sh`) reads the game's title back off Data Management and confirms the delete, or a new-game program finds no save at the title (PLZA 01.00a's "no save data" start) | `no_save` | `checkpoint: null`, `place: "none"`; a new-game row (01.00a) needs exactly this |
+| A save-screen read: a hooked program opens the in-game save screen (PLZA menu, R) and reads its location, play time and registered count, mapped to a checkpoint start by the same table as the backup card | `save_screen` | the mapped checkpoint; no match leaves the fact `stale` / `save_screen_unmapped` |
+
+The autosave detector is not a fact by itself: on 2026-11-16 the green zone walls fired it with
+no save. An autosave seen where the plan declares one writes the fact for that place; one seen
+anywhere else makes the fact `stale` / `unexpected_autosave`. A false badge then costs a reload
+from the backup, never a run from the wrong save. A missed real autosave is the unsafe case;
+plans declare every autosave seen on the console so it becomes a declared one.
+
+FRLG's League is one checkpoint with no save until the Hall of Fame: a failed League run leaves
+the fact `known` at the League start with `game: moved`, so the next run reloads and is allowed.
+The program writes the Hall of Fame fact as soon as it sees the Hall of Fame screen, before
+anything else.
+
+**What makes it stale.** Anything that could save without writing a fact:
+
+| Event | Seen by | `reason` |
+|---|---|---|
+| UI Start/Stop, or the hold file (the user plays) | daemon: `last_transition`, `Lab/hold` (built for UI Start/Stop) | `user_lease` |
+| Keyboard or virtual-controller input in the app, `cfrun.sh` / any channel button line not sent by the daemon | app: `input.last_unhooked` in `state.json` | `user_input`, `cfr_batch` |
+| `cfr_batch` through the daemon | daemon: the save mark (built) | `cfr_batch` |
+| A program that does not report saves runs | app: `input.last_unhooked.source: program`, with the program id | `unhooked_program` |
+| A hooked run ends by error or Stop inside a step that the plan marks as a game save, without writing the fact | app | `run_ended_in_save_step` |
+| An autosave outside the declared places; a backup card that maps to nothing | app | `unexpected_autosave`, `backup_unmapped` |
+| A new app instance started after `saved_at` | daemon: `instance.id` with its `started_at` | `app_restarted` |
+
+A stale fact becomes known again only by a new fact. There is no "confirm by hand" in v1: after
+a hand session, the user saves at the checkpoint start and a program confirms it with a
+save-screen read (`save_screen`), or the program rewinds itself (backup load) and writes the fact.
+On 2026-11-18 the agent loaded the PLZA backup (03.06's Center) and saved from the menu by hand to
+pin the main save there; a `save_screen` read (Vert Sector 8, play time 0:33, registered 1) is
+what turns that hand save back into a known fact. The same day the user deleted the save by hand
+for a new game: `user_input` made it stale, and the new-game row's own title read (`no_save`)
+confirms it.
+
+**Record format.** `save_fact` stays `schema: 1`; the new fields are optional (an open object):
+`basis`, `place` (a name outside the story), `play_time` and `registered` (what the card read,
+PLZA), and `backup` (PLZA: the backup card's own `checkpoint`, `play_time`, `registered`, read at
+the last title visit). `run_id` is the run that wrote it. `save_resource` goes to `schema: 2`,
+since its `reason` enum changes: `known` names the fact's `basis` (`program_save`, `game_save`,
+`backup_load`, `save_screen`, `no_save`) instead of `hooked_save`, and `stale` gains `user_input`,
+`run_ended_in_save_step`, `unexpected_autosave`, `backup_unmapped`, `save_screen_unmapped` and
+`app_restarted`. It also gains `game` (`at_save` / `moved` / `unknown`). The
+daemon is its only writer, so the switch is one PR; the stdio `console_status` client reads it
+through the same parser.
+
+```json
+{"schema": 1, "game": "PokemonLZA", "slot": 0, "checkpoint": "03.08", "position": null,
+ "saved_at": "2026-11-16T05:12:40.118Z", "run_id": "3c1e...", "basis": "backup_load",
+ "registered": 4, "play_time": "1:12",
+ "producer": {"program": "PokemonLZA:AutoStory", "build": "plza/lean@446bc024e"}}
+```
+
+**How the app reports it.** Through the Lab channel, not the log: a program calls one
+`report_save(fact)`, which replaces `Lab/save.json` atomically (write beside, rename) and appends
+the same line to `Lab/saves.jsonl` (history; the daemon reads it for run records; `disk_gc.sh`
+keeps the last 7 days). The program also logs `[SaveFact] 03.08 backup_load` for people; the
+daemon never parses the log. `state.json` gains `input.last_unhooked: {source, program?, at} |
+null` and `instance.started_at`. Both are optional fields of `app_state` v1.
+
+**The save check** (changed by the [preflight split](#preflight-split): it was a
+`save_at(place)` program start check). The server checks it in `run_program`'s preflight, before
+Start, from `console://B/save` and what only it sees (hold, restart, its `cfr_batch` marks); the
+fact itself comes from the app's `save.json` and `input.last_unhooked`. It passes when the fact is
+`known`, its game is the program's, and its checkpoint is the run's start checkpoint; for an
+in-place start also `game: at_save`; for a PLZA run with backup rewind on, the backup's checkpoint
+may match instead. Refusal: `save_mismatch`, with `evidence.{status, reason, since, checkpoint,
+game}`. The user's own Start is not checked. Preflight and Start are one request, so no window
+is left for the fact to go stale in between.
+
+**The run record.** Each `run_program` becomes one `run_record` (new kind, daemon-written,
+`console://B/runs/{run_id}` and a `run_ended` event): run id, panel, options hash, the save
+resource at the start, start and end times, how it ended (`program`, `error`, `lab`, `ui`), the
+`[Checkpoint]` result lines, the facts it wrote (from `saves.jsonl` by `run_id`), and the newest
+failure frame path. It needs the app's `run_id` on transitions (#116).
+
+**Slice plan.** Small PRs, each tests first (red goldens or fake-lab cases before code):
+
+| PR | Side | What |
+|---|---|---|
+| 6a | server | Contracts: `save_fact` optional fields, `save_resource` v2, `app_state` `input` and `instance.started_at`; goldens + invalid cases; the reader's new reasons against the fake lab |
+| 6b | app | `report_save` (save.json + saves.jsonl), `input.last_unhooked` from the keyboard, virtual controller, channel button lines and unhooked programs; native test against the 6a goldens |
+| 6c | app | Hooks: FRLG/BDSP checkpoint saves and FRLG Hall of Fame; PLZA declared autosaves and `backup_load` from plza/lean's (#644) card mapping, the same table for `save_screen`; `no_save` from `delete_save.sh` and 01.00a's title read; unit tests of the mapping table and the declared-autosave rule |
+| 6d | server | the save check in `run_program`'s preflight (`save_mismatch`); refusal goldens |
+| 6e | server | `run_record`, `console://B/runs/{run_id}`, `run_ended`; after #116 |
+
 ## User pages
 
-`GUIDE.md` is the user-facing overview; `guide/*.md` has one page per feature, marked DRAFT
-until it is built and switched on. A PR that builds or switches on part of a feature updates
-its page in the same PR: the status line at the top, the tool tables, and the DRAFT banner when
-the feature is done.
+`GUIDE.md` is the one user page, shaped like a product connector page: a one-line value
+statement, "Available tools" (one short entry per MCP tool, resource and the hold, grouped by kind,
+each with its availability inline: Available / Built, needs the HTTP mode / Not available yet), a
+short "Coming" list of names, "How to set up" per client with a config snippet, and an FAQ. No
+slice or PR numbers, roadmap or internals there; they stay in this README. A PR that adds a tool or
+switches one on updates its entry and the [feature map](#feature-map) in the same PR.

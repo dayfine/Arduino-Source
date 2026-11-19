@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, FrozenSet, Optional, Tuple, Type
 
 __all__ = ['AppChannel', 'AppError', 'Command', 'ConsoleLine', 'DescribeProgram', 'ErrorKind', 'GameOpen', 'Journal',
-           'Preflight', 'SetOption', 'Snapshot', 'Start', 'Stop', 'await_answer']
+           'SetOption', 'Snapshot', 'Start', 'Stop', 'await_answer']
 
 
 # ---- commands: what the daemon asks for (never caller text)
@@ -58,12 +58,6 @@ class SetOption(Command):
     """Set one option of the selected program (`key` walks into groups with dots) to a JSON value."""
     key: str
     value: Any
-
-
-@dataclass(frozen=True)
-class Preflight(Command):
-    """Stage `options`, run the program's start checks without starting it, restore the options."""
-    options: Dict[str, Any]
 
 
 @dataclass(frozen=True)

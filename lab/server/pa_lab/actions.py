@@ -54,31 +54,24 @@ with `timeout` when:
 A failed inbox write is answered at once: `failed`, `app_unavailable` / `inbox_write_failed`.
 Each attempt has its own inbox name, so an old journal of a reused request id never answers it.
 
-Slice 5b adds three tools on the same record, inbox and settle path:
+`run_program` runs the server preflight first (the preflight split; `pa_lab.preflight`): it reads
+`describe_program` (no lease needed; an exact retry skips it), then in the same transaction as the
+record checks, after the 5a checks, that the app describes the requested panel, that the program
+reports start checks (`prechecks_unsupported` otherwise), the candidate options against the
+program's static contract, that no option turns a start check off, and the save (a hook for
+Slice 6d). Nothing is pressed. It then sends `set KEY JSON` lines for the options and `start 10` in
+one request (the app stops at a failing line). The app has no undo: a failed line leaves the earlier
+`set` lines applied, and the refusal names them (`evidence.applied_options`, `failed_option`). The
+program's own start checks run after the start; their failure is the run's outcome
+(`program.last_outcome`, a `program_failed` event), not this record's.
 
-- `preflight_program(panel, options)`: reads `describe_program` (no lease needed), then in one
-  transaction checks the lease, the panel, `blocked`, the channel, that the program declares
-  prechecks, and the candidate options against its static contract (`pa_lab.preflight`); then
-  sends `preflight <JSON>` (the app stages the options on its UI thread, runs `check_validity`
-  and the prechecks in order on its channel worker, and restores the prior options on the UI
-  thread). A pass stores a token bound to the app instance, panel, candidate hash, the app's hash
-  of the program's full options, last transition, save status and lease, good for `TOKEN_TTL_S`.
-- `run_program` needs a current token for exactly its panel and options and sends `set KEY JSON`
-  lines for the options, then `start 10`, in one request (the app stops at a failing line). The
-  app has no undo: a failed line leaves the earlier `set` lines applied, and the refusal names
-  them (`evidence.applied_options`, `failed_option`). The token check right before the write is
-  what refuses before anything is applied; a line fails only if the app changed after it.
-- `cfr_batch(lines)`: allowlisted console lines (`pa_lab.cfr`) with the program stopped. The save
-  fact is marked stale (`cfr_batch`) before the request is written, since any press may change
-  the game.
+`cfr_batch(lines)` runs allowlisted console lines (`pa_lab.cfr`) with the program stopped. The save
+fact is marked stale (`cfr_batch`) before the request is written, since any press may change the
+game. A taken `cfr_batch` with no answer past its worst case + 5 s, while state.json shows the app
+alive past that time, is `failed` / `timeout` with `outcome_unknown`: it changes no program state,
+so nothing justifies keeping the console wedged.
 
-A taken `preflight_program` or `cfr_batch` with no answer past its wait (30 s; a batch's worst case
-+ 5 s), while state.json shows the app alive past that time, is `failed` / `timeout` with
-`outcome_unknown`: neither changes program state, so nothing justifies keeping the console wedged.
-
-Not yet: the app's `preflight` command is fork #601 (an app without it fails the line, which is
-`app_unavailable`), claiming the channel's owner token (a claimed channel is
-refused), and `select`.
+Not yet: claiming the channel's owner token (a claimed channel is refused), and `select`.
 """
 
 from __future__ import annotations
@@ -88,19 +81,17 @@ import time
 from typing import Any, Callable, Dict, Optional, Tuple
 
 from pa_lab import app_query, cfr, control, preflight, shot, timestamps
-from pa_lab.channel import AppError, Command, ConsoleLine, ErrorKind, Journal, Preflight, Start, Stop
+from pa_lab.channel import AppError, Command, ConsoleLine, ErrorKind, Journal, Start, Stop
 from pa_lab.control import Refused
 from pa_lab.lab_reader import ConsoleReader, Unavailable
 
-TOOLS = ('preflight_program', 'run_program', 'stop_program', 'cfr_batch')
+TOOLS = ('run_program', 'stop_program', 'cfr_batch')
 # `start SECONDS`: how long the app waits for controller=ready before refusing. The daemon checks
 # the controller first, so this only covers a reconnect between the check and the line.
 START_CONTROLLER_WAIT_S = 10
 # How long a call waits for its answer before returning a pending ticket. The app polls its inbox
 # every 500 ms; a stop then runs in the background until the program reaches `stopped`.
-ANSWER_WAIT_S = {'run_program': START_CONTROLLER_WAIT_S + 3.0, 'stop_program': 10.0,
-                 # the prechecks may open a menu or go Home and back
-                 'preflight_program': 30.0}
+ANSWER_WAIT_S = {'run_program': START_CONTROLLER_WAIT_S + 3.0, 'stop_program': 10.0}
 # A cfr_batch waits for its worst case (pa_lab.cfr) plus this.
 CFR_SLACK_S = 5.0
 POLL_S = 0.1
@@ -108,7 +99,7 @@ POLL_S = 0.1
 ENDED_SOURCES = ('program', 'error')
 # Tools that change no program state: a taken request with no answer past its wait is ended
 # (`outcome_unknown`) rather than kept pending, so a hung check never wedges the console.
-LINE_TOOLS = ('preflight_program', 'cfr_batch')
+LINE_TOOLS = ('cfr_batch',)
 CFR_UNKNOWN = ' (some of its presses may have run; the save is marked stale)'
 
 __all__ = ['ProgramActions', 'TOOLS']
@@ -197,9 +188,9 @@ def _need_panel(app: Dict[str, Any], panel: str) -> None:
 
 
 def save_now(reader: ConsoleReader) -> Dict[str, Any]:
-    """`console://B/save` as a token binds it, with the newest cfr_batch's time (`cfr_at`): a batch
-    makes a token stale even when there is no save fact to mark. An unreadable save.json is its own
-    status."""
+    """`console://B/save` with the newest cfr_batch's time (`cfr_at`), for the save check: a batch
+    makes the save unknown even when there is no save fact to mark. An unreadable save.json is its
+    own status."""
     try:
         doc = dict(reader.save_resource())
     except Unavailable as e:
@@ -209,44 +200,34 @@ def save_now(reader: ConsoleReader) -> Dict[str, Any]:
     return doc
 
 
-def check_preflight(state: Dict[str, Any], program: Dict[str, Any], lease: Any, args: Dict[str, Any]) -> None:
-    """preflight_program's checks after the lease, against `describe_program`'s reply. Raises Refused."""
+def check_run(state: Dict[str, Any], described: Dict[str, Any], save: Dict[str, Any], lease: Any,
+              args: Dict[str, Any]) -> None:
+    """run_program's server preflight after the lease, in order. Raises Refused; None means send `set`
+    lines + `start`. `described` is `describe_program`'s result, or `{'refusal': ...}` when it failed."""
     app = _need_app(state)
     _need_panel(app, args['panel'])
     _first_blocked(state)
     _need_free_channel(app)
+    if not described:
+        # describe_program was skipped because the console looked unrunnable, and it no longer is.
+        raise Refused('app_unavailable', 'The console changed while run_program was checked; send it again.',
+                      evidence={'reason': 'state_changed'})
+    if 'refusal' in described:
+        raise Refused(**described['refusal'])
+    if described['instance_id'] != app['instance']['id']:
+        raise Refused('app_unavailable', 'The app restarted between describe_program and the checks.',
+                      evidence={'reason': 'instance_replaced', 'instance_id': described['instance_id'],
+                                'new_instance_id': app['instance']['id']})
+    program = described['program']
     if program['id'] != args['panel']:
         raise Refused('invalid_arguments', 'The app describes {}, not {}.'.format(program['id'], args['panel']),
                       field='panel', evidence={'selected': program['id']})
     if program['prechecks'] == app_query.PRECHECKS_UNSUPPORTED:
-        raise Refused('prechecks_unsupported', '{} declares no start checks; the server does not run a program '
-                      'whose checks it cannot run.'.format(args['panel']))
+        raise Refused('prechecks_unsupported', '{} reports no start checks; the server runs only programs that '
+                      'report them.'.format(args['panel']))
     preflight.check_options(program, args['options'])
-
-
-def check_run(state: Dict[str, Any], save: Dict[str, Any], plane: control.ControlPlane, now: float,
-              lease: Any, args: Dict[str, Any]) -> None:
-    """run_program's checks after the lease, in order. Raises Refused; None means send `set` lines + `start`."""
-    app = _need_app(state)
-    _need_panel(app, args['panel'])
-    _first_blocked(state)
-    _need_free_channel(app)
-    issued = plane.preflight(args['preflight_token'])
-    if issued is None or issued['console'] != state['console']:
-        raise Refused('preflight_stale', 'That preflight_token is not one this server issued for console {}; run '
-                      'preflight_program first.'.format(state['console']), evidence={'reason': 'unknown_token'})
-    age = now - timestamps.parse(issued['issued_at'])
-    if age > preflight.TOKEN_TTL_S:
-        raise Refused('preflight_stale', 'The preflight is {:.0f} s old (limit {} s); run preflight_program '
-                      'again.'.format(age, preflight.TOKEN_TTL_S),
-                      evidence={'reason': 'expired', 'issued_at': issued['issued_at']})
-    now_bound = preflight.binding(state, save, args['panel'], args['options'], lease['token_hash'],
-                                  preflight.held_options_hash(app))
-    changed = preflight.changed(issued['binding'], now_bound)
-    if changed:
-        raise Refused('preflight_stale', 'Since the preflight, {} changed; run preflight_program again.'.format(
-            ', '.join(changed)), evidence={'reason': 'changed', 'changed': changed,
-                                           'preflight_request_id': issued['request_id']})
+    preflight.check_start_checks_on(program, args['options'])
+    preflight.check_save(save, program, args['options'])
 
 
 def check_cfr(state: Dict[str, Any], lease: Any, args: Dict[str, Any]) -> None:
@@ -258,11 +239,6 @@ def check_cfr(state: Dict[str, Any], lease: Any, args: Dict[str, Any]) -> None:
     _first_blocked(state)
     _need_free_channel(app)
     cfr.check(args['lines'])
-
-
-def _replaced(described: str, instance: str, lease: Any, args: Dict[str, Any]) -> None:
-    raise Refused('app_unavailable', 'The app restarted between describe_program and the preflight.',
-                  evidence={'reason': 'instance_replaced', 'instance_id': described, 'new_instance_id': instance})
 
 
 def check_stop(state: Dict[str, Any], lease: Any, args: Dict[str, Any]) -> Optional[Dict[str, Any]]:
@@ -287,27 +263,19 @@ class ProgramActions:
         self.consoles = consoles
         self.sleep = sleep
 
-    def preflight_program(self, client_id: str, request: Dict[str, Any]) -> Dict[str, Any]:
-        request = dict(request, tool='preflight_program')
-        reader = self._reader(request.get('console'))
-        program = None
-        if not self._known(client_id, request):
-            # Read-only and outside the transaction: the program's contract to check the options against.
-            try:
-                described = app_query.describe_program(reader, {'console': reader.console}, sleep=self.sleep)
-            except shot.Refused as e:
-                raise Refused(**e.refusal) from None
-            program = described['program']
-        check = (lambda state: functools.partial(check_preflight, state, program))
-        commands = (lambda args: (Preflight(options=args['options']),))
-        return self._act(client_id, request, check, commands, expect_instance=described['instance_id']
-                         if program is not None else None)
-
     def run_program(self, client_id: str, request: Dict[str, Any]) -> Dict[str, Any]:
         request = dict(request, tool='run_program')
         reader = self._reader(request.get('console'))
+        described: Dict[str, Any] = {}
+        if not self._known(client_id, request) and self._runnable(reader):
+            # Read-only and outside the transaction: the program's contract and its start-check list.
+            # A refusal here is stored by check_run, after the lease and the 5a checks.
+            try:
+                described = app_query.describe_program(reader, {'console': reader.console}, sleep=self.sleep)
+            except shot.Refused as e:
+                described = {'refusal': e.refusal}
         save = save_now(reader)
-        check = (lambda state: functools.partial(check_run, state, save, self.plane, reader.now()))
+        check = (lambda state: functools.partial(check_run, state, described, save))
         commands = (lambda args: tuple(preflight.set_commands(args['options'])) +
                     (Start(controller_wait_s=START_CONTROLLER_WAIT_S),))
         return self._act(client_id, request, check, commands)
@@ -338,21 +306,27 @@ class ProgramActions:
                 console, ', '.join(sorted(self.consoles))))
         return reader
 
+    def _runnable(self, reader: ConsoleReader) -> bool:
+        """False when the 5a checks will refuse anyway (app down, blocked, an action pending): then
+        describe_program is not sent, and could not be answered while another request runs."""
+        self.settle_pending(reader.console)
+        state = reader.console_state()
+        app = state['app']
+        return app is not None and app['panel']['kind'] == 'program' and not state['blocked'] and \
+            not self.plane.pending_actions(reader.console)
+
     def _known(self, client_id: str, request: Dict[str, Any]) -> bool:
         """True when this (client, tool, request_id) already has a record: a retry, answered from it."""
         request_id = request.get('request_id')
         return isinstance(request_id, str) and self.plane.record(client_id, request['tool'], request_id) is not None
 
     def _act(self, client_id: str, request: Dict[str, Any], make_check: Callable[[Dict[str, Any]], Callable[..., Any]],
-             commands: Callable[[Dict[str, Any]], Tuple[Command, ...]], expect_instance: Optional[str] = None,
-             mark_save: bool = False) -> Dict[str, Any]:
+             commands: Callable[[Dict[str, Any]], Tuple[Command, ...]], mark_save: bool = False) -> Dict[str, Any]:
         reader = self._reader(request.get('console'))
         self.settle_pending(reader.console)
         state = reader.console_state()
         instance = state['app']['instance']['id'] if state['app'] is not None else ''
         check = make_check(state)
-        if expect_instance is not None and state['app'] is not None and expect_instance != instance:
-            check = functools.partial(_replaced, expect_instance, instance)
         # Only used once begin_action has validated request_id; until then it may be any value.
         name = reader.channel.request_name(request['tool'], str(request.get('request_id')), unique=True)
         record, act = self.plane.begin_action(client_id, request, instance, check, name)
@@ -502,8 +476,8 @@ class ProgramActions:
 
     def _judge_line(self, reader: ConsoleReader, state: Dict[str, Any], action: Dict[str, Any],
                     journal: Optional[Journal]) -> Optional[Dict[str, Any]]:
-        """A preflight's or cfr_batch's outcome: they change no program state, so only the journal answers.
-        An app restart or a UI Start/Stop after the request ends it first."""
+        """A cfr_batch's outcome: it changes no program state, so only the journal answers. An app
+        restart or a UI Start/Stop after the request ends it first."""
         app = state['app']
         instance = app['instance']['id']
         tool = action['tool']
@@ -519,36 +493,7 @@ class ProgramActions:
                                         evidence={'transition': transition})}
         if journal is None:
             return None
-        base = {'console': reader.console, 'instance_id': instance}
-        record = self.plane.record(action['client_id'], tool, action['request_id'])
-        if tool == 'cfr_batch':
-            return self._cfr_outcome(base, journal)
-        lines = list(journal.lines)
-        error = journal.error
-        if error is not None:
-            if error.kind == ErrorKind.OWNER_CLAIMED:
-                return {'refusal': _app_error(tool, error, journal)}
-            return {'refusal': _refusal('app_unavailable', "The app's preflight line failed: {}".format(error.detail),
-                                        evidence={'journal': lines})}
-        args = record['arguments']
-        try:
-            reply = preflight.parse_reply(list(journal.printed), lines)
-        except Refused as e:
-            return {'refusal': e.refusal}
-        refusal = preflight.outcome(reply, args['panel'], lines)
-        if refusal is not None:
-            return {'refusal': refusal}
-        token_hash = self.plane.request_token_hash(action['client_id'], tool, action['request_id'])
-        # The reply's hash is read after the restore: the options the program holds, which the run's
-        # state.json must still show. An app without it in the reply may still write it in state.json.
-        held = reply.get('options_hash') or preflight.held_options_hash(app)
-        bound = preflight.binding(state, save_now(reader), args['panel'], args['options'], token_hash, held)
-        token = preflight.new_token(bound)
-        issued = self.plane.issue_preflight(reader.console, action['request_id'], token, bound)
-        return {'result': dict(base, panel=args['panel'], checks=reply['checks'],
-                               candidate_hash=bound['candidate_hash'], options_hash=held,
-                               preflight_token=token, issued_at=issued,
-                               expires_at=timestamps.format(timestamps.parse(issued) + preflight.TOKEN_TTL_S))}
+        return self._cfr_outcome({'console': reader.console, 'instance_id': instance}, journal)
 
     @staticmethod
     def _cfr_outcome(base: Dict[str, Any], journal: Journal) -> Dict[str, Any]:

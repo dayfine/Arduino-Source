@@ -1,6 +1,6 @@
 # PLZA AutoStory: upstream plan
 
-Current state, updated 2026-11-17. Update it whenever a PR in the plan is opened, merged or passes
+Current state, updated 2026-11-18. Update it whenever a PR in the plan is opened, merged or passes
 on console; it is not a log. Core decisions (save policy seam, FRLG/BDSP migration E1-E10) are in
 [../SHARED_CORE.md](../SHARED_CORE.md).
 
@@ -22,7 +22,7 @@ on console; it is not a log. Core decisions (save policy seam, FRLG/BDSP migrati
 |---|---|---|---|
 | [#572](https://github.com/dayfine/Arduino-Source/pull/572) | `autostory/story-range-options-sv` | `main` | = upstream #1921 |
 | [#648](https://github.com/dayfine/Arduino-Source/pull/648) | `autostory/shared-core` | #572 | shared core (PLZA's engine + autosave policy seam); C1-C9 are cut from it |
-| [#644](https://github.com/dayfine/Arduino-Source/pull/644) | `plza/lean` | #572 | PLZA working line, 01.00-03.11; merges the core; P10-P21 are cut from it |
+| [#644](https://github.com/dayfine/Arduino-Source/pull/644) | `plza/lean` | `autostory/logic-tests` | PLZA working line, 01.00-03.11; merges the core; K1-K2 and P1-P10 are cut from it |
 
 `plza/lean` replaced the old slice chain #573..#640 (one squash of it, then trimmed). **That chain
 is superseded:** no new work there; close it when you're ready. `plza/autostory`
@@ -32,16 +32,22 @@ is superseded:** no new work there; close it when you're ready. `plza/autostory`
 
 1. Dead code cut on `plza/lean`: done (d395be998).
 2. Shared core #648: done, merged into `plza/lean` (3e4afef53).
-3. **Next:** PLZA duplicate and comment cuts on `plza/lean` (lean audit parts B and D:
-   WalkScreenChecks, SceneMachine, Game.cpp specs and docs, dated comments).
+3. **Next:** cleanup agent on `plza/lean`: start checks from recorded start minimaps, map targets
+   for outdoor walks once the map unlocks, and every walk leg names its end event. GateWalk and
+   ZoneGateReader are already deleted there (7f80e2f91; 03.08b uses `aimed_run_to_gate`, 3/3 on
+   console B 2026-11-18).
 4. FRLG merges the core (FRLG chain; see SHARED_CORE.md).
-5. Korean new-game run on console B, 01.00 onward: the final PLZA check.
-6. MVP split (rows 01.00 + 01.01), about 21 PRs, 300-500 lines each, linear, bottom first.
+5. Spanish (es-ES) new-game run on console B, 01.00a -> 03.11: the final PLZA check.
+6. MVP split (rows 01.00 + 01.01), about 21 PRs, 300-500 lines each, linear, bottom first, in the
+   user's order (2026-11-18): keyboard -> core -> 01.00/01.01.
 
 ## MVP series
 
+Order (user, 2026-11-18): keyboard -> core -> 01.00/01.01. Rows are listed in upload order.
+
 | # | PR | Contents |
 |---|---|---|
+| K1-K2 | Switch keyboard | SystemKeyboardDetector, SystemKeyboardTyping, with dark-theme support. Goes first: no dependency on the core |
 | C1 | Screen events | ScreenEventTypes, ScreenEvents, ScreenFades |
 | C2 | Screen machine | ScreenObservation, ScreenMachine (no StepTrace) |
 | C3 | Outcome, pose, log | StoryOutcome, StoryPose, StoryLog |
@@ -51,11 +57,12 @@ is superseded:** no new work there; close it when you're ready. `plza/autostory`
 | C7 | Story files | StoryRowExecution, StoryFiles, EmbedTextFiles.cmake |
 | C8 | Engine seams | StoryBackend, PoseConcept, ZonePose, observation bridge, StoryGame, StorySavePolicy, ActionRegistry, StepRunner, FakeBackend. **Gate:** the FRLG fit check (E2) passes before this goes up |
 | C9 | Engine | StoryEngine |
-| P10-P11 | Switch keyboard | SystemKeyboardDetector, SystemKeyboardTyping |
-| P12-P15 | LZA new game | intro readers, new-game choices, launch + confirm, NewGame |
-| P16-P17 | LZA detectors | badge detectors; platform + dialog |
-| P18-P20 | LZA runtime | screen + backend, scene machine, walks |
-| P21 | LZA story wiring | program, panel, plans 01.00 and 01.01 |
+| P1-P4 | LZA new game | intro readers, new-game choices, launch + confirm, NewGame |
+| P5-P6 | LZA detectors | badge detectors; platform + dialog |
+| P7-P9 | LZA runtime | screen + backend, scene machine, walks |
+| P10 | LZA story wiring | program, panel, plans 01.00 and 01.01 |
+
+K1-K2 were P10-P11 and P1-P10 were P12-P21 before 2026-11-18.
 
 Each PR carries its tests and `SourceFiles.cmake` lines. Test frames go to
 PokemonAutomation/CommandLineTests before the PR that reads them (fork

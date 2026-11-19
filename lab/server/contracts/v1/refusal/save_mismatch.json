@@ -1,0 +1,16 @@
+{
+  "schema": 1,
+  "request_id": "7a2c9e10-4b6d-4f3a-8e21-c5d0b7f19a36",
+  "tool": "run_program",
+  "refusal": {
+    "code": "save_mismatch",
+    "message": "The console's save is stale (cfr_batch since 2026-11-14T06:12:40.000Z); the run starts at 13.01.",
+    "evidence": {
+      "status": "stale",
+      "reason": "cfr_batch",
+      "since": "2026-11-14T06:12:40.000Z",
+      "checkpoint": "13.01",
+      "game": "PokemonFRLG"
+    }
+  }
+}

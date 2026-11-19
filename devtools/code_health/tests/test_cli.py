@@ -277,7 +277,7 @@ class CliTests(unittest.TestCase):
         self.git('add', '.')
         red = self.cli('--github')
         self.assertEqual(1, red.returncode)
-        for rule in ('namespace-close', 'template-api', 'header-comment'):
+        for rule in ('namespace-close', 'template-api'):
             self.assertIn(rule, red.stderr)
         self.assertIn('::error file=Common/policy.h', red.stdout)
         header.write_text('namespace Policy{\n// Return the value.\n'
