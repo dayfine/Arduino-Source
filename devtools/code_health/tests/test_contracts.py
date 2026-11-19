@@ -57,6 +57,29 @@ void add_tests(){
         self.assertTrue(any('test-case' in m for m in self.messages(bad, CPP)))
         self.assertFalse(any('test-case' in m for m in self.messages(good, CPP)))
 
+    def test_case_fields_may_be_value_initialized(self):
+        # Windows clang (-Wmissing-designated-field-initializers) wants `= {}` on every field.
+        source = '''struct Case{
+    struct Input{ int value = {}; };
+    struct Expectation{ int value{}; };
+    std::string name = {};
+    Input input = {};
+    Expectation expectation{};
+};
+class Test_Value : public UnitTest{
+public:
+    explicit Test_Value(Case scenario) : UnitTest(scenario.name){}
+};
+const Case CASES[] = {{.name = "one", .input = {.value = 1}, .expectation = {.value = 2}}};
+void add_tests(){
+    for (const Case& scenario : CASES){ database.add<Test_Value>(scenario); }
+}
+'''
+        self.assertFalse(any('test-case' in m for m in self.messages(source, CPP)))
+        name_in_input = source.replace('struct Input{ int value = {}; };',
+                                       'struct Input{ std::string name = {}; int value = {}; };')
+        self.assertTrue(any('test-case' in m for m in self.messages(name_in_input, CPP)))
+
     def test_case_name_is_its_own_field_not_in_the_input(self):
         name_in_input = '''struct Input{ std::string name; int value; };
 struct Expectation{ int value; };

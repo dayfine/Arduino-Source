@@ -617,12 +617,22 @@ def structures(parsed):
         match = re.match(r'struct\s+(\w+)\b', statement.text)
         if match and statement.end == '{':
             found[match.group(1)] = {}
-        elif enclosing and enclosing[-1][0] == 'class' and statement.end == ';':
+        elif enclosing and enclosing[-1][0] == 'class':
             fields = found.get(enclosing[-1][1])
-            field = re.fullmatch(r'([\w:<> ,]+?)\s+(\w+)\s*(?:=.*)?', statement.text)
+            field = field_declaration(statement)
             if fields is not None and field:
                 fields[field.group(2)] = field.group(1)
     return found
+
+
+def field_declaration(statement):
+    """`Type name;`, `Type name = value;`, or a brace initializer (`Type name = {}`, `Type name{}`),
+    which the statement splitter cuts at its `{`."""
+    if statement.end == ';':
+        return re.fullmatch(r'([\w:<> ,]+?)\s+(\w+)\s*(?:=.*)?', statement.text)
+    if statement.end == '{' and not re.match(r'(?:enum|class|struct|union|namespace)\b', statement.text):
+        return re.fullmatch(r'([\w:<> ,]+?)\s+(\w+)\s*=?', statement.text)
+    return None
 
 
 def case_type(test_name, parsed):
