@@ -69,8 +69,8 @@ public:
         }
         TEST_RESULT_COMPONENT_EQUAL_STR(section->database().all_values().size(), size_t(1), "one story section");
         TEST_RESULT_COMPONENT_EQUAL_STR(segment->database().size(), size_t(1), "one starting segment");
-        TEST_RESULT_COMPONENT_EQUAL_STR(start->database().size(), size_t(5), "five starting checkpoints");
-        TEST_RESULT_COMPONENT_EQUAL_STR(end->database().size(), size_t(5), "five ending checkpoints");
+        TEST_RESULT_COMPONENT_EQUAL_STR(start->database().size(), size_t(6), "six starting checkpoints");
+        TEST_RESULT_COMPONENT_EQUAL_STR(end->database().size(), size_t(6), "six ending checkpoints");
         TEST_RESULT_COMPONENT_EQUAL_STR(start->slug(), std::string("0"), "default start checkpoint");
         TEST_RESULT_COMPONENT_EQUAL_STR(end->slug(), std::string("4"), "default end checkpoint");
         if (segment->visibility() != ConfigOptionState::ENABLED ||
