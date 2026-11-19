@@ -51,7 +51,7 @@ void run_held_legs(PlzaBackend& backend, const std::vector<StoryWalkLeg>& legs){
         const StoryWalkLeg& leg = legs[index];
         recenter_before_held_leg(backend, index, leg);
         if (leg.walk > 0ms){
-            backend.stick(leg.turn, leg.walk, /*release=*/0ms, Pokemon::StoryPace::RUN);
+            backend.stick(leg.turn, leg.walk, /*release=*/0ms, Pokemon::StoryPace::WALK);
         }else if (leg.turn != 0){
             backend.stick(leg.turn, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
         }
@@ -87,7 +87,7 @@ std::optional<Pokemon::StoryFailure> run_story_move(PlzaBackend& backend, const 
         }
         if (leg.walk > Milliseconds(0)){
             play_checked(backend, std::format("the walk of {}", label), [&]{
-                backend.stick(/*degrees=*/0, leg.walk, /*release=*/0ms, Pokemon::StoryPace::RUN);
+                backend.stick(/*degrees=*/0, leg.walk, /*release=*/0ms, Pokemon::StoryPace::WALK);
             });
         }
     }
