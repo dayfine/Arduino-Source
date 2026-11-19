@@ -13,6 +13,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryScenes.h"
+#include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -23,6 +24,8 @@ using namespace std::chrono_literals;
 
 namespace{
 
+//  Up the 03.03 ladder to the roof: about 6 s by hand on 2026-11-19.
+constexpr Milliseconds LADDER_CLIMB = 6500ms;
 constexpr Milliseconds MAP_TALK_TIMEOUT = 120s;
 constexpr Milliseconds MAP_TALK_CONTROL_HOLD = 1000ms;
 constexpr Milliseconds MAP_TALK_HOLD = 160ms;
@@ -107,8 +110,10 @@ std::optional<Pokemon::StoryFailure> talk_through_map_screen(PlzaBackend& backen
 void climb_ladder(PlzaBackend& backend){
     backend.stick(/*degrees=*/90, /*duration=*/600ms, /*release=*/300ms, Pokemon::StoryPace::WALK);
     backend.stick(/*degrees=*/0, /*duration=*/150ms, /*release=*/300ms, Pokemon::StoryPace::WALK);
-    backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/1000ms);
-    backend.stick(/*degrees=*/0, /*duration=*/5000ms, /*release=*/500ms, Pokemon::StoryPace::WALK);
+    //  A blind A can land before "Climb Up" shows (03.03 on 2026-11-19, the
+    //  side street run at running pace): A again while the prompt stays.
+    press_through_prompt(backend);
+    backend.stick(/*degrees=*/0, /*duration=*/LADDER_CLIMB, /*release=*/500ms, Pokemon::StoryPace::WALK);
 }
 
 std::optional<Pokemon::StoryFailure> choose_row(PlzaBackend& backend, int index){
