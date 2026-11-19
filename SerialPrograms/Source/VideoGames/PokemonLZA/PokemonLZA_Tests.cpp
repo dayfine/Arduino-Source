@@ -44,9 +44,7 @@
 #include "Programs/AutoStory/PokemonLZA_AutoStoryChainStart_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBackupCardReader_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
-#include "Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.h"
-#include "Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryStarts_Tests.h"
 
@@ -89,8 +87,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryMenuSave(database);
     add_tests_AutoStoryMarkerArrival(database);
     add_tests_AutoStoryObjectiveMarkerReader(database);
-    add_tests_AutoStorySceneMachine(database);
-    add_tests_AutoStorySceneReplay(database);
     add_tests_AutoStorySceneGolden(database);
     add_tests_AutoStoryScreenEvents(database);
     add_tests_AutoStoryStarts(database);

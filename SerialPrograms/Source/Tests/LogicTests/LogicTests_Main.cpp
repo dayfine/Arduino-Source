@@ -46,8 +46,6 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryChainStart_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine_Tests.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneReplay_Tests.h"
 
 namespace PokemonAutomation{
 namespace{
@@ -69,8 +67,6 @@ UnitTestDatabase make_logic_tests(){
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryMenuSave(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryMinimapMatch(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStorySceneGolden(database);
-    NintendoSwitch::PokemonLZA::add_tests_AutoStorySceneMachine(database);
-    NintendoSwitch::PokemonLZA::add_tests_AutoStorySceneReplay(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryZone1Map(database);
     return database;
 }

@@ -905,6 +905,77 @@ const GoldenCase GOLDEN_CASES[] = {
             .verdict = "done", .end = "[PLZA scene] done on can_move.",
         },
     },
+    {
+        //  From the black fade on; the controls hint at the end is synthetic.
+        .name = "01.01 arrival_scenes, Italian, Jacinthe's subtitles each after a quiet spell, then the controls hint (stopped as a loop 2026-11-15 22:27)",
+        .input = {.checkpoint = "01.01", .step = "arrival_scenes", .screens = R"(
+0.0s: black fade
+2.4s: nothing
+3.9s: still
+5.6s: nothing
+12.5s: advance arrow
+12.9s: nothing
+13.8s: text box
+14.3s: nothing
+24.4s: advance arrow
+24.8s: nothing
+34.2s: advance arrow
+34.7s: nothing
+39.7s: advance arrow
+40.6s: controls hint
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"advance arrow", "A"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"controls hint", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on controls_hint.",
+        },
+    },
+    {
+        .name = "01.02 battle_area, Italian, the A Parla prompt past 20 s ends the step (A there restarted the talk 2026-11-15 21:56)",
+        .input = {.checkpoint = "01.02", .step = "battle_area", .screens = R"(
+0.0s: text box
+1.2s: text box, advance arrow
+1.7s: nothing
+2.2s: text box
+3.0s: text box, advance arrow
+3.4s: nothing
+3.7s: text box
+5.6s: nothing
+7.1s: black fade
+12.8s: still
+13.2s: nothing
+13.7s: A prompt
+15.7s: nothing
+16.2s: text box
+17.0s: text box, advance arrow
+17.4s: nothing
+18.4s: A prompt
+22.4s: nothing
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"A prompt", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on talk_prompt.",
+        },
+    },
+    {
+        //  The controls hint after the cutscene is synthetic.
+        .name = "02.02 street_scene, English, a textless cutscene past the start window, then the controls hint (failed as scene_never_started 2026-11-15 23:23)",
+        .input = {.checkpoint = "02.02", .step = "street_scene", .screens = R"(
+0.0s: black fade, still
+3.8s: still
+4.9s: nothing
+46.0s: controls hint
+)"},
+        .expectation = {
+            .keys = {{"black fade, still", "-"}, {"still", "-"}, {"nothing", "- or +"}, {"controls hint", "-"}},
+            .verdict = "done", .end = "[PLZA scene] done on controls_hint.",
+        },
+    },
 };
 
 //  All of checkpoint `id` with an empty `step`, bound to `tools`.
