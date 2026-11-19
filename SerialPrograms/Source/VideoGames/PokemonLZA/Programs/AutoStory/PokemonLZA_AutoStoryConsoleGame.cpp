@@ -18,6 +18,7 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBattles.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.h"
@@ -34,10 +35,6 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-using Pokemon::Outcome;
-using Pokemon::StoryActionCall;
-using Pokemon::ZonePose;
-using Handler = Pokemon::StoryActionHandler<ZonePose>;
 
 
 namespace{
@@ -46,17 +43,17 @@ namespace{
 constexpr Milliseconds RELOAD_SETTLE = 1000ms;
 
 //  Launches PLZA's own tile, whichever game ran. Fails as "launch_failed".
-Outcome reload_latest_save(StoryEnv& env){
+std::optional<Pokemon::StoryFailure> reload_latest_save(StoryEnv& env){
     ConsoleHandle& console = env.env.console;
     launch_plza_from_home(console, env.context);
     const bool loaded =
         openedgame_to_gamemenu(console, env.context, GameSettings::instance().START_GAME_WAIT) &&
         gamemenu_to_ingame(console, env.context, GameSettings::instance().ENTER_GAME_WAIT0);
     if (!loaded){
-        return Pokemon::outcome_failed("launch_failed", "the game did not reach the overworld after the reload");
+        return Pokemon::StoryFailure{.code = "launch_failed", .detail = "the game did not reach the overworld after the reload"};
     }
     env.context.wait_for(RELOAD_SETTLE);
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 
@@ -67,26 +64,26 @@ std::string with_hint(std::string message, std::string_view hint){
     return std::format("{} {}", message, hint);
 }
 
-//  An OperationFailedException becomes a failed Outcome; its message and a
+//  An OperationFailedException becomes a failed std::optional<Pokemon::StoryFailure>; its message and a
 //  UserSetupError's end with `hint`.
-Handler new_game_handler(StoryEnv& env, std::string name, std::string_view hint, std::function<void(StoryEnv&)> step){
-    return [&env, name, hint, step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+PlzaConsoleAction new_game_handler(StoryEnv& env, std::string name, std::string_view hint, std::function<void(StoryEnv&)> step){
+    return [&env, name, hint, step](PlzaBackend& backend, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
         try{
             step(env);
         }catch (OperationFailedException& e){
             const std::string message = with_hint(e.message(), hint);
             backend.log(std::format("[PLZA] {} failed: {}", name, message));
-            return Pokemon::outcome_failed(name + "_failed", message);
+            return Pokemon::StoryFailure{.code = name + "_failed", .detail = message};
         }catch (UserSetupError& e){
             throw UserSetupError(env.env.console, with_hint(e.message(), hint));
         }
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     };
 }
 
 
 //  Runs once more after a day/night change, which stops the run.
-Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
+std::optional<Pokemon::StoryFailure> run_to_gate(StoryEnv& env, Milliseconds timeout){
     //  0: the A prompt, 1: a day/night change, else no prompt.
     int result = 1;
     for (size_t runs = 0; runs < 2 && result == 1; runs++){
@@ -95,50 +92,49 @@ Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
         );
     }
     if (result != 0){
-        return Pokemon::outcome_failed("gate_not_reached", std::format("no gate A prompt in {} ms of running", timeout.count()));
+        return Pokemon::StoryFailure{.code = "gate_not_reached", .detail = std::format("no gate A prompt in {} ms of running", timeout.count())};
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout);
+using GateStep = std::optional<Pokemon::StoryFailure> (*)(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout);
 
 //  A run with no A prompt (a pillar) walks the legs again: a bearing from
 //  next to the gate is noise.
-Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout){
+std::optional<Pokemon::StoryFailure> aimed_gate_run(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout){
     const MapWaypoint approach[] = {ZONE1_GATE_LINE, ZONE1_GATE_APPROACH};
-    Outcome ran = Pokemon::outcome_ok();
+    std::optional<Pokemon::StoryFailure> ran = std::nullopt;
     for (int runs = 0; runs < 3; runs++){
         if (runs > 0){
             backend.log(std::format("[PLZA] aimed_run_to_gate: no prompt on run {}, back along the gate's line", runs));
         }
-        const Outcome walked = walk_map_legs(env, backend, approach);
-        if (!walked.succeeded()){
+        const std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, approach);
+        if (walked){
             return walked;
         }
         const std::optional<MapPoint> pin = read_pin_on_map(env, backend);
         if (!pin){
-            return Pokemon::outcome_failed("map_pin_not_read", "no map pin before the run to the far gate");
+            return Pokemon::StoryFailure{.code = "map_pin_not_read", .detail = "no map pin before the run to the far gate"};
         }
-        const Outcome faced = face_heading(backend, minimap_arrow(env), bearing(*pin, ZONE1_FAR_GATE.pin));
-        if (!faced.succeeded()){
+        const std::optional<Pokemon::StoryFailure> faced = face_heading(backend, minimap_arrow(env), bearing(*pin, ZONE1_FAR_GATE.pin));
+        if (faced){
             return faced;
         }
         ran = run_to_gate(env, timeout);
-        if (ran.succeeded()){
+        if (!ran){
             return ran;
         }
     }
     return ran;
 }
 
-Handler gate_handler(StoryEnv& env, std::string name, GateStep step){
-    return [&env, name, step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-        const Milliseconds timeout(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
+PlzaConsoleAction gate_handler(StoryEnv& env, std::string name, GateStep step){
+    return [&env, name, step](PlzaBackend& backend, Milliseconds timeout) -> std::optional<Pokemon::StoryFailure>{
         try{
             return step(env, backend, timeout);
         }catch (OperationFailedException& e){
             backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
-            return Pokemon::outcome_failed("gate_not_reached", e.message());
+            return Pokemon::StoryFailure{.code = "gate_not_reached", .detail = e.message()};
         }
     };
 }
@@ -146,7 +142,7 @@ Handler gate_handler(StoryEnv& env, std::string name, GateStep step){
 
 //  Mable's Research is three rows down the main menu; it opens on Rewards
 //  under her lines. No line at all: not in her office.
-Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
+std::optional<Pokemon::StoryFailure> claim_research_reward(StoryEnv& env, PlzaBackend& backend){
     overworld_to_main_menu(env.env.console, env.context);
     for (int i = 0; i < 3; i++){
         backend.press(BUTTON_DOWN, /*hold=*/160ms, /*release=*/400ms);
@@ -154,18 +150,18 @@ Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
     backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/2840ms);
     const LinesPassed passed = press_a_through_lines(backend, /*quiet=*/3s, /*limit=*/60s);
     if (passed.timed_out){
-        return Pokemon::outcome_failed("reward_lines_endless", "Mable's lines did not end within 60 s");
+        return Pokemon::StoryFailure{.code = "reward_lines_endless", .detail = "Mable's lines did not end within 60 s"};
     }
     if (!passed.text){
-        return Pokemon::outcome_failed("no_reward_lines", "no dialog after opening Mable's Research: no reward was claimed");
+        return Pokemon::StoryFailure{.code = "no_reward_lines", .detail = "no dialog after opening Mable's Research: no reward was claimed"};
     }
     if (!press_b_out_of_menu(backend, /*presses=*/60)){
-        return Pokemon::outcome_failed("menu_not_closed", "no party bar or talk after 60 B presses out of the menu");
+        return Pokemon::StoryFailure{.code = "menu_not_closed", .detail = "no party bar or talk after 60 B presses out of the menu"};
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-using ConsoleStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend);
+using ConsoleStep = std::optional<Pokemon::StoryFailure> (*)(StoryEnv& env, PlzaBackend& backend);
 
 const std::map<std::string_view, ConsoleStep>& console_steps(){
     static const std::map<std::string_view, ConsoleStep> steps{
@@ -191,13 +187,13 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
     return steps;
 }
 
-Handler console_handler(StoryEnv& env, std::string_view name, ConsoleStep step){
-    return [&env, name = std::string(name), step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+PlzaConsoleAction console_handler(StoryEnv& env, std::string_view name, ConsoleStep step){
+    return [&env, name = std::string(name), step](PlzaBackend& backend, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
         try{
             return step(env, backend);
         }catch (OperationFailedException& e){
             backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
-            return Pokemon::outcome_failed("operation_failed", e.message());
+            return Pokemon::StoryFailure{.code = "operation_failed", .detail = e.message()};
         }
     };
 }
@@ -224,18 +220,35 @@ PlzaConsoleActions console_actions(StoryEnv& env){
 } // namespace
 
 
-Pokemon::StoryGame<ZonePose> make_plza_story_game(
-    StoryEnv& env, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
-){
-    Pokemon::StoryGame<ZonePose> game = plza_story_game(console_actions(env), rows, minimap_arrow(env), move_symbols_lock_on(env), sightings);
-    game.reload = [&env, &sightings](Pokemon::StoryBackend<ZonePose>&){
+PlzaStoryTools plza_console_tools(StoryEnv& env, AutosaveSightings& sightings){
+    return PlzaStoryTools{
+        .console = console_actions(env),
+        .arrow = minimap_arrow(env),
+        .lock_on = move_symbols_lock_on(env),
+        .battle = [&env](PlzaBackend&) -> std::optional<Pokemon::StoryFailure>{
+            try{
+                fight_story_battle(env.env, env.env.console, env.context, env.battle_ai, /*timeout=*/120s);
+            }catch (OperationFailedException& e){
+                return Pokemon::StoryFailure{.code = "battle_failed", .detail = e.message()};
+            }
+            return std::nullopt;
+        },
+        .sightings = &sightings,
+    };
+}
+
+Pokemon::StoryGame make_plza_story_game(StoryEnv& env, const StoryRows& rows, AutosaveSightings& sightings){
+    Pokemon::StoryGame game = plza_story_game(rows, sightings);
+    game.reload = [&env, &sightings](PlzaBackend& backend, const Pokemon::StoryCheckpoint& failed) -> std::optional<std::string>{
         sightings.restart();
-        return reload_latest_save(env);
+        if (const std::optional<Pokemon::StoryFailure> failure = reload_latest_save(env)){
+            backend.log(std::format("[Save] {}: the reload failed: {}", failed.id, *failure));
+            return std::nullopt;
+        }
+        return failed.id;
     };
     return game;
 }
-
-
 
 } // namespace PokemonLZA
 } // namespace NintendoSwitch

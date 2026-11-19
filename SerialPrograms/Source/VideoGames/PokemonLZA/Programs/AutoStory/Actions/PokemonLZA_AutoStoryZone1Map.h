@@ -14,7 +14,7 @@
 #include <functional>
 #include <optional>
 #include <string_view>
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 
@@ -79,7 +79,7 @@ using PinReader = std::function<std::optional<MapPoint>()>;
 
 //  Reads `pin` twice; out only when both are. Fails as "in_wild_zone" on a
 //  read in the zone and as "zone_unread" on a read with no pin or reader.
-Pokemon::Outcome check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin);
+std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin);
 
 
 

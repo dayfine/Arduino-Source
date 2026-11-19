@@ -13,8 +13,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  Registers the tests of a story read from built-in and dev checkpoint
-//  files, and of the shared execution fields.
+//  Registers the tests of the rows a run plays.
 void add_tests_StoryFiles(UnitTestDatabase& database);
 
 

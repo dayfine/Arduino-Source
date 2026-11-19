@@ -22,8 +22,6 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using Pokemon::StoryCheckpoint;
-using Pokemon::StoryFileRow;
-using Pokemon::StoryRowExecution;
 
 
 namespace{
@@ -94,47 +92,89 @@ std::optional<CheckpointStart> read_checkpoint_start(std::string_view text, cons
     return CheckpointStart{.checkpoint = root->get_object_throw("checkpoint", source).get_string_throw("id", source), .signature = *signature};
 }
 
-//  Also throws ParseException when the checkpoint does not end on the
-//  autosave its "autosave_step" names.
-StoryFileRow<StoryCheckpoint> read_checkpoint_file(std::string_view text, std::string_view source){
-    StoryRowExecution read;
-    std::optional<std::string> autosave_step;
-    const Pokemon::ExecutionReader read_execution = [&read, &autosave_step](const JsonObject& execution, std::string_view where){
-        read = Pokemon::read_story_row_execution(execution, where, /*game_fields=*/{"autosave_step", "start_signature"});
-        read_start_signature(execution, where);
-        if (const JsonValue* step = execution.get_value("autosave_step")){
-            const std::string* name = step->to_string();
-            if (name == nullptr){
-                throw ParseException(std::format("{}: autosave_step is a step's id", where));
-            }
-            autosave_step = *name;
+//  The "execution" block: "save", "reload_when_chained", "autosave_step"
+//  and "start_signature". Adds `id` to `rows`; `previous` is the row before.
+//  Returns the autosave step, if any.
+std::optional<std::string> read_execution(
+    const JsonObject& execution, std::string_view id, bool new_game, std::optional<std::string_view> previous, StoryRows& rows
+){
+    const std::string_view where = "execution";
+    Pokemon::reject_unknown_keys(execution, {"save", "reload_when_chained", "autosave_step", "start_signature"});
+    read_start_signature(execution, where);
+    if (const std::string* save = execution.get_string("save")){
+        if (*save == "autosave"){
+            rows.autosaves.emplace(id);
+        }else if (*save == "unverified"){
+            rows.unverified_autosaves.emplace(id);
+        }else{
+            throw ParseException(std::format("{}: save is \"autosave\", \"unverified\" or left out", where));
         }
-    };
-    StoryCheckpoint checkpoint = Pokemon::read_authored_checkpoint(
-        parse_json(std::string(text)), "plza", source, read_execution, plza_story_specs()
-    );
-    if (const std::optional<std::string> error = autosave_step_error(checkpoint, read.save, autosave_step)){
-        throw ParseException(std::format("{}: {}", source, *error));
     }
-    return {.checkpoint = std::move(checkpoint), .execution = read};
-}
-
-//  01.00a and 01.00b have no save to reload.
-const Pokemon::StoryFileReader<StoryCheckpoint>& plza_story_file_reader(){
-    static const Pokemon::StoryFileReader<StoryCheckpoint> reader{
-        .read = read_checkpoint_file,
-        .starts_without_save = story_row_starts_without_save,
-    };
-    return reader;
+    if (execution.get_value("reload_when_chained") != nullptr){
+        if (!execution.get_boolean_throw("reload_when_chained", std::string(where))){
+            throw ParseException(std::format("{}: reload_when_chained is true or left out", where));
+        }
+        if (new_game){
+            throw ParseException(std::format("{}: reload_when_chained on a checkpoint with no save to reload", where));
+        }
+        if (!previous || !rows.autosaves.contains(*previous)){
+            throw ParseException(std::format(
+                "{}: reload_when_chained after a checkpoint that does not end on the game's autosave: the reload would load an older save",
+                where
+            ));
+        }
+        rows.reload_when_chained.emplace(id);
+    }
+    if (const JsonValue* step = execution.get_value("autosave_step")){
+        return step->to_string_throw(std::string(where));
+    }
+    return std::nullopt;
 }
 
 } // namespace
 
 
-const StoryData& builtin_story_data(){
-    static const StoryData data = Pokemon::load_story_data(
-        std::span<const Pokemon::EmbeddedJsonFile>(autostory_checkpoint_json()), plza_story_file_reader()
+StoryCheckpoint read_plza_checkpoint(
+    std::string_view text, std::string_view source, const Pokemon::StoryActions& actions, StoryRows& rows,
+    std::optional<std::string_view> previous
+){
+    const JsonValue file = parse_json(std::string(text));
+    const JsonObject* plan = file.to_object() == nullptr ? nullptr : file.to_object()->get_object("checkpoint");
+    for (const std::string& error : plan == nullptr ? std::vector<std::string>() : story_row_lead_in_errors(*plan)){
+        throw ParseException(std::format("{}: {}", source, error));
+    }
+    const JsonObject* execution = nullptr;
+    StoryCheckpoint checkpoint = Pokemon::read_authored_checkpoint(
+        file, "plza", source, [&execution](const JsonObject& block, std::string_view){ execution = &block; }, actions
     );
+    try{
+        const std::optional<std::string> autosave_step = read_execution(
+            *execution, checkpoint.id, story_row_starts_without_save(checkpoint), previous, rows
+        );
+        if (const std::optional<std::string> error = autosave_step_error(checkpoint, rows.autosaves.contains(checkpoint.id), autosave_step)){
+            throw ParseException(*error);
+        }
+    }catch (const ParseException& error){
+        throw ParseException(std::format("{}: {}", source, error.message()));
+    }
+    return checkpoint;
+}
+
+StoryData load_plza_story(const PlzaStoryTools& tools){
+    const Pokemon::StoryActions actions = plza_story_actions(tools);
+    StoryData data;
+    for (const auto& [name, text] : autostory_checkpoint_json()){
+        const std::optional<std::string_view> previous = data.checkpoints.empty()
+            ? std::nullopt
+            : std::optional<std::string_view>(data.checkpoints.back().id);
+        data.checkpoints.push_back(read_plza_checkpoint(text, name, actions, data, previous));
+    }
+    return data;
+}
+
+const StoryData& builtin_story_data(){
+    static const PlzaStoryTools no_tools;
+    static const StoryData data = load_plza_story(no_tools);
     return data;
 }
 

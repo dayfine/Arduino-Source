@@ -15,7 +15,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
@@ -30,8 +30,6 @@ using namespace std::chrono_literals;
 
 namespace{
 
-using Pokemon::Observation;
-using Pokemon::ZonePose;
 
 
 std::string joined(const std::vector<std::string>& texts, std::string_view separator){
@@ -42,8 +40,8 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
     return text;
 }
 
-Observation<ZonePose> look_at(Milliseconds at, ScreenEvents events = {}, std::vector<std::string_view> readings = {}){
-    Observation<ZonePose> look;
+ScreenObservation look_at(Milliseconds at, ScreenEvents events = {}, std::vector<std::string_view> readings = {}){
+    ScreenObservation look;
     look.when = WallClock::min() + at;
     look.events = events;
     for (std::string_view reading : readings){
@@ -52,8 +50,8 @@ Observation<ZonePose> look_at(Milliseconds at, ScreenEvents events = {}, std::ve
     return look;
 }
 
-Observation<ZonePose> choice_at(Milliseconds at, int rows, int selected){
-    Observation<ZonePose> look = look_at(at, {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX});
+ScreenObservation choice_at(Milliseconds at, int rows, int selected){
+    ScreenObservation look = look_at(at, {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX});
     look.readings[std::string(CHOICE_ROWS_READING)] = rows;
     look.readings[std::string(CHOICE_SELECTED_READING)] = selected;
     return look;
@@ -99,8 +97,8 @@ SceneMachineConfig battle_config_locking_on(){
     return config;
 }
 
-std::vector<Observation<ZonePose>> banner_then_gone(size_t count){
-    std::vector<Observation<ZonePose>> looks(count, look_at(/*at=*/0ms, NOTHING, {MISSION_BANNER_READING}));
+std::vector<ScreenObservation> banner_then_gone(size_t count){
+    std::vector<ScreenObservation> looks(count, look_at(/*at=*/0ms, NOTHING, {MISSION_BANNER_READING}));
     looks.push_back(look_at(0ms));
     return looks;
 }
@@ -125,8 +123,8 @@ SceneMachineConfig lobby_config(){
 }
 
 //  03.07's gate scene: "received 10 Poke Balls", which no detector reads.
-std::vector<Observation<ZonePose>> gift_box_scene(){
-    std::vector<Observation<ZonePose>> looks{look_at(0ms, BLACK)};
+std::vector<ScreenObservation> gift_box_scene(){
+    std::vector<ScreenObservation> looks{look_at(0ms, BLACK)};
     for (Milliseconds at = 1500ms; at <= 11500ms; at += 500ms){
         looks.push_back(look_at(at));
     }
@@ -146,8 +144,8 @@ SceneMachineConfig quiet_blind_press_config(){
     return config;
 }
 
-std::vector<Observation<ZonePose>> minute_of_blind_presses(){
-    std::vector<Observation<ZonePose>> looks{look_at(/*at=*/0ms, NOTHING, {ADVANCE_ARROW_READING})};
+std::vector<ScreenObservation> minute_of_blind_presses(){
+    std::vector<ScreenObservation> looks{look_at(/*at=*/0ms, NOTHING, {ADVANCE_ARROW_READING})};
     for (Milliseconds at = 5000ms; at <= 65000ms; at += 500ms){
         looks.push_back(look_at(at));
     }
@@ -163,7 +161,7 @@ SceneMachineConfig battle_area_config(){
 }
 
 //  Ryon's "A Parla" prompt, with no party bar or controls hint.
-std::vector<Observation<ZonePose>> battle_area_talk_prompt(){
+std::vector<ScreenObservation> battle_area_talk_prompt(){
     return {
         look_at(0ms, DIALOG), look_at(500ms), look_at(6000ms),
         look_at(6500ms, PROMPT), look_at(7000ms, PROMPT), look_at(8000ms, STILL_PROMPT),
@@ -185,7 +183,7 @@ SceneMachineConfig three_fades_config(){
 }
 
 //  Each fade's wait ends on the look after it.
-std::vector<Observation<ZonePose>> arrival_with_three_fades(){
+std::vector<ScreenObservation> arrival_with_three_fades(){
     return {
         look_at(0ms, DIALOG), look_at(500ms),
         look_at(1000ms, BLACK), look_at(1500ms),
@@ -199,7 +197,7 @@ std::vector<Observation<ZonePose>> arrival_with_three_fades(){
     };
 }
 
-std::vector<Observation<ZonePose>> arrival_to_second_fade(){
+std::vector<ScreenObservation> arrival_to_second_fade(){
     return {
         look_at(0ms, DIALOG),
         look_at(1000ms, BLACK), look_at(1500ms),
@@ -208,8 +206,8 @@ std::vector<Observation<ZonePose>> arrival_to_second_fade(){
     };
 }
 
-std::vector<Observation<ZonePose>> banner_looks(Milliseconds from, Milliseconds every, size_t count){
-    std::vector<Observation<ZonePose>> looks;
+std::vector<ScreenObservation> banner_looks(Milliseconds from, Milliseconds every, size_t count){
+    std::vector<ScreenObservation> looks;
     for (size_t look = 0; look < count; look++){
         looks.push_back(look_at(/*at=*/from + every * (int64_t)look, NOTHING, {MISSION_BANNER_READING}));
     }
@@ -217,20 +215,20 @@ std::vector<Observation<ZonePose>> banner_looks(Milliseconds from, Milliseconds 
 }
 
 //  The Italian banner stays until A.
-std::vector<Observation<ZonePose>> arrival_banner_until_a(){
-    std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
-    for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/5)){
+std::vector<ScreenObservation> arrival_banner_until_a(){
+    std::vector<ScreenObservation> looks = arrival_to_second_fade();
+    for (const ScreenObservation& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/5)){
         looks.push_back(look);
     }
-    for (const Observation<ZonePose>& look : {look_at(8000ms), look_at(8500ms, BLACK), look_at(9000ms), look_at(9500ms), look_at(14500ms)}){
+    for (const ScreenObservation& look : {look_at(8000ms), look_at(8500ms, BLACK), look_at(9000ms), look_at(9500ms), look_at(14500ms)}){
         looks.push_back(look);
     }
     return looks;
 }
 
-std::vector<Observation<ZonePose>> arrival_banner_stays(){
-    std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
-    for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/20)){
+std::vector<ScreenObservation> arrival_banner_stays(){
+    std::vector<ScreenObservation> looks = arrival_to_second_fade();
+    for (const ScreenObservation& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/20)){
         looks.push_back(look);
     }
     return looks;
@@ -241,7 +239,7 @@ struct RunCase{
     std::string name;
     struct Input{
         //  The last repeats.
-        std::vector<Observation<ZonePose>> looks;
+        std::vector<ScreenObservation> looks;
         SceneMachineConfig config = arrival_config();
     };
     Input input;
@@ -798,9 +796,9 @@ std::string traced_states(const std::vector<std::string>& lines){
 }
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
-    const Pokemon::Outcome outcome = run_scene_machine(backend, "test", test.input.config, 360s);
-    const std::string verdict = outcome.succeeded() ? "done" : std::format("failed: {}", outcome.failure);
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
+    const std::optional<Pokemon::StoryFailure> outcome = run_scene_machine(backend, "test", test.input.config, 360s);
+    const std::string verdict = !outcome ? "done" : std::format("failed: {}", outcome->code);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }
@@ -848,7 +846,7 @@ private:
 
 //  03.05's nurse as a closed loop: A at her closing box or prompt talks to
 //  her again; B does nothing.
-class NurseCounter : public Pokemon::FakeStoryBackend<ZonePose>{
+class NurseCounter : public Pokemon::FakeStoryBackend{
 public:
     explicit NurseCounter(CancellableScope& scope)
         : FakeStoryBackend({}, scope)
@@ -890,8 +888,8 @@ public:
         FakeStoryBackend::wait(duration);
         m_now += duration;
     }
-    virtual Pokemon::Observation<ZonePose> observe() override{
-        Pokemon::Observation<ZonePose> look;
+    virtual ScreenObservation observe() override{
+        ScreenObservation look;
         look.when = WallClock::min() + m_now;
         if (m_phase == Phase::HEAL_FADE && m_now >= m_fade_until){
             m_phase = Phase::LAST_LINES;
@@ -958,8 +956,8 @@ const NurseCase NURSE_CASES[] = {
 
 UnitTestResult check_nurse(const NurseCase& test, CancellableScope& scope){
     NurseCounter backend(scope);
-    const Pokemon::Outcome outcome = run_scene_machine(backend, "test", test.input.config, 120s);
-    const std::string verdict = outcome.succeeded() ? "done" : std::format("failed: {}", outcome.failure);
+    const std::optional<Pokemon::StoryFailure> outcome = run_scene_machine(backend, "test", test.input.config, 120s);
+    const std::string verdict = !outcome ? "done" : std::format("failed: {}", outcome->code);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }

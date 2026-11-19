@@ -51,7 +51,7 @@ public:
     }
 
     MarkerStep step(){
-        const Pokemon::Observation<Pokemon::ZonePose> look = m_backend.observe();
+        const ScreenObservation look = m_backend.observe();
         std::optional<ObjectiveMarker> marker;
         if (look.frame && *look.frame){
             marker = read_objective_marker(m_env.env.console, *look.frame->frame);
@@ -171,7 +171,7 @@ bool objective_reached(StoryEnv& env, PlzaBackend& backend, MarkerArrival& arriv
     }
     for (Milliseconds waited(0); ; waited += MARKER_POLL){
         backend.scope().throw_if_cancelled();
-        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        const ScreenObservation look = backend.observe();
         const bool marker = look.frame && *look.frame && read_objective_marker(env.env.console, *look.frame->frame).has_value();
         arrival.look(MarkerLook{
             .distance = std::nullopt,
@@ -213,7 +213,7 @@ std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend, std
     MarkerDistance distance(floor);
     for (int tries = 0; tries < looks; tries++){
         backend.scope().throw_if_cancelled();
-        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        const ScreenObservation look = backend.observe();
         if (look.frame && *look.frame){
             const std::optional<ObjectiveMarker> marker = read_objective_marker(env.env.console, *look.frame->frame);
             if (marker && marker->distance > 0 && distance.read(marker->distance)){
@@ -227,19 +227,19 @@ std::optional<int> read_marker_distance(StoryEnv& env, PlzaBackend& backend, std
     return std::nullopt;
 }
 
-Pokemon::Outcome walk_to_unread_marker(StoryEnv& env, PlzaBackend& backend){
+std::optional<Pokemon::StoryFailure> walk_to_unread_marker(StoryEnv& env, PlzaBackend& backend){
     backend.log("[PLZA] walk_to_marker: to the objective's prompt or dialog, near it by no far read");
     MarkerWalk walk(env, backend, MarkerProof::NO_FAR_READ);
     if (run_marker_walk(MARKER_WALK_LIMIT, walk, backend)){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     if (!objective_reached(env, backend, walk.arrival())){
-        return Pokemon::outcome_failed("objective_not_reached", std::format(
+        return Pokemon::StoryFailure{.code = "objective_not_reached", .detail = std::format(
             "no A prompt or dialog near the objective marker (last read taken {}, near: {})",
             walk.position().value_or(-1), walk.arrival().near() ? "yes" : "no"
-        ));
+        )};
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 

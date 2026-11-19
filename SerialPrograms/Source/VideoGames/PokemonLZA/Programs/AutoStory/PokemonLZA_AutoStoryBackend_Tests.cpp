@@ -14,7 +14,7 @@
 #include <string>
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryBackend_Tests.h"
 
@@ -25,14 +25,12 @@ namespace PokemonLZA{
 
 namespace{
 
-using Pokemon::Observation;
-using Pokemon::ZonePose;
 
 
 //  Below this, a turn lands `small_turn_scale` times as far as asked.
 constexpr double SMALL_TURN = 15;
 
-class TurningGame : public Pokemon::FakeStoryBackend<ZonePose>{
+class TurningGame : public Pokemon::FakeStoryBackend{
 public:
     TurningGame(double facing, bool turns_take, size_t stale_reads, double small_turn_scale, CancellableScope& scope)
         : FakeStoryBackend({}, scope)
@@ -49,7 +47,7 @@ public:
         }
         FakeStoryBackend::stick(degrees, duration, release, pace);
     }
-    virtual Observation<ZonePose> observe() override{
+    virtual ScreenObservation observe() override{
         if (m_queued_turn != 0){
             m_shown = m_facing;
             m_stale_left = m_stale_reads;
@@ -159,14 +157,14 @@ constexpr double FACED_TOLERANCE = 4;
 
 UnitTestResult check_face_heading(const FaceHeadingCase& test, CancellableScope& scope){
     TurningGame game(test.input.facing, test.input.turns_take, test.input.stale_reads, test.input.small_turn_scale, scope);
-    const Pokemon::Outcome outcome = face_heading(game, [&game](){ return game.arrow(); }, test.input.heading);
-    if (outcome.failure != test.expectation.failure){
+    const std::optional<Pokemon::StoryFailure> outcome = face_heading(game, [&game](){ return game.arrow(); }, test.input.heading);
+    if ((outcome ? outcome->code : std::string()) != test.expectation.failure){
         return std::format(
             "expected failure \"{}\"; got \"{}\", facing {:.0f}",
-            test.expectation.failure, outcome.failure, game.facing()
+            test.expectation.failure, outcome ? outcome->code : std::string(), game.facing()
         );
     }
-    if (outcome.failure.empty() && heading_error(game.facing(), test.input.heading) > FACED_TOLERANCE){
+    if (!outcome && heading_error(game.facing(), test.input.heading) > FACED_TOLERANCE){
         return std::format("faced: the player faces {:.0f}, not {:.0f}", game.facing(), test.input.heading);
     }
     return true;

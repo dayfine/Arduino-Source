@@ -18,10 +18,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-using Pokemon::Outcome;
-using Pokemon::SegmentReport;
 using Pokemon::StoryCheckpoint;
-using Pokemon::ZonePose;
 
 
 namespace{
@@ -66,18 +63,9 @@ std::string no_backup_before(std::span<const StoryCheckpoint> rows, std::optiona
         : std::string("no plan names a backup save's start");
 }
 
-void add_part(const SegmentReport& part, SegmentReport& total){
-    total.completed = part.completed;
-    total.checkpoints_run += part.checkpoints_run;
-    total.reloads += part.reloads;
-    total.runs.insert(total.runs.end(), part.runs.begin(), part.runs.end());
-    total.failed_checkpoint = part.failed_checkpoint;
-    total.failed_event = part.failed_event;
-    total.failure = part.failure;
-}
 //  Loads the backup only when its card names a checkpoint at or before
 //  `failed`; otherwise cancels the card ("unknown_backup").
-std::variant<size_t, Outcome> rewind_to_backup(
+std::variant<size_t, Pokemon::StoryFailure> rewind_to_backup(
     PlzaBackend& backend, std::span<const StoryCheckpoint> rows, size_t failed,
     std::span<const CheckpointStart> starts, const BackupSave& backup
 ){
@@ -85,7 +73,7 @@ std::variant<size_t, Outcome> rewind_to_backup(
     if (!card){
         backend.log("[Rewind] the backup card was not read: nothing loaded");
         backup.cancel(backend);
-        return Pokemon::outcome_failed("unknown_backup", "the backup card was not read");
+        return Pokemon::StoryFailure{.code = "unknown_backup", .detail = "the backup card was not read"};
     }
     const std::optional<size_t> index = checkpoint_at(rows, starts, failed, StartSignature{.registered = card->registered});
     if (!index){
@@ -94,15 +82,15 @@ std::variant<size_t, Outcome> rewind_to_backup(
             card->registered, rows[failed].id
         ));
         backup.cancel(backend);
-        return Pokemon::outcome_failed("unknown_backup", std::format(
+        return Pokemon::StoryFailure{.code = "unknown_backup", .detail = std::format(
             "no checkpoint up to {} starts at the backup save ({} registered in the Pokedex)", rows[failed].id, card->registered
-        ));
+        )};
     }
     backend.log(std::format("[Rewind] backup card: {} registered: {}'s start; loading it", card->registered, rows[*index].id));
-    const Outcome loaded = backup.load(backend);
-    if (!loaded.succeeded()){
-        backend.log(std::format("[Rewind] the backup did not load: {}", to_string(loaded)));
-        return loaded;
+    const std::optional<Pokemon::StoryFailure> loaded = backup.load(backend);
+    if (loaded){
+        backend.log(std::format("[Rewind] the backup did not load: {}", *loaded));
+        return *loaded;
     }
     return *index;
 }
@@ -110,8 +98,8 @@ std::variant<size_t, Outcome> rewind_to_backup(
 //  Before the first backup: an autosave in the failed row's last step is
 //  the next row's start and is loaded; anywhere else the position is
 //  unknown and nothing is loaded ("no_backup_yet").
-std::variant<size_t, Outcome> reload_latest_save(
-    const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const RewindPlan& plan,
+std::variant<size_t, Pokemon::StoryFailure> reload_latest_save(
+    Pokemon::StoryGame& game, PlzaBackend& backend, const RewindPlan& plan,
     size_t failed, const std::optional<std::string>& seen_in
 ){
     const std::span<const StoryCheckpoint> rows = plan.rows;
@@ -123,9 +111,9 @@ std::variant<size_t, Outcome> reload_latest_save(
         backend.log(std::format(
             "[Rewind] {}: the latest save is {}'s start ({}'s autosave in {}); loading it", none, next.id, row.id, *seen_in
         ));
-        const Outcome loaded = load_checkpoint_start(game, backend, next);
-        if (!loaded.succeeded()){
-            return loaded;
+        const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, next);
+        if (loaded){
+            return *loaded;
         }
         return failed + 1;
     }
@@ -137,11 +125,11 @@ std::variant<size_t, Outcome> reload_latest_save(
     }
     const std::string message = std::format("{}: the latest save is {}", none, where);
     backend.log(std::format("[Rewind] {}", message));
-    return Pokemon::outcome_failed("no_backup_yet", message);
+    return Pokemon::StoryFailure{.code = "no_backup_yet", .detail = message};
 }
 
-std::variant<size_t, Outcome> rewind_after(
-    const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup,
+std::variant<size_t, Pokemon::StoryFailure> rewind_after(
+    Pokemon::StoryGame& game, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup,
     size_t failed, const std::optional<std::string>& seen_in, size_t attempt
 ){
     const std::optional<size_t> first_backup = first_backup_row(plan.rows, plan.starts);
@@ -176,51 +164,48 @@ std::optional<size_t> start_or_rewind(
     backend.log(std::format(
         "AutoStory: the screen ({}) matches no checkpoint start up to {}: rewinding to the backup save", to_string(read), plan.rows[plan.first].id
     ));
-    const std::variant<size_t, Outcome> back = rewind_to_backup(backend, plan.rows, plan.first, plan.starts, backup);
+    const std::variant<size_t, Pokemon::StoryFailure> back = rewind_to_backup(backend, plan.rows, plan.first, plan.starts, backup);
     if (const size_t* index = std::get_if<size_t>(&back)){
         return *index;
     }
-    backend.log(std::format("AutoStory: no rewind: {}", to_string(std::get<Outcome>(back))));
+    backend.log(std::format("AutoStory: no rewind: {}", std::get<Pokemon::StoryFailure>(back)));
     return std::nullopt;
 }
 
 
-SegmentReport run_plza_with_rewinds(
-    const Pokemon::StoryGame<ZonePose>& game,
+std::optional<Pokemon::CheckpointFailure> run_plza_with_rewinds(
+    Pokemon::StoryGame& game,
     const RewindPlan& plan, const BackupSave& backup,
     PlzaBackend& backend, AutosaveSightings& sightings, Pokemon::RunState& state
 ){
-    const std::span<const StoryCheckpoint> rows = plan.rows;
-    SegmentReport total;
+    const std::span<StoryCheckpoint> rows = plan.rows;
     size_t from = plan.first;
     for (size_t rewinds = 0;; rewinds++){
-        const std::vector<StoryCheckpoint> run_rows = Pokemon::story_run_rows(rows, from, plan.last);
-        add_part(run_plza_segments(game, run_rows, plan.segments, backend, state, sightings), total);
-        if (total.completed){
-            return total;
+        std::optional<Pokemon::CheckpointFailure> failure = run_plza_segments(
+            game, Pokemon::story_run_rows(rows, from, plan.last), plan.segments, backend, state, sightings
+        );
+        if (!failure){
+            return std::nullopt;
         }
-        const std::string& failed_id = total.failed_checkpoint;
+        const std::string& failed_id = failure->checkpoint_id;
         const std::optional<std::string>& seen_in = sightings.seen_in();
         const std::optional<size_t> failed = row_index(rows, failed_id);
         //  A catch autosaves where it lands and the badge can go unseen; the
         //  retry then fails as "rocks_not_left". Either says the start save is gone.
-        const std::string& kind = total.failure.failure;
-        const bool save_moved = failed && (seen_in || kind == "save_moved" || kind == "rocks_not_left");
+        const bool save_moved = failed && (seen_in || failure->failure.code == "rocks_not_left");
         switch (after_failure(save_moved, rewinds, plan.max_rewinds)){
         case AfterFailure::STOP:
             backend.log(std::format("[Rewind] {} failed with no autosave in it: no rewind", failed_id));
-            return total;
+            return failure;
         case AfterFailure::REWIND_LIMIT:
             backend.log(std::format("[Rewind] {} failed after an autosave, but the run has rewound {} times already: stop", failed_id, rewinds));
-            return total;
+            return failure;
         case AfterFailure::REWIND:
             break;
         }
-        const std::variant<size_t, Outcome> back = rewind_after(game, backend, plan, backup, *failed, seen_in, rewinds + 1);
-        if (const Outcome* failure = std::get_if<Outcome>(&back)){
-            total.failed_event = "rewind";
-            total.failure = *failure;
-            return total;
+        std::variant<size_t, Pokemon::StoryFailure> back = rewind_after(game, backend, plan, backup, *failed, seen_in, rewinds + 1);
+        if (Pokemon::StoryFailure* stopped = std::get_if<Pokemon::StoryFailure>(&back)){
+            return Pokemon::CheckpointFailure{.checkpoint_id = failed_id, .failure = std::move(*stopped)};
         }
         from = std::get<size_t>(back);
         backend.log(std::format("[Rewind] on from {} to {}", rows[from].id, rows[plan.last].id));
@@ -228,8 +213,6 @@ SegmentReport run_plza_with_rewinds(
         sightings.restart();
     }
 }
-
-
 
 } // namespace PokemonLZA
 } // namespace NintendoSwitch

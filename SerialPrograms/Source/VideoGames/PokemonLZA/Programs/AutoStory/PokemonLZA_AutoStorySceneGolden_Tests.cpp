@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <format>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -38,8 +39,6 @@ using namespace std::chrono_literals;
 
 namespace{
 
-using Pokemon::Observation;
-using Pokemon::ZonePose;
 
 
 std::string joined(const std::vector<std::string>& texts, std::string_view separator){
@@ -56,7 +55,7 @@ Milliseconds seconds_in_log(std::string_view text){
 
 //  `screen` as describe_scene_look() names it, plus a choice's "2 rows" and
 //  highlighted "row 0".
-Observation<ZonePose> golden_look(Milliseconds at, std::string_view screen){
+ScreenObservation golden_look(Milliseconds at, std::string_view screen){
     const std::pair<std::string_view, ScreenEvent> events[] = {
         {"black fade", ScreenEvent::FADE_BLACK}, {"white fade", ScreenEvent::FADE_WHITE},
         {"text box", ScreenEvent::DIALOG_BOX}, {"choice box", ScreenEvent::CHOICE_BOX},
@@ -68,7 +67,7 @@ Observation<ZonePose> golden_look(Milliseconds at, std::string_view screen){
         {"mission banner", MISSION_BANNER_READING}, {"mission complete", MISSION_COMPLETE_READING},
         {"tutorial card", TUTORIAL_CARD_READING},
     };
-    Observation<ZonePose> look;
+    ScreenObservation look;
     look.when = WallClock::min() + at;
     size_t from = 0;
     while (from < screen.size()){
@@ -149,9 +148,6 @@ public:
         return m_lines;
     }
 
-    virtual Pokemon::StoryBackendKind kind() const override{
-        return Pokemon::StoryBackendKind::SCRIPT;
-    }
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
         m_presses.push_back({m_shown, button_to_string(button)});
         m_now += hold + release;
@@ -163,7 +159,7 @@ public:
     virtual void wait(Milliseconds duration) override{
         m_now += duration;
     }
-    virtual Observation<ZonePose> observe() override{
+    virtual ScreenObservation observe() override{
         while (m_shown + 1 < m_screens.size() && m_screens[m_shown + 1].at <= m_now){
             m_shown++;
         }
@@ -171,9 +167,6 @@ public:
             return golden_look(m_now, "nothing");
         }
         return golden_look(m_now, m_screens[m_shown].screen);
-    }
-    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{
-        return Pokemon::outcome_ok();
     }
     virtual void log(std::string_view line) override{
         m_lines.emplace_back(line);
@@ -680,7 +673,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar, still, controls hint", "-"}, {"party bar, controls hint", "-"}},
             .verdict = "failed: scene_never_started",
-            .end = "[Step] wild_zones_tutorial MASH/a: failed: scene_never_started: scene: the scene never started (player not at its "
+            .end = "[Event] 03.06/1 wild_zones_tutorial: failed: scene_never_started: scene: the scene never started (player not at its "
                 "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
                 "the A prompt or the mission banner).",
         },
@@ -747,7 +740,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar, A prompt", "-"}},
             .verdict = "failed: scene_never_started",
-            .end = "[Step] research_lab_gate MASH/a: failed: scene_never_started: scene: the scene never started (player not at its "
+            .end = "[Event] 03.09/1 research_lab_gate: failed: scene_never_started: scene: the scene never started (player not at its "
                 "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
                 "the A prompt or the mission banner).",
         },
@@ -798,7 +791,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}},
             .verdict = "failed: walk_no_end",
-            .end = "[Step] into_pokemon_center GAME/walk: failed: walk_no_end: into_pokemon_center: no end event after the last turn",
+            .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no end event after the last turn",
         },
     },
     {
@@ -862,7 +855,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"battle, controls hint", "-"}},
-            .verdict = "done", .end = "[Step] andi_battle GAME/story_battle: ok",
+            .verdict = "done", .end = "[Event] 01.03/1 andi_battle: done",
         },
     },
     {
@@ -872,7 +865,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )", .symbols_from_watch = 1},
         .expectation = {
             .keys = {{"party bar", "ZL"}},
-            .verdict = "done", .end = "[Step] battle_tepig GAME/story_battle: ok",
+            .verdict = "done", .end = "[Event] 03.02b/1 battle_tepig: done",
         },
     },
     {
@@ -883,7 +876,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar", "ZL"}},
             .verdict = "failed: battle_never_started",
-            .end = "[Step] battle_tepig GAME/story_battle: failed: battle_never_started: no battle HUD and no move symbols under ZL "
+            .end = "[Event] 03.02b/1 battle_tepig: failed: battle_never_started: no battle HUD and no move symbols under ZL "
                 "within 10 s",
         },
     },
@@ -914,13 +907,13 @@ const GoldenCase GOLDEN_CASES[] = {
     },
 };
 
-//  All of checkpoint `id` with an empty `step`.
-StoryCheckpoint step_row(std::string_view id, std::string_view step){
-    for (const StoryCheckpoint& row : builtin_story_data().checkpoints){
+//  All of checkpoint `id` with an empty `step`, bound to `tools`.
+StoryCheckpoint step_row(std::string_view id, std::string_view step, const PlzaStoryTools& tools){
+    for (StoryCheckpoint& row : load_plza_story(tools).checkpoints){
         if (row.id != id){
             continue;
         }
-        StoryCheckpoint part = row;
+        StoryCheckpoint part = std::move(row);
         if (step.empty()){
             return part;
         }
@@ -991,21 +984,24 @@ UnitTestResult check_golden(const GoldenCase& test, CancellableScope& scope){
             return std::format("no key for the screen \"{}\"", screen.screen);
         }
     }
-    const StoryCheckpoint row = step_row(test.input.checkpoint, test.input.step);
+    GoldenBackend backend(screens, test.input.symbols_from_watch, scope);
+    PlzaStoryTools tools;
+    tools.lock_on = [&backend](Milliseconds hold){
+        return backend.watch_lock_on(hold);
+    };
+    tools.battle = [](PlzaBackend&) -> std::optional<Pokemon::StoryFailure>{
+        return std::nullopt;
+    };
+    StoryCheckpoint row = step_row(test.input.checkpoint, test.input.step, tools);
     if (row.steps.empty() || (!test.input.step.empty() && row.steps.size() != 1)){
         return std::format("no step {} in {}", test.input.step, test.input.checkpoint);
     }
-    GoldenBackend backend(screens, test.input.symbols_from_watch, scope);
-    const LockOnWatch lock_on = [&backend](Milliseconds hold){
-        return backend.watch_lock_on(hold);
-    };
     AutosaveSightings sightings;
-    const Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, builtin_story_data(), /*arrow=*/std::nullopt, lock_on, sightings);
-    Pokemon::StoryEngine<ZonePose> engine(game, backend);
+    Pokemon::StoryGame game = plza_story_game(builtin_story_data(), sightings);
     Pokemon::RunState state;
-    const Pokemon::SegmentReport report = engine.run_segment("test", std::vector<StoryCheckpoint>{row}, 1, state);
+    const std::optional<Pokemon::CheckpointFailure> failure = Pokemon::run_checkpoints(backend, std::span<StoryCheckpoint>(&row, 1), game, state);
     std::vector<std::string> wrong = wrong_presses(test, screens, backend);
-    const std::string verdict = report.completed ? "done" : std::format("failed: {}", report.failure.failure);
+    const std::string verdict = !failure ? "done" : std::format("failed: {}", failure->failure.code);
     if (verdict != test.expectation.verdict){
         wrong.push_back(std::format("ended \"{}\", expected \"{}\"", verdict, test.expectation.verdict));
     }else if (std::find(backend.lines().begin(), backend.lines().end(), test.expectation.end) == backend.lines().end()){

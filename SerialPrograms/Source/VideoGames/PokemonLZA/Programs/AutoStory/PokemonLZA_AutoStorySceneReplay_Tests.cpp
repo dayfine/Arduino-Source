@@ -13,7 +13,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStorySceneReplay_Tests.h"
@@ -27,8 +27,6 @@ using namespace std::chrono_literals;
 
 namespace{
 
-using Pokemon::Observation;
-using Pokemon::ZonePose;
 
 
 std::string joined(const std::vector<std::string>& texts, std::string_view separator){
@@ -39,8 +37,8 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
     return text;
 }
 
-Observation<ZonePose> look_at(Milliseconds at, ScreenEvents events = {}, std::vector<std::string_view> readings = {}){
-    Observation<ZonePose> look;
+ScreenObservation look_at(Milliseconds at, ScreenEvents events = {}, std::vector<std::string_view> readings = {}){
+    ScreenObservation look;
     look.when = WallClock::min() + at;
     look.events = events;
     for (std::string_view reading : readings){
@@ -469,7 +467,7 @@ screen 4: never_started at 45.0s: nothing
 
 //  `readings` as describe_look() names them; a fade count ("fade 1/3") is
 //  ignored.
-Observation<ZonePose> look_from_log(Milliseconds at, std::string_view readings){
+ScreenObservation look_from_log(Milliseconds at, std::string_view readings){
     const std::pair<std::string_view, ScreenEvent> events[] = {
         {"black fade", ScreenEvent::FADE_BLACK}, {"white fade", ScreenEvent::FADE_WHITE},
         {"text box", ScreenEvent::DIALOG_BOX}, {"choice box", ScreenEvent::CHOICE_BOX},
@@ -480,7 +478,7 @@ Observation<ZonePose> look_from_log(Milliseconds at, std::string_view readings){
         {"controls hint", CONTROLS_HINT_READING}, {"advance arrow", ADVANCE_ARROW_READING},
         {"mission banner", MISSION_BANNER_READING}, {"mission complete", MISSION_COMPLETE_READING},
     };
-    Observation<ZonePose> look = look_at(at);
+    ScreenObservation look = look_at(at);
     size_t from = 0;
     while (from < readings.size()){
         const size_t comma = std::min(readings.find(", ", from), readings.size());
@@ -521,8 +519,8 @@ Milliseconds seconds_in_log(std::string_view text){
 
 //  A summary line's looks ("dialog x3, scene_moving x2 over 1.2s") are
 //  spread over its time in turns.
-std::vector<Observation<ZonePose>> replay_log(std::string_view log){
-    std::vector<Observation<ZonePose>> looks;
+std::vector<ScreenObservation> replay_log(std::string_view log){
+    std::vector<ScreenObservation> looks;
     Milliseconds last = 0ms;
     size_t from = 0;
     while (from < log.size()){
@@ -568,9 +566,9 @@ std::vector<Observation<ZonePose>> replay_log(std::string_view log){
     return looks;
 }
 
-std::vector<Observation<ZonePose>> replay_then(std::string_view log, std::vector<Observation<ZonePose>> then){
-    std::vector<Observation<ZonePose>> looks = replay_log(log);
-    for (Observation<ZonePose>& look : then){
+std::vector<ScreenObservation> replay_then(std::string_view log, std::vector<ScreenObservation> then){
+    std::vector<ScreenObservation> looks = replay_log(log);
+    for (ScreenObservation& look : then){
         looks.push_back(std::move(look));
     }
     return looks;
@@ -579,7 +577,7 @@ std::vector<Observation<ZonePose>> replay_then(std::string_view log, std::vector
 struct ReplayCase{
     std::string name;
     struct Input{
-        std::vector<Observation<ZonePose>> looks;
+        std::vector<ScreenObservation> looks;
         SceneMachineConfig config;
     };
     Input input;
@@ -639,9 +637,9 @@ const ReplayCase REPLAY_CASES[] = {
 };
 
 UnitTestResult check_replay(const ReplayCase& test, CancellableScope& scope){
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
-    const Pokemon::Outcome outcome = run_scene_machine(backend, "test", test.input.config, 360s);
-    const std::string verdict = outcome.succeeded() ? "done" : std::format("failed: {}", outcome.failure);
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
+    const std::optional<Pokemon::StoryFailure> outcome = run_scene_machine(backend, "test", test.input.config, 360s);
+    const std::string verdict = !outcome ? "done" : std::format("failed: {}", outcome->code);
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
     }

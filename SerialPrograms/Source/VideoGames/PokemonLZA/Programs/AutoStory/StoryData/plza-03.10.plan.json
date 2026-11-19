@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "to_lab_elevator",
-        "kind": "game_action",
         "why": "to the elevator's \"A Take Elevator\"; an earlier prompt is passed on the way. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -26,18 +25,17 @@
       },
       {
         "id": "take_lab_elevator",
-        "kind": "talk",
+        "action": "talk",
         "why": "A Take Elevator"
       },
       {
         "id": "ride_to_3f",
-        "kind": "game_action",
         "why": "\"3F: Director's Office\"; the choices show only after A closes the attendant's question",
         "action": "choose_1"
       },
       {
         "id": "arrive_3f",
-        "kind": "scene",
+        "action": "mash",
         "why": "the ride, until control on 3F"
       }
     ],

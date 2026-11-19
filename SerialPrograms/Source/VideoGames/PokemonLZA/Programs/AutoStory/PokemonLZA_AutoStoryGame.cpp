@@ -4,13 +4,9 @@
  *
  */
 
-#include <algorithm>
 #include <cstdint>
-#include <cstdlib>
 #include <format>
 #include <functional>
-#include <iterator>
-#include <map>
 #include <optional>
 #include <span>
 #include <string>
@@ -18,8 +14,11 @@
 #include <utility>
 #include <variant>
 #include <vector>
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
+#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Json/JsonArray.h"
+#include "Common/Cpp/Json/JsonValue.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMoves.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryReadings.h"
@@ -33,15 +32,11 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-using Pokemon::Outcome;
-using Pokemon::StoryActionArgs;
-using Pokemon::StoryActionCall;
-using Pokemon::StoryActionSpec;
-using Pokemon::StoryArgSpec;
-using Pokemon::StoryArgType;
-using Pokemon::StoryStepKind;
-using Pokemon::ZonePose;
-using Handler = Pokemon::StoryActionHandler<ZonePose>;
+using Pokemon::RunState;
+using Pokemon::StoryActions;
+using Pokemon::StoryFailure;
+using Pokemon::StoryStepRun;
+using Pokemon::reject_unknown_keys;
 
 
 namespace{
@@ -50,106 +45,30 @@ namespace{
 constexpr std::string_view WALK_UNTIL_SCENE = "scene";
 
 
-StoryActionSpec game_spec(std::string name, std::vector<StoryArgSpec> args = {}){
-    return StoryActionSpec{.kind = StoryStepKind::GAME, .name = std::move(name), .args = std::move(args)};
+std::optional<Milliseconds> optional_ms(const JsonObject& args, const std::string& key){
+    const JsonValue* value = args.get_value(key);
+    if (value == nullptr){
+        return std::nullopt;
+    }
+    return Milliseconds(value->to_integer_throw());
 }
 
-StoryArgSpec optional_ms(std::string key, int64_t fallback, std::string why){
-    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = fallback, .why = std::move(why)};
+Milliseconds ms_or(const JsonObject& args, const std::string& key, Milliseconds fallback){
+    return optional_ms(args, key).value_or(fallback);
 }
 
-StoryArgSpec flag(std::string key, std::string why){
-    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = std::move(why)};
+bool flag(const JsonObject& args, const std::string& key){
+    const JsonValue* value = args.get_value(key);
+    return value != nullptr && value->to_boolean_throw();
 }
 
-StoryArgSpec optional_int(std::string key, std::string why){
-    return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt, .why = std::move(why)};
-}
-
-StoryActionSpec console_only(StoryActionSpec spec){
-    spec.console_only = true;
-    return spec;
-}
-
-std::vector<StoryArgSpec> gate_args(int64_t timeout_ms){
-    return {
-        optional_ms("timeout_ms", timeout_ms, "going this long with no A prompt fails the step"),
+//  An action with no args: `run` as the step's run.
+template <typename Run>
+Pokemon::StoryActionParser no_args(Run run){
+    return [run](const JsonObject& args) -> StoryStepRun{
+        reject_unknown_keys(args, {});
+        return run;
     };
-}
-
-std::vector<StoryArgSpec> walk_args(){
-    return {
-        StoryArgSpec{
-            .key = "legs", .type = StoryArgType::TIMED_LEGS, .required = true, .fallback = std::nullopt,
-            .why = "the legs: [turn in degrees, clockwise (negative: left), walk ms] each",
-        },
-        StoryArgSpec{
-            .key = "end", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt,
-            .why = "\"fade_white\", \"fade_black\", \"dialog\" or \"prompt\" (an A prompt): the last leg is held until it shows, its ms the bound; "
-                "\"scene\": held until a scene takes control",
-        },
-        flag("held", "hold the stick at each leg's angle (L only before a later turning leg), not tap-and-forward"),
-        optional_int("wait_ms", "wait this long before looking for free control: NPCs moving off"),
-        optional_int(
-            "end_after_ms",
-            "with \"end\": the end event counts only after this much of the last leg, about 3/4 of its measured walk; none: from the start"
-        ),
-        optional_int("heading", "the minimap heading to face first, degrees clockwise from up: the legs are measured from it"),
-    };
-}
-
-std::vector<StoryActionSpec> console_specs(){
-    return {
-        console_only(game_spec("new_game_intro")),
-        console_only(game_spec("confirm_new_game")),
-        console_only(game_spec("run_to_gate", gate_args(/*timeout_ms=*/8000))),
-        console_only(game_spec("aimed_run_to_gate", gate_args(/*timeout_ms=*/4000))),
-        console_only(game_spec("catch_tutorial")),
-        console_only(game_spec("battle_then_catch")),
-        console_only(game_spec("catch_in_zone")),
-        console_only(game_spec("walk_back_to_zone_road")),
-        console_only(game_spec("check_out_of_zone_1")),
-        console_only(game_spec("walk_to_unread_marker")),
-        console_only(game_spec("claim_mable_research_reward")),
-    };
-}
-
-std::vector<StoryActionSpec> make_specs(){
-    std::vector<StoryActionSpec> specs{
-        game_spec("wait_for_platform", {
-            optional_ms("timeout_ms", 180000, "no platform this long fails the step"),
-        }),
-        game_spec("opening_to_platform", {
-            optional_ms("timeout_ms", 240000, "no autosave and platform this long fails the step"),
-        }),
-        game_spec("walk", walk_args()),
-        game_spec("mash_to_move_hints", {
-            optional_ms("min_length_ms", 0, "the scene's rough length: no quiet failure before it"),
-            optional_ms("quiet_ms", 60000, "nothing busy and no control this long fails the step"),
-            flag("press_a_first", "press A first, at the prompt that starts the scene (a door's \"A Enter\")"),
-            flag("quiet_is_control", "the quiet time ends the step with control, where no party bar or prompt shows (Hotel Z)"),
-            optional_int("end_after_black_fades", "end 5 s after this many black fades, or on the controls hint; the banner does not end it"),
-            optional_int("scene_start_ms", "the step plays a scene: control with no scene seen this long fails it"),
-            optional_int("gap_press_ms", "inside the scene, one A when nothing shows this long (a box no detector reads)"),
-            flag("advance_with_a", "advance the text with A, for a scene whose choice B would answer with its cancel row (03.01's lobby)"),
-        }),
-        game_spec("text_to_choice", {
-            flag("advance_with_a", "advance the text with A, for a talk that B cancels (Hotel Z's elevator)"),
-        }),
-        game_spec("choose_0"),
-        game_spec("choose_1"),
-        StoryActionSpec{.kind = StoryStepKind::TALK, .name = "talk", .args = {}},
-        StoryActionSpec{.kind = StoryStepKind::MASH, .name = "mash", .args = {}},
-        StoryActionSpec{.kind = StoryStepKind::MASH, .name = "a", .args = {}},
-        game_spec("story_battle_start"),
-        game_spec("story_battle"),
-        game_spec("talk_through_map_screen"),
-        game_spec("climb_ladder"),
-        game_spec("talk_to_pokedex_screen"),
-        game_spec(std::string(MENU_SAVE_ACTION)),
-    };
-    std::ranges::move(console_specs(), std::back_inserter(specs));
-    return specs;
 }
 
 
@@ -170,7 +89,7 @@ struct PlatformProgress{
 };
 
 //  True once the platform has held PLATFORM_LOOKS looks.
-bool platform_look(Pokemon::StoryBackend<ZonePose>& backend, const ScreenObservation& look, PlatformWait wait, PlatformProgress& progress){
+bool platform_look(PlzaBackend& backend, const ScreenObservation& look, PlatformWait wait, PlatformProgress& progress){
     if (look.readings.contains(AUTOSAVE_READING)){
         if (!progress.autosave_seen){
             backend.log("[PLZA] platform wait: the autosave badge is on screen");
@@ -191,18 +110,18 @@ bool text_waiting_for_a(const ScreenObservation& look){
 
 //  No input through the cutscene (A does not advance it), except one A per
 //  text box with the advance arrow. Fails as "platform_not_seen".
-Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds timeout, PlatformWait wait){
+std::optional<StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds timeout, PlatformWait wait){
     //  The looks bound a script whose time stands still.
     const size_t max_looks = (size_t)(timeout / PLATFORM_POLL) + 1;
     std::optional<WallClock> start;
     PlatformProgress progress;
     for (size_t looks = 0; looks < max_looks; looks++){
         backend.scope().throw_if_cancelled();
-        const Pokemon::Observation<ZonePose> look = backend.observe();
+        const ScreenObservation look = backend.observe();
         start = start.value_or(look.when);
         if (platform_look(backend, look, wait, progress)){
             backend.log(std::format("[PLZA] platform wait: on the platform after {} looks", looks + 1));
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         }
         if (look.when - *start >= timeout){
             break;
@@ -215,71 +134,94 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
         progress.text_waiting = text_now;
         backend.wait(PLATFORM_POLL);
     }
-    return Pokemon::outcome_failed("platform_not_seen", std::format(
+    return StoryFailure{.code = "platform_not_seen", .detail = std::format(
         "No platform on {} looks in a row within {} ms (autosave {}).",
         PLATFORM_LOOKS, timeout.count(), progress.autosave_seen ? "seen" : "not seen"
-    ));
+    )};
 }
 
-Handler platform_handler(PlatformWait wait){
-    return [wait](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-        return wait_for_platform(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")), wait);
+Pokemon::StoryActionParser platform_action(PlatformWait wait, Milliseconds fallback){
+    return [wait, fallback](const JsonObject& args) -> StoryStepRun{
+        reject_unknown_keys(args, {"timeout_ms"});
+        const Milliseconds timeout = ms_or(args, "timeout_ms", fallback);
+        return [wait, timeout](PlzaBackend& backend, RunState&){
+            return wait_for_platform(backend, timeout, wait);
+        };
     };
 }
 
 
-//  `args` must have passed the walk's spec.
-StoryMove story_walk_move(const StoryActionArgs& args){
-    StoryMove move;
-    const auto held = args.find("held");
-    if (held != args.end() && std::get<bool>(held->second)){
-        move.style = StoryWalkStyle::HELD;
+//  A walk step's args.
+struct WalkArgs{
+    StoryMove move = {};
+    //  None: the legs alone. Set: held until this event, or a scene for none.
+    std::optional<std::optional<ScreenEvent>> end = std::nullopt;
+    Milliseconds end_after = 0ms;
+    std::optional<double> heading = std::nullopt;
+};
+
+//  [[turn degrees, walk ms], ...]
+std::vector<StoryWalkLeg> read_legs(const JsonArray& rows){
+    std::vector<StoryWalkLeg> legs;
+    for (const JsonValue& row : rows){
+        const JsonArray& pair = row.to_array_throw();
+        if (pair.size() != 2){
+            throw ParseException("each leg is [turn degrees, walk ms]");
+        }
+        legs.push_back({.turn = (double)pair[0].to_integer_throw(), .walk = Milliseconds(pair[1].to_integer_throw())});
     }
-    const auto wait = args.find("wait_ms");
-    if (wait != args.end()){
-        move.wait_first = Milliseconds(std::get<int64_t>(wait->second));
-    }
-    for (const Pokemon::StoryTimedLeg& row : Pokemon::story_arg<std::vector<Pokemon::StoryTimedLeg>>(args, "legs")){
-        move.legs.push_back({.turn = (double)row.turn, .walk = row.walk});
-    }
-    return move;
+    return legs;
 }
 
-Outcome menu_save_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-    return save_from_menu(backend);
+WalkArgs read_walk_args(const JsonObject& args){
+    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading"});
+    WalkArgs walk;
+    walk.move.legs = read_legs(args.get_array_throw("legs"));
+    if (flag(args, "held")){
+        walk.move.style = StoryWalkStyle::HELD;
+    }
+    walk.move.wait_first = ms_or(args, "wait_ms", 0ms);
+    if (const JsonValue* end = args.get_value("end")){
+        const std::string& word = end->to_string_throw();
+        const std::optional<ScreenEvent> event = walk_end_event(word);
+        if (word != WALK_UNTIL_SCENE && !event){
+            throw ParseException("\"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\"");
+        }
+        walk.end = event;
+    }
+    if (const std::optional<Milliseconds> end_after = optional_ms(args, "end_after_ms")){
+        if (!walk.end){
+            throw ParseException("\"end_after_ms\" needs an \"end\"");
+        }
+        walk.end_after = *end_after;
+    }
+    if (const JsonValue* heading = args.get_value("heading")){
+        walk.heading = (double)heading->to_integer_throw();
+    }
+    return walk;
 }
 
-//  Starts only with free control. "heading" needs `arrow`, else "console_only".
-Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& backend, const StoryActionCall& call, Pokemon::RunState&){
-    const std::string_view name = call.step.name;
-    const StoryMove move = story_walk_move(call.args);
-    if (move.wait_first > Milliseconds(0)){
-        backend.wait(move.wait_first);
+//  Starts only with free control. "heading" needs the arrow, else CONSOLE_ONLY.
+std::optional<StoryFailure> walk_step(const PlzaStoryTools& tools, const WalkArgs& walk, PlzaBackend& backend, std::string_view name){
+    if (walk.move.wait_first > 0ms){
+        backend.wait(walk.move.wait_first);
     }
-    const Outcome free = check_can_walk(backend, name);
-    if (!free.succeeded()){
-        return free;
+    if (std::optional<StoryFailure> busy = check_can_walk(backend, name)){
+        return busy;
     }
-    const auto heading = call.args.find("heading");
-    if (heading != call.args.end()){
-        const Outcome faced = arrow
-            ? face_heading(backend, *arrow, (double)std::get<int64_t>(heading->second))
-            : Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), std::format("{}: its heading needs the minimap arrow", name));
-        if (!faced.succeeded()){
+    if (walk.heading){
+        if (!tools.arrow){
+            return StoryFailure{.code = std::string(CONSOLE_ONLY), .detail = std::format("{}: its heading needs the minimap arrow", name), .repeats = true};
+        }
+        if (std::optional<StoryFailure> faced = face_heading(backend, *tools.arrow, *walk.heading)){
             return faced;
         }
     }
-    const auto end = call.args.find("end");
-    if (end != call.args.end()){
-        const std::string& word = std::get<std::string>(end->second);
-        const auto end_after = call.args.find("end_after_ms");
-        return walk_until(
-            backend, name, move, word == WALK_UNTIL_SCENE ? std::nullopt : walk_end_event(word),
-            end_after == call.args.end() ? Milliseconds(0) : Milliseconds(std::get<int64_t>(end_after->second))
-        );
+    if (walk.end){
+        return walk_until(backend, name, walk.move, *walk.end, walk.end_after);
     }
-    const Outcome walked = run_story_move(backend, move);
-    if (walked.succeeded()){
+    std::optional<StoryFailure> walked = run_story_move(backend, walk.move);
+    if (!walked){
         finish_walk(backend, name);
     }
     return walked;
@@ -288,46 +230,56 @@ Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& b
 
 //  01.01's arrival takes ~240 s, hence 360 s. No blind A: one at the end of
 //  a talk restarts it.
-Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-    if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
-        press_through_prompt(backend);
-    }
-    SceneMachineConfig config;
-    config.quiet = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "quiet_ms"));
-    config.quiet_is_control = Pokemon::story_arg<bool>(call.args, "quiet_is_control");
-    config.min_length = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "min_length_ms"));
-    if (Pokemon::story_arg<bool>(call.args, "advance_with_a")){
-        config.text_button = BUTTON_A;
-    }
-    const auto gap = call.args.find("gap_press_ms");
-    if (gap != call.args.end()){
-        config.gap_press = Milliseconds(std::get<int64_t>(gap->second));
-    }
-    const auto start = call.args.find("scene_start_ms");
-    if (start != call.args.end()){
-        config.start_window = Milliseconds(std::get<int64_t>(start->second));
-    }
-    const auto fades = call.args.find("end_after_black_fades");
-    if (fades != call.args.end()){
-        config.end_after_black_fades = (size_t)std::get<int64_t>(fades->second);
-    }
-    return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
+Pokemon::StoryActionParser move_hints_action(){
+    return [](const JsonObject& args) -> StoryStepRun{
+        reject_unknown_keys(args, {
+            "min_length_ms", "quiet_ms", "press_a_first", "quiet_is_control", "end_after_black_fades",
+            "scene_start_ms", "gap_press_ms", "advance_with_a",
+        });
+        SceneMachineConfig config;
+        config.quiet = ms_or(args, "quiet_ms", 60000ms);
+        config.quiet_is_control = flag(args, "quiet_is_control");
+        config.min_length = ms_or(args, "min_length_ms", 0ms);
+        if (flag(args, "advance_with_a")){
+            config.text_button = BUTTON_A;
+        }
+        if (const std::optional<Milliseconds> gap = optional_ms(args, "gap_press_ms")){
+            config.gap_press = *gap;
+        }
+        if (const std::optional<Milliseconds> start = optional_ms(args, "scene_start_ms")){
+            config.start_window = *start;
+        }
+        if (const JsonValue* fades = args.get_value("end_after_black_fades")){
+            config.end_after_black_fades = (size_t)fades->to_integer_throw();
+        }
+        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState&){
+            if (press_a_first){
+                press_through_prompt(backend);
+            }
+            return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
+        };
+    };
 }
 
 //  B, not A: an A as the text ends could land on the choice. 01.02's Pancham
 //  scene takes ~60 s, hence 120 s.
-Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-    SceneMachineConfig config;
-    config.stop_at_choice = true;
-    config.text_button = Pokemon::story_arg<bool>(call.args, "advance_with_a") ? BUTTON_A : BUTTON_B;
-    return run_scene_machine(backend, "text_to_choice", config, 120s);
+Pokemon::StoryActionParser text_to_choice_action(){
+    return [](const JsonObject& args) -> StoryStepRun{
+        reject_unknown_keys(args, {"advance_with_a"});
+        SceneMachineConfig config;
+        config.stop_at_choice = true;
+        config.text_button = flag(args, "advance_with_a") ? BUTTON_A : BUTTON_B;
+        return [config](PlzaBackend& backend, RunState&){
+            return run_scene_machine(backend, "text_to_choice", config, 120s);
+        };
+    };
 }
 
 
 //  B through the text (B cannot talk again once it ends). Fails as
 //  "scene_never_started" when the HUD shows 45 s with nothing else: the
 //  player is not at the scene's trigger.
-Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState&){
     SceneMachineConfig config;
     config.start_window = 45s;
     return run_scene_machine(backend, "scene", config, 120s);
@@ -335,7 +287,7 @@ Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCa
 
 //  B on every other look closes the menus a talk opens (Mable's mission and
 //  reward screens), which mash_to_move_hints sits on.
-Outcome mash_scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState&){
     SceneMachineConfig config;
     config.blind_press_after = 0ms;
     config.blind_press_every = 0ms;
@@ -343,15 +295,6 @@ Outcome mash_scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     return run_scene_machine(backend, "scene", config, 120s);
 }
 
-
-Outcome battle_start_step(
-    const std::optional<LockOnWatch>& lock_on, Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&
-){
-    SceneMachineConfig config;
-    config.stop_at_battle = true;
-    config.lock_on = lock_on;
-    return run_scene_machine(backend, "story_battle_start", config, 90s);
-}
 
 //  As long as the start's lock-on holds ZL.
 constexpr Milliseconds BATTLE_LOCK_ON_HOLD = 2000ms;
@@ -381,156 +324,107 @@ bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lo
 }
 
 //  "battle_never_started" after 10 s, not 2 min of looks on the overworld.
-Outcome battle_step(
-    const std::optional<LockOnWatch>& lock_on, Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&
-){
-    if (!battle_on_within(backend, lock_on, 10s)){
-        return Pokemon::outcome_failed(
-            "battle_never_started", lock_on ? "no battle HUD and no move symbols under ZL within 10 s" : "no battle HUD within 10 s"
-        );
+std::optional<StoryFailure> battle_step(const PlzaStoryTools& tools, PlzaBackend& backend){
+    if (!battle_on_within(backend, tools.lock_on, 10s)){
+        return StoryFailure{
+            .code = "battle_never_started",
+            .detail = tools.lock_on ? "no battle HUD and no move symbols under ZL within 10 s" : "no battle HUD within 10 s",
+        };
     }
-    return backend.battle(call.args);
+    if (!tools.battle){
+        return StoryFailure{.code = std::string(CONSOLE_ONLY), .detail = "no battle code off a console", .repeats = true};
+    }
+    return tools.battle(backend);
 }
 
-
-Outcome map_talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-    return talk_through_map_screen(backend);
-}
-
-Outcome ladder_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-    climb_ladder(backend);
-    return Pokemon::outcome_ok();
-}
 
 //  Blind B: no detector reads the Pokedex screens yet, and only B closes
 //  them (A plays the entry's motions).
-Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
+std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState&){
     SceneMachineConfig config;
     config.text_button = BUTTON_B;
-    config.blind_press_after = Milliseconds(0);
+    config.blind_press_after = 0ms;
     config.blind_button = BUTTON_B;
     return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s);
 }
 
 
-Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-    return talk_at_prompt(backend);
-}
-
-
-Handler choose_handler(int index){
-    return [index](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
-        return choose_row(backend, index);
-    };
-}
-
-
-using StepFunction = Outcome (*)(Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&);
-
-const std::map<std::string_view, StepFunction>& step_functions(){
-    static const std::map<std::string_view, StepFunction> functions{
-        {"mash_to_move_hints", move_hints_step},
-        {"text_to_choice", text_to_choice_step},
-        {"talk", talk_step},
-        {"mash", mash_scene_step},
-        {"a", scene_step},
-        {"talk_through_map_screen", map_talk_step},
-        {"climb_ladder", ladder_step},
-        {"talk_to_pokedex_screen", pokedex_step},
-        {MENU_SAVE_ACTION, menu_save_step},
-    };
-    return functions;
-}
-
-//  A console_only action missing from `console` fails as console_only.
-Handler plza_handler(
-    const PlzaConsoleActions& console, const std::optional<MinimapArrowReader>& arrow, const std::optional<LockOnWatch>& lock_on,
-    const StoryActionSpec& spec
-){
-    if (spec.console_only){
-        const auto action = console.find(spec.name);
-        if (action != console.end()){
-            return action->second;
-        }
-        return [name = spec.name](Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&){
-            return Pokemon::outcome_failed(std::string(Pokemon::CONSOLE_ONLY), name + " runs only on a console");
+//  A console action: the console's code when `tools` has it, else
+//  CONSOLE_ONLY. `timeout`: the step's "timeout_ms" fallback; none: no args.
+Pokemon::StoryActionParser console_action(const PlzaStoryTools& tools, std::string name, std::optional<Milliseconds> timeout){
+    return [&tools, name = std::move(name), timeout](const JsonObject& args) -> StoryStepRun{
+        reject_unknown_keys(args, timeout ? std::initializer_list<std::string_view>{"timeout_ms"} : std::initializer_list<std::string_view>{});
+        const Milliseconds limit = ms_or(args, "timeout_ms", timeout.value_or(0ms));
+        return [&tools, name, limit](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
+            const auto action = tools.console.find(name);
+            if (action == tools.console.end()){
+                return StoryFailure{.code = std::string(CONSOLE_ONLY), .detail = name + " runs only on a console", .repeats = true};
+            }
+            return action->second(backend, limit);
         };
-    }
-    if (spec.name == "walk"){
-        return std::bind_front(walk_step, arrow);
-    }
-    if (spec.name == "story_battle_start"){
-        return std::bind_front(battle_start_step, lock_on);
-    }
-    if (spec.name == "story_battle"){
-        return std::bind_front(battle_step, lock_on);
-    }
-    if (spec.name == "wait_for_platform"){
-        return platform_handler(PlatformWait::PLATFORM_ONLY);
-    }
-    if (spec.name == "opening_to_platform"){
-        return platform_handler(PlatformWait::AFTER_AUTOSAVE);
-    }
-    if (spec.name == "choose_0"){
-        return choose_handler(0);
-    }
-    if (spec.name == "choose_1"){
-        return choose_handler(1);
-    }
-    return step_functions().at(spec.name);
-}
-
-//  No save or reload actions.
-Pokemon::StoryGame<ZonePose> plza_game_actions(
-    const PlzaConsoleActions& console, const std::optional<MinimapArrowReader>& arrow, const std::optional<LockOnWatch>& lock_on
-){
-    Pokemon::StoryGame<ZonePose> game;
-    game.id = "plza";
-    for (StoryActionSpec spec : make_specs()){
-        Handler handler = plza_handler(console, arrow, lock_on, spec);
-        game.actions.push_back({.spec = std::move(spec), .handler = std::move(handler)});
-    }
-    return game;
-}
-
-const Pokemon::StoryActionRegistry<ZonePose>& spec_registry(){
-    static const Pokemon::StoryGame<ZonePose> game = plza_game_actions(/*console=*/{}, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt);
-    static const Pokemon::StoryActionRegistry<ZonePose> registry(game);
-    return registry;
+    };
 }
 
 
 } // namespace
 
 
-const std::vector<StoryActionSpec>& plza_story_specs(){
-    return spec_registry().specs();
-}
-
-std::vector<std::string> plza_story_lint(const Pokemon::StoryCheckpoint& checkpoint){
-    std::vector<std::string> errors = spec_registry().lint(checkpoint);
-    if (!errors.empty()){
-        return errors;
+StoryActions plza_story_actions(const PlzaStoryTools& tools){
+    StoryActions actions{
+        {"wait_for_platform", platform_action(PlatformWait::PLATFORM_ONLY, 180000ms)},
+        {"opening_to_platform", platform_action(PlatformWait::AFTER_AUTOSAVE, 240000ms)},
+        {"walk", [&tools](const JsonObject& args) -> StoryStepRun{
+            return [&tools, walk = read_walk_args(args)](PlzaBackend& backend, RunState&){
+                return walk_step(tools, walk, backend, "walk");
+            };
+        }},
+        {"mash_to_move_hints", move_hints_action()},
+        {"text_to_choice", text_to_choice_action()},
+        {"choose_0", no_args([](PlzaBackend& backend, RunState&){
+            return choose_row(backend, 0);
+        })},
+        {"choose_1", no_args([](PlzaBackend& backend, RunState&){
+            return choose_row(backend, 1);
+        })},
+        {"talk", no_args([](PlzaBackend& backend, RunState&){
+            return talk_at_prompt(backend);
+        })},
+        {"mash", no_args(mash_scene_step)},
+        {"a", no_args(scene_step)},
+        {"story_battle_start", no_args([&tools](PlzaBackend& backend, RunState&){
+            SceneMachineConfig config;
+            config.stop_at_battle = true;
+            config.lock_on = tools.lock_on;
+            return run_scene_machine(backend, "story_battle_start", config, 90s);
+        })},
+        {"story_battle", no_args([&tools](PlzaBackend& backend, RunState&){
+            return battle_step(tools, backend);
+        })},
+        {"talk_through_map_screen", no_args([](PlzaBackend& backend, RunState&){
+            return talk_through_map_screen(backend);
+        })},
+        {"climb_ladder", no_args([](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
+            climb_ladder(backend);
+            return std::nullopt;
+        })},
+        {"talk_to_pokedex_screen", no_args(pokedex_step)},
+        {std::string(MENU_SAVE_ACTION), no_args([&tools](PlzaBackend& backend, RunState&){
+            std::optional<StoryFailure> failure = save_from_menu(backend);
+            if (!failure && tools.sightings != nullptr){
+                tools.sightings->saved(backend);
+            }
+            return failure;
+        })},
+        {"run_to_gate", console_action(tools, "run_to_gate", 8000ms)},
+        {"aimed_run_to_gate", console_action(tools, "aimed_run_to_gate", 4000ms)},
+    };
+    for (std::string_view name : {
+        "new_game_intro", "confirm_new_game", "catch_tutorial", "battle_then_catch", "catch_in_zone",
+        "walk_back_to_zone_road", "check_out_of_zone_1", "walk_to_unread_marker", "claim_mable_research_reward",
+    }){
+        actions.emplace(std::string(name), console_action(tools, std::string(name), std::nullopt));
     }
-    for (const Pokemon::StoryStep& step : checkpoint.steps){
-        const auto end = step.args.find("end");
-        if (step.action == "walk" && end == step.args.end() && step.args.contains("end_after_ms")){
-            errors.push_back(std::format("{} {}: \"end_after_ms\" needs an \"end\"", checkpoint.id, step.name));
-        }
-        if (step.action != "walk" || end == step.args.end()){
-            continue;
-        }
-        const std::string* word = std::get_if<std::string>(&end->second);
-        if (word == nullptr || (*word != WALK_UNTIL_SCENE && !walk_end_event(*word))){
-            errors.push_back(std::format(
-                "{} {}: \"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\"", checkpoint.id, step.name
-            ));
-        }
-    }
-    for (const std::string& error : story_row_lead_in_errors(checkpoint)){
-        errors.push_back(std::format("{} {}", checkpoint.id, error));
-    }
-    return errors;
+    return actions;
 }
 
 std::optional<ScreenEvent> walk_end_event(std::string_view end){
@@ -551,8 +445,9 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
 
 namespace{
 
+//  01.01's first step waits for the platform.
 bool first_step_checks_start(const Pokemon::StoryCheckpoint& row){
-    return (!row.steps.empty() && row.steps.front().action == "wait_for_platform") || story_row_starts_without_save(row);
+    return row.id == "01.01" || story_row_starts_without_save(row);
 }
 
 //  Right after a load the platform reads on the first two looks.
@@ -581,47 +476,34 @@ StartCheck check_start(PlzaBackend& backend, const Pokemon::StoryCheckpoint& row
     return StartCheck::UNCHECKED;
 }
 
-void add_segment(const Pokemon::SegmentReport& part, Pokemon::SegmentReport& total){
-    total.checkpoints_run += part.checkpoints_run;
-    total.reloads += part.reloads;
-    total.runs.insert(total.runs.end(), part.runs.begin(), part.runs.end());
-    total.failed_checkpoint = part.failed_checkpoint;
-    total.failed_event = part.failed_event;
-    total.failure = part.failure;
-}
-
 } // namespace
 
 
-Pokemon::StoryGame<ZonePose> plza_story_game(
-    const PlzaConsoleActions& console, const Pokemon::StoryRows& rows, std::optional<MinimapArrowReader> arrow,
-    std::optional<LockOnWatch> lock_on, AutosaveSightings& sightings
-){
-    return with_autosave_sightings(plza_game_actions(console, arrow, lock_on), rows, sightings);
+Pokemon::StoryGame plza_story_game(const StoryRows& rows, AutosaveSightings& sightings){
+    return Pokemon::StoryGame{.id = "plza", .save = autosave_policy(rows, sightings)};
 }
 
-Outcome load_checkpoint_start(const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
+std::optional<Pokemon::StoryFailure> load_checkpoint_start(Pokemon::StoryGame& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
     if (!game.reload){
-        return Pokemon::outcome_failed("no_reload", "this game has no reload");
+        return Pokemon::StoryFailure{.code = "no_reload", .detail = "this game has no reload"};
     }
     backend.log(std::format("[Save] {}: loading the latest save", row.id));
-    const Outcome loaded = game.reload(backend);
-    if (!loaded.succeeded()){
-        return loaded;
+    if (!game.reload(backend, row)){
+        return Pokemon::StoryFailure{.code = "reload_failed", .detail = "the reload is at no checkpoint's start"};
     }
     switch (check_start(backend, row)){
     case StartCheck::PASSED:
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     case StartCheck::FAILED:
         backend.log(std::format("[Checkpoint] {}: the save is on the station platform, not at its start", row.id));
-        return Pokemon::outcome_failed("older_save", std::format(
+        return Pokemon::StoryFailure{.code = "older_save", .detail = std::format(
             "the latest save is on the station platform (01.01's start), older than {}'s start", row.id
-        ));
+        )};
     case StartCheck::UNCHECKED:
         break;
     }
     backend.log(std::format("[Checkpoint] {}: off the station platform; START UNCHECKED: nothing reads this row's own start", row.id));
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 namespace{
@@ -631,7 +513,7 @@ enum class Chain{
     RELOAD,     //  from `row`'s start save
 };
 
-std::variant<Chain, Outcome> check_live_start(
+std::variant<Chain, Pokemon::StoryFailure> check_live_start(
     PlzaBackend& backend, const SegmentRunOptions& options, const Pokemon::StoryCheckpoint& row, bool seen
 ){
     const CheckpointStart* start = find_start(options.starts, row.id);
@@ -649,19 +531,19 @@ std::variant<Chain, Outcome> check_live_start(
         return Chain::ON;
     }
     backend.log(std::format("[Checkpoint] {}: START CHECK FAILED: {}; nothing run from there", row.id, screen));
-    return Pokemon::outcome_failed("chain_off_start", std::format("the run is not at {}'s start: {}", row.id, screen));
+    return Pokemon::StoryFailure{.code = "chain_off_start", .detail = std::format("the run is not at {}'s start: {}", row.id, screen)};
 }
 
 //  `seen`: whether the row before's autosave showed. Fails when only a
 //  reload would do and there is no save to load.
-std::variant<Chain, Outcome> decide_chain(
+std::variant<Chain, Pokemon::StoryFailure> decide_chain(
     PlzaBackend& backend, const SegmentRunOptions& options, const Pokemon::StoryCheckpoint& row, bool seen
 ){
     const auto no_save = [&](std::string_view why){
         backend.log(std::format("[Checkpoint] {}: no save at its start: {}", row.id, why));
-        return Pokemon::outcome_failed("no_start_save", std::format(
+        return Pokemon::StoryFailure{.code = "no_start_save", .detail = std::format(
             "no save at {}'s start: {}; a reload would rewind to an older save", row.id, why
-        ));
+        )};
     };
     switch (check_start(backend, row)){
     case StartCheck::PASSED:
@@ -679,31 +561,31 @@ std::variant<Chain, Outcome> decide_chain(
     return Chain::RELOAD;
 }
 
-Outcome reload_into(
-    const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const SegmentRunOptions& options,
+std::optional<Pokemon::StoryFailure> reload_into(
+    Pokemon::StoryGame& game, PlzaBackend& backend, const SegmentRunOptions& options,
     const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& row, const AutosaveSightings& sightings
 ){
     backend.log(std::format(
         "[Checkpoint] {}: reloads its start save when chained, whether or not {}'s autosave showed at its end ({})",
         row.id, previous.id, sightings.last_end_seen() ? "seen" : "not seen"
     ));
-    const Outcome control = check_can_walk(backend, std::format("the reload into {}", row.id));
-    if (!control.succeeded()){
+    const std::optional<Pokemon::StoryFailure> control = check_can_walk(backend, std::format("the reload into {}", row.id));
+    if (control){
         backend.log(std::format("[Checkpoint] {}: control never came back after {}: no reload", row.id, previous.id));
         return control;
     }
     backend.log(std::format("[Checkpoint] {}: control is back after {}'s last scene; reloading the latest save", row.id, previous.id));
-    const Outcome loaded = load_checkpoint_start(game, backend, row);
-    if (!loaded.succeeded()){
+    const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, row);
+    if (loaded){
         return loaded;
     }
     const CheckpointStart* start = find_start(options.starts, row.id);
     if (start == nullptr || !options.read_start){
         const std::string why = start == nullptr ? "its plan names no start signature" : "nothing reads the screen";
         backend.log(std::format("[Checkpoint] {}: where the reload landed is not checked ({}); nothing pressed after the reload", row.id, why));
-        return Pokemon::outcome_failed("reload_unchecked", std::format(
+        return Pokemon::StoryFailure{.code = "reload_unchecked", .detail = std::format(
             "{}: where the reload landed is not checked: {}; nothing pressed after the reload", row.id, why
-        ));
+        )};
     }
     const StartSignature read = options.read_start(start->signature);
     if (!run_start(std::span<const Pokemon::StoryCheckpoint>(&row, 1), std::span<const CheckpointStart>(start, 1), /*asked=*/0, read)){
@@ -711,34 +593,34 @@ Outcome reload_into(
             "the screen reads ({}), the start is ({}); nothing pressed after the reload", to_string(read), to_string(start->signature)
         );
         backend.log(std::format("[Checkpoint] {}: the reload landed somewhere other than its start: {}", row.id, where));
-        return Pokemon::outcome_failed("reload_off_start", std::format(
+        return Pokemon::StoryFailure{.code = "reload_off_start", .detail = std::format(
             "the reload into {} landed somewhere other than its start: {}", row.id, where
-        ));
+        )};
     }
     backend.log(std::format("[Checkpoint] {}: the reload landed at its start ({})", row.id, to_string(read)));
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 //  A reload starts a fresh `state`.
-Outcome chain_into(
-    const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const SegmentRunOptions& options,
+std::optional<Pokemon::StoryFailure> chain_into(
+    Pokemon::StoryGame& game, PlzaBackend& backend, const SegmentRunOptions& options,
     const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& row,
     const AutosaveSightings& sightings, Pokemon::RunState& state
 ){
     const bool reload = options.reload_when_chained.contains(row.id);
-    const std::variant<Chain, Outcome> chain = reload
-        ? std::variant<Chain, Outcome>(Chain::RELOAD)
+    const std::variant<Chain, Pokemon::StoryFailure> chain = reload
+        ? std::variant<Chain, Pokemon::StoryFailure>(Chain::RELOAD)
         : decide_chain(backend, options, row, sightings.last_end_seen());
-    if (const Outcome* failure = std::get_if<Outcome>(&chain)){
+    if (const Pokemon::StoryFailure* failure = std::get_if<Pokemon::StoryFailure>(&chain)){
         return *failure;
     }
     if (std::get<Chain>(chain) == Chain::ON){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
-    const Outcome loaded = reload
+    const std::optional<Pokemon::StoryFailure> loaded = reload
         ? reload_into(game, backend, options, previous, row, sightings)
         : load_checkpoint_start(game, backend, row);
-    if (loaded.succeeded()){
+    if (!loaded){
         state = Pokemon::RunState{};
     }
     return loaded;
@@ -746,25 +628,17 @@ Outcome chain_into(
 
 } // namespace
 
-Pokemon::SegmentReport run_plza_segments(
-    const Pokemon::StoryGame<ZonePose>& game,
-    std::span<const Pokemon::StoryCheckpoint> rows, const SegmentRunOptions& options,
+std::optional<Pokemon::CheckpointFailure> run_plza_segments(
+    Pokemon::StoryGame& game, std::span<Pokemon::StoryCheckpoint> rows, const SegmentRunOptions& options,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 ){
-    const Pokemon::StoryGame<ZonePose> retry_game = reloading_only_to_start(game, sightings);
-    Pokemon::StoryEngine<ZonePose> engine(retry_game, backend);
-    Pokemon::SegmentReport total;
     for (size_t index = 0; index < rows.size(); index++){
-        const Pokemon::StoryCheckpoint& row = rows[index];
+        Pokemon::StoryCheckpoint& row = rows[index];
         const bool start_saved = index == 0 || options.reload_when_chained.contains(row.id) || sightings.last_end_seen();
         if (index > 0){
-            const Outcome chained = chain_into(game, backend, options, rows[index - 1], row, sightings, state);
-            if (!chained.succeeded()){
-                backend.log(std::format("[Event] {}/0 chain: failed: {}", row.id, to_string(chained)));
-                total.failed_checkpoint = row.id;
-                total.failed_event = "chain";
-                total.failure = chained;
-                return total;
+            if (std::optional<Pokemon::StoryFailure> chained = chain_into(game, backend, options, rows[index - 1], row, sightings, state)){
+                backend.log(std::format("[Event] {}/0 chain: failed: {}", row.id, *chained));
+                return Pokemon::CheckpointFailure{.checkpoint_id = row.id, .failure = std::move(*chained)};
             }
         }
         if (options.at_start){
@@ -774,17 +648,22 @@ Pokemon::SegmentReport run_plza_segments(
             backend.log(std::format("[Checkpoint] {}: no autosave seen at its start, so no reload if it fails", row.id));
         }
         sightings.restart();
-        const Pokemon::SegmentReport part = engine.run_segment(
-            "PLZA", std::span<const Pokemon::StoryCheckpoint>(&row, 1), start_saved ? options.attempts_per_checkpoint : 1, state
-        );
-        add_segment(part, total);
-        if (!part.completed){
+        Pokemon::StoryGame retry{
+            .id = game.id,
+            .save = [&game](PlzaBackend& on, const Pokemon::StoryCheckpoint& passed) -> std::optional<Pokemon::StoryFailure>{
+                return game.save ? game.save(on, passed) : std::nullopt;
+            },
+            .attempts_per_checkpoint = start_saved ? options.attempts_per_checkpoint : 1,
+        };
+        if (game.reload){
+            retry.reload = reloading_only_to_start(game, sightings);
+        }
+        if (std::optional<Pokemon::CheckpointFailure> failure = Pokemon::run_checkpoints(backend, rows.subspan(index, 1), retry, state)){
             log_moved_save(backend, sightings, row.id);
-            return total;
+            return failure;
         }
     }
-    total.completed = true;
-    return total;
+    return std::nullopt;
 }
 
 } // namespace PokemonLZA

@@ -10,19 +10,17 @@
     "events": [
       {
         "id": "to_front_counter",
-        "kind": "game_action",
         "why": "along the counter to the clerk's \"A Talk\". not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {"legs": [[-5, 2500], [-85, 0]], "end": "prompt"}
       },
       {
         "id": "talk_to_clerk",
-        "kind": "talk",
+        "action": "talk",
         "why": "A at the clerk"
       },
       {
         "id": "check_in",
-        "kind": "game_action",
         "why": "through Taunie, AZ, check-in and the Key to Room 202, until control facing the elevator (autosave). No free control between the clerk and AZ. The lobby's party bar lacks the D-pad hint, so it ends on 5 s quiet; the 30 s minimum covers the ~17 s text-free opening",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true, "quiet_ms": 5000, "min_length_ms": 30000, "quiet_is_control": true}

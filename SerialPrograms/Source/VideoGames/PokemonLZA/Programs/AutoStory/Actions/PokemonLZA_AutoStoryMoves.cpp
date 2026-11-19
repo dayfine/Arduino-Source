@@ -70,10 +70,10 @@ std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg&
 } // namespace
 
 
-Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move){
+std::optional<Pokemon::StoryFailure> run_story_move(PlzaBackend& backend, const StoryMove& move){
     if (move.style == StoryWalkStyle::HELD){
         run_held_legs(backend, move.legs);
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     //  The look the first input is checked against.
     backend.observe();
@@ -91,23 +91,23 @@ Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move){
             });
         }
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-Pokemon::Outcome run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move){
+std::optional<Pokemon::StoryFailure> run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move){
     if (move.legs.empty()){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     StoryMove head = move;
     if (move.style == StoryWalkStyle::HELD){
         if (move.legs.back().walk == 0ms){
             run_held_legs(backend, move.legs);
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         }
         head.legs.pop_back();
         run_held_legs(backend, head.legs);
         recenter_before_held_leg(backend, head.legs.size(), move.legs.back());
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     head.legs.back().walk = 0ms;
     return run_story_move(backend, head);

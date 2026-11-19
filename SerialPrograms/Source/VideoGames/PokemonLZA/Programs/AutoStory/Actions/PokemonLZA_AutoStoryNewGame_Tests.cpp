@@ -185,7 +185,7 @@ std::vector<Pokemon::StoryCheckpoint> builtin_rows(const std::vector<std::string
     for (const std::string& id : ids){
         for (const Pokemon::StoryCheckpoint& row : builtin_story_data().checkpoints){
             if (row.id == id){
-                rows.push_back(row);
+                rows.push_back(Pokemon::StoryCheckpoint{.id = row.id, .title = row.title});
             }
         }
     }

@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "to_hotel_front_door",
-        "kind": "game_action",
         "why": "across the lobby to the front door; its A prompt shows only some of the time, so leave_hotel_z presses A. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -19,7 +18,6 @@
       },
       {
         "id": "leave_hotel_z",
-        "kind": "game_action",
         "why": "A Leave, the Main Menu tutorial card",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true}

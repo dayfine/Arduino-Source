@@ -11,7 +11,6 @@
     "events": [
       {
         "id": "to_zone_1_gate",
-        "kind": "game_action",
         "why": "run to Wild Zone 1's gate until its A prompt (~4.3 s)",
         "action": "run_to_gate",
         "args": {
@@ -20,26 +19,22 @@
       },
       {
         "id": "enter_zone_1",
-        "kind": "game_action",
         "why": "A Enter, Taunie, the Throwing Poke Balls card; the \"received 10 Poke Balls\" box has no detector, so 2 s of nothing gets one A",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true, "gap_press_ms": 2000}
       },
       {
         "id": "catch_fletchling",
-        "kind": "game_action",
         "why": "catch Fletchling, again when it breaks out",
         "action": "catch_tutorial"
       },
       {
         "id": "catch_bunnelby",
-        "kind": "game_action",
         "why": "weaken Bunnelby, then catch it",
         "action": "battle_then_catch"
       },
       {
         "id": "after_catches",
-        "kind": "game_action",
         "why": "Taunie: tall grass, more Poke Balls, moves smash boulders",
         "action": "mash_to_move_hints"
       }

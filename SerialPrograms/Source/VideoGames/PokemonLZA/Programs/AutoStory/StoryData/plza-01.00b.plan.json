@@ -7,13 +7,11 @@
     "events": [
       {
         "id": "confirm",
-        "kind": "game_action",
         "why": "Confirm Choices (checked, no press) proves the save is fresh; then DOWN to Ready! and A",
         "action": "confirm_new_game"
       },
       {
         "id": "opening",
-        "kind": "game_action",
         "why": "the opening cutscene, no presses (A does not advance it), until the autosave badge and the platform",
         "action": "opening_to_platform",
         "args": {

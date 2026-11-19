@@ -14,15 +14,15 @@
 
 #include <functional>
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The engine's backend for PLZA's pose.
-using PlzaBackend = Pokemon::StoryBackend<Pokemon::ZonePose>;
+//  The engine's backend.
+using PlzaBackend = Pokemon::StoryBackend;
 
 //  `degrees` clockwise (negative: left): L recenters the camera, then a
 //  150 ms stick tap, which also takes a step.
@@ -37,7 +37,7 @@ using LockOnWatch = std::function<bool(Milliseconds hold)>;
 //  4 turns at most, then L puts the camera behind the player. The arrow is
 //  read only after the queued turns are done, and re-read until it moved
 //  half the turn: a lagging feed shows the old facing. Fails as "heading_missed".
-Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading);
+std::optional<Pokemon::StoryFailure> face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading);
 
 
 

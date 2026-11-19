@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryMenuReadings.h"
 #include "PokemonLZA_AutoStoryMenuSave.h"
@@ -23,12 +23,10 @@ namespace PokemonLZA{
 
 namespace{
 
-using Pokemon::Observation;
-using Pokemon::ZonePose;
 
 
-Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> readings, Milliseconds at){
-    Observation<ZonePose> observation;
+ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readings, Milliseconds at){
+    ScreenObservation observation;
     observation.when = WallClock::min() + at;
     observation.events = events;
     for (std::string_view reading : readings){
@@ -37,36 +35,36 @@ Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> re
     return observation;
 }
 
-Observation<ZonePose> overworld(Milliseconds at){
+ScreenObservation overworld(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
-Observation<ZonePose> card(Milliseconds at){
+ScreenObservation card(Milliseconds at){
     return look(/*events=*/{}, {TUTORIAL_CARD_READING}, at);
 }
 
-Observation<ZonePose> text(Milliseconds at){
+ScreenObservation text(Milliseconds at){
     return look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, at);
 }
 
-Observation<ZonePose> main_menu(Milliseconds at){
+ScreenObservation main_menu(Milliseconds at){
     return look(/*events=*/{}, {MAIN_MENU_READING}, at);
 }
 
-Observation<ZonePose> save_button(Milliseconds at){
+ScreenObservation save_button(Milliseconds at){
     return look(/*events=*/{}, {MENU_SAVE_BUTTON_READING}, at);
 }
 
-Observation<ZonePose> choice(Milliseconds at){
+ScreenObservation choice(Milliseconds at){
     return look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, /*readings=*/{}, at);
 }
 
-Observation<ZonePose> home(Milliseconds at){
+ScreenObservation home(Milliseconds at){
     return look({ScreenEvent::SWITCH_HOME_MENU}, /*readings=*/{}, at);
 }
 
-std::vector<Observation<ZonePose>> twice(std::vector<Observation<ZonePose> (*)(Milliseconds)> screens){
-    std::vector<Observation<ZonePose>> looks;
+std::vector<ScreenObservation> twice(std::vector<ScreenObservation (*)(Milliseconds)> screens){
+    std::vector<ScreenObservation> looks;
     Milliseconds at(0);
     for (const auto& screen : screens){
         for (int repeat = 0; repeat < 2; repeat++){
@@ -89,7 +87,7 @@ std::string joined(const std::vector<std::string>& texts){
 struct MenuSaveCase{
     std::string name;
     struct Input{
-        std::vector<Observation<ZonePose>> looks;
+        std::vector<ScreenObservation> looks;
     };
     Input input;
     struct Expectation{
@@ -160,10 +158,10 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
 };
 
 UnitTestResult check_menu_save(const MenuSaveCase& test, CancellableScope& scope){
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
-    const Pokemon::Outcome outcome = save_from_menu(backend);
-    if (outcome.failure != test.expectation.failure){
-        return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, Pokemon::to_string(outcome));
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
+    const std::optional<Pokemon::StoryFailure> outcome = save_from_menu(backend);
+    if ((outcome ? outcome->code : std::string()) != test.expectation.failure){
+        return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, (outcome ? std::format("{}", *outcome) : std::string("ok")));
     }
     const std::string inputs = joined(backend.inputs());
     if (inputs != test.expectation.inputs){

@@ -63,7 +63,7 @@ std::optional<MapPoint> read_pin_on_map(StoryEnv& env, PlzaBackend& backend){
 namespace{
 
 struct LegWalk{
-    Pokemon::Outcome outcome;
+    std::optional<Pokemon::StoryFailure> outcome;
     std::optional<MapPoint> pin;
 };
 
@@ -71,13 +71,13 @@ LegWalk leg_over(PlzaBackend& backend, const MapWaypoint& waypoint, MapLegStep s
     switch (step){
     case MapLegStep::ARRIVED:
         backend.log(std::format("[PLZA] map leg to {}: arrived at {}", waypoint_text(waypoint), pin_text(pin)));
-        return {Pokemon::outcome_ok(), pin};
+        return {std::nullopt, pin};
     case MapLegStep::OFF_TARGET:
-        return {Pokemon::outcome_failed("leg_off_target", std::format(
+        return {Pokemon::StoryFailure{.code = "leg_off_target", .detail = std::format(
             "wanted {}, at {} ({})", pin_text(waypoint.pin), pin_text(pin), waypoint.name
-        )), pin};
+        )}, pin};
     default:
-        return {Pokemon::outcome_failed("map_pin_not_read", std::format("on the way to {}", waypoint.name)), pin};
+        return {Pokemon::StoryFailure{.code = "map_pin_not_read", .detail = std::format("on the way to {}", waypoint.name)}, pin};
     }
 }
 
@@ -102,8 +102,8 @@ LegWalk walk_leg(StoryEnv& env, PlzaBackend& backend, const MapWaypoint& waypoin
             waypoint_text(waypoint), move.correction == 0 ? std::string("walk") : std::format("correction {}", move.correction),
             pin_text(pin), move.heading, move.hold.count()
         ));
-        const Pokemon::Outcome faced = face_heading(backend, minimap_arrow(env), move.heading);
-        if (!faced.succeeded()){
+        const std::optional<Pokemon::StoryFailure> faced = face_heading(backend, minimap_arrow(env), move.heading);
+        if (faced){
             return {faced, pin};
         }
         backend.stick(/*degrees=*/0, move.hold, /*release=*/300ms, Pokemon::StoryPace::WALK);
@@ -114,16 +114,16 @@ LegWalk walk_leg(StoryEnv& env, PlzaBackend& backend, const MapWaypoint& waypoin
 } // namespace
 
 
-Pokemon::Outcome walk_map_legs(StoryEnv& env, PlzaBackend& backend, std::span<const MapWaypoint> waypoints){
+std::optional<Pokemon::StoryFailure> walk_map_legs(StoryEnv& env, PlzaBackend& backend, std::span<const MapWaypoint> waypoints){
     std::optional<MapPoint> pin = read_pin_on_map(env, backend);
     for (const MapWaypoint& waypoint : waypoints){
         const LegWalk walk = walk_leg(env, backend, waypoint, pin);
-        if (!walk.outcome.succeeded()){
+        if (walk.outcome){
             return walk.outcome;
         }
         pin = walk.pin;
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 

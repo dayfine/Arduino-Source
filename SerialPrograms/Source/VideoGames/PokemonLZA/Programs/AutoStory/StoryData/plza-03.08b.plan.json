@@ -10,13 +10,11 @@
     "events": [
       {
         "id": "zone_1_back_to_road",
-        "kind": "game_action",
         "why": "back onto the road at the catch spots by the marker; walking straight at the marker from 60 gets stuck on the zone's fence",
         "action": "walk_back_to_zone_road"
       },
       {
         "id": "zone_1_to_far_gate",
-        "kind": "game_action",
         "why": "face 265 by the minimap, then run down the road to the far gate's A prompt (~4.7 s)",
         "action": "aimed_run_to_gate",
         "args": {
@@ -25,7 +23,6 @@
       },
       {
         "id": "leave_zone_1",
-        "kind": "game_action",
         "why": "A Leave, out on the street",
         "action": "mash_to_move_hints",
         "args": {
@@ -34,13 +31,11 @@
       },
       {
         "id": "out_of_zone_1",
-        "kind": "game_action",
         "why": "the save below must be out of the zone: the map pin on two reads, else stop unsaved; the lead's panel can vanish while still inside",
         "action": "check_out_of_zone_1"
       },
       {
         "id": "save_outside_zone_1",
-        "kind": "game_action",
         "why": "a menu save here, 03.09's start; the latest save is otherwise the last catch, anywhere in the zone",
         "action": "save_from_menu"
       }

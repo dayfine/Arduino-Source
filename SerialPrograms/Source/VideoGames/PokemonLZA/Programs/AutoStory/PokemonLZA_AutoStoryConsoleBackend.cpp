@@ -17,7 +17,6 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryBattles.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryMenuReadings.h"
@@ -50,14 +49,14 @@ void PlzaConsoleBackend::wait(Milliseconds duration){
     m_env.context.wait_for(duration);
 }
 
-Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
+ScreenObservation PlzaConsoleBackend::observe(){
     m_env.context.wait_for_all_requests();
     VideoSnapshot frame = m_env.env.console.video().snapshot();
-    Pokemon::Observation<Pokemon::ZonePose> look;
+    ScreenObservation look;
     if (frame && m_home.detect(*frame.frame)){
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
-        static_cast<ScreenObservation&>(look) = Pokemon::screen_observation(m_observer.read(*frame.frame));
+        look = Pokemon::screen_observation(m_observer.read(*frame.frame));
         if (m_platform.detect(*frame.frame)){
             look.readings[std::string(PLATFORM_READING)] = 1;
         }
@@ -99,15 +98,6 @@ Pokemon::Observation<Pokemon::ZonePose> PlzaConsoleBackend::observe(){
     m_previous = frame;
     look.frame = std::move(frame);
     return look;
-}
-
-Pokemon::Outcome PlzaConsoleBackend::battle(const Pokemon::StoryActionArgs&){
-    try{
-        fight_story_battle(m_env.env, m_env.env.console, m_env.context, m_env.battle_ai, /*timeout=*/120s);
-    }catch (OperationFailedException& e){
-        return Pokemon::outcome_failed("battle_failed", e.message());
-    }
-    return Pokemon::outcome_ok();
 }
 
 void PlzaConsoleBackend::log(std::string_view line){

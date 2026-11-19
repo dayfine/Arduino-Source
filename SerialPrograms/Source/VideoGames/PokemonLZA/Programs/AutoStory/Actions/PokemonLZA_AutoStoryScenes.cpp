@@ -70,7 +70,7 @@ constexpr int CHOICE_TEXT_PRESSES = 3;
 } // namespace
 
 
-Pokemon::Outcome talk_through_map_screen(PlzaBackend& backend){
+std::optional<Pokemon::StoryFailure> talk_through_map_screen(PlzaBackend& backend){
     //  Bounds the looks too, for a script whose time stands still.
     const size_t max_looks = (size_t)(MAP_TALK_TIMEOUT / MAP_TALK_POLL) + 1;
     std::optional<WallClock> start;
@@ -78,13 +78,13 @@ Pokemon::Outcome talk_through_map_screen(PlzaBackend& backend){
     MapTalkPart part = MapTalkPart::BEFORE_CARD;
     for (size_t looks = 0; looks < max_looks; looks++){
         backend.scope().throw_if_cancelled();
-        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        const ScreenObservation look = backend.observe();
         start = start.value_or(look.when);
         if (party_bar_free(look)){
             control_since = control_since.value_or(look.when);
             if (look.when - *control_since >= MAP_TALK_CONTROL_HOLD){
                 backend.log("[PLZA] talk_through_map_screen: the party bar held: back in the overworld");
-                return Pokemon::outcome_ok();
+                return std::nullopt;
             }
             backend.wait(MAP_TALK_POLL);
             continue;
@@ -98,10 +98,10 @@ Pokemon::Outcome talk_through_map_screen(PlzaBackend& backend){
             part = MapTalkPart::AFTER_CARD;
         }
     }
-    return Pokemon::outcome_failed("map_talk_timeout", std::format(
+    return Pokemon::StoryFailure{.code = "map_talk_timeout", .detail = std::format(
         "no party bar held {} ms within {} ms of A on the talk and the card, B on the map",
         MAP_TALK_CONTROL_HOLD.count(), MAP_TALK_TIMEOUT.count()
-    ));
+    )};
 }
 
 void climb_ladder(PlzaBackend& backend){
@@ -111,7 +111,7 @@ void climb_ladder(PlzaBackend& backend){
     backend.stick(/*degrees=*/0, /*duration=*/5000ms, /*release=*/500ms, Pokemon::StoryPace::WALK);
 }
 
-Pokemon::Outcome choose_row(PlzaBackend& backend, int index){
+std::optional<Pokemon::StoryFailure> choose_row(PlzaBackend& backend, int index){
     std::optional<std::pair<int, int>> rows = wait_for_choice_rows(backend);
     for (int press = 0; !rows && press < CHOICE_TEXT_PRESSES; press++){
         backend.log(std::format("[PLZA] choose_{}: no choice yet: A through the text", index));
@@ -119,11 +119,11 @@ Pokemon::Outcome choose_row(PlzaBackend& backend, int index){
         rows = wait_for_choice_rows(backend);
     }
     if (!rows){
-        return Pokemon::outcome_failed("no_choice", std::format("no choice box with rows that read after {} A presses", CHOICE_TEXT_PRESSES));
+        return Pokemon::StoryFailure{.code = "no_choice", .detail = std::format("no choice box with rows that read after {} A presses", CHOICE_TEXT_PRESSES)};
     }
     const auto [selected, count] = *rows;
     if (index >= count){
-        return Pokemon::outcome_failed("no_such_choice", std::format("row {} of a choice of {} rows", index, count));
+        return Pokemon::StoryFailure{.code = "no_such_choice", .detail = std::format("row {} of a choice of {} rows", index, count)};
     }
     backend.log(std::format("[PLZA] choose_{}: row {} of {} highlighted", index, selected, count));
     const int moves = index - selected;
@@ -133,14 +133,14 @@ Pokemon::Outcome choose_row(PlzaBackend& backend, int index){
     if (moves != 0){
         const std::optional<std::pair<int, int>> now = choice_rows(backend.observe());
         if (!now || now->first != index){
-            return Pokemon::outcome_failed("choice_not_reached", std::format(
+            return Pokemon::StoryFailure{.code = "choice_not_reached", .detail = std::format(
                 "the highlight is on row {}, not {}, after {} presses from row {}",
                 now ? std::to_string(now->first) : "none", index, std::abs(moves), selected
-            ));
+            )};
         }
     }
     backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 

@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryLines.h"
 #include "PokemonLZA_AutoStoryLines_Tests.h"
@@ -22,12 +22,10 @@ namespace PokemonLZA{
 
 namespace{
 
-using Pokemon::Observation;
-using Pokemon::ZonePose;
 
 
-Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> readings, Milliseconds at){
-    Observation<ZonePose> observation;
+ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readings, Milliseconds at){
+    ScreenObservation observation;
     observation.when = WallClock::min() + at;
     observation.events = events;
     for (std::string_view reading : readings){
@@ -36,19 +34,19 @@ Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> re
     return observation;
 }
 
-Observation<ZonePose> dialog(Milliseconds at){
+ScreenObservation dialog(Milliseconds at){
     return look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, at);
 }
 
-Observation<ZonePose> card(Milliseconds at){
+ScreenObservation card(Milliseconds at){
     return look(/*events=*/{}, {TUTORIAL_CARD_READING}, at);
 }
 
-Observation<ZonePose> nothing(Milliseconds at){
+ScreenObservation nothing(Milliseconds at){
     return look(/*events=*/{}, /*readings=*/{}, at);
 }
 
-Observation<ZonePose> party_bar(Milliseconds at){
+ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
@@ -64,7 +62,7 @@ std::string joined(const std::vector<std::string>& texts){
 struct LinesCase{
     std::string name;
     struct Input{
-        std::vector<Observation<ZonePose>> looks;
+        std::vector<ScreenObservation> looks;
         Milliseconds limit = Milliseconds(30000);
     };
     Input input;
@@ -105,7 +103,7 @@ const LinesCase LINES_CASES[] = {
 };
 
 UnitTestResult check_lines(const LinesCase& test, CancellableScope& scope){
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
     const LinesPassed passed = press_a_through_lines(backend, /*quiet=*/Milliseconds(3000), test.input.limit);
     const LinesCase::Expectation& expected = test.expectation;
     if (passed.text != expected.text || passed.card != expected.card || passed.timed_out != expected.timed_out){
@@ -125,7 +123,7 @@ UnitTestResult check_lines(const LinesCase& test, CancellableScope& scope){
 struct MenuCase{
     std::string name;
     struct Input{
-        std::vector<Observation<ZonePose>> looks;
+        std::vector<ScreenObservation> looks;
         size_t presses = 0;
     };
     Input input;
@@ -157,7 +155,7 @@ const MenuCase MENU_CASES[] = {
 };
 
 UnitTestResult check_menu(const MenuCase& test, CancellableScope& scope){
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = test.input.looks}, scope);
+    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
     const bool out = press_b_out_of_menu(backend, test.input.presses);
     if (out != test.expectation.out){
         return std::format("expected out of the menu: {}, got {}", test.expectation.out, out);

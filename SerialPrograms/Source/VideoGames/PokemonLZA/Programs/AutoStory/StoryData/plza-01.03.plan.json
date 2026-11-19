@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "approach_starter",
-        "kind": "game_action",
         "why": "to Chikorita's \"A Talk\" prompt. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -20,24 +19,21 @@
       },
       {
         "id": "talk_to_starter",
-        "kind": "talk",
+        "action": "talk",
         "why": "A at \"A Talk Chikorita\""
       },
       {
         "id": "andi_battle_start",
-        "kind": "game_action",
         "why": "choose it (top choice), through the battle tutorial cards to the battle HUD",
         "action": "story_battle_start"
       },
       {
         "id": "andi_battle",
-        "kind": "game_action",
         "why": "beat Andi's Pancham (Lv 6), until Andi's speech",
         "action": "story_battle"
       },
       {
         "id": "after_andi",
-        "kind": "game_action",
         "why": "through MAIN MISSION 01 COMPLETE (waits for A) to the Main Mission 02 banner",
         "action": "mash_to_move_hints"
       }

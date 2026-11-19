@@ -55,7 +55,7 @@ double read_after_turn(PlzaBackend& backend, const MinimapArrowReader& read_arro
 
 } // namespace
 
-Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading){
+std::optional<Pokemon::StoryFailure> face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading){
     backend.observe();
     double now = read_arrow();
     //  Small turns overshoot (5 asked, 10 turned): after each overshoot the
@@ -67,7 +67,7 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& re
         backend.log_detail(std::format("[PLZA] face_heading: the arrow reads {:.1f} deg, {:.0f} wanted: {:.1f} off", now, heading, turn));
         if (std::abs(turn) <= HEADING_TOLERANCE){
             backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         }
         if (turns < HEADING_TURNS){
             if (last_turn * turn < 0){
@@ -79,7 +79,7 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& re
             now = read_after_turn(backend, read_arrow, now, asked);
         }
     }
-    return Pokemon::outcome_failed("heading_missed", std::format("not facing {:.0f} deg after {} turns", heading, HEADING_TURNS));
+    return Pokemon::StoryFailure{.code = "heading_missed", .detail = std::format("not facing {:.0f} deg after {} turns", heading, HEADING_TURNS)};
 }
 
 void story_turn(PlzaBackend& backend, double degrees){

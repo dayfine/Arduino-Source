@@ -6,13 +6,15 @@
 
 #include <format>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryStoryFiles.h"
@@ -28,10 +30,8 @@ namespace PokemonLZA{
 namespace{
 
 using namespace std::chrono_literals;
-using Pokemon::Observation;
 using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
-using Pokemon::ZonePose;
 
 std::string joined(const std::vector<std::string>& texts, std::string_view separator){
     std::string out;
@@ -98,8 +98,8 @@ UnitTestResult check_card(const CardCase& test){
 }
 
 
-Observation<ZonePose> look(std::vector<std::string_view> readings, Milliseconds after = 0ms){
-    Observation<ZonePose> observation;
+ScreenObservation look(std::vector<std::string_view> readings, Milliseconds after = 0ms){
+    ScreenObservation observation;
     observation.when = WallClock::min() + after;
     for (std::string_view reading : readings){
         observation.readings[std::string(reading)] = 1;
@@ -107,18 +107,31 @@ Observation<ZonePose> look(std::vector<std::string_view> readings, Milliseconds 
     return observation;
 }
 
-//  Each step named for its action.
-StoryCheckpoint row(std::string id, std::vector<std::string> actions){
-    StoryCheckpoint checkpoint;
-    checkpoint.id = std::move(id);
-    checkpoint.title = "Test";
-    for (std::string& action : actions){
-        checkpoint.steps.push_back(StoryStep{.kind = Pokemon::StoryStepKind::GAME, .name = action, .why = "", .action = action, .args = {}});
-    }
-    return checkpoint;
+//  A checkpoint's id and its steps' actions, each step named for its action.
+struct TestRow{
+    std::string id;
+    std::vector<std::string> actions;
+};
+
+TestRow row(std::string id, std::vector<std::string> actions){
+    return TestRow{.id = std::move(id), .actions = std::move(actions)};
 }
 
-std::vector<StoryCheckpoint> story_rows(){
+//  `rows` with their steps bound to `tools`, which must outlive them.
+std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestRow>& rows, const PlzaStoryTools& tools){
+    const Pokemon::StoryActions actions = plza_story_actions(tools);
+    std::vector<StoryCheckpoint> checkpoints(rows.size());
+    for (size_t index = 0; index < rows.size(); index++){
+        checkpoints[index].id = rows[index].id;
+        checkpoints[index].title = "Test";
+        for (const std::string& action : rows[index].actions){
+            checkpoints[index].steps.push_back(StoryStep{.name = action, .run = actions.at(action)(JsonObject())});
+        }
+    }
+    return checkpoints;
+}
+
+std::vector<TestRow> story_rows(){
     return {
         row("03.06", {"wait_for_platform"}),
         row("03.07", {"wait_for_platform"}),
@@ -224,29 +237,17 @@ const RewindCase REWIND_CASES[] = {
 };
 
 //  A stand-in "catch_in_zone" that looks once, then fails its first
-//  `failed_catches` times: the real one is console_only.
-Pokemon::StoryGame<ZonePose> rewind_game(
-    const StoryData& story, size_t failed_catches, std::string_view failure, AutosaveSightings& sightings, size_t& catches
-){
-    Pokemon::StoryGame<ZonePose> game = plza_story_game(/*console=*/{}, story, /*arrow=*/std::nullopt, /*lock_on=*/std::nullopt, sightings);
-    game.reload = [](Pokemon::StoryBackend<ZonePose>&){
-        return Pokemon::outcome_ok();
-    };
-    for (Pokemon::StoryAction<ZonePose>& action : game.actions){
-        if (action.spec.name == "catch_in_zone"){
-            action.spec.console_only = false;
-            Pokemon::StoryGame<ZonePose> stand_in;
-            stand_in.actions.push_back(Pokemon::StoryAction<ZonePose>{
-                .spec = action.spec,
-                .handler = [&catches, failed_catches, failure](Pokemon::StoryBackend<ZonePose>& backend, const Pokemon::StoryActionCall&, Pokemon::RunState&){
-                    backend.observe();
-                    return catches++ < failed_catches ? Pokemon::outcome_failed(std::string(failure)) : Pokemon::outcome_ok();
-                },
-            });
-            action.handler = with_autosave_sightings(std::move(stand_in), story, sightings).actions.front().handler;
+//  `failed_catches` times: the real one runs only on a console.
+PlzaStoryTools rewind_tools(size_t failed_catches, std::string_view failure, size_t& catches){
+    PlzaStoryTools tools;
+    tools.console.emplace("catch_in_zone", [&catches, failed_catches, failure](PlzaBackend& backend, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
+        backend.observe();
+        if (catches++ < failed_catches){
+            return Pokemon::StoryFailure{.code = std::string(failure)};
         }
-    }
-    return game;
+        return std::nullopt;
+    });
+    return tools;
 }
 
 BackupSave recording_backup(std::optional<BackupCard> card, std::vector<std::string>& calls){
@@ -257,7 +258,7 @@ BackupSave recording_backup(std::optional<BackupCard> card, std::vector<std::str
         },
         .load = [&calls](PlzaBackend&){
             calls.push_back("load");
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         },
         .cancel = [&calls](PlzaBackend&){
             calls.push_back("cancel");
@@ -265,12 +266,37 @@ BackupSave recording_backup(std::optional<BackupCard> card, std::vector<std::str
     };
 }
 
-std::string describe_runs(const Pokemon::SegmentReport& report){
+//  "03.08 failed, 03.08 passed", from the checkpoint lines.
+std::string describe_runs(const std::vector<std::string>& lines){
     std::vector<std::string> runs;
-    for (const Pokemon::CheckpointRun& run : report.runs){
-        runs.push_back(std::format("{} {}", run.id, run.passed ? "passed" : "failed"));
+    for (const std::string& line : lines){
+        const size_t colon = line.find(": ");
+        if (!line.starts_with("[Checkpoint] ") || colon == std::string::npos){
+            continue;
+        }
+        const std::string id = line.substr(13, colon - 13);
+        const std::string_view text = std::string_view(line).substr(colon + 2);
+        if (text.starts_with("passed on attempt")){
+            runs.push_back(id + " passed");
+        }else if (text.starts_with("failed at")){
+            runs.push_back(id + " failed");
+        }
     }
     return joined(runs, ", ");
+}
+
+//  "done", or "failed at <checkpoint> <step, or rewind>: <code>".
+std::string verdict_of(const std::optional<Pokemon::CheckpointFailure>& failure, std::span<const StoryCheckpoint> rows){
+    if (!failure){
+        return "done";
+    }
+    std::string event = "rewind";
+    for (const StoryCheckpoint& checkpoint : rows){
+        if (checkpoint.id == failure->checkpoint_id && failure->event_index){
+            event = checkpoint.steps[*failure->event_index].name;
+        }
+    }
+    return std::format("failed at {} {}: {}", failure->checkpoint_id, event, failure->failure.code);
 }
 
 bool has_line(const std::vector<std::string>& lines, std::string_view wanted){
@@ -285,16 +311,16 @@ bool has_line(const std::vector<std::string>& lines, std::string_view wanted){
 //  One in a checkpoint's first 1.5 s is the save before it.
 constexpr Milliseconds OWN_BADGE = 2000ms;
 
-std::vector<Observation<ZonePose>> badge_in_first_step(){
+std::vector<ScreenObservation> badge_in_first_step(){
     return {look({}), look({AUTOSAVE_READING}, OWN_BADGE), look({PLATFORM_READING}, OWN_BADGE + 1000ms)};
 }
 
 //  The backup card reads 1 registered: 03.06's start.
 struct RewindRun{
-    std::vector<StoryCheckpoint> rows;
+    std::vector<TestRow> rows;
     size_t first;
     size_t last;
-    std::vector<Observation<ZonePose>> looks;
+    std::vector<ScreenObservation> looks;
     size_t failed_catches;
     std::string_view failure;
     std::optional<BackupCard> card;
@@ -302,28 +328,32 @@ struct RewindRun{
 };
 
 UnitTestResult check_run(const RewindRun& run, const RewindExpectation& expected, CancellableScope& scope){
-    const StoryData& story = builtin_story_data();
     AutosaveSightings sightings;
     size_t catches = 0;
-    const Pokemon::StoryGame<ZonePose> game = rewind_game(story, run.failed_catches, run.failure, sightings, catches);
+    PlzaStoryTools tools = rewind_tools(run.failed_catches, run.failure, catches);
+    tools.sightings = &sightings;
+    std::vector<StoryCheckpoint> rows = checkpoints_of(run.rows, tools);
+    note_autosaves(rows, sightings);
+    Pokemon::StoryGame game = plza_story_game(builtin_story_data(), sightings);
+    game.reload = [](PlzaBackend&, const StoryCheckpoint& failed) -> std::optional<std::string>{
+        return failed.id;
+    };
     std::vector<std::string> calls;
     const BackupSave backup = recording_backup(run.card, calls);
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = run.looks}, scope);
+    Pokemon::FakeStoryBackend backend({.looks = run.looks}, scope);
     Pokemon::RunState state;
     const std::vector<CheckpointStart> starts{{.checkpoint = "03.06", .signature = {.registered = 1}}};
     const RewindPlan plan{
-        .rows = run.rows, .first = run.first, .last = run.last, .segments = {.attempts_per_checkpoint = 1},
+        .rows = rows, .first = run.first, .last = run.last, .segments = {.attempts_per_checkpoint = 1},
         .starts = starts, .max_rewinds = run.max_rewinds,
     };
-    const Pokemon::SegmentReport report = run_plza_with_rewinds(game, plan, backup, backend, sightings, state);
-    const std::string verdict = report.completed
-        ? "done"
-        : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);
+    const std::optional<Pokemon::CheckpointFailure> failure = run_plza_with_rewinds(game, plan, backup, backend, sightings, state);
+    const std::string verdict = verdict_of(failure, rows);
     if (verdict != expected.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:\n{}", expected.verdict, verdict, joined(backend.lines(), "\n"));
     }
-    if (describe_runs(report) != expected.runs){
-        return std::format("expected runs \"{}\", got \"{}\"", expected.runs, describe_runs(report));
+    if (describe_runs(backend.lines()) != expected.runs){
+        return std::format("expected runs \"{}\", got \"{}\"", expected.runs, describe_runs(backend.lines()));
     }
     if (joined(calls, ", ") != expected.backup_calls){
         return std::format("expected backup calls \"{}\", got \"{}\"", expected.backup_calls, joined(calls, ", "));
@@ -348,7 +378,7 @@ UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
 
 
 //  02.05 and 02.06 come before the first backup save, at 03.06's start.
-std::vector<StoryCheckpoint> gate_rows(){
+std::vector<TestRow> gate_rows(){
     return {
         row("02.05", {"wait_for_platform", "catch_in_zone"}),
         row("02.06", {"wait_for_platform", "catch_in_zone"}),
@@ -405,7 +435,7 @@ const GateCase GATE_CASES[] = {
     },
 };
 
-std::optional<size_t> index_of(const std::vector<StoryCheckpoint>& rows, std::string_view id){
+std::optional<size_t> index_of(const std::vector<TestRow>& rows, std::string_view id){
     for (size_t index = 0; index < rows.size(); index++){
         if (rows[index].id == id){
             return index;
@@ -415,13 +445,13 @@ std::optional<size_t> index_of(const std::vector<StoryCheckpoint>& rows, std::st
 }
 
 UnitTestResult check_gate(const GateCase& test, CancellableScope& scope){
-    std::vector<StoryCheckpoint> rows = gate_rows();
+    std::vector<TestRow> rows = gate_rows();
     const std::optional<size_t> from = index_of(rows, test.input.from);
     const std::optional<size_t> to = index_of(rows, test.input.to);
     if (!from || !to){
         return std::format("no row {} or {}", test.input.from, test.input.to);
     }
-    const std::vector<Observation<ZonePose>> looks = test.input.badge == BadgeIn::FIRST_STEP
+    const std::vector<ScreenObservation> looks = test.input.badge == BadgeIn::FIRST_STEP
         ? badge_in_first_step()
         : std::vector{
             look({}), look({PLATFORM_READING}, 1000ms), look({PLATFORM_READING}, 1300ms),
@@ -488,9 +518,9 @@ const StartCase START_CASES[] = {
     },
 };
 
-std::vector<StoryCheckpoint> start_rows(){
-    std::vector<StoryCheckpoint> rows{row("02.05", {"wait_for_platform"})};
-    for (StoryCheckpoint& later : story_rows()){
+std::vector<TestRow> start_rows(){
+    std::vector<TestRow> rows{row("02.05", {"wait_for_platform"})};
+    for (TestRow& later : story_rows()){
         rows.push_back(std::move(later));
     }
     return rows;
@@ -499,9 +529,10 @@ std::vector<StoryCheckpoint> start_rows(){
 UnitTestResult check_start(const StartCase& test, CancellableScope& scope){
     std::vector<std::string> calls;
     const BackupSave backup = recording_backup(test.input.card, calls);
-    Pokemon::FakeStoryBackend<ZonePose> backend({.looks = {}}, scope);
-    const std::vector<StoryCheckpoint> rows = start_rows();
-    const std::optional<size_t> asked = index_of(rows, test.input.asked);
+    Pokemon::FakeStoryBackend backend({.looks = {}}, scope);
+    const PlzaStoryTools tools;
+    std::vector<StoryCheckpoint> rows = checkpoints_of(start_rows(), tools);
+    const std::optional<size_t> asked = index_of(start_rows(), test.input.asked);
     if (!asked){
         return std::format("no row {}", test.input.asked);
     }

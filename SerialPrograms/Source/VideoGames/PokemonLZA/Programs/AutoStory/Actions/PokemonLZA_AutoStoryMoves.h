@@ -12,7 +12,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
@@ -50,11 +50,11 @@ struct StoryMove{
 //  TURN_THEN_WALK: a look after each turn and walk; one that shows the
 //  screen still (a dropped input) plays it once more. HELD: unchecked. A
 //  leg cut short goes unnoticed; the step after it fails instead.
-Pokemon::Outcome run_story_move(PlzaBackend& backend, const StoryMove& move);
+std::optional<Pokemon::StoryFailure> run_story_move(PlzaBackend& backend, const StoryMove& move);
 
 //  All but the last leg's walk, which the caller holds a slice at a time
 //  (hold_last_leg()). A HELD last leg with no walk is played whole.
-Pokemon::Outcome run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move);
+std::optional<Pokemon::StoryFailure> run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move);
 
 //  `slice` of `move`'s last leg's walk.
 void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds slice);

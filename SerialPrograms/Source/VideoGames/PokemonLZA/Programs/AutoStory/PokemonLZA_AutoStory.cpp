@@ -143,12 +143,12 @@ constexpr std::string_view RECORD_START_MINIMAPS_LABEL =
 
 //  A run after the new game starts from the latest save, not from wherever
 //  the game is. Throws OperationFailedException if it does not load.
-void load_first_save(ConsoleHandle& console, const StoryGame<ZonePose>& game, PlzaBackend& backend, const StoryCheckpoint& row){
-    const Outcome loaded = load_checkpoint_start(game, backend, row);
-    if (!loaded.succeeded()){
+void load_first_save(ConsoleHandle& console, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& row){
+    const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, row);
+    if (loaded){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("AutoStory: could not load the save for {}: {}", row.id, to_string(loaded)),
+            std::format("AutoStory: could not load the save for {}: {}", row.id, *loaded),
             console
         );
     }
@@ -309,18 +309,20 @@ AutoStory::AutoStory()
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     const NewGameChoices new_game{.language = GAME_LANGUAGE, .look = PLAYER_LOOK, .name = PLAYER_NAME};
-    const StoryData& story_data = builtin_story_data();
-    const std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
+    StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
+    AutosaveSightings sightings;
+    const PlzaStoryTools tools = plza_console_tools(story, sightings);
+    StoryData story_data = load_plza_story(tools);
+    note_autosaves(story_data.checkpoints, sightings);
+    std::vector<StoryCheckpoint>& rows = story_data.checkpoints;
     const size_t first = RANGE.start_index();
     const size_t last = RANGE.end_index();
     check_checkpoint_range(env.console, first, last, rows.size());
     check_new_game_choices(env.console, std::span<const StoryCheckpoint>(rows).subspan(first, last - first + 1), new_game);
     connect_controller(env.console, context, rows[first]);
 
-    StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     PlzaConsoleBackend backend(story);
-    AutosaveSightings sightings;
-    const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
+    StoryGame game = make_plza_story_game(story, story_data, sightings);
     RunState state;
 
     const SegmentRunOptions segments{
@@ -343,13 +345,11 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         plan.first = checked_first_row(story, backend, plan, console_backup_save(story));
     }
 
-    const SegmentReport report = run_plza_with_rewinds(game, plan, console_backup_save(story), backend, sightings, state);
-    if (!report.completed){
+    const std::optional<CheckpointFailure> failure = run_plza_with_rewinds(game, plan, console_backup_save(story), backend, sightings, state);
+    if (failure){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
-            std::format(
-                "AutoStory stopped at {} {}: {}", report.failed_checkpoint, report.failed_event, to_string(report.failure)
-            ),
+            std::format("AutoStory stopped at {}: {}", failure->checkpoint_id, failure->failure),
             env.console
         );
     }

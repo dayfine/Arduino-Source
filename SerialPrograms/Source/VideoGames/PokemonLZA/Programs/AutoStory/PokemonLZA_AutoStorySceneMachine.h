@@ -16,7 +16,7 @@
 #include "Common/Cpp/Time.h"
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
@@ -89,7 +89,7 @@ std::string describe_scene_look(const ScreenObservation& look);
 //  looks. A choice takes its top row. Fails as "scene_quiet" (unless
 //  `quiet_is_control`), "scene_never_started", "scene_timeout" (by the looks'
 //  time) or "scene_stuck" (a state that recurs too often, or a frozen screen).
-Pokemon::Outcome run_scene_machine(
+std::optional<Pokemon::StoryFailure> run_scene_machine(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 );
 

@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "battle_zone_to_brigitte",
-        "kind": "game_action",
         "why": "through the Battle Zone to Brigitte's scene; not held for a dialog, since Taunie's \"Almost there!\" talks on the way. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -21,19 +20,16 @@
       },
       {
         "id": "brigitte_battle_start",
-        "kind": "game_action",
         "why": "A through her talk to \"Brigitte sent out Cleffa!\"",
         "action": "story_battle_start"
       },
       {
         "id": "brigitte_battle",
-        "kind": "game_action",
         "why": "beat Brigitte's Cleffa (Lv 7), until her speech",
         "action": "story_battle"
       },
       {
         "id": "after_brigitte",
-        "kind": "scene",
         "why": "until free control alone in the plaza",
         "action": "a"
       }

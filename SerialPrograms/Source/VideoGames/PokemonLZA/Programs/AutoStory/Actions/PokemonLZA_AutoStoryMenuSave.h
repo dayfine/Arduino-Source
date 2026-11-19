@@ -10,7 +10,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryMenuSave_H
 #define PokemonAutomation_PokemonLZA_AutoStoryMenuSave_H
 
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 
 namespace PokemonAutomation{
@@ -24,7 +24,7 @@ namespace PokemonLZA{
 //  menu under a tutorial card, which gets A. Fails as "menu_save_timeout"
 //  when not back on the overworld within 30 s, and as GAME_NOT_RUNNING on
 //  the Switch's HOME.
-Pokemon::Outcome save_from_menu(PlzaBackend& backend);
+std::optional<Pokemon::StoryFailure> save_from_menu(PlzaBackend& backend);
 
 
 

@@ -10,7 +10,6 @@
     "events": [
       {
         "id": "out_of_room_202",
-        "kind": "game_action",
         "why": "to the room door's \"A Leave\". not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -21,14 +20,12 @@
       },
       {
         "id": "leave_room_202",
-        "kind": "game_action",
         "why": "A Leave, until control in the 2F hall; no party bar or prompt there, so quiet means control",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true, "quiet_ms": 3000, "min_length_ms": 5000, "quiet_is_control": true}
       },
       {
         "id": "to_2f_elevator",
-        "kind": "game_action",
         "why": "down the hall to \"A Take Elevator\"; an earlier prompt is passed on the way. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
@@ -39,25 +36,22 @@
       },
       {
         "id": "take_elevator_down",
-        "kind": "talk",
+        "action": "talk",
         "why": "A Take Elevator"
       },
       {
         "id": "floor_question",
-        "kind": "game_action",
         "why": "to \"Which floor?\", before the choice shows; B would close the talk",
         "action": "text_to_choice",
         "args": {"advance_with_a": true}
       },
       {
         "id": "ride_to_lobby",
-        "kind": "game_action",
         "why": "\"1F (Lobby)\"",
         "action": "choose_0"
       },
       {
         "id": "lobby_scene",
-        "kind": "game_action",
         "why": "the ride, Z-A Royale, the outfit, AZ, Lida; autosave. No party bar in the lobby and 8+ s text-free stretches, so 20 s quiet means control. Alton's choice must be the top row: the 2nd loops the scene",
         "action": "mash_to_move_hints",
         "args": {"quiet_ms": 20000, "min_length_ms": 30000, "quiet_is_control": true, "advance_with_a": true}

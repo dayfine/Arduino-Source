@@ -93,13 +93,13 @@ int weaken_target(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battl
 } // namespace
 
 
-Pokemon::Outcome catch_tutorial(StoryEnv& env, PlzaBackend& backend, int max_throws){
+std::optional<Pokemon::StoryFailure> catch_tutorial(StoryEnv& env, PlzaBackend& backend, int max_throws){
     TrainerBattleState battle_state(env.battle_ai);
     for (int throws = 1; throws <= max_throws; throws++){
         throw_ball(env.context, STORY_THROW);
         if (press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT).card){
             backend.log(std::format("[PLZA] catch_tutorial: caught on throw {}", throws));
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         }
         if (throws < max_throws && wild_battle_on(env)){
             const int landed = weaken_target(env, backend, battle_state);
@@ -107,10 +107,10 @@ Pokemon::Outcome catch_tutorial(StoryEnv& env, PlzaBackend& backend, int max_thr
             press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         }
     }
-    return Pokemon::outcome_failed("no_catch", std::format("no tutorial card after {} throws", max_throws));
+    return Pokemon::StoryFailure{.code = "no_catch", .detail = std::format("no tutorial card after {} throws", max_throws)};
 }
 
-Pokemon::Outcome battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_rounds){
+std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_rounds){
     backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/840ms);
     press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
     backend.press(BUTTON_UP, /*hold=*/100ms, /*release=*/2000ms);
@@ -119,14 +119,14 @@ Pokemon::Outcome battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_
         const int landed = weaken_target(env, backend, battle_state);
         if (landed == 0 && round > 0){
             backend.log(std::format("[PLZA] battle_then_catch: nothing to lock on in round {}: caught", round + 1));
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         }
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         throw_ball(env.context, STORY_THROW);
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         backend.log(std::format("[PLZA] battle_then_catch: round {}: {} attacks landed, then a throw", round + 1, landed));
     }
-    return Pokemon::outcome_failed("still_a_target", std::format("a target still locks on after {} rounds", max_rounds));
+    return Pokemon::StoryFailure{.code = "still_a_target", .detail = std::format("a target still locks on after {} rounds", max_rounds)};
 }
 
 
@@ -512,7 +512,7 @@ std::optional<int> read_party_slots(StoryEnv& env, PlzaBackend& backend){
 bool face_marker(StoryEnv& env, PlzaBackend& backend){
     for (int turns = 0; turns < 12; turns++){
         backend.scope().throw_if_cancelled();
-        const Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
+        const ScreenObservation look = backend.observe();
         std::optional<ObjectiveMarker> marker;
         if (look.frame && *look.frame){
             marker = read_objective_marker(env.env.console, *look.frame->frame);
@@ -567,7 +567,7 @@ std::optional<int> cross_check_marker(StoryEnv& env, PlzaBackend& backend, const
 
 //  The pin decides whether the player started at the rocks; the marker read
 //  after the leg decides only when the pin did not read.
-Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const ZoneStartRoute& route){
+std::optional<Pokemon::StoryFailure> go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const ZoneStartRoute& route){
     backend.log(std::format(
         "[PLZA] catch_in_zone: at the start, {} is put at ({:.0f}, {:.0f}) on the map{}",
         route.start.name, route.start.pin.x, route.start.pin.y, route.start.provisional ? " [provisional]" : ""
@@ -587,10 +587,10 @@ Pokemon::Outcome go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const Zone
         pin_text, distance_text, route.leg_read_min, route.leg_read_max, start_move_name(move)
     ));
     if (move != ZoneStartMove::WALK_TO_SPOT){
-        return Pokemon::outcome_failed("rocks_not_left", std::format(
+        return Pokemon::StoryFailure{.code = "rocks_not_left", .detail = std::format(
             "the pin at the start was {}, not within {:.0f} of ({:.0f}, {:.0f}); the read off Taunie's rocks was {}, not {} to {}",
             pin_text, route.start_radius, route.start.pin.x, route.start.pin.y, distance_text, route.leg_read_min, route.leg_read_max
-        ));
+        )};
     }
     return walk_map_legs(env, backend, ROCKS_TO_SPOT_100);
 }
@@ -599,7 +599,7 @@ struct Patrol{
     GrassCatches catches;
     //  None: not read.
     std::optional<int> party_slots;
-    std::optional<Pokemon::Outcome> walk_failed;
+    std::optional<std::optional<Pokemon::StoryFailure>> walk_failed;
 };
 
 //  A leg that fails stops the patrol. A wild battle that starts on the way
@@ -624,8 +624,8 @@ Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal
         }
         //  The first stop is where go_to_zone_spot() ended.
         if (i > 0){
-            const Pokemon::Outcome walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&*waypoint, 1));
-            if (!walked.succeeded()){
+            const std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&*waypoint, 1));
+            if (walked){
                 patrol.walk_failed = walked;
                 break;
             }
@@ -658,14 +658,14 @@ Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal
 } // namespace
 
 
-Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal){
+std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal){
     const std::optional<int> slots = read_party_slots(env, backend);
     if (party_has_species(slots, goal.party_species)){
         backend.log("[PLZA] catch_in_zone: the party already holds the species: nothing to catch");
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
-    const Pokemon::Outcome at_spot = go_to_zone_spot(env, backend, TAUNIE_ROCKS_ROUTE);
-    if (!at_spot.succeeded()){
+    const std::optional<Pokemon::StoryFailure> at_spot = go_to_zone_spot(env, backend, TAUNIE_ROCKS_ROUTE);
+    if (at_spot){
         return at_spot;
     }
     const Patrol patrol = patrol_and_catch(env, backend, goal, slots);
@@ -679,26 +679,25 @@ Pokemon::Outcome catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCa
         catch_summary_text(result, patrol.party_slots, goal.new_species, goal.party_species)
     ));
     if (party_has_species(patrol.party_slots, goal.party_species)){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     //  The party bar's count, when read, stands in for the Pokedex's.
     if (!enough_species(tally, patrol.party_slots, goal.party_species)){
-        return Pokemon::outcome_failed("short_of_species", patrol.party_slots
+        return Pokemon::StoryFailure{.code = "short_of_species", .detail = patrol.party_slots
             ? std::format("the party holds {} species of {} ({} new by the banners in {} throws)", *patrol.party_slots, goal.party_species, result.found, result.throws)
-            : std::format("{} new species of {} in {} throws", result.found, goal.new_species, result.throws)
-        );
+            : std::format("{} new species of {} in {} throws", result.found, goal.new_species, result.throws)};
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-Pokemon::Outcome walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend){
-    const Pokemon::Outcome walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&ZONE1_SPOT_60, 1));
-    if (!walked.succeeded()){
+std::optional<Pokemon::StoryFailure> walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend){
+    const std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&ZONE1_SPOT_60, 1));
+    if (walked){
         return walked;
     }
     cross_check_marker(env, backend, ZONE1_SPOT_60);
     face_marker(env, backend);
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 
