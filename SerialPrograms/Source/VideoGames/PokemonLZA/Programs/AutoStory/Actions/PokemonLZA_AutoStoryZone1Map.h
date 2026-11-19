@@ -52,8 +52,10 @@ inline constexpr MapWaypoint ZONE1_ROCKS{.name = "Taunie's rocks", .pin = {.x = 
 //  the patrol ran too far left on the road (user, 2026-11-18).
 inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x = 442, .y = 227}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
 //  Before the far gate, Mareep's grass right of the road (marker 60), at
-//  (386, 252): targets show on the right from here, none from (370, 256).
-inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 252}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+//  (386, 252): targets show on the right from here, none from (370, 256);
+//  6 north of that, toward the grass, as the patrol ran too far left on
+//  the road (user, 2026-11-18).
+inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
 
 //  The far gate where its "A Leave" prompt shows: the pin read between
 //  its pillars (console B, 2026-11-18). The "!" at (313, 253) is past it,
