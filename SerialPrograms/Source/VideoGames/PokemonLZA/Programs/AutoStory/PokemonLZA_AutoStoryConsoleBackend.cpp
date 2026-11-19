@@ -56,7 +56,7 @@ void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Millisecon
     const Milliseconds run(static_cast<int64_t>(duration.count() / RUN_SPEEDUP));
     const WallClock now = current_time();
     const WallClock start = m_run_end && *m_run_end > now ? *m_run_end : now;
-    pbf_controller_state(m_env.context, BUTTON_B, DPAD_NONE, position, {}, run);
+    pbf_controller_state(m_env.context, BUTTON_B, DPAD_NONE, position, /*right_joystick=*/{}, run);
     if (release > 0ms){
         pbf_wait(m_env.context, release);
         m_run_end.reset();

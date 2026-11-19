@@ -35,7 +35,6 @@ std::optional<std::string_view> step_after(const Pokemon::StoryCheckpoint& check
     return std::nullopt;
 }
 
-//  code-health: allow public_methods -- forwards every call of the engine's backend to the wrapped one unchanged
 class SightingBackend : public PlzaBackend{
 public:
     SightingBackend(PlzaBackend& inner, AutosaveSightings& sightings)

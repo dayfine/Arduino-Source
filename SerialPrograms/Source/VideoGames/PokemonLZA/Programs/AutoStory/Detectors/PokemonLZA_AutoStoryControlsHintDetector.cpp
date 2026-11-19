@@ -47,11 +47,11 @@ bool ControlsHintDetector::detect(const ImageViewRGB32& screen){
 }
 
 bool ControlsHintDetector::card_at(const ImageViewRGB32& screen, double dy) const{
-    if (sky_blue_share(screen, shifted(m_card, 0, dy)) < 0.80 || sky_blue_share(screen, shifted(m_glyph, 0, dy)) > 0.70){
+    if (sky_blue_share(screen, shifted(m_card, /*dx=*/0, dy)) < 0.80 || sky_blue_share(screen, shifted(m_glyph, /*dx=*/0, dy)) > 0.70){
         return false;
     }
     for (const ImageFloatBox& box : m_around){
-        if (sky_blue_share(screen, shifted(box, 0, dy)) > 0.10){
+        if (sky_blue_share(screen, shifted(box, /*dx=*/0, dy)) > 0.10){
             return false;
         }
     }

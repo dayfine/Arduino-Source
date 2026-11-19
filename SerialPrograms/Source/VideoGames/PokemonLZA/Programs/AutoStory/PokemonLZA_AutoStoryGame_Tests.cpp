@@ -349,8 +349,7 @@ const RunCase RUN_CASES[] = {
         .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = concat(std::vector<ScreenObservation>(50, CUTSCENE), {A_PROMPT})},
         .expectation = {
             .verdict = "done",
-            .inputs = repeated("wait 250ms", 40) + ", press L, stick -15deg 150ms walk, release 100ms, press L, "
-                + repeated("stick 0deg 250ms run", 8) + ", wait 300ms",
+            .inputs = std::format("{}, press L, stick -15deg 150ms walk, release 100ms, press L, {}, wait 300ms", repeated("wait 250ms", 40), repeated("stick 0deg 250ms run", 8)),
             .line = "[PLZA] walk: nothing busy for 10000 ms and no sign of control; taken as control.",
         },
     },
@@ -362,7 +361,7 @@ const RunCase RUN_CASES[] = {
         }, concat(std::vector<ScreenObservation>(11, CUTSCENE), {A_PROMPT}))},
         .expectation = {
             .verdict = "done",
-            .inputs = "press B, wait 500ms, wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, " + repeated("stick 0deg 250ms run", 8) + ", wait 300ms",
+            .inputs = std::format("press B, wait 500ms, wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, {}, wait 300ms", repeated("stick 0deg 250ms run", 8)),
             .line = "[PLZA] walk: nothing busy, and the step before ended in control: control.",
         },
     },

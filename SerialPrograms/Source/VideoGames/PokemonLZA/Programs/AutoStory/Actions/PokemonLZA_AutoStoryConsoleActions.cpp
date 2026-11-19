@@ -63,7 +63,7 @@ PlzaConsoleAction new_game_handler(StoryEnv& env, std::string_view name, std::st
         }catch (OperationFailedException& e){
             const std::string message = with_hint(e.message(), hint);
             backend.log(std::format("[PLZA] {} failed: {}", name, message));
-            return Pokemon::StoryFailure{.code = name + "_failed", .detail = message};
+            return Pokemon::StoryFailure{.code = std::format("{}_failed", name), .detail = message};
         }catch (UserSetupError& e){
             throw UserSetupError(env.env.console, with_hint(e.message(), hint));
         }

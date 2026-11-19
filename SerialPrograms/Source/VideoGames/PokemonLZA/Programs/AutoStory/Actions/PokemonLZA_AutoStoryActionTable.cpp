@@ -237,7 +237,7 @@ Pokemon::StoryActionParser text_to_choice_action(){
         config.stop_at_choice = true;
         config.text_button = flag(args, "advance_with_a") ? BUTTON_A : BUTTON_B;
         return [config](PlzaBackend& backend, RunState& state){
-            return run_scene_machine(backend, "text_to_choice", config, 120s, state.step);
+            return run_scene_machine(backend, "text_to_choice", config, /*timeout=*/120s, state.step);
         };
     };
 }
@@ -249,7 +249,7 @@ Pokemon::StoryActionParser text_to_choice_action(){
 std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
     SceneMachineConfig config;
     config.start_window = 45s;
-    return run_scene_machine(backend, "scene", config, 120s, state.step);
+    return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
 }
 
 //  B on every other look closes the menus a talk opens (Mable's mission and
@@ -259,12 +259,15 @@ std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState& stat
     config.blind_press_after = 0ms;
     config.blind_press_every = 0ms;
     config.blind_button = BUTTON_B;
-    return run_scene_machine(backend, "scene", config, 120s, state.step);
+    return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
 }
 
 
 //  As long as the start's lock-on holds ZL.
 constexpr Milliseconds BATTLE_LOCK_ON_HOLD = 2s;
+constexpr Milliseconds BATTLE_START_POLL = 250ms;
+//  Fails the step in seconds, not after 2 min of looks on the overworld.
+constexpr Seconds BATTLE_START_WAIT = 10s;
 
 //  A start that locked on and let go of ZL can leave the HUD down until ZL
 //  is held again, so `lock_on` also counts the move symbols under ZL.
@@ -278,8 +281,8 @@ bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lo
             return false;
         }
         if (!lock_on){
-            backend.wait(250ms);
-            waited += 250ms;
+            backend.wait(BATTLE_START_POLL);
+            waited += BATTLE_START_POLL;
             continue;
         }
         if ((*lock_on)(BATTLE_LOCK_ON_HOLD)){
@@ -290,12 +293,13 @@ bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lo
     }
 }
 
-//  "battle_never_started" after 10 s, not 2 min of looks on the overworld.
 std::optional<StoryFailure> battle_step(PlzaConsoleHooks& hooks, PlzaBackend& backend){
-    if (!battle_on_within(backend, hooks.lock_on, 10s)){
+    if (!battle_on_within(backend, hooks.lock_on, BATTLE_START_WAIT)){
         return StoryFailure{
             .code = "battle_never_started",
-            .detail = hooks.lock_on ? "no battle HUD and no move symbols under ZL within 10 s" : "no battle HUD within 10 s",
+            .detail = std::format(
+                "no battle HUD{} within {} s", hooks.lock_on ? " and no move symbols under ZL" : "", BATTLE_START_WAIT.count()
+            ),
         };
     }
     if (!hooks.battle){
@@ -312,7 +316,7 @@ std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState& state){
     config.text_button = BUTTON_B;
     config.blind_press_after = 0ms;
     config.blind_button = BUTTON_B;
-    return run_scene_machine(backend, "talk_to_pokedex_screen", config, 90s, state.step);
+    return run_scene_machine(backend, "talk_to_pokedex_screen", config, /*timeout=*/90s, state.step);
 }
 
 
@@ -325,7 +329,7 @@ StoryActionParser console_action(PlzaConsoleHooks& hooks, std::string_view name,
         return [&hooks, name, limit](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
             const auto action = hooks.console.find(name);
             if (action == hooks.console.end()){
-                return StoryFailure{.code = std::string(CONSOLE_ONLY), .detail = name + " runs only on a console", .repeats = true};
+                return StoryFailure{.code = std::string(CONSOLE_ONLY), .detail = std::format("{} runs only on a console", name), .repeats = true};
             }
             return action->second(backend, limit);
         };
@@ -344,7 +348,7 @@ std::optional<StoryFailure> story_battle_start_step(PlzaConsoleHooks& hooks, Plz
     SceneMachineConfig config;
     config.stop_at_battle = true;
     config.lock_on = hooks.lock_on;
-    return run_scene_machine(backend, "story_battle_start", config, 90s, state.step);
+    return run_scene_machine(backend, "story_battle_start", config, /*timeout=*/90s, state.step);
 }
 
 std::optional<StoryFailure> menu_save_step(PlzaConsoleHooks& hooks, PlzaBackend& backend){

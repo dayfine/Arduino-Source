@@ -57,7 +57,6 @@ LockOnWatch move_symbols_lock_on(StoryEnv& env);
 
 
 //  PLZA on the console.
-//  code-health: allow public_methods -- the engine's backend calls; nothing PLZA adds
 class PlzaConsoleBackend : public PlzaBackend{
 public:
     explicit PlzaConsoleBackend(StoryEnv& env);
