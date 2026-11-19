@@ -10,6 +10,7 @@
  */
 
 #include <format>
+#include <optional>
 #include <set>
 #include <span>
 #include <string>
@@ -18,7 +19,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_StoryEngine.h"
-#include "Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Pokemon_StoryEngine_Tests.h"
 
 namespace PokemonAutomation{
@@ -43,51 +44,46 @@ StoryAction game_action(std::string name, StoryActionHandler handler){
     };
 }
 
-//  The test game. Its save saves the checkpoints of `autosaves`, fails on
-//  those of `save_failures` and does not save at the others; its reload
-//  works unless `reload_fails`.
-StoryGame test_game(
-    std::set<std::string> autosaves, std::set<std::string> save_failures, bool reload_fails, TestWorld& world
-){
+//  The test game. Its save fails at the checkpoints of `save_failures`; its
+//  reload presses HOME and answers `reload_start`.
+StoryGame test_game(std::set<std::string> save_failures, std::optional<std::string> reload_start, TestWorld& world){
     StoryGame game;
     game.id = "test";
     game.actions.push_back(game_action("ok", [](StoryBackend&, const StoryActionCall&, RunState&){
-        return outcome_ok();
+        return std::optional<StoryFailure>();
     }));
     game.actions.push_back(game_action("fail", [](StoryBackend&, const StoryActionCall&, RunState&){
-        return outcome_failed("scripted_failure");
+        return std::optional<StoryFailure>(StoryFailure{.code = "scripted_failure"});
     }));
     game.actions.push_back(game_action("fail_once", [&world](StoryBackend&, const StoryActionCall&, RunState&){
-        return world.fail_once_calls++ == 0 ? outcome_failed("scripted_failure") : outcome_ok();
+        return world.fail_once_calls++ == 0 ? std::optional<StoryFailure>(StoryFailure{.code = "scripted_failure"}) : std::nullopt;
     }));
     game.actions.push_back(game_action("not_running", [](StoryBackend&, const StoryActionCall&, RunState&){
-        return outcome_game_not_running();
+        return std::optional<StoryFailure>(game_not_running_failure());
     }));
     game.actions.push_back(game_action("press_a", [](StoryBackend& backend, const StoryActionCall&, RunState&){
         backend.press(NintendoSwitch::BUTTON_A, /*hold=*/80ms, /*release=*/80ms);
-        return outcome_ok();
+        return std::optional<StoryFailure>();
     }));
     //  Walks north until a look shows a white fade, at most 3 slices.
     game.actions.push_back(game_action("walk_to_fade", [](StoryBackend& backend, const StoryActionCall&, RunState&){
         for (size_t slice = 0; slice < 3; slice++){
             backend.stick(/*degrees=*/0, /*duration=*/500ms, /*release=*/0ms, StoryPace::WALK);
             if (backend.observe().events.has(ScreenEvent::FADE_WHITE)){
-                return outcome_ok();
+                return std::optional<StoryFailure>();
             }
         }
-        return outcome_failed("no_fade", "no white fade in 3 slices");
+        return std::optional<StoryFailure>(StoryFailure{.code = "no_fade", .detail = "no white fade in 3 slices"});
     }));
-    game.save = [autosaves = std::move(autosaves), save_failures = std::move(save_failures)](
-        StoryBackend&, const StoryCheckpoint& checkpoint
-    ){
-        if (autosaves.contains(checkpoint.id)){
-            return outcome_ok();
+    game.save = [save_failures = std::move(save_failures)](StoryBackend&, const StoryCheckpoint& checkpoint){
+        if (save_failures.contains(checkpoint.id)){
+            return std::optional<StoryFailure>(StoryFailure{.code = "save_error", .detail = "the disk is full"});
         }
-        return save_failures.contains(checkpoint.id) ? outcome_failed("save_error", "the disk is full") : outcome_not_saved("no autosave here");
+        return std::optional<StoryFailure>();
     };
-    game.reload = [reload_fails](StoryBackend& backend){
+    game.reload = [reload_start = std::move(reload_start)](StoryBackend& backend, const StoryCheckpoint&){
         backend.press(NintendoSwitch::BUTTON_HOME, /*hold=*/80ms, /*release=*/80ms);
-        return reload_fails ? outcome_failed("no_game") : outcome_ok();
+        return reload_start;
     };
     return game;
 }
@@ -119,39 +115,36 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
     return text;
 }
 
-//  "done | runs 01.00:pass/1 | reloads 0" or
-//  "failed at 01.01 fail: scripted_failure | runs ... | reloads 1".
-std::string summary(const std::vector<CheckpointRun>& runs, const std::vector<StoryCheckpoint>& checkpoints){
-    std::vector<std::string> texts;
-    size_t reloads = 0;
-    for (const CheckpointRun& run : runs){
-        texts.push_back(std::format("{}:{}/{}", run.id, run.result.failure ? "fail" : "pass", run.attempts));
-        reloads += run.attempts - 1;
+//  "done" or "failed at 01.01 fail: scripted_failure" (no step name when the
+//  checkpoint failed outside its steps).
+std::string verdict(const std::optional<CheckpointFailure>& failure, const std::vector<StoryCheckpoint>& checkpoints){
+    if (!failure){
+        return "done";
     }
-    std::string verdict = "done";
-    if (!runs.empty() && runs.back().result.failure){
-        const CheckpointFailure& failure = *runs.back().result.failure;
-        const std::string event = failure.event_index ? checkpoints[runs.size() - 1].steps[*failure.event_index].name : "";
-        verdict = std::format("failed at {} {}: {}", runs.back().id, event, failure.outcome.failure);
+    std::string event;
+    for (const StoryCheckpoint& checkpoint : checkpoints){
+        if (checkpoint.id == failure->checkpoint_id && failure->event_index){
+            event = checkpoint.steps[*failure->event_index].name;
+        }
     }
-    return std::format("{} | runs {} | reloads {}", verdict, joined(texts), reloads);
+    return std::format("failed at {} {}: {}", failure->checkpoint_id, event, failure->failure.code);
 }
 
 
 struct RangeCase{
     std::string name;
     struct Input{
-        std::vector<StoryCheckpoint> checkpoints;
+        std::vector<StoryCheckpoint> checkpoints = {};
         size_t attempts = 1;
-        std::set<std::string> autosaves = {};
         std::set<std::string> save_failures = {};
-        bool reload_fails = false;
+        //  What the reload answers.
+        std::optional<std::string> reload_start = std::nullopt;
         std::vector<ScreenObservation> looks = {};
     };
     Input input;
     struct Expectation{
-        //  summary() of the run.
-        std::string summary;
+        //  verdict() of the run.
+        std::string verdict = {};
         //  The backend's inputs, joined by ", ".
         std::string inputs = {};
         //  A log line the run wrote, if any is checked.
@@ -162,65 +155,64 @@ struct RangeCase{
 
 const RangeCase RANGE_CASES[] = {
     {
-        .name = "two checkpoints pass and save",
-        .input = {.checkpoints = {checkpoint_of("01.00", {"ok", "press_a"}), checkpoint_of("01.01", {"ok"})}, .autosaves = {"01.00", "01.01"}},
-        .expectation = {.summary = "done | runs 01.00:pass/1 01.01:pass/1 | reloads 0", .inputs = "press A", .line = "[Save] 01.00: saved"},
+        .name = "two checkpoints pass",
+        .input = {.checkpoints = {checkpoint_of("01.00", {"ok", "press_a"}), checkpoint_of("01.01", {"ok"})}},
+        .expectation = {.verdict = "done", .inputs = "press A", .line = "[Checkpoint] 01.01: passed on attempt 1 (one-shot)"},
     },
     {
-        .name = "a checkpoint the game does not save at is not saved, with the reason",
-        .input = {.checkpoints = {checkpoint_of("01.00", {"ok"})}},
-        .expectation = {.summary = "done | runs 01.00:pass/1 | reloads 0", .inputs = "", .line = "[Save] 01.00: not saved (no autosave here)"},
-    },
-    {
-        .name = "a save that fails is logged as failed",
-        .input = {.checkpoints = {checkpoint_of("01.00", {"ok"})}, .save_failures = {"01.00"}},
-        .expectation = {.summary = "done | runs 01.00:pass/1 | reloads 0", .inputs = "", .line = "[Save] 01.00: save failed: save_error: the disk is full"},
+        .name = "a save that fails is logged and the run goes on",
+        .input = {.checkpoints = {checkpoint_of("01.00", {"ok"}), checkpoint_of("01.01", {"press_a"})}, .save_failures = {"01.00"}},
+        .expectation = {.verdict = "done", .inputs = "press A", .line = "[Save] 01.00: save failed: save_error: the disk is full"},
     },
     {
         .name = "a failed step stops the run at its event",
         .input = {.checkpoints = {checkpoint_of("01.00", {"ok", "fail", "press_a"})}},
-        .expectation = {.summary = "failed at 01.00 fail: scripted_failure | runs 01.00:fail/1 | reloads 0", .inputs = "", .line = "[Checkpoint] 01.00: failed at 2 fail: scripted_failure"},
+        .expectation = {.verdict = "failed at 01.00 fail: scripted_failure", .inputs = "", .line = "[Checkpoint] 01.00: failed at 2 fail: scripted_failure"},
     },
     {
-        .name = "a failed checkpoint passes after a reload",
-        .input = {.checkpoints = {checkpoint_of("01.01", {"fail_once"})}, .attempts = 3},
-        .expectation = {.summary = "done | runs 01.01:pass/2 | reloads 1", .inputs = "press HOME", .line = "[Checkpoint] 01.01: failed, resetting for attempt 2/3"},
+        .name = "a failed checkpoint passes after a reload to its start",
+        .input = {.checkpoints = {checkpoint_of("01.01", {"fail_once"})}, .attempts = 3, .reload_start = "01.01"},
+        .expectation = {.verdict = "done", .inputs = "press HOME", .line = "[Checkpoint] 01.01: passed on attempt 2 (1 reset)"},
     },
     {
-        .name = "no reload after a checkpoint that did not save",
-        .input = {.checkpoints = {checkpoint_of("01.00", {"ok"}), checkpoint_of("01.01", {"fail"})}, .attempts = 3},
-        .expectation = {.summary = "failed at 01.01 fail: scripted_failure | runs 01.00:pass/1 01.01:fail/1 | reloads 0", .inputs = "", .line = "[Checkpoint] 01.01: no save at its start, so no reload if it fails"},
+        .name = "a reload to an earlier checkpoint's start replays it",
+        .input = {
+            .checkpoints = {checkpoint_of("01.00", {"press_a"}), checkpoint_of("01.01", {"fail_once"})},
+            .attempts = 2,
+            .reload_start = "01.00",
+        },
+        .expectation = {.verdict = "done", .inputs = "press A, press HOME, press A", .line = "[Checkpoint] 01.01: passed on attempt 2 (1 reset)"},
     },
     {
-        .name = "a reload after a checkpoint that saved",
-        .input = {.checkpoints = {checkpoint_of("01.00", {"ok"}), checkpoint_of("01.01", {"fail"})}, .attempts = 2, .autosaves = {"01.00"}},
-        .expectation = {.summary = "failed at 01.01 fail: scripted_failure | runs 01.00:pass/1 01.01:fail/2 | reloads 1", .inputs = "press HOME"},
+        .name = "a checkpoint stops the run after its last attempt fails",
+        .input = {.checkpoints = {checkpoint_of("01.01", {"fail"})}, .attempts = 2, .reload_start = "01.01"},
+        .expectation = {.verdict = "failed at 01.01 fail: scripted_failure", .inputs = "press HOME"},
     },
     {
-        .name = "a failed reload ends the run",
-        .input = {.checkpoints = {checkpoint_of("01.01", {"fail"})}, .attempts = 3, .reload_fails = true},
-        .expectation = {.summary = "failed at 01.01 : reload_failed | runs 01.01:fail/1 | reloads 0", .inputs = "press HOME"},
+        .name = "a reload to an unknown start stops the run",
+        .input = {.checkpoints = {checkpoint_of("01.01", {"fail"})}, .attempts = 3},
+        .expectation = {.verdict = "failed at 01.01 : start_unknown", .inputs = "press HOME", .line = "[Checkpoint] 01.01: reloaded to no start of this run"},
     },
     {
-        .name = "the game not running is not retried",
-        .input = {.checkpoints = {checkpoint_of("01.01", {"not_running"})}, .attempts = 3},
-        .expectation = {.summary = "failed at 01.01 not_running: game_not_running | runs 01.01:fail/1 | reloads 0"},
+        .name = "a failure that repeats stops the run with no reload",
+        .input = {.checkpoints = {checkpoint_of("01.01", {"not_running"})}, .attempts = 3, .reload_start = "01.01"},
+        .expectation = {.verdict = "failed at 01.01 not_running: game_not_running", .inputs = ""},
     },
     {
         .name = "an unknown action fails the lint before any input",
-        .input = {.checkpoints = {checkpoint_of("01.00", {"press_a", "dance"})}, .attempts = 3},
-        .expectation = {.summary = "failed at 01.00 : lint_failed | runs 01.00:fail/1 | reloads 0", .inputs = "", .line = "[Lint] 01.00 step 2 dance: unknown action \"dance\" for GAME"},
+        .input = {.checkpoints = {checkpoint_of("01.00", {"press_a", "dance"})}, .attempts = 3, .reload_start = "01.00"},
+        .expectation = {.verdict = "failed at 01.00 : lint_failed", .inputs = "", .line = "[Lint] 01.00 step 2 dance: unknown action \"dance\" for GAME"},
     },
     {
         .name = "a walk ends on the scripted white fade",
         .input = {.checkpoints = {checkpoint_of("01.01", {"walk_to_fade"})}, .looks = {look({}), look({ScreenEvent::FADE_WHITE})}},
-        .expectation = {.summary = "done | runs 01.01:pass/1 | reloads 0", .inputs = "stick 0deg 500ms walk, stick 0deg 500ms walk"},
+        .expectation = {.verdict = "done", .inputs = "stick 0deg 500ms walk, stick 0deg 500ms walk"},
     },
     {
         .name = "a walk whose fade never shows fails",
         .input = {.checkpoints = {checkpoint_of("01.01", {"walk_to_fade"})}, .looks = {look({ScreenEvent::DIALOG_BOX})}},
         .expectation = {
-            .summary = "failed at 01.01 walk_to_fade: no_fade | runs 01.01:fail/1 | reloads 0",
+            .verdict = "failed at 01.01 walk_to_fade: no_fade",
             .inputs = "stick 0deg 500ms walk, stick 0deg 500ms walk, stick 0deg 500ms walk",
             .line = "[Step] walk_to_fade GAME/walk_to_fade: failed: no_fade: no white fade in 3 slices",
         },
@@ -229,13 +221,14 @@ const RangeCase RANGE_CASES[] = {
 
 UnitTestResult check_range(const RangeCase& test, CancellableScope& scope){
     TestWorld world;
-    StoryGame game = test_game(test.input.autosaves, test.input.save_failures, test.input.reload_fails, world);
+    StoryGame game = test_game(test.input.save_failures, test.input.reload_start, world);
     game.attempts_per_checkpoint = test.input.attempts;
     FakeStoryBackend backend({.looks = test.input.looks}, scope);
     RunState state;
-    const std::string got = summary(run_checkpoints(game, backend, std::span<const StoryCheckpoint>(test.input.checkpoints), state), test.input.checkpoints);
-    if (got != test.expectation.summary){
-        return std::format("expected \"{}\", got \"{}\"", test.expectation.summary, got);
+    const std::optional<CheckpointFailure> failure = run_checkpoints(backend, std::span<const StoryCheckpoint>(test.input.checkpoints), game, state);
+    const std::string got = verdict(failure, test.input.checkpoints);
+    if (got != test.expectation.verdict){
+        return std::format("expected \"{}\", got \"{}\"", test.expectation.verdict, got);
     }
     const std::string inputs = joined(backend.inputs(), ", ");
     if (inputs != test.expectation.inputs){

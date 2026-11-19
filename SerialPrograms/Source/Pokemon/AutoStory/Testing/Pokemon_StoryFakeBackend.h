@@ -15,7 +15,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include "Pokemon_StoryBackend.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

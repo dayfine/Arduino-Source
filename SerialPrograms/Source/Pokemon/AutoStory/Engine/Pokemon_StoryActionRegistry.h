@@ -9,6 +9,7 @@
 #ifndef PokemonAutomation_Pokemon_StoryActionRegistry_H
 #define PokemonAutomation_Pokemon_StoryActionRegistry_H
 
+#include <optional>
 #include <string>
 #include <vector>
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
@@ -25,7 +26,7 @@ std::vector<std::string> lint_story_checkpoint(const StoryGame& game, const Stor
 
 //  Runs `step`'s action with its args' fallbacks filled in, then logs a
 //  "[Step]" line. A step with no action fails before any input.
-Outcome run_story_step(const StoryGame& game, StoryBackend& backend, const StoryStep& step, RunState& state);
+std::optional<StoryFailure> run_story_step(StoryBackend& backend, const StoryStep& step, StoryGame& game, RunState& state);
 
 
 

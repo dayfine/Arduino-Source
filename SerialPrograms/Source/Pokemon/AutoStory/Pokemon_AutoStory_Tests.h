@@ -19,7 +19,6 @@
 #include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
-#include "Pokemon_CheckpointAttempts_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 #include "Types/Pokemon_StoryActionArg_Tests.h"
 
@@ -37,7 +36,6 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AuthoredCheckpointJson(database);
     add_tests_StoryFiles(database);
     add_tests_StoryBackend(database);
-    add_tests_CheckpointAttempts(database);
     add_tests_StoryEngine(database);
 }
 

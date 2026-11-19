@@ -11,7 +11,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_ScreenObservation.h"
 #include "Pokemon_StoryBackend.h"
-#include "Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Pokemon_StoryBackend_Tests.h"
 
 namespace PokemonAutomation{

@@ -10,17 +10,17 @@
 #define PokemonAutomation_Pokemon_StoryGame_H
 
 #include <cstddef>
-#include <functional>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Common/Cpp/MoveOnlyFunction.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon_StoryBackend.h"
-#include "Pokemon_StorySavePolicy.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -38,27 +38,27 @@ struct StoryActionCall{
     const StoryActionArgs& args;
 };
 
-//  An action's code.
-using StoryActionHandler = std::function<Outcome(StoryBackend& backend, const StoryActionCall& call, RunState& state)>;
+using StoryActionHandler = MoveOnlyFunction<
+    std::optional<StoryFailure>(StoryBackend& backend, const StoryActionCall& call, RunState& state)
+>;
 
-//  An action: its spec and its code.
 struct StoryAction{
     StoryActionSpec spec = {};
     StoryActionHandler handler = {};
 };
 
-//  What a game hands the story engine.
 struct StoryGame{
     //  "frlg", "bdsp", "plza".
     std::string id = {};
     //  A kind's first action is the one a step that names none runs.
     std::vector<StoryAction> actions = {};
-    //  None: nothing saves.
-    StorySavePolicy save = {};
-    //  Back to the last save. None: a failed checkpoint is not retried.
-    std::function<Outcome(StoryBackend& backend)> reload = {};
-    //  Runs of a checkpoint, counting the first, while a reload returns to
-    //  its start.
+    //  Called after each passed checkpoint; a failure is logged. None: nothing saves.
+    MoveOnlyFunction<std::optional<StoryFailure>(StoryBackend& backend, const StoryCheckpoint& passed)> save = {};
+    //  Reloads after `failed` failed; returns the id of the checkpoint whose
+    //  start the game is now at, none when it could not reload or cannot tell.
+    //  None: a failed checkpoint is not retried.
+    MoveOnlyFunction<std::optional<std::string>(StoryBackend& backend, const StoryCheckpoint& failed)> reload = {};
+    //  Runs of one checkpoint, counting the first.
     size_t attempts_per_checkpoint = 1;
 };
 

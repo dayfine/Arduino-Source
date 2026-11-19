@@ -16,14 +16,16 @@ namespace Pokemon{
 namespace{
 
 
-//  The action of `kind` named `name`; for an empty name, the kind's first.
-const StoryAction* find_action(const StoryGame& game, StoryStepKind kind, std::string_view name){
-    for (const StoryAction& action : game.actions){
-        if (action.spec.kind == kind && (name.empty() || action.spec.name == name)){
-            return &action;
+//  The index of the action of `kind` named `name`; for an empty name, the
+//  kind's first.
+std::optional<size_t> find_action(const StoryGame& game, StoryStepKind kind, std::string_view name){
+    for (size_t c = 0; c < game.actions.size(); c++){
+        const StoryActionSpec& spec = game.actions[c].spec;
+        if (spec.kind == kind && (name.empty() || spec.name == name)){
+            return c;
         }
     }
-    return nullptr;
+    return std::nullopt;
 }
 
 
@@ -46,36 +48,39 @@ std::vector<std::string> lint_story_checkpoint(const StoryGame& game, const Stor
             problems.push_back(std::format("{}: no action", where));
             continue;
         }
-        const StoryAction* action = find_action(game, step.kind, step.action);
-        if (action == nullptr){
+        const std::optional<size_t> index = find_action(game, step.kind, step.action);
+        if (!index){
             problems.push_back(std::format("{}: unknown action \"{}\" for {}", where, step.action, story_step_kind_name(step.kind)));
             continue;
         }
-        for (const std::string& problem : story_args_errors(action->spec, step.args)){
+        for (const std::string& problem : story_args_errors(game.actions[*index].spec, step.args)){
             problems.push_back(std::format("{}: {}", where, problem));
         }
     }
     return problems;
 }
 
-Outcome run_story_step(const StoryGame& game, StoryBackend& backend, const StoryStep& step, RunState& state){
+std::optional<StoryFailure> run_story_step(StoryBackend& backend, const StoryStep& step, StoryGame& game, RunState& state){
     backend.scope().throw_if_cancelled();
     const std::string_view action_name = step.action.empty() ? std::string_view("default") : std::string_view(step.action);
-    const StoryAction* action = find_action(game, step.kind, step.action);
-    Outcome outcome;
-    if (action == nullptr || !action->handler){
-        outcome = outcome_failed("unsupported_step", std::format(
-            "{} {}: the game has no action for it", story_step_kind_name(step.kind), action_name
-        ));
+    const std::optional<size_t> index = find_action(game, step.kind, step.action);
+    std::optional<StoryFailure> failure;
+    if (!index || !game.actions[*index].handler){
+        failure = StoryFailure{
+            .code = "unsupported_step",
+            .detail = std::format("{} {}: the game has no action for it", story_step_kind_name(step.kind), action_name),
+            .repeats = true,
+        };
     }else{
-        const StoryActionArgs args = with_fallbacks(action->spec, step.args);
-        outcome = action->handler(backend, StoryActionCall{.step = step, .args = args}, state);
+        StoryAction& action = game.actions[*index];
+        const StoryActionArgs args = with_fallbacks(action.spec, step.args);
+        failure = action.handler(backend, StoryActionCall{.step = step, .args = args}, state);
     }
     backend.log(std::format(
         "[Step] {} {}/{}: {}", step.name, story_step_kind_name(step.kind), action_name,
-        outcome.succeeded() ? "ok" : std::format("failed: {}", to_string(outcome))
+        failure ? std::format("failed: {}", *failure) : "ok"
     ));
-    return outcome;
+    return failure;
 }
 
 
