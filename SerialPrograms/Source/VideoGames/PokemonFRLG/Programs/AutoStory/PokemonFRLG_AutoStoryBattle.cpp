@@ -40,6 +40,7 @@
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
 #include "PokemonFRLG_AutoStoryLeadOut.h"
+#include "PokemonFRLG_AutoStoryNewMembers.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
@@ -539,17 +540,17 @@ private:
     void read_battle_bag(){
         m_console.log("Battle: the Items pocket's counts are not known; reading it before the first turn.");
         //  The pocket's rows as counted, and its CANCEL.
-        const std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
+        const std::optional<std::vector<BagRow>> rows = read_battle_pocket(m_console, m_context, m_language, m_supplies.pocket.size() + 1);
         //  A read ends with the cursor on the top row.
         m_bag_cursor.row = 0;
-        if (rows.empty()){
+        if (!rows){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::SEND_ERROR_REPORT,
                 "Battle: couldn't read the Items pocket; not fighting on unknown item counts.",
                 m_console
             );
         }
-        set_from_bag(m_supplies, rows);
+        set_from_bag(m_supplies, *rows);
     }
 
     void log_turn(const PartyStatus& status, const TurnAction& action){
@@ -573,6 +574,17 @@ private:
         if (trainer){
             m_supplies.foe_out = read_trainer_foe(m_console.logger(), m_language, screen, m_supplies.foes);
             m_supplies.own_out = read_own_battler(m_console.logger(), m_language, screen);
+        }
+        const bool lead_out = trainer
+            ? (!m_supplies.own_out.empty() && m_supplies.own_out == m_supplies.lead.species)
+            : (m_decisions.turns() == 0);
+        if (lead_out && !m_supplies.lead.species.empty()){
+            const std::optional<uint8_t> level = read_own_level(m_console.logger(), m_language, screen);
+            if (level && *level > m_supplies.lead.moves_through_level){
+                m_supplies.lead = grown_to(std::move(m_supplies.lead), *level);
+                m_supplies.lead.level = *level;
+                m_console.log(std::format("Battle: {} is now Lv {}; updated moves.", m_supplies.lead.species, *level));
+            }
         }
     }
 

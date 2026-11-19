@@ -122,6 +122,12 @@ WallCheck wall_check(const StoryEnv& env){
     return Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::LEG_END_TAP) ? WallCheck::TAP : WallCheck::SKIP;
 }
 
+OpenLegCheck open_leg_check(){
+    return GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator
+        ? OpenLegCheck::TRUST
+        : OpenLegCheck::REANCHOR;
+}
+
 //  The story's interrupts for `step`'s walk, with FRLG's screen observer,
 //  which places a wild battle seen only after an open leg's hold
 //  (OverworldInterruptSet::make_observer).
@@ -167,7 +173,7 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest. From a set of tiles: reads the facing.
     RouteProgress progress{.at = start, .gates = state.gates};
-    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags), .progress = &progress};
+    const RoutePlanning planning{.maps = &maps, .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .open_leg_check = open_leg_check(), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags), .progress = &progress};
     walk_keeping_state(state, &progress, [&]{
         walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
     });
@@ -199,7 +205,7 @@ Outcome walk_legs(StoryEnv& env, RunState& state, const StoryStep& step){
     const OverworldInterruptSet interrupts = walk_interrupts(env, step);
     //  Planning lets the walker recover a stopped open leg: it plans back to
     //  the leg's end, then walks the rest as given.
-    const RoutePlanning planning{.maps = &story_maps(), .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags)};
+    const RoutePlanning planning{.maps = &story_maps(), .gates = state.gates, .costs = story_route_costs(), .start = start, .label = step.name, .checkpoint = env.checkpoint, .wall_check = wall_check(env), .open_leg_check = open_leg_check(), .pause = &env.pause, .beaten_trainers = beaten_trainers(state.flags)};
     walk_keeping_state(state, nullptr, [&]{
         walk_overworld_route_with_recovery(env.console, env.context, *route, planning, env.player_gender, facing, interrupts, move_speed(step));
     });
