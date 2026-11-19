@@ -23,7 +23,7 @@ no session is configured for, and the console-B soak has not been run.
 | Feature | State | Where |
 |---|---|---|
 | `console_status`, `console://B/state`, `console://B/save` | in use (`.mcp.json`, read-only); the save resource always `unknown` | [stdio mode](#read-only-stdio-mode-mcpjson), #528 |
-| User hold (`Lab/hold`) | in use: app (lab build, #608), lab scripts and the status read (#609); the `user` lease in the control plane is merged, unused | [guide/hold.md](guide/hold.md) |
+| User hold (`Lab/hold`) | in use: app (lab build, #608), lab scripts and the status read (#609); the `user` lease in the control plane is merged, unused | [GUIDE.md](GUIDE.md#your-hold) |
 | `shot`, `game_open`, `ensure_game`, `describe_program` | merged, unused; `ensure_game` always `game_unknown` (no game detector in the app) | Slice 2, #504 |
 | Leases, request records, events | merged, unused | Slice 3 |
 | `run_program`, `stop_program` | merged, unused | Slice 5a, #592, channel adapter #611 |
@@ -562,7 +562,7 @@ event, and each UI Start/Stop shows up once. Run it yourself during a run you ar
 ## Preflight split (design, not built)
 
 Decided 2026-11-18 on the user guide review (#659). It replaces Slice 5b's `preflight_program`.
-User page: [guide/actions.md](guide/actions.md).
+User page: [GUIDE.md](GUIDE.md#run-programs).
 
 **Why.** Slice 5b ran the program's prechecks on the app's worker without starting the program,
 then restored the user's options, and gave a token good for one start within 120 s. But most
@@ -629,7 +629,7 @@ Not changed in this PR; the server PR (plan step 1) changes them with red golden
 ## Slice 6: save facts (design, not built)
 
 Goal: the daemon knows which save is on console B and refuses a run that would start from the
-wrong one. User page: [guide/saves.md](guide/saves.md). Today `console://B/save` reads
+wrong one. User page: [GUIDE.md](GUIDE.md#saves). Today `console://B/save` reads
 `Lab/save.json` (nothing writes it yet) and goes `stale` on a UI Start/Stop or a `cfr_batch`.
 
 **What the fact means.** A save fact says what a reload gives: the game, the slot and the place
@@ -737,9 +737,9 @@ failure frame path. It needs the app's `run_id` on transitions (#116).
 
 ## User pages
 
-`GUIDE.md` is the user guide, organised by what the user does (check console B, hold the console,
-have an agent run a program, know which save is on the console); `guide/*.md` has one page per
-task: how to, one example (real output where it exists, marked sample otherwise) and one line
-"works today" or "not yet" saying plainly what is missing. Slice numbers, PR numbers and the
-feature map stay in this README. A PR that builds or switches on part of a feature updates its
-page's status line and example, and the [feature map](#feature-map), in the same PR.
+`GUIDE.md` is the one user page, shaped like a product connector page: a one-line value
+statement, "Available tools" (one short entry per MCP tool, resource and the hold, grouped by kind,
+each with its availability inline: Available / Built, needs the HTTP mode / Not available yet), a
+short "Coming" list of names, "How to set up" per client with a config snippet, and an FAQ. No
+slice or PR numbers, roadmap or internals there; they stay in this README. A PR that adds a tool or
+switches one on updates its entry and the [feature map](#feature-map) in the same PR.
