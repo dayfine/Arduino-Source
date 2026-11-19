@@ -4,6 +4,8 @@
  *
  */
 
+#include "Common/Cpp/Json/JsonObject.h"
+#include "CommonFramework/PersistentSettings.h"
 #include "Pokemon/Pokemon_Strings.h"
 
 #include "PokemonFRLG_Settings.h"
@@ -114,6 +116,12 @@ GameSettings::GameSettings()
     PA_ADD_OPTION(SHINY_SOUND_LOW_FREQUENCY);
     PA_ADD_OPTION(m_catch_audio_settings);
     PA_ADD_OPTION(CATCH_FANFARE_THRESHOLD);
+
+    if (const JsonObject* panel = PERSISTENT_SETTINGS().panels.get_object("PokemonFRLG:GlobalSettings")){
+        if (const JsonValue* saved = panel->get_value("settings")){
+            load_json(*saved);
+        }
+    }
 
     GameSettings::on_config_value_changed(this);
     DEVICE.add_listener(*this);
