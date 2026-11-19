@@ -30,6 +30,7 @@ namespace{
 //  Fixed waypoints for the leg logic, apart from the map data's.
 constexpr MapWaypoint SPOT{.name = "the 100 spot", .pin = {.x = 432, .y = 238}, .stop_radius = CATCH_STOP_RADIUS};
 constexpr MapWaypoint ROAD{.name = "the road entry", .pin = {.x = 456, .y = 231}};
+constexpr MapWaypoint SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 252}, .stop_radius = CATCH_STOP_RADIUS};
 
 std::string describe(const MapLegMove& move){
     switch (move.step){
@@ -118,17 +119,17 @@ const LegCase LEG_CASES[] = {
         //  (431, 236) ended at (380, 247), 7.8 pixels past it on its way;
         //  correction 1 turned back at heading 133, away from the Mareep.
         .name = "a walk past a catch spot on its way, within its stop area, arrives",
-        .input = {.waypoint = ZONE1_SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 380, .y = 247}}},
+        .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 380, .y = 247}}},
         .expectation = {.moves = "walk 250 deg 6.8 s, arrived"},
     },
     {
         .name = "a walk that ends off to the side of a catch spot, out of its stop area, gets a correction",
-        .input = {.waypoint = ZONE1_SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 384, .y = 265}}},
+        .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 384, .y = 265}}},
         .expectation = {.moves = "walk 250 deg 6.8 s, correction 1: walk 9 deg 1.9 s"},
     },
     {
         .name = "a walk that ends short of a catch spot gets a correction forward",
-        .input = {.waypoint = ZONE1_SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 394, .y = 249}}},
+        .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 394, .y = 249}}},
         .expectation = {.moves = "walk 250 deg 6.8 s, correction 1: walk 249 deg 1.2 s"},
     },
     {
@@ -136,7 +137,7 @@ const LegCase LEG_CASES[] = {
         //  the pin where 03.08's last catch ended and walked back to the
         //  60 spot before heading for the road.
         .name = "a first read within a catch spot's stop area arrives without a walk",
-        .input = {.waypoint = ZONE1_SPOT_60, .reads = {MapPoint{.x = 380, .y = 247}}},
+        .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 380, .y = 247}}},
         .expectation = {.moves = "arrived"},
     },
     {
