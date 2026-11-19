@@ -11,7 +11,7 @@
       {
         "id": "to_bed",
         "kind": "game_action",
-        "why": "to the bed's \"A Rest\"; an earlier prompt is passed on the way",
+        "why": "to the bed's \"A Rest\"; an earlier prompt is passed on the way. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {"legs": [[45, 1500]], "held": true, "end": "prompt", "end_after_ms": 750}
       },

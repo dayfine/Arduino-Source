@@ -11,7 +11,7 @@
       {
         "id": "into_pokemon_center",
         "kind": "game_action",
-        "why": "into the Pokemon Center to the nurse's \"A Talk\"; the last turn's 90 is a guess",
+        "why": "into the Pokemon Center to the nurse's \"A Talk\"; the last turn's 90 is a guess. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 3000], [20, 2000], [-90, 2000], [90, 0]],

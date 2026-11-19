@@ -11,7 +11,7 @@
       {
         "id": "through_hotel_gate",
         "kind": "game_action",
-        "why": "through the Hotel Z gate passage into the rock pile scene",
+        "why": "through the Hotel Z gate passage into the rock pile scene. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 7000]]
@@ -26,7 +26,7 @@
       {
         "id": "side_street_to_wall",
         "kind": "game_action",
-        "why": "down the side street and across to the wall; ends in control against it",
+        "why": "down the side street and across to the wall; ends in control against it. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 8000]]
@@ -47,7 +47,7 @@
       {
         "id": "off_the_roof",
         "kind": "game_action",
-        "why": "off the roof's edge to South Boulevard, until the scene there",
+        "why": "off the roof's edge to South Boulevard, until the scene there. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 8000]],

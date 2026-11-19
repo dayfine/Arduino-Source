@@ -11,7 +11,7 @@
       {
         "id": "to_research_lab",
         "kind": "game_action",
-        "why": "face the street by the minimap arrow (257), down it 6.5 s, left into the lab's gate (walk_to_marker sticks on the fence), held until Ryon's dialog, which shows 9-11 s after the marker goes, hence 13 s",
+        "why": "face the street by the minimap arrow (257), down it 6.5 s, left into the lab's gate (walk_to_marker sticks on the fence), held until Ryon's dialog, which shows 9-11 s after the marker goes, hence 13 s. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [

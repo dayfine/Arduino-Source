@@ -11,7 +11,7 @@
       {
         "id": "approach_starter",
         "kind": "game_action",
-        "why": "to Chikorita's \"A Talk\" prompt",
+        "why": "to Chikorita's \"A Talk\" prompt. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[-70, 750]],

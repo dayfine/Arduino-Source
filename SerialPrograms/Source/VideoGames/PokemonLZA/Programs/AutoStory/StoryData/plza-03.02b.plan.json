@@ -11,7 +11,7 @@
       {
         "id": "to_plaza_scene_prompt",
         "kind": "game_action",
-        "why": "to the first A prompt, which starts a scene, not Taunie's talk (she is 3.25 s further on)",
+        "why": "to the first A prompt, which starts a scene, not Taunie's talk (she is 3.25 s further on). not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [
@@ -35,7 +35,7 @@
       {
         "id": "to_taunie",
         "kind": "game_action",
-        "why": "on through the arch to Taunie's \"A Talk\"",
+        "why": "on through the arch to Taunie's \"A Talk\". not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 8000]],

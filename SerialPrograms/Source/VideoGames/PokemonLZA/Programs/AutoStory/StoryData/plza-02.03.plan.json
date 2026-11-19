@@ -11,7 +11,7 @@
       {
         "id": "to_hotel_z_door",
         "kind": "game_action",
-        "why": "up the steps to the door's \"A Enter\"",
+        "why": "up the steps to the door's \"A Enter\". not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {"legs": [[0, 4500]], "end": "prompt", "end_after_ms": 3375}
       },

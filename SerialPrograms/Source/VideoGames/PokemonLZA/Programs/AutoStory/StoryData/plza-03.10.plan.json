@@ -11,7 +11,7 @@
       {
         "id": "to_lab_elevator",
         "kind": "game_action",
-        "why": "to the elevator's \"A Take Elevator\"; an earlier prompt is passed on the way",
+        "why": "to the elevator's \"A Take Elevator\"; an earlier prompt is passed on the way. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [

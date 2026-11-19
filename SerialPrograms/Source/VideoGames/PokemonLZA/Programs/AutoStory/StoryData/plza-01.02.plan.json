@@ -11,7 +11,7 @@
       {
         "id": "chase_pancham",
         "kind": "game_action",
-        "why": "after Pancham, through the archway, around the starters into the scene; a 0 ms leg only turns. The 1000 ms sidestep is a guess. 01.01's scenes leave the player facing the boy, so a run from 01.01 should reload first",
+        "why": "after Pancham, through the archway, around the starters into the scene; a 0 ms leg only turns. The 1000 ms sidestep is a guess. 01.01's scenes leave the player facing the boy, so a run from 01.01 should reload first. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
