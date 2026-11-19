@@ -282,6 +282,28 @@ std::function<void(const StoryCheckpoint& row)> start_minimap_recorder(ConsoleHa
     };
 }
 
+//  `reload`, after the frame on screen is saved in start_minimaps_folder()
+//  as plza-before-reload-<time>.png: a failed attempt that is retried
+//  leaves no failure screenshot, only this.
+std::function<Outcome(StoryBackend<ZonePose>& backend)> saving_frame_before(
+    ConsoleHandle& console, std::function<Outcome(StoryBackend<ZonePose>& backend)> reload
+){
+    if (!reload){
+        return reload;
+    }
+    return [&console, reload](StoryBackend<ZonePose>& backend){
+        const VideoSnapshot snapshot = console.video().snapshot();
+        if (snapshot){
+            const std::string folder = start_minimaps_folder();
+            Filesystem::create_directories(Filesystem::Path(folder));
+            const std::string path = std::format("{}plza-before-reload-{}.png", folder, now_to_filestring());
+            snapshot.frame->save(path);
+            console.log(std::format("AutoStory: the frame before the reload saved as {}", path));
+        }
+        return reload(backend);
+    };
+}
+
 } // namespace
 
 
@@ -345,7 +367,8 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     PlzaConsoleBackend backend(story);
     AutosaveSightings sightings;
-    const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
+    StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
+    game.reload = saving_frame_before(env.console, game.reload);
     RunState state;
 
     const SegmentRunOptions segments{
