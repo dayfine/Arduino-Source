@@ -780,6 +780,18 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
+        //  The last turn left the player beside the door at run pace (console B 2026-11-19).
+        .name = "03.04 into_pokemon_center, stopped beside the door: stepping along finds its A prompt",
+        .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
+0.0s: party bar
+12.0s: party bar, A prompt
+)"},
+        .expectation = {
+            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
+            .verdict = "done", .end = "[PLZA] walk: the A prompt after 3 steps along",
+        },
+    },
+    {
         .name = "03.06 out_of_pokemon_center, a timed walk, no end event (passed 2026-11-17 14:27)",
         .input = {.checkpoint = "03.06", .step = "out_of_pokemon_center", .screens = R"(
 0.0s: party bar
