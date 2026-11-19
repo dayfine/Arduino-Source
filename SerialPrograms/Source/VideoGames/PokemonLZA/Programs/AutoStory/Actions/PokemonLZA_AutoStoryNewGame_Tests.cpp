@@ -12,7 +12,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
-#include "PokemonLZA_AutoStoryNewGameChoices.h"
 #include "PokemonLZA_AutoStoryNewGame_Tests.h"
 
 namespace PokemonAutomation{
