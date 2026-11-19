@@ -28,7 +28,7 @@
     ]
   },
   "execution": {
-    "menu": "full"
+    "menu": "before_pokedex"
   },
   "metadata": {"phase": "testing"}
 }
