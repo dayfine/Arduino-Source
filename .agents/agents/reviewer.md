@@ -67,6 +67,18 @@ being restated.
   `gh pr review <PR> -R dayfine/Arduino-Source --comment --body-file <file>` and verify with
   `gh pr view <PR> -R dayfine/Arduino-Source --json reviews`.
 
+## Simplicity
+
+Check the diff against AGENTS.md "Code conventions for PR branches", Simplicity, and put a
+`## Simplicity` part in every review:
+
+- a size estimate of the simplest version that does the job (`+N/-M`) next to the PR's actual;
+- every removable type, function, constructor, overload, parameter, branch and test, one line each
+  with what replaces it: a class where free functions do, a test-only constructor, a one-caller
+  result type, an unreachable null check, code copied instead of moved, a test that names no bug.
+
+When the actual diff is more than about 1.5x the estimate, the verdict is `NEEDS_REWORK`.
+
 ## Report
 
-PR number, reviewed SHA, verdict, the review's URL, and the count of findings by severity.
+PR number, reviewed SHA, verdict, size estimate vs actual, the review's URL, and the count of findings by severity.

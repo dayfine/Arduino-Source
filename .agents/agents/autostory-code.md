@@ -83,7 +83,21 @@ being restated.
 - **Your stage ends at the PR.** Never wait for CI or any other event after pushing: report the PR
   number and tip SHA and stop; the dispatcher waits for CI (`.agents/rules/long-chain-ownership.md`).
 
+## Simplicity
+
+Before writing code, read AGENTS.md "Code conventions for PR branches", Simplicity. In short:
+
+- Write the smallest version's shape (functions, types, rough line count) in the first commit
+  message; if `git diff --stat` passes about 1.5x that, stop and cut.
+- Free functions unless there is state to own; one constructor; nothing that exists only for tests.
+- No result, match or wrapper type for one caller: the existing type or `std::optional`.
+- No branch no caller can reach; no null check on what the caller guarantees.
+- Move, don't copy-and-keep: an extracted site loses the code in the same PR.
+- Each test names the bug it catches; a refactor or extraction gets 1-3 tests.
+- Before push, list every new type, function and parameter with why it can't be removed, and put
+  the estimate and the actual `--stat` in your report.
+
 ## Report
 
-PR number, tip SHA, code-health failure count, which files you compiled and the exit codes, the CI
+PR number, tip SHA, size estimate vs `git diff --stat`, code-health failure count, which files you compiled and the exit codes, the CI
 run started (or dispatched). Nothing else.

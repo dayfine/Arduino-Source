@@ -11,7 +11,6 @@
       "START_CHECKPOINT": "13.01",
       "END_CHECKPOINT": "13.02",
       "SAVE_MODE": "none"
-    },
-    "preflight_token": "example-preflight-token"
+    }
   }
 }

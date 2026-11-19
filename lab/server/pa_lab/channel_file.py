@@ -21,7 +21,7 @@ from typing import Any, Dict, Optional, Tuple, Type
 
 from pa_lab import hold
 from pa_lab.channel import (AppChannel, AppError, Command, ConsoleLine, DescribeProgram, ErrorKind, GameOpen, Journal,
-                            Preflight, SetOption, Snapshot, Start, Stop)
+                            SetOption, Snapshot, Start, Stop)
 
 __all__ = ['FileChannel', 'parse_journal', 'render']
 
@@ -33,8 +33,7 @@ JOURNAL_ERROR_RE = re.compile(r'^error (\d+) \(([^)]*)\): (.*)$')
 FIRST_COMMAND_LINE = 2
 PROGRAM_IS_RE = re.compile(r'^Program is ([A-Z_]+)\.$')
 VERBS: Dict[str, Type[Command]] = {'start': Start, 'stop': Stop, 'snapshot': Snapshot,
-                                   'describe_program': DescribeProgram, 'game_open': GameOpen, 'set': SetOption,
-                                   'preflight': Preflight}
+                                   'describe_program': DescribeProgram, 'game_open': GameOpen, 'set': SetOption}
 
 
 def _json(value: Any) -> str:
@@ -56,8 +55,6 @@ def render(command: Command) -> str:
         return 'game_open'
     if isinstance(command, SetOption):
         return 'set {} {}'.format(command.key, _json(command.value))
-    if isinstance(command, Preflight):
-        return 'preflight ' + _json(command.options)
     if isinstance(command, ConsoleLine):
         return command.line
     raise TypeError('no request line for {!r}'.format(command))

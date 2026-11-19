@@ -141,6 +141,11 @@ class DeclarationTests(StyleCase):
             'void f(){\n    static int calls = 0;\n    int local = 1;\n}'))
         self.assertEqual([], self.errors('typedef struct{\n    int x;\n} PABB_PACK pabb_Message;\n'))
 
+    def test_extern_template(self):
+        # Pokemon_StoryEngine.h on autostory/shared-core (fork #648 review).
+        self.assertFlags("'extern template'", wrap('extern template class StoryEngine<ZonePose>;'), HEADER)
+        self.assertClean(wrap('template class StoryEngine<ZonePose>;\nextern "C" int c_api();'), CPP)
+
     def test_using_directive_in_header(self):
         self.assertFlags('TotW #153', wrap('using namespace Pokemon;'), HEADER)
         self.assertEqual([], self.errors(wrap('using namespace Pokemon;')))

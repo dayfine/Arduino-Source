@@ -407,6 +407,11 @@ def statement_checks(path, statements_, added, previous_signatures, new_file):
             errors.append(Finding(path, statement.line, rule(
                 f"{what} '{variable}'; make it const/constexpr or pass options down in a struct",
                 'TotW #103')))
+        if statement.namespace_scope and re.match(r'extern\s+template\b', text):
+            errors.append(Finding(path, statement.line, rule(
+                "'extern template'; define the template in the header, or drop the template "
+                'when one type uses it', 'TotW #103', 'fork AGENTS.md "Types, names and comments"'),
+                check='extern_template'))
         if header and statement.namespace_scope and is_forward_declaration(statement) \
                 and text.split()[-1] not in defined:
             finding = Finding(path, statement.line, rule(
@@ -605,41 +610,6 @@ def template_order(path, parsed, changed):
     return errors
 
 
-def documented(lines, line):
-    """Accept adjacent // prose or a closed block comment, including Doxygen."""
-    if line < 2:
-        return False
-    above = lines[line - 2].strip()
-    if above.startswith('//'):
-        return bool(above.lstrip('/').strip())
-    if not above.endswith('*/'):
-        return False
-    for earlier in reversed(lines[:line - 1]):
-        if '/*' in earlier:
-            return True
-        if not earlier.strip().startswith(('*', '//')):
-            return False
-    return False
-
-
-def header_comments(path, lines, parsed, changed):
-    errors, documented_functions = [], set()
-    for statement, enclosing in scopes(parsed):
-        text = statement.text
-        if not statement.namespace_scope or statement.end == '}':
-            continue
-        if not text or re.match(r'(?:inline\s+)?namespace\b|(?:static_assert|extern\s*")', text):
-            continue
-        key = function_key(statement, enclosing)
-        has_comment = documented(lines, statement.line)
-        if has_comment and key:
-            documented_functions.add(key)
-        if statement.line in changed and not has_comment and key not in documented_functions:
-            errors.append(Finding(path, statement.line,
-                                  'header-comment: document each namespace-scope header symbol'))
-    return errors
-
-
 def structures(parsed):
     """Local aggregate definitions and their directly declared fields."""
     found = {}
@@ -647,12 +617,22 @@ def structures(parsed):
         match = re.match(r'struct\s+(\w+)\b', statement.text)
         if match and statement.end == '{':
             found[match.group(1)] = {}
-        elif enclosing and enclosing[-1][0] == 'class' and statement.end == ';':
+        elif enclosing and enclosing[-1][0] == 'class':
             fields = found.get(enclosing[-1][1])
-            field = re.fullmatch(r'([\w:<> ,]+?)\s+(\w+)\s*(?:=.*)?', statement.text)
+            field = field_declaration(statement)
             if fields is not None and field:
                 fields[field.group(2)] = field.group(1)
     return found
+
+
+def field_declaration(statement):
+    """`Type name;`, `Type name = value;`, or a brace initializer (`Type name = {}`, `Type name{}`),
+    which the statement splitter cuts at its `{`."""
+    if statement.end == ';':
+        return re.fullmatch(r'([\w:<> ,]+?)\s+(\w+)\s*(?:=.*)?', statement.text)
+    if statement.end == '{' and not re.match(r'(?:enum|class|struct|union|namespace)\b', statement.text):
+        return re.fullmatch(r'([\w:<> ,]+?)\s+(\w+)\s*=?', statement.text)
+    return None
 
 
 def case_type(test_name, parsed):
@@ -876,6 +856,5 @@ def check(path, source, previous_source):
         errors += native_cases(path, '\n'.join(code), statements_, added)
     if path.endswith(HEADERS):
         errors += template_api(path, statements_, added)
-        errors += header_comments(path, raw_lines, statements_, added)
     warnings += comment_checks(path, raw_lines, statements_, added)
     return sorted(errors + more_errors, key=lambda f: f.line), sorted(warnings, key=lambda f: f.line)

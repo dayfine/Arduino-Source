@@ -1,33 +1,33 @@
-"""preflight_program and the token run_program needs (Slice 5b, fork #131), against the fake app's
-proposed `preflight` command: options checked before anything is sent, the reply's verdicts, the
-prior options restored (and a reply that says they were not), and every way a token goes stale.
+"""run_program's server preflight (the preflight split, lab/server/README.md) against the fake app:
+describe_program read first, the program's start-check list, the candidate options against its
+static contract, options that would turn a start check off, the `set` lines and `start` in one
+request, and a start check's failure reported as the run's outcome (`program_failed`).
 
 Run from the repo root: python3 -m unittest discover -s lab/server/tests -t lab/server -v
 """
 
-import json
+import copy
 import unittest
-from unittest import mock
 
-from pa_lab import contracts, preflight
-from tests.fake_lab import CURRENT_OPTIONS, describe_reply, golden
-from tests.test_actions import CLIENT, NEW_INSTANCE, NO_TOKEN, ActionTest, preflight_request, run_request
+from pa_lab import contracts, control, preflight, timestamps
+from tests.fake_lab import CURRENT_OPTIONS, PROGRAM_CONTRACT, describe_reply, golden
+from tests.test_actions import ActionTest, run_request
 
-
-class PreflightTest(ActionTest):
-    def preflights_sent(self):
-        """The `preflight <JSON>` lines the app took, as parsed candidates."""
-        return [json.loads(text.splitlines()[-1].split(' ', 1)[1]) for text in self.app.requests
-                if text.splitlines()[-1].startswith('preflight ')]
-
-    def passed(self, token, options=None):
-        record = self.preflight(preflight_request(token, options=options))
-        self.assertEqual(record['status'], 'completed', record)
-        return record
+# FRLG RNG's free party slots setting: a boolean that turns the start check off when true.
+SKIPPER = {'key': 'SKIP_FREE_PARTY_SLOTS', 'type': 'boolean', 'default': False, 'skips_check': 'free_party_slots'}
 
 
-class OptionTests(PreflightTest):
-    def test_bad_options_are_refused_before_anything_is_sent(self):
+class ServerPreflightTest(ActionTest):
+    def starts_sent(self):
+        """The start requests the app took, each as its command lines (without `request <id>`)."""
+        return [text.splitlines()[1:] for text in self.app.requests if text.splitlines()[-1].startswith('start')]
+
+    def describes_sent(self):
+        return [text for text in self.app.requests if text.splitlines()[-1] == 'describe_program']
+
+
+class OptionTests(ServerPreflightTest):
+    def test_bad_options_are_refused_before_anything_is_set(self):
         cases = [
             dict(name='unknown key', input={'START_CHECKPOINT': '13.01'}, expectation='options.START_CHECKPOINT'),
             dict(name='disabled enum entry', input={'LANGUAGE': 'ja'}, expectation='options.LANGUAGE'),
@@ -42,296 +42,177 @@ class OptionTests(PreflightTest):
         for case in cases:
             with self.subTest(case['name']):
                 self.setUp()
-                token = self.acquired()
-                record = self.preflight(preflight_request(token, options=case['input']))
+                record = self.run_program(run_request(self.acquired(), options=case['input']))
                 self.assertEqual((record['status'], record['refusal']['code'], record['refusal']['field']),
                                  ('refused', 'invalid_arguments', case['expectation']))
-                self.assertEqual(self.preflights_sent(), [])
+                self.assertEqual(self.starts_sent(), [])
                 self.assertEqual(self.app.options, CURRENT_OPTIONS)
 
-    def test_good_options_reach_the_app_and_the_checks_see_them(self):
-        token = self.acquired()
+    def test_good_options_are_set_and_started_in_one_request(self):
         options = {'START_SEGMENT': 3, 'NOTIFICATIONS': {'Enabled': False}}
-        record = self.passed(token, options)
-        self.assertEqual(self.preflights_sent(), [options])
-        self.assertEqual(self.app.staged_seen, [{'LANGUAGE': 'en', 'START_SEGMENT': 3,
-                                                 'NOTIFICATIONS': {'Enabled': False}}])
-        self.assertEqual(self.app.options, CURRENT_OPTIONS)  # put back after the checks
-        self.assertEqual([c['name'] for c in record['result']['checks']], ['game_open', 'free_party_slots'])
-        self.assertEqual(record['result']['candidate_hash'], preflight.candidate_hash(options))
-        # The app's hash of every option the program holds, as the checks left them (restored).
-        self.assertEqual(record['result']['options_hash'], self.app.options_hash())
+        record = self.run_program(run_request(self.acquired(), options=options))
+        self.assertEqual(record['status'], 'completed', record)
+        # In key order: the record stores the options as canonical JSON.
+        self.assertEqual(self.starts_sent(), [['set NOTIFICATIONS.Enabled false', 'set START_SEGMENT 3', 'start 10']])
+        self.assertEqual(self.app.options, {'LANGUAGE': 'en', 'START_SEGMENT': 3, 'NOTIFICATIONS': {'Enabled': False}})
         contracts.validate('request_record', record)
 
-
-class VerdictTests(PreflightTest):
-    def test_a_failed_check_is_named_and_the_options_are_restored(self):
+    def test_an_option_that_turns_a_start_check_off_must_be_given_as_false(self):
+        self.app.replies['describe_program'] = describe_reply(
+            options=PROGRAM_CONTRACT['options'] + [SKIPPER], prechecks=[
+                {'name': 'free_party_slots', 'needs': '1 free party slot.', 'skippable': True}])
+        cases = [
+            dict(name='set true', input={'SKIP_FREE_PARTY_SLOTS': True}, expectation='refused'),
+            dict(name='left out (the panel may hold true)', input={}, expectation='refused'),
+            dict(name='set false', input={'SKIP_FREE_PARTY_SLOTS': False}, expectation='completed'),
+        ]
         token = self.acquired()
-        self.app.check_outcomes['game_open'] = ('failed', 'The game is not open: the console shows HOME.',
-                                                {'screen': 'home'})
-        record = self.preflight(preflight_request(token, options={'START_SEGMENT': 7}))
-        self.assertEqual(record['status'], 'failed')
-        self.assertEqual(record['refusal'], {'code': 'precheck_failed', 'check': 'game_open',
-                                             'message': 'The game is not open: the console shows HOME.',
-                                             'evidence': {'screen': 'home'}})
-        self.assertEqual(self.app.options, CURRENT_OPTIONS)
-        self.assertEqual(self.plane.preflight(NO_TOKEN), None)
-        self.assertIn(('request_failed', 'preflight_program'), self.event_types())
+        for case in cases:  # in this order: only the last one starts
+            with self.subTest(case['name']):
+                record = self.run_program(run_request(token, options=case['input']))
+                self.assertEqual(record['status'], case['expectation'], record)
+                if case['expectation'] == 'refused':
+                    self.assertEqual((record['refusal']['code'], record['refusal']['field']),
+                                     ('invalid_arguments', 'options.SKIP_FREE_PARTY_SLOTS'))
+        self.assertEqual(self.starts_sent(), [['set SKIP_FREE_PARTY_SLOTS false', 'start 10']])
 
-    def test_a_reply_that_did_not_restore_the_options_never_gives_a_token(self):
-        """Even when every check passed: the panel now holds the candidate, not what the user set."""
-        token = self.acquired()
-        self.app.restore = False
-        record = self.preflight(preflight_request(token, options={'START_SEGMENT': 7}))
-        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
-        self.assertEqual(record['refusal']['evidence']['reason'], 'options_not_restored')
-        self.assertIsNone(record['result'])
+    def test_a_failed_set_line_names_the_options_the_panel_keeps(self):
+        """The app has no undo: the set lines before the failing one stay applied, and the refusal says so."""
+        options = {'START_SEGMENT': 3, 'NOTIFICATIONS': {'Enabled': False}}
+        self.app.set_fail = ('START_SEGMENT', 'Unknown option: START_SEGMENT')
+        record = self.run_program(run_request(self.acquired(), options=options))
+        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'), record)
+        evidence = record['refusal']['evidence']
+        self.assertEqual((evidence['applied_options'], evidence['failed_option']),
+                         ({'NOTIFICATIONS.Enabled': False}, 'START_SEGMENT'))
+        self.assertIn('NOTIFICATIONS.Enabled', record['refusal']['message'])
+        self.assertEqual(self.app.lab.state['program']['state'], 'stopped')
 
-    def test_a_user_edit_during_the_checks_is_kept_and_named(self):
-        """#601: the app does not overwrite an edit made in the panel during the checks."""
-        token = self.acquired()
-        self.app.user_edit = {'LANGUAGE': 'de'}
-        record = self.preflight(preflight_request(token, options={'START_SEGMENT': 7}))
-        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
-        self.assertEqual(record['refusal']['evidence']['edited_keys'], ['LANGUAGE'])
-        self.assertEqual(self.app.options['LANGUAGE'], 'de')
-
-    def test_checks_a_panel_change_cancelled_give_no_token(self):
-        """#616: the app puts the options back and replies `cancelled`."""
-        token = self.acquired()
-        self.app.cancel = True
-        record = self.preflight(preflight_request(token, options={'START_SEGMENT': 7}))
-        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
-        self.assertEqual(record['refusal']['evidence']['reason'], 'cancelled')
-        self.assertIsNone(record['result'])
+    def test_a_failed_first_set_line_applies_nothing(self):
+        self.app.set_fail = ('NOTIFICATIONS.Enabled', 'Unknown option: NOTIFICATIONS.Enabled')
+        record = self.run_program(run_request(self.acquired(), options={'START_SEGMENT': 3,
+                                                                          'NOTIFICATIONS': {'Enabled': False}}))
+        self.assertEqual(record['refusal']['code'], 'app_unavailable', record)
+        self.assertNotIn('applied_options', record['refusal']['evidence'])
         self.assertEqual(self.app.options, CURRENT_OPTIONS)
 
-    def test_other_verdicts(self):
-        def unsupported(test):
-            test.app.replies['describe_program'] = describe_reply(prechecks='unsupported')
 
-        def app_refuses_combination(test):
-            test.app.invalid = ('START_SEGMENT', 'segment 3 needs NEW_GAME off')
+class DescribeTests(ServerPreflightTest):
+    def test_the_program_must_report_start_checks(self):
+        self.app.replies['describe_program'] = describe_reply(prechecks='unsupported')
+        record = self.run_program(run_request(self.acquired()))
+        self.assertEqual((record['status'], record['refusal']['code']), ('refused', 'prechecks_unsupported'))
+        self.assertEqual(self.starts_sent(), [])
+        self.assertIn(('request_failed', 'run_program'), self.event_types())
 
-        def no_preflight_command(test):  # today's app
-            test.app.line_errors['preflight'] = 'unknown command: preflight'
+    def test_describe_program_refusals_are_stored_after_the_lease(self):
+        def other_program(test):
+            test.app.replies['describe_program'] = describe_reply(id='PokemonBDSP:AutoStory')
 
-        def other_program_answers(test):
-            test.app.preflight_id = 'PokemonBDSP:AutoStory'
+        def line_fails(test):
+            test.app.line_errors['describe_program'] = 'boom'
+
+        def restart_during_describe(test):
+            test.app.restart_on = 'describe_program'
 
         cases = [
-            dict(name='the program declares no checks (nothing sent)', input=unsupported,
-                 expectation=('refused', 'prechecks_unsupported', 0)),
-            dict(name='check_validity refuses the combination', input=app_refuses_combination,
-                 expectation=('failed', 'invalid_arguments', 1)),
-            dict(name="today's app has no preflight command", input=no_preflight_command,
-                 expectation=('failed', 'app_unavailable', 1)),
-            dict(name='the reply names another program', input=other_program_answers,
-                 expectation=('failed', 'app_unavailable', 1)),
+            dict(name='the app describes another program', input=other_program,
+                 expectation=('invalid_arguments', None)),
+            dict(name='the describe_program line fails', input=line_fails, expectation=('app_unavailable', None)),
+            dict(name='the app restarts during describe_program', input=restart_during_describe,
+                 expectation=('app_unavailable', 'instance_replaced')),
         ]
         for case in cases:
             with self.subTest(case['name']):
                 self.setUp()
                 token = self.acquired()
                 case['input'](self)
-                record = self.preflight(preflight_request(token, options={'START_SEGMENT': 3}))
-                self.assertEqual((record['status'], record['refusal']['code'], len(self.preflights_sent())),
+                record = self.run_program(run_request(token))
+                self.assertEqual(record['status'], 'refused', record)
+                self.assertEqual((record['refusal']['code'], (record['refusal'].get('evidence') or {}).get('reason')),
                                  case['expectation'])
+                self.assertEqual(self.starts_sent(), [])
 
-    def test_a_preflight_is_leased_and_retried_from_its_record(self):
-        record = self.preflight(preflight_request('not-a-lease'))
+    def test_the_lease_is_checked_before_a_describe_refusal(self):
+        self.app.line_errors['describe_program'] = 'boom'
+        record = self.run_program(run_request('not-a-lease'))
         self.assertEqual(record['refusal']['code'], 'lease_invalid')
+
+    def test_no_describe_is_sent_when_the_console_cannot_run(self):
         token = self.acquired()
-        request = preflight_request(token)
-        first = self.preflight(request)
-        again = self.preflight(request)
+        self.lab.update_state(**{'controller.state': 'not_connected'})
+        record = self.run_program(run_request(token))
+        self.assertEqual(record['refusal']['code'], 'controller_not_ready')
+        self.assertEqual(self.describes_sent(), [])
+
+    def test_an_exact_retry_reads_nothing_and_sends_nothing(self):
+        request = run_request(self.acquired(), options={'START_SEGMENT': 3})
+        first = self.run_program(request)
+        again = self.run_program(request)
         self.assertEqual(first, again)
-        self.assertEqual(len(self.preflights_sent()), 1)
+        self.assertEqual((len(self.describes_sent()), len(self.starts_sent())), (1, 1))
+
+    def test_there_is_no_preflight_program_tool(self):
+        self.assertFalse(hasattr(self.actions, 'preflight_program'))
+        self.assertNotIn('preflight_program', contracts.TOOL_ARGUMENTS)
+        self.assertNotIn('preflight_token', contracts.TOOL_ARGUMENTS['run_program'].fields)
 
 
-class TokenTests(PreflightTest):
-    def run_with(self, token, preflight_token, options=None):
-        return self.run_program(run_request(token, options=options, preflight_token=preflight_token))
+class SaveHookTests(unittest.TestCase):
+    def test_the_save_check_passes_until_save_facts_exist(self):
+        """Slice 6d replaces this with save_mismatch; until then nothing is refused for the save."""
+        self.assertIsNone(preflight.check_save({'status': 'unknown', 'reason': 'no_fact', 'since': None},
+                                               dict(PROGRAM_CONTRACT), {}))
 
-    def test_a_current_token_starts_the_run_with_its_options(self):
-        token = self.acquired()
-        options = {'START_SEGMENT': 3, 'NOTIFICATIONS': {'Enabled': False}}
-        checked = self.passed(token, options)
-        record = self.run_with(token, checked['result']['preflight_token'], options)
+
+class StartCheckOutcomeTests(ServerPreflightTest):
+    """A start check runs after the start: its failure is the run's outcome, not a refusal."""
+
+    def end_with_outcome(self, request_id, outcome):
+        """The program stops itself and writes its outcome in the same state.json, as the app does."""
+        at = timestamps.format(self.clock.now())
+        self.lab.update_state(**{
+            'program.state': 'stopped', 'written_at': at,
+            'program.last_transition': {'action': 'stop', 'source': 'program', 'request_id': None, 'at': at},
+            'program.last_outcome': dict(outcome, at=at, request_id=request_id)})
+
+    def failure(self):
+        return {'run_id': None, 'outcome': 'start_check_failed', 'check': 'free_party_slots',
+                'message': 'Free party slots: needs 1 empty slot, found 0.', 'evidence': {'needed': 1, 'found': 0}}
+
+    def program_failed(self):
+        return [e for e in self.plane.next_events('reader', 'B', 0, limit=500)['events']
+                if e['type'] == 'program_failed']
+
+    def test_a_failed_start_check_is_a_program_failed_event_for_the_run(self):
+        request = run_request(self.acquired())
+        record = self.run_program(request)
         self.assertEqual(record['status'], 'completed', record)
-        start = [t for t in self.app.requests if t.splitlines()[-1].startswith('start')][0].splitlines()
-        # In key order: the record stores the options as canonical JSON.
-        self.assertEqual(start[1:], ['set NOTIFICATIONS.Enabled false', 'set START_SEGMENT 3', 'start 10'])
-        self.assertEqual(self.app.options['START_SEGMENT'], 3)
+        self.end_with_outcome(request['request_id'], self.failure())
+        self.reader.console_state()
+        self.reader.console_state()  # observed once
+        events = self.program_failed()
+        self.assertEqual(len(events), 1)
+        event = events[0]
+        self.assertEqual(event['request_id'], request['request_id'])
+        self.assertEqual(event['payload'], {'run_id': None, 'verdict': 'start_check_failed', 'checkpoint': None,
+                                            'check': 'free_party_slots',
+                                            'message': 'Free party slots: needs 1 empty slot, found 0.',
+                                            'evidence': {'needed': 1, 'found': 0}})
+        contracts.validate('event', event)
+        self.assertEqual(self.lease(), 'agent_idle')
 
-    def test_a_failed_set_line_names_the_options_the_panel_keeps(self):
-        """The app has no undo: the set lines before the failing one stay applied, and the refusal says so."""
-        token = self.acquired()
-        options = {'START_SEGMENT': 3, 'NOTIFICATIONS': {'Enabled': False}}
-        checked = self.passed(token, options)
-        self.app.set_fail = ('START_SEGMENT', 'Unknown option: START_SEGMENT')
-        record = self.run_with(token, checked['result']['preflight_token'], options)
-        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'), record)
-        evidence = record['refusal']['evidence']
-        self.assertEqual((evidence['applied_options'], evidence['failed_option']),
-                         ({'NOTIFICATIONS.Enabled': False}, 'START_SEGMENT'))
-        self.assertIn('NOTIFICATIONS.Enabled', record['refusal']['message'])
-        self.assertEqual((self.app.options['NOTIFICATIONS']['Enabled'], self.app.options['START_SEGMENT']),
-                         (False, CURRENT_OPTIONS['START_SEGMENT']))
-        self.assertEqual(self.app.lab.state['program']['state'], 'stopped')
-
-    def test_a_failed_first_set_line_applies_nothing(self):
-        token = self.acquired()
-        options = {'START_SEGMENT': 3, 'NOTIFICATIONS': {'Enabled': False}}
-        checked = self.passed(token, options)
-        self.app.set_fail = ('NOTIFICATIONS.Enabled', 'Unknown option: NOTIFICATIONS.Enabled')
-        record = self.run_with(token, checked['result']['preflight_token'], options)
-        self.assertEqual(record['refusal']['code'], 'app_unavailable', record)
-        self.assertNotIn('applied_options', record['refusal']['evidence'])
-        self.assertEqual(self.app.options, CURRENT_OPTIONS)
-
-    def test_stale_tokens_are_refused_and_nothing_is_sent(self):
-        def run_and_end(test):
-            test.app.transition('start', 'lab', 'aaaaaaaa-1111-4222-8333-444444444444')
-            test.app.transition('stop', 'program')
-
-        def app_restart(test):
-            test.lab.update_state(**{'instance.id': NEW_INSTANCE})
-
-        def save_written(test):
-            test.clock.sleep(1)
-            fact = save_known(test)
-            fact['saved_at'] = test.lab.state['written_at']
-            test.lab.write_save(fact)
-
-        def cfr_batch(test):
-            record = test.actions.cfr_batch(CLIENT, {'schema': 1, 'request_id': '0f0f0f0f-1111-4222-8333-444444444444',
-                                                     'console': 'B', 'lease_token': test.token,
-                                                     'arguments': {'lines': ['press B']}})
-            test.assertEqual(record['status'], 'completed', record)
-
-        def user_edits_another_option(test):
-            # In the panel, an option the candidate does not name: no transition, no save, same instance.
-            test.app.options['LANGUAGE'] = 'de'
-            test.clock.sleep(1)  # the app's next state.json write
-
-        def too_old(test):
-            test.clock.sleep(preflight.TOKEN_TTL_S + 1)
-
-        cases = [
-            dict(name='the program ran and ended', input=(run_and_end, None), expectation=['transition']),
-            dict(name='the app restarted', input=(app_restart, None), expectation=['instance_id']),
-            dict(name='a save was written', input=(save_written, None), expectation=['save']),
-            dict(name='a cfr_batch ran', input=(cfr_batch, None), expectation=['save']),
-            dict(name='a cfr_batch ran with no save fact', input=(cfr_batch, None, None, 'no fact'),
-                 expectation=['save']),
-            dict(name='other options', input=(None, {'START_SEGMENT': 4}), expectation=['candidate_hash']),
-            dict(name='an option the candidate did not name was edited', input=(user_edits_another_option, None),
-                 expectation=['options_hash']),
-            dict(name='too old', input=(too_old, None), expectation='expired'),
-            dict(name='never issued', input=(None, None, NO_TOKEN), expectation='unknown_token'),
-        ]
-        for case in cases:
-            with self.subTest(case['name']):
-                self.setUp()
-                self.token = self.acquired()
-                if 'no fact' not in case['input']:
-                    self.lab.write_save(save_known(self))
-                checked = self.passed(self.token, {'START_SEGMENT': 3})
-                setup, options = case['input'][:2]
-                if setup is not None:
-                    setup(self)
-                run_token = case['input'][2] if len(case['input']) > 2 and case['input'][2] else \
-                    checked['result']['preflight_token']
-                record = self.run_with(self.token, run_token, options or {'START_SEGMENT': 3})
-                self.assertEqual((record['status'], record['refusal']['code']), ('refused', 'preflight_stale'),
-                                 record)
-                evidence = record['refusal']['evidence']
-                if isinstance(case['expectation'], list):
-                    self.assertEqual(evidence['changed'], case['expectation'])
-                else:
-                    self.assertEqual(evidence['reason'], case['expectation'])
-                self.assertEqual(self.sent('start'), [])
-
-    def test_an_app_that_reports_no_options_hash_still_runs(self):
-        """Before the app writes program.options_hash (#601), the token binds the candidate only."""
-        self.app.hash_options = False
-        token = self.acquired()
-        checked = self.passed(token, {'START_SEGMENT': 3})
-        self.assertIsNone(checked['result']['options_hash'])
-        record = self.run_with(token, checked['result']['preflight_token'], {'START_SEGMENT': 3})
-        self.assertEqual(record['status'], 'completed', record)
-
-    def test_a_token_is_bound_to_its_lease(self):
-        token = self.acquired()
-        checked = self.passed(token)
-        self.plane.execute(CLIENT, {'schema': 1, 'request_id': '1f1f1f1f-1111-4222-8333-444444444444',
-                                    'tool': 'release_console', 'console': 'B', 'lease_token': token,
-                                    'arguments': {}})
-        other = self.acquired()
-        record = self.run_with(other, checked['result']['preflight_token'])
-        self.assertEqual(record['refusal']['evidence']['changed'], ['lease'])
-
-    def test_a_token_runs_once(self):
-        """The run's own start changes the last transition, so the same token cannot start a second run."""
-        token = self.acquired()
-        preflight_token = self.passed(token)['result']['preflight_token']
-        self.assertEqual(self.run_with(token, preflight_token)['status'], 'completed')
+    def test_a_stop_without_an_outcome_is_no_program_failed(self):
+        self.run_program(run_request(self.acquired()))
         self.app.transition('stop', 'program')
-        again = self.run_with(token, preflight_token)
-        self.assertEqual((again['refusal']['code'], again['refusal']['evidence']['changed']),
-                         ('preflight_stale', ['transition']))
-        self.assertEqual(len(self.sent('start')), 1)
+        self.reader.console_state()
+        self.assertEqual(self.program_failed(), [])
 
-
-class PendingPreflightTests(PreflightTest):
-    """A preflight the app took and has not answered: what ends it, and that it never wedges the console."""
-
-    def held(self, during=None):
-        """A preflight the app takes and never answers; `during` runs at the settle loop's first sleep."""
-        self.app.hold.add('preflight')
-        if during is not None:
-            self.app.after['preflight'] = during
-        self.token = self.acquired()
-        return self.preflight(preflight_request(self.token, options={'START_SEGMENT': 3}))
-
-    def test_a_ui_start_during_a_preflight_hands_the_console_to_the_user(self):
-        record = self.held(lambda app: app.transition('start', 'ui'))
-        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'console_held_by_user'))
-        self.assertIsNone(record['result'])
-
-    def test_an_app_restart_during_a_preflight_ends_it(self):
-        record = self.held(lambda app: app.lab.update_state(**{'instance.id': NEW_INSTANCE}))
-        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'app_unavailable'))
-        self.assertEqual(record['refusal']['evidence']['reason'], 'instance_replaced')
-
-    def test_a_reply_already_there_at_the_first_poll_is_read(self):
-        """The app answers before the daemon's first look: no sleep, the token is issued at once."""
-        token = self.acquired()
-        send = self.reader.channel.send
-
-        def send_and_answer(*args):
-            send(*args)
-            self.app.tick()
-        with mock.patch.object(self.reader.channel, 'send', side_effect=send_and_answer):
-            before = self.clock.now()
-            record = self.preflight(preflight_request(token, options={'START_SEGMENT': 3}))
-        self.assertEqual(record['status'], 'completed', record)
-        self.assertEqual(self.clock.now(), before)
-
-    def test_a_preflight_never_answered_fails_after_its_wait_and_frees_the_console(self):
-        record = self.held()
-        self.assertEqual((record['status'], record['refusal']['code']), ('failed', 'timeout'))
-        self.assertEqual(record['refusal']['evidence']['reason'], 'outcome_unknown')
-        self.app.hold.clear()
-        self.passed(self.token)
-
-
-def save_known(test):
-    """A save fact from before the test, so console://B/save is `known`."""
-    fact = golden('save_fact', 'frlg_checkpoint')
-    fact['saved_at'] = '2026-11-14T05:00:00.000Z'
-    return fact
+    def test_the_golden_app_state_gives_the_golden_event_payload(self):
+        app = golden('app_state', 'start_check_failed')
+        want = golden('event', 'program_failed_start_check')
+        got = control.start_check_failure(copy.deepcopy(app))
+        self.assertEqual((got['payload'], got['request_id']), (want['payload'], want['request_id']))
 
 
 if __name__ == '__main__':
