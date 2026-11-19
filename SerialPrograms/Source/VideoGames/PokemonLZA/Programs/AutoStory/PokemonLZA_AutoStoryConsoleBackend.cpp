@@ -37,6 +37,7 @@ PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
 {}
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
+    m_run_end.reset();
     pbf_press_button(m_env.context, button, hold, release);
 }
 
@@ -47,21 +48,37 @@ constexpr double RUN_SPEEDUP = 2.25;
 void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace){
     const double radians = degrees * std::numbers::pi / 180.0;
     const JoystickPosition position{std::sin(radians), std::cos(radians)};
-    if (pace != Pokemon::StoryPace::RUN){
+    if (pace != Pokemon::StoryPace::RUN || m_env.walk_only){
+        m_run_end.reset();
         pbf_move_left_joystick(m_env.context, position, duration, release);
         return;
     }
     const Milliseconds run(static_cast<int64_t>(duration.count() / RUN_SPEEDUP));
+    const WallClock now = current_time();
+    const WallClock start = m_run_end && *m_run_end > now ? *m_run_end : now;
     pbf_controller_state(m_env.context, BUTTON_B, DPAD_NONE, position, {}, run);
-    pbf_wait(m_env.context, release);
+    if (release > 0ms){
+        pbf_wait(m_env.context, release);
+        m_run_end.reset();
+    }else{
+        m_run_end = start + run;
+    }
 }
 
 void PlzaConsoleBackend::wait(Milliseconds duration){
+    m_env.context.wait_for_all_requests();
+    m_run_end.reset();
     m_env.context.wait_for(duration);
 }
 
 ScreenObservation PlzaConsoleBackend::observe(){
-    m_env.context.wait_for_all_requests();
+    //  Look before the queued run ends, with time left to queue the next slice.
+    if (m_run_end && *m_run_end - 80ms > current_time()){
+        m_env.context.wait_until(*m_run_end - 80ms);
+    }else if (!m_run_end || *m_run_end <= current_time()){
+        m_env.context.wait_for_all_requests();
+        m_run_end.reset();
+    }
     VideoSnapshot frame = m_env.env.console.video().snapshot();
     ScreenObservation look;
     if (frame && m_home.detect(*frame.frame)){

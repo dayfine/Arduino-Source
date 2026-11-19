@@ -33,6 +33,12 @@ public:
 
 
 //  Runs the story's checkpoints from the start one to the end one.
+enum class StarterChoice{
+    CHIKORITA,
+    TOTODILE,
+    TEPIG,
+};
+
 class AutoStory : public SingleSwitchProgramInstance{
 public:
     using Descriptor = AutoStory_Descriptor;
@@ -50,6 +56,8 @@ private:
     BooleanCheckBoxOption LOAD_SAVE_FIRST;
     BooleanCheckBoxOption RECORD_START_MINIMAPS;
     StringOption RELOAD_PROBE_AFTER;
+    EnumDropdownOption<StarterChoice> STARTER;
+    StringOption RUN_FROM;
     BattleAIOption BATTLE_AI;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;

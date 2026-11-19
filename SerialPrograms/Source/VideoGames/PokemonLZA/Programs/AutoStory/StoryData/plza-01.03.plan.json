@@ -10,17 +10,18 @@
     "events": [
       {
         "id": "approach_starter",
-        "why": "to Chikorita's \"A Talk\" prompt. not planned: no tile grid in Lumiose",
+        "why": "to the chosen starter's \"A Talk\" prompt; the turn is the Starter option's heading. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
-          "legs": [[-70, 750]],
-          "end": "prompt"
+          "legs": [[-70, 1500]],
+          "end": "prompt",
+          "turn_to_starter": true
         }
       },
       {
         "id": "talk_to_starter",
         "action": "talk",
-        "why": "A at \"A Talk Chikorita\""
+        "why": "A at the starter's \"A Talk\""
       },
       {
         "id": "andi_battle_start",

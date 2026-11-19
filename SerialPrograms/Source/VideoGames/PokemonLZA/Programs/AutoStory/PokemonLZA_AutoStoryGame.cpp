@@ -161,6 +161,8 @@ struct WalkArgs{
     std::optional<std::optional<ScreenEvent>> end = std::nullopt;
     Milliseconds end_after = 0ms;
     std::optional<double> heading = std::nullopt;
+    //  The first leg turns toward the chosen starter.
+    bool turn_to_starter = false;
 };
 
 //  [[turn degrees, walk ms], ...]
@@ -177,9 +179,13 @@ std::vector<StoryWalkLeg> read_legs(const JsonArray& rows){
 }
 
 WalkArgs read_walk_args(const JsonObject& args){
-    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading"});
+    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading", "turn_to_starter"});
     WalkArgs walk;
     walk.move.legs = read_legs(args.get_array_throw("legs"));
+    walk.turn_to_starter = flag(args, "turn_to_starter");
+    if (walk.turn_to_starter && walk.move.legs.empty()){
+        throw ParseException("\"turn_to_starter\" needs a leg to turn");
+    }
     if (flag(args, "held")){
         walk.move.style = StoryWalkStyle::HELD;
     }
@@ -404,7 +410,12 @@ StoryActions plza_story_actions(const PlzaStoryTools& tools){
         {"opening_to_platform", platform_action(PlatformWait::AFTER_AUTOSAVE, 240000ms)},
         {"walk", [&tools](const JsonObject& args) -> StoryStepRun{
             return [&tools, walk = read_walk_args(args)](PlzaBackend& backend, RunState&){
-                return walk_step(tools, walk, backend, "walk");
+                if (!walk.turn_to_starter){
+                    return walk_step(tools, walk, backend, "walk");
+                }
+                WalkArgs aimed = walk;
+                aimed.move.legs.front().turn = tools.starter_turn;
+                return walk_step(tools, aimed, backend, "walk");
             };
         }},
         {"mash_to_move_hints", move_hints_action()},

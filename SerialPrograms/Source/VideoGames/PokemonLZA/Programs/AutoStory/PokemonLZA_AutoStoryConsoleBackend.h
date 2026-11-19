@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryConsoleBackend_H
 #define PokemonAutomation_PokemonLZA_AutoStoryConsoleBackend_H
 
+#include <optional>
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -42,6 +43,9 @@ struct StoryEnv{
     BattleAIOption& battle_ai;
     //  The language, look and name 01.00a picks (01.00b checks them).
     NewGameChoices new_game = {};
+    //  Set while a checkpoint before the one where B first runs plays: run
+    //  legs walk at their walk times.
+    bool walk_only = false;
 };
 
 //  The console's MinimapArrowReader.
@@ -88,6 +92,10 @@ private:
     MapDetector m_map;
     SelectionArrowDetector m_save_button;
     VideoSnapshot m_previous;
+    //  When the queued run (B held) ends. A look during a run waits only until
+    //  just before then, so the next slice queues behind it and B never lets go:
+    //  a new press of B inside a leg switches dash off.
+    std::optional<WallClock> m_run_end;
 };
 
 
