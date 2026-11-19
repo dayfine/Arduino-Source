@@ -2,9 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The scene machine on scripted looks, no frames needed: whole runs on a
- *  FakeStoryBackend (their outcome, presses, the states they went through
- *  and their log).
+ *  The scene machine on scripted looks (FakeStoryBackend).
  *
  */
 //  code-health: allow file_lines -- one run-case table for the scene machine, sharing the scripted looks above it
@@ -44,8 +42,6 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
     return text;
 }
 
-//  A look `at` after the scripts' common start, with `events` and the
-//  readings named in `readings`.
 Observation<ZonePose> look_at(Milliseconds at, ScreenEvents events = {}, std::vector<std::string_view> readings = {}){
     Observation<ZonePose> look;
     look.when = WallClock::min() + at;
@@ -56,7 +52,6 @@ Observation<ZonePose> look_at(Milliseconds at, ScreenEvents events = {}, std::ve
     return look;
 }
 
-//  A look `at` with a choice box of `rows` rows, `selected` highlighted.
 Observation<ZonePose> choice_at(Milliseconds at, int rows, int selected){
     Observation<ZonePose> look = look_at(at, {ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX});
     look.readings[std::string(CHOICE_ROWS_READING)] = rows;
@@ -82,7 +77,6 @@ SceneMachineConfig arrival_config(){
     return config;
 }
 
-//  text_to_choice's config: B through the text, ending at the choice box.
 SceneMachineConfig choice_config(){
     SceneMachineConfig config;
     config.stop_at_choice = true;
@@ -90,15 +84,13 @@ SceneMachineConfig choice_config(){
     return config;
 }
 
-//  story_battle_start's config: A through the talk and the tutorial cards,
-//  ending on the battle HUD.
+//  story_battle_start's config.
 SceneMachineConfig battle_config(){
     SceneMachineConfig config;
     config.stop_at_battle = true;
     return config;
 }
 
-//  battle_config() whose lock-on watch sees the move symbols: locked on.
 SceneMachineConfig battle_config_locking_on(){
     SceneMachineConfig config = battle_config();
     config.lock_on = [](Milliseconds){
@@ -107,22 +99,18 @@ SceneMachineConfig battle_config_locking_on(){
     return config;
 }
 
-//  `count` looks with the mission banner, then one without.
 std::vector<Observation<ZonePose>> banner_then_gone(size_t count){
     std::vector<Observation<ZonePose>> looks(count, look_at(/*at=*/0ms, NOTHING, {MISSION_BANNER_READING}));
     looks.push_back(look_at(0ms));
     return looks;
 }
 
-//  A "scene" step's config: no quiet time, no blind A, the scene must
-//  start within 45 s.
 SceneMachineConfig scene_step_config(){
     SceneMachineConfig config;
     config.start_window = 45000ms;
     return config;
 }
 
-//  Hotel Z's rooms: 3 s quiet is control.
 SceneMachineConfig quiet_room_config(){
     SceneMachineConfig config;
     config.quiet = 3000ms;
@@ -130,15 +118,13 @@ SceneMachineConfig quiet_room_config(){
     return config;
 }
 
-//  03.01's lobby: Hotel Z's quiet end, A through the text.
 SceneMachineConfig lobby_config(){
     SceneMachineConfig config = quiet_room_config();
     config.text_button = BUTTON_A;
     return config;
 }
 
-//  03.07's gate scene: a black fade, "received 10 Poke Balls" (no detector
-//  reads it) to 11.5 s, Taunie's text, then the controls hint.
+//  03.07's gate scene: "received 10 Poke Balls", which no detector reads.
 std::vector<Observation<ZonePose>> gift_box_scene(){
     std::vector<Observation<ZonePose>> looks{look_at(0ms, BLACK)};
     for (Milliseconds at = 1500ms; at <= 11500ms; at += 500ms){
@@ -148,22 +134,18 @@ std::vector<Observation<ZonePose>> gift_box_scene(){
     return looks;
 }
 
-//  Blind A after 5 s and no quiet time.
 SceneMachineConfig blind_press_config(){
     SceneMachineConfig config;
     config.blind_press_after = 5000ms;
     return config;
 }
 
-//  Blind A after 5 s and a minute quiet.
 SceneMachineConfig quiet_blind_press_config(){
     SceneMachineConfig config = blind_press_config();
     config.quiet = 60000ms;
     return config;
 }
 
-//  The advance chevron, then a cutscene with nothing on it, looked at every
-//  500 ms from 5 s to 65 s, then the controls hint held a second.
 std::vector<Observation<ZonePose>> minute_of_blind_presses(){
     std::vector<Observation<ZonePose>> looks{look_at(/*at=*/0ms, NOTHING, {ADVANCE_ARROW_READING})};
     for (Milliseconds at = 5000ms; at <= 65000ms; at += 500ms){
@@ -174,15 +156,13 @@ std::vector<Observation<ZonePose>> minute_of_blind_presses(){
     return looks;
 }
 
-//  01.02's battle_area: mash_to_move_hints' config with min_length_ms 20000.
 SceneMachineConfig battle_area_config(){
     SceneMachineConfig config = arrival_config();
     config.min_length = 20000ms;
     return config;
 }
 
-//  01.02's battle area (Italian): text, a cutscene, then Ryon's "A Parla"
-//  prompt with no party bar or controls hint.
+//  Ryon's "A Parla" prompt, with no party bar or controls hint.
 std::vector<Observation<ZonePose>> battle_area_talk_prompt(){
     return {
         look_at(0ms, DIALOG), look_at(500ms), look_at(6000ms),
@@ -191,7 +171,6 @@ std::vector<Observation<ZonePose>> battle_area_talk_prompt(){
     };
 }
 
-//  A quiet time of 8 s after a scene of at least `min_length`, no blind A.
 SceneMachineConfig quiet_config(Milliseconds min_length){
     SceneMachineConfig config;
     config.quiet = 8000ms;
@@ -199,16 +178,13 @@ SceneMachineConfig quiet_config(Milliseconds min_length){
     return config;
 }
 
-//  01.01's arrival config: mash_to_move_hints' with end_after_black_fades 3.
 SceneMachineConfig three_fades_config(){
     SceneMachineConfig config = arrival_config();
     config.end_after_black_fades = 3;
     return config;
 }
 
-//  01.01's arrival in short: text, a black fade, text, a white fade, text,
-//  a second black fade, the banner, a third black fade, then 5 s of
-//  nothing. Each fade's wait ends on the look after it.
+//  Each fade's wait ends on the look after it.
 std::vector<Observation<ZonePose>> arrival_with_three_fades(){
     return {
         look_at(0ms, DIALOG), look_at(500ms),
@@ -223,8 +199,6 @@ std::vector<Observation<ZonePose>> arrival_with_three_fades(){
     };
 }
 
-//  01.01's arrival up to its second black fade: text, a black fade, text,
-//  a second black fade.
 std::vector<Observation<ZonePose>> arrival_to_second_fade(){
     return {
         look_at(0ms, DIALOG),
@@ -234,7 +208,6 @@ std::vector<Observation<ZonePose>> arrival_to_second_fade(){
     };
 }
 
-//  `count` looks with the mission banner, `every` apart from `from`.
 std::vector<Observation<ZonePose>> banner_looks(Milliseconds from, Milliseconds every, size_t count){
     std::vector<Observation<ZonePose>> looks;
     for (size_t look = 0; look < count; look++){
@@ -243,7 +216,7 @@ std::vector<Observation<ZonePose>> banner_looks(Milliseconds from, Milliseconds 
     return looks;
 }
 
-//  01.01's arrival (Italian): the banner stays until A, then the third fade.
+//  The Italian banner stays until A.
 std::vector<Observation<ZonePose>> arrival_banner_until_a(){
     std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
     for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/5)){
@@ -255,7 +228,6 @@ std::vector<Observation<ZonePose>> arrival_banner_until_a(){
     return looks;
 }
 
-//  01.01's arrival with a banner that A does not clear.
 std::vector<Observation<ZonePose>> arrival_banner_stays(){
     std::vector<Observation<ZonePose>> looks = arrival_to_second_fade();
     for (const Observation<ZonePose>& look : banner_looks(/*from=*/5500ms, /*every=*/500ms, /*count=*/20)){
@@ -268,7 +240,7 @@ std::vector<Observation<ZonePose>> arrival_banner_stays(){
 struct RunCase{
     std::string name;
     struct Input{
-        //  The backend's looks, the last repeating.
+        //  The last repeats.
         std::vector<Observation<ZonePose>> looks;
         SceneMachineConfig config = arrival_config();
     };
@@ -276,17 +248,13 @@ struct RunCase{
     struct Expectation{
         //  "done", or "failed: <failure>".
         std::string verdict;
-        //  How many times A was pressed.
         size_t a_presses = 0;
-        //  How many times B was pressed.
         size_t b_presses = 0;
-        //  A log line the run wrote, if any is checked.
+        //  Empty: not checked.
         std::string line = {};
-        //  The states the log's lines went through, joined by ", "; empty:
-        //  not checked.
+        //  Joined by ", "; empty: not checked.
         std::string states = {};
-        //  The lines the stream's overlay shows (log(), not
-        //  log_detail()), in order, if checked.
+        //  log() lines, not log_detail().
         std::optional<std::vector<std::string>> overlay = std::nullopt;
     };
     Expectation expectation;
@@ -543,7 +511,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 1, .states = "dialog, hint_showing, controls_hint"},
     },
     {
-        //  03.01 (German): Alton's choice opened on its second row.
         .name = "a choice with its second row highlighted: Up, then A on the top row",
         .input = {.looks = {
             choice_at(/*at=*/0ms, /*rows=*/2, /*selected=*/1),
@@ -554,8 +521,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 1, .line = "[PLZA test] choice: 2 rows, row 1 highlighted: Up to row 0"},
     },
     {
-        //  B on a PLZA choice box jumps to its last (cancel) row: a B for
-        //  the text that lands as the box opens leaves it there.
+        //  B on a choice box jumps to its last (cancel) row.
         .name = "a choice left on its last row by a B: Up to the top row, then A",
         .input = {.looks = {
             choice_at(/*at=*/0ms, /*rows=*/3, /*selected=*/2),
@@ -689,7 +655,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .line = "[PLZA test] done on can_move."},
     },
     {
-        //  A blind A at the prompt restarts Ryon's talk.
         .name = "01.02's battle area: the talk prompt held past the minimum length is control, with no A at it",
         .input = {.looks = battle_area_talk_prompt(), .config = battle_area_config()},
         .expectation = {
@@ -701,7 +666,6 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  It shows between the lines of a talk, like the party bar.
         .name = "a machine that stops at a battle does not take the talk prompt for control",
         .input = {.looks = {look_at(0ms, PROMPT), look_at(2500ms, PROMPT), look_at(3000ms, BATTLE)}, .config = battle_config()},
         .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_moving, battle"},
@@ -712,7 +676,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .line = "[PLZA test] done: quiet, taken as control."},
     },
     {
-        //  03.01's lobby: a B as Alton's choice opens picks its cancel row.
         .name = "Hotel Z's lobby with advance_with_a: A, not B, on its text",
         .input = {.looks = {look_at(0ms, DIALOG), look_at(1000ms), look_at(4100ms, STILL)}, .config = lobby_config()},
         .expectation = {.verdict = "done", .a_presses = 1, .b_presses = 0, .line = "[PLZA test] done: quiet, taken as control."},
@@ -785,7 +748,6 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  The Italian banner waited 110 s with no press; one A cleared it.
         .name = "with end_after_black_fades, a banner up 2 s gets A, and the run goes on to the third fade",
         .input = {.looks = arrival_banner_until_a(), .config = three_fades_config()},
         .expectation = {
@@ -814,9 +776,7 @@ const RunCase RUN_CASES[] = {
     },
 };
 
-//  "dialog, scene_still": the states in the log's lines ("[PLZA test]
-//  screen 2: scene_still at 1.5s: still"), each once where only the
-//  readings changed.
+//  "dialog, scene_still", each once where only the readings changed.
 std::string traced_states(const std::vector<std::string>& lines){
     std::vector<std::string> states;
     for (const std::string& line : lines){
@@ -886,9 +846,8 @@ private:
 };
 
 
-//  03.05's nurse as a closed loop: greeting, the heal's fade, her last
-//  lines, her box closing, then her A prompt. A at the closing box or the
-//  prompt talks to her again; B does nothing.
+//  03.05's nurse as a closed loop: A at her closing box or prompt talks to
+//  her again; B does nothing.
 class NurseCounter : public Pokemon::FakeStoryBackend<ZonePose>{
 public:
     explicit NurseCounter(CancellableScope& scope)
@@ -969,8 +928,6 @@ private:
     size_t m_talks_again = 0;
 };
 
-//  Scene machines at 03.05's nurse (NurseCounter), on the screens as they
-//  follow from its presses.
 struct NurseCase{
     std::string name;
     struct Input{
@@ -980,9 +937,7 @@ struct NurseCase{
     struct Expectation{
         //  "done", or "failed: <failure>".
         std::string verdict;
-        //  The run's last line.
         std::string end;
-        //  The talks started after the heal's.
         size_t talks_again = 0;
     };
     Expectation expectation;

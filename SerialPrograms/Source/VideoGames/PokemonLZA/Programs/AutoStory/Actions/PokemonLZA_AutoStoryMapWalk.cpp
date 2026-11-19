@@ -20,8 +20,7 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  How long the full map takes to draw after PLUS, and to close after B,
-//  back to the overworld. NEEDS CONSOLE: from the shots, not timed.
+//  From the shots, not timed.
 constexpr Milliseconds MAP_OPEN_WAIT(1500);
 constexpr Milliseconds MAP_CLOSE_WAIT(1000);
 constexpr int PIN_LOOKS = 8;
@@ -42,9 +41,7 @@ std::string waypoint_text(const MapWaypoint& waypoint){
 
 
 std::optional<MapPoint> read_pin_on_map(StoryEnv& env, PlzaBackend& backend){
-    //  No minimap arrow read here: indoors there is none, and the start
-    //  check reads the pin there too (03.11's office threw after 40 s,
-    //  console B 2026-11-17 01:29).
+    //  No minimap arrow read here: indoors there is none.
     backend.observe();
     backend.press(BUTTON_PLUS, /*hold=*/100ms, /*release=*/MAP_OPEN_WAIT);
     std::optional<MapPoint> pin;
@@ -65,13 +62,11 @@ std::optional<MapPoint> read_pin_on_map(StoryEnv& env, PlzaBackend& backend){
 
 namespace{
 
-//  Where a leg ended: its outcome and the last pin read.
 struct LegWalk{
     Pokemon::Outcome outcome;
     std::optional<MapPoint> pin;
 };
 
-//  Where a leg that is over ended (ARRIVED, OFF_TARGET, PIN_NOT_READ).
 LegWalk leg_over(PlzaBackend& backend, const MapWaypoint& waypoint, MapLegStep step, std::optional<MapPoint> pin){
     switch (step){
     case MapLegStep::ARRIVED:
@@ -86,18 +81,14 @@ LegWalk leg_over(PlzaBackend& backend, const MapWaypoint& waypoint, MapLegStep s
     }
 }
 
-//  One MapLeg to `waypoint` from `pin`, the read where it starts: each
-//  WALK faces its heading (face_heading()), holds the stick straight on,
-//  and reads the pin again.
 LegWalk walk_leg(StoryEnv& env, PlzaBackend& backend, const MapWaypoint& waypoint, std::optional<MapPoint> pin){
     MapLeg leg(waypoint.pin, waypoint.stop_radius);
     while (true){
         backend.scope().throw_if_cancelled();
         const MapLegMove move = leg.next(pin);
         if (move.step == MapLegStep::READ_AGAIN){
-            //  A short step on first: the map's cursor snaps onto a badge
-            //  next to the player, its ring over the player's arrow (the
-            //  zone's "1" at the 60 spot, console B, 2026-11-18).
+            //  The map's cursor can snap onto a badge next to the player, its ring
+            //  over the player's arrow (the zone's "1" at the 60 spot).
             backend.log("[PLZA] map pin not read: a short step, then the map again");
             backend.stick(/*degrees=*/0, /*hold=*/300ms, /*release=*/300ms, Pokemon::StoryPace::WALK);
             pin = read_pin_on_map(env, backend);

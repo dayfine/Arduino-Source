@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Tests that need no console: a catch stop's choices (spot visits, what
-//  follows a throw, camera pitch resets).
+//  Tests of a catch stop's choices.
 void add_tests_AutoStoryCatchStop(UnitTestDatabase& database);
 
 

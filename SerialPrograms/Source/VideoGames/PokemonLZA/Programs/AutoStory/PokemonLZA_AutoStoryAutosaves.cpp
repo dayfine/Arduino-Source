@@ -23,16 +23,11 @@ using Pokemon::ZonePose;
 
 namespace{
 
-//  The autosave badge shows 1-3 s: a badge this soon after the last one is
-//  the same autosave.
+//  The badge shows 1-3 s.
 constexpr Milliseconds AUTOSAVE_DEBOUNCE = 5000ms;
-//  A badge that first shows this soon after a checkpoint's first look,
-//  before its steps can have saved, is the save before it: 02.07's on
-//  entering Room 202 was up on 03.01's first look, with no badge seen in
-//  02.07, which ended on the mission banner (console B, 2026-11-16 23:54).
+//  Before the steps can have saved: a badge this early is the save before it.
 constexpr Milliseconds START_BADGE_WINDOW = 1500ms;
 
-//  The step after the step named `step` in `row`, if there is one.
 std::optional<std::string_view> step_after(const Pokemon::StoryCheckpoint& row, std::string_view step){
     for (size_t index = 0; index + 1 < row.steps.size(); index++){
         if (row.steps[index].name == step){
@@ -42,7 +37,6 @@ std::optional<std::string_view> step_after(const Pokemon::StoryCheckpoint& row, 
     return std::nullopt;
 }
 
-//  `inner` with every look noted in `sightings` as taken in step `step`.
 //  code-health: allow public_methods -- forwards every call of the engine's backend to the wrapped one unchanged
 class SightingBackend : public PlzaBackend{
 public:
@@ -95,8 +89,7 @@ void AutosaveSightings::restart(){
     m_origin.reset();
     m_seen_in.reset();
     m_last_seen_in.reset();
-    //  A badge still up from before the start (m_last_badge, kept) is the
-    //  save that ended the last checkpoint.
+    //  m_last_badge is kept: a badge still up is the last checkpoint's save.
     m_badge_is_ours = false;
     m_earlier_badge_logged = false;
 }

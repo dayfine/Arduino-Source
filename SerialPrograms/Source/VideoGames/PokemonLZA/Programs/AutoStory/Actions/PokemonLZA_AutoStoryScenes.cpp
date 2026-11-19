@@ -23,19 +23,14 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  How long the map talk may take, and how long the party bar must hold.
 constexpr Milliseconds MAP_TALK_TIMEOUT = 120s;
 constexpr Milliseconds MAP_TALK_CONTROL_HOLD = 1000ms;
-//  Each button's press and the wait after it.
 constexpr Milliseconds MAP_TALK_HOLD = 160ms;
 constexpr Milliseconds MAP_TALK_RELEASE = 840ms;
-//  How often it looks while the party bar holds.
 constexpr Milliseconds MAP_TALK_POLL = 250ms;
 
-//  The button for what shows: A on a tutorial card, whose pages B turns
-//  back, and on text until the card has shown; B on the rest: the map
-//  app, where A places a pin, and her talk after it (as played by hand,
-//  03.02b step 45).
+//  A on a tutorial card (B turns its pages back) and on text before it; B
+//  on the rest: on the map A would place a pin.
 enum class MapTalkPart{BEFORE_CARD, AFTER_CARD};
 Button map_talk_button(const ScreenObservation& look, MapTalkPart part){
     if (look.readings.contains(TUTORIAL_CARD_READING)){
@@ -45,12 +40,10 @@ Button map_talk_button(const ScreenObservation& look, MapTalkPart part){
 }
 
 
-//  How long "choose_N" waits for the choice box.
 constexpr Milliseconds CHOICE_WAIT(3000);
 constexpr Milliseconds CHOICE_POLL(250);
 
-//  The highlighted row of the choice box on `look`, and how many rows it
-//  has; none without a choice box or rows that read.
+//  (highlighted row, row count).
 std::optional<std::pair<int, int>> choice_rows(const ScreenObservation& look){
     const auto selected = look.readings.find(CHOICE_SELECTED_READING);
     const auto rows = look.readings.find(CHOICE_ROWS_READING);
@@ -60,7 +53,6 @@ std::optional<std::pair<int, int>> choice_rows(const ScreenObservation& look){
     return std::make_pair(selected->second, rows->second);
 }
 
-//  The choice box's rows within CHOICE_WAIT, if it shows with rows that read.
 std::optional<std::pair<int, int>> wait_for_choice_rows(PlzaBackend& backend){
     for (Milliseconds waited(0); ; waited += CHOICE_POLL){
         backend.scope().throw_if_cancelled();
@@ -72,16 +64,14 @@ std::optional<std::pair<int, int>> wait_for_choice_rows(PlzaBackend& backend){
     }
 }
 
-//  A presses through a question's text until its choices show (the lab
-//  elevator's "Which floor?"), each after CHOICE_WAIT with no choice.
+//  A presses through a question's text (e.g. "Which floor?") before its choices show.
 constexpr int CHOICE_TEXT_PRESSES = 3;
 
 } // namespace
 
 
 Pokemon::Outcome talk_through_map_screen(PlzaBackend& backend){
-    //  Each look presses for 1 s or waits; the looks bound a script whose
-    //  time stands still.
+    //  Bounds the looks too, for a script whose time stands still.
     const size_t max_looks = (size_t)(MAP_TALK_TIMEOUT / MAP_TALK_POLL) + 1;
     std::optional<WallClock> start;
     std::optional<WallClock> control_since;

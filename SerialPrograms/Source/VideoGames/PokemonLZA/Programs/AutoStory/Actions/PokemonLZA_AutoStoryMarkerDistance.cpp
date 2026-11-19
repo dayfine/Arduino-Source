@@ -17,8 +17,6 @@ bool near(int a, int b){
     return a >= b - 12 && a <= b + 12;
 }
 
-//  How many reads not taken a read must agree with to be taken anyway,
-//  and how many are kept.
 constexpr size_t AGREEING_UNTAKEN = 2;
 constexpr size_t UNTAKEN_KEPT = 3;
 

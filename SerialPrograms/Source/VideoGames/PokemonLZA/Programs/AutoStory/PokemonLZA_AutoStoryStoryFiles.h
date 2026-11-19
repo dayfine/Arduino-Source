@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Where the story (PokemonLZA_AutoStoryTable.h) is read from: the
- *  checked-in checkpoint files, StoryData/plza-<id>.plan.json, built into
- *  the program. The shared loader (Pokemon_StoryFiles.h) reads them; this
- *  is PLZA's reader for it.
+ *  The built-in story, read from StoryData/plza-<id>.plan.json.
  *
  */
 
@@ -26,29 +23,18 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The checked-in checkpoint files, StoryData/plza-<id>.plan.json, built
-//  into the program (cmake/EmbedTextFiles.cmake): (name, text), by name.
+//  (name, text) by name, embedded by cmake/EmbedTextFiles.cmake.
 //  code-health: allow test_only_api -- the generated embed file (cmake/EmbedTextFiles.cmake) defines it from this declaration
 const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_json();
 
-//  The built-in story, read once. Throws ParseException naming the file
-//  when one does not parse. 01.00a makes a new game's choices from HOME up
-//  to "Confirm Choices"; 01.00b plays from there to the station platform; 01.01
-//  walks off the platform into the white fade.
+//  Read once. Throws ParseException naming the file that does not parse.
 const StoryData& builtin_story_data();
 
-//  The built-in checkpoints whose plan names what the screen shows at
-//  their start (execution "start_signature"), read once, in story order.
-//  Two may name the same signature: a chained run checks each row's own
-//  (start_confirmed()), and a reload that matches two earlier starts
-//  stops (checkpoint_at()).
+//  The plans' "start_signature"s, read once, in story order; two may share one.
 const std::vector<CheckpointStart>& builtin_checkpoint_starts();
 
-//  Whether a run asked to start at the built-in checkpoint `asked` reads
-//  the player's pin on the full map for its start (PLUS opens it, B
-//  closes it): when a built-in start up to `asked` names wild_zone or a
-//  minimap. Those starts are past 03.02b's Map & Missions card; before it
-//  the map does not open, and a run there reads the screen only.
+//  Whether a start up to `asked` names wild_zone or a minimap, so the run
+//  opens the full map for the pin (the map opens only after 03.02b).
 bool builtin_start_reads_map(std::string_view asked);
 
 

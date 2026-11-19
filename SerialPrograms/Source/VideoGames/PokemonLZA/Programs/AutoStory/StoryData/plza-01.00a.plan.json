@@ -8,7 +8,7 @@
       {
         "id": "new_game",
         "kind": "game_action",
-        "why": "from HOME (the game closed, no save) launch the selected tile, then the language list, the look picker and the name keyboard with the panel's choices, ending on Confirm Choices with nothing confirmed",
+        "why": "from HOME (game closed, no save): launch the tile, then the language, look and name from the panel, ending on Confirm Choices unconfirmed",
         "action": "new_game_intro"
       }
     ],

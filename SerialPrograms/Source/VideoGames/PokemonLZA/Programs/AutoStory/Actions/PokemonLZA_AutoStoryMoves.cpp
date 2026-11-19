@@ -18,22 +18,18 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  Whether the screen on a fresh look has not changed since the look
-//  before (SCREEN_STILL): the input in between did nothing, a dropped turn
-//  or a dropped hold. A walk into a wall that already stops the player
-//  reads still too, and plays its leg twice.
+//  A dropped turn or hold leaves the screen still. A walk into a wall reads
+//  still too, and plays its leg twice.
 bool screen_still(PlzaBackend& backend){
     return backend.observe().events.has(ScreenEvent::SCREEN_STILL);
 }
 
-//  A recorded turn: story_turn(), then L to recenter the camera, since the
-//  walk goes where it looks.
+//  L since the walk goes where the camera looks.
 void turn_and_recenter(PlzaBackend& backend, double degrees){
     story_turn(backend, degrees);
     backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
 }
 
-//  `input`, played again once when the screen stays still after it.
 template <typename Input>
 void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
     input();
@@ -43,16 +39,13 @@ void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
     }
 }
 
-//  StoryWalkStyle::HELD: L before leg `index` when it turns after an
-//  earlier leg.
 void recenter_before_held_leg(PlzaBackend& backend, size_t index, const StoryWalkLeg& leg){
     if (index > 0 && leg.turn != 0){
         backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
     }
 }
 
-//  StoryWalkStyle::HELD: each leg's stick held at its angle for its time
-//  (a turn-only leg a 150 ms tap); L before each later leg that turns.
+//  A turn-only leg is a 150 ms tap.
 void run_held_legs(PlzaBackend& backend, const std::vector<StoryWalkLeg>& legs){
     for (size_t index = 0; index < legs.size(); index++){
         const StoryWalkLeg& leg = legs[index];
@@ -65,8 +58,7 @@ void run_held_legs(PlzaBackend& backend, const std::vector<StoryWalkLeg>& legs){
     }
 }
 
-//  "leg 2/5 turn 90 walk 1200 ms": leg `index` (from 0) of `count`, for the
-//  log. A leg with no walk leaves it out.
+//  "leg 2/5 turn 90 walk 1200 ms"
 std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg& leg){
     std::string label = std::format("leg {}/{} turn {:g}", index + 1, count, leg.turn);
     if (leg.walk > Milliseconds(0)){

@@ -57,7 +57,6 @@ struct CardCase{
 
 const CardCase CARD_CASES[] = {
     {
-        //  After 03.08 autosaved, the backup (1 registered) loads at the Center counter.
         .name = "1 registered: 03.06's start at the Center counter",
         .input = {.card = {.registered = 1}},
         .expectation = {.checkpoint = "03.06"},
@@ -69,7 +68,6 @@ const CardCase CARD_CASES[] = {
     },
 };
 
-//  The built-in row `id`'s index; none when there is no such row.
 std::optional<size_t> builtin_row(std::string_view id){
     const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
     for (size_t index = 0; index < rows.size(); index++){
@@ -80,7 +78,6 @@ std::optional<size_t> builtin_row(std::string_view id){
     return std::nullopt;
 }
 
-//  The card read after 03.08 failed, as a rewind reads it.
 UnitTestResult check_card(const CardCase& test){
     const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
     const std::optional<size_t> failed = builtin_row("03.08");
@@ -101,7 +98,6 @@ UnitTestResult check_card(const CardCase& test){
 }
 
 
-//  A look `after` the first, with the readings named in `readings`.
 Observation<ZonePose> look(std::vector<std::string_view> readings, Milliseconds after = 0ms){
     Observation<ZonePose> observation;
     observation.when = WallClock::min() + after;
@@ -111,8 +107,7 @@ Observation<ZonePose> look(std::vector<std::string_view> readings, Milliseconds 
     return observation;
 }
 
-//  A checkpoint `id` whose GAME steps run `actions`, each step named for
-//  its action.
+//  Each step named for its action.
 StoryCheckpoint row(std::string id, std::vector<std::string> actions){
     StoryCheckpoint checkpoint;
     checkpoint.id = std::move(id);
@@ -123,8 +118,6 @@ StoryCheckpoint row(std::string id, std::vector<std::string> actions){
     return checkpoint;
 }
 
-//  03.06 and 03.07 check the platform; 03.08 does, then catches. The run
-//  goes from 03.08 to 03.08.
 std::vector<StoryCheckpoint> story_rows(){
     return {
         row("03.06", {"wait_for_platform"}),
@@ -135,15 +128,12 @@ std::vector<StoryCheckpoint> story_rows(){
 constexpr size_t RUN_FROM = 2;
 constexpr size_t RUN_TO = 2;
 
-//  How a run with rewinds ends.
 struct RewindExpectation{
-    //  "done", or "failed at <checkpoint> <event>: <failure>".
     std::string verdict;
-    //  The checkpoints run, in order, each "<id> passed" or "<id> failed".
+    //  "<id> passed" or "<id> failed", in order.
     std::string runs;
-    //  What the backup save did, in order: "open", "load", "cancel".
+    //  "open", "load", "cancel", in order.
     std::string backup_calls;
-    //  A log line the run wrote, if any is checked.
     std::string line = {};
 };
 
@@ -152,12 +142,10 @@ struct RewindCase{
     struct Input{
         //  The badge on the first look: 03.08 autosaves before its catch.
         bool autosave_in_failed_run;
-        //  How many catches fail before they pass.
         size_t failed_catches;
-        //  What the backup card reads; none: no card read.
+        //  None: no card read.
         std::optional<BackupCard> card;
         size_t max_rewinds = 2;
-        //  What the failed catches fail as.
         std::string_view failure = "lost";
     };
     Input input;
@@ -186,7 +174,7 @@ const RewindCase REWIND_CASES[] = {
         },
     },
     {
-        //  A catch at 98 autosaved with the badge unseen; the retry reloads off the rocks.
+        //  A catch can autosave with the badge unseen.
         .name = "03.08 fails as rocks_not_left with no autosave seen: the save moved, rewinds",
         .input = {.autosave_in_failed_run = false, .failed_catches = 1, .card = BackupCard{.registered = 1}, .failure = "rocks_not_left"},
         .expectation = {
@@ -235,12 +223,8 @@ const RewindCase REWIND_CASES[] = {
     },
 };
 
-//  The console-less game with a reload that succeeds, its "catch_in_zone"
-//  looking once, then failing as `failure` its first `failed_catches`
-//  times, counted in `catches`. The stand-in runs on the script backend: the real one is
-//  console_only, which the registry would refuse before the handler. Its
-//  look is noted in `sightings` like the real one's
-//  (with_autosave_sightings()): a badge it sees is the catch's autosave.
+//  A stand-in "catch_in_zone" that looks once, then fails its first
+//  `failed_catches` times: the real one is console_only.
 Pokemon::StoryGame<ZonePose> rewind_game(
     const StoryData& story, size_t failed_catches, std::string_view failure, AutosaveSightings& sightings, size_t& catches
 ){
@@ -265,7 +249,6 @@ Pokemon::StoryGame<ZonePose> rewind_game(
     return game;
 }
 
-//  A backup save whose card reads `card`, noting each call in `calls`.
 BackupSave recording_backup(std::optional<BackupCard> card, std::vector<std::string>& calls){
     return BackupSave{
         .open_card = [card, &calls](PlzaBackend&){
@@ -282,7 +265,6 @@ BackupSave recording_backup(std::optional<BackupCard> card, std::vector<std::str
     };
 }
 
-//  "<id> passed" or "<id> failed" for each run of `report`.
 std::string describe_runs(const Pokemon::SegmentReport& report){
     std::vector<std::string> runs;
     for (const Pokemon::CheckpointRun& run : report.runs){
@@ -300,18 +282,14 @@ bool has_line(const std::vector<std::string>& lines, std::string_view wanted){
     return false;
 }
 
-//  A badge this long after a checkpoint's first look is its own autosave:
-//  one in its first 1.5 s is the save before it.
+//  One in a checkpoint's first 1.5 s is the save before it.
 constexpr Milliseconds OWN_BADGE = 2000ms;
 
-//  The looks of a checkpoint that autosaves in its first step: a plain
-//  look, the badge, then the platform.
 std::vector<Observation<ZonePose>> badge_in_first_step(){
     return {look({}), look({AUTOSAVE_READING}, OWN_BADGE), look({PLATFORM_READING}, OWN_BADGE + 1000ms)};
 }
 
-//  One run of run_plza_with_rewinds() on rewind_game(), from `rows[first]`
-//  to `rows[last]`, 03.06's start the backup card's (1 registered).
+//  The backup card reads 1 registered: 03.06's start.
 struct RewindRun{
     std::vector<StoryCheckpoint> rows;
     size_t first;
@@ -369,9 +347,7 @@ UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
 }
 
 
-//  02.05 and 02.06 come before the first backup save, which loads at
-//  03.06's start (the Center counter after 03.05's heal). Each looks for
-//  the platform, then catches.
+//  02.05 and 02.06 come before the first backup save, at 03.06's start.
 std::vector<StoryCheckpoint> gate_rows(){
     return {
         row("02.05", {"wait_for_platform", "catch_in_zone"}),
@@ -380,14 +356,12 @@ std::vector<StoryCheckpoint> gate_rows(){
     };
 }
 
-//  The step of the failed checkpoint its autosave badge shows in.
 enum class BadgeIn{
     FIRST_STEP,     //  wait_for_platform: mid-checkpoint
     LAST_STEP,      //  catch_in_zone: the checkpoint's end, the next one's start
 };
 
-//  A run from `from` to `to` (rows of gate_rows()) whose first catch fails
-//  after the game autosaved; the backup card reads 1 registered.
+//  The first catch fails after the game autosaved.
 struct GateCase{
     std::string name;
     struct Input{
@@ -401,7 +375,6 @@ struct GateCase{
 
 const GateCase GATE_CASES[] = {
     {
-        //  No backup card before the first Center save (02.05).
         .name = "02.05 fails after an autosave mid-checkpoint: no backup opened, the run stops and says where the save is",
         .input = {.from = "02.05", .to = "02.06", .badge = BadgeIn::FIRST_STEP},
         .expectation = {
@@ -432,7 +405,6 @@ const GateCase GATE_CASES[] = {
     },
 };
 
-//  The index of the row `id` in `rows`; none when there is no such row.
 std::optional<size_t> index_of(const std::vector<StoryCheckpoint>& rows, std::string_view id){
     for (size_t index = 0; index < rows.size(); index++){
         if (rows[index].id == id){
@@ -472,22 +444,20 @@ struct StartCase{
         //  A row of start_rows().
         std::string_view asked = "03.08";
         StartSignature read = {};
-        //  What the backup card reads; none: no card read.
+        //  None: no card read.
         std::optional<BackupCard> card = std::nullopt;
         size_t max_rewinds = 2;
     };
     Input input;
     struct Expectation{
-        //  The checkpoint the run plays from; none: it must stop.
+        //  None: the run must stop.
         std::optional<std::string> from = std::nullopt;
-        //  What the backup save did, in order: "open", "load", "cancel".
         std::string backup_calls = {};
     };
     Expectation expectation;
 };
 
-//  On the street: no talk prompt, no lead's panel. Neither 03.06's start
-//  (the Center counter) nor 03.08's (in Wild Zone 1).
+//  Neither 03.06's start (the Center counter) nor 03.08's (in Wild Zone 1).
 const StartSignature ON_THE_STREET{.talk_prompt = false, .wild_zone = false};
 
 const StartCase START_CASES[] = {
@@ -497,7 +467,6 @@ const StartCase START_CASES[] = {
         .expectation = {.from = "03.08", .backup_calls = ""},
     },
     {
-        //  03.08's latest save after a catch's autosave stands where no checkpoint starts.
         .name = "a start that matches no checkpoint rewinds to the backup and runs from the checkpoint its card names",
         .input = {.read = ON_THE_STREET, .card = BackupCard{.registered = 1}},
         .expectation = {.from = "03.06", .backup_calls = "open, load"},
@@ -519,7 +488,6 @@ const StartCase START_CASES[] = {
     },
 };
 
-//  02.05, before the first backup save, then story_rows().
 std::vector<StoryCheckpoint> start_rows(){
     std::vector<StoryCheckpoint> rows{row("02.05", {"wait_for_platform"})};
     for (StoryCheckpoint& later : story_rows()){

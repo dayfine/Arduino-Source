@@ -20,22 +20,16 @@ namespace PokemonLZA{
 
 //  What press_a_through_lines() saw.
 struct LinesPassed{
-    //  A text box or the advance chevron showed.
+    //  A text box or the advance chevron.
     bool text = false;
-    //  A tutorial card showed (TUTORIAL_CARD_READING).
     bool card = false;
-    //  The lines went on past the limit.
     bool timed_out = false;
 };
 
-//  A at each look, LINES_POLL apart, with a text box, the advance chevron
-//  or a tutorial card, until none has shown for `quiet`, by the looks'
-//  times; `limit` at most.
+//  A while text or a tutorial card shows, until none has shown for `quiet`; `limit` at most.
 LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Milliseconds limit);
 
-//  B, a second apart, until the party bar or a text box shows: out of a
-//  menu, back to the overworld or to the talk that follows it. Returns
-//  whether one showed within `presses` presses.
+//  B until the party bar or a text box shows; false if neither did within `presses`.
 bool press_b_out_of_menu(PlzaBackend& backend, size_t presses);
 
 

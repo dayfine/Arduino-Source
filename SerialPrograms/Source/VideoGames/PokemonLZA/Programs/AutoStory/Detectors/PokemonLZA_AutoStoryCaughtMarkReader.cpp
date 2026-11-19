@@ -21,14 +21,9 @@ using namespace Kernels::Waterfill;
 
 namespace{
 
-//  The name plate's HP bar: the widest flat green bar in the upper two
-//  thirds of the screen, 80 px wide or more at 1080p. The green is kept
-//  tight (red 0-90, green 175+, blue 90-145; the bar is about 45, 198,
-//  115): a wider range took in the bright grass around Bunnelby's plate
-//  (about 68, 160, 80), so the bar was no longer flat and the lock-on was
-//  missed (03.08, console B 2026-11-14). The player's own HP bar, over the
-//  head while a wild Pokemon attacks, is about 63 px wide; the plate's
-//  some 105-115 (Bunnelby's and Scatterbug's, the same frames).
+//  The widest flat green bar in the upper two thirds, 80+ px at 1080p. The green is
+//  tight (bar about 45, 198, 115) so bright grass (68, 160, 80) around the plate keeps
+//  it flat. The player's own HP bar is about 63 px wide; plates 105-115.
 std::optional<ImagePixelBox> find_plate_bar(const ImageViewRGB32& screen){
     if (screen.width() == 0 || screen.height() == 0){
         return std::nullopt;
@@ -64,8 +59,7 @@ std::optional<ImagePixelBox> find_plate_bar(const ImageViewRGB32& screen){
 
 namespace{
 
-//  The Poke Ball's pixels in the box where the caught mark sits above
-//  `bar`: pinkish red and white.
+//  Pinkish red and white pixels where the caught mark sits above `bar`.
 struct MarkPixels{
     size_t red = 0;
     size_t white = 0;
@@ -82,9 +76,8 @@ MarkPixels count_mark_pixels(const ImageViewRGB32& screen, const ImagePixelBox& 
         for (size_t x = min_x; x < max_x; x++){
             const Color pixel(screen.pixel(x, y));
             const int r = pixel.red();
-            //  The ball's red is pinkish (blue about green); the gender
-            //  mark next to it, on every plate, is orange (green well over
-            //  blue) and is not counted (Scatterbug, console B 2026-11-14).
+            //  The ball's red is pinkish (blue about green); the orange gender mark next to it
+            //  (green well over blue) is not counted.
             counts.red += r > 190 && r > pixel.green() + 70 && r > pixel.blue() + 50 && pixel.blue() + 15 >= pixel.green();
             counts.white += r > 215 && pixel.green() > 215 && pixel.blue() > 215;
         }

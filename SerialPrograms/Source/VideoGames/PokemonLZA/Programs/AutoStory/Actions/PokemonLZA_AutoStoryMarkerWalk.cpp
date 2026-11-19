@@ -23,22 +23,17 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  How long the walk may take, and how long it then waits for the
-//  objective's prompt or dialog: a scene at the objective (03.09's lab
-//  gate) takes the marker away first and starts its talk 9 to 11 s later
-//  (console B, 2026-11-14).
+//  A scene at the objective can take the marker away and start its talk up to 11 s later.
 constexpr Milliseconds MARKER_WALK_LIMIT(90000);
 constexpr Milliseconds MARKER_SCENE_WAIT(15000);
 constexpr Milliseconds MARKER_POLL(250);
 
-//  How one step of the walk ended.
 enum class MarkerStep{
     WALKING,
     ARRIVED,    //  MarkerArrival::arrived()
     LOST,       //  the marker did not show for 12 camera turns
 };
 
-//  The walk, one look and one move at a time.
 class MarkerWalk{
 public:
     MarkerWalk(StoryEnv& env, PlzaBackend& backend, MarkerProof proof)
@@ -47,12 +42,10 @@ public:
         , m_arrival(proof)
     {}
 
-    //  The last distance read taken, if any.
     std::optional<int> position() const{
         return m_arrival.position();
     }
 
-    //  Where the objective's prompt is.
     MarkerArrival& arrival(){
         return m_arrival;
     }
@@ -82,12 +75,7 @@ public:
     }
 
 private:
-    //  A walk to the objective's prompt: `look` and its `marker`'s digits
-    //  to m_arrival, a read taken toward a held-up walk (on_distance()).
-    //  Whether it arrived: a prompt or a dialog near the objective. One
-    //  farther on is walked past, logged once while it shows; its dialog
-    //  gets B (B cannot talk again), as a street dialog 41 to go held the
-    //  walk (console B, 2026-11-16 18:47).
+    //  A dialog not near the objective gets B (B cannot start a talk again).
     bool at_objective(const ScreenObservation& look, const std::optional<ObjectiveMarker>& marker){
         const bool prompt = look.events.has(ScreenEvent::INTERACT_PROMPT) || look.events.has(ScreenEvent::DIALOG_BOX);
         const std::optional<int> read = marker && marker->distance > 0 ? std::optional<int>(marker->distance) : std::nullopt;
@@ -113,7 +101,6 @@ private:
     }
 
 
-    //  The marker is behind: turn the camera toward where it was last.
     MarkerStep look_behind(){
         if (++m_unseen > 12){
             return MarkerStep::LOST;
@@ -122,8 +109,6 @@ private:
         return MarkerStep::WALKING;
     }
 
-    //  What came of `read` on a walk to the objective's prompt: a read
-    //  taken goes on to on_distance(), one too near too soon is logged.
     void on_read(std::optional<int> read, const MarkerRead& result){
         if (result.taken){
             on_distance(*read);
@@ -136,9 +121,7 @@ private:
         }
     }
 
-    //  A taken read on a walk to the objective's prompt: logged when it
-    //  changes; 4 reads with no new best is a walk held up (the Research
-    //  Lab's front fence, console B 2026-11-10), which steps sideways:
+    //  4 reads with no new best = held up (e.g. by a fence): step sideways,
     //  right, then left twice as far, 4 at most.
     void on_distance(int distance){
         if (distance < m_best){
@@ -158,8 +141,6 @@ private:
         m_sidesteps++;
     }
 
-    //  Turns the camera until the marker at `x` (0 to 1) sits in the
-    //  middle.
     void steer(double x){
         const double off = x - 0.5;
         if (off > 0.06 || off < -0.06){
@@ -168,7 +149,6 @@ private:
         }
     }
 
-    //  0.6 s on.
     void step_on(){
         pbf_move_left_joystick(m_env.context, /*position=*/{0, 1}, /*hold=*/600ms, /*release=*/0ms);
     }
@@ -184,10 +164,7 @@ private:
     double m_last_x = 0.5;
 };
 
-//  After a walk that did not arrive (the marker gone, a scene at the
-//  objective taking it away): whether an A prompt or a dialog shows within
-//  MARKER_SCENE_WAIT while `arrival` is near the objective (with the
-//  marker up, MarkerArrival::arrived()'s rule). Not near: false at once.
+//  After a walk that lost the marker: whether a prompt or dialog shows near it soon.
 bool objective_reached(StoryEnv& env, PlzaBackend& backend, MarkerArrival& arrival){
     if (!arrival.near()){
         return false;
@@ -212,8 +189,6 @@ bool objective_reached(StoryEnv& env, PlzaBackend& backend, MarkerArrival& arriv
     }
 }
 
-//  `walk` until it arrives, loses the marker or `limit` passes. Returns
-//  whether it arrived.
 bool run_marker_walk(Milliseconds limit, MarkerWalk& walk, PlzaBackend& backend){
     const WallClock deadline = current_time() + limit;
     while (current_time() < deadline){

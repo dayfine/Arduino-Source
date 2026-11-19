@@ -46,8 +46,7 @@ using Handler = Pokemon::StoryActionHandler<ZonePose>;
 
 namespace{
 
-//  A walk's "end" that holds its last leg until a scene takes control
-//  (walk_until() with no event), not until one screen event.
+//  A walk "end" that holds the last leg until a scene takes control.
 constexpr std::string_view WALK_UNTIL_SCENE = "scene";
 
 
@@ -59,30 +58,25 @@ StoryArgSpec optional_ms(std::string key, int64_t fallback, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = fallback, .why = std::move(why)};
 }
 
-//  A flag that is off when left out.
 StoryArgSpec flag(std::string key, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::BOOLEAN, .required = false, .fallback = false, .why = std::move(why)};
 }
 
-//  An integer that has no value when left out.
 StoryArgSpec optional_int(std::string key, std::string why){
     return StoryArgSpec{.key = std::move(key), .type = StoryArgType::INTEGER, .required = false, .fallback = std::nullopt, .why = std::move(why)};
 }
 
-//  `spec`, run only on a console.
 StoryActionSpec console_only(StoryActionSpec spec){
     spec.console_only = true;
     return spec;
 }
 
-//  A gate run's args: "timeout_ms" (`timeout_ms` when left out).
 std::vector<StoryArgSpec> gate_args(int64_t timeout_ms){
     return {
         optional_ms("timeout_ms", timeout_ms, "going this long with no A prompt fails the step"),
     };
 }
 
-//  A walk's args: "legs", "end", "held", "wait_ms", "end_after_ms" and "heading".
 std::vector<StoryArgSpec> walk_args(){
     return {
         StoryArgSpec{
@@ -104,7 +98,6 @@ std::vector<StoryArgSpec> walk_args(){
     };
 }
 
-//  The GAME actions that run only on a console.
 std::vector<StoryActionSpec> console_specs(){
     return {
         console_only(game_spec("new_game_intro")),
@@ -160,27 +153,23 @@ std::vector<StoryActionSpec> make_specs(){
 }
 
 
-//  What a platform wait needs before the platform counts.
 enum class PlatformWait{
     PLATFORM_ONLY,      //  "wait_for_platform": a start check
     AFTER_AUTOSAVE,     //  "opening_to_platform": the autosave badge first
 };
 
-//  Looks every PLATFORM_POLL: the autosave badge shows for 1-3 s,
-//  so at least 2 looks a second.
+//  The autosave badge shows for 1-3 s: at least 2 looks a second.
 constexpr Milliseconds PLATFORM_POLL(300);
 constexpr size_t PLATFORM_LOOKS = 2;
 
-//  One platform wait's progress over its looks.
 struct PlatformProgress{
     bool autosave_seen = false;
     size_t streak = 0;
-    //  The text with the advance arrow was on the last look.
+    //  On the last look.
     bool text_waiting = false;
 };
 
-//  Takes `look` into `progress`; logs the autosave when it shows. True once
-//  the platform has held PLATFORM_LOOKS looks.
+//  True once the platform has held PLATFORM_LOOKS looks.
 bool platform_look(Pokemon::StoryBackend<ZonePose>& backend, const ScreenObservation& look, PlatformWait wait, PlatformProgress& progress){
     if (look.readings.contains(AUTOSAVE_READING)){
         if (!progress.autosave_seen){
@@ -195,18 +184,13 @@ bool platform_look(Pokemon::StoryBackend<ZonePose>& backend, const ScreenObserva
     return progress.streak >= PLATFORM_LOOKS;
 }
 
-//  A text box with the advance arrow: the opening's last line ("Your train
-//  has arrived in Lumiose City!") waits for A.
+//  The opening's last line ("Your train has arrived in Lumiose City!") waits for A.
 bool text_waiting_for_a(const ScreenObservation& look){
     return look.events.has(ScreenEvent::DIALOG_BOX) && look.readings.contains(ADVANCE_ARROW_READING);
 }
 
-//  The station platform after the opening cutscene: PLATFORM_READING on
-//  PLATFORM_LOOKS looks in a row; AFTER_AUTOSAVE counts them only once the
-//  autosave badge has shown and gone. No input through the cutscene (A does
-//  not advance it), but one A for each text box with the advance arrow, when
-//  it shows (not again while the same one is up). Fails as
-//  "platform_not_seen" after `timeout`.
+//  No input through the cutscene (A does not advance it), except one A per
+//  text box with the advance arrow. Fails as "platform_not_seen".
 Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds timeout, PlatformWait wait){
     //  The looks bound a script whose time stands still.
     const size_t max_looks = (size_t)(timeout / PLATFORM_POLL) + 1;
@@ -237,7 +221,6 @@ Outcome wait_for_platform(Pokemon::StoryBackend<ZonePose>& backend, Milliseconds
     ));
 }
 
-//  The handler of "wait_for_platform" or "opening_to_platform".
 Handler platform_handler(PlatformWait wait){
     return [wait](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
         return wait_for_platform(backend, Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms")), wait);
@@ -245,9 +228,7 @@ Handler platform_handler(PlatformWait wait){
 }
 
 
-//  The walk of `args`: the legs of its arg "legs", each [turn in degrees
-//  clockwise (negative: left), walk ms], held with "held", after the wait
-//  "wait_ms". The args must have passed the walk's spec.
+//  `args` must have passed the walk's spec.
 StoryMove story_walk_move(const StoryActionArgs& args){
     StoryMove move;
     const auto held = args.find("held");
@@ -264,16 +245,11 @@ StoryMove story_walk_move(const StoryActionArgs& args){
     return move;
 }
 
-//  MENU_SAVE_ACTION: save_from_menu().
 Outcome menu_save_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     return save_from_menu(backend);
 }
 
-//  "walk": its legs, once the screen shows free control; held until the
-//  event of its "end" arg, if it has one ("scene": until a scene takes
-//  control), else finished with one look
-//  (finish_walk()). With "heading", it faces that by `arrow` (face_heading())
-//  first; no `arrow`: "console_only".
+//  Starts only with free control. "heading" needs `arrow`, else "console_only".
 Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& backend, const StoryActionCall& call, Pokemon::RunState&){
     const std::string_view name = call.step.name;
     const StoryMove move = story_walk_move(call.args);
@@ -310,11 +286,8 @@ Outcome walk_step(const std::optional<MinimapArrowReader>& arrow, PlzaBackend& b
 }
 
 
-//  "mash_to_move_hints": through the scenes (B at a text box, A at a
-//  choice's top row and the advance chevron) until the player has control
-//  (run_scene_machine(); the args are SceneMachineConfig's fields, their
-//  why strings in make_specs()). 01.01's arrival takes ~240 s, hence 360 s.
-//  No blind A: a blind A at the end of a talk restarts it.
+//  01.01's arrival takes ~240 s, hence 360 s. No blind A: one at the end of
+//  a talk restarts it.
 Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     if (Pokemon::story_arg<bool>(call.args, "press_a_first")){
         press_through_prompt(backend);
@@ -341,11 +314,8 @@ Outcome move_hints_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
     return run_scene_machine(backend, "mash_to_move_hints", config, 360s);
 }
 
-//  "text_to_choice": B through the scene's text until its choice box
-//  shows, which the next step answers (B: an A as the text ends could land
-//  on the choice). 01.02's Pancham scene takes ~60 s, hence 120 s.
-//  "advance_with_a" is for a talk that B closes: Hotel Z's elevator before
-//  "Which floor?" (02.05).
+//  B, not A: an A as the text ends could land on the choice. 01.02's Pancham
+//  scene takes ~60 s, hence 120 s.
 Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
     SceneMachineConfig config;
     config.stop_at_choice = true;
@@ -354,24 +324,17 @@ Outcome text_to_choice_step(Pokemon::StoryBackend<ZonePose>& backend, const Stor
 }
 
 
-//  A step's scene ("scene" "a"): B through its text (A at a choice; B
-//  cannot talk again once the text ends) until the party bar
-//  holds a second, 120 s at most; a cutscene with no text and no HUD is
-//  waited out. Fails as "scene_never_started" when the HUD shows 45 s with
-//  no text, choice, battle or cutscene: the player is not at the scene's
-//  trigger.
+//  B through the text (B cannot talk again once it ends). Fails as
+//  "scene_never_started" when the HUD shows 45 s with nothing else: the
+//  player is not at the scene's trigger.
 Outcome scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     SceneMachineConfig config;
     config.start_window = 45s;
     return run_scene_machine(backend, "scene", config, 120s);
 }
 
-//  A bare "scene" step ("mash"): B at a box, A at a choice or a tutorial
-//  card, a fade or the party bar not held yet waited out, and B on every
-//  other look, which closes the menus a talk opens (03.11's Mable's
-//  mission and reward screens), until the party bar holds a second, at
-//  once if it does from the start; 120 s at most. mash_to_move_hints,
-//  which presses nothing there, sat on her menus.
+//  B on every other look closes the menus a talk opens (Mable's mission and
+//  reward screens), which mash_to_move_hints sits on.
 Outcome mash_scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     SceneMachineConfig config;
     config.blind_press_after = 0ms;
@@ -381,10 +344,6 @@ Outcome mash_scene_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAct
 }
 
 
-//  "story_battle_start": A through the talk before a story battle (a
-//  choice takes its top row) and the battle tutorial's cards
-//  (TUTORIAL_CARD_READING), waiting out the VS splash, until the battle
-//  HUD shows or `lock_on` sees the move symbols, 90 s at most.
 Outcome battle_start_step(
     const std::optional<LockOnWatch>& lock_on, Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&
 ){
@@ -394,14 +353,11 @@ Outcome battle_start_step(
     return run_scene_machine(backend, "story_battle_start", config, 90s);
 }
 
-//  How long a story battle's look for the move symbols holds ZL, as the
-//  start's lock-on does.
+//  As long as the start's lock-on holds ZL.
 constexpr Milliseconds BATTLE_LOCK_ON_HOLD = 2000ms;
 
-//  Whether the battle is on within `within`: the battle HUD on a look, or,
-//  with `lock_on`, the move symbols while ZL is held on a look without it
-//  (a start that locked on and let go of ZL can leave the HUD down until
-//  ZL is held again); with no `lock_on`, a look every 250 ms.
+//  A start that locked on and let go of ZL can leave the HUD down until ZL
+//  is held again, so `lock_on` also counts the move symbols under ZL.
 bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lock_on, Milliseconds within){
     for (Milliseconds waited = 0ms; ; ){
         backend.scope().throw_if_cancelled();
@@ -424,9 +380,7 @@ bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lo
     }
 }
 
-//  "story_battle": the backend's battle code, once the battle is on within
-//  10 s (battle_on_within(), ZL held by `lock_on`); else
-//  "battle_never_started", not 2 min of looks on the overworld.
+//  "battle_never_started" after 10 s, not 2 min of looks on the overworld.
 Outcome battle_step(
     const std::optional<LockOnWatch>& lock_on, Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&
 ){
@@ -439,22 +393,17 @@ Outcome battle_step(
 }
 
 
-//  "talk_through_map_screen": talk_through_map_screen().
 Outcome map_talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     return talk_through_map_screen(backend);
 }
 
-//  "climb_ladder": climb_ladder().
 Outcome ladder_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     climb_ladder(backend);
     return Pokemon::outcome_ok();
 }
 
-//  "talk_to_pokedex_screen": the nurse's talk and the Pokedex app (03.04)
-//  until the party bar holds a second, 90 s at most: B at its text and,
-//  every 2 s while neither text nor control shows, at the Pokedex screens,
-//  which only B closes (A plays the entry's motions). The one blind press
-//  left: no detector reads the Pokedex screens yet.
+//  Blind B: no detector reads the Pokedex screens yet, and only B closes
+//  them (A plays the entry's motions).
 Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     SceneMachineConfig config;
     config.text_button = BUTTON_B;
@@ -464,7 +413,6 @@ Outcome pokedex_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryAction
 }
 
 
-//  "talk": talk_at_prompt().
 Outcome talk_step(Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
     return talk_at_prompt(backend);
 }
@@ -477,10 +425,8 @@ Handler choose_handler(int index){
 }
 
 
-//  A handler that needs nothing but its step.
 using StepFunction = Outcome (*)(Pokemon::StoryBackend<ZonePose>&, const StoryActionCall&, Pokemon::RunState&);
 
-//  The actions run by a StepFunction, by name.
 const std::map<std::string_view, StepFunction>& step_functions(){
     static const std::map<std::string_view, StepFunction> functions{
         {"mash_to_move_hints", move_hints_step},
@@ -496,9 +442,7 @@ const std::map<std::string_view, StepFunction>& step_functions(){
     return functions;
 }
 
-//  The handler of each of plza_story_specs(), by name: a console_only one
-//  from `console`, else fails as console_only; walks face their heading by
-//  `arrow`, story battles and their starts lock on with `lock_on`.
+//  A console_only action missing from `console` fails as console_only.
 Handler plza_handler(
     const PlzaConsoleActions& console, const std::optional<MinimapArrowReader>& arrow, const std::optional<LockOnWatch>& lock_on,
     const StoryActionSpec& spec
@@ -536,8 +480,7 @@ Handler plza_handler(
     return step_functions().at(spec.name);
 }
 
-//  PLZA's actions, the console_only ones from `console`, with no save or
-//  reload; walks face their heading by `arrow`, battle starts lock on with `lock_on`.
+//  No save or reload actions.
 Pokemon::StoryGame<ZonePose> plza_game_actions(
     const PlzaConsoleActions& console, const std::optional<MinimapArrowReader>& arrow, const std::optional<LockOnWatch>& lock_on
 ){
@@ -608,26 +551,20 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
 
 namespace{
 
-//  Whether `row`'s first step checks its start: the station platform
-//  (01.01), or a new game's start screen (01.00a: HOME, 01.00b: Confirm
-//  Choices).
 bool first_step_checks_start(const Pokemon::StoryCheckpoint& row){
     return (!row.steps.empty() && row.steps.front().action == "wait_for_platform") || story_row_starts_without_save(row);
 }
 
-//  Looks after a load, PLATFORM_POLL apart, to tell 01.01's start from a
-//  later one: right after a load the platform reads on the first two.
+//  Right after a load the platform reads on the first two looks.
 constexpr size_t START_LOOKS = 4;
 
-//  What the screen says about a row's start.
 enum class StartCheck{
-    PASSED,     //  its first step checks it (first_step_checks_start())
+    PASSED,     //  its first step checks it
     FAILED,     //  the station platform holds: 01.01's start, not this row's
     UNCHECKED,  //  off the platform; nothing checks the row's own start yet
 };
 
-//  START_LOOKS looks at the screen for `row`'s start. Only the station
-//  platform is read so far: a later row's place is not checked.
+//  Only the station platform is read so far.
 StartCheck check_start(PlzaBackend& backend, const Pokemon::StoryCheckpoint& row){
     if (first_step_checks_start(row)){
         return StartCheck::PASSED;
@@ -689,15 +626,11 @@ Outcome load_checkpoint_start(const Pokemon::StoryGame<ZonePose>& game, PlzaBack
 
 namespace{
 
-//  How a run goes on into `row` from the row before.
 enum class Chain{
     ON,         //  from the live screen
     RELOAD,     //  from `row`'s start save
 };
 
-//  Off the platform, `row`'s start in `options` checked on the live
-//  screen (start_confirmed()): Chain::ON when it shows or `row` has none
-//  to check, else "chain_off_start". Logs the verdict.
 std::variant<Chain, Outcome> check_live_start(
     PlzaBackend& backend, const SegmentRunOptions& options, const Pokemon::StoryCheckpoint& row, bool seen
 ){
@@ -719,10 +652,8 @@ std::variant<Chain, Outcome> check_live_start(
     return Pokemon::outcome_failed("chain_off_start", std::format("the run is not at {}'s start: {}", row.id, screen));
 }
 
-//  Chain::ON or RELOAD into `row`, `seen` whether the row before's
-//  autosave showed; a failure when only a reload would do and there is no
-//  save to load, or when the live screen is not at `row`'s start
-//  (check_live_start()). Logs the decision.
+//  `seen`: whether the row before's autosave showed. Fails when only a
+//  reload would do and there is no save to load.
 std::variant<Chain, Outcome> decide_chain(
     PlzaBackend& backend, const SegmentRunOptions& options, const Pokemon::StoryCheckpoint& row, bool seen
 ){
@@ -748,8 +679,6 @@ std::variant<Chain, Outcome> decide_chain(
     return Chain::RELOAD;
 }
 
-//  Into `row`, which reloads its start save when chained, after `previous`:
-//  run_plza_segments()'s chained reload. Logs each decision.
 Outcome reload_into(
     const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const SegmentRunOptions& options,
     const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& row, const AutosaveSightings& sightings
@@ -790,9 +719,7 @@ Outcome reload_into(
     return Pokemon::outcome_ok();
 }
 
-//  The event "chain" into `row` after `previous`: reload_into() for a row
-//  in `options.reload_when_chained`, else decide_chain() and, when it says
-//  so, load_checkpoint_start(). A reload starts a fresh `state`.
+//  A reload starts a fresh `state`.
 Outcome chain_into(
     const Pokemon::StoryGame<ZonePose>& game, PlzaBackend& backend, const SegmentRunOptions& options,
     const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& row,

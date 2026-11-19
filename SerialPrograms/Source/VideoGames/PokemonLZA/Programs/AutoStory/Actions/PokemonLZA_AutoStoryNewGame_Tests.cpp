@@ -50,13 +50,11 @@ std::string press_text(const std::optional<std::vector<IntroKey>>& presses){
 }
 
 
-//  Hangul names: 6 and 7 characters of 3 UTF-8 bytes each.
+//  6 and 7 characters of 3 UTF-8 bytes each.
 const std::string HANGUL_6 = "\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8\xec\x8a\xa4\xec\xbd\x94\xec\x8a\xa4";
 const std::string HANGUL_7 = "\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8\xec\x8a\xa4\xec\xbd\x94\xec\x8a\xa4\xeb\xaa\xa8";
 
 
-//  new_game_problem(): whether the program refuses the choices before any
-//  press, whatever screen the run starts on.
 struct ProblemCase{
     std::string name;
     struct Input{
@@ -140,10 +138,6 @@ private:
 };
 
 
-//  new_game_run_problem(): whether the program refuses the choices for a
-//  run of the built-in rows `rows`: a run that plays 01.00a types the name,
-//  one from 01.00b finds it typed. Every refusal ends with
-//  NEW_GAME_BY_HAND_HINT.
 struct RunProblemCase{
     std::string name;
     struct Input{
@@ -186,7 +180,6 @@ const RunProblemCase RUN_PROBLEM_CASES[] = {
     {.name = "a symbol of the second page from 01.00a", .input = {.rows = {"01.00a"}, .choices = {.name = "a#"}}, .expectation = {.refused = true}},
 };
 
-//  The built-in rows `ids`, in that order.
 std::vector<Pokemon::StoryCheckpoint> builtin_rows(const std::vector<std::string>& ids){
     std::vector<Pokemon::StoryCheckpoint> rows;
     for (const std::string& id : ids){
@@ -229,8 +222,6 @@ private:
 };
 
 
-//  The language list's moves (entries down the left column, then the right
-//  one) and the look picker's (looks along the top row, then the bottom).
 enum class Grid{
     LANGUAGE_LIST,
     LOOK_PICKER,

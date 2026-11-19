@@ -2,14 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Where a run is before it plays a checkpoint. A loaded save can be at an
- *  earlier checkpoint's start than the one asked for: on console B,
- *  2026-11-16, a run from 03.08 loaded a save at the Center counter
- *  (03.06's start) and searched Wild Zone 1 inside the Center. Each plan
- *  can name what the screen shows at its start (execution
- *  "start_signature"); the run reads the screen after the load and plays
- *  from the checkpoint whose start it matches, or stops. The backup card a
- *  rewind opens is read the same way, through the same table.
+ *  Where a run is before it plays a checkpoint: a loaded save can be at an
+ *  earlier checkpoint's start than the one asked for. Plans name what the
+ *  screen shows at their start (execution "start_signature").
  *
  */
 
@@ -32,84 +27,55 @@ namespace PokemonLZA{
 //  What the screen shows where a checkpoint starts, one cheap reading per
 //  field; none: not known (a plan) or not read (a reading).
 struct StartSignature{
-    //  The backup card's "Registered in the Pokedex" (the title's Up + B +
-    //  X), for a backup save that loads there.
+    //  The backup card's "Registered in the Pokedex".
     std::optional<size_t> registered = std::nullopt;
-    //  An A prompt over the scene, as at the Center counter ("A Talk").
     std::optional<bool> talk_prompt = std::nullopt;
-    //  In Wild Zone 1, by the player's pin on the full map
-    //  (wild_zone_from_map()). Not the lead Pokemon's panel at the bottom
-    //  left: it shows on the street outside the zone too, and 03.08b's menu
-    //  save there read as in the zone (console B, 2026-11-17 01:06).
+    //  In Wild Zone 1, by the map pin: the lead Pokemon's panel also shows on
+    //  the street outside the zone.
     std::optional<bool> wild_zone = std::nullopt;
-    //  The overworld party bar's filled slots (PartyBarDetector): every
-    //  catch in Main Mission 03 is a new species, so the party tells 03.08's
-    //  start (3) from a save after a catch (4) or after the fifth (5).
+    //  Party bar slots: every Main Mission 03 catch is a new species.
     std::optional<size_t> party = std::nullopt;
-    //  The built-in minimap reference the minimap matches
-    //  (matching_minimap()), by name: the place, wherever the player and
-    //  camera face. A start that names one matches only a reading of that
-    //  one: a minimap that matches no reference reads the same as one not
-    //  read, and neither is a sign of being there. Station Front (03.04's
-    //  start) and the roof before it read the same party and prompt.
+    //  The matching_minimap() reference's name. An unmatched minimap reads as
+    //  not read, so a start naming one matches only that reading.
     std::optional<std::string> minimap = std::nullopt;
 
     bool operator==(const StartSignature&) const = default;
 };
 
-//  "registered 1, talk prompt, not in a wild zone, minimap 03.04-start": the
-//  fields `signature` has; "nothing read" when it has none.
+//  "registered 1, talk prompt, not in a wild zone, minimap 03.04-start";
+//  "nothing read" when it has no field.
 std::string to_string(const StartSignature& signature);
 
-//  A checkpoint whose start shows `signature`: a plan's execution
-//  "start_signature".
+//  A plan's execution "start_signature".
 struct CheckpointStart{
     std::string checkpoint;
     StartSignature signature = {};
 };
 
-//  The start `starts` names for checkpoint `id`, if any.
+//  Null if `starts` names none for `id`.
 const CheckpointStart* find_start(std::span<const CheckpointStart> starts, std::string_view id);
 
-//  The index of the checkpoint the player is at, by the reading `read`:
-//  `asked` (an index of `rows`) when its start matches, else the one
-//  checkpoint before it whose start names a place (registered, wild_zone
-//  or minimap) and matches. A start matches when it and
-//  `read` share a field and agree on every field they share, and `read`
-//  has the start's minimap when it names one. None when no
-//  checkpoint up to `asked`, or more than one before it, matches: the
-//  position is unknown, and no checkpoint may run from there. A start of
-//  only a party and a prompt (02.02's, one in the party) is no place: it
-//  reads the same at a dozen starts, and would make the Center counter's
-//  reading (03.06's start) match more than one.
+//  `asked` (an index of `rows`) when its start matches `read`, else the one
+//  earlier checkpoint whose start matches. A match shares a field and agrees
+//  on all shared fields. None when
+//  no checkpoint, or more than one earlier one, matches.
 std::optional<size_t> checkpoint_at(
     std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
     size_t asked, const StartSignature& read
 );
 
-//  The checkpoint a run asked to start at `asked` (an index of `rows`)
-//  plays from, by the reading `read` taken after the load:
-//  checkpoint_at(). When no plan names `asked`'s start, there is nothing
-//  to check it against: `asked`. An earlier start matching is no sign of
-//  being there: 03.09 to 03.11 all read as party 5 outside a wild zone, and
-//  Mable's office (03.11) ran 03.09's legs (console B, 2026-11-16 21:10).
-//  None: the run must stop ("start_position_unknown").
+//  checkpoint_at(), or `asked` when no plan names its start. None: the run
+//  must stop ("start_position_unknown").
 std::optional<size_t> run_start(
     std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts,
     size_t asked, const StartSignature& read
 );
 
-//  Whether `read`, the live screen a run chains on from, shows the start
-//  `known`: every field `known` names is read and agrees, but
-//  `registered`, which only the backup card shows. Stricter than a
-//  reload's match (checkpoint_at()), which needs only the fields both
-//  have: 03.08b's save in Wild Zone 1 read as 03.09's start (party 5) with
-//  the zone not read (console B, 2026-11-18 13:37). Starts may share a
-//  signature for this check; only a reload's match needs one checkpoint.
+//  For a chained run: every field `known` names but `registered` (backup
+//  card only) is read and agrees. Stricter than checkpoint_at(), which an
+//  unread field lets match.
 bool start_confirmed(const StartSignature& known, const StartSignature& read);
 
-//  The signature's wild_zone by the player's pin on the full map
-//  (read_map_pin()): whether it is in Wild Zone 1 (pin_in_zone_1()).
 //  None when the pin was not read.
 std::optional<bool> wild_zone_from_map(const std::optional<MapPoint>& pin);
 

@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers save_from_menu()'s tests, on a FakeStoryBackend's scripted
-//  looks.
+//  Registers save_from_menu()'s tests.
 void add_tests_AutoStoryMenuSave(UnitTestDatabase& database);
 
 

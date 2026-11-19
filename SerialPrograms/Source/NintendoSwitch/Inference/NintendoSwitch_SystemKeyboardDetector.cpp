@@ -26,25 +26,20 @@ namespace NintendoSwitch{
 
 namespace{
 
-//  Centres of the five rows of keys, and of the first column and the spacing
-//  between columns, as fractions of the screen.
+//  Key row centres, first column centre and column spacing, as screen fractions.
 constexpr double KEY_ROW_Y[] = {0.500, 0.593, 0.681, 0.770, 0.858};
 constexpr double KEY_COL_X0 = 0.077;
 constexpr double KEY_COL_STEP = 0.075;
 
-//  In the right column, Return spans rows 1-2 and OK rows 3-4. These are the
-//  gaps between those keys.
+//  Right column: Return spans rows 1-2, OK rows 3-4; these are the gaps between.
 constexpr double RIGHT_COLUMN_RETURN_TOP = 0.548;
 constexpr double RIGHT_COLUMN_OK_TOP = 0.725;
 
-//  The cursor border and everything else the reader looks at, from the top of the
-//  digit row to the bottom of the bottom row.
+//  From the top of the digit row to the bottom of the bottom row.
 const ImageFloatBox KEYS_AREA(0.0, 0.43, 1.0, 0.49);
 
-//  The labels of the bottom row's page keys (globe to the accent pages), inside
-//  the border a cursor on one of them draws (y 875-979 at 1080). In the dark
-//  theme the current page's label and underline are cyan (about 0, 230, 210,
-//  y 909-955 for ABC), like the cursor, so the cursor read skips this band.
+//  The bottom row's page-key labels. The dark theme draws the current page's label
+//  cyan like the cursor (about 0, 230, 210), so the cursor read skips this band.
 const ImageFloatBox PAGE_LABELS(0.0, 0.829, 0.49, 0.065);
 
 //  The bar below the keys, which tells the console's theme.
@@ -55,8 +50,7 @@ enum class KeyboardTheme{
     DARK,   //  The console's "Basic Black" theme.
 };
 
-//  The bar is white (245) in the light theme and flat grey (76) in the dark
-//  one; nothing if it is neither. Measured on Legends: Z-A.
+//  White (245) bar in the light theme, flat grey (76) in the dark one.
 std::optional<KeyboardTheme> keyboard_theme(const ImageViewRGB32& screen){
     const ImageStats bar = image_stats(extract_box_reference(screen, BOTTOM_BAR));
     if (is_white(bar)){
@@ -72,10 +66,8 @@ bool in_box(double x, double y, const ImageFloatBox& box){
     return x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height;
 }
 
-//  The cursor border pulses between bright cyan (about 50, 240, 220) and a darker
-//  teal (about 0, 185, 210), measured on Legends: Z-A; in the dark theme it is
-//  about (115, 245, 250). The blue of the OK button and of the light theme's ABC
-//  underline (40, 90, 250) is not green enough to match.
+//  The border pulses between about (50, 240, 220) and (0, 185, 210); dark theme about
+//  (115, 245, 250). The OK button's blue (40, 90, 250) is not green enough.
 bool is_cursor_pixel(uint32_t pixel){
     const int red = (pixel >> 16) & 0xff;
     const int green = (pixel >> 8) & 0xff;
@@ -93,8 +85,7 @@ uint8_t nearest_row(double y){
     return row;
 }
 
-//  The key whose cursor border has its centre at (x, y), or nothing if that is
-//  off the keyboard.
+//  The key whose cursor border is centred at (x, y); nothing off the keyboard.
 std::optional<SystemKeyboardKey> key_at(double x, double y){
     const long col = std::lround((x - KEY_COL_X0) / KEY_COL_STEP);
     if (col < 0 || col > 11){
@@ -112,14 +103,12 @@ std::optional<SystemKeyboardKey> key_at(double x, double y){
     return SystemKeyboardKey{3, 11};
 }
 
-//  The key whose cell holds (x, y), for a point anywhere in KEYS_AREA: the
-//  columns left of the first and right of the right column belong to them.
+//  Points left of the first column or right of the right column belong to the edge keys.
 SystemKeyboardKey key_cell_at(double x, double y){
     const double col = std::clamp((x - KEY_COL_X0) / KEY_COL_STEP, 0.0, 11.0);
     return *key_at(KEY_COL_X0 + col * KEY_COL_STEP, y);
 }
 
-//  The cyan pixels in one key's cell, against all pixels of the cell.
 struct KeyCellPixels{
     double area = 0;
     double count = 0;
@@ -127,12 +116,10 @@ struct KeyCellPixels{
     double sum_y = 0;
 };
 
-//  The cursor's border covers about a fifth of its key's cell. A key whose cell
-//  is more cyan than this is solid cyan, not the cursor: the dark theme's OK
-//  button once the field has text (0, 233, 211; 60% of its cell).
+//  The border covers about a fifth of its cell; more cyan is a solid cyan key
+//  (the dark theme's OK with text: 60% of its cell).
 constexpr double MAX_BORDER_SHARE = 0.35;
 
-//  The cyan pixels of each key's cell in `keys` (KEYS_AREA), by row and column.
 using KeyCells = std::array<std::array<KeyCellPixels, 12>, 5>;
 KeyCells cyan_pixels_by_key(const ImageViewRGB32& keys){
     KeyCells cells{};
@@ -178,9 +165,7 @@ bool SystemKeyboardDetector::detect(const ImageViewRGB32& screen){
     if (!theme){
         return false;
     }
-    //  Each strip crosses the keys and the gaps between them, which gives a
-    //  stddev sum of about 11 (white keys, measured on BDSP and Legends: Z-A)
-    //  or 12 (dark grey keys, about 84, on Legends: Z-A).
+    //  Strips across keys and gaps: stddev sum about 11 (white keys) or 12 (dark keys).
     const double max_panel_stddev = 20;
     const ImageStats upper = image_stats(extract_box_reference(screen, m_key_panel_upper));
     const ImageStats lower = image_stats(extract_box_reference(screen, m_key_panel_lower));
@@ -189,8 +174,7 @@ bool SystemKeyboardDetector::detect(const ImageViewRGB32& screen){
         const bool panel =
             is_grey(upper, /*min_rgb_sum=*/210, /*max_rgb_sum=*/300, max_panel_stddev) ||
             is_grey(lower, /*min_rgb_sum=*/210, /*max_rgb_sum=*/300, max_panel_stddev);
-        //  OK is flat grey (100, 100, 100) while the field is empty and solid
-        //  cyan (0, 233, 211) with text.
+        //  OK: flat grey (100) with an empty field, solid cyan (0, 233, 211) with text.
         return panel && ok.stddev.sum() < 10;
     }
     const bool panel =
@@ -199,16 +183,14 @@ bool SystemKeyboardDetector::detect(const ImageViewRGB32& screen){
     if (!panel){
         return false;
     }
-    //  OK is blue (40, 93, 255), or flat grey (221, 221, 221) while the field is
-    //  empty (disabled). Measured on BDSP and Legends: Z-A.
+    //  OK: blue (40, 93, 255), or flat grey (221) with an empty field.
     return is_solid(ok, {0.103, 0.240, 0.657}) || is_grey(ok, 600, 690);
 }
 
 
 std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB32& screen){
-    //  The cursor is a cyan border around one key. Neighbouring keys overlap that border,
-    //  so take the centroid of all cyan pixels outside solid cyan keys and map it to
-    //  the nearest key.
+    //  Neighbouring keys overlap the border: take the centroid of cyan pixels outside
+    //  solid cyan keys and map it to the nearest key.
     const ImageViewRGB32 keys = extract_box_reference(screen, KEYS_AREA);
     const KeyCells cells = cyan_pixels_by_key(keys);
     double count = 0, sum_x = 0, sum_y = 0;
@@ -233,9 +215,8 @@ std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB3
 }
 
 bool system_keyboard_field_has_text(const ImageViewRGB32& screen){
-    //  Left part of the backspace key, clear of its icon and of the cursor border.
-    //  Light theme: light grey (221) with an empty field, dark grey (52) with
-    //  text. Dark theme: grey (100) with an empty field, white (254) with text.
+    //  Left of the backspace key, clear of its icon and the cursor: light theme 221
+    //  empty, 52 with text; dark theme 100 empty, 254 with text.
     const ImageStats stats = image_stats(extract_box_reference(screen, ImageFloatBox(0.878, 0.470, 0.008, 0.060)));
     if (keyboard_theme(screen) == KeyboardTheme::DARK){
         return !is_grey(stats, /*min_rgb_sum=*/255, /*max_rgb_sum=*/345);
@@ -262,7 +243,6 @@ size_t system_keyboard_text_pixels(const ImageViewRGB32& screen){
 
 namespace{
 
-//  One screenshot and what each function should read from it.
 class Test_SystemKeyboardDetector : public ImageUnitTest{
 public:
     //  `cursor`: the key under the cursor, or nothing for a screen without the keyboard.
@@ -311,10 +291,8 @@ std::string test_image_path(std::string_view image){
     return std::format("NintendoSwitch/SystemKeyboardDetector/{}", image);
 }
 
-//  The cursor on keys other than "1".
 void add_cursor_tests(UnitTestDatabase& database){
-    //  Legends: Z-A, English and Spanish prompts. The
-    //  border pulses between bright cyan and a darker teal; T, / and ! are dark.
+    //  Legends: Z-A, English and Spanish prompts; T, / and ! are dark.
     const std::pair<std::string_view, SystemKeyboardKey> cursors[] = {
         {"PLZA-Cursor-T.png",           {1, 4}},
         {"PLZA-Cursor-Slash.png",       {1, 10}},
@@ -333,12 +311,9 @@ void add_cursor_tests(UnitTestDatabase& database){
     }
 }
 
-//  Tests whose screen is not captured yet.
 void add_planned_tests(UnitTestDatabase& database){
     const SystemKeyboardKey key_1{0, 0};
-    //  Screens still to be captured: AZERTY needs a console whose system language
-    //  uses it (the layout follows the system, not the game). Each test is added
-    //  once its image is in the test repo.
+    //  AZERTY needs a console whose system language uses it.
     struct Planned{
         std::string_view image;
         std::optional<SystemKeyboardKey> cursor;

@@ -15,10 +15,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The overworld fields of the signature on `screen`: talk_prompt, party
-//  when the party bar shows, and minimap when the minimap matches a
-//  built-in reference (matching_minimap()). A fading screen reads nothing.
-//  wild_zone needs the full map: wild_zone_from_map().
+//  The overworld signature fields on `screen`: talk_prompt, party (bar shows) and
+//  minimap (matching_minimap()); a fading screen reads nothing. wild_zone needs the
+//  full map: wild_zone_from_map().
 StartSignature read_start_screen(const ImageViewRGB32& screen);
 
 

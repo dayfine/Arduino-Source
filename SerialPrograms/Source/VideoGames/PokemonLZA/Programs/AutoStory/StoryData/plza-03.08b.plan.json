@@ -11,13 +11,13 @@
       {
         "id": "zone_1_back_to_road",
         "kind": "game_action",
-        "why": "step 62: back onto the road at the catch spots (60, and 100 first when further), by the objective marker. The marker is not on the far gate but past it to its left, behind the zone's fence: a walk at it from 60 was held up at 36 and wandered to 49 inside the zone (console B, 2026-11-13 and 2026-11-14).",
+        "why": "step 62: back onto the road at the catch spots (60, and 100 first when further), by the objective marker. The marker is past the far gate to its left, behind the zone's fence: walking at it from 60 gets stuck inside the zone.",
         "action": "walk_back_to_zone_road"
       },
       {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: from 60 the far gate's green pillars are straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the marker reading 41 there (console B, 2026-11-14). Faces 265 by the minimap first (face_heading, L after the turn: the camera read 259 at the prompt), then runs straight on to the A prompt by upstream's run_towards_gate_with_A_button, as 03.07 enters the zone (user, 2026-11-18). It passed 3 of 3 on console B (2026-11-18), so the pillar steering it replaced (walk_to_zone_gate_entrance, about 10 passes with 3 gate_not_seen) is gone. Walking took 4.7 s, so 8 s of running is ample.",
+        "why": "step 62: from 60 the far gate's green pillars are straight down the road (~4.7 s walking). Faces 265 by the minimap first (L after the turn), then runs straight on to the A prompt by upstream's run_towards_gate_with_A_button, as 03.07 enters the zone; 8 s of running is ample.",
         "action": "aimed_run_to_gate",
         "args": {
           "timeout_ms": 4000
@@ -26,7 +26,7 @@
       {
         "id": "leave_zone_1",
         "kind": "game_action",
-        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10), as plza/autostory passed it (console B, 2026-11-14).",
+        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up).",
         "action": "mash_to_move_hints",
         "args": {
           "press_a_first": true
@@ -35,13 +35,13 @@
       {
         "id": "out_of_zone_1",
         "kind": "game_action",
-        "why": "the save below must be out of the zone, 03.09's start: the map pin out of Wild Zone 1 on two reads, else the run stops here unsaved. On console B, 2026-11-18 13:37, the gate walk ended on the lead's panel gone while still in the zone, the menu save saved there, and 03.09 walked into a wall.",
+        "why": "the save below must be out of the zone, 03.09's start: the map pin out of Wild Zone 1 on two reads, else the run stops here unsaved. The gate walk can end with the lead's panel gone while still in the zone.",
         "action": "check_out_of_zone_1"
       },
       {
         "id": "save_outside_zone_1",
         "kind": "game_action",
-        "why": "the user, 2026-11-16: \"the save is from where we caught the 5th species, so this might be a reason to manually save? like exit wildzone 1 and manually save\". The latest save was the last catch's autosave, wherever in the zone that catch was; a menu save here makes it this spot, 03.09's start: on the street just out of the far gate, where leave_zone_1 ends (party bar up, no A prompt: console B 2026-11-16 20:05:25). No turn back to the gate first (the user, 2026-11-16: no hand-written legs). The game's first menu save shows a tutorial screen, which the save presses through.",
+        "why": "the latest save is the last catch's autosave, wherever in the zone it was; a menu save here makes it this spot, 03.09's start: on the street just out of the far gate, where leave_zone_1 ends (party bar up, no A prompt). The game's first menu save shows a tutorial screen, which the save presses through.",
         "action": "save_from_menu"
       }
     ],

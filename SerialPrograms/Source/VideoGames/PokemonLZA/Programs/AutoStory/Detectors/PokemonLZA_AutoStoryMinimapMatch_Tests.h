@@ -14,9 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers matching_minimap()'s tests, on screens painted from the
-//  built-in 03.04 start reference: brighter, darker and moved; and
-//  minimap_reference_json()'s, a start recorded as a reference.
+//  Registers matching_minimap() and minimap_reference_json() tests.
 void add_tests_AutoStoryMinimapMatch(UnitTestDatabase& database);
 
 

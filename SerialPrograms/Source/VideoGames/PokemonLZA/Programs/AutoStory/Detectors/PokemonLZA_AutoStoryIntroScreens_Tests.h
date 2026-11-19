@@ -14,9 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the intro screen readers' tests on the console's frames
-//  (PokemonLZA/AutoStoryLanguageList/, AutoStoryLookPicker/,
-//  AutoStoryNameKeyboard/ and AutoStoryConfirmChoices/ in the test images).
+//  Registers the intro screen readers' tests on the console's frames.
 void add_tests_AutoStoryIntroScreens(UnitTestDatabase& database);
 
 

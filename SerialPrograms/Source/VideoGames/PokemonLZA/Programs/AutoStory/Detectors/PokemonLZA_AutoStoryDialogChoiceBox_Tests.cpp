@@ -5,10 +5,6 @@
  *  The choice rows reader on synthetic menus drawn as the console shows
  *  them, and on console frames (1920x1080) from CommandLineTests/PokemonLZA/.
  *
- *  Not here: PokemonLZA/AutoStoryScreenEvents/za2_m3w_s2.png, the old
- *  chain's choice box frame for the screen events, is not in
- *  CommandLineTests yet; ArrivalToAd's 0065 stands in for it.
- *
  */
 
 #include <cstdint>
@@ -47,8 +43,7 @@ void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t c
     }
 }
 
-//  How wide a choice menu's panel is and how far its rows' text runs: the
-//  panel grows to the left to fit its longest row.
+//  The panel grows left to fit its longest row.
 struct MenuWidth{
     size_t panel_left = 1408;
     size_t text_end = 1540;
@@ -56,19 +51,13 @@ struct MenuWidth{
 
 //  The menus whose rows read on the console in Japanese and Chinese.
 constexpr MenuWidth NARROW_MENU{};
-//  The Italian 01.02 menu's panel (x 1343), with every row's text running
-//  to x 1688, near the highlight's right end.
+//  Italian 01.02's panel (x 1343), its rows running to x 1688.
 constexpr MenuWidth WIDE_MENU_LONG_ROWS{.panel_left = 1343, .text_end = 1688};
 //  The same panel with rows as short as "Si": no text past x 1400.
 constexpr MenuWidth WIDE_MENU_SHORT_ROWS{.panel_left = 1343, .text_end = 1400};
 
-//  A choice menu of `rows` rows drawn as the console shows it (1920 x 1080)
-//  on `background`: the panel from x `width.panel_left` to 1728, from
-//  y 808 up, one 80 pitch per row; row k from the bottom highlighted white
-//  at y 732 - 80k to 800 - 80k, from 10 right of the panel's left to
-//  x 1715. Each row's text runs from 35 right of the panel's left to
-//  `width.text_end`, in strokes one column in three: dark on the
-//  highlighted rows (`highlighted`), white on the others.
+//  `rows` rows with the reader's geometry, the text in strokes one column in three:
+//  dark on the highlighted row, white on the others.
 ImageRGB32 choice_menu_frame(
     uint32_t background, size_t rows, std::initializer_list<size_t> highlighted,
     MenuWidth width = NARROW_MENU
@@ -187,8 +176,7 @@ UnitTestResult check_synthetic(const SyntheticCase& test){
 }
 
 
-//  The console's frames, with the menus' rows as they open (the top one
-//  highlighted).
+//  Console frames, the menus as they open (top row highlighted).
 struct FrameCase{
     std::string name;
     struct Input{
@@ -197,8 +185,7 @@ struct FrameCase{
     Input input;
     struct Expectation{
         std::optional<DialogChoiceRows> rows;   //  None: no choice menu read.
-        //  The screen events' CHOICE_BOX (the selection arrow); none: not
-        //  checked.
+        //  The screen events' CHOICE_BOX; none: not checked.
         std::optional<bool> choice_box = std::nullopt;
     };
     Expectation expectation;

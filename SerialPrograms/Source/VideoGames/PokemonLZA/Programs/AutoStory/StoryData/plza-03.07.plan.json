@@ -12,7 +12,7 @@
       {
         "id": "to_zone_1_gate",
         "kind": "game_action",
-        "why": "step 58, after Taunie's scene: runs straight on to Wild Zone 1's gate until its A prompt, by upstream's run_towards_gate_with_A_button (user, 2026-11-15: try it before plza/autostory's gate-pillar steering). Replaces the timed 4.3 s walk (22 units at ~5.1 units/s, measured 2026-11-08 on console B), so 8 s of running is ample.",
+        "why": "step 58, after Taunie's scene: runs straight on to Wild Zone 1's gate until its A prompt (upstream's run_towards_gate_with_A_button). The walk there takes ~4.3 s, so 8 s of running is ample.",
         "action": "run_to_gate",
         "args": {
           "timeout_ms": 8000
@@ -21,7 +21,7 @@
       {
         "id": "enter_zone_1",
         "kind": "game_action",
-        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card. The \"received 10 Poke Balls\" box reads as nothing (no detector, no frame yet): it held the step on scene_moving from 1.5 s to 11.7 s with no press (console B, 2026-11-16 18:39), so 2 s with nothing inside the scene gets one A.",
+        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card. The \"received 10 Poke Balls\" box reads as nothing (no detector), so 2 s with nothing inside the scene gets one A.",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true, "gap_press_ms": 2000}
       },

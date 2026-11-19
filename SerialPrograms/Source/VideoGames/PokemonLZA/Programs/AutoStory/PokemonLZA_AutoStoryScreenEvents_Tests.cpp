@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
-  *  Console frames (1920x1080) from CommandLineTests/PokemonLZA/. A frame
-  *  of a folder names what it shows ("0076-interact_prompt+player_can_move.png").
+  *  Folder frames name what they show ("0076-interact_prompt+player_can_move.png").
  *
  */
 
@@ -24,7 +23,6 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The events these tests check on a frame.
 struct PromptAndControl{
     bool interact_prompt = false;
     bool can_move = false;
@@ -36,7 +34,6 @@ std::string to_text(const PromptAndControl& events){
     return std::format("A prompt {}, party bar {}", events.interact_prompt ? "yes" : "no", events.can_move ? "yes" : "no");
 }
 
-//  What the observer reads on the frame at `path`.
 PromptAndControl observed(const std::string& path){
     PlzaScreenObserver observer;
     const ScreenEvents events = observer.read(ImageRGB32(path));
@@ -46,7 +43,6 @@ PromptAndControl observed(const std::string& path){
     };
 }
 
-//  What a folder frame's name says it shows.
 PromptAndControl as_named(std::string_view name){
     return PromptAndControl{
         .interact_prompt = name.find("interact_prompt") != std::string_view::npos,
@@ -69,34 +65,28 @@ struct FrameCase{
 
 const FrameCase FRAME_CASES[] = {
     {
-        //  The English elevator door's "A Take Elevator" over the party bar
-        //  of one (a Pokemon and five empty slot frames). This case expected
-        //  no party bar while the bar was read by its D-pad arrows, which
-        //  this frame lacks; the empty slot frames show it is up.
+        //  No D-pad arrows; the empty slot frames show the bar is up.
         .name = "the elevator's A prompt over the party bar of one",
         .input = {.path = "AutoStoryScreenEvents/za2_m3v_s1.png"},
         .expectation = {.events = {.interact_prompt = true, .can_move = true}},
     },
     {
-        //  01.02's battle area (Italian "Parla": talk): no Pokemon, no party bar.
+        //  01.02: no Pokemon, no party bar.
         .name = "the A Talk prompt on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
         .expectation = {.events = {.interact_prompt = true, .can_move = false}},
     },
     {
-        //  Hotel Z's lobby in control (02.05, German): one Pokemon, five empty slots.
         .name = "the party bar of one Pokemon: five empty slot frames, no D-pad arrows",
         .input = {.path = "AutoStoryScreenEvents/de_0205_lobby_start_party1.png"},
         .expectation = {.events = {.interact_prompt = false, .can_move = true}},
     },
     {
-        //  "A Aufzug nehmen" at the lobby elevator, the party bar of one under it.
         .name = "the elevator's A prompt over the party bar of one on the German game",
         .input = {.path = "AutoStoryScreenEvents/de_0205_elevator_prompt_steady.png"},
         .expectation = {.events = {.interact_prompt = true, .can_move = true}},
     },
     {
-        //  Wild Zone 1's road: four Pokemon and two empty slots.
         .name = "the party bar of four over a sunlit road",
         .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
         .expectation = {.events = {.interact_prompt = false, .can_move = true}},
@@ -117,26 +107,21 @@ struct BattleFrameCase{
 
 const BattleFrameCase BATTLE_FRAME_CASES[] = {
     {
-        //  Taunie's Totodile attacking, not locked on: only Chikorita's panel
-        //  shows the battle (03.02b).
         .name = "a battle with the player not locked on: the panel, no move hints",
         .input = {.path = "AutoStoryScreenEvents/it_0302b_battle_no_lock_on.png"},
         .expectation = {.battle = true},
     },
     {
-        //  A wild Mareep's "Ruggito" at Wild Zone 1's far pillar, not locked on.
         .name = "a wild battle at the zone's pillar, not locked on",
         .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_wild_battle.png"},
         .expectation = {.battle = true},
     },
     {
-        //  Wild Zone 1's far pillar, no Pokemon out: the lead's panel is no battle.
         .name = "no battle at the zone's pillar with the lead's panel up",
         .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_no_battle.png"},
         .expectation = {.battle = false},
     },
     {
-        //  Wild Zone 1's road at the 60 spot.
         .name = "no battle on the zone's road with the lead's panel up",
         .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
         .expectation = {.battle = false},
@@ -178,8 +163,7 @@ struct DialogFrameCase{
 
 const DialogFrameCase DIALOG_FRAME_CASES[] = {
     {
-        //  Ryon at the Research Lab's doors: the gate scene's dialog, which ends
-        //  03.09's walk (walk_to_unread_marker()).
+        //  Ends 03.09's walk (walk_to_unread_marker()).
         .name = "Ryon's five-species dialog at the lab gate on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0309_lab_gate_ryon_dialog.png"},
         .expectation = {.dialog = true, .interact_prompt = false},
@@ -209,7 +193,6 @@ struct FolderCase{
     };
     Input input;
     struct Expectation{
-        //  How many frames the folder holds; each shows what its name says.
         size_t frames = 0;
     };
     Expectation expectation;
@@ -217,8 +200,6 @@ struct FolderCase{
 
 const FolderCase FOLDER_CASES[] = {
     {
-        //  A black fade, the zone's gate with its "A" prompt and the party
-        //  bar after the catches (03.07).
         .name = "the catches to the zone's start",
         .input = {.folder = "AutoStoryDetectors/CatchesToZone1Start"},
         .expectation = {.frames = 8},

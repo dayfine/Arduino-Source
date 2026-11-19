@@ -24,7 +24,6 @@ namespace PokemonLZA{
 
 namespace{
 
-//  A plate that locks on at (`x`, `y`), its caught mark `caught`.
 LockTarget plate(double x, double y, std::optional<bool> caught){
     LockTarget target;
     target.x = x;
@@ -35,8 +34,6 @@ LockTarget plate(double x, double y, std::optional<bool> caught){
 }
 
 
-//  spot_visit(): a catch spot whose species was caught there is only
-//  turned back at.
 struct SpotVisitCase{
     std::string name;
     struct Input{
@@ -91,15 +88,14 @@ private:
 };
 
 
-//  after_throw(): what a catch stop does after a throw at a locked target.
 struct AfterThrowCase{
     std::string name;
     struct Input{
         ThrowSeen seen;
         bool battle = false;
-        //  The plate that locks on with ZL held after the throw; nothing: none.
+        //  Nothing: none.
         std::optional<LockTarget> relocked = std::nullopt;
-        //  Throws at this lock, this one included.
+        //  This one included.
         int throws_at_lock = 1;
     };
     Input input;
@@ -202,9 +198,6 @@ private:
 
 
 
-//  stop_aim(): what a catch stop does after its lock-on sweep, from
-//  whether the battle menu's move symbols showed and the plates read with
-//  ZL held after.
 struct StopAimCase{
     std::string name;
     struct Input{
@@ -280,7 +273,6 @@ private:
 
 
 
-//  CameraPitch: when a catch stop resets the camera's pitch.
 struct PitchCase{
     std::string name;
     enum class Event{
@@ -292,7 +284,6 @@ struct PitchCase{
     };
     Input input;
     struct Expectation{
-        //  What each LOOK's level_now() says, in order.
         std::vector<bool> levels;
     };
     Expectation expectation;

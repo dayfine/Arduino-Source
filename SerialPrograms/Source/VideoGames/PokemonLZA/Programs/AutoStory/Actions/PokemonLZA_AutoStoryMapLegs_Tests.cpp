@@ -57,12 +57,12 @@ struct LegCase{
     std::string name;
     struct Input{
         MapWaypoint waypoint;
-        //  The pin reads in turn; none: no pin on the map.
+        //  None: no pin on the map.
         std::vector<std::optional<MapPoint>> reads;
     };
     Input input;
     struct Expectation{
-        //  The moves after each read, ", "-joined.
+        //  ", "-joined.
         std::string moves;
     };
     Expectation expectation;
@@ -75,8 +75,7 @@ const LegCase LEG_CASES[] = {
         .expectation = {.moves = "arrived"},
     },
     {
-        //  25 pixels east-north-east: a walk west-south-west, 3.6 s at 7.0
-        //  pixels a second.
+        //  3.6 s at 7.0 pixels a second.
         .name = "a read off the waypoint walks toward it, then arrives",
         .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 456, .y = 231}, MapPoint{.x = 433, .y = 239}}},
         .expectation = {.moves = "walk 254 deg 3.6 s, arrived"},

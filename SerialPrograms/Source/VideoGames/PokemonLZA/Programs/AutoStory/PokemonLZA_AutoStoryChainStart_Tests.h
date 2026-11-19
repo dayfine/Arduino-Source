@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the tests of run_plza_segments()'s start check on the live
-//  screen between two rows, on scripted looks.
+//  run_plza_segments()'s start check between two chained rows.
 void add_tests_AutoStoryChainStart(UnitTestDatabase& database);
 
 

@@ -22,18 +22,12 @@ std::string_view LockTarget::caught_text() const{
 
 namespace{
 
-//  A plate whose bar sits above this share of the screen's height is a far
-//  target: step toward it before throwing. Nearer Pokemon stand lower on
-//  the screen (the ground rises toward the horizon), and their plates with
-//  them. Console B, 2026-11-16: the first-throw catches at 98 and 100 had
-//  their plates at 0.49 and 0.50; the Mareep missed 11 times at 60 (about
-//  15 m off) at 0.40. The plate's width (0.056 at all three) and the
-//  brackets' height (0.079 and 0.096 caught, 0.092 to 0.112 missed: it
-//  follows the species' size too) did not tell them apart.
+//  Nearer Pokemon stand lower on the screen, and their plates with them:
+//  first-throw catches had plates at 0.49 and 0.50, a Mareep missed 11
+//  times at about 15 m at 0.40. Plate width and bracket height did not
+//  tell them apart.
 constexpr double NEAR_PLATE_Y = 0.45;
 
-//  Steps toward a far target at most: before the first throw at a lock,
-//  and after each miss.
 constexpr int STEPS_BEFORE_FIRST_THROW = 4;
 constexpr int STEPS_AFTER_MISS = 2;
 

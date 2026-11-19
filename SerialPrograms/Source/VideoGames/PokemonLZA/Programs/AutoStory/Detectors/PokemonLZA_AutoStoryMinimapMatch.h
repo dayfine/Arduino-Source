@@ -23,16 +23,11 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The name of the built-in reference the minimap on `screen` matches, if
-//  any: within the match distance of it (cells_rmsd() over the map's ring,
-//  the player's arrow in the middle and the rim's icons left out, after
-//  scaling each channel to the reference's mean, so a darker or lighter
-//  screen still matches), the closest when several are.
+//  The closest built-in reference within the match distance of `screen`'s minimap
+//  ring (gain-matched; the player's arrow and the rim's icons left out).
 std::optional<std::string> matching_minimap(const ImageViewRGB32& screen);
 
-//  The minimap on `screen` as a reference file's JSON (ReferenceData/
-//  plza-minimap-<name>.json): {"source": `source` and the cells' square,
-//  "grid": its 16 x 16 cells}. matching_minimap() compares the grid's ring.
+//  The minimap on `screen` as a ReferenceData/plza-minimap-<name>.json object.
 JsonObject minimap_reference_json(const ImageViewRGB32& screen, std::string_view source);
 
 

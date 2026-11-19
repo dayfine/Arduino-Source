@@ -14,10 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the checkpoint start tests: where a run plays from by the
-//  screen after the load, against the built-in plans and a made-up table;
-//  and the console's frames from the test images
-//  (PokemonLZA/AutoStoryStarts/), skipped when a frame is not there.
+//  Checkpoint start tests; frame cases skip when a frame is missing.
 void add_tests_AutoStoryStarts(UnitTestDatabase& database);
 
 

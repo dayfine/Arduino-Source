@@ -20,30 +20,22 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The card's plain white strips at 1920 x 1080: down its right edge,
-//  down its left edge, and under its button; none next to the title, whose
-//  width could change with the language (white on the Japanese card too,
-//  the user's capture). The right edge replaced a strip right of the
-//  "BACKUP" title after a French title screen read no card in 12 looks
-//  (console B, 2026-11-17 02:42).
+//  The card's plain white strips at 1080p: down its right and left edges and under its
+//  button; none next to the title, whose width varies by language.
 const ImageFloatBox CARD_WHITE_STRIPS[] = {
     {1672.0 / 1920, 432.0 / 1080, 23.0 / 1920, 324.0 / 1080},
     {230.0 / 1920, 432.0 / 1080, 23.0 / 1920, 324.0 / 1080},
     {288.0 / 1920, 778.0 / 1080, 1344.0 / 1920, 43.0 / 1080},
 };
 
-//  The "Registered in the Pokedex" count, under its label in the card's
-//  lower panel: x 700 to 860, y 510 to 560 at 1920 x 1080.
+//  The "Registered in the Pokedex" count, under its label.
 const ImageFloatBox REGISTERED_BOX(700.0 / 1920, 510.0 / 1080, 160.0 / 1920, 50.0 / 1080);
 
-//  White: each channel near 255, and flat.
 bool white_strip(const ImageViewRGB32& frame, const ImageFloatBox& box){
     const ImageStats stats = image_stats(extract_box_reference(frame, box));
     return stats.average.sum() >= 3 * 235 && stats.stddev.sum() <= 30;
 }
 
-//  Whether `frame` shows the backup card: white at its top, left edge and
-//  bottom, around its panels.
 bool backup_card_shown(const ImageViewRGB32& frame){
     if (!frame){
         return false;
@@ -63,8 +55,7 @@ std::optional<size_t> read_backup_card_registered(Logger& logger, const ImageVie
     if (!backup_card_shown(frame)){
         return std::nullopt;
     }
-    //  Only the leading digits: OCR::read_number() maps letter misreads to
-    //  digits, which read the Japanese "3" and the counter kanji hiki ("3a") as 34.
+    //  Only the leading digits: read_number() maps the Japanese counter kanji ("3a") to 34.
     const std::string text = OCR::ocr_read(Language::English, extract_box_reference(frame, REGISTERED_BOX));
     std::string_view rest(text);
     while (!rest.empty() && rest.front() == ' '){

@@ -23,39 +23,25 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The square around the minimap's disk: on 1280x720, centred on (118, 121),
-//  132 pixels across (the disk with its rim is about 155), averaged into
-//  16 x 16 cells of about 8 pixels.
+//  On 1280x720: centred on (118, 121), 132 px across (the rimmed disk is ~155),
+//  in 16 x 16 cells.
 const ImageFloatBox MINIMAP_BOX(52.0 / 1280, 55.0 / 720, 132.0 / 1280, 132.0 / 720);
 constexpr size_t MINIMAP_CELLS = 16;
 
-//  The ring of cells compared, by the distance of a cell's centre from the
-//  disk's centre, as a share of the box's half width: from 22 of 66 pixels
-//  (outside the player's arrow) to 62 (inside the rim, where the north
-//  sign and the objective's marker sit). The camera's cone over the map
-//  stays in: it is faint.
+//  Cells compared: centres 22 to 62 of the box's 66 px half width, outside the
+//  player's arrow and inside the rim's icons. The camera's faint cone stays in.
 constexpr double RING_INNER = 22.0 / 66;
 constexpr double RING_OUTER = 62.0 / 66;
 
-//  The largest distance that is the reference's place, after
-//  gain_matched(). Against the 03.04 start (Station Front, Korean,
-//  console B, 1280x720): 10% and 20% darker, 2.2 (40.2 and 78.8 before
-//  the gain match); 10% brighter, its whites clipped, 12.5 (22.3); 20%
-//  brighter, 21.9; its map moved one cell (8 pixels), 37 to 38; 946 lab
-//  frames of Main Mission 03 elsewhere (streets, Wild Zone 1, menus,
-//  fades), 47.5 and up. Before the gain match, also: the start moved 2
-//  pixels, 8.7 to 15.4; JPEG at quality 40, 4.4; scaled to 1920x1080, 2.0;
-//  not there (Italian, 1920x1080): the end of a failed 03.04 walk along a
-//  wall, 47.4, the rest 53.5 and up.
+//  On the 03.04 start (1280x720): 20% darker 2.2, 20% brighter 21.9, moved one cell
+//  37-38; 946 frames elsewhere in Main Mission 03 47.5 and up.
 constexpr double MINIMAP_MATCH_MAX = 30.0;
 
-//  The most gain_matched() scales a channel by, either way: a screen more
-//  than twice as dark or bright as the reference is too far gone to read.
+//  A screen more than twice as dark or bright as the reference is too far gone.
 constexpr double MAX_GAIN = 2.0;
 
 constexpr std::string_view REFERENCE_PREFIX = "plza-minimap-";
 
-//  The indices of the ring's cells in a MINIMAP_CELLS square grid.
 const std::vector<size_t>& ring_cells(){
     static const std::vector<size_t> ring = []{
         std::vector<size_t> indices;
@@ -74,7 +60,6 @@ const std::vector<size_t>& ring_cells(){
     return ring;
 }
 
-//  The ring's cells of a full grid.
 ReferenceCells ring_of(const ReferenceCells& grid){
     ReferenceCells ring;
     ring.reserve(ring_cells().size());
@@ -84,10 +69,8 @@ ReferenceCells ring_of(const ReferenceCells& grid){
     return ring;
 }
 
-//  `cells` with each channel scaled so its mean is the reference's, by at
-//  most MAX_GAIN either way: a darker, lighter or tinted screen (dusk, a
-//  roof's shade) then compares by its colors relative to each other. A
-//  channel that is black throughout stays black.
+//  Scales each channel's mean to the reference's (within MAX_GAIN), so dusk or shade
+//  compares by relative colors. An all-black channel stays black.
 ReferenceCells gain_matched(const ReferenceCells& reference, const ReferenceCells& cells){
     FloatPixel reference_sum;
     FloatPixel sum;
@@ -112,8 +95,7 @@ ReferenceCells gain_matched(const ReferenceCells& reference, const ReferenceCell
     return matched;
 }
 
-//  The built-in minimap references' rings, by name (the file name after
-//  "plza-minimap-"). Throws ParseException for a malformed file.
+//  Rings by name (the file name after "plza-minimap-"); ParseException if malformed.
 const std::map<std::string, ReferenceCells, std::less<>>& minimap_references(){
     static const std::map<std::string, ReferenceCells, std::less<>> references = []{
         std::map<std::string, ReferenceCells, std::less<>> rings;

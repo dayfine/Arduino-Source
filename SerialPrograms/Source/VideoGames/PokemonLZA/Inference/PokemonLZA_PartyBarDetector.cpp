@@ -19,8 +19,7 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The slot's HP bar: 52 of 1920 wide from x = 86 + 76.4 * i, rows
-//  1028-1031 of 1080; the box stays inside the bar.
+//  The slot's HP bar: 52 of 1920 wide from x = 86 + 76.4 * i, rows 1028-1031.
 constexpr double SLOT_X = 0.045;
 constexpr double SLOT_PITCH = 0.0398;
 constexpr double BAR_WIDTH = 0.026;
@@ -32,12 +31,9 @@ constexpr double CARD_HEIGHT = 0.0046;
 
 //  The trough is the card darkened: a black overlay at about half.
 constexpr double TROUGH_BRIGHTNESS_RATIO = 0.65;
-//  A bar's box reads 0.79 and up (a nearly empty red bar over a bright
-//  teal scene); a slot with none 0.16 at most (the Poke Ball of the slot
-//  sent out).
+//  Bars read 0.79+ (a nearly empty red bar over bright teal); slots without, 0.16 at most.
 constexpr double BAR_SHARE_MIN = 0.5;
 
-//  An HP bar's green, yellow or red.
 bool is_hp_color(Color color){
     const uint32_t r = color.red();
     const uint32_t g = color.green();
@@ -52,25 +48,21 @@ double brightness(Color color){
     return (color.red() + color.green() + color.blue()) / 3.0;
 }
 
-//  On 1920x1080 (console B, 2026-11-16, German 02.05 with a party of one):
-//  an empty slot's frame at x 78 + 76 * i for slot i (from 0), y 954, 66 px
-//  square, its edges 2 px wide. The last slot's at x 458-523, y 954-1019.
+//  On 1920x1080: empty slot i's frame at x 78 + 76 * i, y 954, 66 px square, edges
+//  2 px wide; the last slot's at x 458-523, y 954-1019.
 constexpr double LAST_SLOT_X = 458;
 constexpr double SLOT_FRAME_Y = 954;
 constexpr double SLOT_FRAME_SIZE = 66;
 constexpr double FRAME_LINE = 2;
-//  The strips each edge is held against: 3 px wide, 2 px off the line on
-//  either side. Each edge is read along its middle, 8 px in from the
-//  corners, which are rounded.
+//  3 px strips 2 px off the line on either side, read along each edge's middle,
+//  8 px clear of the rounded corners.
 constexpr double FRAME_STRIP = 3;
 constexpr double FRAME_GAP = 2;
 constexpr double FRAME_CORNER = 8;
 
-//  A frame's line is the scene under a light veil, its inside the scene
-//  darkened. On the six frames with the last slot empty (a dark lobby to
-//  bright ground) every edge's line is lighter than inside by 21-60 and
-//  than outside by 10-61; on 686 cutscene frames of 01.00-01.03 (no party
-//  bar) by 2 at most inside.
+//  The line is the scene under a light veil, the inside darkened: on the six frames
+//  with the last slot empty the line is lighter than inside by 21-60; on 686 cutscene
+//  frames (no bar) by 2 at most.
 constexpr double FRAME_INSIDE_MARGIN = 10;
 constexpr double FRAME_OUTSIDE_MARGIN = 0;
 
@@ -82,15 +74,13 @@ double box_brightness(const ImageViewRGB32& screen, const ImageFloatBox& box){
     return image_average(extract_box_reference(screen, box)).sum() / 3;
 }
 
-//  One edge of a slot's frame: the 2 px line, the strip inside it and the
-//  strip outside it.
+//  The 2 px line and the strips inside and outside it.
 struct FrameEdge{
     ImageFloatBox line;
     ImageFloatBox inside;
     ImageFloatBox outside;
 };
 
-//  The last slot's four edges.
 std::array<FrameEdge, 4> last_slot_edges(){
     const double left = LAST_SLOT_X;
     const double right = LAST_SLOT_X + SLOT_FRAME_SIZE - FRAME_LINE;
@@ -122,8 +112,7 @@ std::array<FrameEdge, 4> last_slot_edges(){
     };
 }
 
-//  Whether the last slot shows empty: every edge of its frame lighter than
-//  the strip inside it and no darker than the strip outside it.
+//  Every edge lighter than the strip inside it and no darker than the one outside.
 bool last_slot_empty(const ImageViewRGB32& screen){
     static const std::array<FrameEdge, 4> edges = last_slot_edges();
     for (const FrameEdge& edge : edges){
@@ -197,7 +186,6 @@ bool PartyBarDetector::detect(const ImageViewRGB32& screen){
 
 namespace{
 
-//  The filled slots of the party bar on `screen`: 0 when no bar is on it.
 int party_bar_filled_slots(const ImageViewRGB32& screen){
     PartyBarDetector detector;
     detector.detect(screen);

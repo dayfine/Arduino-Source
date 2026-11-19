@@ -14,9 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers PlzaScreenObserver's tests on console frames from
-//  CommandLineTests/PokemonLZA/: its A prompt (INTERACT_PROMPT) and party
-//  bar (PLAYER_CAN_MOVE) events.
+//  PlzaScreenObserver on console frames from CommandLineTests/PokemonLZA/.
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database);
 
 

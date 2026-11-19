@@ -68,7 +68,6 @@ AutoStory_Descriptor::AutoStory_Descriptor()
 
 namespace{
 
-//  The start and end dropdowns' entries: "01.00a New game choices", by id.
 //  The options hold a reference to it.
 const StringSelectDatabase& checkpoint_database(){
     static const StringSelectDatabase database = []{
@@ -81,8 +80,6 @@ const StringSelectDatabase& checkpoint_database(){
     return database;
 }
 
-//  Throws UserSetupError unless rows `first` to `last` are in a table of
-//  `rows` rows, in order.
 void check_checkpoint_range(ConsoleHandle& console, size_t first, size_t last, size_t rows){
     if (last >= rows){
         throw UserSetupError(console, "The checkpoint selection is out of range: pick the start and end checkpoints again.");
@@ -92,7 +89,6 @@ void check_checkpoint_range(ConsoleHandle& console, size_t first, size_t last, s
     }
 }
 
-//  The game language dropdown's entries, in the language list's order.
 const EnumDropdownDatabase<NewGameLanguage>& new_game_language_database(){
     static const EnumDropdownDatabase<NewGameLanguage> database{
         {NewGameLanguage::English,             "en",      "English"},
@@ -109,9 +105,7 @@ const EnumDropdownDatabase<NewGameLanguage>& new_game_language_database(){
     return database;
 }
 
-//  Throws UserSetupError, before any press, if the run of `rows` plays a
-//  new game that `choices` cannot: choices no new game takes
-//  (new_game_problem()), or ones 01.00a cannot make (new_game_run_problem()).
+//  Throws UserSetupError, before any press, if `choices` cannot play the new game.
 void check_new_game_choices(ConsoleHandle& console, std::span<const StoryCheckpoint> rows, const NewGameChoices& choices){
     if (rows.empty() || !story_row_starts_without_save(rows.front())){
         return;
@@ -124,10 +118,8 @@ void check_new_game_choices(ConsoleHandle& console, std::span<const StoryCheckpo
     }
 }
 
-//  Connects the controller for a run from `first_row`. A new game's row
-//  starts on a screen that proves the save is fresh (01.00a: HOME, 01.00b:
-//  Confirm Choices), so that screen is checked before any press, the
-//  connect press included.
+//  A new game's start screen proves the save is fresh, so it is checked
+//  before any press, the connect press included.
 void connect_controller(ConsoleHandle& console, ProControllerContext& context, const StoryCheckpoint& first_row){
     if (story_row_makes_new_game_choices(first_row)){
         require_new_game_home(console, context);
@@ -149,11 +141,8 @@ constexpr std::string_view RECORD_START_MINIMAPS_LABEL =
     "as plza-minimap-&lt;checkpoint&gt;-start.png and .json in the AutoStoryDev folder of the user files, "
     "in the format of the minimap references. Nothing is saved where no minimap shows.";
 
-//  Loads the latest save for `row` with `game`: a run that starts after
-//  the new game starts from it (01.01: the platform autosave), not from
-//  wherever the game is. Throws OperationFailedException, with an error
-//  report (the screenshot and the stream history's clip), if that save
-//  does not load.
+//  A run after the new game starts from the latest save, not from wherever
+//  the game is. Throws OperationFailedException if it does not load.
 void load_first_save(ConsoleHandle& console, const StoryGame<ZonePose>& game, PlzaBackend& backend, const StoryCheckpoint& row){
     const Outcome loaded = load_checkpoint_start(game, backend, row);
     if (!loaded.succeeded()){
@@ -166,15 +155,12 @@ void load_first_save(ConsoleHandle& console, const StoryGame<ZonePose>& game, Pl
     console.log(std::format("AutoStory: loaded the latest save for {}.", row.id));
 }
 
-//  How the start signature is read: the same reading on this many frames
-//  in a row, one poll apart, within the frame budget.
+//  The same reading on this many frames in a row, within the budget.
 constexpr size_t SIGNATURE_AGREEING_FRAMES = 3;
 constexpr size_t SIGNATURE_FRAME_BUDGET = 20;
 constexpr Milliseconds SIGNATURE_POLL = 500ms;
 
-//  What the screen shows where the player stands (read_start_screen()):
-//  the same reading on SIGNATURE_AGREEING_FRAMES frames in a row. Nothing
-//  read when the frames never agree. Presses nothing.
+//  Nothing read when the frames never agree. Presses nothing.
 StartSignature read_start_signature(ConsoleHandle& console, ProControllerContext& context){
     std::optional<StartSignature> last;
     size_t agreeing = 0;
@@ -191,9 +177,7 @@ StartSignature read_start_signature(ConsoleHandle& console, ProControllerContext
     return StartSignature{};
 }
 
-//  Where the player stands: read_start_signature() and, when the overworld
-//  reads, wild_zone from the player's pin on the full map (PLUS opens it,
-//  B closes it: read_pin_on_map()).
+//  On the overworld, also opens the full map for wild_zone.
 StartSignature read_start_position(StoryEnv& story, PlzaBackend& backend){
     StartSignature read = read_start_signature(story.env.console, story.context);
     if (read != StartSignature{}){
@@ -202,20 +186,15 @@ StartSignature read_start_position(StoryEnv& story, PlzaBackend& backend){
     return read;
 }
 
-//  The checkpoint a run asked to start at `plan.first` plays from: where the
-//  screen, and the map once it opens (builtin_start_reads_map()), say the
-//  player is (run_start()), `first` or an earlier checkpoint. Throws
-//  OperationFailedException, with a screenshot, as "start_position_unknown"
-//  when the position matches no start: no checkpoint's events run from the
-//  wrong place. When `plan.max_rewinds` allows, an unknown start first
-//  rewinds to `backup` (start_or_rewind()).
+//  The row to play from: `plan.first` or an earlier one, by where the player
+//  stands. An unknown start rewinds to `backup` when `plan.max_rewinds`
+//  allows, else throws "start_position_unknown": nothing runs from the wrong place.
 size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup){
     ConsoleHandle& console = story.env.console;
     const std::span<const StoryCheckpoint> rows = plan.rows;
     const size_t first = plan.first;
     const std::span<const CheckpointStart> starts = plan.starts;
-    //  A row with no start signature runs as it is: no screen read, no map
-    //  (the new game's rows, before any save).
+    //  The new game's rows, before any save.
     if (find_start(starts, rows[first].id) == nullptr){
         console.log(std::format("AutoStory: {} has no start signature: running it, no start check", rows[first].id));
         return first;
@@ -244,16 +223,12 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
     return *from;
 }
 
-//  Where RECORD_START_MINIMAPS saves its frames and minimaps.
 std::string start_minimaps_folder(){
     return std::format("{}AutoStoryDev/", USER_FILE_PATH());
 }
 
-//  The frame at `checkpoint`'s start, and its minimap as a reference file
-//  (minimap_reference_json()), in start_minimaps_folder() as
-//  plza-minimap-<checkpoint>-start.png and .json, ready to check in as a
-//  ReferenceData/ minimap. Nothing saved, and logged, when the minimap's
-//  arrow does not show (a menu, a fade, a scene). Presses nothing.
+//  Saves a ReferenceData/ minimap candidate; nothing when the minimap
+//  arrow does not show. Presses nothing.
 void record_start_minimap(ConsoleHandle& console, std::string_view checkpoint){
     const VideoSnapshot snapshot = console.video().snapshot();
     DirectionArrowDetector arrow;
@@ -273,36 +248,12 @@ void record_start_minimap(ConsoleHandle& console, std::string_view checkpoint){
     console.log(std::format("AutoStory: {}: start minimap recorded as {}{}.json", checkpoint, folder, name));
 }
 
-//  SegmentRunOptions::at_start for RECORD_START_MINIMAPS: record_start_minimap()
-//  at each row's start when `record`, else nothing.
 std::function<void(const StoryCheckpoint& row)> start_minimap_recorder(ConsoleHandle& console, bool record){
     if (!record){
         return {};
     }
     return [&console](const StoryCheckpoint& row){
         record_start_minimap(console, row.id);
-    };
-}
-
-//  `reload`, after the frame on screen is saved in start_minimaps_folder()
-//  as plza-before-reload-<time>.png: a failed attempt that is retried
-//  leaves no failure screenshot, only this.
-std::function<Outcome(StoryBackend<ZonePose>& backend)> saving_frame_before(
-    ConsoleHandle& console, std::function<Outcome(StoryBackend<ZonePose>& backend)> reload
-){
-    if (!reload){
-        return reload;
-    }
-    return [&console, reload](StoryBackend<ZonePose>& backend){
-        const VideoSnapshot snapshot = console.video().snapshot();
-        if (snapshot){
-            const std::string folder = start_minimaps_folder();
-            Filesystem::create_directories(Filesystem::Path(folder));
-            const std::string path = std::format("{}plza-before-reload-{}.png", folder, now_to_filestring());
-            snapshot.frame->save(path);
-            console.log(std::format("AutoStory: the frame before the reload saved as {}", path));
-        }
-        return reload(backend);
     };
 }
 
@@ -369,8 +320,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     PlzaConsoleBackend backend(story);
     AutosaveSightings sightings;
-    StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
-    game.reload = saving_frame_before(env.console, game.reload);
+    const StoryGame<ZonePose> game = make_plza_story_game(story, story_data, sightings);
     RunState state;
 
     const SegmentRunOptions segments{

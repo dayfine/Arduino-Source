@@ -2,9 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The banner after catching a species the Pokedex did not have: a cyan
- *  ring at the top middle around the Pokemon, "Registered!" over it and
- *  its "No.###" tag under it. A repeat catch shows none.
+ *  The banner after catching a new species: a cyan ring around the Pokemon,
+ *  "Registered!" over it and a "No.###" tag under it.
  *
  */
 
@@ -20,11 +19,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The ring's left and right arcs cyan (x 852-872 and 1100-1120, y 140-220
-//  on 1920x1080) and the slate "No.###" tag under it (x 845-945, y
-//  268-298) with its white text. Only shapes and colors are read, so any
-//  language matches. Tuned on Mareep's banner (console B, 2026-11-10): the
-//  rule matched its 2 frames and none of 553 other lab frames.
+//  The ring's cyan arcs (x 852-872 and 1100-1120, y 140-220 on 1080p) and the slate
+//  "No.###" tag (x 845-945, y 268-298) with white text. Matched Mareep's 2 frames and
+//  none of 553 others.
 class DexRegisteredDetector : public StaticScreenDetector{
 public:
     explicit DexRegisteredDetector(Color color = COLOR_CYAN);

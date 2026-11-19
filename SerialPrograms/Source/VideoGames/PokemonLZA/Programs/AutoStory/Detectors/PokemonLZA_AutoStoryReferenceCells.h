@@ -25,10 +25,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The checked-in reference files, ReferenceData/*.json, built into the
-//  program (cmake/EmbedTextFiles.cmake): (name, text), by name.
-//  plza-platform holds the platform reference's cell colors per region;
-//  plza-minimap-<name> a minimap reference (PokemonLZA_AutoStoryMinimapMatch.h).
+//  The ReferenceData/*.json files built into the program, (name, text) by name.
 const std::vector<std::pair<std::string, std::string>>& autostory_reference_json();
 
 
@@ -38,18 +35,15 @@ using ReferenceCells = std::vector<FloatPixel>;
 //  `box` of `screen` averaged into `cols` x `rows` cells, row by row.
 ReferenceCells grid_cells(const ImageViewRGB32& screen, const ImageFloatBox& box, size_t cols, size_t rows);
 
-//  A grid of a reference file, {"cols": n, "rows": ["rrggbb...", ...]},
-//  that must be `cols` x `rows` cells. Throws ParseException naming
-//  `source` when it is not.
+//  A {"cols": n, "rows": ["rrggbb...", ...]} grid; throws ParseException naming
+//  `source` unless it is `cols` x `rows`.
 ReferenceCells read_cell_grid(const JsonObject& grid, size_t cols, size_t rows, std::string_view source);
 
-//  `cells`, `cols` to a row, as a grid read_cell_grid() reads: each
-//  channel rounded to the nearest of 0 to 255.
+//  The grid read_cell_grid() reads, channels rounded to 0-255.
 JsonObject write_cell_grid(const ReferenceCells& cells, size_t cols);
 
-//  How far `cells` are from `reference`, cell for cell: the RMSD over the
-//  cells of the summed squared channel differences (0 = the same, at most
-//  441.7). `cells` is as long as `reference`.
+//  RMSD over the cells of the summed squared channel differences (0 = the same, at
+//  most 441.7); `cells` is as long as `reference`.
 double cells_rmsd(const ReferenceCells& reference, const ReferenceCells& cells);
 
 

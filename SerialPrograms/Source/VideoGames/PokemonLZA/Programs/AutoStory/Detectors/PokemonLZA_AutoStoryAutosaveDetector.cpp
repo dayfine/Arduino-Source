@@ -17,9 +17,8 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The icon (white, with a cyan glow, dim or bright), and the strips around
-//  it (left, above, below) clear of white and bright cyan, `dx` pixels (of
-//  1920) right of where the Chinese badge has them.
+//  The icon, with the strips left, above and below it clear of white and bright cyan,
+//  `dx` px right of the Chinese badge's.
 bool autosave_icon_at(
     const ImageViewRGB32& screen, const ImageFloatBox& icon,
     std::initializer_list<ImageFloatBox> around, double dx
@@ -56,26 +55,11 @@ void AutosaveDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_below);
 }
 
-//  On the badge the icon is 19% white and 48% cyan, with nothing bright
-//  left of it. A bright cutscene flash passes the icon's bounds too, but is
-//  70%+ white and 39%+ cyan left of the icon as well.
-//  Only the Chinese badge is checked; with a shorter text (English
-//  "Saving...") a right-aligned badge moves the icon right, so the icon is
-//  looked for from where it is in Chinese to 240 px right of it.
-//  Glowing scenery (a lit blade, a bright sky) can match the icon somewhere
-//  in that span, but glows on past it: the strips 14 px above and below the
-//  icon are 22%+ white or cyan there and empty around the badge; they must
-//  stay under 5%.
-//  The icon's glow is dim over a dark or lamp-lit scene (about 28, 70, 85
-//  on 02.04's check-in wall, frame 0075 of a
-//  run in Japanese, icon at dx 36), so the icon's glow is dim_cyan_share():
-//  of the 3569 PLZA captures on the console it finds 11 more
-//  badges, every one a real badge, and no new false one.
-//  Both cyan tests take only blue-leaning pixels: a building banner's mint
-//  (about 96, 203, 147) in the strips hid the badge on 01.01 in English,
-//  and a green sign's white text with its glow matched the icon. Of 6096
-//  console captures and 1173 PokemonLZA test frames this finds the English
-//  badge, drops 3 green-sign matches, and changes nothing else.
+//  The icon is 19% white and 48% cyan with nothing bright left of it; a cutscene flash
+//  is bright left of it too. Texts shorter than Chinese move the right-aligned icon
+//  right, so it is searched up to 240 px right. Glowing scenery glows on past the icon:
+//  the strips above and below must stay under 5%. The glow is dim over dark scenes, and
+//  only blue-leaning pixels count as cyan (a banner's mint or a green sign's are not).
 bool AutosaveDetector::detect(const ImageViewRGB32& screen){
     for (double dx = 0; dx <= 240; dx += 4){
         if (autosave_icon_at(screen, m_icon, {m_left, m_above, m_below}, dx)){

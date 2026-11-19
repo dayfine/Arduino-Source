@@ -40,21 +40,18 @@ ImageRGB32 solid_frame(uint32_t color){
     return image;
 }
 
-//  A white dialogue box's bottom edge (x 500-1410, y 990-1040) on a dark
-//  scene, with no advance arrow: the box while its text still types.
+//  A white box's bottom edge (x 500-1410, y 990-1040) on dark, no arrow: text typing.
 ImageRGB32 box_without_arrow_frame(){
     ImageRGB32 image = solid_frame(DARK_GRAY);
     fill_box(/*min_x=*/500, /*min_y=*/990, /*max_x=*/1410, /*max_y=*/1040, WHITE, image);
     return image;
 }
 
-//  A console frame from CommandLineTests/PokemonLZA/.
 ImageRGB32 console_frame(std::string_view path){
     return ImageRGB32(std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), path));
 }
 
-//  The console frame `path` with the advance arrow's area (x 1395-1470,
-//  y 935-1030) painted white, as the box shows before its text is done.
+//  `path` with the arrow's area (x 1395-1470, y 935-1030) painted white: text not done.
 ImageRGB32 console_frame_without_arrow(std::string_view path){
     ImageRGB32 image = console_frame(path);
     fill_box(/*min_x=*/1395, /*min_y=*/935, /*max_x=*/1470, /*max_y=*/1030, WHITE, image);

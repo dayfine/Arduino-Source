@@ -16,14 +16,11 @@ namespace PokemonLZA{
 
 namespace{
 
-//  Where an interact prompt shows: over the scene, above the bottom hints.
-//  run_towards_gate_with_A_button()'s box (PokemonLZA_BasicNavigation) cut
-//  0.05 shorter at the bottom, where upstream's reaches the battle HUD's
-//  hints (BATTLE_HINT_BOX) and would read every battle frame as a prompt.
+//  run_towards_gate_with_A_button()'s box cut 0.05 shorter at the bottom,
+//  where it would reach the battle HUD's hints (BATTLE_HINT_BOX).
 const ImageFloatBox INTERACT_PROMPT_BOX{0.3, 0.2, 0.4, 0.65};
-//  The battle HUD's hints at the bottom centre: the A of "X A: Select Move"
-//  (lab-B frames za2_hud_s3, za2_atk*: 15 of 15 battle frames, none of 442
-//  others, 2026-11-08).
+//  The A of "X A: Select Move" at the bottom centre (read on 15 of 15
+//  battle frames, none of 442 others).
 const ImageFloatBox BATTLE_HINT_BOX{0.40, 0.84, 0.20, 0.10};
 
 } // namespace

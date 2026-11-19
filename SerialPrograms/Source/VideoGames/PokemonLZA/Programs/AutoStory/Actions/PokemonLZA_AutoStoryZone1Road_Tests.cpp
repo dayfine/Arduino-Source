@@ -50,15 +50,12 @@ std::string text(const std::vector<Move>& moves){
 
 
 
-//  ZoneStart on TAUNIE_ROCKS_ROUTE: the leg off the rocks, its read, the
-//  timed walk toward the objective (walk_hold), its read.
 struct StartCase{
     std::string name;
     struct Input{
-        //  The pin read at the start, before the leg (none: not read).
+        //  None: not read.
         std::optional<MapPoint> start_pin;
-        //  The read after the leg off the rocks, then after the timed walk
-        //  (none: no read taken).
+        //  After the leg, then after the timed walk (none: no read taken).
         std::vector<std::optional<int>> reads;
     };
     Input input;

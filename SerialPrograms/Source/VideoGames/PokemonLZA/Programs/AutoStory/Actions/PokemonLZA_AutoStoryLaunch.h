@@ -22,24 +22,19 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  How many of HOME's tiles, from the first, are searched for PLZA's.
+//  How many of HOME's tiles are searched for PLZA's.
 constexpr size_t HOME_TILES_SEARCHED = 8;
 
-//  HOME's tile search from the highlighted tile rightward: reads each tile
-//  with `highlighted_is_plza`, moving one tile right with `move_right`
-//  between reads, and returns how many moves put PLZA's tile under the
-//  cursor; nullopt if none of HOME_TILES_SEARCHED tiles is PLZA's.
+//  How many `move_right` calls put PLZA's tile under the cursor; nullopt if
+//  none of HOME_TILES_SEARCHED tiles is PLZA's.
 std::optional<size_t> find_plza_tile(
     const std::function<bool()>& highlighted_is_plza,
     const std::function<void()>& move_right
 );
 
-//  From the game or HOME: goes HOME, closes the running game whichever it
-//  is (the first tile, the last played), selects PLZA's tile by its title
-//  and launches it through the user select, until the game's black screen.
-//  Logs whether the closed game was PLZA. Throws UserSetupError, having
-//  launched nothing, if PLZA's tile is not among HOME's first
-//  HOME_TILES_SEARCHED.
+//  From the game or HOME: closes the running game, whichever it is, and
+//  launches PLZA up to its black screen. Throws UserSetupError, having
+//  launched nothing, if PLZA's tile is not among HOME_TILES_SEARCHED.
 void launch_plza_from_home(ConsoleHandle& console, ProControllerContext& context);
 
 

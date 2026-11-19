@@ -29,8 +29,7 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The minimap's square on 1280x720 and its cells, as the reference files
-//  were made (PokemonLZA_AutoStoryMinimapMatch.cpp).
+//  As the reference files were made.
 constexpr size_t SCREEN_WIDTH = 1280;
 constexpr size_t SCREEN_HEIGHT = 720;
 constexpr double BOX_X = 52;
@@ -40,8 +39,6 @@ constexpr size_t CELLS = 16;
 
 constexpr std::string_view START_REFERENCE = "03.04-start";
 
-//  The cells of the minimap reference `name` (ReferenceData/
-//  plza-minimap-<name>.json), row by row.
 ReferenceCells reference_cells(std::string_view name){
     const std::string wanted = std::format("plza-minimap-{}", name);
     for (const auto& [file, text] : autostory_reference_json()){
@@ -54,9 +51,8 @@ ReferenceCells reference_cells(std::string_view name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("No reference {}.", wanted));
 }
 
-//  A black 1280x720 screen with `cells` painted into the minimap's square,
-//  each channel times `brightness` (at most 255), the map moved
-//  `shift_cols` cells left and `shift_rows` up (the edge cells repeat).
+//  `cells` painted into the minimap's square on black, scaled by `brightness`, moved
+//  `shift_cols` left and `shift_rows` up (edge cells repeat).
 ImageRGB32 painted_screen(const ReferenceCells& cells, double brightness, int shift_cols, int shift_rows){
     ImageRGB32 screen(SCREEN_WIDTH, SCREEN_HEIGHT);
     screen.fill((uint32_t)COLOR_BLACK);
@@ -79,7 +75,6 @@ ImageRGB32 painted_screen(const ReferenceCells& cells, double brightness, int sh
 struct MatchCase{
     std::string name;
     struct Input{
-        //  The reference painted onto the screen.
         std::string reference = std::string(START_REFERENCE);
         double brightness = 1.0;
         int shift_cols = 0;
@@ -173,9 +168,7 @@ UnitTestResult check_match(const MatchCase& test){
 }
 
 
-//  A minimap recorded off a screen (minimap_reference_json()) is a
-//  reference file a run can check in: its grid reads back as the cells on
-//  that screen, to within the rounding of a channel to a whole number.
+//  A recorded grid reads back as the screen's cells, within channel rounding.
 struct RecordCase{
     std::string name;
     struct Input{

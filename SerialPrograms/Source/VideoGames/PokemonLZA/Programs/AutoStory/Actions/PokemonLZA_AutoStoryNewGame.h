@@ -24,33 +24,20 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The end of every refusal of 01.00a and of its failures: a user whose
-//  choices the program cannot make makes them by hand and starts at 01.00b.
+//  Ends every refusal and failure of 01.00a.
 constexpr std::string_view NEW_GAME_BY_HAND_HINT =
     "Make the new game's choices by hand up to \"Confirm Choices\", then start the run at 01.00b.";
 
-//  Checks that the Switch HOME is on screen, read over up to 2 s with no
-//  press. Throws UserSetupError, having pressed nothing, if it is not.
+//  Throws UserSetupError if the Switch HOME is not on screen; presses at most one B to wake it.
 void require_new_game_home(ConsoleHandle& console, ProControllerContext& context);
 
-//  Why a run of `rows` cannot play `choices`; nullopt when it can. A run
-//  that plays the choices (story_row_makes_new_game_choices(): 01.00a)
-//  types the name, so the language's keyboard and the name's characters
-//  must be ones the program types; a run from 01.00b finds the name typed.
-//  A refusal ends with NEW_GAME_BY_HAND_HINT.
+//  Why a run of `rows` cannot type `choices`' name (only 01.00a types it); nullopt when it can.
 std::optional<std::string> new_game_run_problem(std::span<const Pokemon::StoryCheckpoint> rows, const NewGameChoices& choices);
 
-//  01.00a's step: from HOME (require_new_game_home(), then
-//  launch_plza_from_home()), plays the language, the look and the name of
-//  `choices` and ends on "Confirm Choices", confirming nothing. Each
-//  screen's highlight is read before and after each press; the name is
-//  typed with the Switch keyboard typer. Throws UserSetupError before any
-//  press if `choices` cannot be played (new_game_problem(), or the name
-//  cannot be typed) or HOME is not on screen, or when the keyboard's
-//  counter takes fewer characters than the name;
-//  OperationFailedException (with a screenshot) if a screen does not show,
-//  its highlight does not reach the choice, or a key press does not reach
-//  the name's field.
+//  01.00a: from HOME, plays `choices` and stops on "Confirm Choices", confirming nothing.
+//  Throws UserSetupError, before any press, if `choices` cannot be played or HOME is not
+//  on screen, or if the keyboard takes fewer characters than the name;
+//  OperationFailedException if a screen does not show or a highlight does not reach the choice.
 void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices);
 
 

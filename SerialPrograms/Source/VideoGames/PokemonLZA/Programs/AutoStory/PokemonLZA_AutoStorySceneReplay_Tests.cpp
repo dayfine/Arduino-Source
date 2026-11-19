@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Console runs of the scene machine replayed from their logs: each
- *  recorded look in order, whatever the machine presses (open loop). A
- *  guard or a press the screens do not call for shows as a wrong end here
- *  before it reaches the console.
+ *  Console runs of the scene machine replayed open loop from their logs.
  *
  */
 
@@ -52,8 +49,6 @@ Observation<ZonePose> look_at(Milliseconds at, ScreenEvents events = {}, std::ve
     return look;
 }
 
-//  01.01 arrival_scenes' config (mash_to_move_hints, end_after_black_fades
-//  3, the action's defaults: a minute quiet).
 SceneMachineConfig arrival_scenes_config(){
     SceneMachineConfig config;
     config.quiet = 60000ms;
@@ -61,7 +56,6 @@ SceneMachineConfig arrival_scenes_config(){
     return config;
 }
 
-//  01.02 battle_area's config (mash_to_move_hints, min_length_ms 20000).
 SceneMachineConfig battle_area_config(){
     SceneMachineConfig config;
     config.quiet = 60000ms;
@@ -69,7 +63,6 @@ SceneMachineConfig battle_area_config(){
     return config;
 }
 
-//  A "scene" step's config (scene_step(): the scene must start within 45 s).
 SceneMachineConfig scene_step_config(){
     SceneMachineConfig config;
     config.start_window = 45000ms;
@@ -474,9 +467,8 @@ scene_moving x61 over 30.5s, 0 presses
 screen 4: never_started at 45.0s: nothing
 )";
 
-//  The looks of one screen in a scene machine's log: the state's events
-//  and readings by their names in the log ("text box", "advance arrow";
-//  describe_look()). The fade count ("fade 1/3") is the machine's own.
+//  `readings` as describe_look() names them; a fade count ("fade 1/3") is
+//  ignored.
 Observation<ZonePose> look_from_log(Milliseconds at, std::string_view readings){
     const std::pair<std::string_view, ScreenEvent> events[] = {
         {"black fade", ScreenEvent::FADE_BLACK}, {"white fade", ScreenEvent::FADE_WHITE},
@@ -508,8 +500,7 @@ Observation<ZonePose> look_from_log(Milliseconds at, std::string_view readings){
     return look;
 }
 
-//  What a look summed up as `state` showed: the screen the state is named
-//  for ("dialog" a text box).
+//  "dialog" -> a text box.
 std::string_view readings_of_state(std::string_view state){
     const std::pair<std::string_view, std::string_view> states[] = {
         {"dialog", "text box"}, {"scene_still", "still"}, {"fade_black", "black fade"}, {"fade_white", "white fade"},
@@ -528,11 +519,8 @@ Milliseconds seconds_in_log(std::string_view text){
     return Milliseconds((int64_t)(std::stod(std::string(text)) * 1000 + 0.5));
 }
 
-//  The looks of a console run from its scene machine's log, one line each
-//  ("screen 3: scene_still at 12.5s: still"), the looks a line sums up
-//  ("dialog x3, scene_moving x2 over 1.2s, 3 presses") spread over its time
-//  in turns. Opened loop: the run's presses are not replayed, the looks
-//  come as recorded whatever the machine presses.
+//  A summary line's looks ("dialog x3, scene_moving x2 over 1.2s") are
+//  spread over its time in turns.
 std::vector<Observation<ZonePose>> replay_log(std::string_view log){
     std::vector<Observation<ZonePose>> looks;
     Milliseconds last = 0ms;
@@ -580,7 +568,6 @@ std::vector<Observation<ZonePose>> replay_log(std::string_view log){
     return looks;
 }
 
-//  The looks of `log`, then `then`.
 std::vector<Observation<ZonePose>> replay_then(std::string_view log, std::vector<Observation<ZonePose>> then){
     std::vector<Observation<ZonePose>> looks = replay_log(log);
     for (Observation<ZonePose>& look : then){
@@ -589,8 +576,6 @@ std::vector<Observation<ZonePose>> replay_then(std::string_view log, std::vector
     return looks;
 }
 
-//  Recorded console runs replayed: the machine must reach the state the
-//  plan's step ends on, with no press the screen did not call for.
 struct ReplayCase{
     std::string name;
     struct Input{
@@ -601,7 +586,7 @@ struct ReplayCase{
     struct Expectation{
         //  "done", or "failed: <failure>".
         std::string verdict;
-        //  The run's last line: "[PLZA test] done on controls_hint.".
+        //  "[PLZA test] done on controls_hint.".
         std::string end;
     };
     Expectation expectation;
@@ -619,8 +604,6 @@ const ReplayCase REPLAY_CASES[] = {
         .expectation = {.verdict = "done", .end = "[PLZA test] done on controls_hint."},
     },
     {
-        //  The scene_loop guard stopped it at 154.5 s; the run goes on to
-        //  the controls hint.
         .name = "01.01 arrival_scenes, Italian, Jacinthe's subtitles each after a quiet spell, then the controls hint",
         .input = {
             .looks = replay_then(FAIL_0101_IT_SUBTITLES, {
@@ -642,8 +625,7 @@ const ReplayCase REPLAY_CASES[] = {
         .expectation = {.verdict = "done", .end = "[PLZA test] done on controls_hint."},
     },
     {
-        //  The run stopped at 45.0 s; the controls hint after the cutscene
-        //  is synthetic (the run never got there).
+        //  The controls hint after the cutscene is synthetic.
         .name = "02.02 street_scene, English, a textless cutscene past the start window, then the controls hint",
         .input = {
             .looks = replay_then(FAIL_0202_STREET_CUTSCENE, {

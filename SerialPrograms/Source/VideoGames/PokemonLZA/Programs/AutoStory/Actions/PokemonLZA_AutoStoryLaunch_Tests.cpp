@@ -26,8 +26,7 @@ std::string describe(std::optional<size_t> value){
     return value ? std::format("{}", *value) : std::string("none");
 }
 
-//  HOME as the console showed it, one frame per tile from the first: the
-//  search reads each frame in turn, a right move showing the next one.
+//  One HOME frame per tile from the first; a right move shows the next one.
 struct TileSearchCase{
     std::string name;
     struct Input{

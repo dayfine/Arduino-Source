@@ -17,12 +17,11 @@ namespace PokemonLZA{
 using namespace std::chrono_literals;
 
 
-//  How often press_a_through_lines() looks.
 constexpr Milliseconds LINES_POLL(250);
 
 LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Milliseconds limit){
     LinesPassed passed;
-    //  The looks bound a script whose time stands still.
+    //  Bounds the looks too, for a script whose time stands still.
     const size_t max_looks = (size_t)(limit / LINES_POLL) + 1;
     std::optional<WallClock> start;
     std::optional<WallClock> last_busy;

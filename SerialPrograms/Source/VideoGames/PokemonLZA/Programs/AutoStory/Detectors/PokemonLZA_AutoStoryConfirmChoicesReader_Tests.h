@@ -14,10 +14,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the Confirm Choices reader's tests: synthetic frames always;
-//  the console's frames in each language from the test images
-//  (PokemonLZA/AutoStoryConfirmChoices/), and the other intro screens from
-//  the folder in PLZA_INTRO_SCREENS, skipped when unset.
+//  Registers the Confirm Choices reader's tests; those on PLZA_INTRO_SCREENS are
+//  skipped when it is unset.
 void add_tests_AutoStoryConfirmChoicesReader(UnitTestDatabase& database);
 
 

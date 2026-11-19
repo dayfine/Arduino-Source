@@ -25,11 +25,8 @@ namespace PokemonLZA{
 
 namespace{
 
-//  A region of the frame and the cells it is averaged into. On 1920x1080:
-//  the top band y 0-300 across; the left
-//  side x 0-640 and the right side x 1280-1920, both y 300-1080. The player
-//  (x 780-1200, y 330-1080) is in none of them. Each cell is 30x30 (top) or
-//  40x39 pixels (sides).
+//  On 1920x1080: top band y 0-300; sides x 0-640 and 1280-1920, y 300-1080, leaving
+//  out the player (x 780-1200). Cells 30x30 (top) or 40x39 (sides).
 struct PlatformRegion{
     std::string_view name;
     ImageFloatBox box;
@@ -43,19 +40,10 @@ const PlatformRegion PLATFORM_REGIONS[] = {
     {"right", {1280.0 / 1920, 300.0 / 1080, 640.0 / 1920, 780.0 / 1080}, 16, 20},
 };
 
-//  The bounds of platform_matches(), from this code's cell averages on
-//  1920x1080, against the platform reference:
-//  - the closest cutscene scene, the train's interior just before the
-//    platform: top 112.8, left 82.6, right 71.9; the next, city flyovers:
-//    top 134.7+, left 95.6+;
-//  - the reference against itself moved 16 px: top 42.2, left 20.8,
-//    right 21.2; 10% darker: top 24.6, left 19.9, right 16.4;
-//  - the platform after loading its autosave (camera turned a little):
-//    top 67.9-68.1, left 25.8-41.7, right 16.5-16.9.
-//  So the bounds sit between the loaded view and the train's interior:
-//  top 90 (23 below it), left 55 (27 below). The right side holds a walking
-//  NPC and the companion, so it only has to be roughly the platform (120:
-//  a menu or another place is 140+).
+//  Measured against the reference: the train's interior just before the platform
+//  top 112.8, left 82.6; the platform loaded from its autosave top 68.1, left 41.7 at
+//  most. The right side holds moving NPCs, so it only has to be roughly the platform
+//  (a menu or another place is 140+).
 constexpr double PLATFORM_TOP_MAX = 90.0;
 constexpr double PLATFORM_LEFT_MAX = 55.0;
 constexpr double PLATFORM_RIGHT_MAX = 120.0;
@@ -65,7 +53,6 @@ constexpr double MAX_PLATFORM_DISTANCE = 441.7;
 
 using Cells = ReferenceCells;
 
-//  `region` of `screen`, averaged into its cells, row by row.
 Cells region_cells(const ImageViewRGB32& screen, const PlatformRegion& region){
     return grid_cells(screen, region.box, region.cols, region.rows);
 }
@@ -78,7 +65,6 @@ Cells reference_cells(const JsonObject& regions, const PlatformRegion& region){
     return read_cell_grid(entry, region.cols, region.rows, std::format("{} region {}", source, region.name));
 }
 
-//  The reference's cells, per PLATFORM_REGIONS entry.
 const std::vector<Cells>& platform_reference(){
     static const std::vector<Cells> reference = []{
         for (const auto& [name, text] : autostory_reference_json()){
@@ -98,7 +84,6 @@ const std::vector<Cells>& platform_reference(){
     return reference;
 }
 
-//  The regions of a frame against the platform reference.
 PlatformDistances platform_distances(const ImageViewRGB32& screen){
     const std::vector<Cells>& reference = platform_reference();
     double distance[std::size(PLATFORM_REGIONS)] = {};
@@ -108,9 +93,6 @@ PlatformDistances platform_distances(const ImageViewRGB32& screen){
     return PlatformDistances{.top = distance[0], .left = distance[1], .right = distance[2]};
 }
 
-//  Whether `distances` are the platform: top and left within their bounds,
-//  and the right side within a looser one (the companion and the NPCs there
-//  move).
 bool platform_matches(const PlatformDistances& distances){
     return distances.top <= PLATFORM_TOP_MAX
         && distances.left <= PLATFORM_LEFT_MAX

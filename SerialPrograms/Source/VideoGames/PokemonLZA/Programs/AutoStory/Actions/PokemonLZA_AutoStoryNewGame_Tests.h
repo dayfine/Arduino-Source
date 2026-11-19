@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the new game's tests: the choices' checks, the language list's
-//  and look picker's moves and the name's key presses.
+//  Registers the new game's tests.
 void add_tests_AutoStoryNewGame(UnitTestDatabase& database);
 
 

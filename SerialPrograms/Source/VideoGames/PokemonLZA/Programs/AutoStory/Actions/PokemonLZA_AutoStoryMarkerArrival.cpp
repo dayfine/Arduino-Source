@@ -13,22 +13,14 @@ namespace PokemonLZA{
 
 namespace{
 
-//  How near the marker a prompt or a dialog is the objective's: the lab
-//  gate's scene took the marker away after 13 (console B, 2026-11-14), a
-//  stray prompt on the street came at 44 or more to go.
+//  The lab gate's scene takes the marker away at 13 or less; stray street
+//  prompts came at 44 or more.
 constexpr int MARKER_NEAR = 20;
-//  How near the marker a prompt or a dialog with the marker still up is
-//  the objective's (MarkerArrival::arrived()); also the least read taken
-//  first (MarkerArrival::look()).
 constexpr int MARKER_PROMPT_NEAR = 10;
-//  How fast a walk can come nearer the marker, in meters a second, and
-//  how much more a read may drop for OCR's jitter. The walk that passed
-//  03.09 in run 10 read 23 down to 12 in 3.2 s, 3.4 a second, with 16 to
-//  12 in 0.64 s (console B, 2026-11-16 21:36:55 to 21:36:58).
+//  Meters a second: a passing walk measured 3.4, with bursts of 4 / 0.64 s.
 constexpr int MARKER_MAX_SPEED = 5;
 constexpr int MARKER_READ_JITTER = 2;
 
-//  Whether a walk can come from `from` to `to` in `time`.
 bool can_come_near(int from, int to, Milliseconds time){
     return (from - to - MARKER_READ_JITTER) * 1000 <= MARKER_MAX_SPEED * time.count();
 }

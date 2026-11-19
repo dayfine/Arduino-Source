@@ -23,33 +23,25 @@ namespace PokemonLZA{
 template <typename Matches>
 double share_of(const ImageViewRGB32& screen, const ImageFloatBox& box, Matches&& matches);
 
-//  The share of `box`'s pixels that glow cyan: blue over red by 50, green
-//  over red by 30, blue over 120, and blue at least green less 20. The last
-//  keeps out mint and sign green (about 96, 203, 147 on a building banner),
-//  which have green far over blue.
+//  Cyan glow: blue over red by 50, green over red by 30, blue over 120, blue >= green
+//  - 20 (keeps out mint and sign green, which have green far over blue).
 double cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
-//  The share of `box`'s pixels that glow cyan, dim too: blue over red by
-//  40, green over red by 25, blue over 70, blue at least green less 20.
-//  The autosave badge's glow over a
-//  dark or warm scene (a lamp-lit wall: about 28, 70, 85) is too dim for
-//  cyan_share().
+//  As cyan_share(), dimmer (red margins 40 and 25, blue over 70): the autosave glow
+//  over a dark or lamp-lit scene.
 double dim_cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
 //  The share of `box`'s pixels whose every channel is above 200.
 double white_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
-//  The share of `box`'s pixels in the controls hint card's sky blue (about
-//  125, 210, 250): blue over 200, green over 160, blue over red by 60.
+//  The controls hint's sky blue: blue over 200, green over 160, blue over red by 60.
 double sky_blue_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
-//  The share of `box`'s pixels in the mission banner's yellow (about 250,
-//  210, 40 over a scene): red over 200, green over 140, blue under 130,
-//  red over blue by 110.
+//  The mission banner's yellow: red over 200, green over 140, blue under 130, red
+//  over blue by 110.
 double banner_yellow_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
-//  The share of `box`'s pixels in the mission complete card's green (about
-//  165, 240, 125): green over 180, over red by 40 and over blue by 70.
+//  The mission complete green: green over 180, over red by 40 and over blue by 70.
 double complete_green_share(const ImageViewRGB32& screen, const ImageFloatBox& box);
 
 //  `box` moved `dx` pixels (of 1920) right and `dy` pixels (of 1080) down.

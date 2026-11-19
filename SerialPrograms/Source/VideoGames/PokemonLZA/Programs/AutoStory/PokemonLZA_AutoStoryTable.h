@@ -2,16 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The story as rows of the shared story steps
- *  (Pokemon/AutoStory/Types/Pokemon_StoryStep.h), plain data, so unit
- *  tests can check it without a console.
- *
- *  Lumiose has no tile grid, so a row's poses name a place and nothing more,
- *  and a walk in the overworld is a GAME "walk" step whose args hold its
- *  legs: a relative turn and a walk time each (PokemonLZA_AutoStoryGame.h).
- *
- *  This is the story as data, with no IO: the checkpoint files it is read
- *  from are PokemonLZA_AutoStoryStoryFiles.h.
+ *  The story as rows of the shared story steps, plain data with no IO.
+ *  Lumiose has no tile grid: poses name a place only, and a walk is a GAME
+ *  "walk" step whose args hold timed legs (PokemonLZA_AutoStoryGame.h).
  *
  */
 
@@ -28,34 +21,20 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The story a run plays: its checkpoints in order, and the rows their
-//  execution marks (Pokemon_StoryRowExecution.h).
+//  The story's checkpoints in order.
 using StoryData = Pokemon::StoryData<Pokemon::StoryCheckpoint>;
 
-//  Whether `row` starts with no save to load: it starts a new game (its
-//  first step is the GAME action "new_game_intro", from HOME: 01.00a; or
-//  "confirm_new_game", on "Confirm Choices": 01.00b).
+//  A new game: 01.00a (from HOME) or 01.00b (on "Confirm Choices").
 bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
 
-//  Whether `row` plays the new game's choices (its first step is the GAME
-//  action "new_game_intro"): 01.00a, which types the name.
+//  01.00a, which types the name.
 bool story_row_makes_new_game_choices(const Pokemon::StoryCheckpoint& row);
 
-//  "<step>: <rule>" for each step of `row` that does not come right after
-//  the step it needs (console B, 2026-11-16):
-//    - a TALK after a step that ends on an A prompt (a "walk" to "end"
-//      "prompt"): a timed walk can stop short of who the talk is for
-//      (03.02);
-//    - a "story_battle" after "story_battle_start", which presses through
-//      the talk and cards to the battle HUD: the battle code run on the
-//      overworld looks for a battle for 2 min (03.02b);
-//    - a scene ("a", MASH) after what starts it (a walk, a talk, a choice,
-//      a battle), not after a step that presses through its scenes until
-//      control (a scene, "mash_to_move_hints", "talk_to_pokedex_screen",
-//      "talk_through_map_screen"): a scene that follows with nothing to
-//      start it plays inside that step, and the scene step then waits 45 s
-//      on the party bar for it (03.04's after_pokedex). A bare scene
-//      ("mash") may follow anything: control ends it at once.
+//  "<step>: <rule>" for each step of `row` not right after the step it needs:
+//  a TALK after a walk ending on an A prompt; a "story_battle" after
+//  "story_battle_start"; a scene ("a", MASH) after what starts it (a walk,
+//  talk, choice or battle), not after a step that presses through to
+//  control, which would play the scene itself. A bare "mash" may follow anything.
 std::vector<std::string> story_row_lead_in_errors(const Pokemon::StoryCheckpoint& row);
 
 

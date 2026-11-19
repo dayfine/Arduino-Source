@@ -18,13 +18,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The card a main mission ends with, which waits for A: a big green
-//  "COMPLETE" at x 615-1300, y 271-349 on 1920x1080 over the mission's
-//  yellow bar (x 345-1590, y 390-585, "MAIN MISSION 01" and the mission's
-//  name), in a yellow hexagon with the mission's item. The word is read
-//  with nothing green just above or below it, and the bar left and right
-//  of the name. The word is the same in every language seen (the header
-//  stays English in Chinese), so its text is not read.
+//  A big green "COMPLETE" (x 615-1300, y 271-349 on 1080p) over the mission's yellow
+//  bar, with nothing green just above or below. The word is the same in every language
+//  seen, so text is not read.
 class MissionCompleteDetector : public StaticScreenDetector{
 public:
     explicit MissionCompleteDetector(Color color = COLOR_GREEN);

@@ -2,10 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The row of five markers right of the lead's panel's gender icon in a
- *  battle: one blue triangle and white dots. The panel itself
- *  (BattlePanelDetector) shows all through a wild zone, in battle or not
- *  (console B, 2026-11-16); the markers show only in a battle.
+ *  The row of five markers right of the lead's panel's gender icon, shown only in a
+ *  battle (the panel itself shows all through a wild zone).
  *
  */
 
@@ -22,13 +20,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The markers' five slots, 16 x 12 on 1920x1080, centred at x 405, 432,
-//  459, 486 and 513, y 806. A battle: one slot the triangle's blue (about
-//  15, 180, 255) over 20% of its pixels, and 3 or more others a dot's
-//  white over 6% and under 50% (a white scene fills a slot) with no blue.
-//  Measured on Taunie's battle (03.02b) and a wild Mareep's (03.08b),
-//  neither locked on: triangle 0.39 and 0.44, dots 0.18 to 0.57; no
-//  other of 1403 PLZA frames (CommandLineTests and lab-B's) has them.
+//  Five 16 x 12 slots at x 405-513 (27 apart), y 806 on 1080p. A battle: one slot over
+//  20% triangle blue, and 3+ others 6-50% white with no blue. Measured: triangle
+//  0.39-0.44, dots 0.18-0.57; no other of 1403 PLZA frames has them.
 class BattleMarkersDetector : public StaticScreenDetector{
 public:
     explicit BattleMarkersDetector(Color color = COLOR_BLUE);

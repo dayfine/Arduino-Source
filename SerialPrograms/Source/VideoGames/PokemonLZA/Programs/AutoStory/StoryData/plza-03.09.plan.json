@@ -11,7 +11,7 @@
       {
         "id": "to_research_lab",
         "kind": "game_action",
-        "why": "Heading 257, not the street frame's 264: facing 272 (taken as 264 within the old 10 deg tolerance), the walk ended about 15 deg too far right (user, console B 2026-11-17 01:20). step 63: across the street into the Pokemon Research Lab's gate, into the rival's scene (Ryon on this save: \"Allora, come va? Sei riuscita a catturare cinque specie di Pokemon?\"). The user's path (2026-11-17): \"much easier based on my very original recorded path -- as long as we are facing the street -- using walk-to-marker is more likely to fail due to the fence\"; walk_to_marker was held up at 24 and then at 10 against the lab's fence, sidestepped left 3 s, right 4.5 s, left 6 s and failed objective_not_reached (console B, German, 2026-11-17 00:48-00:50): the gate is the only gap in the lab's low wall and fence. Out of the zone's gate the player faces whichever way it faced before (console B, 2026-11-10), so the walk first faces the street by the minimap arrow: heading 264, the arrow read 263.7 on the user's \"faces street\" frame (0309-start-facing-street2-de.png: the street straight ahead, Wild Zone 1's green fence on the right, the lab gate's marker at the far left). The user's order is the marker first, then the turn by the two frames' difference; the arrow shows the player's facing, not the camera's, and read 268.5 on the marker frame too (the camera turned onto the marker, the player not), so the street heading is faced directly. Then straight down the street 6.5 s, left (-90 = left: the lab is on the street's left, the zone's fence on its right) into the gate, 2 s by the user's walk; that leg is held until Ryon's dialog, which shows 9 to 11 s after the scene takes the marker away (console B, 2026-11-14), hence 13 s. The 2026-11-08 recording's legs (45 right 4 s, straight 2 s, left 2 s, from the facing out of the gate) turned toward the zone's fence first. TO BE VERIFIED on console. not planned: Lumiose has no tile grid to plan a route target on.",
+        "why": "step 63: across the street into the Pokemon Research Lab's gate, into the rival's scene. Out of the zone's gate the player faces whichever way it faced before, so the walk first faces the street by the minimap arrow (257; the arrow shows the player's facing, not the camera's). Then straight down the street 6.5 s, left (the lab is on the street's left, the zone's fence on its right) into the gate, the only gap in the lab's wall and fence; walk_to_marker gets stuck on that fence. That leg is held until Ryon's dialog, which shows 9 to 11 s after the scene takes the marker away, hence 13 s. TO BE VERIFIED on console. not planned: Lumiose has no tile grid to plan a route target on.",
         "action": "walk",
         "args": {
           "legs": [
@@ -31,24 +31,24 @@
       {
         "id": "research_lab_gate",
         "kind": "scene",
-        "why": "step 63: Ryon at the lab gate; with five species registered he goes on, then the scene's black fade puts the player at the lab's steps (20 s, console B 2026-11-14 21:01). The walk ends on his dialog, so the scene has started.",
+        "why": "step 63: Ryon at the lab gate; with five species registered he goes on, then the scene's black fade puts the player at the lab's steps (~20 s). The walk ends on his dialog, so the scene has started.",
         "action": "a"
       },
       {
         "id": "five_registered",
         "kind": "scene",
-        "why": "step 65: Ryon's scene at the lab gate after 5/5, until control; at once when there is control already: plza/autostory's pass had control at once here too (1.2 s, console B 2026-11-14 21:01:47), research_lab_gate having played the whole scene. A bare scene, which control ends at once; plza/autostory's was \"a\", which here waits 45 s for a scene to start."
+        "why": "step 65: Ryon's scene at the lab gate after 5/5, until control; at once when research_lab_gate already played the whole scene. A bare scene: \"a\" would wait 45 s for a scene to start."
       },
       {
         "id": "up_the_lab_steps",
         "kind": "game_action",
-        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker. Its digits do not read on the steps (four looks, none, plza/autostory's pass on console B 2026-11-14), so the door's prompt counts with no read taken, but not after digits over 20 (from the street, 44 and 111, console B 2026-11-16 17:34).",
+        "why": "step 65: up the steps to the lab's \"A Enter\", by the objective marker. Its digits do not read on the steps, so the door's prompt counts with no read taken, but not after digits over 20 (from the street).",
         "action": "walk_to_unread_marker"
       },
       {
         "id": "lab_lobby",
         "kind": "game_action",
-        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up). The door's black fade comes 0.5 s after A (console B, 2026-11-14 21:01:52): control with no scene for 3 s is the player not at the door, not a pass.",
+        "why": "steps 65-66: A Enter, the receptionist: third floor; autosave (A first: the door's prompt shows with the party bar up). The door's black fade comes 0.5 s after A: control with no scene for 3 s is the player not at the door, not a pass.",
         "action": "mash_to_move_hints",
         "args": {
           "press_a_first": true,
@@ -58,7 +58,7 @@
       {
         "id": "save_in_lab_lobby",
         "kind": "game_action",
-        "why": "the lobby's autosave was never seen in a run log (2026-11-14 21:02 passed lab_lobby with no badge logged): X, Save, B here, so 03.10 starts from a save at this spot.",
+        "why": "the lobby's autosave was never seen in a run: X, Save, B here, so 03.10 starts from a save at this spot.",
         "action": "save_from_menu"
       }
     ],
