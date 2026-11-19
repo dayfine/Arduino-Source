@@ -53,13 +53,14 @@ bool press_b_out_of_menu(PlzaBackend& backend, size_t presses){
     for (size_t pressed = 0; pressed < presses; pressed++){
         backend.scope().throw_if_cancelled();
         const ScreenObservation look = backend.observe();
-        if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.events.has(ScreenEvent::DIALOG_BOX)){
+        if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || text_shows(look)){
             return true;
         }
         backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
     }
     const ScreenObservation look = backend.observe();
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.events.has(ScreenEvent::DIALOG_BOX);
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || text_shows(look);
+
 }
 
 

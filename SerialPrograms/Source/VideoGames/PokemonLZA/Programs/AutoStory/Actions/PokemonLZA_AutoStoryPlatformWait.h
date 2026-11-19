@@ -9,7 +9,6 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryPlatformWait_H
 #define PokemonAutomation_PokemonLZA_AutoStoryPlatformWait_H
 
-#include <cstddef>
 #include <optional>
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
@@ -25,13 +24,12 @@ enum class PlatformWait{
     AFTER_AUTOSAVE,     //  "opening_to_platform": the autosave badge first
 };
 
-//  One A per text box with the advance arrow (A does not advance the
-//  cutscene). AFTER_AUTOSAVE: Plus held 0.75 s after each fade-in of the
-//  opening, until it skips to the platform. Fails as "platform_not_seen".
+//  The platform is its controls hint on two looks in a row. One A per
+//  advance arrow (A does not advance the cutscene). AFTER_AUTOSAVE: Plus held
+//  0.75 s after each fade-in of the opening, until it skips to the platform.
+//  Fails as "platform_not_seen".
 std::optional<Pokemon::StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds timeout, PlatformWait wait);
 
-//  Whether the platform shows on two looks in a row within `looks` looks.
-bool platform_holds_within(PlzaBackend& backend, size_t looks);
 
 
 

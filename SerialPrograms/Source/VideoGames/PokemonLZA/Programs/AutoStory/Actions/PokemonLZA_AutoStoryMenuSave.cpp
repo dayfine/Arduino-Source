@@ -70,7 +70,7 @@ MenuSaveScreen menu_save_screen(const ScreenObservation& look){
     if (look.events.has(ScreenEvent::CHOICE_BOX)){
         return MenuSaveScreen::CHOICE;
     }
-    if (look.events.has(ScreenEvent::DIALOG_BOX)){
+    if (has_reading(look, ADVANCE_ARROW_READING)){
         return MenuSaveScreen::TEXT;
     }
     if (has_reading(look, MENU_SAVE_BUTTON_READING)){
@@ -79,8 +79,9 @@ MenuSaveScreen menu_save_screen(const ScreenObservation& look){
     if (has_reading(look, MAIN_MENU_READING)){
         return MenuSaveScreen::MAIN_MENU;
     }
-    //  01.01's platform shows no party bar.
-    if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || has_reading(look, PLATFORM_READING)){
+    //  01.01's platform shows no party bar, only the controls hint.
+    if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || has_reading(look, CONTROLS_HINT_READING)){
+
         return MenuSaveScreen::OVERWORLD;
     }
     return MenuSaveScreen::UNKNOWN;

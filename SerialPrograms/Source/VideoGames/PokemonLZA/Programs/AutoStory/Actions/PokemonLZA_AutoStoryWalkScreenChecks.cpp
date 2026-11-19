@@ -89,16 +89,13 @@ constexpr Milliseconds PROMPT_IS_CONTROL = 1000ms;
 constexpr Milliseconds PROMPT_STEADY_GAP = 300ms;
 
 bool prompt_taken(const ScreenObservation& look){
-    return fade_shows(look) || look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
+    return fade_shows(look) || text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX);
 }
 
 //  What keeps control from being free; none when it is.
 std::optional<std::string_view> not_free_control(const ScreenObservation& look){
-    if (look.readings.contains(ADVANCE_ARROW_READING)){
+    if (text_shows(look)){
         return "text waiting for A";
-    }
-    if (look.events.has(ScreenEvent::DIALOG_BOX)){
-        return "a text box";
     }
     if (fade_shows(look)){
         return "a fade";
@@ -106,12 +103,12 @@ std::optional<std::string_view> not_free_control(const ScreenObservation& look){
     return std::nullopt;
 }
 
-//  The party bar, the station platform after the opening, or the
-//  tutorial's controls hint.
+//  The party bar, or the tutorial's controls hint (also 01.01's platform,
+//  which shows no party bar).
 bool control_shows(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(PLATFORM_READING) ||
-        look.readings.contains(CONTROLS_HINT_READING);
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(CONTROLS_HINT_READING);
 }
+
 
 bool prompt_steady(PlzaBackend& backend){
     backend.wait(PROMPT_STEADY_GAP);

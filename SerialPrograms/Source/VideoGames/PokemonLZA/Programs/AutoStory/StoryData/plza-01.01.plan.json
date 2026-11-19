@@ -10,7 +10,7 @@
     "events": [
       {
         "id": "on_platform",
-        "why": "start check: on the platform with free control",
+        "why": "start check: on the platform with free control, read by its controls hint (the platform has no party bar)",
         "action": "wait_for_platform",
         "args": {
           "timeout_ms": 10000

@@ -12,6 +12,8 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+
 #include "PokemonLZA_AutoStoryLines.h"
 #include "PokemonLZA_AutoStoryLines_Tests.h"
 
@@ -35,8 +37,9 @@ ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readin
 }
 
 ScreenObservation dialog(Milliseconds at){
-    return look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, at);
+    return look(/*events=*/{}, {ADVANCE_ARROW_READING}, at);
 }
+
 
 ScreenObservation card(Milliseconds at){
     return look(/*events=*/{}, {TUTORIAL_CARD_READING}, at);

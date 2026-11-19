@@ -12,7 +12,6 @@
 #include <string_view>
 #include <utility>
 #include <variant>
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryPlatformWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryActionNames.h"
 #include "PokemonLZA_AutoStoryStarts.h"
@@ -33,15 +32,6 @@ bool first_step_checks_start(const Pokemon::StoryCheckpoint& checkpoint){
     return checkpoint_first_action(checkpoint) == action_name(PlzaAction::WAIT_FOR_PLATFORM) || checkpoint_starts_without_save(checkpoint);
 }
 
-//  Right after a load the platform reads on the first two looks.
-constexpr size_t START_LOOKS = 4;
-
-
-enum class StartCheck{
-    PASSED,     //  its first step checks it
-    FAILED,     //  the station platform holds: 01.01's start, not this checkpoint's
-    UNCHECKED,  //  off the platform; nothing checks the checkpoint's own start yet
-};
 
 //  "[Boundary] <id> start: <pinned>": what pins the start ("pinned by
 //  minimap", "unchecked"), the evidence for which start checks a run needs.
@@ -49,15 +39,8 @@ void log_start_boundary(PlzaBackend& backend, std::string_view id, std::string_v
     backend.log(std::format("[Boundary] {} start: {}", id, pinned));
 }
 
-//  Only the station platform is read so far.
-StartCheck check_start(PlzaBackend& backend, const Pokemon::StoryCheckpoint& checkpoint){
-    if (first_step_checks_start(checkpoint)){
-        return StartCheck::PASSED;
-    }
-    return platform_holds_within(backend, START_LOOKS) ? StartCheck::FAILED : StartCheck::UNCHECKED;
-}
-
 } // namespace
+
 
 
 Pokemon::StoryGame plza_story_game(const MarkedCheckpoints& marked, AutosaveSightings& sightings){
@@ -72,18 +55,9 @@ std::optional<Pokemon::StoryFailure> load_checkpoint_start(Pokemon::StoryGame& g
     if (!game.reload(backend, checkpoint)){
         return Pokemon::StoryFailure{.code = "reload_failed", .detail = "the reload is at no checkpoint's start"};
     }
-    switch (check_start(backend, checkpoint)){
-    case StartCheck::PASSED:
-        return std::nullopt;
-    case StartCheck::FAILED:
-        backend.log(std::format("[Checkpoint] {}: the save is on the station platform, not at its start", checkpoint.id));
-        return Pokemon::StoryFailure{.code = "older_save", .detail = std::format(
-            "the latest save is on the station platform (01.01's start), older than {}'s start", checkpoint.id
-        )};
-    case StartCheck::UNCHECKED:
-        break;
+    if (!first_step_checks_start(checkpoint)){
+        backend.log(std::format("[Checkpoint] {}: START UNCHECKED: nothing reads this row's own start", checkpoint.id));
     }
-    backend.log(std::format("[Checkpoint] {}: off the station platform; START UNCHECKED: nothing reads this row's own start", checkpoint.id));
     return std::nullopt;
 }
 
@@ -126,32 +100,16 @@ std::variant<Chain, Pokemon::StoryFailure> check_live_start(CheckpointRun& run, 
     return Pokemon::StoryFailure{.code = "chain_off_start", .detail = std::format("the run is not at {}'s start: {}", checkpoint.id, screen)};
 }
 
-//  `seen`: whether the checkpoint before's autosave showed. Fails when only a
-//  reload would do and there is no save to load.
+//  `seen`: whether the checkpoint before's autosave showed.
 std::variant<Chain, Pokemon::StoryFailure> decide_chain(CheckpointRun& run, const Pokemon::StoryCheckpoint& checkpoint, bool seen){
-    PlzaBackend& backend = run.backend;
-    const auto no_save = [&](std::string_view why){
-        backend.log(std::format("[Checkpoint] {}: no save at its start: {}", checkpoint.id, why));
-        return Pokemon::StoryFailure{.code = "no_start_save", .detail = std::format(
-            "no save at {}'s start: {}; a reload would rewind to an older save", checkpoint.id, why
-        )};
-    };
-    switch (check_start(backend, checkpoint)){
-    case StartCheck::PASSED:
-        backend.log(std::format("[Checkpoint] {}: start check passed; on from the live screen", checkpoint.id));
-        log_start_boundary(backend, checkpoint.id, "pinned by platform");
+    if (first_step_checks_start(checkpoint)){
+        run.backend.log(std::format("[Checkpoint] {}: start check passed; on from the live screen", checkpoint.id));
+        log_start_boundary(run.backend, checkpoint.id, "pinned by its first step");
         return Chain::ON;
-    case StartCheck::UNCHECKED:
-        return check_live_start(run, checkpoint, seen);
-    case StartCheck::FAILED:
-        break;
     }
-    if (!seen){
-        return no_save("the start check failed and the autosave before it was not seen");
-    }
-    backend.log(std::format("[Checkpoint] {}: start check failed; reloads its start save", checkpoint.id));
-    return Chain::RELOAD;
+    return check_live_start(run, checkpoint, seen);
 }
+
 
 std::optional<Pokemon::StoryFailure> reload_into(
     CheckpointRun& run, const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& checkpoint

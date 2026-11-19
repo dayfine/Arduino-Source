@@ -45,7 +45,7 @@ ScreenObservation card(Milliseconds at){
 }
 
 ScreenObservation text(Milliseconds at){
-    return look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, at);
+    return look(/*events=*/{}, {ADVANCE_ARROW_READING}, at);
 }
 
 ScreenObservation main_menu(Milliseconds at){
@@ -57,15 +57,17 @@ ScreenObservation save_button(Milliseconds at){
 }
 
 ScreenObservation choice(Milliseconds at){
-    return look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, /*readings=*/{}, at);
+    return look({ScreenEvent::CHOICE_BOX}, /*readings=*/{}, at);
 }
 
 ScreenObservation home(Milliseconds at){
     return look({ScreenEvent::SWITCH_HOME_MENU}, /*readings=*/{}, at);
 }
 
+//  01.01's platform: the controls hint, no party bar.
 ScreenObservation platform(Milliseconds at){
-    return look(/*events=*/{}, {PLATFORM_READING}, at);
+
+    return look(/*events=*/{}, {CONTROLS_HINT_READING}, at);
 }
 
 //  No detector reads the options screens.

@@ -89,9 +89,7 @@ ScreenObservation PlzaConsoleBackend::observe(){
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
         look = Pokemon::screen_observation(m_observer.read(*frame.frame));
-        if (m_platform.detect(*frame.frame)){
-            look.readings[std::string(PLATFORM_READING)] = 1;
-        }
+
         if (m_autosave.detect(*frame.frame)){
             look.readings[std::string(AUTOSAVE_READING)] = 1;
         }
