@@ -26,11 +26,10 @@ namespace PokemonLZA{
 //  the Switch's HOME.
 std::optional<Pokemon::StoryFailure> save_from_menu(PlzaBackend& backend);
 
-//  PlzaAction::SET_TEXT_SPEED_FAST: X, A on the tutorial card when it
-//  shows, then on the main menu blind presses to the options' text speed
-//  and Fast (L, Up, A, Down, Right; no detector reads the options
-//  screens), then B until the
-//  overworld or the platform shows on two looks in a row. Fails as
+//  PlzaAction::SET_TEXT_SPEED_FAST: X, 2 s for the menu, A on the first
+//  menu's tutorial card while it shows (1.5 s apart), then blind presses to
+//  the options' text speed and Fast (L, Up, A, Down, Right), then B until
+//  the overworld or the platform shows on two looks in a row. Fails as
 //  "text_speed_timeout" when not back within 30 s, and as GAME_NOT_RUNNING
 //  on the Switch's HOME.
 std::optional<Pokemon::StoryFailure> set_text_speed_fast(PlzaBackend& backend);

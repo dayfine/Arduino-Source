@@ -154,20 +154,19 @@ constexpr std::pair<Button, Milliseconds> TEXT_SPEED_PRESSES[] = {
     {BUTTON_RIGHT, 300ms},
 };
 
-//  Before the rows: X on the overworld, A on the tutorial card. After: B
-//  until the overworld. nullopt: wait (or, before the rows on the main
-//  menu, send them).
-std::optional<Button> text_speed_press(MenuSaveScreen screen, bool rows_sent, const std::optional<Milliseconds>& last_x, Milliseconds now){
-    if (rows_sent){
-        return screen == MenuSaveScreen::OVERWORLD ? std::nullopt : std::optional<Button>(BUTTON_B);
-    }
+//  The save file's first menu opens under a tutorial card. A closes it; the
+//  card fades out over ~1 s and reads as a card meanwhile, so a second A
+//  too soon lands on the main menu and opens the bag (console B,
+//  2026-11-19: 01.01 failed 3/3 that way).
+constexpr Milliseconds CARD_CLOSE_WAIT = 1500ms;
+constexpr size_t CARD_PAGES_MAX = 3;
+
+//  A tutorial card's press waits out its fade.
+void press_menu_button(PlzaBackend& backend, MenuSaveScreen screen, Button button){
+    backend.press(button, /*hold=*/160ms, /*release=*/240ms);
     if (screen == MenuSaveScreen::TUTORIAL_CARD){
-        return BUTTON_A;
+        backend.wait(CARD_CLOSE_WAIT);
     }
-    if (screen == MenuSaveScreen::OVERWORLD && !too_soon(last_x, now)){
-        return BUTTON_X;
-    }
-    return std::nullopt;
 }
 
 void press_text_speed_rows(PlzaBackend& backend){
@@ -176,32 +175,12 @@ void press_text_speed_rows(PlzaBackend& backend){
     }
 }
 
-//  The looks also bound the step: a script's time can stand still.
-constexpr size_t TEXT_SPEED_MAX_LOOKS = MENU_SAVE_LIMIT / MENU_SAVE_POLL + 1;
-
-//  The screen of the latest looks and how many looks in a row it showed.
-struct HeldScreen{
-    std::optional<MenuSaveScreen> screen = std::nullopt;
-    size_t looks = 0;
-};
-
-//  `held` after one more look at `screen`; logs a new screen.
-HeldScreen held_after(PlzaBackend& backend, const HeldScreen& held, MenuSaveScreen screen, Milliseconds now){
-    if (screen == held.screen){
-        return {.screen = screen, .looks = held.looks + 1};
-    }
-    backend.log_detail(std::format("[PLZA set_text_speed_fast] {} at {:.1f}s", screen_name(screen), now.count() / 1000.0));
-    return {.screen = screen, .looks = 1};
-}
-
-} // namespace
-
-
-std::optional<Pokemon::StoryFailure> set_text_speed_fast(PlzaBackend& backend){
-    bool rows_sent = false;
-    std::optional<Milliseconds> last_x;
+//  B until the overworld holds; B on the overworld does nothing.
+std::optional<Pokemon::StoryFailure> back_to_overworld(PlzaBackend& backend){
+    //  The looks also bound the step: a script's time can stand still.
+    const size_t max_looks = MENU_SAVE_LIMIT / MENU_SAVE_POLL + 1;
     std::optional<WallClock> start;
-    HeldScreen held;
+    size_t overworld_looks = 0;
     for (size_t looks = 1; ; looks++){
         backend.scope().throw_if_cancelled();
         const ScreenObservation look = backend.observe();
@@ -210,38 +189,46 @@ std::optional<Pokemon::StoryFailure> set_text_speed_fast(PlzaBackend& backend){
         }
         start = start.value_or(look.when);
         const Milliseconds now = std::chrono::duration_cast<Milliseconds>(look.when - *start);
-        const MenuSaveScreen screen = menu_save_screen(look);
-        if (now > MENU_SAVE_LIMIT || looks > TEXT_SPEED_MAX_LOOKS){
+        if (now > MENU_SAVE_LIMIT || looks > max_looks){
             return Pokemon::StoryFailure{.code = "text_speed_timeout", .detail = std::format(
-                "not back on the overworld in {} ms: on {}, text speed rows sent {}", MENU_SAVE_LIMIT.count(), screen_name(screen), rows_sent
+                "not back on the overworld in {} ms of B after the text speed rows", MENU_SAVE_LIMIT.count()
             )};
         }
-        held = held_after(backend, held, screen, now);
-        if (held.looks < MENU_SAVE_HELD_LOOKS){
-            backend.wait(MENU_SAVE_POLL);
+        if (menu_save_screen(look) != MenuSaveScreen::OVERWORLD){
+            overworld_looks = 0;
+            backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
             continue;
         }
-        if (rows_sent && screen == MenuSaveScreen::OVERWORLD){
+        overworld_looks++;
+        if (overworld_looks >= MENU_SAVE_HELD_LOOKS){
             backend.log(std::format("[PLZA set_text_speed_fast] text speed set, back on the overworld at {:.1f}s", now.count() / 1000.0));
             return std::nullopt;
         }
-        if (!rows_sent && screen == MenuSaveScreen::MAIN_MENU){
-            press_text_speed_rows(backend);
-            rows_sent = true;
-            held.looks = 0;
-            continue;
-        }
-        const std::optional<Button> button = text_speed_press(screen, rows_sent, last_x, now);
-        if (!button){
-            backend.wait(MENU_SAVE_POLL);
-            continue;
-        }
-        backend.press(*button, /*hold=*/160ms, /*release=*/240ms);
-        if (*button == BUTTON_X){
-            last_x = now;
-        }
-        held.looks = 0;
+        backend.wait(MENU_SAVE_POLL);
     }
+}
+
+} // namespace
+
+
+//  Blind but for the first menu's tutorial card and the way back.
+std::optional<Pokemon::StoryFailure> set_text_speed_fast(PlzaBackend& backend){
+    backend.press(BUTTON_X, /*hold=*/160ms, /*release=*/240ms);
+    backend.wait(MENU_OPEN_WAIT);
+    for (size_t pages = 0; pages < CARD_PAGES_MAX; pages++){
+        backend.scope().throw_if_cancelled();
+        const ScreenObservation look = backend.observe();
+        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
+            return Pokemon::game_not_running_failure();
+        }
+        if (!has_reading(look, TUTORIAL_CARD_READING)){
+            break;
+        }
+        backend.log("[PLZA set_text_speed_fast] tutorial card: A");
+        press_menu_button(backend, MenuSaveScreen::TUTORIAL_CARD, BUTTON_A);
+    }
+    press_text_speed_rows(backend);
+    return back_to_overworld(backend);
 }
 
 
@@ -289,7 +276,7 @@ std::optional<Pokemon::StoryFailure> save_from_menu(PlzaBackend& backend){
             backend.wait(MENU_SAVE_POLL);
             continue;
         }
-        backend.press(*button, /*hold=*/160ms, /*release=*/240ms);
+        press_menu_button(backend, screen, *button);
         note_press(screen, *button, now, progress);
         held = 0;
     }

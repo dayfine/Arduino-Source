@@ -116,7 +116,7 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
         .input = {.looks = twice({overworld, card, main_menu, save_button, text, main_menu, overworld})},
         .expectation = {
             .failure = "",
-            .inputs = "wait 250ms, press X, wait 250ms, press A, wait 250ms, press R, wait 250ms, press A, "
+            .inputs = "wait 250ms, press X, wait 250ms, press A, wait 1500ms, wait 250ms, press R, wait 250ms, press A, "
                 "wait 250ms, press B, wait 250ms, press B",
         },
     },
@@ -178,25 +178,49 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
 //  The blind presses from the main menu to the text speed, set to Fast.
 constexpr std::string_view TEXT_SPEED_ROWS = "press L, press Up, press A, press Down, press Right";
 
+//  X, then the menu's 2 s.
+constexpr std::string_view TEXT_SPEED_OPEN = "press X, wait 2000ms";
+
 const MenuSaveCase TEXT_SPEED_CASES[] = {
     {
-        //  01.01 opens the save file's first menu, under the tutorial card.
-        .name = "the tutorial card gets A, then the rows, then B back to the platform",
-        .input = {.looks = twice({platform, card, main_menu, options, main_menu, platform})},
+        //  console B, 2026-11-19, 01.01 3/3: the card read on two looks
+        //  while it faded out, got a second A on the main menu, and the bag
+        //  opened.
+        .name = "a tutorial card fading out after its A gets no second A",
+        .input = {.looks = {
+            card(Milliseconds(0)), options(Milliseconds(1500)),
+            options(Milliseconds(2500)), platform(Milliseconds(3500)), platform(Milliseconds(3750)),
+        }},
         .expectation = {
             .failure = "",
-            .inputs = std::format(
-                "wait 250ms, press X, wait 250ms, press A, wait 250ms, {}, wait 250ms, press B, wait 250ms, press B, wait 250ms",
-                TEXT_SPEED_ROWS
-            ),
+            .inputs = std::format("{}, press A, wait 1500ms, {}, press B, wait 250ms", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
         },
     },
     {
         .name = "a menu with no tutorial card gets the rows at once",
-        .input = {.looks = twice({overworld, main_menu, options, overworld})},
+        .input = {.looks = {main_menu(Milliseconds(0)), overworld(Milliseconds(1000)), overworld(Milliseconds(1250))}},
         .expectation = {
             .failure = "",
-            .inputs = std::format("wait 250ms, press X, wait 250ms, {}, wait 250ms, press B, wait 250ms", TEXT_SPEED_ROWS),
+            .inputs = std::format("{}, {}, wait 250ms", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
+        },
+    },
+    {
+        .name = "a screen no detector reads after the rows, like a stray bag, gets B until the overworld",
+        .input = {.looks = {
+            main_menu(Milliseconds(0)), options(Milliseconds(1000)), options(Milliseconds(2000)),
+            options(Milliseconds(3000)), overworld(Milliseconds(4000)), overworld(Milliseconds(4250)),
+        }},
+        .expectation = {
+            .failure = "",
+            .inputs = std::format("{}, {}, press B, press B, press B, wait 250ms", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
+        },
+    },
+    {
+        .name = "never back on the overworld: the step times out",
+        .input = {.looks = {main_menu(Milliseconds(0)), options(Milliseconds(1000)), options(Milliseconds(31500))}},
+        .expectation = {
+            .failure = "text_speed_timeout",
+            .inputs = std::format("{}, {}, press B", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
         },
     },
 };
