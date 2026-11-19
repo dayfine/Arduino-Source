@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers MarkerArrival's tests: walks to the objective's prompt
-//  replayed from console B's logs, one look at a time.
+//  Registers MarkerArrival's tests, replayed from console logs.
 void add_tests_AutoStoryMarkerArrival(UnitTestDatabase& database);
 
 

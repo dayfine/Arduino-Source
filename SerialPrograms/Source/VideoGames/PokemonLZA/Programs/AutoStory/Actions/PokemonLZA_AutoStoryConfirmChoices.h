@@ -21,19 +21,15 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The highlighted row of "Confirm Choices", read from frames over up to
-//  2 s with no press. Throws UserSetupError if the screen does not show.
+//  The highlighted row of "Confirm Choices", with no press. Throws UserSetupError if it does not show.
 size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context);
 
-//  01.00b's first step: "Confirm Choices" is on screen. Checks
-//  that screen first (require_confirm_choices()): on any other screen
-//  throws UserSetupError and presses nothing. Then reads the name and the
-//  language it shows (OCR) and, if either is not `choices`', throws
-//  OperationFailedException having pressed nothing (the language is not
-//  checked when its OCR is not installed). Then moves the highlight to
-//  "Ready!" one DOWN at a time, reading it after each, and presses A there:
-//  the save's only change is this press, on a screen it has read. Throws
-//  OperationFailedException if the highlight is lost on the way.
+//  01.00b's first step: on "Confirm Choices", checks the shown name and
+//  language against `choices` (the language only when its OCR is
+//  installed), then moves to "Ready!" and presses A, the only press that
+//  changes the save. Throws UserSetupError (not on the screen) or
+//  OperationFailedException (a mismatch, or the highlight lost), having
+//  pressed A only if it reached "Ready!".
 void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices);
 
 

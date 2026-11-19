@@ -49,12 +49,12 @@ constexpr MapPoint IN_ZONE_PIN{.x = 386, .y = 252};
 struct OutOfZoneCase{
     std::string name;
     struct Input{
-        //  The map pin's reads, in order, the last repeating; none: no reader.
+        //  The last repeating; none: no reader.
         std::vector<MapPoint> pins;
     };
     Input input;
     struct Expectation{
-        //  The failure; none: out of the zone.
+        //  None: out of the zone.
         std::optional<std::string> failure;
     };
     Expectation expectation;

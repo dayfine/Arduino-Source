@@ -15,19 +15,12 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The walk's pace on the map. CONSOLE (console B, 2026-11-16 and
-//  2026-11-17, lab-B logs): 35 legs, each "map leg ... from (x, y) ...
-//  hold N ms" and the next "map pin" read, one stuck leg left out.
-//  Median 6.9 pixels a second (quartiles 6.6 to 7.0, 5.4 to 7.3
-//  overall); the 12 legs of 5 s or more 7.0 (6.7 to 7.3); a fit of
-//  distance on hold 7.05 a second, less 0.9 pixels. At 6.7 every long
-//  leg overshot.
+//  Map pixels a second: the median of 35 measured legs was 6.9, the long
+//  legs 7.0; at 6.7 every long leg overshot.
 constexpr double WALK_PIXELS_PER_SECOND = 7.0;
 
-//  How far from a waypoint, in map pixels, counts as at it: ~5 marker
-//  units.
+//  ~5 marker units.
 constexpr double TOLERANCE = 6;
-//  The short correction legs after a leg that ended off its waypoint.
 constexpr size_t CORRECTIONS = 2;
 
 } // namespace
@@ -46,8 +39,7 @@ bool MapLeg::in_stop_area(MapPoint pin, double distance) const{
     if (!m_walked_from){
         return true;
     }
-    //  Past the target on the walk's way: the miss projects forward onto
-    //  the walk's direction.
+    //  The miss projects forward onto the walk's direction.
     const double way_x = m_target.x - m_walked_from->x;
     const double way_y = m_target.y - m_walked_from->y;
     return (pin.x - m_target.x) * way_x + (pin.y - m_target.y) * way_y >= 0;

@@ -31,9 +31,7 @@ namespace PokemonLZA{
 
 namespace{
 
-//  Whether every character of `name` has a key on the name keyboard's
-//  first page, which the Switch keyboard typer types (letters by their
-//  capital).
+//  The Switch keyboard typer types the first page only (letters by their capital).
 bool on_keyboard(std::string_view name){
     const std::map<char, KeyboardEntryPosition>& keys = KEYBOARD_POSITIONS(KeyboardLayout::QWERTY);
     for (const char ch : name){
@@ -44,8 +42,6 @@ bool on_keyboard(std::string_view name){
     return true;
 }
 
-//  Why the program cannot type `choices`' name on its language's keyboard;
-//  nullopt when it can.
 std::optional<std::string> name_typing_problem(const NewGameChoices& choices){
     const NewGameLanguageInfo& info = new_game_language_info(choices.language);
     if (!info.keyboard_supported){
@@ -69,21 +65,17 @@ using FrameCheck = std::function<bool(const ImageViewRGB32& frame)>;
 
 constexpr std::string_view DUMP_FOLDER = "PokemonLZA/AutoStory/Intro";
 
-//  From the user select to the language list: about 15 s of logos, with no
-//  press needed (the console, 2026-11-15, all ten languages).
+//  The logos before the language list take about 15 s, with no press needed.
 constexpr Milliseconds LAUNCH_LIMIT = 60000ms;
 
-//  The language list's D-pad taps: each registered at this pace (the
-//  console, 2026-11-15).
+//  Faster taps on the language list are dropped.
 constexpr Milliseconds LANGUAGE_TAP_RELEASE = 600ms;
 
-//  The look picker's stick tilts: one portrait each.
+//  One portrait per tilt.
 constexpr Milliseconds LOOK_TILT_HOLD = 150ms;
 constexpr Milliseconds LOOK_TILT_RELEASE = 500ms;
 
-//  The + presses after the name. One submits the European languages' and
-//  Japanese's keyboard; the Chinese ones first take one to accept the typed
-//  text (the button reads "Accept"), then one to submit. Each is checked.
+//  One + submits the name; Chinese keyboards first take one to "Accept" the typed text.
 constexpr size_t SUBMIT_PRESSES = 3;
 constexpr Milliseconds SUBMIT_WAIT = 5000ms;
 
@@ -92,7 +84,6 @@ VideoSnapshot snapshot(ConsoleHandle& console, ProControllerContext& context){
     return console.video().snapshot();
 }
 
-//  Until `check` holds on a frame, up to `timeout`, reading every 250 ms.
 bool wait_for_frame(ConsoleHandle& console, ProControllerContext& context, const FrameCheck& check, Milliseconds timeout){
     const WallClock deadline = current_time() + timeout;
     while (true){
@@ -131,8 +122,7 @@ void press(ProControllerContext& context, IntroKey key, Milliseconds release){
     }
 }
 
-//  The look picker's presses are left stick tilts (it says "Use the Left
-//  Stick"; the D-pad does not move it).
+//  The D-pad does not move the look picker.
 void tilt(ProControllerContext& context, IntroKey key){
     switch (key){
     case IntroKey::UP:
@@ -152,8 +142,6 @@ void tilt(ProControllerContext& context, IntroKey key){
     }
 }
 
-//  After the launch, until the language list, pressing nothing (see
-//  LAUNCH_LIMIT).
 void wait_for_language_list(ConsoleHandle& console, ProControllerContext& context){
     const WallClock start = current_time();
     while (current_time() - start < LAUNCH_LIMIT){
@@ -168,9 +156,6 @@ void wait_for_language_list(ConsoleHandle& console, ProControllerContext& contex
     fail(console, std::format("the language list did not show within {} s of the launch.", LAUNCH_LIMIT.count() / 1000));
 }
 
-//  On the language list (it opens on English): one tap at a time to
-//  `language`, reading the highlight after each, then A, which opens the
-//  look picker with no confirmation.
 void pick_language(ConsoleHandle& console, ProControllerContext& context, NewGameLanguage language){
     const NewGameLanguageInfo& info = new_game_language_info(language);
     for (size_t attempt = 0; attempt < 20; attempt++){
@@ -194,8 +179,7 @@ void pick_language(ConsoleHandle& console, ProControllerContext& context, NewGam
     fail(console, std::format("the language list's highlight did not reach {}.", info.tag));
 }
 
-//  The look picker's highlight once settled: two reads in a row agree,
-//  150 ms apart, within 2 s.
+//  Settled = two reads in a row agree.
 std::optional<size_t> read_settled_look(ConsoleHandle& console, ProControllerContext& context){
     std::optional<size_t> previous;
     for (size_t read = 0; read < 14; read++){
@@ -210,12 +194,8 @@ std::optional<size_t> read_settled_look(ConsoleHandle& console, ProControllerCon
     return std::nullopt;
 }
 
-//  On the look picker: it opens with no portrait highlighted, and the first
-//  tilt highlights one that differs from launch to launch (the console,
-//  2026-11-15: looks 1, 2, 5, 6, 7 and 8 after a tilt left). So it tilts
-//  left until a highlight reads, then toward `look`, reading the highlight
-//  after each tilt, and presses A only once it reads `look` (A opens the
-//  name keyboard).
+//  The picker opens with no highlight, and the first tilt highlights a
+//  portrait that varies from launch to launch, so tilt until one reads.
 void pick_look(ConsoleHandle& console, ProControllerContext& context, size_t look){
     if (!wait_for_frame(console, context, is_look_picker, 20000ms)){
         fail(console, "the look picker did not show within 20 s of the language's A.");
@@ -246,8 +226,7 @@ void pick_look(ConsoleHandle& console, ProControllerContext& context, size_t loo
     fail(console, std::format("the look picker's highlight was not read on look {}.", look));
 }
 
-//  Until the name keyboard has shown and finished sliding in (presses
-//  during that are dropped).
+//  Presses while the keyboard slides in are dropped.
 void wait_for_keyboard(ConsoleHandle& console, ProControllerContext& context){
     if (!wait_for_frame(console, context, is_name_keyboard, 20000ms)){
         fail(console, "the name keyboard did not show within 20 s of the look's A.");
@@ -255,9 +234,7 @@ void wait_for_keyboard(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for(1000ms);
 }
 
-//  The keyboard's "0/N" counter (12 in the European languages, 6 in
-//  Japanese, Korean and Chinese): throws UserSetupError, nothing typed, if
-//  the name is longer.
+//  Throws UserSetupError, nothing typed, if the "0/N" counter is below the name's length.
 void check_name_limit(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
     const VideoSnapshot frame = snapshot(console, context);
     if (frame){
@@ -276,10 +253,7 @@ void check_name_limit(ConsoleHandle& console, ProControllerContext& context, con
     }
 }
 
-//  Simplified Chinese's keyboard opens in Pinyin, where letters compose
-//  Chinese; the bottom row's English key, under column 3, switches it to
-//  letters (Traditional Chinese's opens on letters). Moves the cursor
-//  there one D-pad tap at a time, reading it after each, then A.
+//  Simplified Chinese's keyboard opens in Pinyin; its English key switches to letters.
 void switch_to_letters(ConsoleHandle& console, ProControllerContext& context){
     constexpr SystemKeyboardKey LETTERS_KEY{.row = 4, .col = 3};
     for (size_t attempt = 0; attempt < 16; attempt++){
@@ -305,8 +279,6 @@ void switch_to_letters(ConsoleHandle& console, ProControllerContext& context){
     fail(console, "the keyboard's cursor did not reach the English (letters) key.");
 }
 
-//  After the name: + until Confirm Choices shows, checking the screen after
-//  each press (see SUBMIT_PRESSES).
 void submit_name(ConsoleHandle& console, ProControllerContext& context){
     const FrameCheck confirm_choices = [](const ImageViewRGB32& frame){
         return read_confirm_choices_cursor(frame).has_value();
@@ -329,9 +301,6 @@ void submit_name(ConsoleHandle& console, ProControllerContext& context){
     }
 }
 
-//  On the keyboard: checks its counter, types the name with the Switch
-//  keyboard typer (which reads the cursor before each key and checks each
-//  press reached the field), then submits it.
 void type_name(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
     wait_for_keyboard(console, context);
     check_name_limit(console, context, choices);
@@ -352,8 +321,7 @@ void require_new_game_home(ConsoleHandle& console, ProControllerContext& context
         return home.detect_only(frame);
     };
     if (!wait_for_frame(console, context, on_home, 2000ms)){
-        //  An idle Switch dims HOME (screen saver), and HomeMenuDetector does
-        //  not match the dimmed screen. B wakes it and acts on nothing on HOME.
+        //  HomeMenuDetector misses a dimmed (idle) HOME; B wakes it and does nothing else there.
         console.log("AutoStory intro: HOME not detected; pressing B once to wake a dimmed screen.");
         pbf_press_button(context, BUTTON_B, /*hold=*/80ms, /*release=*/1000ms);
     }

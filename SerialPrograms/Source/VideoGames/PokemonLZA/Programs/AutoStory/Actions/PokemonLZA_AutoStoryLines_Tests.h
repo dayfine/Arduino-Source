@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers press_a_through_lines()'s and press_b_out_of_menu()'s tests,
-//  on a FakeStoryBackend's scripted looks.
+//  Registers press_a_through_lines()'s and press_b_out_of_menu()'s tests.
 void add_tests_AutoStoryLines(UnitTestDatabase& database);
 
 

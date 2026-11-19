@@ -25,8 +25,7 @@ namespace PokemonLZA{
 
 namespace{
 
-//  A lock-on target's plate: where it is on screen, and whether its
-//  species is caught (nothing: the mark wasn't read).
+//  `caught` unset: the mark wasn't read.
 struct Plate{
     double x;
     double y;
@@ -63,7 +62,6 @@ std::string index_text(std::optional<size_t> index){
 }
 
 
-//  nearest_uncaught(): the lowest plate whose species isn't caught.
 struct NearestCase{
     std::string name;
     struct Input{
@@ -113,8 +111,6 @@ private:
 };
 
 
-//  ThrowSeen::new_species(): whether a throw caught a new species, and by which
-//  sign.
 struct NewSpeciesCase{
     std::string name;
     struct Input{
@@ -181,15 +177,10 @@ private:
 };
 
 
-//  species_tally() and enough_species(): how sure the patrol's own count
-//  is, and whether the zone's quest is done, by a count of registered
-//  species when one was read (the party bar's filled slots stand in for
-//  the Pokedex's).
 struct SpeciesCheckCase{
     std::string name;
     struct Input{
         GrassCatches patrol = {};
-        //  The count of registered species, when read.
         std::optional<int> dex_count = std::nullopt;
     };
     Input input;
@@ -274,7 +265,6 @@ private:
 };
 
 
-//  party_has_species(): when the party bar's filled slots end the patrol.
 struct PartyCountCase{
     std::string name;
     struct Input{
@@ -335,10 +325,7 @@ private:
 };
 
 
-//  catch_summary_text(): catch_in_zone()'s last line. The party bar,
-//  read, decides the patrol, so it comes first; the banners' tally
-//  decides only when the bar was not read. 2 new species and 5 in the
-//  party wanted.
+//  2 new species and 5 in the party wanted.
 struct CatchSummaryCase{
     std::string name;
     struct Input{
@@ -396,17 +383,14 @@ private:
 };
 
 
-//  step_toward_target(): whether to take another 0.5 s step toward a
-//  locked target before throwing at it. The plates are console B's
-//  (2026-11-16): first-throw catches at 98 and 100 at 0.49 and 0.50 of the
-//  height, the Mareep missed 11 times at 60 at 0.40.
+//  Plates: first-throw catches at 0.49 and 0.50 of the height, the Mareep
+//  missed 11 times at 0.40.
 struct StepCase{
     std::string name;
     struct Input{
         Plate plate;
-        //  Throws missed at this lock so far.
         int misses;
-        //  Steps already taken toward it since the last read or throw.
+        //  Since the last read or throw.
         int steps;
     };
     Input input;
@@ -469,23 +453,20 @@ private:
 };
 
 
-//  LockTargetCycle: the targets a flick at a time, until a flick finds no
-//  other, comes round to the first, or the cycle has seen max_views.
 struct CycleCase{
     std::string name;
     struct Input{
         size_t max_views;
         //  The target locked on after each flick, the first before any.
         std::vector<Plate> views;
-        //  The target, in the cycle's order, to count the flicks to.
         size_t flick_target;
     };
     Input input;
     struct Expectation{
-        //  The views added, up to and with the one where the cycle stops.
+        //  Up to and with the one where the cycle stops.
         size_t views_added;
         size_t targets;
-        //  From the lock where the cycle stopped: left is negative.
+        //  Left is negative.
         int flicks;
     };
     Expectation expectation;
@@ -545,7 +526,6 @@ private:
 };
 
 
-//  alternating_stops(): back and forth over the catch spots.
 struct StopsCase{
     std::string name;
     struct Input{

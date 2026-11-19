@@ -18,20 +18,16 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Wild Zone 1's two catch spots on its road, as distances from the
-//  objective marker (the zone's far gate), the user's pick (2026-11-13):
-//  100, the plaza by the green advertising column (Scatterbug on the
-//  road), and 60, just before the far gate (Mareep in the grass right of
-//  the road and on it). The patrol goes 100, 60, 100, 60, ...: walking to
-//  100 and back makes the Pokemon at 60 come back when none showed there.
+//  Distances from the objective marker (the far gate): 100, the plaza
+//  (Scatterbug), and 60, just before the gate (Mareep). Walking to 100 and
+//  back makes the Pokemon at 60 come back when none showed there.
 inline constexpr int CATCH_SPOTS[] = {100, 60};
 
-//  How far short of a road stop still counts as back on the road there:
-//  the walk back to 60 from nearer the gate stopped at 58 once (console B,
-//  2026-11-14), and the gate walk from there is steered by the gate.
+//  How far short of a road stop still counts as there: the walk back to 60
+//  stopped at 58 once, and the gate walk from there is steered by the gate.
 inline constexpr int ROAD_STOP_SLACK = 3;
 
-//  `visits` stops going back and forth over `spots`: {100, 60, 100, ...}.
+//  `visits` stops: {100, 60, 100, ...}.
 std::vector<int> alternating_stops(std::span<const int> spots, size_t visits);
 
 

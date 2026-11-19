@@ -28,14 +28,11 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  Up with B + X held this long opens the card (the lab's "dpad UP 2000
-//  B+X", console B, 2026-11-16).
 constexpr Milliseconds BACKUP_COMBO_HOLD = 2000ms;
-//  Looks for the card after the combo, CARD_POLL apart: it was up 3 s
-//  after the release.
+//  The card was up 3 s after the release.
 constexpr size_t CARD_LOOKS = 12;
 constexpr Milliseconds CARD_POLL = 500ms;
-//  After the game is in, before the first look: as reload_latest_save().
+//  As reload_latest_save().
 constexpr Milliseconds LOAD_SETTLE = 1000ms;
 
 std::optional<BackupCard> open_card(StoryEnv& env){
@@ -62,8 +59,7 @@ std::optional<BackupCard> open_card(StoryEnv& env){
         }
     }
     console.log(std::format("[Rewind] no backup card read on {} looks", CARD_LOOKS));
-    //  The last look, for the reader's tests: a French title screen read no
-    //  card and left no frame (console B, 2026-11-17 02:42).
+    //  For the reader's tests.
     if (last){
         dump_debug_image(console.logger(), "PokemonLZA/AutoStoryBackupCard", "no_card", *last.frame);
     }

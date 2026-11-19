@@ -20,73 +20,58 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  A wild Pokemon locked on to while ZL is held, seen by its name plate's
-//  HP bar: the bar's middle and width as shares of the screen (0 to 1),
-//  and whether its species is already caught (nothing when the mark did
-//  not read).
+//  A wild Pokemon locked on to with ZL held, by its name plate's HP bar:
+//  middle and width as shares of the screen; `caught` unset when the mark
+//  did not read.
 struct LockTarget{
     double x = 0;
     double y = 0;
     double width = 0;
     std::optional<bool> caught;
 
-    //  The caught mark, for the log.
     std::string_view caught_text() const;
 };
 
-//  Whether to take another 0.5 s step (ZL held) toward `target` before
-//  throwing at it, after `misses` throws missed at this lock and `steps`
-//  steps since the last throw (or the lock): only while its plate reads
-//  far (its bar above 0.45 of the screen's height), 4 steps at most before the first throw and 2 after
-//  each miss (the user, 2026-11-16).
+//  Only while its plate reads far (its bar above 0.45 of the screen's
+//  height): 4 steps at most before the first throw and 2 after each miss.
 bool step_toward_target(const LockTarget& target, int misses, int steps);
 
-//  Whether `a` and `b` are the same plate where it stood: within 0.03 of
-//  the screen both ways.
+//  Within 0.03 of the screen both ways.
 bool same_lock_target(const LockTarget& a, const LockTarget& b);
 
-//  The nearest target not known caught among `targets`: the one whose
-//  plate is lowest on the screen; nothing when all are caught.
+//  The one whose plate is lowest on the screen; nothing when all are caught.
 std::optional<size_t> nearest_uncaught(const std::vector<LockTarget>& targets);
 
 //  Why a throw at a locked target counts as a new species.
 enum class NewSpeciesSign{
-    //  The Pokedex's "Registered!" banner showed.
     BANNER,
-    //  No banner, but the target's plate read "not caught" before the
-    //  throw, and after it no wild battle is on and no plate locks on: the
-    //  ball caught it. The banner was missed once while the capture lagged
-    //  (03.08 stop 1, console B 2026-11-14), though the next stops read
-    //  that species' plate as caught.
+    //  No banner, but the plate read "not caught" before the throw, and after
+    //  it no battle is on and no plate locks on. The banner can be missed while
+    //  the capture lags.
     PLATE_NOT_CAUGHT,
 };
 
 //  What a throw at a locked target showed.
 struct ThrowSeen{
-    //  The banner showed.
     bool registered = false;
-    //  The target's caught mark, read before the throw (nothing: unread).
+    //  Read before the throw.
     std::optional<bool> plate_caught;
     //  After it, no wild battle is on and no plate locks on.
     bool target_gone = false;
 
-    //  Whether the throw caught a new species, and by which sign; nothing
-    //  when it did not, or may not have.
+    //  Nothing when it did not, or may not have.
     std::optional<NewSpeciesSign> new_species() const;
 
-    //  What new_species() says, for the log.
     std::string_view new_species_text() const;
 };
 
-//  The targets seen while flicking the right stick right with ZL held,
-//  one view after each flick. It stops at a view equal to the last (no
-//  other target that way) or to the first (the targets went round), or at
-//  `max_views`.
+//  The targets seen while flicking right with ZL held. It stops at a view
+//  equal to the last (no other target that way) or to the first (the
+//  targets went round), or at `max_views`.
 class LockTargetCycle{
 public:
     explicit LockTargetCycle(size_t max_views);
 
-    //  Adds the target seen after the last flick (or the first lock).
     //  Returns whether to flick right again.
     bool add(const LockTarget& target);
 
@@ -94,14 +79,12 @@ public:
         return m_targets;
     }
 
-    //  Flicks from the target locked now to `index`: right when positive,
-    //  left when negative.
+    //  Positive: right.
     int flicks_to(size_t index) const;
 
 private:
     size_t m_max_views;
     std::vector<LockTarget> m_targets;
-    //  Where the lock is now, among m_targets.
     size_t m_current = 0;
     bool m_done = false;
 };

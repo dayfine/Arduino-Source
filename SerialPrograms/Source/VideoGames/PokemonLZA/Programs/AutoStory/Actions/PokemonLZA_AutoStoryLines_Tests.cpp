@@ -26,8 +26,6 @@ using Pokemon::Observation;
 using Pokemon::ZonePose;
 
 
-//  A look with `events` and the readings named in `readings`, `at` after
-//  the script's start.
 Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> readings, Milliseconds at){
     Observation<ZonePose> observation;
     observation.when = WallClock::min() + at;

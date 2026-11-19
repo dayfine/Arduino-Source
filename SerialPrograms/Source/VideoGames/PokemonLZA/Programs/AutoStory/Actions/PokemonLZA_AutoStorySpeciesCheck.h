@@ -20,9 +20,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  What catch_in_zone()'s stops did: new species caught (`found_by_plate`
-//  of them by NewSpeciesSign::PLATE_NOT_CAUGHT, the rest by the banner),
-//  throws, and locks on that found only species already caught.
+//  What catch_in_zone()'s stops did; `caught_seen`: locks on that found only
+//  species already caught.
 struct GrassCatches{
     int found = 0;
     int found_by_plate = 0;
@@ -40,42 +39,30 @@ struct GrassCatches{
 
 //  How sure catch_in_zone()'s own count of new species is.
 enum class SpeciesTally{
-    //  All wanted, each by the Pokedex's "Registered!" banner.
     BANNERS,
-    //  All wanted, some only by a plate read "not caught" before the throw;
-    //  or none caught and none thrown at, only species already caught
-    //  locking on (a rerun from a save after the catches): taken as done.
+    //  All wanted, some only by a plate read "not caught"; or none thrown at,
+    //  only species already caught locking on (a rerun after the catches).
     INFERRED,
     //  Fewer than wanted (a banner may have been missed).
     SHORT,
 };
 
-//  How sure `patrol`'s count of new species is, `wanted` of them asked.
+//  `wanted`: new species asked.
 SpeciesTally species_tally(const GrassCatches& patrol, int wanted);
 
-//  The tally, for the log.
+//  For the log.
 std::string_view species_tally_text(SpeciesTally tally);
 
-//  Whether the zone's quest is done: the Pokedex's count, when read, has
-//  `dex_needed`; unread, the tally is not SHORT.
+//  The Pokedex's count, when read, has `dex_needed`; unread, the tally is
+//  not SHORT.
 bool enough_species(SpeciesTally tally, std::optional<int> dex_count, int dex_needed);
 
-//  Whether the patrol is done by the overworld party bar: `filled_slots`
-//  of it filled (PartyBarDetector; none: the bar was not read) and
-//  `dex_species` species wanted. The plate keeps the throws to species
-//  not caught, so every catch fills a slot with a new species and the
-//  filled slots are the registered species (the starter and the catches:
-//  3 in the tutorial's save). The "Registered!" banner is missed at times
-//  (plate "not caught", a throw, no banner over 208 frames, yet Mareep in
-//  the party: console B 2026-11-14 19:36), so the bar decides, not the
-//  banner tally (the user: "we are obviously done when we have 5
-//  different icons in the party").
+//  The throws go only at species not caught, so the filled slots are the
+//  registered species. The banner is missed at times, so the bar decides.
 bool party_has_species(std::optional<int> filled_slots, int dex_species);
 
-//  catch_in_zone()'s summary for the log: the party bar's verdict first
-//  (`filled_slots` of `party_species`, by party_has_species()), as it
-//  decides the patrol when read, then `patrol`'s banner tally of
-//  `new_species`, with that tally's verdict only when the bar was not read.
+//  The party bar's verdict first, as it decides when read; the banner
+//  tally's verdict only when the bar was not read.
 std::string catch_summary_text(const GrassCatches& patrol, std::optional<int> filled_slots, int new_species, int party_species);
 
 

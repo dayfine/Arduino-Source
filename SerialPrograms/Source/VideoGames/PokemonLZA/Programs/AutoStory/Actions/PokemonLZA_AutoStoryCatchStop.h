@@ -25,84 +25,56 @@ namespace PokemonLZA{
 
 //  What the patrol does at a catch spot.
 enum class SpotVisit{
-    //  Stops there to catch.
     CATCH,
-    //  Turns back to the other spot at once: the walk there is only to
-    //  bring the other spot's Pokemon back.
+    //  The walk there only brings the other spot's Pokemon back.
     TURN_BACK,
 };
 
-//  At `spot`, with new species caught at the spots in `caught_at`: turn
-//  back when one was caught there, as its species is the one there
-//  (Scatterbug at 100; the user, console B 2026-11-14); else catch.
+//  Turn back where a new species was caught: its species is the one there.
 SpotVisit spot_visit(int spot, std::span<const int> caught_at);
 
-//  How long the throw's watcher (DexRegisteredDetector) must see the
-//  "Registered!" banner before it fires.
+//  How long the watcher must see the "Registered!" banner before it fires.
 inline constexpr Milliseconds REGISTERED_BANNER_HOLD(100);
 
-//  How long past the throw's end the banner is still watched for, after
-//  the throw's own 8 s: the banner showed 6.9 s in, while frames came a
-//  second apart (03.08, console B 2026-11-14), so a banner showing at the
-//  window's end is still caught. A miss leaves the plate to decide
-//  (ThrowSeen).
+//  Watched past the throw's own 8 s: the banner showed 6.9 s in, with
+//  frames a second apart.
 inline constexpr Milliseconds REGISTERED_BANNER_TAIL(2000);
 
 //  What a catch stop does after a throw at a locked target.
 enum class AfterThrow{
-    //  A new species (ThrowSeen::new_species()).
     STOP_ENDS,
     //  It broke out into a wild battle: weaken it, then throw.
     WEAKEN,
-    //  A miss or a break-free, and a plate not known caught locks on again
-    //  with ZL held: throw again at once, before it wanders off. A sweep
-    //  after a miss at 60 found nothing (console B, 2026-11-14 17:38).
+    //  A miss or a break-free, and a plate not known caught locks on again:
+    //  throw again at once, before it wanders off.
     THROW_AGAIN,
-    //  No plate locks on, or one of a species already caught: look again.
     LOOK_AGAIN,
-    //  THROWS_AT_ONE_TARGET missed at one lock: on to the next stop, as a
-    //  sweep there finds the same target again (12 throws at one Mareep at
-    //  60, console B 2026-11-16).
+    //  A sweep at the same stop finds the same target again.
     MOVE_ON,
 };
 
-//  Throws in a row at one target before the stop moves on, so a target
-//  that keeps dodging does not take all of the patrol's throws.
+//  So a target that keeps dodging does not take all of the patrol's throws.
 inline constexpr int THROWS_AT_ONE_TARGET = 3;
 
-//  What follows a throw that showed `seen`, with a wild battle on
-//  (`battle`) or not, and `relocked`: the plate that locks on with ZL held
-//  after it (nothing: none), `throws_at_lock` throws at this lock so far.
+//  `relocked`: the plate that locks on with ZL held after the throw.
 AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked, int throws_at_lock);
 
-//  What a catch stop does after its lock-on sweep (ZL held while the
-//  camera turns, as upstream's InPlaceCatcher): the battle menu's move
-//  symbols (MoveEffectivenessSymbolDetector) are the sign of a lock-on.
+//  What a catch stop does after its lock-on sweep.
 enum class StopAim{
-    //  No move symbols in the whole sweep: no target here, on to the next
-    //  stop.
     MOVE_ON,
-    //  Locked on, but no plate read with ZL held after: sweep again.
     LOOK_AGAIN,
-    //  Every plate read is of a species already caught: turn the camera
-    //  further and sweep again.
+    //  Every plate read is of a species already caught: turn further.
     LOOK_FURTHER,
-    //  Throw at the nearest plate not caught (nearest_uncaught()).
     THROW,
 };
 
-//  After a sweep that locked on (`locked_on`) or not, with `plates` read
-//  with ZL held after it.
+//  `plates`: read with ZL held after the sweep.
 StopAim stop_aim(bool locked_on, const std::vector<LockTarget>& plates);
 
-//  Whether the camera needs its pitch reset (level_camera()) before a
-//  lock-on sweep or the walk on: a ZL lock-on or throw leaves it
-//  looking down at the ground, while a walk and a sweep's turns keep the
-//  pitch. A reset at every stop's start was a needless look down and up
-//  (the user, console B 2026-11-14).
+//  A ZL lock-on or throw leaves the camera looking down; a walk and a
+//  sweep's turns keep the pitch, so it is reset only after ZL.
 class CameraPitch{
 public:
-    //  ZL was held: a lock-on, a throw or a fight.
     void zl_held(){
         m_tipped = true;
     }

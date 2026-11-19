@@ -14,7 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the launch's tests: HOME's tile search over console frames.
+//  Registers HOME's tile search tests.
 void add_tests_AutoStoryLaunch(UnitTestDatabase& database);
 
 

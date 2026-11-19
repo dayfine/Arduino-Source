@@ -22,7 +22,6 @@ namespace{
 
 constexpr Milliseconds HOME_TILE_RELEASE = 500ms;
 
-//  The highlighted HOME tile is PLZA's; false without a frame.
 bool highlighted_tile_is_plza(ConsoleHandle& console, ProControllerContext& context){
     context.wait_for_all_requests();
     const VideoSnapshot frame = console.video().snapshot();
@@ -48,8 +47,6 @@ std::optional<size_t> find_plza_tile(
 }
 
 void launch_plza_from_home(ConsoleHandle& console, ProControllerContext& context){
-    //  HOME from the game or from HOME: the cursor on the first tile, the
-    //  running game's when one runs.
     go_home(console, context);
     const bool first_is_plza = highlighted_tile_is_plza(console, context);
     console.log(std::format(

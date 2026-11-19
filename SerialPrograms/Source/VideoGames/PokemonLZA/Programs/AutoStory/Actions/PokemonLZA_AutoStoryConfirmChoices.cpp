@@ -24,8 +24,6 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The "Confirm Choices" highlight on the screen now, reading a few frames
-//  over `window` with no press. Nullopt if none of them is the screen.
 //  `dump`: save the frame read to DebugDumps under that name.
 std::optional<size_t> read_confirm_choices_now(
     ConsoleHandle& console, ProControllerContext& context, Milliseconds window, const std::string& dump
@@ -45,8 +43,6 @@ std::optional<size_t> read_confirm_choices_now(
     }
 }
 
-//  Fails, having pressed nothing, unless "Confirm Choices" shows the name
-//  and the language of `choices`.
 void check_profile(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
     context.wait_for_all_requests();
     const VideoSnapshot frame = console.video().snapshot();

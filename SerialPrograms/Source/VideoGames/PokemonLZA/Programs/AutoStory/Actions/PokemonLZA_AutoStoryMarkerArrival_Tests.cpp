@@ -26,11 +26,8 @@ using namespace std::chrono_literals;
 
 constexpr std::optional<int> NO_DIGITS = std::nullopt;
 
-//  A look with an A prompt or a dialog, the marker up with no digits.
 constexpr Look PROMPT{.distance = NO_DIGITS, .marker_shows = true, .prompt_or_dialog = true};
-//  A look with a dialog and no marker: a scene took it away.
 constexpr Look SCENE_DIALOG{.distance = NO_DIGITS, .marker_shows = false, .prompt_or_dialog = true};
-//  A look with no marker and no prompt.
 constexpr Look MARKER_GONE{.distance = NO_DIGITS, .marker_shows = false, .prompt_or_dialog = false};
 
 std::vector<Look> reads(std::vector<std::optional<int>> distances){
@@ -52,15 +49,12 @@ struct ArrivalCase{
     struct Input{
         MarkerProof proof = MarkerProof::NEAR_READ;
         std::vector<Look> looks = {};
-        //  The time from one look to the next on a passing walk: 0.64 s.
         Milliseconds look_period = 640ms;
     };
     Input input;
     struct Expectation{
-        //  The look the walk arrives on (1-based); none: it never does.
+        //  1-based.
         std::optional<size_t> arrived_on = std::nullopt;
-        //  Whether the proof holds after the last look, so a prompt or a
-        //  dialog after the walk ends it (MarkerArrival::near()).
         bool near = false;
     };
     Expectation expectation;
@@ -68,8 +62,7 @@ struct ArrivalCase{
 
 const ArrivalCase ARRIVAL_CASES[] = {
     {
-        //  40 at Wild Zone 1's exit, then "1", "0", "4", "4" (it showed 39) agreed
-        //  on 4 with the exit's "Esci" prompt up: passed (03.09).
+        //  The marker showed 39 at Wild Zone 1's exit.
         .name = "03.09's walk: a read of 4 five seconds after 40 is a misread, so the exit's prompt is not the lab gate",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -82,7 +75,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  23 down to 12 at 0.64 s a look, 16 to 12 in one (passed).
         .name = "a walk at full pace: 23 down to 8, then a prompt, is at the objective",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -102,7 +94,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = 17, .near = true},
     },
     {
-        //  03.09 from the far gate read "t", "", "1" and passed on a street prompt.
         .name = "03.09's walk with no distance taken: a prompt on the street is not the lab gate",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -111,7 +102,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  37 down to 13, then the gate's scene took the marker, then Ryon's dialog.
         .name = "03.09's walk that passed: 37 down to 13, the marker gone, then the dialog",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -123,8 +113,7 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = 15, .near = true},
     },
     {
-        //  OCR read "E5", "41", "v1", "E6" by a street dialog, 6 to go; the gate's
-        //  scene came 23 to go later.
+        //  OCR read "E5", "41", "v1", "E6" by a street dialog.
         .name = "03.09's walk: junk single digits by a street dialog are not near the lab gate",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -136,8 +125,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  A prompt with the marker still up at 12 to go: the lab gate's scene
-        //  takes the marker away before its dialog.
         .name = "a prompt with the marker up at 12 to go is not the objective",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -154,7 +141,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = 5, .near = true},
     },
     {
-        //  23 down to 12, the marker gone, Ryon's dialog 10 s later: the gate's scene.
         .name = "the lab gate's scene after 23 down to 12: the marker gone, then the dialog",
         .input = {
             .proof = MarkerProof::NO_FAR_READ,
@@ -171,8 +157,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  A walk that got near, then read far again (agreeing): the proof
-        //  is gone with it.
         .name = "near, then far again: a prompt there is not the objective",
         .input = {
             .proof = MarkerProof::NEAR_READ,
@@ -181,7 +165,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = false},
     },
     {
-        //  Up the lab's steps the digits never read; "A Enter" on the fifth look.
         .name = "up the lab's steps: no digits on four looks, then the door's prompt",
         .input = {
             .proof = MarkerProof::NO_FAR_READ,
@@ -190,7 +173,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = 5, .near = true},
     },
     {
-        //  From the street: 44 and 111 read, then a prompt.
         .name = "up the lab's steps from the street: 44 and 111 read, so a prompt is not the door",
         .input = {
             .proof = MarkerProof::NO_FAR_READ,

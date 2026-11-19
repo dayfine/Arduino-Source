@@ -16,16 +16,12 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The language list's rows per column.
 constexpr size_t LANGUAGE_LIST_ROWS = 5;
 constexpr size_t LANGUAGE_LIST_SIZE = 2 * LANGUAGE_LIST_ROWS;
 
-//  The look picker: 2 rows of LOOK_COLUMNS portraits.
 constexpr size_t LOOK_COLUMNS = 4;
 constexpr size_t LOOK_COUNT = 2 * LOOK_COLUMNS;
 
-//  The presses from (column, row) `from` to `to` on a grid: across first,
-//  then up or down.
 std::vector<IntroKey> grid_moves(size_t from_column, size_t from_row, size_t to_column, size_t to_row){
     std::vector<IntroKey> moves;
     for (size_t c = from_column; c < to_column; c++){

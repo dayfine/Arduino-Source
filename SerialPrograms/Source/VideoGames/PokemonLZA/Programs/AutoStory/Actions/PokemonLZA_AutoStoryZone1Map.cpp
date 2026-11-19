@@ -29,32 +29,23 @@ std::optional<MapWaypoint> catch_spot_waypoint(int spot){
 namespace{
 
 //  Wild Zone 1's green outline on the full map, clockwise from its north
-//  west corner: traced on the map frames of console B (2026-11-16,
-//  zone1-map-after-try6 and zone1-map-at-north-fence), the bottom edge
-//  by the outline's lowest green in each column. Every pin read in the
-//  zone on console B (2026-11-16, 2026-11-17: the rocks (476, 224), the
-//  road entry, the 100 and 60 spots, the north fence (359, 227) and the
-//  catch west of the 60 spot (365, 257)) is inside it.
+//  west corner, traced from map frames; every pin read in the zone so far
+//  is inside it.
 constexpr MapPoint ZONE1_OUTLINE[] = {
     {.x = 281, .y = 199}, {.x = 506, .y = 199}, {.x = 515, .y = 218}, {.x = 510, .y = 226},
     {.x = 500, .y = 230}, {.x = 450, .y = 248}, {.x = 400, .y = 260}, {.x = 370, .y = 265},
     {.x = 359, .y = 264}, {.x = 357, .y = 248}, {.x = 281, .y = 249},
 };
 
-//  Where the full map puts the player when the player is out of every
-//  wild zone: the map opens on the player, at its centre (400, 225),
-//  instead of on the zone. On the street outside the far gate (03.08b's
-//  menu save, the minimap's arrow by the gate's "!") the pin read
-//  (401, 225) and (401, 223) (console B, 2026-11-17 01:06), the middle of
-//  the zone's outline; no pin in the zone read within 15 of it. From these
-//  two reads only: no map frame of the street yet.
+//  Out of every wild zone the map opens on the player at its centre: on the
+//  street outside the far gate the pin read (401, 225) and (401, 223); no
+//  pin in the zone read within 15 of it.
 constexpr MapPoint MAP_CENTRE{.x = 400, .y = 225};
 constexpr double MAP_CENTRE_RADIUS = 6;
 
-//  The map pin out of the zone on this many reads in a row: out.
 constexpr size_t OUT_OF_ZONE_PIN_READS = 2;
 
-//  Whether `point` is inside the polygon `outline` (even-odd rule).
+//  Even-odd rule.
 bool inside(std::span<const MapPoint> outline, MapPoint point){
     bool in = false;
     size_t previous = outline.size() - 1;

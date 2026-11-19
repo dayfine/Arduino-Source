@@ -27,8 +27,6 @@ using Pokemon::Observation;
 using Pokemon::ZonePose;
 
 
-//  A look with `events` and the readings named in `readings`, `at` after
-//  the script's start.
 Observation<ZonePose> look(ScreenEvents events, std::vector<std::string_view> readings, Milliseconds at){
     Observation<ZonePose> observation;
     observation.when = WallClock::min() + at;
@@ -67,7 +65,6 @@ Observation<ZonePose> home(Milliseconds at){
     return look({ScreenEvent::SWITCH_HOME_MENU}, /*readings=*/{}, at);
 }
 
-//  Each of `screens` on two looks in a row, 250 ms apart.
 std::vector<Observation<ZonePose>> twice(std::vector<Observation<ZonePose> (*)(Milliseconds)> screens){
     std::vector<Observation<ZonePose>> looks;
     Milliseconds at(0);
@@ -96,7 +93,7 @@ struct MenuSaveCase{
     };
     Input input;
     struct Expectation{
-        //  The outcome's failure; empty: saved.
+        //  Empty: saved.
         std::string failure;
         std::string inputs;
     };

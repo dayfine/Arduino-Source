@@ -21,15 +21,11 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  The time between looks with nothing pressed.
 constexpr Milliseconds MENU_SAVE_POLL = 250ms;
-//  X on the overworld, or R on the main menu, again only this long after
-//  the last: the menu or the save takes a moment to show, and a second X
-//  closes the menu.
+//  Between repeated X or R presses: the menu takes a moment to show, and a
+//  second X closes it.
 constexpr Milliseconds MENU_OPEN_WAIT = 2000ms;
-//  The whole save, X to the party bar back, at most.
 constexpr Milliseconds MENU_SAVE_LIMIT = 30000ms;
-//  Looks in a row a screen must show on before it is pressed.
 constexpr size_t MENU_SAVE_HELD_LOOKS = 2;
 
 enum class MenuSaveScreen{
@@ -87,26 +83,20 @@ MenuSaveScreen menu_save_screen(const Pokemon::Observation<Pokemon::ZonePose>& l
     return MenuSaveScreen::UNKNOWN;
 }
 
-//  How far the save is.
 struct MenuSaveProgress{
-    //  R pressed on the main menu: the save asked for.
     bool save_requested = false;
-    //  A at the save's choice or its arrow, after R.
     bool save_confirmed = false;
-    //  The save's text closed, or the main menu back, after the
-    //  confirmation.
+    //  The save's text closed, or the main menu back, after the confirmation.
     bool saved = false;
     std::optional<Milliseconds> last_x = std::nullopt;
     std::optional<Milliseconds> last_r = std::nullopt;
 };
 
-//  Whether `last` is less than MENU_OPEN_WAIT before `now`.
 bool too_soon(const std::optional<Milliseconds>& last, Milliseconds now){
     return last && now - *last < MENU_OPEN_WAIT;
 }
 
-//  The button for `screen`, held long enough, `now` into the step; none:
-//  wait.
+//  nullopt: wait.
 std::optional<Button> menu_save_press(MenuSaveScreen screen, const MenuSaveProgress& progress, Milliseconds now){
     switch (screen){
     case MenuSaveScreen::OVERWORLD:
@@ -134,7 +124,6 @@ std::optional<Button> menu_save_press(MenuSaveScreen screen, const MenuSaveProgr
     }
 }
 
-//  `progress` after `button` pressed at `screen`, `now` into the step.
 void note_press(MenuSaveScreen screen, Button button, Milliseconds now, MenuSaveProgress& progress){
     if (button == BUTTON_X){
         progress.last_x = now;
