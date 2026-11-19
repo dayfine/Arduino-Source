@@ -37,6 +37,7 @@ constexpr double ROW_HEIGHT = 13;
 //  item names to the left are dark gray, out of the box.
 const std::vector<OCR::TextColorRange>& VALUE_TEXT_FILTERS(){
     static const std::vector<OCR::TextColorRange> filters{
+        {combine_rgb(150, 0, 0), combine_rgb(255, 100, 100)},
         {combine_rgb(150, 0, 0), combine_rgb(255, 200, 160)},
         {combine_rgb(150, 0, 0), combine_rgb(255, 210, 180)},
         {combine_rgb(170, 0, 0), combine_rgb(255, 190, 140)},
@@ -63,7 +64,7 @@ public:
         if (!languages()[language]){
             return "";
         }
-        const ImageRGB32 ready = preprocess_for_ocr(image);
+        const ImageRGB32 ready = preprocess_for_ocr(image, 5, 1);
         const OCR::StringMatchResult result = match_substring_from_image_multifiltered(
             &logger, language, ready, VALUE_TEXT_FILTERS(),
             m_max_log10p, MAX_LOG10P_SPREAD, 0.01, 0.50
@@ -112,7 +113,7 @@ struct OptionItem{
 };
 
 const OptionItem& option_item(OptionMenuItem item){
-    static const OptionItem text_speed("TEXT SPEED", 0, {{"slow", "Slow"}, {"mid", "Mid"}, {"fast", "Fast"}}, -1.40);
+    static const OptionItem text_speed("TEXT SPEED", 0, {{"slow", "Slow"}, {"mid", "Mid"}, {"fast", "Fast"}}, -0.25);
     //  Two letters score at most log10(1/25): an exact "ON" (console B,
     //  2026-11-02) is -1.398, short of the others' -1.40.
     static const OptionItem battle_scene("BATTLE SCENE", 1, {{"on", "On"}, {"off", "Off"}}, -1.30);
