@@ -58,6 +58,11 @@ LeadOnField lead_on_field(const LeadOnFieldInput& input);
 //  Bruno's Onix dragged Lapras in).
 std::string read_own_battler(Logger& logger, Language language, const ImageViewRGB32& screen);
 
+//  The player's active Pokemon level on `screen`, a battle menu; nullopt if
+//  not read. Used to advance moves_through_level when a move is learned into
+//  an empty slot without a forget prompt.
+std::optional<uint8_t> read_own_level(Logger& logger, Language language, const ImageViewRGB32& screen);
+
 //  The slot of the party list on `screen` (from 0, the big top-left one)
 //  whose name reads `species`; none if no slot does.
 std::optional<size_t> party_slot_of(Logger& logger, Language language, const ImageViewRGB32& screen, std::string_view species);
