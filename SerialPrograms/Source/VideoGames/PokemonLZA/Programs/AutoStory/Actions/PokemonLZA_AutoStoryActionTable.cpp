@@ -363,10 +363,7 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::TALK), no_args([](PlzaBackend& backend, RunState&){ return talk_at_prompt(backend); })},
         {action_name(PlzaAction::TALK_THROUGH_MAP_SCREEN), no_args([](PlzaBackend& backend, RunState&){ return talk_through_map_screen(backend); })},
         {action_name(PlzaAction::TALK_TO_POKEDEX_SCREEN), no_args(pokedex_step)},
-        {action_name(PlzaAction::CLIMB_LADDER), no_args([](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
-            climb_ladder(backend);
-            return std::nullopt;
-        })},
+        {action_name(PlzaAction::CLIMB_LADDER), no_args([](PlzaBackend& backend, RunState&){ return climb_ladder(backend); })},
         {action_name(PlzaAction::CHOOSE_0), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 0); })},
         {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
         {action_name(PlzaAction::SCENE), no_args(scene_step)},
