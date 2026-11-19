@@ -14,10 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the scene machine's replays of console runs: the looks its log
-//  recorded, played back on a scripted backend, must reach the state the
-//  plan's step ends on (passing runs, and runs a guard stopped or a blind
-//  press looped). No frames needed.
+//  The scene machine replaying console runs' logs; no frames needed.
 void add_tests_AutoStorySceneReplay(UnitTestDatabase& database);
 
 

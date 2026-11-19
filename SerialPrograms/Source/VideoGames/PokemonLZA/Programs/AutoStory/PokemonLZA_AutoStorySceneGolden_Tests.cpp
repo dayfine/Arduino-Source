@@ -5,46 +5,9 @@
  */
 //  code-health: allow file_lines -- one golden table for the scene steps, sharing the recorded screens above it
 
-/*  Golden sequences: a scene step's screens as a console run showed them,
- *  played back through the step itself (the built-in plan's step, with its
- *  args), with the key the step must press on each screen. Every press is
- *  checked against the screen it was pressed on, not counted.
- *
- *  The screens come by time, as on the console: a recorded screen shows
- *  from its time until the next one's, and the clock moves with the step's
- *  presses (hold + release) and waits; the last screen stays. A screen is
- *  its events and readings by their names in the scene machine's log
- *  ("text box, advance arrow"; golden_look()), plus a choice's rows when
- *  they read ("2 rows", "row 0": CHOICE_ROWS_READING, the highlighted
- *  CHOICE_SELECTED_READING).
- *
- *  Walks and talks log no screens: their cases show the screens their log
- *  lines name ("ended on: party bar, A prompt", "talk: started 250 ms
- *  after A 1: text box"), at the time the step's inputs reach them.
- *
- *  Each case's keys are its step's screen -> key table: what the step
- *  presses on each screen it meets, and why. One table for all steps, with
- *  the differences as per-step data, is the design these record:
- *
- *      screen                  key     per-step override
- *      text, with the arrow    B       text_key: A (advance_with_a,
- *      text drawing            B         story_battle_start, the map talk
- *                                        before its card); B in a step
- *                                        that ends in control, where A on
- *                                        a closing box restarts the talk
- *      choice                  A       Up first while a lower row is
- *                                        highlighted; end_on: choice
- *      tutorial card           A       (only A turns its pages)
- *      menu (nothing reads)    -       menu_key: B every look (mash), every
- *                                        2 s (the Pokedex), once per gap
- *                                        (gap_press)
- *      map                     B       (the map talk's: A pins)
- *      A prompt                -       end_on: prompt held 1 s past min_length
- *      fade                    -       end_on: the Nth black fade settled
- *      quiet                   -       end_on: quiet (quiet_is_control)
- *      battle HUD              -       end_on: battle
- *      party bar, hint         -       end: held 1 s
- *
+/*  Golden sequences: a scene step's screens as a console run logged them,
+ *  played back through the built-in plan's step by time (the clock moves
+ *  with its presses and waits), with the key it must press on each screen.
  */
 
 #include <algorithm>
@@ -91,9 +54,8 @@ Milliseconds seconds_in_log(std::string_view text){
     return Milliseconds((int64_t)(std::stod(std::string(text)) * 1000 + 0.5));
 }
 
-//  The look of `screen` at `at`: its events and readings by their names in
-//  the scene machine's log (describe_scene_look()), and a choice's rows as
-//  "2 rows" and the highlighted "row 0".
+//  `screen` as describe_scene_look() names it, plus a choice's "2 rows" and
+//  highlighted "row 0".
 Observation<ZonePose> golden_look(Milliseconds at, std::string_view screen){
     const std::pair<std::string_view, ScreenEvent> events[] = {
         {"black fade", ScreenEvent::FADE_BLACK}, {"white fade", ScreenEvent::FADE_WHITE},
@@ -134,13 +96,12 @@ Observation<ZonePose> golden_look(Milliseconds at, std::string_view screen){
 
 using Pokemon::StoryCheckpoint;
 
-//  One recorded screen: from when it showed, and what showed.
 struct GoldenScreen{
     Milliseconds at;
     std::string_view screen;
 };
 
-//  The screens of `text`, one per line: "5.9s: text box, advance arrow".
+//  One per line: "5.9s: text box, advance arrow".
 std::vector<GoldenScreen> golden_screens(std::string_view text){
     std::vector<GoldenScreen> screens;
     size_t from = 0;
@@ -157,11 +118,8 @@ std::vector<GoldenScreen> golden_screens(std::string_view text){
     return screens;
 }
 
-//  The console as a recording: observe() shows the screen whose time has
-//  come by the clock, which the step's presses and waits move; each press
-//  is put down to the screen the step last looked at. A lock-on watch
-//  (watch_lock_on()) is a ZL press: the move symbols show from its
-//  `symbols_from_watch`th on, if any.
+//  The console as a recording; each press is put down to the screen the
+//  step last looked at.
 //  code-health: allow public_methods -- the backend calls a step makes, plus the presses and lines a test reads
 class GoldenBackend : public PlzaBackend{
 public:
@@ -176,8 +134,7 @@ public:
         , m_scope(scope)
     {}
 
-    //  The story game's LockOnWatch: ZL held `hold` on the screen shown,
-    //  the move symbols from the `symbols_from_watch`th watch on.
+    //  Logged as a ZL press.
     bool watch_lock_on(Milliseconds hold){
         m_presses.push_back({m_shown, "ZL"});
         m_now += hold;
@@ -239,8 +196,7 @@ private:
     std::vector<std::string> m_lines;
 };
 
-//  What a step presses on one screen: "A", "B", "Up", "-" for nothing, or
-//  "- or B" where it depends on time (a blind press every 2 s).
+//  "A", "B", "Up", "-" for nothing, or "- or B" where it depends on time.
 struct ScreenKey{
     std::string_view screen;
     std::string_view key;
@@ -249,19 +205,15 @@ struct ScreenKey{
 struct GoldenCase{
     std::string name;
     struct Input{
-        //  The built-in checkpoint and its step the screens played; no
-        //  step: the whole checkpoint, its steps' screens in turn.
         std::string_view checkpoint;
+        //  Empty: the whole checkpoint.
         std::string_view step;
-        //  golden_screens()' lines.
         std::string_view screens;
-        //  The lock-on watch (ZL held) from which on the move symbols
-        //  show: the player is locked on. None: they never show.
+        //  The first lock-on watch that sees the move symbols; none: never.
         std::optional<size_t> symbols_from_watch = std::nullopt;
     };
     Input input;
     struct Expectation{
-        //  The key on every screen of the input.
         std::vector<ScreenKey> keys;
         //  "done", or "failed: <failure>".
         std::string_view verdict;
@@ -420,13 +372,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                //  B turns a line; on a box that is closing it does nothing.
                 {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
-                //  Her mission and reward menus: nothing reads them, and
-                //  only B closes them, so B on every look.
+                //  Her mission and reward menus: only B closes them.
                 {"nothing", "B"}, {"still", "B"},
                 {"black fade", "-"},
-                //  Control once it holds a second.
                 {"party bar", "-"},
             },
             .verdict = "done", .end = "[PLZA scene] done on can_move.",
@@ -474,10 +423,8 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {
                 {"text box", "B"}, {"text box, advance arrow", "B"},
-                //  The Pokedex screens: nothing reads them, and only B
-                //  closes them (A plays the entry's motions): B every 2 s.
+                //  The Pokedex screens: only B closes them.
                 {"nothing", "- or B"}, {"still", "- or B"},
-                //  Only A turns a card's pages.
                 {"tutorial card", "A"}, {"still, tutorial card", "A"},
                 {"white fade", "-"}, {"black fade", "-"},
                 {"party bar", "-"},
@@ -511,13 +458,11 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                //  A through the talk: it ends in the battle, with no A
-                //  prompt for an A to restart.
+                //  A: the talk ends in the battle, with no prompt to restart.
                 {"text box", "A"}, {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
                 //  The VS splash's subtitles show only the chevron.
                 {"still, advance arrow", "A"}, {"advance arrow", "A"},
                 {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
-                //  The end, before anything else.
                 {"battle, controls hint", "-"},
             },
             .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
@@ -538,9 +483,7 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        //  The battle ran off camera, with no HUD until locked on: the
-        //  run waited out 22 s of it and failed on the party bar. The
-        //  moving screen with no party bar is waited out as a cutscene.
+        //  The battle ran off camera, with no HUD until locked on.
         .name = "03.02b tepig_battle_start, the party bar a second after the battle's fade: ZL, the move symbols lock on (failed 2026-11-17 23:21)",
         .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA, .symbols_from_watch = 1},
         .expectation = {
@@ -593,10 +536,9 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                //  advance_with_a: B closes the elevator's talk.
+                //  B would close the elevator's talk.
                 {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
                 {"black fade, still", "-"}, {"still", "-"}, {"nothing", "-"},
-                //  The next step answers it.
                 {"text box, choice box", "-"},
             },
             .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
@@ -649,8 +591,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 //  B: an A on the closing box restarts the talk.
                 {"text box", "B"}, {"text box, advance arrow", "B"},
                 {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
-                //  Control, held a second past min_length_ms: no A, which
-                //  restarts Ryon's talk.
+                //  No A: it restarts Ryon's talk.
                 {"A prompt", "-"},
             },
             .verdict = "done", .end = "[PLZA mash_to_move_hints] done on talk_prompt.",
@@ -682,11 +623,8 @@ const GoldenCase GOLDEN_CASES[] = {
         .input = {.checkpoint = "03.01", .step = "lobby_scene", .screens = LOBBY_ALTON_DE},
         .expectation = {
             .keys = {
-                //  advance_with_a: a B that lands as the choice opens
-                //  answers it with its last row before any look sees it;
-                //  an A there takes the top row.
+                //  A B landing as the choice opens would take its last row.
                 {"text box", "A"}, {"text box, advance arrow", "A"},
-                //  The top row is highlighted: A.
                 {"text box, choice box, 2 rows, row 0", "A"},
                 {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
             },
@@ -725,7 +663,6 @@ const GoldenCase GOLDEN_CASES[] = {
             .keys = {
                 {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
                 {"tutorial card", "A"}, {"still, tutorial card", "A"},
-                //  "a" presses nothing blind.
                 {"nothing", "-"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
                 {"party bar", "-"}, {"party bar, still", "-"},
             },
@@ -768,7 +705,7 @@ const GoldenCase GOLDEN_CASES[] = {
             .keys = {
                 //  B: an A on the closing box restarts the talk.
                 {"text box", "B"}, {"text box, advance arrow", "B"},
-                //  A subtitle with no box: the text button, A.
+                //  A subtitle with no box.
                 {"advance arrow", "A"},
                 {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
                 {"party bar, A prompt, controls hint", "-"},
@@ -835,7 +772,6 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {
                 {"text box", "B"}, {"text box, advance arrow", "B"},
-                //  A bare scene: B on every look nothing reads.
                 {"nothing", "B"}, {"still", "B"},
                 {"black fade", "-"}, {"party bar", "-"},
             },
@@ -843,8 +779,6 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        //  The walk's end screen is its logged "ended on" (the A prompt
-        //  9.6 s in on the console), here as the sum of its inputs.
         .name = "03.04 into_pokemon_center, a timed walk whose last turn faces the nurse's A prompt (passed 2026-11-17 14:26)",
         .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
 0.0s: party bar
@@ -856,8 +790,7 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        //  Chained from 03.03 with no reload: the legs ran along a building
-        //  wall, never still, and the last turn faced no prompt.
+        //  Chained from 03.03: the legs ran along a wall, never still.
         .name = "03.04 into_pokemon_center, no A prompt after the last turn (failed 2026-11-17 02:34)",
         .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
 0.0s: party bar
@@ -912,8 +845,6 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        //  The screens are the walk's logged end and the talk's logged
-        //  start.
         .name = "03.05 talk_to_nurse, A at her A prompt, then her text box (passed 2026-11-17 14:27)",
         .input = {.checkpoint = "03.05", .step = "talk_to_nurse", .screens = R"(
 0.0s: party bar, A prompt
@@ -935,9 +866,6 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        //  tepig_battle_start ended locked on and let go of ZL: the HUD
-        //  shows only while ZL is held, so the step holds it and takes
-        //  the move symbols for the battle.
         .name = "03.02b battle_tepig, the start locked on, the HUD only while ZL is held: ZL, the move symbols, the battle code",
         .input = {.checkpoint = "03.02b", .step = "battle_tepig", .screens = R"(
 0.0s: party bar
@@ -960,9 +888,7 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        //  The whole checkpoint, its steps' logged screens one after the
-        //  other: the walk's end, the talk's start, then heal_party's
-        //  screens from where the talk hands over (3.5 s on).
+        //  heal_party's screens start where the talk hands over (3.5 s).
         .name = "03.05 whole checkpoint: the walk to the nurse, the talk, her heal to control (passed 2026-11-17 14:27)",
         .input = {.checkpoint = "03.05", .step = "", .screens = R"(
 0.0s: party bar
@@ -988,8 +914,7 @@ const GoldenCase GOLDEN_CASES[] = {
     },
 };
 
-//  The built-in checkpoint `id` with only its step `step`; all of it with
-//  no `step`.
+//  All of checkpoint `id` with an empty `step`.
 StoryCheckpoint step_row(std::string_view id, std::string_view step){
     for (const StoryCheckpoint& row : builtin_story_data().checkpoints){
         if (row.id != id){
@@ -1007,7 +932,6 @@ StoryCheckpoint step_row(std::string_view id, std::string_view step){
     return {};
 }
 
-//  The key `keys` gives `screen`; none when it has no row for it.
 std::optional<std::string_view> key_of(const std::vector<ScreenKey>& keys, std::string_view screen){
     for (const ScreenKey& row : keys){
         if (row.screen == screen){
@@ -1017,7 +941,6 @@ std::optional<std::string_view> key_of(const std::vector<ScreenKey>& keys, std::
     return std::nullopt;
 }
 
-//  Whether `pressed` is one of `expected`'s keys ("- or B").
 bool key_allowed(std::string_view expected, std::string_view pressed){
     size_t from = 0;
     while (from <= expected.size()){
@@ -1030,9 +953,8 @@ bool key_allowed(std::string_view expected, std::string_view pressed){
     return false;
 }
 
-//  The presses `backend` made against `test`'s keys: each press must be its
-//  screen's key, and a screen with a key that shows a second or more in all
-//  must get it at least once (a shorter one can pass between two looks).
+//  A screen shown under a second in all can pass between two looks, so
+//  needs no press.
 std::vector<std::string> wrong_presses(
     const GoldenCase& test, const std::vector<GoldenScreen>& screens, const GoldenBackend& backend
 ){

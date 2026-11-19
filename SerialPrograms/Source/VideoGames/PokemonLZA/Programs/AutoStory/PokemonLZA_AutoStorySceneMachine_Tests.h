@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the scene machine's tests: its timeline on sequences of looks,
-//  what each state does, and runs on a scripted backend. No frames needed.
+//  The scene machine on scripted looks; no frames needed.
 void add_tests_AutoStorySceneMachine(UnitTestDatabase& database);
 
 

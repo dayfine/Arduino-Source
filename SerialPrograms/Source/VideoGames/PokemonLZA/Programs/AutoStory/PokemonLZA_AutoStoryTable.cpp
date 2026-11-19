@@ -17,7 +17,6 @@ namespace PokemonLZA{
 
 namespace{
 
-//  Whether `row`'s first step is the GAME action `action`.
 bool starts_with_game_action(const Pokemon::StoryCheckpoint& row, std::string_view action){
     if (row.steps.empty()){
         return false;
@@ -38,7 +37,6 @@ bool story_row_makes_new_game_choices(const Pokemon::StoryCheckpoint& row){
 
 namespace{
 
-//  Whether `step` ends on an A prompt: a walk to "prompt".
 bool ends_on_prompt(const Pokemon::StoryStep& step){
     const auto end = step.args.find("end");
     if (step.action != "walk" || end == step.args.end()){
@@ -48,8 +46,7 @@ bool ends_on_prompt(const Pokemon::StoryStep& step){
     return word != nullptr && *word == "prompt";
 }
 
-//  Whether `step` presses through its scenes until control: a scene that
-//  needs nothing from the player to start plays inside it.
+//  A scene that needs nothing to start plays inside such a step.
 bool plays_to_control(const Pokemon::StoryStep& step){
     return step.kind == Pokemon::StoryStepKind::MASH
         || step.action == "mash_to_move_hints"

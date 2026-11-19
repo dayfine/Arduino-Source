@@ -28,8 +28,7 @@ using Pokemon::StoryRowExecution;
 
 namespace{
 
-//  `field` of a "start_signature", `value`, into `signature`. Throws
-//  ParseException naming `where` for an unknown field or a wrong value.
+//  Throws ParseException naming `where` for an unknown field or a wrong value.
 void read_signature_field(const std::string& field, const JsonValue& value, std::string_view where, StartSignature& signature){
     if (field == "registered"){
         int64_t count = 0;
@@ -67,9 +66,7 @@ void read_signature_field(const std::string& field, const JsonValue& value, std:
     (field == "talk_prompt" ? signature.talk_prompt : signature.wild_zone) = flag;
 }
 
-//  The execution's "start_signature", what the screen shows at the
-//  checkpoint's start, if it has one. Throws ParseException naming
-//  `where` for a malformed or empty one.
+//  Throws ParseException naming `where` for a malformed or empty one.
 std::optional<StartSignature> read_start_signature(const JsonObject& execution, std::string_view where){
     const JsonValue* value = execution.get_value("start_signature");
     if (value == nullptr){
@@ -86,8 +83,6 @@ std::optional<StartSignature> read_start_signature(const JsonObject& execution, 
     return signature;
 }
 
-//  The checkpoint file `text`'s id and start signature, if its execution
-//  has "start_signature". `source` names the file in parse errors.
 std::optional<CheckpointStart> read_checkpoint_start(std::string_view text, const std::string& source){
     const JsonValue file = parse_json(std::string(text));
     const JsonObject* root = file.to_object();
@@ -99,10 +94,8 @@ std::optional<CheckpointStart> read_checkpoint_start(std::string_view text, cons
     return CheckpointStart{.checkpoint = root->get_object_throw("checkpoint", source).get_string_throw("id", source), .signature = *signature};
 }
 
-//  A checkpoint file's checkpoint and its shared execution fields. `source`
-//  names the file in parse errors. Throws ParseException too when the
-//  checkpoint does not end on the autosave its "autosave_step" names
-//  (autosave_step_error()).
+//  Also throws ParseException when the checkpoint does not end on the
+//  autosave its "autosave_step" names.
 StoryFileRow<StoryCheckpoint> read_checkpoint_file(std::string_view text, std::string_view source){
     StoryRowExecution read;
     std::optional<std::string> autosave_step;
@@ -126,10 +119,7 @@ StoryFileRow<StoryCheckpoint> read_checkpoint_file(std::string_view text, std::s
     return {.checkpoint = std::move(checkpoint), .execution = read};
 }
 
-//  How the shared loader reads a PLZA checkpoint file: against
-//  plza_story_specs(), its execution with the shared "save" and
-//  "reload_when_chained" and PLZA's "autosave_step". 01.00a and 01.00b (story_row_starts_without_save()) have no
-//  save to reload.
+//  01.00a and 01.00b have no save to reload.
 const Pokemon::StoryFileReader<StoryCheckpoint>& plza_story_file_reader(){
     static const Pokemon::StoryFileReader<StoryCheckpoint> reader{
         .read = read_checkpoint_file,

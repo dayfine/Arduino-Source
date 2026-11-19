@@ -2,9 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  run_plza_segments() chaining from one row into the next on a
- *  FakeStoryBackend: the next row's start signature is checked on the live
- *  screen (a scripted reading) before any of its steps runs.
+ *  A chained row's start signature is checked on the live screen before
+ *  any of its steps runs.
  *
  */
 
@@ -41,8 +40,7 @@ Observation<ZonePose> look_of(std::optional<std::string_view> reading){
     return observation;
 }
 
-//  01.01 waits for the platform (two looks, no autosave), then the chain's
-//  START_LOOKS looks off the platform.
+//  01.01's platform, then the looks off it.
 const std::vector<Observation<ZonePose>> CHAIN_LOOKS = {
     look_of(PLATFORM_READING), look_of(PLATFORM_READING),
     look_of(std::nullopt), look_of(std::nullopt), look_of(std::nullopt), look_of(std::nullopt),
@@ -55,18 +53,18 @@ const StartSignature OUT_OF_FAR_GATE{.wild_zone = false, .party = 5};
 struct ChainStartCase{
     std::string name;
     struct Input{
-        //  01.02's start signature; none: its plan names none.
+        //  01.02's; none: its plan names none.
         std::optional<StartSignature> start;
-        //  What the live screen reads after 01.01.
+        //  After 01.01.
         StartSignature screen;
     };
     Input input;
     struct Expectation{
         //  "done", or "failed at <checkpoint> <event>: <failure>".
         std::string verdict;
-        //  The rows SegmentRunOptions::at_start was called for, in order.
+        //  The rows SegmentRunOptions::at_start was called for.
         std::string started;
-        //  A log line the run wrote, if any is checked.
+        //  Empty: not checked.
         std::string line = {};
     };
     Expectation expectation;
@@ -96,7 +94,6 @@ const ChainStartCase CHAIN_START_CASES[] = {
         },
     },
     {
-        //  The zone not read, party 5 alone matched 03.09's start.
         .name = "a field of the row's start not read: stops there",
         .input = {.start = OUT_OF_FAR_GATE, .screen = {.talk_prompt = false, .party = 5}},
         .expectation = {.verdict = "failed at 01.02 chain: chain_off_start", .started = "01.01"},

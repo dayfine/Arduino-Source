@@ -28,7 +28,6 @@ namespace{
 
 using Pokemon::StoryCheckpoint;
 
-//  The index of row `id` in `rows`; none when there is no such row.
 std::optional<size_t> index_of(const std::vector<StoryCheckpoint>& rows, std::string_view id){
     for (size_t index = 0; index < rows.size(); index++){
         if (rows[index].id == id){
@@ -38,9 +37,7 @@ std::optional<size_t> index_of(const std::vector<StoryCheckpoint>& rows, std::st
     return std::nullopt;
 }
 
-//  Where a run asked to start at `asked` plays from, by `read`, with the
-//  checkpoints `rows` and the starts `starts`: a checkpoint id, or
-//  "stop" for start_position_unknown.
+//  A checkpoint id, or "stop" for start_position_unknown.
 std::string run_start_id(
     const std::vector<StoryCheckpoint>& rows, const std::vector<CheckpointStart>& starts,
     std::string_view asked, const StartSignature& read
@@ -54,7 +51,6 @@ std::string run_start_id(
 }
 
 
-//  Runs against the built-in plans' start signatures.
 struct BuiltinCase{
     std::string name;
     struct Input{
@@ -107,7 +103,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "stop"},
     },
     {
-        //  A backup card is read the same way: 1 registered is 03.06's.
         .name = "asked 03.08, the backup card shows 1 registered: from 03.06",
         .input = {.asked = "03.08", .read = {.registered = 1}},
         .expectation = {.from = "03.06"},
@@ -123,7 +118,7 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.04"},
     },
     {
-        //  The roof before Station Front reads the same party and prompt.
+        //  The roof before Station Front.
         .name = "asked 03.04, the party and prompt of its start but not its minimap: stop",
         .input = {.asked = "03.04", .read = {.talk_prompt = false, .wild_zone = false, .party = 1}},
         .expectation = {.from = "stop"},
@@ -193,8 +188,7 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "stop"},
     },
     {
-        //  01.03's start (an A prompt) and 02.02's (one in the party) read
-        //  the same, but name no place.
+        //  01.03's and 02.02's starts read the same, but name no place.
         .name = "asked 03.08, the Center counter with one in the party: from 03.06",
         .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false, .party = 1}},
         .expectation = {.from = "03.06"},
@@ -247,7 +241,7 @@ UnitTestResult check_builtin(const BuiltinCase& test){
 }
 
 
-//  Runs against a made-up table, for the rules no built-in plan shows.
+//  A made-up table, for the rules no built-in plan shows.
 struct TableCase{
     std::string name;
     struct Input{
@@ -313,8 +307,6 @@ const TableCase TABLE_CASES[] = {
         .expectation = {.from = "B"},
     },
     {
-        //  03.09 and a later row may both start out of a wild zone with 5
-        //  in the party: a chained run checks each against its own.
         .name = "two starts share a signature, the asked one is one of them: as asked",
         .input = {
             .starts = {{.checkpoint = "B", .signature = AT_COUNTER}, {.checkpoint = "C", .signature = AT_COUNTER}},
@@ -345,7 +337,6 @@ const TableCase TABLE_CASES[] = {
     },
 };
 
-//  Checkpoints A, B and C, in that order.
 std::vector<StoryCheckpoint> table_rows(){
     std::vector<StoryCheckpoint> rows;
     for (std::string_view id : {"A", "B", "C"}){
@@ -366,8 +357,6 @@ UnitTestResult check_table(const TableCase& test){
 }
 
 
-//  Whether a run asked to start at a built-in checkpoint opens the full map
-//  for its start.
 struct MapReadCase{
     std::string name;
     struct Input{
@@ -396,7 +385,7 @@ UnitTestResult check_map_read(const MapReadCase& test){
 }
 
 
-//  wild_zone by the player's pin on the full map, on pins read on the console.
+//  Pins read on the console.
 struct MapPinCase{
     std::string name;
     struct Input{
@@ -443,8 +432,7 @@ UnitTestResult check_map_pin(const MapPinCase& test){
 }
 
 
-//  The console's frames, PokemonLZA/AutoStoryStarts/<file>, with the map pin
-//  read there, placed for a run asked to start at `asked`.
+//  Frames from PokemonLZA/AutoStoryStarts/<file>, with the map pin read there.
 struct FrameCase{
     std::string name;
     struct Input{
@@ -461,25 +449,23 @@ struct FrameCase{
 
 const FrameCase FRAME_CASES[] = {
     {
-        //  lab-B outbox za_bk5_g: "A Parla" at the counter.
         .name = "the Center counter: 03.06",
         .input = {.file = "Italian_center_counter.png", .asked = "03.08", .map_pin = std::nullopt},
         .expectation = {.from = "03.06"},
     },
     {
-        //  fails/it_0308_run3_rocks_120: the lead's panel at the bottom left.
+        //  The lead's panel at the bottom left.
         .name = "Taunie's rocks in Wild Zone 1: 03.08",
         .input = {.file = "Italian_zone1_rocks.png", .asked = "03.08", .map_pin = MapPoint{.x = 476, .y = 224}},
         .expectation = {.from = "03.08"},
     },
     {
-        //  03.08b's menu save outside the far gate, the lead's panel up; pin (401, 225).
+        //  The lead's panel up.
         .name = "the street outside the far gate, facing the marker: 03.09",
         .input = {.file = "German_0309_start_facing_marker.png", .asked = "03.09", .map_pin = MapPoint{.x = 401, .y = 225}},
         .expectation = {.from = "03.09"},
     },
     {
-        //  0309-start-facing-street2-de: the same save, facing the street.
         .name = "the street outside the far gate, facing the street: 03.09",
         .input = {.file = "German_0309_start_facing_street.png", .asked = "03.09", .map_pin = MapPoint{.x = 401, .y = 225}},
         .expectation = {.from = "03.09"},

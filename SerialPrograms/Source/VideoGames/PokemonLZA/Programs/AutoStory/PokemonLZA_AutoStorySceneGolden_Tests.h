@@ -14,9 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the scene steps' golden sequences: console runs' screens
-//  played back through the built-in plan's step, each press checked
-//  against the key its screen calls for. No frames needed.
+//  Scene steps' golden sequences; no frames needed.
 void add_tests_AutoStorySceneGolden(UnitTestDatabase& database);
 
 

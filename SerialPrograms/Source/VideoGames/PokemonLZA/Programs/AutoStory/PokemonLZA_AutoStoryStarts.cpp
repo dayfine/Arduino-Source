@@ -58,8 +58,7 @@ const CheckpointStart* find_start(std::span<const CheckpointStart> starts, std::
 
 namespace{
 
-//  How a known field and a read one compare: none when one of them is
-//  missing.
+//  None when one of them is missing.
 template <typename Type>
 std::optional<bool> field_agrees(const std::optional<Type>& known, const std::optional<Type>& read){
     if (!known || !read){
@@ -68,9 +67,6 @@ std::optional<bool> field_agrees(const std::optional<Type>& known, const std::op
     return *known == *read;
 }
 
-//  Whether `read` matches the start `known`: they share a field and agree
-//  on every field they share, and `read` has `known`'s minimap when it
-//  names one (StartSignature::minimap).
 bool start_matches(const StartSignature& known, const StartSignature& read){
     if (known.minimap && known.minimap != read.minimap){
         return false;
@@ -92,14 +88,11 @@ bool start_matches(const StartSignature& known, const StartSignature& read){
     return shared;
 }
 
-//  Whether `starts` names row `row`'s start and `read` matches it.
 bool row_matches(const StoryCheckpoint& row, std::span<const CheckpointStart> starts, const StartSignature& read){
     const CheckpointStart* start = find_start(starts, row.id);
     return start != nullptr && start_matches(start->signature, read);
 }
 
-//  Whether `starts` names row `row`'s start with a place in it
-//  (checkpoint_at()) and `read` matches it.
 bool place_matches(const StoryCheckpoint& row, std::span<const CheckpointStart> starts, const StartSignature& read){
     const CheckpointStart* start = find_start(starts, row.id);
     if (start == nullptr){

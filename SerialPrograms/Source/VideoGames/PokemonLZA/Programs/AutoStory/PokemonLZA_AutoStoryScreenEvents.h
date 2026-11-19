@@ -24,27 +24,10 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The shared events from PLZA's detectors:
-//  - FADE_BLACK / FADE_WHITE: fade_of_screen();
-//  - DIALOG_BOX: a white dialogue box's bottom edge (StoryDialogDetector's
-//    BOX_ONLY: the box shows while the text still types), or a blue or
-//    teal box;
-//  - CHOICE_BOX: the selection arrow where a dialogue's choices are drawn
-//    (dialog_choice_box());
-//  - INTERACT_PROMPT: an A prompt over the scene ("A Talk", "A Leave"),
-//    with no box;
-//  - PLAYER_CAN_MOVE: the party bar at the bottom left, with no box
-//    (PartyBarDetector: its D-pad arrows or its empty last slot). With no
-//    party there is no bar;
-//  - BATTLE_STARTED: the battle HUD's hints at the bottom centre ("X A:
-//    Select Move"), read by their A icon, or the player's Pokemon's panel
-//    at the bottom left (BattlePanelDetector) with the battle's markers
-//    right of it (BattleMarkersDetector): the hints show only while
-//    the player is locked on, and Taunie's battle (03.02b) ran 70 s with
-//    none (console B, 2026-11-16), and the panel alone shows all through
-//    a wild zone (03.08b, console B 2026-11-16). Story battles show no
-//    Run prompt, so RunFromBattleDetector misses them.
-//  A fading screen has no box to read.
+//  The shared events from PLZA's detectors. DIALOG_BOX shows while the text
+//  still types. BATTLE_STARTED is the HUD's hints (only while locked on) or
+//  the player's panel with the battle markers (the panel alone shows all
+//  through a wild zone); story battles show no Run prompt.
 class PlzaScreenObserver : public ScreenEventObserver{
 public:
     PlzaScreenObserver();

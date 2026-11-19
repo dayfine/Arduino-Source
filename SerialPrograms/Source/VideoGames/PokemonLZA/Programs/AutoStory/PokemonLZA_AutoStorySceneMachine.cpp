@@ -29,114 +29,96 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  The states a scene machine tells apart, in the order it tries them.
+//  In the order classify() tries them.
 enum class SceneScreen{
-    BATTLE,         //  terminal: the battle HUD, with stop_at_battle
-    FADE_BLACK,     //  wait until it lifts
-    FADE_WHITE,     //  wait until it lifts
-    CHOICE,         //  terminal: the choice box, with stop_at_choice
-    DIALOG,         //  a box or the advance chevron: dialog_button()
-    MISSION_COMPLETE,   //  A: a main mission's "COMPLETE" card
-    TUTORIAL_CARD,  //  A: a tutorial card (only A turns its pages)
-    MISSION_BANNER, //  terminal: a main mission's banner, on a second look
-    BANNER_SHOWING, //  wait: the banner, on its first look (every look, with end_after_black_fades)
-    BANNER_PRESS,   //  A: with end_after_black_fades, the banner up BANNER_PRESS_AFTER (BANNER_PRESSES times, BANNER_PRESS_EVERY apart)
-    FADE_SETTLED,   //  terminal: end_after_black_fades' last fade lifted, nothing busy since for FADE_SETTLE
-    CAN_MOVE,       //  terminal: the party bar, held a second
-    PARTY_BAR,      //  wait: the party bar, not held a second yet
-    CONTROLS_HINT,  //  terminal: the tutorial's controls hint, held a second
-    HINT_SHOWING,   //  wait: the controls hint, not held a second yet
-    TALK_PROMPT,    //  terminal: an A prompt ("A Talk") on the overworld, held a second, past min_length
-    PROMPT_SHOWING, //  wait, no press: the A prompt, not held a second or before min_length
-    LOCKED_ON,      //  terminal: a lock-on's watch saw the move symbols, with stop_at_battle
-    LOCK_ON,        //  ZL held, the move symbols watched (after the first, a turn and L first): with stop_at_battle, no battle HUD after a black fade (lock_on_due())
-    ENDED_IN_CONTROL,   //  terminal, failing: with stop_at_battle or stop_at_choice, the party bar held CONTROL_INSTEAD_HOLD with nothing busy
-    AWAITING_SCENE, //  wait, no press: with start_window, the HUD up and no scene yet
-    NEVER_STARTED,  //  terminal, failing: with start_window, the HUD up and no scene for that long
-    QUIET_END,      //  terminal, failing unless quiet_is_control: nothing busy for the quiet time, past the minimum length
-    BLIND_PRESS,    //  blind_button: nothing busy and no sign of control for blind_press_after (only talk_to_pokedex_screen's Pokedex screens)
-    SCENE_MOVING,   //  wait, no press: no text, the screen changing
-    SCENE_STILL,    //  wait, no press: no text, the screen still since the look before
+    BATTLE,
+    FADE_BLACK,
+    FADE_WHITE,
+    CHOICE,
+    DIALOG,         //  a box or the advance chevron
+    MISSION_COMPLETE,
+    TUTORIAL_CARD,  //  only A turns its pages
+    MISSION_BANNER, //  terminal on its second look
+    BANNER_SHOWING, //  its first look (every look, with end_after_black_fades)
+    BANNER_PRESS,
+    FADE_SETTLED,
+    CAN_MOVE,       //  the party bar, held PARTY_BAR_HOLD
+    PARTY_BAR,
+    CONTROLS_HINT,
+    HINT_SHOWING,
+    TALK_PROMPT,    //  an A prompt held PROMPT_HOLD, past min_length
+    PROMPT_SHOWING,
+    LOCKED_ON,
+    LOCK_ON,
+    ENDED_IN_CONTROL,   //  failing: stop_at_battle/choice, but control held CONTROL_INSTEAD_HOLD
+    AWAITING_SCENE,
+    NEVER_STARTED,
+    QUIET_END,
+    BLIND_PRESS,
+    SCENE_MOVING,
+    SCENE_STILL,
 };
 
-//  The time-dependent part of the machine: when the screen was last busy,
-//  since when the hint shows. A look's time is its `when`.
+//  The time-dependent part of the machine; a look's time is its `when`.
 class SceneTimeline{
 public:
     SceneTimeline(SceneMachineConfig config, WallClock start);
 
-    //  The state for `look`. Does not change the timeline.
     SceneScreen classify(const ScreenObservation& look) const;
 
-    //  Takes in the look the machine acted on.
     void record(const ScreenObservation& look);
 
-    //  The lock-ons since the last text or choice, the look acted on included.
+    //  Since the last text or choice.
     size_t lock_ons() const{
         return m_lock_ons;
     }
-    //  A lock-on saw the move symbols: every later look is LOCKED_ON.
+    //  Every later look is LOCKED_ON.
     void lock_on_seen(){
         m_locked_on = true;
     }
 
-    //  "fade 2/3": the black fades waited out so far, of
-    //  end_after_black_fades' ("fade 2" without it).
+    //  "fade 2/3" ("fade 2" without end_after_black_fades).
     std::string black_fade_count() const;
 
-    //  Whether the mission banner has shown on any look.
     bool banner_seen() const{
         return m_banner_seen;
     }
 
 private:
-    //  When the quiet end is due if nothing busy shows before; none
-    //  without a quiet time.
     std::optional<WallClock> quiet_end_due() const;
 
-    //  Whether a blind press is due at `now` (blind_press_after).
     bool blind_press_due(WallClock now) const;
 
-    //  Whether end_after_black_fades' last fade has settled by `now`.
     bool fades_settled(WallClock now) const;
 
     //  classify() past the fades and the text.
     SceneScreen classify_open(const ScreenObservation& look) const;
-    //  Whether, with end_after_black_fades, the banner showing has an A
-    //  press due at `now`.
     bool banner_press_due(WallClock now) const;
-    //  Whether `look` gets a lock-on (SceneMachineConfig::stop_at_battle).
     bool lock_on_due(const ScreenObservation& look) const;
 
     SceneMachineConfig m_config;
     WallClock m_quiet_from;
     WallClock m_last_busy;
     WallClock m_start;
-    //  The last look busy or with a sign of control (party bar, hint,
-    //  banner, A prompt).
+    //  The last look busy or with a sign of control.
     WallClock m_last_cue;
     std::optional<WallClock> m_last_blind_press;
     std::optional<WallClock> m_party_bar_since;
     std::optional<WallClock> m_hint_since;
     std::optional<WallClock> m_prompt_since;
-    //  With stop_at_battle or stop_at_choice: since when the party bar
-    //  shows with nothing busy.
+    //  With stop_at_battle or stop_at_choice: the party bar with nothing busy.
     std::optional<WallClock> m_control_since;
-    //  A scene is under way or has been (scene_under_way()).
     bool m_scene_seen = false;
-    //  The looks in a row with the mission banner.
+    //  In a row.
     size_t m_banner_looks = 0;
-    //  Since when the banner shows, and the A presses on it since.
     std::optional<WallClock> m_banner_since;
     size_t m_banner_presses = 0;
     std::optional<WallClock> m_last_banner_press;
-    //  The black fades the machine has waited out.
     size_t m_black_fades = 0;
-    //  Since when nothing busy and no banner has shown, once
-    //  end_after_black_fades' fades have all lifted.
+    //  Once end_after_black_fades' fades have all lifted.
     std::optional<WallClock> m_settled_since;
     bool m_banner_seen = false;
-    //  Since the last text or choice: a black fade, quiet and settled since it, lock-ons.
+    //  Since the last text or choice.
     bool m_after_fade = false;
     std::optional<WallClock> m_quiet_after_fade_since;
     size_t m_lock_ons = 0;
@@ -144,86 +126,59 @@ private:
 };
 
 
-//  The controls hint showing this long is free control: two looks or more.
+//  Held this long is free control (two looks or more); the party bar also
+//  shows between a scene's lines, and A on a prompt restarts the talk (01.02).
 constexpr Milliseconds CONTROLS_HINT_HOLD = 1000ms;
-//  The party bar showing this long is free control: it also shows between
-//  the lines of a scene.
 constexpr Milliseconds PARTY_BAR_HOLD = 1000ms;
-//  An A prompt ("A Talk") on the overworld showing this long is free
-//  control: 01.02's battle area shows only Ryon's prompt, and A there
-//  restarts his talk.
 constexpr Milliseconds PROMPT_HOLD = 1000ms;
-//  With stop_at_battle or stop_at_choice, the party bar showing this long
-//  with nothing busy is the scene over with no battle or choice (it shows
-//  for a moment between a talk's lines).
+//  With stop_at_battle or stop_at_choice, the party bar this long with
+//  nothing busy is the scene over with no battle or choice.
 constexpr Milliseconds CONTROL_INSTEAD_HOLD = 5000ms;
-//  How long the screen stays free of text, fades and the banner after the
-//  last of end_after_black_fades' fades before the scene counts as over:
-//  the player can move 5 s after 01.01's third fade at the latest.
+//  The player can move 5 s after 01.01's third fade at the latest.
 constexpr Milliseconds FADE_SETTLE = 5000ms;
-//  The longest a fade is waited out in one step.
 constexpr Milliseconds FADE_WAIT = 30000ms;
-//  The longest a still screen is waited on in one step.
 constexpr Milliseconds STILL_WAIT = 10000ms;
 //  The longest a cutscene may hold one still frame.
 constexpr Milliseconds SCENE_STILL_WAIT = 60000ms;
-//  How often a wait looks again.
 constexpr Milliseconds POLL = 250ms;
-//  The longest the machine waits for the mission banner to go once it has
-//  ended the scene ("MAIN MISSION 01" shows ~3 s).
+//  "MAIN MISSION 01" shows ~3 s; 01.03's "MAIN MISSION 02" stays past 10 s
+//  and gets A.
 constexpr Milliseconds BANNER_GONE_WAIT = 10000ms;
-//  A banner still up after BANNER_GONE_WAIT gets A this many times, this
-//  far apart, until it goes (01.03's "MAIN MISSION 02" stays past 10 s).
 constexpr size_t BANNER_PRESSES = 3;
 constexpr Milliseconds BANNER_PRESS_EVERY = 1000ms;
-//  With end_after_black_fades, the banner up this long gets A (the same
-//  BANNER_PRESSES, BANNER_PRESS_EVERY apart): the Italian one stays until A.
+//  With end_after_black_fades: the Italian banner stays until A.
 constexpr Milliseconds BANNER_PRESS_AFTER = 2000ms;
-//  With stop_at_battle, a still screen with nothing busy this long after a black fade is a battle off
-//  camera: its HUD shows ~1 s after the fade when the camera faces the opponent (03.02b's Tepig: 22 s, none).
+//  The battle HUD shows ~1 s after the fade when the camera faces the
+//  opponent; a still screen this long after is a battle off camera (03.02b).
 constexpr Milliseconds LOCK_ON_AFTER = 3000ms;
-//  The lock-ons between two texts: ZL, then a quarter turn clockwise before each other one.
 constexpr size_t LOCK_ON_ATTEMPTS = 5;
-//  The longest ZL is held for the move symbols to show: TrainerBattle's
-//  attempt_one_attack() looks 1 s, the catches' sweep 1.5 s per round.
+//  TrainerBattle's attempt_one_attack() looks 1 s, the catches' sweep 1.5 s.
 constexpr Milliseconds LOCK_ON_HOLD = 2000ms;
 
-//  Something holds the player: text, a fade, the mission complete card or
-//  a tutorial card.
 bool busy(const ScreenObservation& look){
     return text_shows(look) || fade_shows(look) || look.readings.contains(MISSION_COMPLETE_READING) ||
         look.readings.contains(TUTORIAL_CARD_READING);
 }
 
-//  A scene has started: text, a choice or a battle.
 bool scene_shows(const ScreenObservation& look){
     return text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX) || look.events.has(ScreenEvent::BATTLE_STARTED);
 }
 
-//  The HUD the player has in control: the party bar, the controls hint or
-//  an A prompt.
 bool hud_shows(const ScreenObservation& look){
     return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(CONTROLS_HINT_READING) ||
         look.events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
-//  Whether the party bar and the A prompt are control for `config`: not in
-//  a machine that stops at a choice or a battle, whose talk shows them
-//  between its lines (and whose blind A may start that talk).
+//  Not when stopping at a choice or a battle: the talk shows them between lines.
 bool party_bar_is_control(const SceneMachineConfig& config){
     return !config.stop_at_choice && !config.stop_at_battle;
 }
 
-//  An A prompt that is control for `config` shows on `look`.
 bool control_prompt_shows(const SceneMachineConfig& config, const ScreenObservation& look){
     return party_bar_is_control(config) && look.events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
-//  The button DIALOG presses on `look` with no choice box (a choice goes
-//  to the top row first: SceneRunner::choice_button()): config.text_button;
-//  without one, B on a text box in a machine that ends in control, else A.
-//  On a closing box B does nothing, where A lands on the prompt the talk
-//  leaves and starts it again (03.05's nurse).
+//  On a closing box B does nothing, where A restarts the talk (03.05's nurse).
 Button dialog_button(const SceneMachineConfig& config, const ScreenObservation& look){
     if (config.text_button){
         return *config.text_button;
@@ -243,7 +198,6 @@ constexpr SceneScreen ALL_SCREENS[] = {
     SceneScreen::BLIND_PRESS, SceneScreen::SCENE_MOVING, SceneScreen::SCENE_STILL,
 };
 
-//  Starts `since` when `shows` starts, clears it when it stops.
 void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
     if (!shows){
         since.reset();
@@ -253,7 +207,6 @@ void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
 }
 
 
-//  "fade_black", the state's name in the log.
 std::string_view scene_screen_name(SceneScreen screen){
     constexpr std::pair<SceneScreen, std::string_view> NAMES[] = {
         {SceneScreen::BATTLE, "battle"}, {SceneScreen::FADE_BLACK, "fade_black"}, {SceneScreen::FADE_WHITE, "fade_white"},
@@ -277,7 +230,6 @@ std::string_view scene_screen_name(SceneScreen screen){
     return "unknown";
 }
 
-//  Whether the machine ends after this state's step.
 bool scene_screen_terminal(SceneScreen screen){
     return screen == SceneScreen::BATTLE || screen == SceneScreen::CHOICE || screen == SceneScreen::MISSION_BANNER ||
         screen == SceneScreen::CAN_MOVE || screen == SceneScreen::CONTROLS_HINT || screen == SceneScreen::TALK_PROMPT ||
@@ -285,17 +237,12 @@ bool scene_screen_terminal(SceneScreen screen){
         screen == SceneScreen::NEVER_STARTED || screen == SceneScreen::QUIET_END || screen == SceneScreen::ENDED_IN_CONTROL;
 }
 
-//  Whether this state's step presses (DIALOG dialog_button(),
-//  BLIND_PRESS its blind button, MISSION_COMPLETE, TUTORIAL_CARD and
-//  BANNER_PRESS A, LOCK_ON ZL held); the others wait.
 bool scene_screen_presses(SceneScreen screen){
     return screen == SceneScreen::DIALOG || screen == SceneScreen::MISSION_COMPLETE || screen == SceneScreen::TUTORIAL_CARD ||
         screen == SceneScreen::BLIND_PRESS || screen == SceneScreen::BANNER_PRESS || screen == SceneScreen::LOCK_ON;
 }
 
-//  "the controls hint, the party bar, the A prompt or the mission banner":
-//  the states `config` ends on, for the log and the failures, so they say
-//  where the step stands against where it should end.
+//  "the controls hint, the party bar, the A prompt or the mission banner".
 std::string expected_end(const SceneMachineConfig& config){
     std::vector<std::string> ends;
     if (config.stop_at_battle){
@@ -326,10 +273,7 @@ std::string expected_end(const SceneMachineConfig& config){
     return text;
 }
 
-//  Whether this state's lines go on the stream's overlay too, for whoever
-//  watches: a black fade (with its count), the mission banner and the
-//  controls hint showing. The text, cutscenes, white fades, presses and
-//  ends go to the file log only; the step's own lines say how it ended.
+//  The states logged on the overlay too; the rest go to the file log only.
 bool scene_screen_for_watcher(SceneScreen screen){
     return screen == SceneScreen::FADE_BLACK || screen == SceneScreen::BANNER_SHOWING || screen == SceneScreen::BANNER_PRESS ||
         screen == SceneScreen::HINT_SHOWING;
@@ -476,7 +420,7 @@ void SceneTimeline::record(const ScreenObservation& look){
     const bool talk = text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX);
     m_lock_ons = talk ? 0 : m_lock_ons + (screen == SceneScreen::LOCK_ON ? 1 : 0);
     m_after_fade = (m_after_fade && !talk) || look.events.has(ScreenEvent::FADE_BLACK);
-    //  A cutscene (moving, no party bar) is not quiet (Totodile's start, console B 2026-11-17 23:20).
+    //  A cutscene (moving, no party bar) is not quiet.
     const bool settled = look.events.has(ScreenEvent::SCREEN_STILL) || look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
     track_since(m_after_fade && !busy(look) && settled, look.when, m_quiet_after_fade_since);
     if (busy(look)){
@@ -506,7 +450,6 @@ void SceneTimeline::record(const ScreenObservation& look){
 }
 
 
-//  "text box, advance arrow": a look's events and readings for the log.
 std::string describe_look(const ScreenObservation& look){
     const std::pair<ScreenEvent, std::string_view> events[] = {
         {ScreenEvent::FADE_BLACK, "black fade"}, {ScreenEvent::FADE_WHITE, "white fade"},
@@ -536,20 +479,14 @@ std::string describe_look(const ScreenObservation& look){
     return text.empty() ? "nothing" : text;
 }
 
-//  How long looks that repeat what the log already shows are counted
-//  before they are summed up.
 constexpr Milliseconds SUMMARY_EVERY = 30000ms;
 //  How many states may take turns and still count as one run of looks.
 constexpr std::ptrdiff_t TURN_PERIODS[] = {2, 3};
 
-//  The machine's log, short over long runs of the same screens. A look
-//  whose state or readings differ from the look before gets a line
-//  ("[PLZA label] screen 3: scene_still at 12.5s: still"; the number counts
-//  changes of state), unless only two or three states take turns. Those
-//  looks, and looks that change nothing, are summed up every SUMMARY_EVERY,
-//  before the next line, and at the end ("[PLZA label] scene_moving x46,
-//  blind_press x15 over 30.0s, 15 presses"). All of it goes to the file
-//  log; only scene_screen_for_watcher()'s states go on the overlay too.
+//  A line per change of state or readings ("[PLZA label] screen 3:
+//  scene_still at 12.5s: still"); repeats and two or three states taking
+//  turns are summed up every SUMMARY_EVERY ("scene_moving x46, blind_press x15
+//  over 30.0s, 15 presses").
 class SceneLog{
 public:
     SceneLog(PlzaBackend& backend, std::string_view label, WallClock start)
@@ -558,15 +495,11 @@ public:
         , m_start(start)
     {}
 
-    //  Logs `text` as one of the machine's own lines, on the overlay too:
-    //  "[PLZA label] text".
     void note(std::string_view text){
         flush();
         m_backend.log(std::format("[PLZA {}] {}", m_label, text));
     }
 
-    //  Logs or counts a look the machine acted on as `screen`, with
-    //  `readings` (describe_look()); `pressed`: its step presses a button.
     void look(SceneScreen screen, std::string_view readings, WallClock when, bool pressed){
         if (screen != m_screen){
             m_screen = screen;
@@ -592,8 +525,7 @@ public:
         }
     }
 
-    //  Sums up the looks counted since the last line if they took turns or
-    //  pressed; drops them otherwise.
+    //  Drops the counted looks unless they took turns or pressed.
     void flush(){
         if (m_counted.size() > 1 || m_presses > 0){
             write_summary();
@@ -616,8 +548,7 @@ private:
         m_presses = 0;
     }
 
-    //  Whether a look with `key` ("scene_still: still") gets a line: it
-    //  changes the state or readings, not only to go on taking turns.
+    //  `key`: "scene_still: still".
     bool gets_line(std::string key){
         if (!m_changes.empty() && key == m_changes.back()){
             return false;
@@ -629,8 +560,7 @@ private:
         return !takes_turns();
     }
 
-    //  Whether the changes end in two or three states taking turns: their
-    //  last 4 or 6 are one run of 2 or 3 repeated.
+    //  The last 4 or 6 changes are one run of 2 or 3 repeated.
     bool takes_turns() const{
         for (const std::ptrdiff_t period : TURN_PERIODS){
             if ((std::ptrdiff_t)m_changes.size() >= 2 * period &&
@@ -659,22 +589,17 @@ private:
 
     PlzaBackend& m_backend;
     std::string m_label;
-    //  The first look's time; the lines' times count from it.
     WallClock m_start;
     std::optional<SceneScreen> m_screen;
     size_t m_screen_number = 0;
-    //  The last changes of state or readings, as many as takes_turns()
-    //  reads: "scene_still: still".
     static constexpr size_t MAX_CHANGES = 6;
     std::vector<std::string> m_changes;
-    //  The looks counted since the last line, per state, in order.
     std::vector<std::pair<SceneScreen, size_t>> m_counted;
     std::optional<WallClock> m_counted_from;
     WallClock m_counted_to;
     size_t m_presses = 0;
 };
 
-//  What the states share: the backend, the timeline and the look they act on.
 class SceneRunner{
 public:
     SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
@@ -688,12 +613,10 @@ public:
         return m_timeline;
     }
 
-    //  Sums up the looks the log has counted (SceneLog::flush()).
     void flush_log(){
         m_log.flush();
     }
 
-    //  The step of `screen`, the state of `look`.
     void act(SceneScreen screen, const ScreenObservation& look){
         m_timeline.record(look);
         std::string readings = describe_look(look);
@@ -716,9 +639,8 @@ public:
     }
 
 private:
-    //  ZL held while SceneMachineConfig::lock_on reads the move symbols; before all but the first,
-    //  a quarter turn and L put the camera behind the player (the backend has no camera stick).
-    //  Symbols: locked on, the machine ends (LOCKED_ON).
+    //  Before all but the first, a quarter turn and L put the camera behind
+    //  the player (the backend has no camera stick).
     void lock_on(){
         const size_t attempt = m_timeline.lock_ons();
         if (attempt > 1){
@@ -733,7 +655,6 @@ private:
         m_log.note(std::format("lock-on {}/{}: {}ZL held: {}.", attempt, LOCK_ON_ATTEMPTS, attempt > 1 ? "turned 90 degrees right, L, " : "", seen));
     }
 
-    //  The button `screen`'s step presses on `look`.
     Button button_of(SceneScreen screen, const ScreenObservation& look){
         switch (screen){
         case SceneScreen::DIALOG:
@@ -745,9 +666,7 @@ private:
         }
     }
 
-    //  The button for the choice box on `look`: Up while a row below the top
-    //  is highlighted (03.01's German lobby), A on the top row, each look
-    //  reading the rows again. A choice whose rows do not read gets A.
+    //  Up until the top row is highlighted (03.01's German lobby), then A.
     Button choice_button(const ScreenObservation& look){
         const auto rows = look.readings.find(CHOICE_ROWS_READING);
         const auto selected = look.readings.find(CHOICE_SELECTED_READING);
@@ -772,8 +691,7 @@ private:
             });
             return;
         case SceneScreen::SCENE_STILL:
-            //  Until the look is any other state: also a still screen with
-            //  the chevron (01.01's subtitles), a hint or the banner.
+            //  Also ends on a still screen with the chevron (01.01's subtitles).
             wait_until(STILL_WAIT, [this](const ScreenObservation& look){
                 return m_timeline.classify(look) != SceneScreen::SCENE_STILL;
             });
@@ -791,7 +709,6 @@ private:
         }
     }
 
-    //  Looks every POLL until `done` or `limit`.
     template <typename Done>
     void wait_until(Milliseconds limit, Done&& done){
         for (Milliseconds waited = 0ms; waited < limit; waited += POLL){
@@ -808,8 +725,7 @@ private:
     SceneLog m_log;
 };
 
-//  How often a state may come up before the machine fails: a box or a
-//  card that A does not get past.
+//  A box or a card that A does not get past fails.
 size_t max_visits(SceneScreen screen){
     switch (screen){
     case SceneScreen::DIALOG:
@@ -817,18 +733,15 @@ size_t max_visits(SceneScreen screen){
     case SceneScreen::MISSION_COMPLETE:
         return 30;
     case SceneScreen::BANNER_SHOWING:
-        //  ~30 s of looks: with end_after_black_fades a banner its A presses do
-        //  not clear waits on every look, and its frames change too much for
-        //  max_still.
+        //  ~30 s: an uncleared banner's frames change too much for max_still.
         return 120;
     default:
         return SIZE_MAX;
     }
 }
 
-//  How long a state may see an unchanged screen: the waits (a fade, a
-//  still cutscene, the hint or banner before it counts) for as long as
-//  they wait. Zero for DIALOG, whose presses must change the screen.
+//  How long a state may see an unchanged screen; zero for DIALOG, whose
+//  presses must change it.
 Milliseconds max_still(SceneScreen screen){
     switch (screen){
     case SceneScreen::FADE_BLACK:
@@ -840,9 +753,7 @@ Milliseconds max_still(SceneScreen screen){
     case SceneScreen::LOCK_ON:
     case SceneScreen::PROMPT_SHOWING:
     case SceneScreen::AWAITING_SCENE:
-        //  A blind A press or a lock-on need not change the screen, the
-        //  overworld at the prompt can stay still until min_length, and
-        //  the HUD unchanged through start_window.
+        //  Presses here need not change the screen.
         return SCENE_STILL_WAIT;
     case SceneScreen::PARTY_BAR:
     case SceneScreen::HINT_SHOWING:
@@ -853,15 +764,11 @@ Milliseconds max_still(SceneScreen screen){
     }
 }
 
-//  Whether a new look shows the mission banner.
 bool banner_shows(PlzaBackend& backend){
     return backend.observe().readings.contains(MISSION_BANNER_READING);
 }
 
-//  After the scene ended on the mission banner: looks until it has gone,
-//  so the next step starts with control, for at most BANNER_GONE_WAIT;
-//  then A up to BANNER_PRESSES times, BANNER_PRESS_EVERY apart, until it
-//  goes.
+//  So the next step starts with control.
 void wait_banner_gone(PlzaBackend& backend, std::string_view label){
     for (Milliseconds waited = 0ms; waited < BANNER_GONE_WAIT; waited += POLL){
         if (!banner_shows(backend)){
@@ -882,7 +789,6 @@ void wait_banner_gone(PlzaBackend& backend, std::string_view label){
     backend.log(std::format("[PLZA {}] the mission banner still shows after {} A presses; going on.", label, BANNER_PRESSES));
 }
 
-//  The step's outcome from where the machine ended.
 Pokemon::Outcome scene_outcome(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, const ScreenMachineResult& result
 ){
@@ -908,9 +814,7 @@ Pokemon::Outcome scene_outcome(
         return Pokemon::outcome_ok();
     }
     if (result.terminal == scene_screen_name(SceneScreen::QUIET_END)){
-        //  Nothing busy for the quiet time, and no party bar, controls hint
-        //  or banner:
-        //  a cutscene with no text, or control the detectors miss.
+        //  A cutscene with no text, or control the detectors miss.
         return Pokemon::outcome_failed("scene_quiet", std::format(
             "{}: nothing busy for {} ms and no sign of control (expecting {}).", label, config.quiet ? config.quiet->count() : 0, expected
         ));
@@ -955,7 +859,6 @@ Pokemon::Outcome run_scene_machine(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 ){
     backend.log(std::format("[PLZA {}] start, expecting {}.", label, expected_end(config)));
-    //  The look the states match and act on.
     Pokemon::Observation<Pokemon::ZonePose> look = backend.observe();
     bool first = true;
     SceneRunner runner(backend, label, config, look.when);
@@ -981,7 +884,6 @@ Pokemon::Outcome run_scene_machine(
         first = false;
         return look;
     };
-    //  SceneLog logs the states, with the looks' readings.
     const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), states, timeout, /*log=*/nullptr);
     runner.flush_log();
     if (config.end_after_black_fades){
