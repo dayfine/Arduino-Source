@@ -643,11 +643,10 @@ UnitTestResult test_emulator_device_skips_rng_handoffs(){
     if (!switch_handoffs.sid_helper || !switch_handoffs.starter_rng || !switch_handoffs.gift_rng){
         return "switch_1_2 device must preserve enabled RNG handoffs.";
     }
-    const std::vector<StoryCheckpoint> rows = load_frlg_story({});
     const StoryRunPlan plan = plan_story_run(
-        rows,
-        checkpoint_index(rows, "01.01"),
-        checkpoint_index(rows, "04.04"),
+        story_checkpoints(),
+        row_index("01.01"),
+        row_index("04.04"),
         emu_handoffs
     );
     if (plan.stop != StoryHandoff::NONE){
