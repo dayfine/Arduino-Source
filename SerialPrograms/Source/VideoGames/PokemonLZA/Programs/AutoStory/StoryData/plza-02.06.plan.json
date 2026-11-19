@@ -11,39 +11,39 @@
       {
         "id": "to_bed",
         "kind": "game_action",
-        "why": "step 31: to the bed's \"A Rest\", on until the prompt, 1.5 s at most; a prompt before 0.75 s is passed on the way. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "why": "to the bed's \"A Rest\"; an earlier prompt is passed on the way",
         "action": "walk",
         "args": {"legs": [[45, 1500]], "held": true, "end": "prompt", "end_after_ms": 750}
       },
       {
         "id": "rest",
         "kind": "talk",
-        "why": "step 31: A Rest, \"Rest until tomorrow morning?\""
+        "why": "A Rest"
       },
       {
         "id": "rest_question",
         "kind": "game_action",
-        "why": "step 31: \"Rest until tomorrow morning?\" before the choice shows",
+        "why": "\"Rest until tomorrow morning?\" before the choice shows",
         "action": "text_to_choice",
         "args": {"advance_with_a": true}
       },
       {
         "id": "rest_until_morning",
         "kind": "game_action",
-        "why": "step 31: yes",
+        "why": "yes",
         "action": "choose_0"
       },
       {
         "id": "wake_up",
         "kind": "game_action",
-        "why": "step 32: sleep and wake up, until control facing the door; the room shows no party bar or prompt, so the quiet time is control",
+        "why": "sleep and wake up, until control facing the door; no party bar or prompt in the room, so quiet means control",
         "action": "mash_to_move_hints",
         "args": {"quiet_ms": 3000, "min_length_ms": 20000, "quiet_is_control": true}
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 02.04 at the autosave on entering Room 202 (2026-11-10); starts at that autosave, in the room. Renumbered from 02.05 when 02.04 was split at the elevator autosave (2026-11-13). Autosave: the run log showed the badge at wake_up's end (\"[Autosave] 02.06/6 wake_up\", console B, 2026-11-13 14:13)."
+      "source": "played from a new game; starts at the Room 202 autosave; autosaves at wake_up's end"
     }
   },
   "execution": {

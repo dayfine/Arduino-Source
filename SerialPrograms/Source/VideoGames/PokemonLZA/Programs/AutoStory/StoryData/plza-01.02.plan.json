@@ -11,7 +11,7 @@
       {
         "id": "chase_pancham",
         "kind": "game_action",
-        "why": "after Pancham, through the archway, around the starters into the scene. A 0 ms leg only turns. The sidestep around the starters (1000 ms) is not measured yet. 01.01's scenes leave the player turned to the boy, so a run from 01.01 should reload first. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends where Pancham's scene takes over, with no one screen event.",
+        "why": "after Pancham, through the archway, around the starters into the scene; a 0 ms leg only turns. The 1000 ms sidestep is a guess. 01.01's scenes leave the player facing the boy, so a run from 01.01 should reload first",
         "action": "walk",
         "args": {
           "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
@@ -26,13 +26,13 @@
       {
         "id": "battle_with_pokemon",
         "kind": "game_action",
-        "why": "choose \"Battle with Pokemon!\" (second choice)",
+        "why": "\"Battle with Pokemon!\" (second choice)",
         "action": "choose_1"
       },
       {
         "id": "battle_area",
         "kind": "game_action",
-        "why": "the scene until free control in the battle area: no controls hint or party bar here (no Pokemon yet); control is Ryon's A Talk prompt held a second past 20 s. No A at that prompt: it restarts his talk. Autosave",
+        "why": "until free control in the battle area: no hint or party bar yet, so control is Ryon's A Talk prompt held past 20 s. No A there: it restarts his talk",
         "action": "mash_to_move_hints",
         "args": {
           "min_length_ms": 20000
@@ -41,7 +41,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played step by step from a new game; starts at the MAIN MISSION 01 autosave."
+      "source": "played from a new game; starts at the MAIN MISSION 01 autosave"
     }
   },
   "execution": {

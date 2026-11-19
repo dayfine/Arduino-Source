@@ -12,7 +12,7 @@
       {
         "id": "to_zone_1_gate",
         "kind": "game_action",
-        "why": "step 58, after Taunie's scene: runs straight on to Wild Zone 1's gate until its A prompt (upstream's run_towards_gate_with_A_button). The walk there takes ~4.3 s, so 8 s of running is ample.",
+        "why": "run to Wild Zone 1's gate until its A prompt (~4.3 s)",
         "action": "run_to_gate",
         "args": {
           "timeout_ms": 8000
@@ -21,32 +21,32 @@
       {
         "id": "enter_zone_1",
         "kind": "game_action",
-        "why": "step 58: A Enter at the gate (a scene step ends at once on its prompt), Taunie, the Throwing Poke Balls card. The \"received 10 Poke Balls\" box reads as nothing (no detector), so 2 s with nothing inside the scene gets one A.",
+        "why": "A Enter, Taunie, the Throwing Poke Balls card; the \"received 10 Poke Balls\" box has no detector, so 2 s of nothing gets one A",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true, "gap_press_ms": 2000}
       },
       {
         "id": "catch_fletchling",
         "kind": "game_action",
-        "why": "step 59: catch Fletchling, throwing again when it breaks out",
+        "why": "catch Fletchling, again when it breaks out",
         "action": "catch_tutorial"
       },
       {
         "id": "catch_bunnelby",
         "kind": "game_action",
-        "why": "step 60: weaken Bunnelby, then catch it in the catch window",
+        "why": "weaken Bunnelby, then catch it",
         "action": "battle_then_catch"
       },
       {
         "id": "after_catches",
         "kind": "game_action",
-        "why": "step 61: Taunie: tall grass, more Poke Balls, moves smash boulders",
+        "why": "Taunie: tall grass, more Poke Balls, moves smash boulders",
         "action": "mash_to_move_hints"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Starts outside Wild Zone 1's gate, where 03.06's autosave in wild_zones_tutorial reloads (console B, 2026-11-16: 03.07 reloaded there and threw outside the zone when it began at catch_fletchling). Autosave: the game's autosave at after_catches, its last step, was seen in four run logs (console B, 2026-11-13); the menu save of plza/autostory is dropped. Start signature: the minimap before Wild Zone 1's gate (ReferenceData/plza-minimap-03.07-start.json, recorded by Record Start Minimaps on the chained start, Spanish, console B 2026-11-18 18:08); at least 58 from every other start minimap."
+      "source": "played from a new game; starts outside the zone's gate, where 03.06's autosave reloads; autosaves at after_catches"
     }
   },
   "execution": {

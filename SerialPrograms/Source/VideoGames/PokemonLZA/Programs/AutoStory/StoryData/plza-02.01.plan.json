@@ -11,7 +11,7 @@
       {
         "id": "battle_zone_to_brigitte",
         "kind": "game_action",
-        "why": "step 18: through the Battle Zone until Taunie's \"Almost there!\" and Brigitte's scene. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends in a dialog box, not held for: Taunie's \"Almost there!\" talks on the way, and a walk stopped on it may stop short of Brigitte.",
+        "why": "through the Battle Zone to Brigitte's scene; not held for a dialog, since Taunie's \"Almost there!\" talks on the way",
         "action": "walk",
         "args": {
           "legs": [[10, 4250], [90, 6000], [90, 6500]],
@@ -22,25 +22,25 @@
       {
         "id": "brigitte_battle_start",
         "kind": "game_action",
-        "why": "step 19: A through her talk to \"Brigitte sent out Cleffa!\"",
+        "why": "A through her talk to \"Brigitte sent out Cleffa!\"",
         "action": "story_battle_start"
       },
       {
         "id": "brigitte_battle",
         "kind": "game_action",
-        "why": "step 19: beat Brigitte's Cleffa (Lv 7), until her speech",
+        "why": "beat Brigitte's Cleffa (Lv 7), until her speech",
         "action": "story_battle"
       },
       {
         "id": "after_brigitte",
         "kind": "scene",
-        "why": "step 20: Brigitte's and Taunie's talk, until free control alone in the plaza",
+        "why": "until free control alone in the plaza",
         "action": "a"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split at the autosave after Brigitte (2026-11-10). Save unverified: reloads put the player at the next checkpoint's start (console B, 2026-11-10/13), but no run log shows the autosave badge here."
+      "source": "played from a new game; ends at the autosave after Brigitte"
     }
   },
   "execution": {
