@@ -36,16 +36,14 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  A console action run with no console: every attempt would fail the same way.
-inline constexpr std::string_view CONSOLE_ONLY = "console_only";
-
 //  The event a walk's "end" arg names; none for "scene" or an unknown word.
 std::optional<ScreenEvent> walk_end_event(std::string_view end);
 
-//  A console action's code. `timeout` is the step's "timeout_ms": the gate
+//  Console actions by name. `timeout` is the step's "timeout_ms": the gate
 //  runs read it, the others ignore it.
-using PlzaConsoleAction = std::function<std::optional<Pokemon::StoryFailure>(PlzaBackend& backend, Milliseconds timeout)>;
-using PlzaConsoleActions = std::map<std::string, PlzaConsoleAction, std::less<>>;
+using PlzaConsoleActions = std::map<
+    std::string, std::function<std::optional<Pokemon::StoryFailure>(PlzaBackend& backend, Milliseconds timeout)>, std::less<>
+>;
 
 //  What PLZA's actions use besides the backend. Off a console all are empty:
 //  a console action fails as CONSOLE_ONLY, a walk "heading" too, and a

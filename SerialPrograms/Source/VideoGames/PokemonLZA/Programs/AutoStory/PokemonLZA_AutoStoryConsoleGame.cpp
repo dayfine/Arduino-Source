@@ -39,6 +39,8 @@ using namespace std::chrono_literals;
 
 namespace{
 
+using PlzaConsoleAction = PlzaConsoleActions::mapped_type;
+
 //  The wait reset_game_from_home() takes by default.
 constexpr Milliseconds RELOAD_SETTLE = 1000ms;
 

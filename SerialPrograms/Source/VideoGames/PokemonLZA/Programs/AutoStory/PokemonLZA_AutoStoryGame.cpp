@@ -41,6 +41,9 @@ using Pokemon::reject_unknown_keys;
 
 namespace{
 
+//  A console action run with no console: every attempt would fail the same way.
+constexpr std::string_view CONSOLE_ONLY = "console_only";
+
 //  A walk "end" that holds the last leg until a scene takes control.
 constexpr std::string_view WALK_UNTIL_SCENE = "scene";
 
@@ -365,6 +368,32 @@ Pokemon::StoryActionParser console_action(const PlzaStoryTools& tools, std::stri
     };
 }
 
+//  The actions that run only on a console, bound to `tools.console`.
+void add_console_actions(StoryActions& actions, const PlzaStoryTools& tools){
+    actions.emplace("run_to_gate", console_action(tools, "run_to_gate", 8000ms));
+    actions.emplace("aimed_run_to_gate", console_action(tools, "aimed_run_to_gate", 4000ms));
+    for (std::string_view name : {
+        "new_game_intro", "confirm_new_game", "catch_tutorial", "battle_then_catch", "catch_in_zone",
+        "walk_back_to_zone_road", "check_out_of_zone_1", "walk_to_unread_marker", "claim_mable_research_reward",
+    }){
+        actions.emplace(std::string(name), console_action(tools, std::string(name), std::nullopt));
+    }
+}
+
+//  The actions that play a scene from a talk or prompt.
+void add_scene_actions(StoryActions& actions, const PlzaStoryTools& tools){
+    actions.emplace("mash", no_args(mash_scene_step));
+    actions.emplace("a", no_args(scene_step));
+    actions.emplace("story_battle_start", no_args([&tools](PlzaBackend& backend, RunState&){
+        SceneMachineConfig config;
+        config.stop_at_battle = true;
+        config.lock_on = tools.lock_on;
+        return run_scene_machine(backend, "story_battle_start", config, 90s);
+    }));
+    actions.emplace("story_battle", no_args([&tools](PlzaBackend& backend, RunState&){
+        return battle_step(tools, backend);
+    }));
+}
 
 } // namespace
 
@@ -389,17 +418,6 @@ StoryActions plza_story_actions(const PlzaStoryTools& tools){
         {"talk", no_args([](PlzaBackend& backend, RunState&){
             return talk_at_prompt(backend);
         })},
-        {"mash", no_args(mash_scene_step)},
-        {"a", no_args(scene_step)},
-        {"story_battle_start", no_args([&tools](PlzaBackend& backend, RunState&){
-            SceneMachineConfig config;
-            config.stop_at_battle = true;
-            config.lock_on = tools.lock_on;
-            return run_scene_machine(backend, "story_battle_start", config, 90s);
-        })},
-        {"story_battle", no_args([&tools](PlzaBackend& backend, RunState&){
-            return battle_step(tools, backend);
-        })},
         {"talk_through_map_screen", no_args([](PlzaBackend& backend, RunState&){
             return talk_through_map_screen(backend);
         })},
@@ -415,15 +433,9 @@ StoryActions plza_story_actions(const PlzaStoryTools& tools){
             }
             return failure;
         })},
-        {"run_to_gate", console_action(tools, "run_to_gate", 8000ms)},
-        {"aimed_run_to_gate", console_action(tools, "aimed_run_to_gate", 4000ms)},
     };
-    for (std::string_view name : {
-        "new_game_intro", "confirm_new_game", "catch_tutorial", "battle_then_catch", "catch_in_zone",
-        "walk_back_to_zone_road", "check_out_of_zone_1", "walk_to_unread_marker", "claim_mable_research_reward",
-    }){
-        actions.emplace(std::string(name), console_action(tools, std::string(name), std::nullopt));
-    }
+    add_scene_actions(actions, tools);
+    add_console_actions(actions, tools);
     return actions;
 }
 
