@@ -25,8 +25,9 @@ enum class PlatformWait{
     AFTER_AUTOSAVE,     //  "opening_to_platform": the autosave badge first
 };
 
-//  No input through the cutscene (A does not advance it), except one A per
-//  text box with the advance arrow. Fails as "platform_not_seen".
+//  One A per text box with the advance arrow (A does not advance the
+//  cutscene). AFTER_AUTOSAVE: Plus held on the opening's first moving look,
+//  which skips it to the platform. Fails as "platform_not_seen".
 std::optional<Pokemon::StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds timeout, PlatformWait wait);
 
 //  Whether the platform shows on two looks in a row within `looks` looks.

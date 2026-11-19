@@ -67,11 +67,9 @@ constexpr Milliseconds LOCK_ON_AFTER = 3s;
 constexpr size_t LOCK_ON_ATTEMPTS = 5;
 //  TrainerBattle's attempt_one_attack() looks 1 s, the catches' sweep 1.5 s.
 constexpr Milliseconds LOCK_ON_HOLD = 2s;
-//  Upstream's AutoStory (#1933) holds Plus 2 s, then takes the skip
-//  prompt's default row with A. A talk's screen between two lines shows no
-//  text for up to 2.5 s (01.02's Pancham scene).
+//  A skip prompt's default row takes A. A talk's screen between two lines
+//  shows no text for up to 2.5 s (01.02's Pancham scene).
 constexpr Milliseconds SKIP_AFTER = 3s;
-constexpr Milliseconds SKIP_HOLD = 2s;
 //  From the look that pressed Plus: the hold, then the prompt.
 constexpr Milliseconds SKIP_PROMPT_WAIT = 5s;
 constexpr Milliseconds PRESS_HOLD = 160ms;
@@ -107,7 +105,7 @@ enum class SceneScreen{
     AWAITING_SCENE,
     NEVER_STARTED,
     QUIET_END,
-    SKIP_CUTSCENE,  //  moving with no text or HUD for SKIP_AFTER: Plus held SKIP_HOLD
+    SKIP_CUTSCENE,  //  a cutscene with no text or HUD for SKIP_AFTER: Plus held CUTSCENE_SKIP_HOLD
     BLIND_PRESS,
     SCENE_MOVING,
     SCENE_STILL,
@@ -120,7 +118,7 @@ enum class SceneAction{
     PRESS_B,
     PRESS_TEXT,     //  dialog_button(), or towards a choice's top row
     PRESS_BLIND,    //  config.blind_button
-    HOLD_PLUS,      //  SKIP_HOLD, to skip a cutscene
+    HOLD_PLUS,      //  CUTSCENE_SKIP_HOLD, to skip a cutscene
     LOCK_ON,        //  ZL held while config.lock_on watches
     WAIT_FADE,      //  until the fade lifts, up to FADE_WAIT
     WAIT_STILL,     //  until the screen is another, up to STILL_WAIT
@@ -380,9 +378,9 @@ struct LockOnState{
     bool locked_on = false;
 };
 
-//  Cutscene skips: moving with no text, fade or HUD.
+//  Cutscene skips: no text, fade or HUD, the screen moving or still.
 struct SkipState{
-    std::optional<WallClock> moving_since = std::nullopt;
+    std::optional<WallClock> cutscene_since = std::nullopt;
     //  The last look with text, a fade or the HUD: a skip press waits for
     //  one after the last, so a scene Plus does not skip gets one press.
     WallClock last_cue = {};
@@ -592,7 +590,7 @@ bool SceneTimeline::skip_pending(WallClock now) const{
 //  looks away (03.02b's Tepig battle). Not with blind presses: those are
 //  for menus no detector reads (03.04's Pokedex), not cutscenes.
 bool SceneTimeline::skip_due(const ScreenObservation& look) const{
-    if ((m_config.stop_at_battle && m_lock_on.after_fade) || m_config.blind_press_after || !held_for(m_skip.moving_since, look.when, SKIP_AFTER)){
+    if ((m_config.stop_at_battle && m_lock_on.after_fade) || m_config.blind_press_after || !held_for(m_skip.cutscene_since, look.when, SKIP_AFTER)){
         return false;
     }
     return !m_skip.last_press || *m_skip.last_press < m_skip.last_cue;
@@ -682,9 +680,12 @@ void SceneTimeline::record_cutscene(const ScreenObservation& look){
     if (busy(look) || hud_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
         m_skip.last_cue = look.when;
     }
-    const bool cutscene = !busy(look) && !hud_shows(look) && !look.events.has(ScreenEvent::SCREEN_STILL) &&
+    //  A still frame is a cutscene too (console B 2026-11-19: 5-10 s holds
+    //  with no Plus), except where quiet is control: Plus there opens the map.
+    const bool still = look.events.has(ScreenEvent::SCREEN_STILL);
+    const bool cutscene = !busy(look) && !hud_shows(look) && !(still && m_config.quiet_is_control) &&
         !look.readings.contains(MAP_READING) && !look.readings.contains(MISSION_BANNER_READING);
-    track_since(cutscene, look.when, m_skip.moving_since);
+    track_since(cutscene, look.when, m_skip.cutscene_since);
 }
 
 void SceneTimeline::record_battle(SceneScreen screen, const ScreenObservation& look){
@@ -1032,7 +1033,7 @@ void SceneRunner::perform(SceneAction action, const ScreenObservation& look){
         m_backend.press(m_config.blind_button, PRESS_HOLD, PRESS_RELEASE);
         return;
     case SceneAction::HOLD_PLUS:
-        m_backend.press(BUTTON_PLUS, SKIP_HOLD, PRESS_RELEASE);
+        m_backend.press(BUTTON_PLUS, CUTSCENE_SKIP_HOLD, PRESS_RELEASE);
         m_skip_pressed = look.when;
         return;
     case SceneAction::LOCK_ON:

@@ -6,6 +6,7 @@
 
 #include <format>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryPlatformWait.h"
 
 namespace PokemonAutomation{
@@ -27,6 +28,7 @@ struct PlatformProgress{
     size_t streak = 0;
     //  On the last look.
     bool text_waiting = false;
+    bool skip_pressed = false;
 };
 
 //  True once the platform has held PLATFORM_LOOKS looks.
@@ -47,6 +49,17 @@ bool platform_look(PlzaBackend& backend, const ScreenObservation& look, Platform
 //  The opening's last line ("Your train has arrived in Lumiose City!") waits for A.
 bool text_waiting_for_a(const ScreenObservation& look){
     return look.events.has(ScreenEvent::DIALOG_BOX) && look.readings.contains(ADVANCE_ARROW_READING);
+}
+
+//  The opening playing, not yet skipped: Plus at its start skips it to the
+//  platform (console B, 2026-11-19); one press, as Plus on the platform
+//  would open the map.
+bool opening_skip_due(const ScreenObservation& look, PlatformWait wait, const PlatformProgress& progress){
+    if (wait != PlatformWait::AFTER_AUTOSAVE || progress.skip_pressed || progress.autosave_seen){
+        return false;
+    }
+    return !text_shows(look) && !fade_shows(look) && !look.events.has(ScreenEvent::SCREEN_STILL) &&
+        !look.readings.contains(PLATFORM_READING);
 }
 
 } // namespace
@@ -74,6 +87,11 @@ std::optional<StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds
             backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
         }
         progress.text_waiting = text_now;
+        if (opening_skip_due(look, wait, progress)){
+            backend.log("[PLZA] platform wait: the opening plays; Plus held to skip it");
+            backend.press(BUTTON_PLUS, CUTSCENE_SKIP_HOLD, /*release=*/400ms);
+            progress.skip_pressed = true;
+        }
         backend.wait(PLATFORM_POLL);
     }
     return StoryFailure{.code = "platform_not_seen", .detail = std::format(

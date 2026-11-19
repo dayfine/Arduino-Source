@@ -25,6 +25,10 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  How long a Plus press is held to skip a cutscene, as upstream's
+//  AutoStory (#1933) holds it.
+constexpr Milliseconds CUTSCENE_SKIP_HOLD = Milliseconds(2000);
+
 //  When a scene machine gives up on a quiet screen, and when it presses A blind.
 struct SceneMachineConfig{
     //  Fails ("scene_quiet") once nothing busy (text, a fade) and no sign of
