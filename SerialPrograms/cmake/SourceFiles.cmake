@@ -213,6 +213,10 @@ file(GLOB CORE_LIBRARY_SOURCES
     Source/CommonFramework/Globals.h
     Source/CommonFramework/GlobalServices.cpp
     Source/CommonFramework/GlobalServices.h
+    Source/CommonFramework/Headless/HeadlessHost.cpp
+    Source/CommonFramework/Headless/HeadlessHost.h
+    Source/CommonFramework/Headless/HeadlessHost_Tests.cpp
+    Source/CommonFramework/Headless/HeadlessHost_Tests.h
     Source/CommonFramework/ImageTypes/ImageRGB32.cpp
     Source/CommonFramework/ImageTypes/ImageRGB32.h
     Source/CommonFramework/ImageTypes/ImageViewPlanar32.cpp

@@ -9,6 +9,7 @@
 #include "Common/Cpp/PanicDump.h"
 #include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Exceptions/FatalProgramException.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
@@ -448,7 +449,9 @@ void ProgramSession::run_program(){
     {
         std::lock_guard<Mutex> lg(m_lock);
         push_stats();
+        if (!STATIC_GLOBALS.HEADLESS_MODE){
         update_historical_stats_with_current();
+    }
         set_state(ProgramState::STOPPED);
     }
 }

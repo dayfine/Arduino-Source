@@ -8,6 +8,7 @@
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/CpuId/CpuId.h"
 #include "Common/Cpp/Hardware/Hardware.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "HardwareValidation.h"
 
 namespace PokemonAutomation{
@@ -15,18 +16,20 @@ namespace PokemonAutomation{
 
 bool check_hardware(){
     if (!CPU_CAPABILITY_NATIVE.OK_08_Nehalem){
-        QMessageBox box;
-        box.critical(
-            nullptr,
-            "Error",
-            "This computer is too old to run this program.<br><br>"
-            "Please try a much newer computer.<br><br>"
-            "(Reason: SSE4.2 is required to run this program.)"
-        );
+        if (!STATIC_GLOBALS.HEADLESS_MODE){
+            QMessageBox box;
+            box.critical(
+                nullptr,
+                "Error",
+                "This computer is too old to run this program.<br><br>"
+                "Please try a much newer computer.<br><br>"
+                "(Reason: SSE4.2 is required to run this program.)"
+            );
+        }
         return false;
     }
 
-    if (!CPU_CAPABILITY_NATIVE.OK_13_Haswell){
+    if (!CPU_CAPABILITY_NATIVE.OK_13_Haswell && !STATIC_GLOBALS.HEADLESS_MODE){
         QMessageBox box;
         QString str;
         str += "This computer may not be powerful enough to run this program.<br><br>";
@@ -39,7 +42,7 @@ bool check_hardware(){
 
     ProcessorSpecs specs = get_processor_specs();
 
-    if (specs.threads < 4){
+    if (specs.threads < 4 && !STATIC_GLOBALS.HEADLESS_MODE){
         QMessageBox box;
         QString str;
         str += "This computer may not be powerful enough to run this program.<br><br>";
@@ -52,7 +55,7 @@ bool check_hardware(){
         box.warning(nullptr, "Warning", str);
     }
 
-    if (specs.base_frequency < 2'000'000'000){
+    if (specs.base_frequency < 2'000'000'000 && !STATIC_GLOBALS.HEADLESS_MODE){
         QMessageBox box;
         QString str;
         str += "This computer may not be powerful enough to run this program.<br><br>";
@@ -70,7 +73,7 @@ bool check_hardware(){
         ? specs.threads - specs.cores
         : 0;
     double efreq = (specs.cores + 0.2 * vcores) * specs.base_frequency;
-    if (efreq < 8'000'000'000){
+    if (efreq < 8'000'000'000 && !STATIC_GLOBALS.HEADLESS_MODE){
         QMessageBox box;
         QString str;
         str += "This computer may not be powerful enough to run this program.<br><br>";

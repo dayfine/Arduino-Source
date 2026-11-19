@@ -16,6 +16,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "SetupSettings.h"
 
 using std::cout;
@@ -82,19 +83,21 @@ bool check_resource_folder(Logger& logger){
         return true;
     }
     logger.log("No Resources/ folder at " + RESOURCE_PATH());
-    QMessageBox box;
-    box.setTextFormat(Qt::RichText);
-    box.critical(
-        nullptr,
-        "No Resources Folder!",
-        QString::fromStdString(
-            "No Resources Folder:<br><br>"
-            "Make sure you download Resources folder from latest release at<br>"
-            "https://github.com/PokemonAutomation/ComputerControl/releases/<br><br>"
-            "The Resources folder is part of PA-SerialPrograms-[VERSION]-[DATE].zip<br><br>"
-            "Extract the Resources folder from the zip file and place it at following path:<br><br>" + RESOURCE_PATH()
-        )
-    );
+    if (!STATIC_GLOBALS.HEADLESS_MODE){
+        QMessageBox box;
+        box.setTextFormat(Qt::RichText);
+        box.critical(
+            nullptr,
+            "No Resources Folder!",
+            QString::fromStdString(
+                "No Resources Folder:<br><br>"
+                "Make sure you download Resources folder from latest release at<br>"
+                "https://github.com/PokemonAutomation/ComputerControl/releases/<br><br>"
+                "The Resources folder is part of PA-SerialPrograms-[VERSION]-[DATE].zip<br><br>"
+                "Extract the Resources folder from the zip file and place it at following path:<br><br>" + RESOURCE_PATH()
+            )
+        );
+    }
     return false;
 }
 

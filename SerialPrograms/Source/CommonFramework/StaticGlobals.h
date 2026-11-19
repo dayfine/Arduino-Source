@@ -25,6 +25,7 @@ public:
     JsonValue to_json_debug() const;
 
 public:
+    bool HEADLESS_MODE = false;
     bool NAUGHTY_MODE = false;
     bool DEVELOPER_MODE = false;
     bool INTERNAL_DEVELOPER_MODE = false;

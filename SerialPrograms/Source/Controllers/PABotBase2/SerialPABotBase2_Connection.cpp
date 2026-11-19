@@ -16,6 +16,7 @@
 #include "Common/Cpp/ColoredText.h"
 #include "Common/PABotBase2/ReliableConnectionLayer/PABotBase2_PacketProtocol.h"
 #include "CommonFramework/Globals.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "SerialPABotBase2_Connection.h"
@@ -145,14 +146,16 @@ bool SerialPABotBase2_Connection::open_serial_port(){
 
     //  Prolific is banned
     if (info.description().indexOf("Prolific") != -1){
-        QMessageBox box;
-        box.critical(
-            nullptr,
-            "Error",
-            "Cannot select Prolific controller.<br><br>"
-            "Prolific controllers do not work for Arduino and similar microcontrollers.<br>"
-            "You were warned of this in the setup instructions. Please buy a CP210x controller instead."
-        );
+        if (!STATIC_GLOBALS.HEADLESS_MODE){
+            QMessageBox box;
+            box.critical(
+                nullptr,
+                "Error",
+                "Cannot select Prolific controller.<br><br>"
+                "Prolific controllers do not work for Arduino and similar microcontrollers.<br>"
+                "You were warned of this in the setup instructions. Please buy a CP210x controller instead."
+            );
+        }
         std::string text = "Cannot connect to Prolific controller.";
         m_logger.log(text, COLOR_RED);
         set_status_line0(text, COLOR_RED);

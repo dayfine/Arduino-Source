@@ -10,6 +10,7 @@
 #include "CommonFramework/Logging/Logger.h"
 //#include "CommonFramework/PersistentSettings.h"
 #ifdef QT_CORE_LIB
+#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/Panels/PanelTools.h"
 #include "NintendoSwitch/NintendoSwitch_SettingsPanel.h"
 #endif
@@ -582,10 +583,12 @@ ControllerProfile ControllerSettingsTable::get_or_make_profile(
 //    PERSISTENT_SETTINGS().write();
 
 #ifdef QT_CORE_LIB
-    //  This is brutal (tech-debt). The only way to force the settings to save
-    //  is to load the panel. TODO: Redesign panels to allow external editing.
-    //  This is also coming in from a different thread (not the main Qt thread).
-    OptionsPanelWrapper<ConsoleSettingsPanel>().make_panel()->save_settings();
+    if (!STATIC_GLOBALS.HEADLESS_MODE){
+        //  This is brutal (tech-debt). The only way to force the settings to save
+        //  is to load the panel. TODO: Redesign panels to allow external editing.
+        //  This is also coming in from a different thread (not the main Qt thread).
+        OptionsPanelWrapper<ConsoleSettingsPanel>().make_panel()->save_settings();
+    }
 #endif
 
     return profile;

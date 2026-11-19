@@ -23,6 +23,8 @@
 #include "StaticRegistration.h"
 #include "CommonFramework/Devices/LabDeviceRuntime.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/Headless/HeadlessHost.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Panels/OptionsPanel.h"
 #include "CommonFramework/VideoPipeline/Backends/CameraImplementations.h"
@@ -50,6 +52,7 @@
 #include "GlobalSettingsPanel.h"
 #include "GlobalServices.h"
 #include "PersistentSettings.h"
+#include "PanelCatalog.h"
 #include "NintendoSwitch/NintendoSwitch_SettingsPanel.h"
 
 Q_DECLARE_METATYPE(std::string)
@@ -338,6 +341,73 @@ int run_gui_application(int argc, char *argv[]){
     return ret;
 }
 
+int run_headless_application(int argc, char* argv[], const StartupPlan& plan){
+    STATIC_GLOBALS.HEADLESS_MODE = true;
+    register_all_statics();
+    setup_crash_handler();
+
+    QApplication application(argc, argv);
+
+    GlobalOutputRedirector redirect_stdout(std::cout, "stdout", Color());
+    GlobalOutputRedirector redirect_stderr(std::cerr, "stderr", COLOR_RED);
+    {
+        MultiOutputLogger& logger = global_multi_logger();
+        logger.add_listener(global_last_log_history());
+        logger.add_listener(global_file_logger());
+    }
+
+    Logger& logger = global_logger_tagged();
+    logger.log("================================================================================");
+    logger.log("Starting Headless Program: " + *plan.run_program);
+
+    qRegisterMetaType<size_t>("size_t");
+    qRegisterMetaType<uint8_t>("uint8_t");
+    qRegisterMetaType<std::string>("std::string");
+    qRegisterMetaType<Resolution>("Resolution");
+
+    Filesystem::create_directories(Filesystem::Path(SETTINGS_PATH()));
+    Filesystem::create_directories(Filesystem::Path(SCREENSHOTS_PATH()));
+
+    if (!check_resource_folder(logger)){
+        stop_application_services();
+        stop_thread_pools();
+        return 3;
+    }
+
+    try{
+        PERSISTENT_SETTINGS().read();
+    }catch (const FileException& error){
+        logger.log(error.message(), COLOR_RED);
+    }catch (const ParseException& error){
+        logger.log(error.message(), COLOR_RED);
+    }
+
+    GlobalThreadPools::qt_worker_threadpool();
+    GlobalThreadPools::qt_event_threadpool();
+
+    OptionsPanelWrapper<NintendoSwitch::ConsoleSettingsPanel>().make_panel()->load_json_from_global();
+    if (!check_hardware()){
+        stop_application_services();
+        stop_thread_pools();
+        return 3;
+    }
+
+    set_working_directory();
+    set_permissions(application);
+
+    const int ret = run_headless_program(
+        make_all_panel_lists(),
+        HeadlessRunOptions{
+            .program_id = *plan.run_program,
+            .options_path = plan.options_path,
+        }
+    );
+
+    stop_application_services();
+    stop_thread_pools();
+    return ret;
+}
+
 // Explicit tests use QCoreApplication and never enter GUI/settings/device startup.
 int run_test_application(int argc, char* argv[], const StartupPlan& plan){
 #if defined(__APPLE__)
@@ -402,6 +472,21 @@ int main(int argc, char* argv[]){
                 return 2;
             }
             return PokemonAutomation::run_gui_application(qt_argc, qt_argv.data());
+        },
+        .headless = [&](const PokemonAutomation::StartupPlan& selected){
+#if defined(__APPLE__)
+            PokemonAutomation::Filesystem::set_startup_profile(*selected.profile);
+#else
+            (void)selected;
+#endif
+            std::unique_ptr<PokemonAutomation::LabDeviceLease> profile_lease;
+            try{
+                profile_lease = PokemonAutomation::reserve_lab_profile();
+            }catch (const std::runtime_error& error){
+                std::cerr << error.what() << std::endl;
+                return 3;
+            }
+            return PokemonAutomation::run_headless_application(qt_argc, qt_argv.data(), selected);
         },
         .tests = [&](const PokemonAutomation::StartupPlan& selected){
             return PokemonAutomation::run_test_application(qt_argc, qt_argv.data(), selected);
