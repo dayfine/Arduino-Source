@@ -1456,6 +1456,10 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.cpp
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.h
+    Source/PanelCatalog.cpp
+    Source/PanelCatalog.h
+    Source/PanelCatalog_Tests.cpp
+    Source/PanelCatalog_Tests.h
     Source/PanelLists.cpp
     Source/PanelLists.h
     Source/Pokemon/Inference/Pokemon_AbilityReader.cpp
