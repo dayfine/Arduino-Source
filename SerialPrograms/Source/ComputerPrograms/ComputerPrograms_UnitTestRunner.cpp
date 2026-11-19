@@ -5,7 +5,6 @@
  */
 
 #include "Common/Cpp/HttpServer/HttpServer_Tests.h"
-#include "Common/Cpp/Json/JsonTools_Tests.h"
 #include "Common/Cpp/ListenerSet.h"
 #include "Common/Cpp/MoveOnlyFunction_Tests.h"
 #include "Common/Cpp/ScopeExit.h"
@@ -15,7 +14,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Common/Qt/QtThreadPool_Tests.h"
 #include "Kernels/Kernels_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h"
 #include "CommonFramework/AudioPipeline/AudioInfo_Tests.h"
 #include "CommonFramework/AudioPipeline/Tools/ChannelMixer.h"
 #include "CommonFramework/AudioPipeline/SinkPipeline_Tests.h"
@@ -27,9 +26,6 @@
 #include "CommonFramework/ProgramTransition_Tests.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Windows/LabChannel_Tests.h"
-#include "CommonFramework/Startup/StartupArguments_Tests.h"
-#include "CommonFramework/Startup/LabStartupPolicy_Tests.h"
-#include "CommonFramework/Devices/LabDeviceAccessQt_Tests.h"
 #include "CommonFramework/Windows/LabHold_Tests.h"
 #include "CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink_Tests.h"
 #include "Controllers/MgbaLink/MgbaLink_Keys_Tests.h"
@@ -39,14 +35,16 @@
 #include "CommonFramework/Windows/LabProgramContract_Tests.h"
 #include "CommonFramework/Windows/LabSnapshot_Tests.h"
 #include "CommonFramework/Windows/LabStateJson_Tests.h"
+#include "CommonFramework/Headless/HeadlessHost_Tests.h"
+#include "CommonFramework/Startup/StartupArguments_Tests.h"
+#include "PanelCatalog_Tests.h"
+#include "CommonFramework/Startup/LabStartupPolicy_Tests.h"
+#include "CommonFramework/Devices/LabDeviceAccessQt_Tests.h"
 #include "CommonTools/VisualDetectors/BlackBorderDetector.h"
 #include "CommonTools/OCR/OCR_Tests.h"
-#include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
 
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h"
-#include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
 #include "NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
@@ -54,15 +52,6 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
-#include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
-#include "Pokemon/Navigation/Pokemon_Gates_Tests.h"
-#include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
-#include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
-#include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
-#include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
-#include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
@@ -100,12 +89,12 @@ bool matches_any(std::string_view test_name, std::span<const std::string_view> f
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
+
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
     add_tests_Sockets(ret, GlobalThreadPools::unlimited_normal());
     add_tests_HttpServer(ret, GlobalThreadPools::unlimited_normal());
     add_tests_BlackBorderDetector(ret);
     add_tests_ListenerSet(ret);
-    add_tests_JsonTools(ret);
     add_tests_MoveOnlyFunction(ret);
     SysbotBase::add_tests_SysbotBasePing(ret);
     SysbotBase::add_tests_SysbotBaseReceiveLine(ret);
@@ -116,9 +105,6 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_SinkPipeline(ret);
     add_tests_AudioFileLoader(ret);
     add_tests_LabChannel(ret);
-    add_tests_StartupArguments(ret);
-    add_tests_LabStartupPolicy(ret);
-    add_tests_LabDeviceAccess(ret);
     add_tests_LabHold(ret);
     MgbaLink::add_tests(ret);
     MgbaLink::add_key_tests(ret);
@@ -130,23 +116,16 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabStateJson(ret);
     add_tests_ProgramPrecheckRun(ret);
     add_tests_ProgramTransition(ret);
+    add_tests_StartupArguments(ret);
+    add_tests_PanelCatalog(ret);
+    add_tests_LabStartupPolicy(ret);
+    add_tests_HeadlessHost(ret);
+    add_tests_LabDeviceAccess(ret);
     OCR::add_tests(ret);
-    add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
-    Pokemon::add_tests_LegPlanner(ret);
-    Pokemon::add_tests_LegWalker(ret);
-    Pokemon::add_tests_WallRecovery(ret);
-    Pokemon::add_tests_MapData(ret);
-    Pokemon::add_tests_ConnectedMaps(ret);
-    Pokemon::add_tests_Gates(ret);
-    Pokemon::add_tests_MoveMechanics(ret);
-    Pokemon::add_tests_RuntimeMap(ret);
-    Pokemon::add_tests_RouteLog(ret);
-    Pokemon::add_tests_AutoStory(ret);
+    Pokemon::add_tests_AutoStorySelect(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
-    NintendoSwitch::add_tests_HomeTileReader(ret);
-    NintendoSwitch::add_tests_SystemKeyboardDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
     NintendoSwitch::add_tests_CommandFileRunner(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
@@ -193,6 +172,25 @@ const StringSelectDatabase& TEST_DATABASE(){
     return DATABASE;
 }
 
+
+namespace{
+
+//  For each test in `UNIT_TESTS_ALL()` whose name contains `filter`, in name order, call
+//  `add_test(test)`. An empty `filter` matches all the tests. Return the number of tests
+//  visited.
+template <class AddTest>
+size_t add_tests_matching(const std::string& filter, AddTest&& add_test){
+    size_t count = 0;
+    for (const auto& test : UNIT_TESTS_ALL()){
+        if (filter.empty() || test.first.contains(filter)){
+            count++;
+            add_test(test.second);
+        }
+    }
+    return count;
+}
+
+}
 
 
 
@@ -324,15 +322,12 @@ void UnitTestRunner::on_config_value_changed(void* object){
     if (object == &SUBSTRING_TEST){
         std::string name = SUBSTRING_TEST;
         TESTS_TO_RUN.set("");
-        size_t count = 0;
-        for (const auto& test : UNIT_TESTS_ALL()){
-            if (test.first.contains(name)){
-                count++;
-                if (count <= 1000){
-                    TESTS_TO_RUN.append(test.first + "\n");
-                }
+        size_t num_shown = 0;
+        size_t count = add_tests_matching(name, [&](std::shared_ptr<const UnitTest> test){
+            if (++num_shown <= 1000){
+                TESTS_TO_RUN.append(test->name() + "\n");
             }
-        }
+        });
         if (count > 1000){
             TESTS_TO_RUN.append("<" + tostr_u_commas(count - 1000) + " more...>\n");
         }
@@ -363,6 +358,12 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
 
     const UnitTestDatabase& all_tests = UNIT_TESTS_ALL();
 
+    auto add_matching = [&](const std::string& filter){
+        add_tests_matching(filter, [&](std::shared_ptr<const UnitTest> test){
+            runner.add_test(test);
+        });
+    };
+
     switch ((RunMode)RUN_MODE){
     case RunMode::RUN_ONE:{
         auto iter = all_tests.find(SINGLE_TEST.slug());
@@ -376,21 +377,12 @@ void UnitTestRunner::program(ProgramEnvironment& env, CancellableScope& scope){
         runner.add_test(iter->second);
         break;
     }
-    case RunMode::RUN_SUBSTRING_MATCH:{
-        std::string name = SUBSTRING_TEST;
-        for (const auto& test : all_tests){
-            if (test.first.contains(name)){
-                runner.add_test(test.second);
-            }
-        }
+    case RunMode::RUN_SUBSTRING_MATCH:
+        add_matching(SUBSTRING_TEST);
         break;
-    }
-    case RunMode::RUN_ALL:{
-        for (const auto& test : all_tests){
-            runner.add_test(test.second);
-        }
+    case RunMode::RUN_ALL:
+        add_matching("");
         break;
-    }
     }
 
     runner.run();

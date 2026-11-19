@@ -58,6 +58,18 @@ const ArgumentCase ARGUMENT_CASES[] = {
      .expectation = {.mode = StartupMode::REJECTED}},
     {.input = {.name = "unknown after valid Qt option", .arguments = {"-reverse", "--test", "bdsp"}},
      .expectation = {.mode = StartupMode::REJECTED}},
+    {.input = {.name = "headless run", .arguments = {"--headless", "--profile", "emu-1", "--run", "UnitTestRunner"}},
+     .expectation = {.mode = StartupMode::HEADLESS, .profile = "emu-1"}},
+    {.input = {.name = "headless run with options", .arguments = {"--headless", "--run", "UnitTestRunner", "--options", "opts.json"}},
+     .expectation = {.mode = StartupMode::HEADLESS}},
+    {.input = {.name = "headless without run", .arguments = {"--headless", "--profile", "emu-1"}},
+     .expectation = {.mode = StartupMode::REJECTED}},
+    {.input = {.name = "run without headless", .arguments = {"--run", "UnitTestRunner"}},
+     .expectation = {.mode = StartupMode::REJECTED}},
+    {.input = {.name = "options without run", .arguments = {"--headless", "--options", "opts.json"}},
+     .expectation = {.mode = StartupMode::REJECTED}},
+    {.input = {.name = "headless with tests", .arguments = {"--headless", "--run", "UnitTestRunner", "--command-line-test-mode"}},
+     .expectation = {.mode = StartupMode::REJECTED}},
 };
 
 UnitTestResult check_argument_case(const ArgumentCase& test){
