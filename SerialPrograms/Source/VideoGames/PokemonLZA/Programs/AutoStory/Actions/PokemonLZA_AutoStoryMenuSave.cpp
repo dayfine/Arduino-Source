@@ -71,7 +71,7 @@ MenuSaveScreen menu_save_screen(const ScreenObservation& look){
     if (look.events.has(ScreenEvent::CHOICE_BOX)){
         return MenuSaveScreen::CHOICE;
     }
-    if (has_reading(look, ADVANCE_ARROW_READING)){
+    if (look.events.has(ScreenEvent::DIALOG_BOX)){
         return MenuSaveScreen::TEXT;
     }
     if (has_reading(look, MENU_SAVE_BUTTON_READING)){

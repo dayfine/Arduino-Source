@@ -3,6 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  */
+//  code-health: allow file_lines -- one golden table for the scene steps, sharing the recorded screens above it
 
 /*  Golden sequences: a scene step's screens as a console run logged them,
  *  played back through the built-in plan's step by time (the clock moves
@@ -57,7 +58,7 @@ Milliseconds seconds_in_log(std::string_view text){
 ScreenObservation golden_look(Milliseconds at, std::string_view screen){
     const std::pair<std::string_view, ScreenEvent> events[] = {
         {"black fade", ScreenEvent::FADE_BLACK}, {"white fade", ScreenEvent::FADE_WHITE},
-        {"choice box", ScreenEvent::CHOICE_BOX},
+        {"text box", ScreenEvent::DIALOG_BOX}, {"choice box", ScreenEvent::CHOICE_BOX},
         {"battle", ScreenEvent::BATTLE_STARTED}, {"party bar", ScreenEvent::PLAYER_CAN_MOVE},
         {"A prompt", ScreenEvent::INTERACT_PROMPT}, {"still", ScreenEvent::SCREEN_STILL},
     };
@@ -99,7 +100,7 @@ struct GoldenScreen{
     std::string_view screen;
 };
 
-//  One per line: "5.9s: party bar, advance arrow".
+//  One per line: "5.9s: text box, advance arrow".
 std::vector<GoldenScreen> golden_screens(std::string_view text){
     std::vector<GoldenScreen> screens;
     size_t from = 0;
@@ -215,7 +216,437 @@ struct GoldenCase{
     Expectation expectation;
 };
 
+//  03.02b tepig_battle_start (console B 2026-11-17 23:25): "We're not done
+//  just yet!", the Type Matchups card, the battle's fade, the HUD.
+constexpr std::string_view TEPIG_START = R"(
+0.0s: text box, advance arrow
+0.4s: text box
+0.8s: nothing
+1.3s: tutorial card
+1.7s: still, tutorial card
+2.5s: tutorial card
+2.9s: nothing
+3.4s: black fade
+4.5s: still
+4.7s: battle, still
+)";
+
+//  The same start four minutes before (console B 2026-11-17 23:21), the
+//  camera turned away by the Totodile battle's lock-on recovery: after the
+//  fade, the battle's effects with no HUD for 22 s, then the party bar.
+constexpr std::string_view TEPIG_START_OFF_CAMERA = R"(
+0.0s: text box, advance arrow
+0.4s: nothing
+0.9s: tutorial card
+1.7s: still, tutorial card
+2.1s: tutorial card
+2.6s: nothing
+3.1s: black fade
+4.1s: nothing
+26.6s: party bar
+)";
+
+//  A battle start whose fade a cutscene follows (the screen moving, no
+//  party bar), as Totodile's start (console B 2026-11-17 23:20) got blind
+//  ZL and turns ~4 s after its fade; the party bar once it settles.
+constexpr std::string_view BATTLE_START_CUTSCENE = R"(
+0.0s: text box, advance arrow
+0.4s: black fade
+1.4s: nothing
+20.0s: party bar
+)";
+
+//  01.02 pancham_cornered, French, passed (console B 2026-11-16 22:45).
+//  From 35 s on, the text and the screen between its lines took turns.
+constexpr std::string_view PANCHAM_FR = R"(
+0.0s: still
+0.8s: nothing
+5.9s: text box
+8.3s: text box, advance arrow
+8.7s: nothing
+10.8s: text box
+16.0s: nothing
+16.6s: text box, advance arrow
+17.0s: nothing
+19.5s: text box
+19.9s: text box, advance arrow
+20.3s: text box
+21.5s: nothing
+22.0s: text box
+24.5s: text box, advance arrow
+24.9s: nothing
+27.4s: text box
+28.6s: nothing
+30.7s: text box, advance arrow
+31.1s: nothing
+33.6s: text box
+34.8s: text box, advance arrow
+35.2s: nothing
+35.7s: text box, advance arrow
+36.1s: nothing
+36.6s: text box, advance arrow
+37.0s: nothing
+37.9s: text box, advance arrow
+38.3s: nothing
+38.7s: text box, advance arrow
+39.1s: nothing
+39.6s: text box, advance arrow
+40.0s: nothing
+40.4s: text box, advance arrow
+40.8s: nothing
+41.2s: text box, advance arrow
+41.6s: nothing
+42.2s: text box, advance arrow
+42.6s: nothing
+43.0s: text box, advance arrow
+43.4s: nothing
+44.4s: text box, advance arrow
+44.8s: nothing
+45.2s: text box, advance arrow
+45.6s: nothing
+46.5s: text box
+48.2s: nothing
+48.7s: text box
+49.1s: nothing
+49.5s: text box
+49.9s: nothing
+50.3s: text box
+50.7s: text box, advance arrow
+51.1s: nothing
+51.6s: text box
+53.3s: nothing
+55.3s: text box
+55.7s: nothing
+56.1s: text box
+56.5s: text box, advance arrow
+56.9s: text box
+58.5s: text box, choice box
+)";
+
+//  03.01 lobby_scene up to Alton's first choice (console B 2026-11-17
+//  00:12, German): B for the text then, one in flight as the choice
+//  opened. The run went on to loop on his choice; here the screen stays
+//  quiet after it, as once he has his answer.
+constexpr std::string_view LOBBY_ALTON_DE = R"(
+0.0s: nothing
+0.5s: black fade
+6.7s: still
+7.4s: nothing
+13.0s: text box, advance arrow
+13.4s: nothing
+14.5s: text box, advance arrow
+14.9s: nothing
+16.9s: text box
+19.0s: text box, advance arrow
+19.4s: text box
+19.9s: text box, choice box, 2 rows, row 0
+20.3s: nothing
+)";
+
 const GoldenCase GOLDEN_CASES[] = {
+    {
+        .name = "03.11 leave_mable, a bare scene through Mable's menus (passed 2026-11-16 21:40)",
+        .input = {.checkpoint = "03.11", .step = "leave_mable", .screens = R"(
+0.0s: text box, still
+0.4s: nothing
+1.6s: text box
+2.0s: nothing
+2.9s: black fade
+5.9s: still
+6.3s: text box
+9.2s: nothing
+9.6s: text box
+11.7s: text box, advance arrow
+12.1s: text box
+19.4s: nothing
+19.8s: black fade
+22.9s: still
+23.3s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
+                //  Her mission and reward menus: only B closes them.
+                {"nothing", "B"}, {"still", "B"},
+                {"black fade", "-"},
+                {"party bar", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
+    {
+        .name = "03.04 pokedex_app, the nurse and the Pokedex app (passed 2026-11-16 03:51)",
+        .input = {.checkpoint = "03.04", .step = "pokedex_app", .screens = R"(
+0.0s: still
+0.4s: text box
+0.8s: text box, advance arrow
+1.2s: text box
+7.3s: nothing
+7.7s: text box
+10.6s: text box, advance arrow
+11.4s: nothing
+21.2s: text box, advance arrow
+21.6s: nothing
+25.0s: text box
+28.3s: nothing
+32.1s: white fade
+33.4s: nothing
+36.3s: text box
+36.7s: nothing
+38.2s: text box
+38.6s: nothing
+45.4s: tutorial card
+46.2s: still, tutorial card
+46.6s: nothing
+50.0s: text box
+50.8s: text box, advance arrow
+51.2s: text box
+54.0s: nothing
+55.5s: black fade
+57.0s: still
+57.4s: nothing
+57.9s: text box
+59.5s: text box, advance arrow
+59.9s: text box
+61.2s: nothing
+64.5s: black fade
+66.8s: still
+67.2s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                //  The Pokedex screens: only B closes them.
+                {"nothing", "- or B"}, {"still", "- or B"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                {"white fade", "-"}, {"black fade", "-"},
+                {"party bar", "-"},
+            },
+            .verdict = "done", .end = "[PLZA talk_to_pokedex_screen] done on can_move.",
+        },
+    },
+    {
+        .name = "01.03 andi_battle_start, Andi's talk to the battle HUD (passed 2026-11-16 22:51)",
+        .input = {.checkpoint = "01.03", .step = "andi_battle_start", .screens = R"(
+0.0s: text box, still, advance arrow
+0.4s: nothing
+2.4s: text box
+3.6s: text box, advance arrow
+4.1s: nothing
+5.6s: text box
+6.8s: nothing
+7.3s: text box
+9.0s: text box, advance arrow
+9.4s: nothing
+10.4s: text box
+12.9s: nothing
+16.9s: text box
+18.6s: text box, advance arrow
+19.5s: black fade
+25.6s: still
+26.6s: still, advance arrow
+27.0s: advance arrow
+27.8s: nothing
+38.5s: battle, controls hint
+)"},
+        .expectation = {
+            .keys = {
+                //  A: the talk ends in the battle, with no prompt to restart.
+                {"text box", "A"}, {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
+                //  The VS splash's subtitles show only the chevron.
+                {"still, advance arrow", "A"}, {"advance arrow", "A"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"},
+                {"battle, controls hint", "-"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
+        },
+    },
+    {
+        .name = "03.02b tepig_battle_start, the battle HUD right after the battle's fade (passed 2026-11-17 23:25)",
+        .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START},
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"}, {"text box", "A"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                //  No lock-on: the HUD shows within 3 s of the fade.
+                {"nothing", "-"}, {"black fade", "-"}, {"still", "-"},
+                {"battle, still", "-"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
+        },
+    },
+    {
+        //  The battle ran off camera, with no HUD until locked on.
+        .name = "03.02b tepig_battle_start, the party bar a second after the battle's fade: ZL, the move symbols lock on (failed 2026-11-17 23:21)",
+        .input = {.checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA, .symbols_from_watch = 1},
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                {"nothing", "-"}, {"black fade", "-"},
+                {"party bar", "ZL"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] done on locked_on.",
+        },
+    },
+    {
+        .name = "03.02b tepig_battle_start, the opponent behind the camera: no move symbols, a turn, L and ZL again",
+        .input = {
+            .checkpoint = "03.02b", .step = "tepig_battle_start", .screens = TEPIG_START_OFF_CAMERA, .symbols_from_watch = 2,
+        },
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                {"nothing", "-"}, {"black fade", "-"},
+                {"party bar", "ZL or stick or L"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] lock-on 2/5: turned 90 degrees right, L, ZL held: the move symbols showed.",
+        },
+    },
+    {
+        .name = "03.02b taunie_battle_start, a cutscene after the battle's fade: no ZL until it settles",
+        .input = {.checkpoint = "03.02b", .step = "taunie_battle_start", .screens = BATTLE_START_CUTSCENE, .symbols_from_watch = 1},
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"}, {"black fade", "-"},
+                {"nothing", "-"},
+                {"party bar", "ZL"},
+            },
+            .verdict = "done", .end = "[PLZA story_battle_start] done on locked_on.",
+        },
+    },
+    {
+        .name = "02.05 floor_question, the elevator's talk with A to its choice (passed 2026-11-16 23:50)",
+        .input = {.checkpoint = "02.05", .step = "floor_question", .screens = R"(
+0.0s: black fade, still
+1.3s: still
+2.1s: text box, still, advance arrow
+2.5s: nothing
+3.0s: text box, advance arrow
+3.4s: nothing
+3.9s: text box, choice box
+)"},
+        .expectation = {
+            .keys = {
+                //  B would close the elevator's talk.
+                {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
+                {"black fade, still", "-"}, {"still", "-"}, {"nothing", "-"},
+                {"text box, choice box", "-"},
+            },
+            .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
+        },
+    },
+    {
+        .name = "01.02 pancham_cornered, French, B to Pancham's choice (passed 2026-11-16 22:45)",
+        .input = {.checkpoint = "01.02", .step = "pancham_cornered", .screens = PANCHAM_FR},
+        .expectation = {
+            .keys = {
+                //  B: an A as the text ends could land on the choice.
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                {"still", "-"}, {"nothing", "- or +"},
+                {"text box, choice box", "-"},
+            },
+            .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
+        },
+    },
+    {
+        .name = "01.02 battle_area, French, to Ryon's A prompt (passed 2026-11-16 22:46)",
+        .input = {.checkpoint = "01.02", .step = "battle_area", .screens = R"(
+0.0s: text box
+2.0s: nothing
+2.6s: text box
+5.1s: text box, advance arrow
+5.5s: text box
+6.7s: nothing
+8.2s: black fade
+13.8s: still
+14.4s: nothing
+14.9s: A prompt
+)"},
+        .expectation = {
+            .keys = {
+                //  B: an A on the closing box restarts the talk.
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
+                //  No A: it restarts Ryon's talk.
+                {"A prompt", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on talk_prompt.",
+        },
+    },
+    {
+        .name = "03.05 heal_party, the nurse's talk to control (passed 2026-11-16 06:59)",
+        .input = {.checkpoint = "03.05", .step = "heal_party", .screens = R"(
+0.0s: still
+0.3s: text box, still
+0.7s: text box
+2.3s: nothing
+2.8s: text box
+4.2s: party bar
+4.7s: party bar, A prompt
+)"},
+        .expectation = {
+            .keys = {
+                //  B: an A on her closing box restarts her talk.
+                {"text box", "B"}, {"text box, still", "B"},
+                {"still", "-"}, {"nothing", "-"},
+                {"party bar", "-"}, {"party bar, A prompt", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
+    {
+        .name = "03.01 lobby_scene, German, A on the text as Alton's choice opens (B in flight picked his cancel row, 2026-11-17 00:12)",
+        .input = {.checkpoint = "03.01", .step = "lobby_scene", .screens = LOBBY_ALTON_DE},
+        .expectation = {
+            .keys = {
+                //  A B landing as the choice opens would take its last row.
+                {"text box", "A"}, {"text box, advance arrow", "A"},
+                {"text box, choice box, 2 rows, row 0", "A"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
+        },
+    },
+    {
+        .name = "03.06 wild_zones_tutorial, French, B through the text and A on the card to control (passed 2026-11-17 14:28)",
+        .input = {.checkpoint = "03.06", .step = "wild_zones_tutorial", .screens = R"(
+0.0s: still
+0.3s: black fade, still
+1.0s: still
+2.1s: text box, still
+2.5s: text box
+2.9s: text box, advance arrow
+3.3s: text box
+3.7s: nothing
+5.7s: text box
+7.0s: text box, advance arrow
+7.4s: text box
+9.0s: nothing
+11.0s: text box
+11.8s: text box, advance arrow
+14.9s: tutorial card
+15.3s: still, tutorial card
+16.1s: nothing
+16.6s: text box
+18.3s: text box, advance arrow
+18.7s: nothing
+19.2s: black fade
+21.5s: still
+22.0s: party bar, still
+22.2s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
+                {"tutorial card", "A"}, {"still, tutorial card", "A"},
+                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
+                {"party bar", "-"}, {"party bar, still", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
     {
         .name = "03.06 wild_zones_tutorial, the HUD 45 s and no scene: not at its trigger (failed 2026-11-16 21:03)",
         .input = {.checkpoint = "03.06", .step = "wild_zones_tutorial", .screens = R"(
@@ -233,6 +664,60 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
+        .name = "03.07 after_catches, French, A on the subtitles' chevron, B on the text box, to control (passed 2026-11-17 14:31)",
+        .input = {.checkpoint = "03.07", .step = "after_catches", .screens = R"(
+0.0s: text box, advance arrow
+0.4s: nothing
+1.9s: advance arrow
+2.4s: nothing
+2.9s: text box
+3.7s: text box, advance arrow
+4.1s: nothing
+4.6s: text box
+10.1s: black fade
+12.2s: still
+12.5s: nothing
+13.0s: party bar, A prompt, controls hint
+)"},
+        .expectation = {
+            .keys = {
+                //  B: an A on the closing box restarts the talk.
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                //  A subtitle with no box.
+                {"advance arrow", "A"},
+                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
+                {"party bar, A prompt, controls hint", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on can_move.",
+        },
+    },
+    {
+        .name = "03.09 research_lab_gate, French, Ryon's scene to control (passed 2026-11-17 14:34)",
+        .input = {.checkpoint = "03.09", .step = "research_lab_gate", .screens = R"(
+0.0s: black fade, still
+1.3s: nothing
+7.4s: text box
+8.6s: text box, advance arrow
+9.0s: nothing
+14.1s: text box
+17.8s: nothing
+20.8s: advance arrow
+21.2s: nothing
+25.3s: black fade
+27.3s: still
+27.8s: party bar, still
+28.1s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, advance arrow", "B"}, {"advance arrow", "A"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
+                {"party bar", "-"}, {"party bar, still", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
+    {
         .name = "03.09 research_lab_gate, the party bar and an A prompt 45 s and no scene (failed 2026-11-16 21:34)",
         .input = {.checkpoint = "03.09", .step = "research_lab_gate", .screens = R"(
 0.0s: party bar, A prompt
@@ -243,6 +728,32 @@ const GoldenCase GOLDEN_CASES[] = {
             .end = "[Event] 03.09/1 research_lab_gate: failed: scene_never_started: scene: the scene never started (player not at its "
                 "trigger?): the HUD up and no text, choice, battle or cutscene for 45000 ms (expecting the controls hint, the party bar, "
                 "the A prompt or the mission banner).",
+        },
+    },
+    {
+        .name = "03.10 arrive_3f, French, a bare scene off the elevator to control (passed 2026-11-17 14:35)",
+        .input = {.checkpoint = "03.10", .step = "arrive_3f", .screens = R"(
+0.0s: nothing
+0.8s: black fade
+5.4s: still
+5.8s: nothing
+6.6s: text box, advance arrow
+7.0s: nothing
+10.7s: text box
+14.0s: text box, advance arrow
+14.4s: text box
+16.0s: nothing
+17.2s: black fade
+18.8s: still
+19.2s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                {"nothing", "B or +"}, {"still", "B"},
+                {"black fade", "-"}, {"party bar", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
         },
     },
     {
@@ -347,6 +858,105 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
+        //  heal_party's screens start where the talk hands over (3.5 s).
+        .name = "03.05 whole checkpoint: the walk to the nurse, the talk, her heal to control (passed 2026-11-17 14:27)",
+        .input = {.checkpoint = "03.05", .step = "", .screens = R"(
+0.0s: party bar
+2.6s: party bar, A prompt
+3.5s: text box, still
+3.9s: text box
+4.7s: text box, advance arrow
+5.1s: text box
+6.0s: nothing
+6.5s: text box, advance arrow
+6.9s: nothing
+7.9s: party bar
+8.4s: party bar, A prompt
+)"},
+        .expectation = {
+            .keys = {
+                {"party bar", "L or stick or hold"}, {"party bar, A prompt", "A"},
+                {"text box", "B"}, {"text box, still", "B"}, {"text box, advance arrow", "B"},
+                {"nothing", "-"},
+            },
+            .verdict = "done", .end = "[PLZA scene] done on can_move.",
+        },
+    },
+    {
+        //  From the black fade on; the controls hint at the end is synthetic.
+        .name = "01.01 arrival_scenes, Italian, Jacinthe's subtitles each after a quiet spell, then the controls hint (stopped as a loop 2026-11-15 22:27)",
+        .input = {.checkpoint = "01.01", .step = "arrival_scenes", .screens = R"(
+0.0s: black fade
+2.4s: nothing
+3.9s: still
+5.6s: nothing
+12.5s: advance arrow
+12.9s: nothing
+13.8s: text box
+14.3s: nothing
+24.4s: advance arrow
+24.8s: nothing
+34.2s: advance arrow
+34.7s: nothing
+39.7s: advance arrow
+40.6s: controls hint
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"advance arrow", "A"},
+                //  Plus once the cutscene, moving then still, has run 3 s.
+                {"nothing", "- or +"}, {"still", "- or +"}, {"black fade", "-"}, {"controls hint", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on controls_hint.",
+        },
+    },
+    {
+        //  The controls hint is synthetic. Console B 2026-11-19 held such
+        //  stills 5-10 s with no Plus.
+        .name = "01.01 arrival_scenes, a cutscene still 3 s after the text gets Plus",
+        .input = {.checkpoint = "01.01", .step = "arrival_scenes", .screens = R"(
+0.0s: text box
+0.4s: nothing
+1.0s: still
+8.0s: text box
+9.0s: controls hint
+)"},
+        .expectation = {
+            .keys = {{"text box", "B"}, {"nothing", "-"}, {"still", "+"}, {"controls hint", "-"}},
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on controls_hint.",
+        },
+    },
+    {
+        .name = "01.02 battle_area, Italian, the A Parla prompt past 20 s ends the step (A there restarted the talk 2026-11-15 21:56)",
+        .input = {.checkpoint = "01.02", .step = "battle_area", .screens = R"(
+0.0s: text box
+1.2s: text box, advance arrow
+1.7s: nothing
+2.2s: text box
+3.0s: text box, advance arrow
+3.4s: nothing
+3.7s: text box
+5.6s: nothing
+7.1s: black fade
+12.8s: still
+13.2s: nothing
+13.7s: A prompt
+15.7s: nothing
+16.2s: text box
+17.0s: text box, advance arrow
+17.4s: nothing
+18.4s: A prompt
+22.4s: nothing
+)"},
+        .expectation = {
+            .keys = {
+                {"text box", "B"}, {"text box, advance arrow", "B"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"A prompt", "-"},
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on talk_prompt.",
+        },
+    },
+    {
         //  The controls hint after the cutscene is synthetic.
         .name = "02.02 street_scene, English, a textless cutscene past the start window, then the controls hint (failed as scene_never_started 2026-11-15 23:23)",
         .input = {.checkpoint = "02.02", .step = "street_scene", .screens = R"(
@@ -356,29 +966,8 @@ const GoldenCase GOLDEN_CASES[] = {
 46.0s: controls hint
 )"},
         .expectation = {
-            .keys = {{"black fade, still", "-"}, {"still", "- or A or +"}, {"nothing", "- or A or +"}, {"controls hint", "-"}},
+            .keys = {{"black fade, still", "-"}, {"still", "-"}, {"nothing", "- or +"}, {"controls hint", "-"}},
             .verdict = "done", .end = "[PLZA scene] done on controls_hint.",
-        },
-    },
-    {
-        //  Console B 2026-11-19 09:21: the party bar with a battle reading at
-        //  103.4 s, then a look without it; the beat's A 0.5 s later started a
-        //  talk with Vinci beside the player, and every A after restarted it.
-        .name = "03.02b plaza_scene, no A once the party bar shows, B on text after it (Vinci talk loop, scene_timeout 2026-11-19 09:25)",
-        .input = {.checkpoint = "03.02b", .step = "plaza_scene", .screens = R"(
-0.0s: A prompt, party bar
-0.5s: advance arrow
-2.5s: battle, party bar
-3.0s: nothing
-3.5s: advance arrow, still
-4.0s: party bar
-)"},
-        .expectation = {
-            .keys = {
-                {"A prompt, party bar", "A"}, {"advance arrow", "A"}, {"battle, party bar", "-"}, {"nothing", "-"},
-                {"advance arrow, still", "B"}, {"party bar", "-"},
-            },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on can_move.",
         },
     },
 };

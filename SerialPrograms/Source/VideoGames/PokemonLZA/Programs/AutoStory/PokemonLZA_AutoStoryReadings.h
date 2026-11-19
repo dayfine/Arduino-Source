@@ -16,7 +16,6 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-
 //  1: the autosave badge ("Saving...", top right).
 constexpr std::string_view AUTOSAVE_READING = "scene.autosave";
 
@@ -33,10 +32,6 @@ constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
 //  1: the "COMPLETE" card a main mission ends with; it waits for A. Excludes
 //  MISSION_BANNER_READING.
 constexpr std::string_view MISSION_COMPLETE_READING = "scene.mission_complete";
-
-//  1: a white dialogue box (its bottom edge, while the text still types),
-//  for the "[Signals]" log only: no decision reads it.
-constexpr std::string_view SHADOW_DIALOG_BOX_READING = "shadow.dialog_box";
 
 //  A choice box's row count; unset when the rows do not read.
 constexpr std::string_view CHOICE_ROWS_READING = "choice.rows";

@@ -17,17 +17,17 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleMarkersDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The shared events from PLZA's detectors. No DIALOG_BOX: text is the
-//  backend's advance arrow reading, and PLAYER_CAN_MOVE (the party bar)
-//  also shows under a talk's text. BATTLE_STARTED is the HUD's hints (only
-//  while locked on) or the player's panel with the battle markers (the panel
-//  alone shows all through a wild zone); story battles show no Run prompt.
+//  The shared events from PLZA's detectors. DIALOG_BOX shows while the text
+//  still types. BATTLE_STARTED is the HUD's hints (only while locked on) or
+//  the player's panel with the battle markers (the panel alone shows all
+//  through a wild zone); story battles show no Run prompt.
 class PlzaScreenObserver : public ScreenEventObserver{
 public:
     PlzaScreenObserver();
@@ -40,6 +40,7 @@ public:
     virtual void make_overlays(VideoOverlaySet& items) const override;
 
 private:
+    StoryDialogDetector m_dialog;
     SelectionArrowDetector m_choice_arrow;
     ButtonDetector m_interact;
     ButtonDetector m_battle_hint;

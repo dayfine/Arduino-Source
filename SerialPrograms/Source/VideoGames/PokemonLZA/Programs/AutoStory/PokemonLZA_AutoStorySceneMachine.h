@@ -62,8 +62,6 @@ struct SceneMachineConfig{
     std::optional<Button> text_button = std::nullopt;
     //  The quiet end is control: Hotel Z shows no party bar or prompt.
     bool quiet_is_control = false;
-    //  A talk: A only, no Plus even on a fade-in (03.01's lobby).
-    bool talk = false;
     //  The step plays a scene: the HUD ends it only once a scene is under way.
     //  Fails ("scene_never_started") when the HUD shows this long with no
     //  scene: the player is not at the trigger.
@@ -79,14 +77,13 @@ struct SceneMachineConfig{
 //  moving screen (a cutscene can play a minute with no text).
 bool scene_under_way(const ScreenObservation& look);
 
-//  Text waiting for A: the advance chevron, with or without a box.
+//  A text box, or the advance chevron without one.
 bool text_shows(const ScreenObservation& look);
 
 //  A black or a white fade.
 bool fade_shows(const ScreenObservation& look);
 
-//  The party bar with nothing busy over it: no advance arrow, fade or choice
-//  (it shows under a talk's lines too).
+//  The party bar with no text box over it (it shows between a talk's lines too).
 bool party_bar_free(const ScreenObservation& look);
 
 //  "text box, advance arrow": `look`'s events and readings; "nothing" for none.
@@ -94,11 +91,7 @@ std::string describe_scene_look(const ScreenObservation& look);
 
 //  Presses through scenes until control: the party bar or controls hint held
 //  1 s, an A prompt held 1 s past `min_length`, or the mission banner on two
-//  looks. A choice takes its top row. In a talk (a scene seen, and no HUD or
-//  banner since, or text, a fade or a choice since that no blind press caused)
-//  a quiet screen with no HUD gets `blind_button` every 600 ms; text after
-//  the HUD gets B unless `text_button` says otherwise. The
-//  quiet end counts only once those presses change nothing. Fails as "scene_quiet" (unless
+//  looks. A choice takes its top row. Fails as "scene_quiet" (unless
 //  `quiet_is_control`), "scene_never_started", "scene_timeout" (by the looks'
 //  time) or "scene_stuck" (a state that recurs too often, or a frozen screen).
 //  For which config fields a run still needs, logs "[SceneQuirk] <step>

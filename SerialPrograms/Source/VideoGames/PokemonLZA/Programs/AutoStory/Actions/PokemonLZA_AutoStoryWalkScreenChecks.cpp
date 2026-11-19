@@ -90,13 +90,16 @@ constexpr Milliseconds PROMPT_IS_CONTROL = 1000ms;
 constexpr Milliseconds PROMPT_STEADY_GAP = 300ms;
 
 bool prompt_taken(const ScreenObservation& look){
-    return fade_shows(look) || text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX);
+    return fade_shows(look) || look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
 }
 
 //  What keeps control from being free; none when it is.
 std::optional<std::string_view> not_free_control(const ScreenObservation& look){
-    if (text_shows(look)){
+    if (look.readings.contains(ADVANCE_ARROW_READING)){
         return "text waiting for A";
+    }
+    if (look.events.has(ScreenEvent::DIALOG_BOX)){
+        return "a text box";
     }
     if (fade_shows(look)){
         return "a fade";
