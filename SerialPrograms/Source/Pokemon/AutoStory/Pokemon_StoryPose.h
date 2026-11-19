@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Where the player is believed to be.
- *  This is the event runner's pose (RunState, Outcome). The story engine
- *  carries a typed pose of its own (the StoryPose concept,
- *  Engine/Pokemon_StoryPoseConcept.h, e.g. ZonePose); a game converts it.
+ *  Where the player is believed to be, and what a run knows.
  *
  */
 
@@ -20,33 +17,27 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  Where on a map the player is, in the game's own terms (a game derives
-//  its own: tiles, a spot in a zone, and how sure it is of them). The engine only carries and prints it; the game's
-//  actions read it back.
+//  Where on a map the player is, in the game's own terms; each game derives
+//  its own.
 struct Position{
     virtual ~Position() = default;
-    //  The text after the map in a log line, e.g. "(10, 20) facing north";
-    //  none for a game that has nothing to say beyond the map.
+    //  The text after the map in a log line; empty for none.
     virtual std::string describe() const{
         return "";
     }
 };
 
-//  Where the player is believed to be. The screen is read; the pose is
-//  tracked, and only an anchor (a wall, a door, an NPC who answered) makes
-//  it certain. `where` is null until the game learns a position and after
-//  the pose is lost; it is shared because poses are copied (an event's
-//  learned pose into the run) and never changed in place.
+//  Where the player is believed to be.
 struct Pose{
     std::string map = {};
+    //  Null while the position is unknown. Never changed in place.
     std::shared_ptr<const Position> where = {};
 };
 //  The map, then the position's description: for log lines.
 std::string to_string(const Pose& pose);
 
 
-//  What a run knows. Flags are set only by confirmed effects and are lost
-//  on a reload.
+//  What a run knows; a reload empties it.
 struct RunState{
     Pose pose = {};
     std::set<std::string> flags = {};

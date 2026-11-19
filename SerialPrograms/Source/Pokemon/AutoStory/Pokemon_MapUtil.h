@@ -2,9 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Lookups in a map through the iterator find() returned, so a call site
- *  says which lookup it does and never copies the value by accident:
- *      const int64_t* budget = value_if_at_it<int64_t>(args, args.find("budget"));
+ *  Pointer lookups in a map through the iterator find() returned.
  *
  */
 

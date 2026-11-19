@@ -6,6 +6,7 @@
 
 #include <format>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -84,8 +85,8 @@ UnitTestResult check_case(const AttemptsCase& test){
             resets += std::format("{}{}", resets.empty() ? "" : " ", next_attempt);
             return !test.input.reset_fails;
         },
-        .log = [&](const std::string& line){
-            log += (log.empty() ? "" : " | ") + line;
+        .log = [&](std::string_view line){
+            log += std::string(log.empty() ? "" : " | ") + std::string(line);
         },
     };
     const CheckpointAttemptsResult result = run_checkpoint_attempts("01.01", attempts);

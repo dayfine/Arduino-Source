@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  One step of a checkpoint as the event runner sees it: its name, why it
- *  is there, and its action.
+ *  One step of a checkpoint, as the event runner sees it.
  *
  */
 
@@ -11,11 +10,15 @@
 #define PokemonAutomation_Pokemon_StoryEvent_H
 
 #include <string>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryOutcome.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
+
+//  What an event does; it may move the run's pose.
+using Act = MoveOnlyFunction<Outcome(RunState& state)>;
 
 //  One step of a checkpoint: an action, named for the log.
 struct Event{

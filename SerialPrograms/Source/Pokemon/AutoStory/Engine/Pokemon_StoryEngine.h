@@ -150,7 +150,7 @@ CheckpointRun run_with_retries(
             }
             return true;
         },
-        .log = [&backend](const std::string& line){
+        .log = [&backend](std::string_view line){
             backend.log(line);
         },
     };

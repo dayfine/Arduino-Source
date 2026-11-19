@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  How a story action or check ended: success, or a named failure, and the
- *  pose the action left the player in when it knows it.
+ *  How a story action or check ended.
  *
  */
 
@@ -13,24 +12,20 @@
 #include <optional>
 #include <string>
 #include <string_view>
-#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryPose.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  How an action or a check ended: empty `failure` is success; otherwise a
-//  name that recoveries match (e.g. "probe_exhausted"). A succeeded action
-//  that knows where it left the player sets `pose`; the runner writes it
-//  into the run before the event's expects are checked.
+//  How an action or a check ended.
 struct Outcome{
+    //  Empty: success; otherwise a name that recoveries match.
     std::string failure = {};
     std::string detail = {};
+    //  Where a succeeded action left the player, when it knows.
     std::optional<Pose> pose = {};
-    //  A succeeded action that left the game as it found it: a read, a
-    //  check, a TM the lead already knows. A reload of the same save undoes
-    //  nothing it did.
+    //  A succeeded action that left the game as it found it (a read, a check).
     bool changed_nothing = false;
 
     bool succeeded() const;
@@ -45,15 +40,10 @@ Outcome outcome_failed(std::string failure, std::string detail = "");
 std::string to_string(const Outcome& outcome);
 
 //  The failure of a step that found the Switch's HOME menu instead of the
-//  game. Nothing in the story can answer it, as every press goes to the
-//  console's menus: no recovery runs and no reload, the run stops.
+//  game: the run stops, with no recovery and no reload.
 inline constexpr std::string_view GAME_NOT_RUNNING = "game_not_running";
 //  GAME_NOT_RUNNING, saying so for the run log.
 Outcome outcome_game_not_running();
-
-
-//  What an event does; it may move the run's pose.
-using Act = MoveOnlyFunction<Outcome(RunState& state)>;
 
 
 

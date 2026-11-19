@@ -2,13 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A story is split at three levels: a segment is a chapter of
- *  checkpoints, a checkpoint is the stretch between two saves and the unit
- *  a run retries, and an event is one step inside a checkpoint. This file
- *  writes the checkpoint lines: start, attempt, reset and pass, in one
- *  format for every game, so the program developer and user find each
- *  checkpoint's attempts the same way in any game's log. Nothing here runs
- *  a story.
+ *  The checkpoint log lines every game's AutoStory writes.
  *
  */
 
@@ -75,11 +69,8 @@ std::string checkpoint_reset_line(
     CheckpointPrefix prefix_kind = CheckpointPrefix::ADD
 );
 
-//  The full lines above go to the log. The video overlay, which wraps its
-//  lines, shows each one short, without its leading "[Tag] ":
-//      [Checkpoint] 12.03: start, 18 events  ->  12.03: start, 18 events
-//  Any line with a leading "[Tag] " is shortened the same way. A line
-//  without a tag, like SV's checkpoint text, is returned unchanged.
+//  `line` without its leading "[Tag] ", for the video overlay; a line with
+//  no tag is returned unchanged.
 std::string story_short_line(std::string_view line);
 
 
