@@ -5,7 +5,9 @@
  */
 
 #include <cmath>
+#include <format>
 #include <span>
+#include <string>
 #include "PokemonLZA_AutoStoryZone1Map.h"
 
 namespace PokemonAutomation{
@@ -49,6 +51,9 @@ constexpr MapPoint ZONE1_OUTLINE[] = {
 constexpr MapPoint MAP_CENTRE{.x = 400, .y = 225};
 constexpr double MAP_CENTRE_RADIUS = 6;
 
+//  The map pin out of the zone on this many reads in a row: out.
+constexpr size_t OUT_OF_ZONE_PIN_READS = 2;
+
 //  Whether `point` is inside the polygon `outline` (even-odd rule).
 bool inside(std::span<const MapPoint> outline, MapPoint point){
     bool in = false;
@@ -74,6 +79,27 @@ bool pin_in_zone_1(MapPoint pin){
         return false;
     }
     return inside(ZONE1_OUTLINE, pin);
+}
+
+Pokemon::Outcome check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin){
+    std::string reads;
+    for (size_t read = 1; read <= OUT_OF_ZONE_PIN_READS; read++){
+        const std::optional<MapPoint> at = pin ? pin() : std::nullopt;
+        if (!at){
+            const std::string detail = std::format(
+                "no map pin on read {} of {}{}", read, OUT_OF_ZONE_PIN_READS, reads.empty() ? "" : std::format(" (before: {})", reads)
+            );
+            backend.log(std::format("[PLZA] out of Wild Zone 1 not known: {}", detail));
+            return Pokemon::outcome_failed("zone_unread", std::format("out of Wild Zone 1 not known: {}", detail));
+        }
+        reads += std::format("{}({:.0f}, {:.0f})", reads.empty() ? "" : ", ", at->x, at->y);
+        if (pin_in_zone_1(*at)){
+            backend.log(std::format("[PLZA] still in Wild Zone 1: the map pin reads {}", reads));
+            return Pokemon::outcome_failed("in_wild_zone", std::format("still in Wild Zone 1: the map pin reads {}", reads));
+        }
+    }
+    backend.log(std::format("[PLZA] out of Wild Zone 1: the map pin reads {}", reads));
+    return Pokemon::outcome_ok();
 }
 
 

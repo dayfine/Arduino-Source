@@ -4,7 +4,6 @@
  *
  */
 
-#include <cmath>
 #include <format>
 #include <functional>
 #include <map>
@@ -12,7 +11,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
@@ -22,7 +20,6 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConfirmChoices.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryGateWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs.h"
@@ -30,8 +27,6 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerWalk.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Map.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryZoneGateReader.h"
 #include "PokemonLZA_AutoStoryConsoleGame.h"
 
 namespace PokemonAutomation{
@@ -113,26 +108,16 @@ Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
     return Pokemon::outcome_ok();
 }
 
-//  A walk to a wild zone's gate on the console, by a GateWalk.
-using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk);
-
-//  "run_to_gate": the walk's heading faced first, if any, then run_to_gate().
-Outcome run_gate_step(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
-    if (walk.heading){
-        const Outcome faced = face_heading(backend, minimap_arrow(env), *walk.heading);
-        if (!faced.succeeded()){
-            return faced;
-        }
-    }
-    return run_to_gate(env, walk.timeout);
-}
+//  A run to a wild zone's gate on the console: no A prompt within
+//  `timeout` fails it.
+using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout);
 
 //  "aimed_run_to_gate": up to 3 runs (run_to_gate()), each after map legs
 //  along the far gate's line (ZONE1_GATE_LINE, ZONE1_GATE_APPROACH) and
 //  facing the bearing from the pin there to the gate. A run with no A
 //  prompt (a pillar) walks the legs again: a bearing from next to the gate
 //  is noise (47 degrees from (359, 255), out of the zone).
-Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
+Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout){
     const MapWaypoint approach[] = {ZONE1_GATE_LINE, ZONE1_GATE_APPROACH};
     Outcome ran = Pokemon::outcome_ok();
     for (int runs = 0; runs < 3; runs++){
@@ -151,7 +136,7 @@ Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk
         if (!faced.succeeded()){
             return faced;
         }
-        ran = run_to_gate(env, walk.timeout);
+        ran = run_to_gate(env, timeout);
         if (ran.succeeded()){
             return ran;
         }
@@ -159,31 +144,14 @@ Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk
     return ran;
 }
 
-//  The handler of the gate walk `name` on the console `env`, its args
-//  "heading" (if given) and "timeout_ms" as a GateWalk. An
-//  OperationFailedException fails as "gate_not_reached".
+//  The handler of the gate run `name` on the console `env`, its arg
+//  "timeout_ms" the run's timeout. An OperationFailedException fails as
+//  "gate_not_reached".
 Handler gate_handler(StoryEnv& env, std::string name, GateStep step){
     return [&env, name, step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
-        GateWalk walk;
-        walk.timeout = Milliseconds(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
-        const auto heading = call.args.find("heading");
-        if (heading != call.args.end()){
-            walk.heading = (double)std::get<int64_t>(heading->second);
-        }
-        const auto aim = call.args.find("aim");
-        if (aim != call.args.end()){
-            if (std::get<std::string>(aim->second) != "zone_1_far_gate"){
-                return Pokemon::outcome_failed("bad_aim", std::format("{}: no map point named {}", name, std::get<std::string>(aim->second)));
-            }
-            //  The bearing from the map pin, the given heading when it is
-            //  not read.
-            const std::optional<MapPoint> pin = read_pin_on_map(env, backend);
-            if (pin){
-                walk.heading = bearing(*pin, ZONE1_FAR_GATE.pin);
-            }
-        }
+        const Milliseconds timeout(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
         try{
-            return step(env, backend, walk);
+            return step(env, backend, timeout);
         }catch (OperationFailedException& e){
             backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
             return Pokemon::outcome_failed("gate_not_reached", e.message());
@@ -259,37 +227,6 @@ Handler console_handler(StoryEnv& env, std::string_view name, ConsoleStep step){
 }
 
 
-//  Sets a look's ZONE_PANEL_READING (BattlePanelDetector), and its
-//  ZONE_GATE_X_READING and ZONE_GATE_WIDTH_READING (read_zone_gate()) when
-//  a gate shows, from its frame; nothing on a look with no frame.
-LookReader zone_gate_reader(){
-    return [](Pokemon::Observation<Pokemon::ZonePose>& look){
-        if (!look.frame || !look.frame->frame){
-            return;
-        }
-        BattlePanelDetector panel;
-        look.readings[std::string(ZONE_PANEL_READING)] = panel.detect(*look.frame->frame) ? 1 : 0;
-        const std::optional<ZoneGateSighting> gate = read_zone_gate(*look.frame->frame);
-        if (!gate){
-            return;
-        }
-        look.readings[std::string(ZONE_GATE_X_READING)] = (int)std::lround(gate->x * 1000);
-        look.readings[std::string(ZONE_GATE_WIDTH_READING)] = (int)std::lround(gate->width * 1000);
-    };
-}
-
-//  walk_to_zone_gate_entrance() on the console `env`: the minimap arrow
-//  (minimap_arrow()), the gate's pillars and the lead's panel on its frames
-//  (read_zone_gate(), BattlePanelDetector) and the full map's pin
-//  (read_pin_on_map()).
-Pokemon::Outcome walk_to_zone_gate(StoryEnv& env, PlzaBackend& backend, const GateWalk& walk){
-    const PinReader pin = [&env, &backend]{
-        return read_pin_on_map(env, backend);
-    };
-    return walk_to_zone_gate_entrance(backend, minimap_arrow(env), zone_gate_reader(), pin, walk);
-}
-
-
 //  The console_only actions of plza_story_specs() on the console `env`.
 PlzaConsoleActions console_actions(StoryEnv& env){
     PlzaConsoleActions actions;
@@ -299,9 +236,10 @@ PlzaConsoleActions console_actions(StoryEnv& env){
     actions.emplace("confirm_new_game", new_game_handler(env, "confirm_new_game", /*hint=*/"", [](StoryEnv& story){
         confirm_new_game_choices(story.env.console, story.context, story.new_game);
     }));
-    actions.emplace("run_to_gate", gate_handler(env, "run_to_gate", run_gate_step));
+    actions.emplace("run_to_gate", gate_handler(env, "run_to_gate", [](StoryEnv& story, PlzaBackend&, Milliseconds timeout){
+        return run_to_gate(story, timeout);
+    }));
     actions.emplace("aimed_run_to_gate", gate_handler(env, "aimed_run_to_gate", aimed_gate_run));
-    actions.emplace("walk_to_zone_gate_entrance", gate_handler(env, "walk_to_zone_gate_entrance", walk_to_zone_gate));
     for (const auto& [name, step] : console_steps()){
         actions.emplace(std::string(name), console_handler(env, name, step));
     }

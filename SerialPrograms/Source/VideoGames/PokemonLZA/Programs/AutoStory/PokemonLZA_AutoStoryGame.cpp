@@ -75,12 +75,10 @@ StoryActionSpec console_only(StoryActionSpec spec){
     return spec;
 }
 
-//  A gate walk's args: "timeout_ms" (`timeout_ms` when left out), "heading" and "aim".
+//  A gate run's args: "timeout_ms" (`timeout_ms` when left out).
 std::vector<StoryArgSpec> gate_args(int64_t timeout_ms){
     return {
         optional_ms("timeout_ms", timeout_ms, "going this long with no A prompt fails the step"),
-        optional_int("heading", "the minimap heading to face first, degrees clockwise from up"),
-        StoryArgSpec{.key = "aim", .type = StoryArgType::WORD, .required = false, .fallback = std::nullopt, .why = "a full-map point to face first, by the map pin (zone_1_far_gate); the heading when the pin is not read"},
     };
 }
 
@@ -113,7 +111,6 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("confirm_new_game")),
         console_only(game_spec("run_to_gate", gate_args(/*timeout_ms=*/8000))),
         console_only(game_spec("aimed_run_to_gate", gate_args(/*timeout_ms=*/4000))),
-        console_only(game_spec("walk_to_zone_gate_entrance", gate_args(/*timeout_ms=*/15000))),
         console_only(game_spec("catch_tutorial")),
         console_only(game_spec("battle_then_catch")),
         console_only(game_spec("catch_in_zone")),
