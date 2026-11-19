@@ -12,7 +12,7 @@
       },
       {
         "id": "opening",
-        "why": "the opening cutscene, no presses (A does not advance it), until the autosave badge and the platform",
+        "why": "Plus held once as the opening starts skips it to the platform (A does not advance it); then the autosave badge and the platform",
         "action": "opening_to_platform",
         "args": {
           "timeout_ms": 240000

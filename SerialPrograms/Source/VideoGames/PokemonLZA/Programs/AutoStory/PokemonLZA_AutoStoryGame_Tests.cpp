@@ -285,9 +285,9 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at arrival_scenes: scene_quiet", .line = "[SceneQuirk] 01.01/arrival_scenes quiet fired"},
     },
     {
-        .name = "01.00b ends on its autosave",
-        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
-        .expectation = {.verdict = "done", .line = "[Save] 01.00b: the game autosaved (seen)"},
+        .name = "01.00b holds Plus once, on the opening's first moving look, and ends on its autosave",
+        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {BLACK_FADE, CUTSCENE, CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .inputs = "wait 300ms, press +, wait 300ms, wait 300ms, wait 300ms, wait 300ms", .line = "[Save] 01.00b: the game autosaved (seen)"},
     },
     {
         .name = "01.02's choice fails when the highlight does not move",

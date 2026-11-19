@@ -890,8 +890,25 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {
                 {"text box", "B"}, {"advance arrow", "A"},
-                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"controls hint", "-"},
+                //  Plus once the cutscene, moving then still, has run 3 s.
+                {"nothing", "- or +"}, {"still", "- or +"}, {"black fade", "-"}, {"controls hint", "-"},
             },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on controls_hint.",
+        },
+    },
+    {
+        //  The controls hint is synthetic. Console B 2026-11-19 held such
+        //  stills 5-10 s with no Plus.
+        .name = "01.01 arrival_scenes, a cutscene still 3 s after the text gets Plus",
+        .input = {.checkpoint = "01.01", .step = "arrival_scenes", .screens = R"(
+0.0s: text box
+0.4s: nothing
+1.0s: still
+8.0s: text box
+9.0s: controls hint
+)"},
+        .expectation = {
+            .keys = {{"text box", "B"}, {"nothing", "-"}, {"still", "+"}, {"controls hint", "-"}},
             .verdict = "done", .end = "[PLZA mash_to_move_hints] done on controls_hint.",
         },
     },
