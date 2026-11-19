@@ -68,6 +68,26 @@ std::string checkpoint_reset_line(
     return std::format("{}: failed, resetting for attempt {}/{}", prefix, next_attempt, *attempts);
 }
 
+std::string event_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status){
+    return std::format("[Event] {}/{} {}: {}", checkpoint, number, event, status);
+}
+
+std::string checkpoint_failed_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view reason){
+    return std::format("[Checkpoint] {}: failed at {} {}: {}", checkpoint, number, event, reason);
+}
+
+std::string checkpoint_done_line(std::string_view checkpoint, size_t events){
+    return std::format("[Checkpoint] {}: done, {} run", checkpoint, events);
+}
+
+std::string checkpoint_no_start_line(std::string_view checkpoint){
+    return std::format("[Checkpoint] {}: reloaded to no start of this run", checkpoint);
+}
+
+std::string save_failed_line(std::string_view checkpoint, std::string_view reason){
+    return std::format("[Save] {}: save failed: {}", checkpoint, reason);
+}
+
 std::string story_short_line(std::string_view line){
     if (!line.starts_with('[')){
         return std::string(line);

@@ -7,6 +7,7 @@
 #include <chrono>
 #include <format>
 #include <map>
+#include <optional>
 #include <string>
 #include <utility>
 #include "Common/Cpp/PrettyPrint.h"
@@ -19,10 +20,9 @@ namespace PokemonAutomation{
 namespace{
 
 
-//  The first of `states` whose matches() accepts `observation`; null when
-//  none does.
-const ScreenState* match_screen_state(const std::vector<ScreenState>& states, const ScreenObservation& observation){
-    for (const ScreenState& state : states){
+//  The first of `states` that matches `observation`; null when none does.
+ScreenState* match_screen_state(const ScreenObservation& observation, std::vector<ScreenState>& states){
+    for (ScreenState& state : states){
         if (state.matches && state.matches(observation)){
             return &state;
         }
@@ -46,14 +46,17 @@ public:
     //  a frame and the frames match (same_screen()); how long, by the looks'
     //  `when`.
     std::optional<std::string> problem(const ScreenState& state, const ScreenObservation& observation);
+    //  Whether `when` is more than `timeout` after the first look.
+    bool timed_out(WallClock when, Milliseconds timeout);
 
 private:
     //  The stall problem, if any, of `state` on a frame unchanged since
     //  `m_changed_at`.
     std::optional<std::string> unchanged_problem(const ScreenState& state, WallClock when);
 
-    std::map<std::string, size_t, std::less<>> m_visits;
-    VideoSnapshot m_last_frame;
+    std::map<std::string, size_t, std::less<>> m_visits = {};
+    VideoSnapshot m_last_frame = {};
+    std::optional<WallClock> m_start = std::nullopt;
     //  When the screen last changed (or was first looked at).
     WallClock m_changed_at = WallClock::min();
     size_t m_unchanged = 0;
@@ -71,6 +74,13 @@ std::optional<std::string> ScreenMachineChecks::unchanged_problem(const ScreenSt
         return std::format("The screen stopped changing: {} steps on \"{}\" did nothing.", MAX_UNCHANGED, state.name);
     }
     return std::nullopt;
+}
+
+bool ScreenMachineChecks::timed_out(WallClock when, Milliseconds timeout){
+    if (!m_start){
+        m_start = when;
+    }
+    return when - *m_start > timeout;
 }
 
 std::optional<std::string> ScreenMachineChecks::problem(const ScreenState& state, const ScreenObservation& observation){
@@ -104,9 +114,9 @@ public:
 
 private:
     const std::function<void(std::string_view line)>& m_log;
-    std::optional<WallClock> m_start;
+    std::optional<WallClock> m_start = std::nullopt;
     size_t m_count = 0;
-    std::string m_last;
+    std::string m_last = {};
 };
 
 
@@ -127,13 +137,41 @@ void ScreenChangeLog::screen(const std::string& name, WallClock when){
 }
 
 
+//  How `observation` ends the run, if it does: the matching state's checks,
+//  then its step.
+std::optional<ScreenMachineResult> take_look(
+    const ScreenObservation& observation, Milliseconds timeout,
+    std::vector<ScreenState>& states, ScreenMachineChecks& checks, ScreenChangeLog& changes
+){
+    if (checks.timed_out(observation.when, timeout)){
+        return ScreenMachineFailure{.reason = std::format("Did not finish within {}s.", timeout.count() / 1000)};
+    }
+    ScreenState* state = match_screen_state(observation, states);
+    if (state == nullptr){
+        return ScreenMachineFailure{.reason = "The screen matches none of the known states."};
+    }
+    changes.screen(state->name, observation.when);
+    std::optional<std::string> found = checks.problem(*state, observation);
+    if (found){
+        return ScreenMachineFailure{.reason = std::move(*found)};
+    }
+    if (state->act){
+        state->act();
+    }
+    if (state->terminal){
+        return ScreenMachineTerminal{.state_name = state->name};
+    }
+    return std::nullopt;
+}
+
+
 } // namespace
 
 
 
 ScreenMachineResult run_screen_machine(
     const std::function<ScreenObservation()>& observe, CancellableScope& scope,
-    const std::vector<ScreenState>& states, Milliseconds timeout,
+    std::vector<ScreenState> states, Milliseconds timeout,
     const std::function<void(std::string_view line)>& log
 ){
     //  Looks before the run stops even when nothing else ends it (looks with
@@ -141,33 +179,14 @@ ScreenMachineResult run_screen_machine(
     constexpr size_t MAX_LOOKS = 10000;
     ScreenMachineChecks checks;
     ScreenChangeLog changes(log);
-    std::optional<WallClock> start;
     for (size_t looks = 0; looks < MAX_LOOKS; looks++){
         scope.throw_if_cancelled();
-        const ScreenObservation observation = observe();
-        if (!start){
-            start = observation.when;
-        }
-        if (observation.when - *start > timeout){
-            return {.terminal = "", .failure = std::format("Did not finish within {}s.", timeout.count() / 1000)};
-        }
-        const ScreenState* state = match_screen_state(states, observation);
-        if (state == nullptr){
-            return {.terminal = "", .failure = "The screen matches none of the known states."};
-        }
-        changes.screen(state->name, observation.when);
-        std::optional<std::string> found = checks.problem(*state, observation);
-        if (found){
-            return {.terminal = "", .failure = std::move(*found)};
-        }
-        if (state->act){
-            state->act();
-        }
-        if (state->terminal){
-            return {.terminal = state->name, .failure = ""};
+        std::optional<ScreenMachineResult> end = take_look(observe(), timeout, states, checks, changes);
+        if (end){
+            return std::move(*end);
         }
     }
-    return {.terminal = "", .failure = std::format("Did not finish within {} looks.", MAX_LOOKS)};
+    return ScreenMachineFailure{.reason = std::format("Did not finish within {} looks.", MAX_LOOKS)};
 }
 
 

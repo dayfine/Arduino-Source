@@ -2,15 +2,11 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A story is split at three levels: a segment is a chapter of
- *  checkpoints, a checkpoint is the stretch between two saves and the unit
- *  a run retries, and an event is one step inside a checkpoint. This file
- *  writes the checkpoint lines: start, attempt, reset and pass, in one
- *  format for every game, so the program developer and user find each
- *  checkpoint's attempts the same way in any game's log. Nothing here runs
- *  a story.
+ *  The log lines every game's AutoStory and the story engine write.
  *
  */
+
+// code-health: allow header_symbols -- every story log line format in one place, as review asked; each symbol is one line format
 
 #ifndef PokemonAutomation_Pokemon_StoryLog_H
 #define PokemonAutomation_Pokemon_StoryLog_H
@@ -75,11 +71,27 @@ std::string checkpoint_reset_line(
     CheckpointPrefix prefix_kind = CheckpointPrefix::ADD
 );
 
-//  The full lines above go to the log. The video overlay, which wraps its
-//  lines, shows each one short, without its leading "[Tag] ":
-//      [Checkpoint] 12.03: start, 18 events  ->  12.03: start, 18 events
-//  Any line with a leading "[Tag] " is shortened the same way. A line
-//  without a tag, like SV's checkpoint text, is returned unchanged.
+//  The story engine's lines; `number` counts a checkpoint's steps from 1.
+//  A step starts or ends, with its status:
+//      [Event] 00.04/2 to_lab: start
+//      [Event] 00.04/2 to_lab: failed: no_fade: no white fade in 3 slices
+std::string event_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view status);
+//  A checkpoint's step `number`, named `event`, failed for `reason`:
+//      [Checkpoint] 00.04: failed at 2 to_lab: no_fade: no white fade in 3 slices
+std::string checkpoint_failed_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view reason);
+//  Every one of a checkpoint's `events` steps passed:
+//      [Checkpoint] 00.04: done, 3 run
+std::string checkpoint_done_line(std::string_view checkpoint, size_t events);
+//  A reload after the checkpoint failed came back at no checkpoint start of
+//  the run:
+//      [Checkpoint] 00.04: reloaded to no start of this run
+std::string checkpoint_no_start_line(std::string_view checkpoint);
+//  The save after a passed checkpoint failed for `reason`:
+//      [Save] 00.04: save failed: save_error: the disk is full
+std::string save_failed_line(std::string_view checkpoint, std::string_view reason);
+
+//  `line` without its leading "[Tag] ", for the video overlay; a line with
+//  no tag is returned unchanged.
 std::string story_short_line(std::string_view line);
 
 

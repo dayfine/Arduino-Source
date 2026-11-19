@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A scripted game for engine tests, with no console and no model: each
- *  observe() returns the script's next look (the last one repeats), every
- *  input and log line is recorded, and a battle ends as scripted. A fault
- *  is a script: a walk whose fade never comes.
+ *  A scripted backend for tests: it records every input and log line.
  *
  */
 
@@ -16,38 +13,28 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "Pokemon_StoryBackend.h"
-#include "Pokemon_ZonePose.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  What a FakeStoryBackend shows and does.
-//  code-health: allow test_only_api -- a test double: tests build it by its fields, so no name use shows
-template <StoryPose PoseType>
+//  What a FakeStoryBackend shows.
 struct FakeStoryScript{
     //  observe()'s answers in order; the last repeats. None: an empty look.
-    std::vector<Observation<PoseType>> looks = {};
-    //  What it says it plays on: SCRIPT, or CONSOLE to run a console_only
-    //  action's code in a test.
-    StoryBackendKind kind = StoryBackendKind::SCRIPT;
-    //  How each battle() ends.
-    Outcome battle = outcome_ok();
+    std::vector<ScreenObservation> looks = {};
 };
 
-//  The backend of the engine's unit tests and of a game's scripted tests,
-//  for any pose type.
+//  Records every input and log line; observe() plays the script.
 //  code-health: allow public_methods -- the backend calls it fakes plus the three recordings tests read; nothing to split
 //  code-health: allow test_only_api -- a test double: the scripted backend the engine and game tests run on
-template <StoryPose PoseType>
-class FakeStoryBackend : public StoryBackend<PoseType>{
+class FakeStoryBackend : public StoryBackend{
 public:
-    FakeStoryBackend(FakeStoryScript<PoseType> script, CancellableScope& scope);
+    FakeStoryBackend(FakeStoryScript script, CancellableScope& scope);
 
     //  Each input, in order: "press A", "press +" (by button_to_string()),
     //  "stick 90deg 150ms walk", "stick 90deg 150ms walk, release 300ms"
-    //  (a release only when not zero), "wait 100ms", "battle".
+    //  (a release only when not zero), "wait 100ms".
     const std::vector<std::string>& inputs() const{
         return m_inputs;
     }
@@ -60,18 +47,16 @@ public:
         return m_overlay_lines;
     }
 
-    virtual StoryBackendKind kind() const override;
     virtual void press(NintendoSwitch::Button button, Milliseconds hold, Milliseconds release) override;
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
-    virtual Observation<PoseType> observe() override;
-    virtual Outcome battle(const StoryActionArgs& args) override;
+    virtual ScreenObservation observe() override;
     virtual void log(std::string_view line) override;
     virtual void log_detail(std::string_view line) override;
     virtual CancellableScope& scope() override;
 
 private:
-    FakeStoryScript<PoseType> m_script;
+    FakeStoryScript m_script;
     CancellableScope& m_scope;
     size_t m_next_look = 0;
     std::vector<std::string> m_inputs;
@@ -79,9 +64,6 @@ private:
     std::vector<std::string> m_overlay_lines;
 };
 
-//  Instantiated for ZonePose (Pokemon_ZonePose.h), in
-//  Pokemon_StoryFakeBackend.cpp.
-extern template class FakeStoryBackend<ZonePose>;
 
 
 
