@@ -17,7 +17,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "Pokemon_StoryEngine.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Pokemon_StoryEngine_Tests.h"
@@ -106,7 +106,7 @@ struct TestCheckpoint{
 };
 
 std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestCheckpoint>& tests, TestWorld& world){
-    const StoryActions actions = test_actions(world);
+    StoryActions actions = test_actions(world);
     std::vector<StoryCheckpoint> checkpoints;
     for (const TestCheckpoint& test : tests){
         StoryCheckpoint checkpoint{.id = test.id, .title = "Test", .steps = {}};

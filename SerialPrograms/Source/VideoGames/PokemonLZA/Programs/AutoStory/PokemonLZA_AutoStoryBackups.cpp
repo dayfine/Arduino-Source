@@ -5,12 +5,12 @@
  */
 
 #include <format>
+#include <span>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
-#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryBackups.h"
 
@@ -34,6 +34,14 @@ AfterFailure after_failure(bool save_moved, size_t rewinds, size_t max_rewinds){
         return AfterFailure::STOP;
     }
     return rewinds < max_rewinds ? AfterFailure::REWIND : AfterFailure::REWIND_LIMIT;
+}
+
+//  rows[first..last]; empty when the range is out of `rows`.
+std::span<StoryCheckpoint> story_run_rows(std::span<StoryCheckpoint> rows, size_t first, size_t last){
+    if (first > last || last >= rows.size()){
+        return {};
+    }
+    return rows.subspan(first, last - first + 1);
 }
 
 std::optional<size_t> row_index(std::span<const StoryCheckpoint> rows, std::string_view id){
@@ -182,7 +190,7 @@ std::optional<Pokemon::CheckpointFailure> run_plza_with_rewinds(
     size_t from = plan.first;
     for (size_t rewinds = 0;; rewinds++){
         std::optional<Pokemon::CheckpointFailure> failure = run_plza_segments(
-            game, Pokemon::story_run_rows(rows, from, plan.last), plan.segments, backend, state, sightings
+            game, story_run_rows(rows, from, plan.last), plan.segments, backend, state, sightings
         );
         if (!failure){
             return std::nullopt;

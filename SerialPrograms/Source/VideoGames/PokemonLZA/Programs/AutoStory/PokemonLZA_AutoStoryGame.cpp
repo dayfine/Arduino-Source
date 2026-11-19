@@ -413,41 +413,40 @@ void add_scene_actions(StoryActions& actions, const PlzaStoryTools& tools){
 
 
 StoryActions plza_story_actions(const PlzaStoryTools& tools){
-    StoryActions actions{
-        {"wait_for_platform", platform_action(PlatformWait::PLATFORM_ONLY, 180000ms)},
-        {"opening_to_platform", platform_action(PlatformWait::AFTER_AUTOSAVE, 240000ms)},
-        {"walk", [&tools](const JsonObject& args) -> StoryStepRun{
-            return [&tools, walk = read_walk_args(args)](PlzaBackend& backend, RunState&){
-                return walk_step(tools, aimed_at_starter(tools, walk), backend, "walk");
-            };
-        }},
-        {"mash_to_move_hints", move_hints_action()},
-        {"text_to_choice", text_to_choice_action()},
-        {"choose_0", no_args([](PlzaBackend& backend, RunState&){
-            return choose_row(backend, 0);
-        })},
-        {"choose_1", no_args([](PlzaBackend& backend, RunState&){
-            return choose_row(backend, 1);
-        })},
-        {"talk", no_args([](PlzaBackend& backend, RunState&){
-            return talk_at_prompt(backend);
-        })},
-        {"talk_through_map_screen", no_args([](PlzaBackend& backend, RunState&){
-            return talk_through_map_screen(backend);
-        })},
-        {"climb_ladder", no_args([](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
-            climb_ladder(backend);
-            return std::nullopt;
-        })},
-        {"talk_to_pokedex_screen", no_args(pokedex_step)},
-        {std::string(MENU_SAVE_ACTION), no_args([&tools](PlzaBackend& backend, RunState&){
-            std::optional<StoryFailure> failure = save_from_menu(backend);
-            if (!failure && tools.sightings != nullptr){
-                tools.sightings->saved(backend);
-            }
-            return failure;
-        })},
-    };
+    StoryActions actions;
+    actions.emplace("wait_for_platform", platform_action(PlatformWait::PLATFORM_ONLY, 180000ms));
+    actions.emplace("opening_to_platform", platform_action(PlatformWait::AFTER_AUTOSAVE, 240000ms));
+    actions.emplace("walk", [&tools](const JsonObject& args) -> StoryStepRun{
+        return [&tools, walk = read_walk_args(args)](PlzaBackend& backend, RunState&){
+            return walk_step(tools, aimed_at_starter(tools, walk), backend, "walk");
+        };
+    });
+    actions.emplace("mash_to_move_hints", move_hints_action());
+    actions.emplace("text_to_choice", text_to_choice_action());
+    actions.emplace("choose_0", no_args([](PlzaBackend& backend, RunState&){
+        return choose_row(backend, 0);
+    }));
+    actions.emplace("choose_1", no_args([](PlzaBackend& backend, RunState&){
+        return choose_row(backend, 1);
+    }));
+    actions.emplace("talk", no_args([](PlzaBackend& backend, RunState&){
+        return talk_at_prompt(backend);
+    }));
+    actions.emplace("talk_through_map_screen", no_args([](PlzaBackend& backend, RunState&){
+        return talk_through_map_screen(backend);
+    }));
+    actions.emplace("climb_ladder", no_args([](PlzaBackend& backend, RunState&) -> std::optional<StoryFailure>{
+        climb_ladder(backend);
+        return std::nullopt;
+    }));
+    actions.emplace("talk_to_pokedex_screen", no_args(pokedex_step));
+    actions.emplace(std::string(MENU_SAVE_ACTION), no_args([&tools](PlzaBackend& backend, RunState&){
+        std::optional<StoryFailure> failure = save_from_menu(backend);
+        if (!failure && tools.sightings != nullptr){
+            tools.sightings->saved(backend);
+        }
+        return failure;
+    }));
     add_scene_actions(actions, tools);
     add_console_actions(actions, tools);
     return actions;

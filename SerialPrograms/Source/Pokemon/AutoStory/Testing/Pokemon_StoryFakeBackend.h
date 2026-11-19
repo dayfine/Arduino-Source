@@ -10,10 +10,8 @@
 #define PokemonAutomation_Pokemon_StoryFakeBackend_H
 
 #include <cstddef>
-#include <format>
 #include <string>
 #include <string_view>
-#include <utility>
 #include <vector>
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 
@@ -32,10 +30,7 @@ struct FakeStoryScript{
 //  code-health: allow test_only_api -- a test double: the scripted backend the engine and game tests run on
 class FakeStoryBackend : public StoryBackend{
 public:
-    FakeStoryBackend(FakeStoryScript script, CancellableScope& scope)
-        : m_script(std::move(script))
-        , m_scope(scope)
-    {}
+    FakeStoryBackend(FakeStoryScript script, CancellableScope& scope);
 
     //  Each input, in order: "press A", "press +" (by button_to_string()),
     //  "stick 90deg 150ms walk", "stick 90deg 150ms walk, release 300ms"
@@ -52,36 +47,13 @@ public:
         return m_overlay_lines;
     }
 
-    virtual void press(NintendoSwitch::Button button, Milliseconds, Milliseconds) override{
-        m_inputs.push_back(std::format("press {}", NintendoSwitch::button_to_string(button)));
-    }
-    virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override{
-        std::string input = std::format("stick {}deg {}ms {}", degrees, duration.count(), pace == StoryPace::RUN ? "run" : "walk");
-        if (release > Milliseconds::zero()){
-            input += std::format(", release {}ms", release.count());
-        }
-        m_inputs.push_back(std::move(input));
-    }
-    virtual void wait(Milliseconds duration) override{
-        m_inputs.push_back(std::format("wait {}ms", duration.count()));
-    }
-    virtual ScreenObservation observe() override{
-        if (m_script.looks.empty()){
-            return {};
-        }
-        const size_t look = m_next_look < m_script.looks.size() ? m_next_look++ : m_script.looks.size() - 1;
-        return m_script.looks[look];
-    }
-    virtual void log(std::string_view line) override{
-        m_lines.emplace_back(line);
-        m_overlay_lines.emplace_back(line);
-    }
-    virtual void log_detail(std::string_view line) override{
-        m_lines.emplace_back(line);
-    }
-    virtual CancellableScope& scope() override{
-        return m_scope;
-    }
+    virtual void press(NintendoSwitch::Button button, Milliseconds hold, Milliseconds release) override;
+    virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override;
+    virtual void wait(Milliseconds duration) override;
+    virtual ScreenObservation observe() override;
+    virtual void log(std::string_view line) override;
+    virtual void log_detail(std::string_view line) override;
+    virtual CancellableScope& scope() override;
 
 private:
     FakeStoryScript m_script;

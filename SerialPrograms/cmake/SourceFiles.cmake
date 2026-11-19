@@ -934,6 +934,7 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/ScreenMachine/ScreenMachine.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine.h
     Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine_Tests.h
     Source/CommonTools/ScreenMachine/ScreenObservation.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
@@ -1246,6 +1247,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev.h
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_Default.cpp
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_TestInfra.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.cpp
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_TestInfra.h
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_x64_AVX2.cpp
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_x64_AVX512.cpp
@@ -1516,17 +1518,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.h
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.cpp
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.h
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
@@ -1539,9 +1534,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
     Source/Pokemon/AutoStory/Pokemon_StoryFailure.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
+    Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
+    Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
@@ -3480,8 +3477,6 @@ set(LOGIC_LIBRARY_SOURCES
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev.cpp
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_Default.cpp
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_TestInfra.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine.cpp
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.cpp
@@ -3493,9 +3488,6 @@ set(LOGIC_LIBRARY_SOURCES
 set(LOGIC_TEST_SOURCES
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryFiles_Tests.cpp
-    Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.cpp

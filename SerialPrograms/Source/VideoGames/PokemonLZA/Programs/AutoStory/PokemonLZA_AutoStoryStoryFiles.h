@@ -14,7 +14,7 @@
 #include <utility>
 #include <vector>
 #include <optional>
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStarts.h"
@@ -34,7 +34,7 @@ const std::vector<std::pair<std::string, std::string>>& autostory_checkpoint_jso
 //  naming `source` when it does not parse, fails a step's lead-in, or
 //  autosaves short of its end.
 Pokemon::StoryCheckpoint read_plza_checkpoint(
-    std::string_view text, std::string_view source, const Pokemon::StoryActions& actions, StoryRows& rows,
+    std::string_view text, std::string_view source, Pokemon::StoryActions& actions, StoryRows& rows,
     std::optional<std::string_view> previous
 );
 

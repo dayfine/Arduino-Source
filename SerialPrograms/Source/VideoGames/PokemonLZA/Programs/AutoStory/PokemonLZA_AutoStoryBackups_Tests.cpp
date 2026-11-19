@@ -119,7 +119,7 @@ TestRow row(std::string id, std::vector<std::string> actions){
 
 //  `rows` with their steps bound to `tools`, which must outlive them.
 std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestRow>& rows, const PlzaStoryTools& tools){
-    const Pokemon::StoryActions actions = plza_story_actions(tools);
+    Pokemon::StoryActions actions = plza_story_actions(tools);
     std::vector<StoryCheckpoint> checkpoints(rows.size());
     for (size_t index = 0; index < rows.size(); index++){
         checkpoints[index].id = rows[index].id;
