@@ -388,17 +388,18 @@ size_t export_mgba_frame_replay(
     return selected.size();
 }
 
-size_t VideoSource_MgbaLink::export_frame_replay(
+size_t export_frame_replay(
+    const VideoSource_MgbaLink& source,
     const std::string& folder,
     std::chrono::milliseconds window
-) const{
+){
     std::vector<VideoSnapshot> frames;
     std::vector<MgbaLink::InputLogEntry> log;
     {
-        std::lock_guard<Mutex> lg(m_lock);
-        frames.assign(m_history.begin(), m_history.end());
-        if (m_connection != nullptr){
-            log = m_connection->input_log();
+        std::lock_guard<Mutex> lg(source.m_lock);
+        frames.assign(source.m_history.begin(), source.m_history.end());
+        if (source.m_connection != nullptr){
+            log = source.m_connection->input_log();
         }
     }
     return export_mgba_frame_replay(frames, folder, window, log);

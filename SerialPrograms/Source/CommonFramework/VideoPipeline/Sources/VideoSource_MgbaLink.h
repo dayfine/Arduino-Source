@@ -108,6 +108,17 @@ private:
 
 
 
+class VideoSource_MgbaLink;
+
+//  Exports the last `window` of captured frames (and input log, if any)
+//  from `source` into `folder` as "<ms>.png" files.
+size_t export_frame_replay(
+    const VideoSource_MgbaLink& source,
+    const std::string& folder,
+    std::chrono::milliseconds window = std::chrono::seconds(20)
+);
+
+
 //  Polls FRAME on its own connection and keeps the latest composed frame;
 //  drops it when the connection is lost, so a dead bridge shows no video.
 //
@@ -137,17 +148,15 @@ public:
     virtual VideoSnapshot snapshot_latest_blocking() override;
     virtual VideoSnapshot snapshot_recent_nonblocking(WallClock min_time) override;
 
-    //  Exports the last `window` of captured frames (and input log, if any)
-    //  into `folder` as "<ms>.png" files.
-    size_t export_frame_replay(
-        const std::string& folder,
-        std::chrono::milliseconds window = std::chrono::seconds(20)
-    ) const;
-
     virtual QWidget* make_display_QtWidget(QWidget* parent) override;
 
 private:
     friend class VideoWidget_MgbaLink;
+    friend size_t export_frame_replay(
+        const VideoSource_MgbaLink& source,
+        const std::string& folder,
+        std::chrono::milliseconds window
+    );
 
     void poll_loop();
     void run_connection(Logger& logger, const std::string& host, uint16_t port);
