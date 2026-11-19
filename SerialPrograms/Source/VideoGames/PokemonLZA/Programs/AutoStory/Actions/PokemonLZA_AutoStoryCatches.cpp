@@ -47,6 +47,16 @@ using namespace std::chrono_literals;
 
 namespace{
 
+//  Straight, past the rock on its right.
+constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_SPOT_100};
+
+//  How long the watcher must see the "Registered!" banner before it fires.
+constexpr Milliseconds REGISTERED_BANNER_HOLD(100);
+
+//  Watched past the throw's own 8 s: the banner showed 6.9 s in, with
+//  frames a second apart.
+constexpr Milliseconds REGISTERED_BANNER_TAIL(2000);
+
 //  The banner shows ~7 s after the throw.
 const BallThrowOptions STORY_THROW{
     .lock_on = Milliseconds(500),

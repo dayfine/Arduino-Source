@@ -9,6 +9,7 @@
 
 #include <algorithm>
 #include <format>
+#include <functional>
 #include <optional>
 #include <string>
 #include <vector>
@@ -28,9 +29,9 @@ namespace{
 using FakeBackend = Pokemon::FakeStoryBackend;
 
 //  Reads `pins` in turn, the last repeating; none when `pins` is empty.
-PinReader pins_of(const std::vector<MapPoint>& pins){
+std::function<std::optional<MapPoint>()> pins_of(const std::vector<MapPoint>& pins){
     if (pins.empty()){
-        return PinReader();
+        return nullptr;
     }
     return [pins, next = size_t(0)]() mutable -> std::optional<MapPoint>{
         const MapPoint pin = pins[std::min(next, pins.size() - 1)];

@@ -40,16 +40,16 @@ std::vector<std::string> ids(std::span<StoryCheckpoint> rows){
 
 
 struct RowsCase{
-    std::string name = {};
+    std::string name;
     struct Input{
         size_t first = 0;
         size_t last = 0;
     };
-    Input input = {};
+    Input input;
     struct Expectation{
         std::string rows = {};
     };
-    Expectation expectation = {};
+    Expectation expectation;
 };
 
 //  01.00, 01.01, 01.02.

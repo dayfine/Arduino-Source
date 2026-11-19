@@ -72,7 +72,7 @@ bool pin_in_zone_1(MapPoint pin){
     return inside(ZONE1_OUTLINE, pin);
 }
 
-std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin){
+std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, const std::function<std::optional<MapPoint>()>& pin){
     std::string reads;
     for (size_t read = 1; read <= OUT_OF_ZONE_PIN_READS; read++){
         const std::optional<MapPoint> at = pin ? pin() : std::nullopt;

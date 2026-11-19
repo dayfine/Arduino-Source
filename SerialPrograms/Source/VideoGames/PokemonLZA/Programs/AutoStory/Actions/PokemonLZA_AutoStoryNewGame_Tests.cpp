@@ -7,6 +7,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h"
@@ -185,7 +186,10 @@ std::vector<Pokemon::StoryCheckpoint> builtin_rows(const std::vector<std::string
     for (const std::string& id : ids){
         for (const Pokemon::StoryCheckpoint& row : builtin_story_data().checkpoints){
             if (row.id == id){
-                rows.push_back(Pokemon::StoryCheckpoint{.id = row.id, .title = row.title});
+                //  The first step's action says whether the row starts a new game.
+                Pokemon::StoryCheckpoint copy{.id = row.id, .title = row.title};
+                copy.steps.push_back(Pokemon::StoryStep{.name = row.steps.front().name, .action = row.steps.front().action});
+                rows.push_back(std::move(copy));
             }
         }
     }

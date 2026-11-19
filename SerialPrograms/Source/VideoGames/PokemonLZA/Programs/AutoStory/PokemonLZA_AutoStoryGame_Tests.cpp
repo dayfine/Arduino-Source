@@ -1250,7 +1250,7 @@ Pokemon::StoryGame game_with_reload(const StoryRows& rows, AutosaveSightings& si
 
 //  A step named `name` running `action` with no args, bound to `tools`.
 StoryStep plan_step(const PlzaStoryTools& tools, std::string name, std::string_view action){
-    return StoryStep{.name = std::move(name), .run = plza_story_actions(tools).at(std::string(action))(JsonObject())};
+    return StoryStep{.name = std::move(name), .action = std::string(action), .run = plza_story_actions(tools).at(std::string(action))(JsonObject())};
 }
 
 StoryCheckpoint one_step_row(const PlzaStoryTools& tools, std::string id, std::string action){

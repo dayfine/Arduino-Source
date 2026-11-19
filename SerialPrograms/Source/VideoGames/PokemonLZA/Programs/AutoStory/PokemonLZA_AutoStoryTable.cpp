@@ -17,12 +17,17 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+std::string_view story_row_first_action(const Pokemon::StoryCheckpoint& row){
+    return row.steps.empty() ? std::string_view() : std::string_view(row.steps.front().action);
+}
+
 bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row){
-    return row.id == "01.00a" || row.id == "01.00b";
+    const std::string_view action = story_row_first_action(row);
+    return action == "new_game_intro" || action == "confirm_new_game";
 }
 
 bool story_row_makes_new_game_choices(const Pokemon::StoryCheckpoint& row){
-    return row.id == "01.00a";
+    return story_row_first_action(row) == "new_game_intro";
 }
 
 namespace{

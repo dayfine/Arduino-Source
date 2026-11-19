@@ -52,19 +52,6 @@ inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x =
 //  from (386, 252), none from (370, 256); 6 north of that, toward the grass.
 inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
 
-//  The pin between the gate's pillars, where "A Leave" shows; 1 north of
-//  the (361, 253) read, as runs with no prompt ended at y 255 on the left
-//  pillar.
-inline constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 361, .y = 252}, .provisional = false};
-//  ~15 pixels east of ZONE1_GATE_APPROACH, so the leg from it walks the
-//  gate's own heading; a leg in from the north and a 90 degree turn there
-//  ended on the left pillar.
-inline constexpr MapWaypoint ZONE1_GATE_LINE{.name = "the far gate's line", .pin = {.x = 391, .y = 252}, .provisional = true};
-//  ~15 pixels before the gate, an exact start (no stop area): runs from the
-//  60 spot's loose ends hit a pillar.
-inline constexpr MapWaypoint ZONE1_GATE_APPROACH{.name = "the far gate's approach", .pin = {.x = 376, .y = 252}, .provisional = true};
-//  Straight, past the rock on its right.
-inline constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_SPOT_100};
 
 //  None for distances other than CATCH_SPOTS.
 std::optional<MapWaypoint> catch_spot_waypoint(int spot);
@@ -74,12 +61,9 @@ std::optional<MapWaypoint> catch_spot_waypoint(int spot);
 //  puts a player out of every wild zone.
 bool pin_in_zone_1(MapPoint pin);
 
-//  None when the pin does not show.
-using PinReader = std::function<std::optional<MapPoint>()>;
-
-//  Reads `pin` twice; out only when both are. Fails as "in_wild_zone" on a
+//  Reads `pin` twice (none: the pin does not show); out only when both are. Fails as "in_wild_zone" on a
 //  read in the zone and as "zone_unread" on a read with no pin or reader.
-std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, const PinReader& pin);
+std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, const std::function<std::optional<MapPoint>()>& pin);
 
 
 

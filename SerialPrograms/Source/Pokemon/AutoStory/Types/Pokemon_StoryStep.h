@@ -31,6 +31,8 @@ using StoryStepRun = MoveOnlyFunction<std::optional<StoryFailure>(StoryBackend& 
 struct StoryStep{
     std::string name = {};
     std::string why = {};
+    //  The plan's "action": what kind of step it is.
+    std::string action = {};
     StoryStepRun run = {};
 };
 

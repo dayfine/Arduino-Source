@@ -457,9 +457,9 @@ std::optional<ScreenEvent> walk_end_event(std::string_view end){
 
 namespace{
 
-//  01.01's first step waits for the platform.
+//  01.01's first step waits for the platform; a new game has no save to check.
 bool first_step_checks_start(const Pokemon::StoryCheckpoint& row){
-    return row.id == "01.01" || story_row_starts_without_save(row);
+    return story_row_first_action(row) == "wait_for_platform" || story_row_starts_without_save(row);
 }
 
 //  Right after a load the platform reads on the first two looks.

@@ -13,6 +13,7 @@
 
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
@@ -37,10 +38,14 @@ struct StoryData : StoryRows{
     std::vector<Pokemon::StoryCheckpoint> checkpoints = {};
 };
 
-//  A new game: 01.00a (from HOME) or 01.00b (on "Confirm Choices").
+//  The action of the row's first step; empty for a row with no steps.
+std::string_view story_row_first_action(const Pokemon::StoryCheckpoint& row);
+
+//  A new game: the first step is "new_game_intro" (from HOME, 01.00a) or
+//  "confirm_new_game" (on "Confirm Choices", 01.00b).
 bool story_row_starts_without_save(const Pokemon::StoryCheckpoint& row);
 
-//  01.00a, which types the name.
+//  The first step is "new_game_intro", which types the name (01.00a).
 bool story_row_makes_new_game_choices(const Pokemon::StoryCheckpoint& row);
 
 //  "<step>: <rule>" for each step of the plan `checkpoint` (its JSON) not

@@ -31,6 +31,7 @@ StoryStep read_story_step(const JsonValue& value, const StoryActions& actions){
         result.why = field->to_string_throw();
     }
     const std::string& action = root.get_string_throw("action");
+    result.action = action;
     const auto parser = actions.find(action);
     if (parser == actions.end()){
         throw ParseException(std::format("step {}: unknown action \"{}\"", result.name, action));

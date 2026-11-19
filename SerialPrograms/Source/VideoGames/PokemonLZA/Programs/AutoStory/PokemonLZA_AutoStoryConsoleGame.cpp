@@ -39,6 +39,18 @@ using namespace std::chrono_literals;
 
 namespace{
 
+//  The pin between the gate's pillars, where "A Leave" shows; 1 north of
+//  the (361, 253) read, as runs with no prompt ended at y 255 on the left
+//  pillar.
+constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 361, .y = 252}, .provisional = false};
+//  ~15 pixels east of ZONE1_GATE_APPROACH, so the leg from it walks the
+//  gate's own heading; a leg in from the north and a 90 degree turn there
+//  ended on the left pillar.
+constexpr MapWaypoint ZONE1_GATE_LINE{.name = "the far gate's line", .pin = {.x = 391, .y = 252}, .provisional = true};
+//  ~15 pixels before the gate, an exact start (no stop area): runs from the
+//  60 spot's loose ends hit a pillar.
+constexpr MapWaypoint ZONE1_GATE_APPROACH{.name = "the far gate's approach", .pin = {.x = 376, .y = 252}, .provisional = true};
+
 using PlzaConsoleAction = PlzaConsoleActions::mapped_type;
 
 //  The wait reset_game_from_home() takes by default.
