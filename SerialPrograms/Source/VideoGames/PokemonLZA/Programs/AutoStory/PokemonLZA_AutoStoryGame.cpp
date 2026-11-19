@@ -112,6 +112,7 @@ std::vector<StoryActionSpec> console_specs(){
         console_only(game_spec("new_game_intro")),
         console_only(game_spec("confirm_new_game")),
         console_only(game_spec("run_to_gate", gate_args(/*timeout_ms=*/8000))),
+        console_only(game_spec("aimed_run_to_gate", gate_args(/*timeout_ms=*/4000))),
         console_only(game_spec("walk_to_zone_gate_entrance", gate_args(/*timeout_ms=*/15000))),
         console_only(game_spec("catch_tutorial")),
         console_only(game_spec("battle_then_catch")),

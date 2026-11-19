@@ -58,6 +58,10 @@ inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 3
 //  from wherever the catches left the player: a fixed 265 from (385, 253)
 //  ran into the gate's left pillar (console B, 2026-11-18).
 inline constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 313, .y = 253}, .provisional = true};
+//  On the far gate's line, ~40 pixels before it: an exact start (no stop
+//  area) for the straight run to it. A run from (385, 253) or (378, 245),
+//  the 60 spot's loose ends, hit a pillar (console B, 2026-11-18).
+inline constexpr MapWaypoint ZONE1_GATE_APPROACH{.name = "the far gate's approach", .pin = {.x = 353, .y = 253}, .provisional = true};
 //  From the rocks to the first catch spot: straight, past the rock on its
 //  right (a road entry leg before it took the left side).
 inline constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_SPOT_100};
