@@ -230,7 +230,8 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
   - **Budget.** When `git diff --stat` passes about 1.5x the estimate, stop and cut before going on:
     growth past the budget is almost always extras, not need.
   - **Free functions over a class** unless there is state to own: a class with no state is two
-    functions plus ceremony.
+    functions plus ceremony. A class whose only state is its constructor arguments is a free
+    function, or a `MoveOnlyFunction` seam where tests swap the behavior (#648).
   - **One constructor.** No constructor, overload or parameter that exists only for tests; inject
     the fake through the one real constructor, so tests run the code callers run.
   - **No new types for one caller.** No result, match or wrapper type with a single user; return
@@ -249,6 +250,31 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
     .cpp's anonymous namespace (code health `test_only_api`).
   - **Self-check before push.** List every new type, function and parameter with why it can't be
     removed, and compare `git diff --stat` with the estimate; cut what has no answer.
+- **Types, names and comments** (the user's review of fork PR #648; apply on every file of a
+  chain, writing and reviewing):
+  - **Name a type for what it is**, then drop the comment that only restates the name.
+    #648: "An engine run of one checkpoint" became `CheckpointRunResult`, no comment.
+  - **A name says what kind of value it holds:** index or count, 0- or 1-based.
+    #648: `failed_event` became `failed_event_index`.
+  - **A comment states the contract in 1-2 lines:** no mechanism, no edge-case lists, no log
+    formats. File headers are one line.
+  - **No vague words.** #648: "both backends" names the two (console, fake) or goes.
+  - **One result type per concept,** not parallel types that differ by a bool.
+    #648: `StoryEngineReport.passed` next to `CheckpointReport`.
+  - **No field derivable from others; make invalid states unrepresentable.**
+    #648: `completed` + `failure`, `failed_name` + `failure`, `events_run` became one
+    `std::optional<Failure>`.
+  - **A type or alias lives with its only user,** not in a shared types header.
+    #648: `EventLogger` in `Pokemon_StoryCheckpointTypes.h`. Read-only strings: `std::string_view`
+    (see Adopted, Strings).
+  - **Smallest public API:** no accessor without an outside caller, no second public method only
+    the class itself uses. #648: `registry()`, `run_checkpoint`.
+  - **Settings live with their owner,** not on every call.
+    #648: `attempts_per_checkpoint` moves to `StoryGame` / the run options.
+  - **The core does not bake in grouping:** it runs any range of checkpoints; a segment is an id
+    prefix for display. #648: `run_segment` became a range run.
+  - **No `extern template`:** define the template in the header, or drop the template when one
+    type uses it.
 - **Match the repo's style:**
   - comments explain why, at the density of the surrounding code
   - `virtual ... override`

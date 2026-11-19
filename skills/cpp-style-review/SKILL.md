@@ -88,6 +88,16 @@ number in the references file):
     kept at the old site; a test that names no bug, or more than 1-3 tests on
     a refactor. Estimate the simplest version's size (`+N/-M`) and list every
     removable type, function and test with what replaces it.
+13. **Types, names and comments** (AGENTS.md "Code conventions for PR branches",
+    Types, names and comments; the user's #648 review) - a comment restating a
+    type's name; a name hiding index vs count or 0/1-based; a comment past the
+    1-2 line contract (mechanism, edge-case lists, log formats) or a long file
+    header; vague words ("both backends"); parallel result types differing by a
+    bool; a field derivable from others or a field pair allowing invalid states
+    (fold into `std::optional<Failure>`); a type/alias in a shared header with
+    one user; an accessor or public method with no outside caller; a setting
+    passed on every call instead of held by its owner; grouping (segments) baked
+    into the core instead of an id range; `extern template`.
 
 ## Step 4: Verify every finding before reporting it
 
