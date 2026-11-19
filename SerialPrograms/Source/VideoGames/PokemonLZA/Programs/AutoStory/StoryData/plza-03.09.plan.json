@@ -10,7 +10,7 @@
     "events": [
       {
         "id": "to_research_lab",
-        "why": "face the street by the minimap arrow (257), down it 6.5 s, left into the lab's gate (walk_to_marker sticks on the fence), held until Ryon's dialog, which shows 9-11 s after the marker goes, hence 13 s. not planned: no tile grid in Lumiose",
+        "why": "face the street by the minimap arrow (257), down it 6.5 s, left into the lab's gate until Ryon's dialog. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [
@@ -39,7 +39,7 @@
       },
       {
         "id": "up_the_lab_steps",
-        "why": "up the steps to the lab's \"A Enter\"; the marker's digits do not read on the steps, so the prompt counts unless digits over 20 were read",
+        "why": "up the steps to the lab's \"A Enter\"; the prompt counts unless digits over 20 were read",
         "action": "walk_to_unread_marker"
       },
       {

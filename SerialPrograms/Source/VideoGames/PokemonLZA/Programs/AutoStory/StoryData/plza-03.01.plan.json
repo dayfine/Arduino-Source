@@ -52,7 +52,7 @@
       },
       {
         "id": "lobby_scene",
-        "why": "the ride, Z-A Royale, the outfit, AZ, Lida; autosave. No party bar in the lobby and 8+ s text-free stretches, so 20 s quiet means control. Alton's choice must be the top row: the 2nd loops the scene",
+        "why": "the ride, Z-A Royale, the outfit, AZ, Lida; autosave. 20 s quiet means control; Alton's choice is the top row",
         "action": "mash_to_move_hints",
         "args": {"quiet_ms": 20000, "min_length_ms": 30000, "quiet_is_control": true, "advance_with_a": true}
       }

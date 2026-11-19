@@ -10,7 +10,7 @@
     "events": [
       {
         "id": "to_hotel_front_door",
-        "why": "across the lobby to the front door; its A prompt shows only some of the time, so leave_hotel_z presses A. not planned: no tile grid in Lumiose",
+        "why": "across the lobby to the front door. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 6000]]

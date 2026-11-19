@@ -11,7 +11,7 @@
     "events": [
       {
         "id": "out_of_pokemon_center",
-        "why": "guess: back out of the Center to where 03.04 left the player, facing the same way; these legs do not leave the Center. not planned: no tile grid in Lumiose",
+        "why": "guess: back out of the Center to where 03.04 left the player. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[180, 1500], [90, 0]]

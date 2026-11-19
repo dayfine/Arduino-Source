@@ -10,7 +10,7 @@
     "events": [
       {
         "id": "battle_zone_to_brigitte",
-        "why": "through the Battle Zone to Brigitte's scene; not held for a dialog, since Taunie's \"Almost there!\" talks on the way. not planned: no tile grid in Lumiose",
+        "why": "through the Battle Zone to Brigitte's scene. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[10, 4250], [90, 6000], [90, 6500]],
