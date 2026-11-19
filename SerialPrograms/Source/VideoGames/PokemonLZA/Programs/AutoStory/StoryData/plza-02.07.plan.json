@@ -11,7 +11,7 @@
       {
         "id": "to_room_door",
         "kind": "game_action",
-        "why": "step 33: to the door's \"A Leave\". Measured 2026-11-08 on console B, walk not run. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; the walk ends on the door's A prompt (the last look of the console B run logs 2026-11-16 to 18: an A prompt, 8 runs), counted after 3/4 of the leg.",
+        "why": "step 33: to the door's \"A Leave\". not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; the walk ends on the door's A prompt, counted after 3/4 of the leg.",
         "action": "walk",
         "args": {"legs": [[0, 2000]], "end": "prompt", "end_after_ms": 1500}
       },

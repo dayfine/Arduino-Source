@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  PLZA's story game (PokemonLZA_AutoStoryGame.h) with the console_only
- *  actions and the reload, which need the console.
+ *  PLZA's story game with the console_only actions and the reload.
  *
  */
 
@@ -21,10 +20,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  plza_story_game() on the console `env`, which must outlive it, as must
-//  `sightings`: its console_only actions run there, walks face their
-//  heading by its minimap arrow, and the reload resets the game from HOME
-//  onto the latest save.
+//  `env` and `sightings` must outlive the game.
 Pokemon::StoryGame<Pokemon::ZonePose> make_plza_story_game(
     StoryEnv& env, const Pokemon::StoryRows& rows, AutosaveSightings& sightings
 );

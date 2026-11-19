@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers face_heading()'s tests: turns to a heading from any start, on
-//  a game whose arrow shows a turn only once it is done.
+//  Registers face_heading()'s tests.
 void add_tests_AutoStoryBackend(UnitTestDatabase& database);
 
 

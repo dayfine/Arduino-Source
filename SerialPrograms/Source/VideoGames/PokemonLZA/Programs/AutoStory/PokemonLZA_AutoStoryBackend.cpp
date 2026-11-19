@@ -18,23 +18,16 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  How close to a run's heading the minimap's arrow must read. 4, not 10:
-//  03.09's walk took 272 for 264 and its 6.5 s leg ended right of the lab
-//  gate (console B, 2026-11-17); turns land within 2 (2026-11-14 to 17).
+//  Turns land within 2; at 8 off, a 6.5 s leg misses a gate.
 constexpr double HEADING_TOLERANCE = 4;
 
-//  The turns face_heading() takes at most.
 constexpr int HEADING_TURNS = 4;
 
-//  How a turn is read back: up to this many arrow reads, this far apart,
-//  until the arrow has moved at least half the turn. The lab feed has run
-//  0.4 s behind the game at 10 fps: the read right after a turn showed the
-//  facing from before it, the same on every frame until the feed caught up.
+//  The lab feed has run 0.4 s behind the game: covers that lag.
 constexpr int TURN_READS = 10;
 constexpr Milliseconds TURN_READ_GAP = 100ms;
 
-//  How far clockwise `heading` is of `now`, the short way round: in
-//  (-180, 180].
+//  In (-180, 180].
 double turn_to(double now, double heading){
     double turn = std::fmod(heading - now, 360.0);
     if (turn > 180){
@@ -45,9 +38,7 @@ double turn_to(double now, double heading){
     return turn;
 }
 
-//  The arrow once the turn of `turn` degrees from `before` shows on the
-//  feed: read until it has moved at least half the turn, TURN_READS reads
-//  at most. The last read when it never does: the turn did not take.
+//  The last read when the arrow never moves half the turn: the turn did not take.
 double read_after_turn(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double before, double turn){
     backend.observe();
     double now = read_arrow();
@@ -67,9 +58,8 @@ double read_after_turn(PlzaBackend& backend, const MinimapArrowReader& read_arro
 Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading){
     backend.observe();
     double now = read_arrow();
-    //  Small turns overshoot: 03.08 asked for 5 and got 10, then -5 and got
-    //  -10, back and forth around 254 (console B, 2026-11-18). Each time a
-    //  turn lands past the heading, the next one asks for half as much.
+    //  Small turns overshoot (5 asked, 10 turned): after each overshoot the
+    //  next turn asks for half as much.
     double gain = 1;
     double last_turn = 0;
     for (int turns = 0; turns <= HEADING_TURNS; turns++){
@@ -93,8 +83,7 @@ Pokemon::Outcome face_heading(PlzaBackend& backend, const MinimapArrowReader& re
 }
 
 void story_turn(PlzaBackend& backend, double degrees){
-    //  150 ms is the tap the story was recorded with.
-    //  Short releases: the legs run back to back, as when played by hand.
+    //  The tap the story was recorded with; short releases run legs back to back.
     backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
     backend.stick(degrees, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
 }

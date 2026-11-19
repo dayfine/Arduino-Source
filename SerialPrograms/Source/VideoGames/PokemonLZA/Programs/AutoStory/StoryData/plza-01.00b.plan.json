@@ -8,7 +8,7 @@
       {
         "id": "confirm",
         "kind": "game_action",
-        "why": "Confirm Choices shows (so the save is fresh): check that screen with no press (anything else is a setup error) and that it shows the panel's name and language, then DOWN to Ready!, reading the highlight after each, and A",
+        "why": "Confirm Choices proves the save is fresh: checked with no press (anything else is a setup error), name and language too, then DOWN to Ready! and A",
         "action": "confirm_new_game"
       },
       {

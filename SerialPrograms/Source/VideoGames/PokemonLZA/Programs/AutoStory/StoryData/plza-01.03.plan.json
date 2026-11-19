@@ -11,7 +11,7 @@
       {
         "id": "approach_starter",
         "kind": "game_action",
-        "why": "walk up to Chikorita, the starter the run picks (the only walk recorded: console B, 2026-11-08), to its \"A Talk\" prompt not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "why": "walk up to Chikorita, the starter the run picks, to its \"A Talk\" prompt. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
         "args": {
           "legs": [[-70, 750]],
@@ -38,7 +38,7 @@
       {
         "id": "after_andi",
         "kind": "game_action",
-        "why": "the fist bump, night in the Battle Zone, the MAIN MISSION 01 COMPLETE card (it waits for A), the Main Mission 02 banner (console B, 2026-11-10)",
+        "why": "the fist bump, night in the Battle Zone, the MAIN MISSION 01 COMPLETE card (it waits for A), the Main Mission 02 banner",
         "action": "mash_to_move_hints"
       }
     ],

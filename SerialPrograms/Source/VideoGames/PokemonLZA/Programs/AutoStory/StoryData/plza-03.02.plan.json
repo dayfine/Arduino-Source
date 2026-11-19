@@ -11,7 +11,7 @@
       {
         "id": "to_hotel_front_door",
         "kind": "game_action",
-        "why": "step 40: across the lobby to the front door's \"A Leave\". Stops at the door. Measured 2026-11-08 on console B, walk not run. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends at the front door, its A prompt not held for: the last look of the console B run logs 2026-11-16 to 18 showed the prompt in 5 of 10 runs, a still screen in the rest, and leave_hotel_z presses A at the door.",
+        "why": "step 40: across the lobby to the front door's \"A Leave\". not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends at the front door, its A prompt not held for (it shows only some of the time), and leave_hotel_z presses A at the door.",
         "action": "walk",
         "args": {
           "legs": [[0, 6000]]

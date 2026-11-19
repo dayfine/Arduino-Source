@@ -14,9 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the rewind to the backup save's tests: the built-in backup
-//  cards' checkpoints, and scripted runs that fail with and without an
-//  autosave in the failed checkpoint (no console).
+//  Registers the tests of the rewind to the backup save.
 void add_tests_AutoStoryBackups(UnitTestDatabase& database);
 
 

@@ -42,13 +42,10 @@ using Handler = Pokemon::StoryActionHandler<ZonePose>;
 
 namespace{
 
-//  After a reload reaches the overworld, before the first look: the wait
-//  reset_game_from_home() takes by default.
+//  The wait reset_game_from_home() takes by default.
 constexpr Milliseconds RELOAD_SETTLE = 1000ms;
 
-//  The game onto its latest save: PLZA launched by launch_plza_from_home()
-//  (its own tile, whichever game ran), then reset_game_from_home()'s title
-//  and load. Fails as "launch_failed".
+//  Launches PLZA's own tile, whichever game ran. Fails as "launch_failed".
 Outcome reload_latest_save(StoryEnv& env){
     ConsoleHandle& console = env.env.console;
     launch_plza_from_home(console, env.context);
@@ -63,7 +60,6 @@ Outcome reload_latest_save(StoryEnv& env){
 }
 
 
-//  `message`, ending with `hint` (none: as it is).
 std::string with_hint(std::string message, std::string_view hint){
     if (hint.empty() || message.ends_with(hint)){
         return message;
@@ -71,9 +67,8 @@ std::string with_hint(std::string message, std::string_view hint){
     return std::format("{} {}", message, hint);
 }
 
-//  The new game step `name` on the console `env`, running `step`. An
-//  OperationFailedException becomes a failed Outcome, so the run can report
-//  it; its message and a UserSetupError's end with `hint`.
+//  An OperationFailedException becomes a failed Outcome; its message and a
+//  UserSetupError's end with `hint`.
 Handler new_game_handler(StoryEnv& env, std::string name, std::string_view hint, std::function<void(StoryEnv&)> step){
     return [&env, name, hint, step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
         try{
@@ -90,10 +85,7 @@ Handler new_game_handler(StoryEnv& env, std::string name, std::string_view hint,
 }
 
 
-//  "run_to_gate"'s run: straight on with upstream's
-//  run_towards_gate_with_A_button() until the gate's A prompt; once more
-//  after a day/night change, which stops the run. Fails as
-//  "gate_not_reached" when the run ends with no prompt.
+//  Runs once more after a day/night change, which stops the run.
 Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
     //  0: the A prompt, 1: a day/night change, else no prompt.
     int result = 1;
@@ -108,15 +100,10 @@ Outcome run_to_gate(StoryEnv& env, Milliseconds timeout){
     return Pokemon::outcome_ok();
 }
 
-//  A run to a wild zone's gate on the console: no A prompt within
-//  `timeout` fails it.
 using GateStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout);
 
-//  "aimed_run_to_gate": up to 3 runs (run_to_gate()), each after map legs
-//  along the far gate's line (ZONE1_GATE_LINE, ZONE1_GATE_APPROACH) and
-//  facing the bearing from the pin there to the gate. A run with no A
-//  prompt (a pillar) walks the legs again: a bearing from next to the gate
-//  is noise (47 degrees from (359, 255), out of the zone).
+//  A run with no A prompt (a pillar) walks the legs again: a bearing from
+//  next to the gate is noise.
 Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout){
     const MapWaypoint approach[] = {ZONE1_GATE_LINE, ZONE1_GATE_APPROACH};
     Outcome ran = Pokemon::outcome_ok();
@@ -144,9 +131,6 @@ Outcome aimed_gate_run(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout
     return ran;
 }
 
-//  The handler of the gate run `name` on the console `env`, its arg
-//  "timeout_ms" the run's timeout. An OperationFailedException fails as
-//  "gate_not_reached".
 Handler gate_handler(StoryEnv& env, std::string name, GateStep step){
     return [&env, name, step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall& call, Pokemon::RunState&){
         const Milliseconds timeout(Pokemon::story_arg<int64_t>(call.args, "timeout_ms"));
@@ -160,12 +144,8 @@ Handler gate_handler(StoryEnv& env, std::string name, GateStep step){
 }
 
 
-//  03.11's reward: the main menu (overworld_to_main_menu()), Mable's
-//  Research three rows down, A. The page opens on Rewards under her lines on
-//  the level 2 reward, TM004 Rock Smash (console B, 2026-11-10): A through
-//  them, then B out of the menu to her talk. No line at all: not in her
-//  office. Fails as "no_reward_lines", "reward_lines_endless" or
-//  "menu_not_closed".
+//  Mable's Research is three rows down the main menu; it opens on Rewards
+//  under her lines. No line at all: not in her office.
 Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
     overworld_to_main_menu(env.env.console, env.context);
     for (int i = 0; i < 3; i++){
@@ -185,10 +165,8 @@ Outcome claim_research_reward(StoryEnv& env, PlzaBackend& backend){
     return Pokemon::outcome_ok();
 }
 
-//  A console action's body.
 using ConsoleStep = Outcome (*)(StoryEnv& env, PlzaBackend& backend);
 
-//  The console actions run by a ConsoleStep, by name: console_only.
 const std::map<std::string_view, ConsoleStep>& console_steps(){
     static const std::map<std::string_view, ConsoleStep> steps{
         {"catch_tutorial", [](StoryEnv& env, PlzaBackend& backend){
@@ -213,8 +191,6 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
     return steps;
 }
 
-//  `step` on the console `env`. An OperationFailedException becomes a
-//  failed Outcome, so the run can report it.
 Handler console_handler(StoryEnv& env, std::string_view name, ConsoleStep step){
     return [&env, name = std::string(name), step](Pokemon::StoryBackend<ZonePose>& backend, const StoryActionCall&, Pokemon::RunState&){
         try{
@@ -227,7 +203,6 @@ Handler console_handler(StoryEnv& env, std::string_view name, ConsoleStep step){
 }
 
 
-//  The console_only actions of plza_story_specs() on the console `env`.
 PlzaConsoleActions console_actions(StoryEnv& env){
     PlzaConsoleActions actions;
     actions.emplace("new_game_intro", new_game_handler(env, "new_game_intro", NEW_GAME_BY_HAND_HINT, [](StoryEnv& story){

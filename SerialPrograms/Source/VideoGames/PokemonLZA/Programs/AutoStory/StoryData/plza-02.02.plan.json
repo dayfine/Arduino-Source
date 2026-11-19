@@ -11,7 +11,7 @@
       {
         "id": "to_blocked_street",
         "kind": "game_action",
-        "why": "step 21: on until the black fade into the street the trainers block. Measured 2026-11-08 on console B, walk not run. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; the walk ends on the black fade into the street scene (the last look of the console B run logs 2026-11-16 to 18: a black fade, 9 runs).",
+        "why": "step 21: on until the black fade into the street the trainers block. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; the walk ends on the black fade into the street scene.",
         "action": "walk",
         "args": {
           "legs": [[0, 2000], [-75, 3500], [90, 3000]],
@@ -27,7 +27,7 @@
       {
         "id": "to_battle_zone_gate",
         "kind": "game_action",
-        "why": "step 22: on to the gate's \"A Leave\" until its prompt shows. From the save the street scene ends at the gate (console B, 2026-11-10: no walk then); after the Brigitte battle it ended at the near end of the street, facing the gate (2026-11-13). not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "why": "step 22: on to the gate's \"A Leave\" until its prompt shows. From the save the street scene ends at the gate; after the Brigitte battle it ends at the near end of the street, facing the gate. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
         "args": {
           "legs": [[0, 10000]],
@@ -37,7 +37,7 @@
       {
         "id": "leave_battle_zone",
         "kind": "talk",
-        "why": "step 22: A at the gate's \"A Leave\" (to_battle_zone_gate walked there); Taunie's first line ~3.5 s later (console B, 2026-11-10)"
+        "why": "step 22: A at the gate's \"A Leave\" (to_battle_zone_gate walked there); Taunie's first line ~3.5 s later"
       },
       {
         "id": "out_of_battle_zone",
@@ -48,7 +48,7 @@
       {
         "id": "through_covered_passage",
         "kind": "game_action",
-        "why": "step 23: through the wooden door and the covered passage into the Hotel Z scene. Measured 2026-11-08 on console B, walk not run. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends where the Hotel Z scene takes over (hotel_z_arrival), with no one event: the last look of the console B run logs 2026-11-16 to 18 read nothing in 8 runs.",
+        "why": "step 23: through the wooden door and the covered passage into the Hotel Z scene. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends where the Hotel Z scene takes over, with no one screen event.",
         "action": "walk",
         "args": {
           "legs": [[75, 3000], [40, 1500], [0, 3000]],

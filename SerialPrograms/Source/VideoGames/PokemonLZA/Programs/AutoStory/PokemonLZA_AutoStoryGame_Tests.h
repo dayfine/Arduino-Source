@@ -14,10 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the story game's tests: the built-in checkpoint files load and
-//  pass the lint, and their steps run on a scripted backend (the opening's
-//  platform wait, the walk off the platform into the white fade, the
-//  arrival scenes to free control).
+//  Registers the story game's tests: built-in plans load, lint and run on a scripted backend.
 void add_tests_AutoStoryGame(UnitTestDatabase& database);
 
 

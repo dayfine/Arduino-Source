@@ -2,9 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Plays Pokemon Legends: Z-A's main story: the story's checkpoints
- *  (PokemonLZA_AutoStoryStoryFiles.h) run by the shared story engine
- *  (Pokemon/AutoStory), from the start checkpoint to the end one.
+ *  Plays Pokemon Legends: Z-A's main story on the shared story engine.
  *
  */
 
@@ -34,8 +32,7 @@ public:
 };
 
 
-//  Runs the story's checkpoints from the start one to the end one on the
-//  shared story engine.
+//  Runs the story's checkpoints from the start one to the end one.
 class AutoStory : public SingleSwitchProgramInstance{
 public:
     using Descriptor = AutoStory_Descriptor;

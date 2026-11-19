@@ -11,7 +11,7 @@
       {
         "id": "to_lab_elevator",
         "kind": "game_action",
-        "why": "step 66: to the elevator's \"A Take Elevator\". Measured 2026-11-09 on console B, walk not run: 1 s; on until the prompt, 1.5 s at most; a prompt before 0.75 s is passed on the way. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
+        "why": "step 66: to the elevator's \"A Take Elevator\": 1 s, then on until the prompt, 1.5 s at most; a prompt before 0.75 s is passed on the way. not planned: Lumiose has no tile grid to plan on; the walk ends on the A prompt it goes to.",
         "action": "walk",
         "args": {
           "legs": [
@@ -32,13 +32,13 @@
       {
         "id": "ride_to_3f",
         "kind": "game_action",
-        "why": "step 67: \"3F: Director's Office\", the second floor listed; the choices show only after A closes the attendant's question, so choose_1 presses A through it first (plza/autostory's choose, passed on console B 2026-11-14 21:40).",
+        "why": "step 67: \"3F: Director's Office\", the second floor listed; the choices show only after A closes the attendant's question, so choose_1 presses A through it first.",
         "action": "choose_1"
       },
       {
         "id": "arrive_3f",
         "kind": "scene",
-        "why": "step 67: the ride, until control on 3F: a bare scene, as plza/autostory's"
+        "why": "step 67: the ride, until control on 3F: a bare scene"
       }
     ],
     "metadata": {

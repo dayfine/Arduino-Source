@@ -2,11 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  face_heading() on a scripted game whose minimap arrow turns only once
- *  the queued turn is done, as on the console: a read before observe()
- *  still shows the facing from before the turn. On a lagging video feed
- *  the reads right after that still show it too (TurningGame's
- *  stale_reads).
+ *  face_heading() on a scripted game whose arrow turns only once the queued
+ *  turn is done (observe() waits), as on the console.
  *
  */
 
@@ -32,11 +29,6 @@ using Pokemon::Observation;
 using Pokemon::ZonePose;
 
 
-//  A player facing `facing` on the minimap. A stick tap after L turns it
-//  by the tap's angle (story_turn()), once the queued inputs are done:
-//  observe() waits for them, as PlzaConsoleBackend's does. The arrow then
-//  still shows the facing from before the turn for `stale_reads` reads, as
-//  a video feed running behind the game shows it.
 //  Below this, a turn lands `small_turn_scale` times as far as asked.
 constexpr double SMALL_TURN = 15;
 
@@ -67,8 +59,7 @@ public:
         return FakeStoryBackend::observe();
     }
 
-    //  The arrow as the feed shows it now: the queued turn not in yet, and
-    //  the facing from before the last turn while the feed lags.
+    //  The queued turn not in yet; the old facing while the feed lags.
     double arrow(){
         if (m_stale_left > 0){
             m_stale_left--;
@@ -77,7 +68,6 @@ public:
         return m_facing;
     }
 
-    //  Where the player faces in the game.
     double facing() const{
         return m_facing;
     }
@@ -93,7 +83,6 @@ private:
 };
 
 
-//  How far `facing` is from `heading`, either way round.
 double heading_error(double facing, double heading){
     const double error = std::fmod(std::fabs(facing - heading), 360.0);
     return std::min(error, 360 - error);
@@ -107,15 +96,12 @@ struct FaceHeadingCase{
         double heading;
         //  False: the player stands still whatever the stick does.
         bool turns_take = true;
-        //  The reads after each turn that still show the facing from
-        //  before it.
+        //  Reads after each turn that still show the old facing.
         size_t stale_reads = 0;
-        //  How much farther than asked a turn under SMALL_TURN lands.
         double small_turn_scale = 1;
     };
     Input input;
     struct Expectation{
-        //  Empty: faced.
         std::string failure;
     };
     Expectation expectation;

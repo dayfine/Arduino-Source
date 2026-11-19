@@ -11,7 +11,7 @@
       {
         "id": "battle_zone_to_brigitte",
         "kind": "game_action",
-        "why": "step 18: through the Battle Zone until Taunie's \"Almost there!\" and Brigitte's scene. Held legs, played on console B over CFR 2026-11-10: wait 3 s, +10 deg 4.25 s, L then right 6 s, L then right 6.5 s. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends in a dialog box (the last look of the console B run logs 2026-11-16 to 18: a dialog box, 8 runs), not held for: Taunie's \"Almost there!\" talks on the way, and a walk stopped on it may stop short of Brigitte.",
+        "why": "step 18: through the Battle Zone until Taunie's \"Almost there!\" and Brigitte's scene. not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends in a dialog box, not held for: Taunie's \"Almost there!\" talks on the way, and a walk stopped on it may stop short of Brigitte.",
         "action": "walk",
         "args": {
           "legs": [[10, 4250], [90, 6000], [90, 6500]],
