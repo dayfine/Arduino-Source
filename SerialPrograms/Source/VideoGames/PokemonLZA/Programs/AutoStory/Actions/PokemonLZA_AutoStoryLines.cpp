@@ -60,7 +60,6 @@ bool press_b_out_of_menu(PlzaBackend& backend, size_t presses){
     }
     const ScreenObservation look = backend.observe();
     return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || text_shows(look);
-
 }
 
 

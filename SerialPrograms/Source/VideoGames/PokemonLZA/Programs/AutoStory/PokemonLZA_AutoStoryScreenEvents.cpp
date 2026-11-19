@@ -55,7 +55,6 @@ ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
 }
 
 void PlzaScreenObserver::make_overlays(VideoOverlaySet& items) const{
-
     m_choice_arrow.make_overlays(items);
     m_interact.make_overlays(items);
     m_battle_hint.make_overlays(items);

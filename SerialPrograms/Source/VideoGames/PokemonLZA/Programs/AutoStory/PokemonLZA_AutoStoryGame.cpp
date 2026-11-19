@@ -42,7 +42,6 @@ void log_start_boundary(PlzaBackend& backend, std::string_view id, std::string_v
 } // namespace
 
 
-
 Pokemon::StoryGame plza_story_game(const MarkedCheckpoints& marked, AutosaveSightings& sightings){
     return Pokemon::StoryGame{.id = "plza", .save = autosave_policy(marked, sightings)};
 }
@@ -109,7 +108,6 @@ std::variant<Chain, Pokemon::StoryFailure> decide_chain(CheckpointRun& run, cons
     }
     return check_live_start(run, checkpoint, seen);
 }
-
 
 std::optional<Pokemon::StoryFailure> reload_into(
     CheckpointRun& run, const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& checkpoint

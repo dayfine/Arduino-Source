@@ -19,7 +19,6 @@ StartSignature read_start_screen(const ImageViewRGB32& screen){
     PlzaScreenObserver observer;
     const ScreenEvents events = observer.read(screen);
     const bool unreadable = events.has(ScreenEvent::FADE_BLACK) || events.has(ScreenEvent::FADE_WHITE);
-
     if (unreadable){
         return StartSignature{};
     }

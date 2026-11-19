@@ -1212,7 +1212,6 @@ bool party_bar_free(const ScreenObservation& look){
     return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !busy(look);
 }
 
-
 bool scene_under_way(const ScreenObservation& look){
     if (scene_shows(look) || look.readings.contains(TUTORIAL_CARD_READING)){
         return true;

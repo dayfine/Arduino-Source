@@ -27,7 +27,6 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionCompleteDetector.h"
-
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryHeading.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
@@ -85,7 +84,6 @@ private:
     StoryEnv& m_env;
     HomeMenuDetector m_home;
     PlzaScreenObserver m_observer;
-
     AutosaveDetector m_autosave;
     ControlsHintDetector m_controls_hint;
     AdvanceArrowDetector m_advance_arrow;

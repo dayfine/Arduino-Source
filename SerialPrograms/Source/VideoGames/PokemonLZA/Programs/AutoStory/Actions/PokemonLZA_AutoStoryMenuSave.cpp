@@ -81,7 +81,6 @@ MenuSaveScreen menu_save_screen(const ScreenObservation& look){
     }
     //  01.01's platform shows no party bar, only the controls hint.
     if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || has_reading(look, CONTROLS_HINT_READING)){
-
         return MenuSaveScreen::OVERWORLD;
     }
     return MenuSaveScreen::UNKNOWN;

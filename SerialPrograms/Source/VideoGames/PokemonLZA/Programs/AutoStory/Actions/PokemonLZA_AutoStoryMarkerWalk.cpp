@@ -11,7 +11,6 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
-
 #include "PokemonLZA_AutoStoryMarkerArrival.h"
 #include "PokemonLZA_AutoStoryMarkerDistance.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
@@ -179,7 +178,6 @@ bool objective_reached(StoryEnv& env, PlzaBackend& backend, MarkerArrival& arriv
             .distance = std::nullopt,
             .marker_shows = marker,
             .prompt_or_dialog = look.events.has(ScreenEvent::INTERACT_PROMPT) || text_shows(look),
-
             .at = current_time(),
         });
         if (arrival.arrived()){

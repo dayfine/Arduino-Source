@@ -66,7 +66,6 @@ ScreenObservation home(Milliseconds at){
 
 //  01.01's platform: the controls hint, no party bar.
 ScreenObservation platform(Milliseconds at){
-
     return look(/*events=*/{}, {CONTROLS_HINT_READING}, at);
 }
 

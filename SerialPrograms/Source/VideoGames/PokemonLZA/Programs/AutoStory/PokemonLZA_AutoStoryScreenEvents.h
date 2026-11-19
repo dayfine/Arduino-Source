@@ -18,7 +18,6 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleMarkersDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
 
-
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
@@ -29,7 +28,6 @@ namespace PokemonLZA{
 //  also shows under a talk's text. BATTLE_STARTED is the HUD's hints (only
 //  while locked on) or the player's panel with the battle markers (the panel
 //  alone shows all through a wild zone); story battles show no Run prompt.
-
 class PlzaScreenObserver : public ScreenEventObserver{
 public:
     PlzaScreenObserver();
@@ -42,7 +40,6 @@ public:
     virtual void make_overlays(VideoOverlaySet& items) const override;
 
 private:
-
     SelectionArrowDetector m_choice_arrow;
     ButtonDetector m_interact;
     ButtonDetector m_battle_hint;

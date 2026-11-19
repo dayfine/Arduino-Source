@@ -32,7 +32,6 @@
 #include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "Detectors/PokemonLZA_AutoStoryMinimapMatch.h"
-
 #include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
 #include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
@@ -330,7 +329,6 @@ void log_reload_landing(StoryEnv& story, PlzaBackend& backend, const StoryCheckp
         scores += std::format("{}{} {:.1f}", index == 0 ? "" : ", ", distances[index].reference, distances[index].distance);
     }
     const std::string landed = matching_minimap(*snapshot.frame).value_or("unknown");
-
     backend.log(std::format("[ReloadProbe] after {}: landed at {} ({})", passed.id, landed, scores));
     const std::string folder = start_minimaps_folder();
     Filesystem::create_directories(Filesystem::Path(folder));

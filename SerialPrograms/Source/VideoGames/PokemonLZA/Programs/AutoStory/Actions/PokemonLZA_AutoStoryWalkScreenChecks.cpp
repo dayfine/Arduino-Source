@@ -109,7 +109,6 @@ bool control_shows(const ScreenObservation& look){
     return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(CONTROLS_HINT_READING);
 }
 
-
 bool prompt_steady(PlzaBackend& backend){
     backend.wait(PROMPT_STEADY_GAP);
     return backend.observe().events.has(ScreenEvent::INTERACT_PROMPT);

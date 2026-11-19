@@ -70,7 +70,6 @@ struct CheckpointRunOptions{
 //    "reload_off_start", or "reload_unchecked" with no start or reader.
 //  - other checkpoints are checked on the live screen: "chain_off_start" when
 //    elsewhere; no start or reader runs on unchecked.
-
 std::optional<Pokemon::CheckpointFailure> run_plza_checkpoints(
     Pokemon::StoryGame& game, std::span<Pokemon::StoryCheckpoint> checkpoints, CheckpointRunOptions& options,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
