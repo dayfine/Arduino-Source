@@ -512,6 +512,21 @@ ControllerProfile ControllerSettingsTable::random_profile(
 
     return profile;
 }
+
+#ifdef QT_CORE_LIB
+namespace{
+void save_controller_settings_if_gui(){
+    if (is_headless_mode()){
+        return;
+    }
+    //  This is brutal (tech-debt). The only way to force the settings to save
+    //  is to load the panel. TODO: Redesign panels to allow external editing.
+    //  This is also coming in from a different thread (not the main Qt thread).
+    OptionsPanelWrapper<ConsoleSettingsPanel>().make_panel()->save_settings();
+}
+} // namespace
+#endif
+
 ControllerProfile ControllerSettingsTable::get_or_make_profile(
     const uint8_t mac_address[6],
     const std::string& name,
@@ -583,12 +598,7 @@ ControllerProfile ControllerSettingsTable::get_or_make_profile(
 //    PERSISTENT_SETTINGS().write();
 
 #ifdef QT_CORE_LIB
-    if (!is_headless_mode()){
-        //  This is brutal (tech-debt). The only way to force the settings to save
-        //  is to load the panel. TODO: Redesign panels to allow external editing.
-        //  This is also coming in from a different thread (not the main Qt thread).
-        OptionsPanelWrapper<ConsoleSettingsPanel>().make_panel()->save_settings();
-    }
+    save_controller_settings_if_gui();
 #endif
 
     return profile;

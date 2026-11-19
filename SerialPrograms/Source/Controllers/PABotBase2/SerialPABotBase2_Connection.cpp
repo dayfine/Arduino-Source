@@ -118,6 +118,24 @@ void SerialPABotBase2_Connection::open_guarded_serial_port(){
         GlobalThreadPools::unlimited_realtime(), m_device_name, 115200
     );
 }
+#ifdef QT_CORE_LIB
+namespace{
+void show_prolific_error_dialog(){
+    if (is_headless_mode()){
+        return;
+    }
+    QMessageBox box;
+    box.critical(
+        nullptr,
+        "Error",
+        "Cannot select Prolific controller.<br><br>"
+        "Prolific controllers do not work for Arduino and similar microcontrollers.<br>"
+        "You were warned of this in the setup instructions. Please buy a CP210x controller instead."
+    );
+}
+} // namespace
+#endif
+
 bool SerialPABotBase2_Connection::open_serial_port(){
     {
         std::string text = "Opening serial port...";
@@ -146,16 +164,7 @@ bool SerialPABotBase2_Connection::open_serial_port(){
 
     //  Prolific is banned
     if (info.description().indexOf("Prolific") != -1){
-        if (!is_headless_mode()){
-            QMessageBox box;
-            box.critical(
-                nullptr,
-                "Error",
-                "Cannot select Prolific controller.<br><br>"
-                "Prolific controllers do not work for Arduino and similar microcontrollers.<br>"
-                "You were warned of this in the setup instructions. Please buy a CP210x controller instead."
-            );
-        }
+        show_prolific_error_dialog();
         std::string text = "Cannot connect to Prolific controller.";
         m_logger.log(text, COLOR_RED);
         set_status_line0(text, COLOR_RED);

@@ -198,6 +198,35 @@ bool wait_for_controller_ready(ProgramSession& program, std::chrono::millisecond
     return controller_ready(program);
 }
 
+#if !defined(_WIN32)
+void attach_signal_handler(
+    QSocketNotifier*& signal_notifier,
+    std::optional<int>& signal_exit_code,
+    QTimer& stop_timer,
+    QEventLoop& run_loop,
+    ProgramSession& program,
+    std::chrono::milliseconds stop_timeout,
+    Logger& logger
+){
+    install_signal_pipe(signal_notifier, [&](int sig){
+        const int code = sig == SIGTERM ? 143 : 130;
+        if (signal_exit_code){
+            logger.log("Second signal received; exiting immediately.", COLOR_RED);
+            run_loop.exit(code);
+            return;
+        }
+        signal_exit_code = code;
+        logger.log("Signal received; stopping program...", COLOR_ORANGE);
+        program.stop_program();
+        QObject::connect(&stop_timer, &QTimer::timeout, &run_loop, [&run_loop, &logger, code]{
+            logger.log("Stop timeout expired; exiting.", COLOR_RED);
+            run_loop.exit(code);
+        });
+        stop_timer.start(static_cast<int>(stop_timeout.count()));
+    });
+}
+#endif
+
 int run_program_event_loop(
     ProgramSession& program,
     std::chrono::milliseconds stop_timeout,
@@ -215,22 +244,9 @@ int run_program_event_loop(
 
 #if !defined(_WIN32)
     QSocketNotifier* signal_notifier = nullptr;
-    install_signal_pipe(signal_notifier, [&](int sig){
-        const int code = sig == SIGTERM ? 143 : 130;
-        if (signal_exit_code){
-            logger.log("Second signal received; exiting immediately.", COLOR_RED);
-            run_loop.exit(code);
-            return;
-        }
-        signal_exit_code = code;
-        logger.log("Signal received; stopping program...", COLOR_ORANGE);
-        program.stop_program();
-        QObject::connect(&stop_timer, &QTimer::timeout, &run_loop, [&]{
-            logger.log("Stop timeout expired; exiting.", COLOR_RED);
-            run_loop.exit(code);
-        });
-        stop_timer.start(static_cast<int>(stop_timeout.count()));
-    });
+    attach_signal_handler(
+        signal_notifier, signal_exit_code, stop_timer, run_loop, program, stop_timeout, logger
+    );
 #endif
 
     const std::string start_error = program.start_program();
