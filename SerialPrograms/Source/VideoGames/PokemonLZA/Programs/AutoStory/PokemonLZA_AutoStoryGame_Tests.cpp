@@ -367,20 +367,6 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  Console B 2026-11-19: the letter's box shows no advance arrow.
-        .name = "03.01's letter after the lobby scene gets A every 2 s until 10 s quiet",
-        .input = {.checkpoint = "03.01", .first_step = 7, .steps = 1, .looks = {
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
-            look(/*events=*/{}, /*readings=*/{}, Milliseconds(4000)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(6000)),
-            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(12000)),
-        }},
-        .expectation = {
-            .verdict = "done",
-            .inputs = "press A, press A, press A, press A",
-            .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
-        },
-    },
-    {
         .name = "02.06 with no autosave badge seen is not saved",
         .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
             look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)), party_bar(Milliseconds(21000)), party_bar(Milliseconds(22000)),

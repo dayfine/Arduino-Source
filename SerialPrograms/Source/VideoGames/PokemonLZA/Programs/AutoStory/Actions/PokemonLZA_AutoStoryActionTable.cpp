@@ -192,14 +192,13 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
 }
 
 
-//  01.01's arrival takes ~240 s, hence 360 s. Blind A only with
-//  "blind_a_after_ms", for a box with no advance arrow (03.01's letter): one
-//  at the end of a talk restarts it.
+//  01.01's arrival takes ~240 s, hence 360 s. No blind A: one at the end of
+//  a talk restarts it.
 Pokemon::StoryActionParser move_hints_action(){
     return [](const JsonObject& args) -> StoryStepRun{
         reject_unknown_keys(args, {
             "min_length_ms", "quiet_ms", "press_a_first", "quiet_is_control", "end_after_black_fades",
-            "gap_press_ms", "advance_with_a", "blind_a_after_ms",
+            "gap_press_ms", "advance_with_a",
         });
         SceneMachineConfig config;
         config.quiet = ms_or(args, "quiet_ms", 60s);
@@ -211,7 +210,6 @@ Pokemon::StoryActionParser move_hints_action(){
         if (const std::optional<Milliseconds> gap = optional_ms(args, "gap_press_ms")){
             config.gap_press = *gap;
         }
-        config.blind_press_after = optional_ms(args, "blind_a_after_ms");
         if (const JsonValue* fades = args.get_value("end_after_black_fades")){
             config.end_after_black_fades = (size_t)fades->to_integer_throw();
         }
