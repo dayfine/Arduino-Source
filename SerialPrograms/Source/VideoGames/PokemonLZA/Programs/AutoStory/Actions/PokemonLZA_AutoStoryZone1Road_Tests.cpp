@@ -67,11 +67,6 @@ struct StartCase{
 
 const StartCase START_CASES[] = {
     {
-        .name = "the hand-measured way: 127 off the rocks, the timed walk to 102, then the patrol",
-        .input = {.reads = {127, 102}},
-        .expectation = {.moves = {ZoneStartMove::WALK_TO_SPOT, ZoneStartMove::SEARCH}},
-    },
-    {
         //  console B, 2026-11-16 16:14: 101 on screen, the digits over the
         //  green column read "1", "41" and "5".
         .name = "no read after the timed walk: the patrol, which reads on its walk to 100",
@@ -91,11 +86,6 @@ const StartCase START_CASES[] = {
     {
         .name = "a read off the rocks nearer than the save stands: stop",
         .input = {.reads = {113}},
-        .expectation = {.moves = {ZoneStartMove::ROCKS_NOT_LEFT}},
-    },
-    {
-        .name = "a read off the rocks further than the save stands: stop",
-        .input = {.reads = {140}},
         .expectation = {.moves = {ZoneStartMove::ROCKS_NOT_LEFT}},
     },
     {

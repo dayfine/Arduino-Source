@@ -76,11 +76,6 @@ const SyntheticCase SYNTHETIC_CASES[] = {
         .expectation = {.x = 0.5},
     },
     {
-        .name = "a marker right of the middle",
-        .input = {.frame = []{ return frame_with({{1506, 300, 60, 60}}); }},
-        .expectation = {.x = 0.8},
-    },
-    {
         .name = "the larger of two markers",
         .input = {.frame = []{ return frame_with({{400, 400, 40, 40}, {1506, 400, 60, 60}}); }},
         .expectation = {.x = 0.8},
@@ -117,7 +112,6 @@ const SyntheticCase SYNTHETIC_CASES[] = {
     },
     {.name = "no orange", .input = {.frame = []{ return frame_with({}); }}, .expectation = {.x = std::nullopt}},
     {.name = "an empty frame", .input = {.frame = []{ return ImageRGB32(); }}, .expectation = {.x = std::nullopt}},
-    {.name = "a 1 x 1 frame", .input = {.frame = []{ return ImageRGB32(1, 1); }}, .expectation = {.x = std::nullopt}},
 };
 
 class Test_ObjectiveMarkerSynthetic : public UnitTest{

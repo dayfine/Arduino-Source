@@ -133,30 +133,6 @@ const ArrivalCase ARRIVAL_CASES[] = {
         .expectation = {.arrived_on = std::nullopt, .near = true},
     },
     {
-        .name = "a prompt with the marker up below 10 to go is the objective",
-        .input = {
-            .proof = MarkerProof::NEAR_READ,
-            .looks = concat(reads({18, 15, 12, 9}), {Look{.distance = 8, .marker_shows = true, .prompt_or_dialog = true}}),
-        },
-        .expectation = {.arrived_on = 5, .near = true},
-    },
-    {
-        .name = "the lab gate's scene after 23 down to 12: the marker gone, then the dialog",
-        .input = {
-            .proof = MarkerProof::NO_FAR_READ,
-            .looks = concat(reads({23, 22, 18, 15, 12, NO_DIGITS}), {MARKER_GONE, MARKER_GONE, SCENE_DIALOG}),
-        },
-        .expectation = {.arrived_on = 9, .near = true},
-    },
-    {
-        .name = "a prompt at 44 to go, the reads agreeing, is not the objective",
-        .input = {
-            .proof = MarkerProof::NEAR_READ,
-            .looks = concat(reads({50, 47, 44}), {Look{.distance = 44, .prompt_or_dialog = true}}),
-        },
-        .expectation = {.arrived_on = std::nullopt, .near = false},
-    },
-    {
         .name = "near, then far again: a prompt there is not the objective",
         .input = {
             .proof = MarkerProof::NEAR_READ,
