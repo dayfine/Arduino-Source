@@ -11,6 +11,8 @@
 #include "Sources/AudioSource_File.h"
 #include "Sources/AudioSource_Device.h"
 #include "AudioOption.h"
+#include "AudioPipelineOptions.h"
+#include "CommonFramework/GlobalSettingsPanel.h"
 
 //#include <iostream>
 //using std::cout;
@@ -55,6 +57,7 @@ std::string AudioOption::audioDisplayTypeToString(AudioOption::AudioDisplayType 
 
 AudioOption::AudioOption()
     : m_input_source(new AudioSourceDescriptor_Null())
+    , m_display_type(GlobalSettings::instance().AUDIO_PIPELINE->DEFAULT_DISPLAY)
 {}
 
 void AudioOption::set_input(std::shared_ptr<AudioSourceDescriptor> descriptor){
