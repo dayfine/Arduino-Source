@@ -45,7 +45,7 @@ std::optional<Pokemon::StoryFailure> walk_until(
 );
 
 //  A walk to an A prompt can stop beside its target at run pace (03.03b's
-//  ladder, 03.04's Center door, 2026-11-19). Steps sideways, left first,
+//  ladder, 2026-11-19). Steps sideways, left first,
 //  then back past the start to the right, facing `facing_degrees` from the
 //  camera again after each step, until a look shows the A prompt. The
 //  steps taken; none when no prompt showed.

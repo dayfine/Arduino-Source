@@ -780,15 +780,17 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        //  The last turn left the player beside the door at run pace (console B 2026-11-19).
-        .name = "03.04 into_pokemon_center, stopped beside the door: stepping along finds its A prompt",
+        //  The turn into the Center ran into the wall beside its opening; steps
+        //  sideways from there walked back out (console B 2026-11-19 05:42).
+        .name = "03.04 into_pokemon_center, no A prompt after the last turn, one shows later",
         .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
 0.0s: party bar
 12.0s: party bar, A prompt
 )"},
         .expectation = {
-            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: the A prompt after 3 steps along",
+            .keys = {{"party bar", "L or stick or hold"}},
+            .verdict = "failed: walk_no_end",
+            .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no end event after the last turn",
         },
     },
     {
