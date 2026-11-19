@@ -155,18 +155,6 @@ bool start_confirmed(const StartSignature& known, const StartSignature& read){
         && (known.talk_prompt || known.wild_zone || known.party || known.minimap);
 }
 
-bool start_reads_map(
-    std::span<const StoryCheckpoint> rows, std::span<const CheckpointStart> starts, size_t asked
-){
-    for (size_t index = 0; index <= asked && index < rows.size(); index++){
-        const CheckpointStart* start = find_start(starts, rows[index].id);
-        if (start != nullptr && (start->signature.wild_zone || start->signature.minimap)){
-            return true;
-        }
-    }
-    return false;
-}
-
 std::optional<bool> wild_zone_from_map(const std::optional<MapPoint>& pin){
     if (!pin){
         return std::nullopt;

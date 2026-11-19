@@ -203,8 +203,8 @@ StartSignature read_start_position(StoryEnv& story, PlzaBackend& backend){
 }
 
 //  The checkpoint a run asked to start at `plan.first` plays from: where the
-//  screen, and the map once it opens (start_reads_map()), say the player
-//  is (run_start()), `first` or an earlier checkpoint. Throws
+//  screen, and the map once it opens (builtin_start_reads_map()), say the
+//  player is (run_start()), `first` or an earlier checkpoint. Throws
 //  OperationFailedException, with a screenshot, as "start_position_unknown"
 //  when the position matches no start: no checkpoint's events run from the
 //  wrong place. When `plan.max_rewinds` allows, an unknown start first
@@ -220,7 +220,7 @@ size_t checked_first_row(StoryEnv& story, PlzaBackend& backend, const RewindPlan
         console.log(std::format("AutoStory: {} has no start signature: running it, no start check", rows[first].id));
         return first;
     }
-    const StartSignature read = start_reads_map(rows, starts, first)
+    const StartSignature read = builtin_start_reads_map(rows[first].id)
         ? read_start_position(story, backend)
         : read_start_signature(console, story.context);
     const std::optional<size_t> from = start_or_rewind(backend, plan, read, backup);

@@ -108,15 +108,6 @@ std::optional<size_t> run_start(
 //  signature for this check; only a reload's match needs one checkpoint.
 bool start_confirmed(const StartSignature& known, const StartSignature& read);
 
-//  Whether a run asked to start at `asked` (an index of `rows`) reads the
-//  player's pin on the full map for its start (PLUS opens it, B closes
-//  it): when a start up to `asked` names wild_zone or a minimap. Those
-//  starts are past 03.02b's Map & Missions card; before it the map does
-//  not open, and a run there reads the screen only.
-bool start_reads_map(
-    std::span<const Pokemon::StoryCheckpoint> rows, std::span<const CheckpointStart> starts, size_t asked
-);
-
 //  The signature's wild_zone by the player's pin on the full map
 //  (read_map_pin()): whether it is in Wild Zone 1 (pin_in_zone_1()).
 //  None when the pin was not read.

@@ -388,12 +388,7 @@ const MapReadCase MAP_READ_CASES[] = {
 };
 
 UnitTestResult check_map_read(const MapReadCase& test){
-    const std::vector<StoryCheckpoint>& rows = builtin_story_data().checkpoints;
-    const std::optional<size_t> asked = index_of(rows, test.input.asked);
-    if (!asked){
-        return std::format("no checkpoint {}", test.input.asked);
-    }
-    const bool reads_map = start_reads_map(rows, builtin_checkpoint_starts(), *asked);
+    const bool reads_map = builtin_start_reads_map(test.input.asked);
     if (reads_map != test.expectation.reads_map){
         return std::format("expected {}, got {}", test.expectation.reads_map ? "the map" : "the screen only", reads_map ? "the map" : "the screen only");
     }
