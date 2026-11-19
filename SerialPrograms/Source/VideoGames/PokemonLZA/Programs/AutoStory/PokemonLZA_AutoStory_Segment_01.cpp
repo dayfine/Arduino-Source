@@ -200,10 +200,7 @@ void checkpoint_02(
 }
 
 // First rival battle and Pokemon Center introduction
-void checkpoint_03(
-    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
-    BattleAIOption& battle_ai
-){
+void checkpoint_03(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     // Z-A Royale introduction
     pbf_move_left_joystick(context, {0, 1}, 800ms, 100ms);
     overworld_navigation(
@@ -218,7 +215,13 @@ void checkpoint_03(
         -0.3, 0.95, 60s, true, ButtonType::ButtonA
     );
     clear_dialog(env.console, context, ClearDialogMode::STOP_OVERWORLD, BUTTON_A, 6min);
+}
 
+// From the lobby autosave after the Z-A Royale introduction, where a reload lands
+void checkpoint_03b(
+    SingleSwitchProgramEnvironment& env, ProControllerContext& context,
+    BattleAIOption& battle_ai
+){
     // Rival battle
     overworld_navigation(
         env.console, context,
@@ -431,6 +434,7 @@ void AutoStory_Segment_01::run_segment(
     AutoStory_Checkpoint_01().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_02().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_03().run_checkpoint(env, context, options, stats);
+    AutoStory_Checkpoint_03b().run_checkpoint(env, context, options, stats);
     AutoStory_Checkpoint_04().run_checkpoint(env, context, options, stats);
 
     env.log(end_text());
@@ -534,7 +538,7 @@ void AutoStory_Checkpoint_02::run_checkpoint(
 }
 
 std::string AutoStory_Checkpoint_03::name() const{
-    return "03: First rival battle and Pokemon Center introduction";
+    return "03: Z-A Royale introduction";
 }
 
 std::string AutoStory_Checkpoint_03::start_text() const{
@@ -542,7 +546,7 @@ std::string AutoStory_Checkpoint_03::start_text() const{
 }
 
 std::string AutoStory_Checkpoint_03::end_text() const{
-    return "Pokemon Center introduction completed, before entering Wild Zone 1";
+    return "Z-A Royale introduction finished in the Hotel Z lobby (autosave)";
 }
 
 void AutoStory_Checkpoint_03::run_checkpoint(
@@ -557,7 +561,35 @@ void AutoStory_Checkpoint_03::run_checkpoint(
     context.wait_for_all_requests();
     env.log("Checkpoint " + name());
     env.log("Start: " + start_text());
-    checkpoint_03(env, context, options.battle_ai);
+    checkpoint_03(env, context);
+    context.wait_for_all_requests();
+}
+
+std::string AutoStory_Checkpoint_03b::name() const{
+    return "03b: First rival battle and Pokemon Center introduction";
+}
+
+std::string AutoStory_Checkpoint_03b::start_text() const{
+    return "Z-A Royale introduction finished in the Hotel Z lobby (autosave)";
+}
+
+std::string AutoStory_Checkpoint_03b::end_text() const{
+    return "Pokemon Center introduction completed, before entering Wild Zone 1";
+}
+
+void AutoStory_Checkpoint_03b::run_checkpoint(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    AutoStoryOptions options,
+    AutoStoryStats& stats
+) const{
+    stats.m_segment = 1;
+    stats.m_checkpoint = 3;
+    env.update_stats();
+    context.wait_for_all_requests();
+    env.log("Checkpoint " + name());
+    env.log("Start: " + start_text());
+    checkpoint_03b(env, context, options.battle_ai);
     context.wait_for_all_requests();
 }
 
