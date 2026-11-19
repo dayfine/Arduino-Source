@@ -22,16 +22,8 @@ ScreenEvents fade_events(WarpFade fade);
 WarpFade fade_in(const ScreenEvents& events);
 
 
-//  A fade is uniform over the middle 80% of the screen, as the shared
-//  Black/WhiteScreenWatcher test: a dim cave floor is textured, no fade.
-constexpr double FADE_MAX_STDDEV_SUM = 10;
-//  Dark up to an rgb sum of 225: a cave mouth's fade is dim, not black.
-constexpr double FADE_MAX_DARK_SUM = 225;
-//  White from an rgb sum of 500, as the shared WhiteScreenWatcher's.
-constexpr double FADE_MIN_WHITE_SUM = 500;
 //  The fade `middle` (the stats of the screen's middle 80%) shows, if any.
 WarpFade fade_of(const ImageStats& middle);
-//  fade_of() for a screen.
 WarpFade fade_of_screen(const ImageViewRGB32& screen);
 
 

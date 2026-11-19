@@ -11,11 +11,11 @@
 
 #include <stdint.h>
 #include <functional>
-#include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/CancellableScope.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -28,10 +28,10 @@ namespace PokemonAutomation{
 struct ScreenState{
     std::string name = {};
     //  Whether a look shows this screen; the first matching state wins.
-    std::function<bool(const ScreenObservation& observation)> matches = nullptr;
+    MoveOnlyFunction<bool(const ScreenObservation& observation)> matches = nullptr;
     //  The one step to take on this screen; none for a state that only
     //  waits.
-    std::function<void()> act = nullptr;
+    MoveOnlyFunction<void()> act = nullptr;
     //  Fail once the screen has been seen more than this many times.
     size_t max_visits = SIZE_MAX;
     //  End the run after this state's step.
@@ -58,7 +58,7 @@ using ScreenMachineResult = std::variant<ScreenMachineTerminal, ScreenMachineFai
 //  when set.
 ScreenMachineResult run_screen_machine(
     const std::function<ScreenObservation()>& observe, CancellableScope& scope,
-    const std::vector<ScreenState>& states, Milliseconds timeout,
+    std::vector<ScreenState> states, Milliseconds timeout,
     const std::function<void(std::string_view line)>& log
 );
 

@@ -15,30 +15,43 @@
 namespace PokemonAutomation{
 
 
-std::string screen_event_name(ScreenEvent event){
-    switch (event){
-    case ScreenEvent::FADE_BLACK:       return "black fade";
-    case ScreenEvent::FADE_WHITE:       return "white fade";
-    case ScreenEvent::LOCATION_BANNER:  return "location banner";
-    case ScreenEvent::DIALOG_BOX:       return "dialog box";
-    case ScreenEvent::CHOICE_BOX:       return "choice box";
-    case ScreenEvent::INTERACT_PROMPT:  return "interact prompt";
-    case ScreenEvent::BATTLE_STARTED:   return "battle started";
-    case ScreenEvent::BATTLE_ENDED:     return "battle ended";
-    case ScreenEvent::PLAYER_CAN_MOVE:  return "player can move";
-    case ScreenEvent::SCREEN_STILL:     return "screen still";
-    case ScreenEvent::SWITCH_HOME_MENU: return "Switch HOME menu";
-    }
-    return "?";
+namespace{
+
+//  A fade is uniform over the middle 80% of the screen, as the shared
+//  Black/WhiteScreenWatcher test: a dim cave floor is textured, no fade.
+constexpr double FADE_MAX_STDDEV_SUM = 10;
+//  Dark up to an rgb sum of 225: a cave mouth's fade is dim, not black.
+constexpr double FADE_MAX_DARK_SUM = 225;
+//  White from an rgb sum of 500, as the shared WhiteScreenWatcher's.
+constexpr double FADE_MIN_WHITE_SUM = 500;
+
+} // namespace
+
+
+const EnumStringMap<ScreenEvent>& SCREEN_EVENT_NAMES(){
+    static const EnumStringMap<ScreenEvent> names{
+        {ScreenEvent::FADE_BLACK,       "black fade"},
+        {ScreenEvent::FADE_WHITE,       "white fade"},
+        {ScreenEvent::LOCATION_BANNER,  "location banner"},
+        {ScreenEvent::DIALOG_BOX,       "dialog box"},
+        {ScreenEvent::CHOICE_BOX,       "choice box"},
+        {ScreenEvent::INTERACT_PROMPT,  "interact prompt"},
+        {ScreenEvent::BATTLE_STARTED,   "battle started"},
+        {ScreenEvent::BATTLE_ENDED,     "battle ended"},
+        {ScreenEvent::PLAYER_CAN_MOVE,  "player can move"},
+        {ScreenEvent::SCREEN_STILL,     "screen still"},
+        {ScreenEvent::SWITCH_HOME_MENU, "Switch HOME menu"},
+    };
+    return names;
 }
 
-std::string warp_fade_name(WarpFade fade){
-    switch (fade){
-    case WarpFade::NONE:    return "no fade";
-    case WarpFade::BLACK:   return "black fade";
-    case WarpFade::WHITE:   return "white fade";
-    }
-    return "?";
+const EnumStringMap<WarpFade>& WARP_FADE_NAMES(){
+    static const EnumStringMap<WarpFade> names{
+        {WarpFade::NONE,  "no fade"},
+        {WarpFade::BLACK, "black fade"},
+        {WarpFade::WHITE, "white fade"},
+    };
+    return names;
 }
 
 
@@ -74,20 +87,6 @@ WarpFade fade_in(const ScreenEvents& events){
         return WarpFade::WHITE;
     }
     return WarpFade::NONE;
-}
-std::string describe(const ScreenEvents& events, std::string_view separator){
-    std::string out;
-    for (size_t c = 0; c < SCREEN_EVENT_COUNT; c++){
-        const ScreenEvent event = (ScreenEvent)c;
-        if (!events.has(event)){
-            continue;
-        }
-        if (!out.empty()){
-            out += separator;
-        }
-        out += screen_event_name(event);
-    }
-    return out.empty() ? "nothing" : out;
 }
 
 
