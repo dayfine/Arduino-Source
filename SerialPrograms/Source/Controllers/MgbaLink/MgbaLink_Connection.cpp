@@ -191,11 +191,6 @@ std::vector<InputLogEntry> Connection::input_log() const{
     return m_input_log;
 }
 
-void Connection::clear_input_log(){
-    std::lock_guard<Mutex> lg(m_input_log_lock);
-    m_input_log.clear();
-}
-
 void Connection::fail(std::string message){
     throw ConnectionException(&m_logger, std::format("MgbaLink: {}", message));
 }

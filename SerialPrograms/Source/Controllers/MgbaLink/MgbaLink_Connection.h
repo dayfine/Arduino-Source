@@ -83,7 +83,6 @@ public:
 
     //  Returns a snapshot of the recorded KEYS transitions on this connection.
     std::vector<InputLogEntry> input_log() const;
-    void clear_input_log();
 
 private:
     virtual void on_connect_finished(const std::string& error_message) override;
