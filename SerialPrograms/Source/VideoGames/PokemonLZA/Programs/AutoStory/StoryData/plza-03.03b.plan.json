@@ -3,7 +3,7 @@
   "game": "plza",
   "checkpoint": {
     "id": "03.03b",
-    "title": "Over the rooftops to Station Front",
+    "title": "Up the ladder to the rooftop scene",
     "start": {
       "place": "LumioseCity"
     },
@@ -25,29 +25,15 @@
         "id": "rooftop_scene",
         "why": "Taunie on the roof",
         "action": "mash_to_move_hints"
-      },
-      {
-        "id": "off_the_roof",
-        "why": "off the roof's edge to South Boulevard, until the scene there. not planned: no tile grid in Lumiose",
-        "action": "walk",
-        "args": {
-          "legs": [[0, 8000]],
-          "end": "scene"
-        }
-      },
-      {
-        "id": "south_boulevard",
-        "why": "Taunie walks to the Pokemon Center, until Station Front",
-        "action": "mash_to_move_hints"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played from a new game; starts at the rock pile autosave on the side street (where a reload lands), Taunie gone"
+      "source": "played from a new game; starts at the rock pile autosave on the side street (where a reload lands), Taunie gone; ends at the game's autosave in the rooftop scene"
     }
   },
   "execution": {
     "save": "autosave",
-    "autosave_step": "south_boulevard"
+    "autosave_step": "rooftop_scene"
   }
 }
