@@ -54,11 +54,6 @@ void ScreenEvents::set(ScreenEvent event, bool on){
         m_bits &= ~bit(event);
     }
 }
-ScreenEvents ScreenEvents::from_bits(uint32_t bits){
-    ScreenEvents out;
-    out.m_bits = bits & ((uint32_t(1) << SCREEN_EVENT_COUNT) - 1);
-    return out;
-}
 
 ScreenEvents fade_events(WarpFade fade){
     switch (fade){

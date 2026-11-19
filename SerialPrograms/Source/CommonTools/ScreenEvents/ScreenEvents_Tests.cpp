@@ -42,9 +42,6 @@ UnitTestResult test_set_and_describe(){
     if (fade_in(events) != WarpFade::WHITE){
         return "fade_events(WHITE) did not give a white fade";
     }
-    if (ScreenEvents::from_bits(events.bits()) != events){
-        return "from_bits(bits()) is not the same set";
-    }
     if (describe(ScreenEvents()) != "nothing"){
         return "an empty set does not describe as nothing";
     }

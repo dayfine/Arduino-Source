@@ -33,7 +33,6 @@ enum class ScreenEvent : uint8_t{
     SCREEN_STILL,       //  The screen barely changed since the frame before.
     SWITCH_HOME_MENU,   //  The Switch's HOME menu: the game is not on the screen.
 };
-//  The number of ScreenEvent values.
 constexpr size_t SCREEN_EVENT_COUNT = 11;
 static_assert((size_t)ScreenEvent::SWITCH_HOME_MENU + 1 == SCREEN_EVENT_COUNT, "SWITCH_HOME_MENU is the last ScreenEvent");
 //  "dialog box", for the log.
@@ -72,7 +71,6 @@ public:
     uint32_t bits() const{
         return m_bits;
     }
-    static ScreenEvents from_bits(uint32_t bits);
 
     bool operator==(const ScreenEvents& other) const = default;
 

@@ -28,7 +28,7 @@ namespace PokemonAutomation{
 struct ScreenState{
     std::string name = {};
     //  Whether a look shows this screen; the first matching state wins.
-    std::function<bool(const ScreenObservation& observation)> matches;
+    std::function<bool(const ScreenObservation& observation)> matches = nullptr;
     //  The one step to take on this screen; none for a state that only
     //  waits.
     std::function<void()> act = nullptr;
@@ -44,11 +44,11 @@ struct ScreenState{
 
 //  The run succeeded: this terminal state acted.
 struct ScreenMachineTerminal{
-    std::string state_name;
+    std::string state_name = {};
 };
 //  The run failed before a terminal state acted.
 struct ScreenMachineFailure{
-    std::string reason;
+    std::string reason = {};
 };
 //  How a run of states ended.
 using ScreenMachineResult = std::variant<ScreenMachineTerminal, ScreenMachineFailure>;
