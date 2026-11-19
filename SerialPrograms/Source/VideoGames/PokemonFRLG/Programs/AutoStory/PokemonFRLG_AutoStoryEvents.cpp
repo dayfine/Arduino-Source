@@ -21,6 +21,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryAbilities.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryRepelStep.h"
@@ -122,6 +123,18 @@ WallCheck wall_check(const StoryEnv& env){
     return Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::LEG_END_TAP) ? WallCheck::TAP : WallCheck::SKIP;
 }
 
+//  On GbaEmulator with a known start tile, open legs have exact timing, so
+//  don't detour to walls unless recovering from an interruption.
+const RouteCosts& precise_story_route_costs(){
+    static const RouteCosts COSTS = []{
+        RouteCosts costs = story_route_costs();
+        costs[RouteCost::OPEN_STOP] = 0;
+        costs[RouteCost::OPEN_WILD_STOP] = 0;
+        return costs;
+    }();
+    return COSTS;
+}
+
 //  The story's interrupts for `step`'s walk, with FRLG's screen observer,
 //  which places a wild battle seen only after an open leg's hold
 //  (OverworldInterruptSet::make_observer).
@@ -156,7 +169,9 @@ Outcome walk_route(StoryEnv& env, RunState& state, const StoryStep& step, const 
         return Pokemon::outcome_failed("bad_target", Pokemon::to_string(target_pose));
     }
     const RouteGoal goal{{target->map, target->tile}, target->facing};
-    const std::optional<std::vector<RouteStep>> route = plan_story_route(maps, state.pose, facing, goal, state.gates, Pokemon::gate_rules_of(state));
+    const bool use_precise = GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator && start.has_value();
+    const RouteCosts& plan_costs = use_precise ? precise_story_route_costs() : story_route_costs();
+    const std::optional<std::vector<RouteStep>> route = plan_story_route(maps, state.pose, facing, goal, state.gates, Pokemon::gate_rules_of(state), plan_costs);
     if (!route){
         return Pokemon::outcome_failed("no_route", Pokemon::to_string(state.pose) + " to " + to_string(goal.position));
     }
@@ -397,7 +412,8 @@ Pokemon::Pose paced_pose(const Pokemon::Pose& patch, const StoryStep& step){
 std::optional<std::vector<RouteStep>> plan_story_route(
     const std::vector<MapData>& maps, const Pokemon::Pose& pose,
     std::optional<Direction> facing, const RouteGoal& goal,
-    const Pokemon::GateState& gates, const Pokemon::GateRules& rules
+    const Pokemon::GateState& gates, const Pokemon::GateRules& rules,
+    const RouteCosts& costs
 ){
     std::vector<MapPosition> tiles;
     for (const TilePos& tile : Pokemon::tiles_of(pose)){
@@ -411,7 +427,7 @@ std::optional<std::vector<RouteStep>> plan_story_route(
     if (!holds->empty()){
         facing = holds->back().facing_after;
     }
-    std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(maps, from, goal, gates, rules, story_route_costs(), facing);
+    std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(maps, from, goal, gates, rules, costs, facing);
     if (route){
         route->insert(route->begin(), holds->begin(), holds->end());
     }
