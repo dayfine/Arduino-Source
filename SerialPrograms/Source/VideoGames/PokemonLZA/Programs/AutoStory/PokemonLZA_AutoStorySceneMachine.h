@@ -92,7 +92,9 @@ std::string describe_scene_look(const ScreenObservation& look);
 
 //  Presses through scenes until control: the party bar or controls hint held
 //  1 s, an A prompt held 1 s past `min_length`, or the mission banner on two
-//  looks. A choice takes its top row. Fails as "scene_quiet" (unless
+//  looks. A choice takes its top row. In a talk (a scene seen, no HUD or
+//  banner since) a quiet screen gets `blind_button` every 600 ms, and the
+//  quiet end counts only once those presses change nothing. Fails as "scene_quiet" (unless
 //  `quiet_is_control`), "scene_never_started", "scene_timeout" (by the looks'
 //  time) or "scene_stuck" (a state that recurs too often, or a frozen screen).
 //  For which config fields a run still needs, logs "[SceneQuirk] <step>
