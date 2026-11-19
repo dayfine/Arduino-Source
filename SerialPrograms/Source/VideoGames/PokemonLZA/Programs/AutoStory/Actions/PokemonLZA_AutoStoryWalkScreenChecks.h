@@ -25,10 +25,18 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  What the step before a walk proved about control.
+enum class WalkStart{
+    UNKNOWN,
+    //  It ended taken as control on a quiet screen (Hotel Z shows no sign of
+    //  control): nothing busy is control, with no 10 s quiet wait.
+    AFTER_QUIET_CONTROL,
+};
+
 //  Waits for free control: two looks in a row with a sign of control and no
 //  advance arrow, dialog box or fade (the end of a scene is not control).
 //  Fails as "walk_not_free" when none comes within 30 s.
-std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::string_view walk);
+std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::string_view walk, WalkStart start);
 
 //  One look, which on a console waits for the legs' inputs to run, so the
 //  step ends where the walk does, not when its inputs are queued.

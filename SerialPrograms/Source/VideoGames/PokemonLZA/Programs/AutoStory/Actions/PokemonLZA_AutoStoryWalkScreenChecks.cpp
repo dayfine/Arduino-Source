@@ -289,7 +289,7 @@ std::optional<Pokemon::StoryFailure> end_after_turn(PlzaBackend& backend, std::s
 } // namespace
 
 
-std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::string_view walk){
+std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::string_view walk, WalkStart start){
     std::string_view last_busy = "nothing";
     int control_looks = 0;
     std::optional<Milliseconds> quiet_since;
@@ -303,7 +303,11 @@ std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::s
         }else if (!quiet_since){
             quiet_since = waited;
         }
-        control_looks = busy.empty() && control_shows(look) ? control_looks + 1 : 0;
+        const bool control_sign = control_shows(look) || start == WalkStart::AFTER_QUIET_CONTROL;
+        control_looks = busy.empty() && control_sign ? control_looks + 1 : 0;
+        if (control_looks >= 2 && !control_shows(look)){
+            backend.log(std::format("[PLZA] {}: nothing busy, and the step before ended in control: control.", walk));
+        }
         if (control_looks >= 2){
             return std::nullopt;
         }
