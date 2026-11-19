@@ -1,120 +1,206 @@
-# pa-lab: what it is and what it gives you
+# pa-lab
 
-pa-lab is a small local server that lets a Claude session see lab console B (the Switch, the
-SerialPrograms lab app on profile `lab-B`, and its log) through MCP, the protocol Claude Code
-uses for tools. Instead of an agent running shell scripts and grepping logs to work out what
-the console is doing, it asks pa-lab and gets one structured answer.
+**Let Claude see lab console B, and later run programs on it, without ever getting in your way.**
 
-Today, as connected to your sessions, it only reads: nothing there presses a button, starts or
-stops a program, or writes to the app. Console A is never part of it.
+pa-lab is a small server on your Mac between Claude and console B (the lab Switch, its capture
+card and the lab app on profile `lab-B`). Claude asks it questions; it answers with facts, or
+refuses and says why. It knows no other console.
 
-Developer details (contracts, slices, tests) are in [README.md](README.md); the design is
-`docs/design/Agent-Integration.md` on branch `design/agent-integration`.
+- [Available tools](#available-tools)
+- [How to set up](#how-to-set-up)
+- [FAQ](#faq)
 
-## What you can use today
+## Available tools
 
-pa-lab is connected in Claude Code sessions opened in `~/Projects/Arduino-Source`, through
-`.mcp.json`. A new session asks once to approve it (`/mcp` shows it as `pa-lab`).
+Each entry says whether you can use it today: **Available**, **Built, needs the HTTP mode (not
+set up yet)**, or **Not available yet**.
 
-**One tool, `console_status`.** Ask Claude for "console B status" (or it calls the tool itself on
-check-ins). It returns:
+### Read the console
 
-| Field | What it tells you |
-|---|---|
-| `app` | Whether the lab app is running, its pid, and which build (deployment and commit) |
-| `lab_state` | The app's own report: selected program, `RUNNING` / `STOPPING` / `STOPPED`, controller, last error |
-| `availability`, `blocked` | Whether an agent may act, and if not, why in plain words, e.g. "The user clicked Start in the app at 00:37; console B is theirs until they release it." |
-| `lease` | Who holds console B: `user` (you clicked Start or Stop in the app), an agent, or free |
-| `video` | Whether camera frames are arriving |
-| `program_state`, `last_run` | The last program state change and the last checkpoint result lines |
-| `last_press`, `keepawake` | When a button was last pressed, and what keep-awake last did |
-| `newest_failure_frame`, `newest_screenshot` | Paths to the latest failure frame and screenshot |
-| `log_tail` | The last log lines (how many is a parameter) |
+#### `console_status`
 
-Example. Ask in a session: *"what's console B doing?"* Claude calls
-`console_status(console="B", log_lines=3)` and gets (real output from 2026-11-15, trimmed):
+What console B is doing: app and build, program and state, controller, video, who holds it, last
+checkpoint lines, last press, newest failure frame. **Available.** Reads files only.
+
+#### `console://B/state`
+
+The app's live state, with `blocked`: one sentence per reason an agent may not act now. Empty
+means free. **Available.**
+
+#### `shot`
+
+A fresh console screenshot, taken after the call. Refused when the video is stale or black.
+**Built, needs the HTTP mode (not set up yet).**
+
+#### `game_open`
+
+Whether a game is in front, or why not: HOME, user select, black screen, no video.
+**Built, needs the HTTP mode (not set up yet).**
+
+#### `ensure_game`
+
+Checks that the expected game is in front; never navigates. Today it never verifies: the app
+cannot name the game yet. **Built, needs the HTTP mode (not set up yet).**
+
+#### `describe_program`
+
+The selected program's options: keys, types, defaults, allowed values. Call before
+`preflight_program`. **Built, needs the HTTP mode (not set up yet).**
+
+### Your hold
+
+#### Start, Stop or a button press in the lab app
+
+Takes console B for you automatically. Scripts, agents and keep-awake keep off until you run
+`hold.sh off`. It never expires. **Available.**
+
+#### `hold.sh on` / `hold.sh off` / `hold.sh status`
+
+Take the console without touching the game, give it back, or see who holds it.
+Run `~/BDSPLab/hold.sh`. **Available.**
+
+#### `acquire_console` / `renew_console` / `release_console`
+
+An agent's lease on console B, needed for anything that presses or starts. Refused while you hold
+the console. **Built, needs the HTTP mode (not set up yet).**
+
+#### `next_events` / `request_status`
+
+Follow a pending request, or wait for the next event (run started, run ended, you took over).
+**Built, needs the HTTP mode (not set up yet).**
+
+### Run programs
+
+#### `preflight_program`
+
+Checks the options and runs the program's start checks without starting it; returns a token for
+`run_program`. Every program refuses today: none declares start checks yet. **Built, needs the
+HTTP mode with actions (not set up yet).**
+
+#### `run_program`
+
+Starts the selected program with the preflighted options. Needs the lease and a fresh preflight
+token, so nothing can start this way yet. **Built, needs the HTTP mode with actions (not set up
+yet).**
+
+#### `stop_program`
+
+Clicks Stop once. Asking again with the same request never stops twice. **Built, needs the HTTP
+mode with actions (not set up yet).**
+
+#### `cfr_batch`
+
+Debugging only: up to 200 button and screenshot lines, at most 60 s, with no program running.
+Marks the save stale. **Built, needs the HTTP mode with actions (not set up yet).**
+
+### Saves
+
+#### `console://B/save`
+
+Which save is on the console. Today it always says `unknown`: nothing records saves yet. Check the
+save yourself before a checkpoint run. **Available.**
+
+### Coming
+
+- **Start checks in programs**: a program's first step checks free party slots, black border and
+  game screen, and ends the run with a named result such as `start_check_failed`.
+- **Save records**: `console://B/save` says `known`, `stale` (with why) or `no_save`.
+- **Save check before a run**: a run from the wrong save is refused before Start (`save_mismatch`).
+- **Run records**: one record per run: options, start save, how it ended, checkpoint lines,
+  failure frame.
+
+## How to set up
+
+### Claude Code (read-only, Available)
+
+Put this in `.mcp.json` at the root of `~/Projects/Arduino-Source` (local, not in git), open
+Claude Code there, approve `pa-lab` once, and check `/mcp` lists `console_status`.
 
 ```json
 {
-  "console": "B",
-  "app": {"pid": 87625, "deployment": "slot-B-plza/f0caeb52e879-b440bb4e"},
-  "lab_state": {"state": "STOPPING", "program": "PokemonSV:AutoStory", "controller": "ready", "error": ""},
-  "console_state": {
-    "availability": {"state": "available", "reason": null},
-    "video": {"state": "live", "frame_seq": 7445},
-    "lease": {"state": "user", "owner": "user", "acquired_at": "2026-11-16T00:00:51.929Z"},
-    "blocked": [
-      {"code": "console_held_by_user", "message": "The user clicked Stop in the app at 00:00; console B is theirs until they release it."},
-      {"code": "program_running", "message": "PokemonSV:AutoStory is stopping."}
-    ]
-  },
-  "program_state": "2026-11-15 16:00:51.929720 - [Program]: Program State: STOPPING",
-  "last_run": ["... [Checkpoint] 18.02: passed on attempt 1 (one-shot)"],
-  "last_press": "16:00:21",
-  "keepawake": "15:57:35 idle 189s: pressed B through Lab inbox (NO_PROGRAM)",
-  "newest_failure_frame": ".../Screenshots/AutoStory/failures/20261115-151031611644-by_pad_to_bottom_right.png",
-  "log_tail": ["...", "...", "..."]
+  "mcpServers": {
+    "pa-lab": {
+      "type": "stdio",
+      "command": "<HOME>/.venvs/lab-claude/bin/python",
+      "args": ["-m", "pa_lab", "serve-stdio",
+               "--profile-dir", "<HOME>/Library/Application Support/SerialPrograms/Profiles/lab-B",
+               "--keepawake-log", "<HOME>/BDSPLab/keepawake.log"],
+      "env": {"PYTHONPATH": "<HOME>/Projects/Arduino-Source-agents/lab/server"}
+    }
+  }
 }
 ```
 
-With the app closed, `app` is `null` and `blocked` says
-`{"code": "app_unavailable", "message": "The app that wrote Lab/state.json (pid 96761) is not running."}`.
+If it does not connect, run the smoke test; it starts the server the same way and prints one
+answer:
 
-**Two resources**, for clients that read resources instead of calling tools:
-`console://B/state` (the same console state) and `console://B/save` (what is known about the
-save on the console; today usually `unknown`, see Slice 6 below).
+```sh
+~/.venvs/lab-claude/bin/python ~/Projects/Arduino-Source-agents/lab/server/smoke_readonly.py
+```
 
-## What it changes for you
+### HTTP mode (Built, not set up yet)
 
-- **Your clicks are respected automatically.** When you press Start or Stop in the lab app,
-  pa-lab marks console B as held by you, and agents see that in every status read and stop
-  until you release it.
-- **Cheaper, more reliable check-ins.** The 10-minute lane ticks and overnight check-ins read
-  one answer instead of several scripts and log greps.
-- **Fewer wrong guesses.** It reports the build actually running, a program stuck in
-  `STOPPING`, or an app that exited, as facts with timestamps.
+Serves `shot`, `game_open`, `ensure_game`, `describe_program` and the lease tools; add `--actions`
+for the run tools. Make a token, write the config, start the server, add it to Claude Code.
 
-## What is built but not switched on
+```sh
+cd ~/Projects/Arduino-Source-agents/lab/server
+python3 -m pa_lab init-token ~/.config/pa-lab/token
+python3 -m pa_lab serve --config ~/.config/pa-lab/server.json            # add --actions to run programs
+claude mcp add --transport http pa-lab-http http://127.0.0.1:8765/mcp \
+  --header "Authorization: Bearer <TOKEN>"
+```
 
-These run only in the HTTP mode of the server, not in the read-only session connection:
-`describe_program` (a program's options and its start checks), `game_open` (is the program's
-game in front, or HOME / user select / black screen), `shot` (a fresh screenshot) and
-`ensure_game`. The control plane is also built: console leases, request records that make a
-retried request safe, and an event log. None of it presses buttons yet.
+```json
+{"schema": 1, "host": "127.0.0.1", "port": 8765, "token_file": "~/.config/pa-lab/token",
+ "consoles": {"B": {"lab_dir": "<HOME>/Library/Application Support/SerialPrograms/Profiles/lab-B/Lab",
+                    "profile": "lab-B"}}}
+```
 
-**Starting and stopping a program (Slice 5a).** `run_program` and `stop_program` exist, but only
-when the server is started with `serve --actions`, which nothing uses yet; your session connection
-stays read-only. An agent holding the console's lease can start the program selected in the app
-(5b: only after its start checks pass with the options it will use) and stop it. It is refused whenever you hold the console (you clicked
-Start or Stop), when another program is running, when the app is not running, or when the
-selected program is not the one asked for. If you click Start or Stop while an agent's start or
-stop is under way, yours wins and the agent's request is marked failed. Every start and stop is
-one record, and a retried request never starts the program twice.
+## FAQ
 
-**Start checks before a start, options, debug batches (Slice 5b, server side).** Also only with
-`serve --actions`: an agent first runs the program's start checks with the options it wants
-(`preflight_program`), and can start only with the token that returns, within two minutes and
-only if nothing changed. `cfr_batch` sends a short allowlisted button batch for debugging and
-marks the save stale. The app cannot yet run the start checks on request, so on the real console
-nothing can be started this way yet. See [guide/actions.md](guide/actions.md).
+### What can it do today?
 
-## What comes next
+Read only: `console_status`, `console://B/state`, `console://B/save`, and your hold. Agents still
+start and stop runs with the lab scripts (`labctl.sh`).
 
-Each feature has a user page, marked **DRAFT** until it is built and switched on. The drafts
-are updated as each piece lands.
+### Can an agent ever touch console A?
 
-| Slice | What you would get | Page |
-|---|---|---|
-| 4 (rest) | Every program lists what it needs before it starts; FRLG AutoStory's list is next (fork #488) | [start-checks.md](guide/start-checks.md) |
-| 5 | Leased actions: an agent asks to run or stop a program; the server refuses whenever you hold the console, and (5b) when a start check fails. Every action gets exactly one record. 5a is built in #592 and 5b's server side on branch `lab/server-slice-5b`; neither is switched on, and the app does not yet run start checks on request. | [actions.md](guide/actions.md) |
-| 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; PLZA rewinds to its backup and says where it landed; run records become readable. Designed, not built. | [saves.md](guide/saves.md) |
-| 7 | The server launches and supervises the lab app itself, so a build always starts with the right profile | [app-lifecycle.md](guide/app-lifecycle.md) |
-| 8 | Optional: a local worker for builds and test runs | [worker.md](guide/worker.md) |
+No. pa-lab accepts only console `B`; its config must list exactly `B`, and it never reads another
+profile.
 
-## Limits
+### What happens when I click Start in the app?
 
-- One console, B. Windows is not supported.
-- When the lab app is not running, `console_status` says so (`app_unavailable`) and shows the
-  last state the app wrote.
-- Read-only means read-only: to act on the console, agents still use the lab scripts, under the
-  same rules as before.
+Console B becomes yours. Every press, start and stop from scripts, agents and keep-awake is
+refused, and an agent's lease ends at once. Reading still works. Your own run is never refused.
+
+### How do I take the console back?
+
+- **Just use it**: click Start or Stop, or press a button in the app window.
+- **Without touching the game**: `~/BDSPLab/hold.sh on`.
+- **When you are done**: `~/BDSPLab/hold.sh off`. Nothing else ends your hold.
+
+### Why was my agent's run refused?
+
+The refusal names the reason in one sentence. The common ones:
+
+- **`console_held_by_user`**: you hold the console. Run `hold.sh off` when done.
+- **`program_running`**: a program runs or is still stopping. Wait, or click Stop.
+- **`app_unavailable`**: the lab app is closed, hung (no state for 10 s), or the video is stale.
+  Start it with `labrun.sh`, never the bare binary.
+- **`prechecks_unsupported`**: the program declares no start checks yet. Expected today.
+- **`panel_not_program`** / **`invalid_arguments`**: wrong program selected, or an option it does
+  not take. Check `describe_program`.
+
+### `console_status` says `app` is `null`. What now?
+
+The lab app is closed or crashed; the status shows the last state it wrote. Start it the usual
+way (`labrun.sh`).
+
+### `/mcp` does not list `pa-lab`.
+
+Open Claude Code in `~/Projects/Arduino-Source`, approve the server, and run the smoke test above.
+
+---
+
+For developers: contracts, design and plan are in [README.md](README.md).
