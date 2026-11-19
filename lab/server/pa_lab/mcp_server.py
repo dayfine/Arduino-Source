@@ -503,6 +503,8 @@ class Sessions:
 
 class LabHttpServer(ThreadingHTTPServer):
     daemon_threads = True
+    # The default listen backlog of 5 refuses connections when several clients start at once.
+    request_queue_size = 64
 
     def __init__(self, address: Tuple[str, int], token: str, mcp: LabMcp):
         super().__init__(address, _Handler)
