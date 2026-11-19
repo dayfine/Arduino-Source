@@ -1,11 +1,8 @@
-> Status (2026-11-18): `console_status` and the `console://B/state` and `/save` resources are
-> built and connected in your Claude sessions (`.mcp.json`, read-only). `shot`, `game_open`,
-> `ensure_game` and `describe_program` are built but served only by the HTTP server mode, which no
-> session uses yet; that part is **DRAFT**.
-
-# Console status: what console B is doing
+# Check console B
 
 [Back to the guide](../GUIDE.md)
+
+**Works today.** `console_status` is in your Claude sessions; it only reads.
 
 One tool answers "what is console B doing?" with facts and their times, instead of an agent
 running several scripts and grepping the log. It reads files in the lab profile folder and the
@@ -90,24 +87,16 @@ Nothing: it only reads. Only console `B` is accepted.
 
 ## What you do
 
-Nothing. Approve `pa-lab` once per project in Claude Code ([GUIDE.md](../GUIDE.md#connect-and-approve-it)).
+Nothing. Approve `pa-lab` once per project in Claude Code ([GUIDE.md](../GUIDE.md#set-it-up)).
 
 ## Resources
 
 For clients that read resources: `console://B/state` (the `console_state` above) and
 `console://B/save` (what is known about the save; today `unknown`, see [saves.md](saves.md)).
 
-## Not connected yet: shot, game_open, ensure_game
+## Not yet: screenshots, "is the game open?", program options
 
-**DRAFT.** These are built and tested, but served only by the HTTP server (`python3 -m pa_lab
-serve --config ...`), which is not configured on this Mac. They write a request into the app's
-`Lab/inbox`, which is why the session connection leaves them out.
-
-| Tool | Ask | Answer |
-|---|---|---|
-| `shot` | "show me console B" | the PNG, its path, `frame_seq` and `captured_at`; refused `video_stale` when the frame is old, `timeout` when the app does not answer |
-| `game_open` | "is the game open?" | `{"open": true}` or `{"open": false, "reason": "home"}` (also `user_select`, `black`, `no_video`) |
-| `ensure_game` | "is PLZA on the overworld?" | `verified` and a reason; today always `game_unknown`, since the app has no game detector |
-| `describe_program` | "what options does this program take?" | see [start-checks.md](start-checks.md) |
-
-Example `game_open` answer (shape from the code, trimmed; not run on the console): `{"console": "B", "open": false, "reason": "home", "instance_id": "..."}`.
+Claude cannot yet ask the server for a fresh screenshot, whether the game is in front, or what
+options a program takes. The code and its unit tests are merged but have never been used end to
+end, and the server mode that serves them is not configured. These ask the app for something, so
+your read-only connection leaves them out. Today an agent takes screenshots with the lab scripts.

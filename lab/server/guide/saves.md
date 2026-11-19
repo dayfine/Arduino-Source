@@ -1,9 +1,10 @@
-> **DRAFT.** This page describes a feature that is not built yet. It is updated as it lands.
-> Status (2026-11-18): designed (Slice 6, [README.md](../README.md#slice-6-save-facts-design-not-built), merged in [#621](https://github.com/dayfine/Arduino-Source/pull/621), including `no_save` and save-screen reads). No code yet: nothing writes a save fact, so `console://B/save` says `unknown` (`no_fact`).
+# Know which save is on the console
 
 [Back to the guide](../GUIDE.md)
 
-# Save facts: knowing which save is on the console
+**Not yet.** Designed, no code: nothing records saves, so the server always says the save is
+`unknown`. Today, check the save yourself before a checkpoint run. The examples below are
+samples with made-up values.
 
 Most lab mistakes that cost real progress are about the save: starting a checkpoint run from
 the wrong save, a hand session moving the player after the last save, or a PLZA autosave moving
@@ -28,13 +29,13 @@ the save past a checkpoint's start.
 - **Moving is not saving.** A program run that walks on and fails leaves the save `known`; the
   server just notes the game has `moved`. FRLG's League is one long checkpoint with no save
   until the Hall of Fame, so a lost League run can be rerun from its start.
-- **Runs check it first.** The `save_at(place)` [start check](start-checks.md) refuses a run
-  whose start checkpoint is not the known save. You can turn it off for your own Start; an
-  agent cannot.
+- **Runs check it first.** Before an agent's Start, the server's [preflight](actions.md) refuses
+  a run whose start checkpoint is not the known save. It presses nothing for this and
+  compares the server's record only; your own Start in the app is not checked.
 - **Run records you can read.** Each run ends as one record: passed, failed or stopped and by
   whom, the save it started from, the saves it wrote, checkpoint results and the failure frame.
 
-## Examples (sketch, not built; the values are made up)
+## Examples (samples, not output)
 
 After FRLG AutoStory saved at the start of 18.02, ask *"which save is on console B?"*:
 
@@ -51,7 +52,7 @@ After you play a bit by hand:
 ```
 
 An agent asking to run 18.02 now gets
-`{"refusal": {"code": "precheck_failed", "check": "save_at", "message": "The save on console B is stale: user_lease since 23:50. Save at 18.02's start, or let a program confirm it."}}`.
+`{"refusal": {"code": "save_mismatch", "message": "The save on console B is stale: user_lease since 23:50. Save at 18.02's start, or let a program confirm it."}}`.
 To fix it, save at 18.02's start yourself and let the program's start confirm it, or have a
 program rerun the checkpoint before it, which saves.
 
@@ -68,7 +69,7 @@ backup instead of trusting the newest save.
 
 ## Run records
 
-Designed (Slice 6e), after the app gives each run an id. Ask *"how did the last run go?"* and get
+Designed, for after the app gives each run an id. Ask *"how did the last run go?"* and get
 one record: the program and options, the save it started from, start and end times, how it ended
 (the program, an error, a lab script, or you), the `[Checkpoint]` lines, the saves it wrote and the
 failure frame. Sketch, values made up:
@@ -85,5 +86,5 @@ failure frame. Sketch, values made up:
 
 - Today: before a checkpoint run, check yourself which save is on the console.
 - Later: after playing by hand, save at the checkpoint's start and let a program confirm it, or
-  let the agent rerun the checkpoint before (which saves). The `save_at` check can be turned off
-  for your own Start; an agent cannot turn it off.
+  let the agent rerun the checkpoint before (which saves). Your own Start is never refused for
+  the save.

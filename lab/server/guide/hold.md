@@ -1,10 +1,11 @@
-> Status (2026-11-18): built and in use. The app side is in the lab build (#608), the scripts and
-> the server side are on `agents` (#609). The server's lease store (which turns the hold into a
-> `user` lease that ends agent leases) is built but runs only in the HTTP server mode.
-
-# Your hold: when you use console B, the lab keeps off it
+# Hold the console
 
 [Back to the guide](../GUIDE.md)
+
+**Works today** in the lab app, the lab scripts, keep-awake and the status read. (Ending an
+agent's server lease is not yet in use, since agents do not act through the server yet.)
+
+When you use console B, the lab keeps off it.
 
 ## How it works
 
@@ -45,8 +46,8 @@ and the app's channel answers `console held by user since ... (ui_stop): the use
 ~/BDSPLab/hold.sh off           # give it back
 ```
 
-`hold.sh off` removes `Lab/hold` and, when the HTTP server is configured, also ends the server's
-user lease. A `Lab/hold` the server cannot read counts as held (owner `unknown`, reason
+`hold.sh off` removes `Lab/hold` (and, once agents act through the server, ends your lease
+there too). A `Lab/hold` the server cannot read counts as held (owner `unknown`, reason
 `unreadable`); `hold.sh off` clears it.
 
 ## What it refuses
