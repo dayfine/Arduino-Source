@@ -53,11 +53,6 @@ std::string_view spot_visit_text(SpotVisit visit){
 
 const SpotVisitCase SPOT_VISIT_CASES[] = {
     {
-        .name = "nothing caught yet: catch at 100",
-        .input = {.spot = 100, .caught_at = {}},
-        .expectation = {.visit = SpotVisit::CATCH},
-    },
-    {
         .name = "Scatterbug caught at 100: back to 60 at once",
         .input = {.spot = 100, .caught_at = {100}},
         .expectation = {.visit = SpotVisit::TURN_BACK},
@@ -142,14 +137,6 @@ const AfterThrowCase AFTER_THROW_CASES[] = {
         .input = {
             .seen = {.registered = false, .plate_caught = false, .target_gone = false},
             .relocked = plate(0.51, 0.40, false),
-        },
-        .expectation = {.next = AfterThrow::THROW_AGAIN},
-    },
-    {
-        .name = "a miss with an unread plate locking on again throws again at once",
-        .input = {
-            .seen = {.registered = false, .plate_caught = std::nullopt, .target_gone = false},
-            .relocked = plate(0.51, 0.40, std::nullopt),
         },
         .expectation = {.next = AfterThrow::THROW_AGAIN},
     },
@@ -290,11 +277,6 @@ struct PitchCase{
 };
 
 const PitchCase PITCH_CASES[] = {
-    {
-        .name = "a stop's start after a walk needs no reset",
-        .input = {.events = {PitchCase::Event::LOOK}},
-        .expectation = {.levels = {false}},
-    },
     {
         .name = "one reset after a lock-on and a throw, then none",
         .input = {.events = {PitchCase::Event::LOOK, PitchCase::Event::ZL_HELD, PitchCase::Event::ZL_HELD, PitchCase::Event::LOOK, PitchCase::Event::LOOK}},

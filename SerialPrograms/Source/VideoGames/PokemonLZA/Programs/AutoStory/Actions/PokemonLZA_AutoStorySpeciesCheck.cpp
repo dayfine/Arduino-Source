@@ -45,6 +45,30 @@ bool party_has_species(std::optional<int> filled_slots, int dex_species){
     return filled_slots.has_value() && *filled_slots > 0 && *filled_slots >= dex_species;
 }
 
+std::optional<int> settled_party_slots(const std::function<std::optional<int>()>& read_look){
+    //  Looks are 250 ms apart.
+    constexpr int FIRST_READ_LOOKS = 8;
+    constexpr int HELD_LOOKS = 13;
+    constexpr int MAX_LOOKS = 32;
+    std::optional<int> count;
+    int held = 0;
+    for (int look = 0; look < MAX_LOOKS; look++){
+        const std::optional<int> now = read_look();
+        if (!now){
+            if (!count && look + 1 >= FIRST_READ_LOOKS){
+                return std::nullopt;
+            }
+            continue;
+        }
+        held = now == count ? held + 1 : 1;
+        count = now;
+        if (held >= HELD_LOOKS){
+            return count;
+        }
+    }
+    return count;
+}
+
 std::string catch_summary_text(const GrassCatches& patrol, std::optional<int> filled_slots, int new_species, int party_species){
     const std::string banners = std::format(
         "the banners: {} new species ({} by a plate only) in {} throws, {} locks on caught species only",
