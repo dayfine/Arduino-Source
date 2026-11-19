@@ -24,8 +24,8 @@ namespace Pokemon{
 
 struct CheckpointFailure{
     std::string checkpoint_id = {};
-    //  0-based; none when the checkpoint failed outside its steps (a lint
-    //  or a reload).
+    //  0-based; none when the checkpoint failed outside its steps (a
+    //  reload).
     std::optional<size_t> event_index = std::nullopt;
     StoryFailure failure = {};
 };
@@ -36,7 +36,7 @@ struct CheckpointFailure{
 //  game.attempts_per_checkpoint times. A step that throws is logged and the
 //  exception passes through.
 std::optional<CheckpointFailure> run_checkpoints(
-    StoryBackend& backend, std::span<const StoryCheckpoint> checkpoints,
+    StoryBackend& backend, std::span<StoryCheckpoint> checkpoints,
     StoryGame& game, RunState& state
 );
 

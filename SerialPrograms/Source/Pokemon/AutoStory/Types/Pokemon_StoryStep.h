@@ -2,32 +2,36 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  One step of a game's story as plain data.
+ *  One step of a game's story, ready to run.
  *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryStep_H
 #define PokemonAutomation_Pokemon_StoryStep_H
 
+#include <optional>
+#include <set>
 #include <string>
-#include "Pokemon_StoryActionArg.h"
-#include "Pokemon_StoryStepKind.h"
+#include "Common/Cpp/MoveOnlyFunction.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  One step of a checkpoint: an action and its args.
+//  What a run knows; a reload empties it.
+struct RunState{
+    std::set<std::string> flags = {};
+};
+
+//  A step's action with its args bound.
+using StoryStepRun = MoveOnlyFunction<std::optional<StoryFailure>(StoryBackend& backend, RunState& state)>;
+
 struct StoryStep{
-    StoryStepKind kind = StoryStepKind::TALK;
     std::string name = {};
     std::string why = {};
-
-    //  One of the game's actions of `kind`; empty: the kind's default.
-    std::string action = {};
-    //  Checked against the action's spec when the step loads.
-    StoryActionArgs args = {};
-
+    StoryStepRun run = {};
 };
 
 

@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  What a game hands the story engine: its actions, save, reload and retries.
+ *  What a game hands the story engine: its save, reload and retries.
  *
  */
 
@@ -11,47 +11,19 @@
 
 #include <cstddef>
 #include <optional>
-#include <set>
 #include <string>
-#include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon_StoryBackend.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  What a run knows; a reload empties it.
-struct RunState{
-    std::set<std::string> flags = {};
-};
-
-//  The step an action runs and its args with fallbacks filled in; both live
-//  for the call only.
-struct StoryActionCall{
-    const StoryStep& step;
-    const StoryActionArgs& args;
-};
-
-using StoryActionHandler = MoveOnlyFunction<
-    std::optional<StoryFailure>(StoryBackend& backend, const StoryActionCall& call, RunState& state)
->;
-
-struct StoryAction{
-    StoryActionSpec spec = {};
-    StoryActionHandler handler = {};
-};
-
 struct StoryGame{
     //  "frlg", "bdsp", "plza".
     std::string id = {};
-    //  A kind's first action is the one a step that names none runs.
-    std::vector<StoryAction> actions = {};
     //  Called after each passed checkpoint; a failure is logged. None: nothing saves.
     MoveOnlyFunction<std::optional<StoryFailure>(StoryBackend& backend, const StoryCheckpoint& passed)> save = {};
     //  Reloads after `failed` failed; returns the id of the checkpoint whose

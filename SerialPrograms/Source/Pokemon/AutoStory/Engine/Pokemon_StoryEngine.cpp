@@ -11,7 +11,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
-#include "Pokemon_StoryActionRegistry.h"
 #include "Pokemon_StoryEngine.h"
 
 namespace PokemonAutomation{
@@ -45,47 +44,37 @@ std::string current_exception_text(){
     }
 }
 
-//  Runs step `number` (from 1) of `checkpoint`; a throw is logged and
-//  passes through.
+//  Runs `step`, step `number` (from 1) of checkpoint `checkpoint_id`; a
+//  throw is logged and passes through.
 std::optional<StoryFailure> run_step(
-    StoryBackend& backend, const StoryCheckpoint& checkpoint, size_t number, StoryGame& game, RunState& state
+    std::string_view checkpoint_id, size_t number, StoryBackend& backend, StoryStep& step, RunState& state
 ){
-    const StoryStep& step = checkpoint.steps[number - 1];
-    backend.log(event_log_line(checkpoint.id, number, step.name, "start"));
+    backend.log(event_log_line(checkpoint_id, number, step.name, "start"));
     std::optional<StoryFailure> failure;
     try{
-        failure = run_story_step(backend, step, game, state);
+        backend.scope().throw_if_cancelled();
+        failure = step.run(backend, state);
     }catch (...){
         const std::string what = current_exception_text();
-        backend.log(event_log_line(checkpoint.id, number, step.name, std::format("failed: {}", what)));
-        backend.log(checkpoint_log_line(checkpoint.id, std::format("failed at {} {}: {}", number, step.name, what)));
+        backend.log(event_log_line(checkpoint_id, number, step.name, std::format("failed: {}", what)));
+        backend.log(checkpoint_log_line(checkpoint_id, std::format("failed at {} {}: {}", number, step.name, what)));
         throw;
     }
     backend.log(event_log_line(
-        checkpoint.id, number, step.name, failure ? std::format("failed: {}", *failure) : "done"
+        checkpoint_id, number, step.name, failure ? std::format("failed: {}", *failure) : "done"
     ));
     return failure;
 }
 
-//  One attempt: lint, the steps in order until one fails, then the save
-//  when they passed.
+//  One attempt: the steps in order until one fails, then the save when
+//  they passed.
 std::optional<CheckpointFailure> run_once(
-    StoryBackend& backend, const StoryCheckpoint& checkpoint, StoryGame& game, RunState& state
+    StoryBackend& backend, StoryCheckpoint& checkpoint, StoryGame& game, RunState& state
 ){
     const std::string& id = checkpoint.id;
-    const std::vector<std::string> problems = lint_story_checkpoint(game, checkpoint);
-    for (const std::string& problem : problems){
-        backend.log(std::format("[Lint] {}", problem));
-    }
-    if (!problems.empty()){
-        return CheckpointFailure{
-            .checkpoint_id = id,
-            .failure = {.code = "lint_failed", .detail = problems.front(), .repeats = true},
-        };
-    }
     backend.log(checkpoint_start_line(id, checkpoint.steps.size()));
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
-        std::optional<StoryFailure> failure = run_step(backend, checkpoint, c + 1, game, state);
+        std::optional<StoryFailure> failure = run_step(id, c + 1, backend, checkpoint.steps[c], state);
         if (failure){
             backend.log(checkpoint_log_line(id, std::format("failed at {} {}: {}", c + 1, checkpoint.steps[c].name, *failure)));
             return CheckpointFailure{.checkpoint_id = id, .event_index = c, .failure = std::move(*failure)};
@@ -121,14 +110,14 @@ std::optional<size_t> reload(
 
 
 std::optional<CheckpointFailure> run_checkpoints(
-    StoryBackend& backend, std::span<const StoryCheckpoint> checkpoints,
+    StoryBackend& backend, std::span<StoryCheckpoint> checkpoints,
     StoryGame& game, RunState& state
 ){
     //  Failed runs of each checkpoint so far.
     std::vector<size_t> failures(checkpoints.size(), 0);
     size_t index = 0;
     while (index < checkpoints.size()){
-        const StoryCheckpoint& checkpoint = checkpoints[index];
+        StoryCheckpoint& checkpoint = checkpoints[index];
         std::optional<CheckpointFailure> failure = run_once(backend, checkpoint, game, state);
         if (!failure){
             backend.log(checkpoint_pass_line(checkpoint.id, failures[index] + 1));

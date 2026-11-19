@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -29,7 +30,7 @@ std::string joined(const std::vector<std::string>& texts){
     return text;
 }
 
-std::vector<std::string> ids(const std::vector<StoryCheckpoint>& rows){
+std::vector<std::string> ids(std::span<StoryCheckpoint> rows){
     std::vector<std::string> result;
     for (const StoryCheckpoint& row : rows){
         result.push_back(row.id);

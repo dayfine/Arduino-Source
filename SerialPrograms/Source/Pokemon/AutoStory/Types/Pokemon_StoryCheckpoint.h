@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A checkpoint of a game's story as plain data.
+ *  A checkpoint of a game's story.
  *
  */
 

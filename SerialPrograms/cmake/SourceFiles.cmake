@@ -1525,8 +1525,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.h
@@ -1535,23 +1533,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
-    Source/Pokemon/AutoStory/Pokemon_MapUtil.h
     Source/Pokemon/AutoStory/Pokemon_StoryFailure.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
     Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionArg_Tests.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
-    Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp

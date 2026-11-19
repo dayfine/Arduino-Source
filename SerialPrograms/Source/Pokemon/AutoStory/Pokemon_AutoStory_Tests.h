@@ -20,7 +20,6 @@
 #include "Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
-#include "Types/Pokemon_StoryActionArg_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -30,7 +29,6 @@ namespace Pokemon{
 inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_AutoStorySelect(database);
     add_tests_StoryRangeOptions(database);
-    add_tests_StoryActionArg(database);
     add_tests_StoryLog(database);
     add_tests_StoryStepJson(database);
     add_tests_AuthoredCheckpointJson(database);

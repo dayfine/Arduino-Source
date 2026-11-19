@@ -5,7 +5,9 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
@@ -20,8 +22,8 @@ namespace{
 
 
 //  Documents intentionally contain no game headers or native bookkeeping.
-const std::string FRLG = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"00.05","title":"Parcel","events":[{"id":"first","kind":"talk"},{"id":"second","kind":"scene"}]},"execution":{"menu":"before_pokedex"}})";
-const std::string BDSP = R"({"format":"pokesim-authored-checkpoint/1","game":"bdsp","checkpoint":{"id":"01.03","title":"Mine","events":[{"id":"roark","kind":"talk"}]},"execution":{"on_failure":"reload_and_retry","saves_in":"Oreburgh City"}})";
+const std::string FRLG = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"00.05","title":"Parcel","events":[{"id":"first","action":"talk"},{"id":"second","action":"scene"}]},"execution":{"menu":"before_pokedex"}})";
+const std::string BDSP = R"({"format":"pokesim-authored-checkpoint/1","game":"bdsp","checkpoint":{"id":"01.03","title":"Mine","events":[{"id":"roark","action":"talk"}]},"execution":{"on_failure":"reload_and_retry","saves_in":"Oreburgh City"}})";
 
 //  How a case fails, if it does.
 enum class Failure{
@@ -58,15 +60,23 @@ const AuthoredCase CASES[] = {
     {.name = "same count wrong field", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{},"extra":{}})"}, .expectation = {.failure = Failure::PARSE}},
     {.name = "extra envelope field", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{},"execution":{},"extra":0})"}, .expectation = {.failure = Failure::PARSE}},
     {.name = "execution must be object", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"x","title":"X","events":[]},"execution":false})"}, .expectation = {.failure = Failure::PARSE}},
-    {.name = "invalid common action", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"x","title":"X","events":[{"id":"bad","kind":"magic"}]},"execution":{}})"}, .expectation = {.failure = Failure::PARSE}},
+    {.name = "unknown action", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"frlg","checkpoint":{"id":"x","title":"X","events":[{"id":"bad","action":"magic"}]},"execution":{}})"}, .expectation = {.failure = Failure::PARSE}},
     {.name = "execution stays game owned", .input = {.json = R"({"format":"pokesim-authored-checkpoint/1","game":"future","checkpoint":{"id":"x","title":"X","events":[]},"execution":{"zero":0,"false":false,"null":null}})", .game = "future"}, .expectation = {
         .checkpoint = "x", .execution = R"({"zero":0,"false":false,"null":null})", .events = {}}},
 };
 
 
-//  The actions the documents name: none, so each step is its kind's default.
-std::span<const StoryActionSpec> story_actions(){
-    return {};
+//  The actions the documents name; each takes no args and does nothing.
+StoryActions story_actions(){
+    StoryActions actions;
+    for (std::string_view name : {"talk", "scene"}){
+        actions.emplace(name, [](const JsonObject&) -> StoryStepRun{
+            return [](StoryBackend&, RunState&){
+                return std::optional<StoryFailure>();
+            };
+        });
+    }
+    return actions;
 }
 
 //  What a test reads: the checkpoint, and the execution object its reader

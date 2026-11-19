@@ -11,7 +11,6 @@
 
 #include <cstddef>
 #include <span>
-#include <vector>
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -20,16 +19,16 @@ namespace Pokemon{
 //  The rows a run from `first` to `last` of `rows` plays, in order. Empty
 //  if `first` comes after `last` or `last` is past the end.
 template <typename Checkpoint>
-std::vector<Checkpoint> story_run_rows(std::span<const Checkpoint> rows, size_t first, size_t last);
+std::span<Checkpoint> story_run_rows(std::span<Checkpoint> rows, size_t first, size_t last);
 
 
 
 template <typename Checkpoint>
-std::vector<Checkpoint> story_run_rows(std::span<const Checkpoint> rows, size_t first, size_t last){
+std::span<Checkpoint> story_run_rows(std::span<Checkpoint> rows, size_t first, size_t last){
     if (first > last || last >= rows.size()){
         return {};
     }
-    return std::vector<Checkpoint>(rows.begin() + first, rows.begin() + last + 1);
+    return rows.subspan(first, last - first + 1);
 }
 
 
