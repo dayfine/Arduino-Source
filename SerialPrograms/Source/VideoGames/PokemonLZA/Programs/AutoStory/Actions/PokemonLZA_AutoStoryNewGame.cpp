@@ -4,11 +4,14 @@
  *
  */
 
+#include <array>
 #include <cctype>
 #include <format>
 #include <map>
+#include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Strings/Unicode.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -27,6 +30,107 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
+
+
+namespace{
+
+//  Ends every refusal and failure of 01.00a.
+constexpr std::string_view NEW_GAME_BY_HAND_HINT =
+    "Make the new game's choices by hand up to \"Confirm Choices\", then start the run at 01.00b.";
+
+constexpr size_t LANGUAGE_LIST_ROWS = 5;
+constexpr size_t LANGUAGE_LIST_SIZE = 2 * LANGUAGE_LIST_ROWS;
+
+constexpr size_t LOOK_COLUMNS = 4;
+constexpr size_t LOOK_COUNT = 2 * LOOK_COLUMNS;
+
+//  One press on an intro screen.
+enum class IntroKey{
+    UP,
+    DOWN,
+    LEFT,
+    RIGHT,
+    A,
+};
+
+std::vector<IntroKey> grid_moves(size_t from_column, size_t from_row, size_t to_column, size_t to_row){
+    std::vector<IntroKey> moves;
+    for (size_t c = from_column; c < to_column; c++){
+        moves.push_back(IntroKey::RIGHT);
+    }
+    for (size_t c = to_column; c < from_column; c++){
+        moves.push_back(IntroKey::LEFT);
+    }
+    for (size_t r = from_row; r < to_row; r++){
+        moves.push_back(IntroKey::DOWN);
+    }
+    for (size_t r = to_row; r < from_row; r++){
+        moves.push_back(IntroKey::UP);
+    }
+    return moves;
+}
+
+//  Why `choices` cannot be played; nullopt when they can.
+std::optional<std::string> choices_problem(const NewGameChoices& choices){
+    const NewGameLanguageInfo& info = new_game_language_info(choices.language);
+    if (choices.look < 1 || choices.look > LOOK_COUNT){
+        return std::format("AutoStory: the player look must be 1 to {}, not {}.", LOOK_COUNT, choices.look);
+    }
+    if (choices.name.empty()){
+        return std::string("AutoStory: the player name is empty.");
+    }
+    const size_t characters = utf8_to_utf32(choices.name).size();
+    if (characters > info.name_limit){
+        return std::format(
+            "AutoStory: the player name \"{}\" has {} characters; the game takes at most {} in this language ({}).",
+            choices.name, characters, info.name_limit, info.tag
+        );
+    }
+    return std::nullopt;
+}
+
+//  Column first, then row; nullopt for an entry outside the list.
+std::optional<std::vector<IntroKey>> language_list_moves(size_t from, size_t to){
+    if (from >= LANGUAGE_LIST_SIZE || to >= LANGUAGE_LIST_SIZE){
+        return std::nullopt;
+    }
+    return grid_moves(
+        from / LANGUAGE_LIST_ROWS, from % LANGUAGE_LIST_ROWS,
+        to / LANGUAGE_LIST_ROWS, to % LANGUAGE_LIST_ROWS
+    );
+}
+
+//  Column first, then row; nullopt for a look outside 1 to 8.
+std::optional<std::vector<IntroKey>> look_picker_moves(size_t from, size_t to){
+    if (from < 1 || from > LOOK_COUNT || to < 1 || to > LOOK_COUNT){
+        return std::nullopt;
+    }
+    return grid_moves(
+        (from - 1) % LOOK_COLUMNS, (from - 1) / LOOK_COLUMNS,
+        (to - 1) % LOOK_COLUMNS, (to - 1) / LOOK_COLUMNS
+    );
+}
+
+} // namespace
+
+
+const NewGameLanguageInfo& new_game_language_info(NewGameLanguage language){
+    static const std::array<NewGameLanguageInfo, LANGUAGE_LIST_SIZE> table{{
+        {.tag = "en",      .list_entry = 0, .name_limit = 12, .ocr_language = Language::English,            .confirm_text = "English"},
+        {.tag = "es-ES",   .list_entry = 1, .name_limit = 12, .ocr_language = Language::Spanish,            .confirm_text = "Espa\xc3\xb1" "a)"},
+        {.tag = "es-419",  .list_entry = 2, .name_limit = 12, .ocr_language = Language::Spanish,            .confirm_text = "Latino"},
+        {.tag = "fr",      .list_entry = 3, .name_limit = 12, .ocr_language = Language::French,             .confirm_text = "Fran"},
+        {.tag = "de",      .list_entry = 4, .name_limit = 12, .ocr_language = Language::German,             .confirm_text = "Deutsch"},
+        {.tag = "it",      .list_entry = 5, .name_limit = 12, .ocr_language = Language::Italian,            .confirm_text = "Italiano"},
+        {.tag = "ja",      .list_entry = 6, .name_limit = 6,  .ocr_language = Language::Japanese,           .confirm_text = "\xe6\x97\xa5\xe6\x9c\xac"},
+        {.tag = "ko",      .list_entry = 7, .name_limit = 6,  .ocr_language = Language::Korean,             .confirm_text = "\xed\x95\x9c\xea\xb5\xad", .keyboard_supported = false},
+        {.tag = "zh-Hans", .list_entry = 8, .name_limit = 6,  .ocr_language = Language::ChineseSimplified,  .confirm_text = "\xe7\xae\x80\xe4\xbd\x93"},
+        {.tag = "zh-Hant", .list_entry = 9, .name_limit = 6,  .ocr_language = Language::ChineseTraditional, .confirm_text = "\xe7\xb9\x81\xe9\xab\x94"},
+    }};
+    const size_t index = (size_t)language;
+    return table[index < table.size() ? index : 0];
+}
+
 
 
 namespace{
@@ -314,6 +418,28 @@ void type_name(ConsoleHandle& console, ProControllerContext& context, const NewG
     submit_name(console, context);
 }
 
+std::string with_by_hand_hint(std::string message){
+    if (message.ends_with(NEW_GAME_BY_HAND_HINT)){
+        return message;
+    }
+    return std::format("{} {}", message, NEW_GAME_BY_HAND_HINT);
+}
+
+void play_intro_steps(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
+    if (const std::optional<std::string> problem = choices_problem(choices)){
+        throw UserSetupError(console, *problem);
+    }
+    if (const std::optional<std::string> problem = name_typing_problem(choices)){
+        throw UserSetupError(console, *problem);
+    }
+    require_new_game_home(console, context);
+    launch_plza_from_home(console, context);
+    wait_for_language_list(console, context);
+    pick_language(console, context, choices.language);
+    pick_look(console, context, choices.look);
+    type_name(console, context, choices);
+}
+
 } // namespace
 
 
@@ -341,6 +467,9 @@ void require_new_game_home(ConsoleHandle& console, ProControllerContext& context
 }
 
 std::optional<std::string> new_game_run_problem(std::span<const Pokemon::StoryCheckpoint> rows, const NewGameChoices& choices){
+    if (std::optional<std::string> problem = choices_problem(choices)){
+        return problem;
+    }
     for (const Pokemon::StoryCheckpoint& row : rows){
         if (!checkpoint_makes_new_game_choices(row)){
             continue;
@@ -353,18 +482,13 @@ std::optional<std::string> new_game_run_problem(std::span<const Pokemon::StoryCh
 }
 
 void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
-    if (const std::optional<std::string> problem = new_game_problem(choices)){
-        throw UserSetupError(console, *problem);
+    try{
+        play_intro_steps(console, context, choices);
+    }catch (OperationFailedException& e){
+        throw OperationFailedException(e.error_report_mode(), with_by_hand_hint(e.message()));
+    }catch (UserSetupError& e){
+        throw UserSetupError(console, with_by_hand_hint(e.message()));
     }
-    if (const std::optional<std::string> problem = name_typing_problem(choices)){
-        throw UserSetupError(console, *problem);
-    }
-    require_new_game_home(console, context);
-    launch_plza_from_home(console, context);
-    wait_for_language_list(console, context);
-    pick_language(console, context, choices.language);
-    pick_look(console, context, choices.look);
-    type_name(console, context, choices);
 }
 
 
