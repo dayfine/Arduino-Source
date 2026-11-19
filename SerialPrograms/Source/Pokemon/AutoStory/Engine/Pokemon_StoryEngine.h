@@ -2,14 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The one story executor, for every game and both backends. A run of a
- *  checkpoint lints its steps against the game's actions (a problem fails
- *  the run before any input), runs them through the event layer
- *  (Pokemon_StoryEvents.h) with the step runner, and at the end of each
- *  checkpoint that passed asks the game's save policy (StoryGame::save,
- *  Pokemon_StorySavePolicy.h) whether the run is on a save. A failed
- *  checkpoint is retried after the game's reload, when the reload returns
- *  to the save it started from.
+ *  Runs a range of story checkpoints on a game's backend.
  *
  */
 
@@ -17,76 +10,36 @@
 #define PokemonAutomation_Pokemon_StoryEngine_H
 
 #include <cstddef>
+#include <optional>
 #include <span>
-#include <string_view>
-#include "Pokemon/AutoStory/Pokemon_StoryCheckpointTypes.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h"
-#include "Pokemon_StoryActionRegistry.h"
-#include "Pokemon_StoryStepRunner.h"
+#include <string>
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon_StoryBackend.h"
+#include "Pokemon_StoryGame.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  An engine run of one checkpoint.
-struct StoryEngineReport{
-    //  The steps' run. A checkpoint that failed its lint has none.
-    CheckpointReport run = {};
-    //  The steps all completed.
-    bool passed = false;
-    //  The game saved at the checkpoint's end.
-    bool saved = false;
+struct CheckpointFailure{
+    std::string checkpoint_id = {};
+    //  0-based; none when the checkpoint failed outside its steps (a
+    //  reload).
+    std::optional<size_t> event_index = std::nullopt;
+    StoryFailure failure = {};
 };
 
-//  Runs `game`'s checkpoints on `backend`. Both must outlive it.
-template <StoryPose PoseType>
-class StoryEngine{
-public:
-    StoryEngine(const StoryGame<PoseType>& game, StoryBackend<PoseType>& backend);
-    StoryEngine(const StoryEngine&) = delete;
-    StoryEngine& operator=(const StoryEngine&) = delete;
-
-    const StoryActionRegistry<PoseType>& registry() const{
-        return m_registry;
-    }
-
-    //  Runs `checkpoint` from `state` and, when it passed, asks the save
-    //  policy (StoryGame::save).
-    StoryEngineReport run_checkpoint(const StoryCheckpoint& checkpoint, RunState& state);
-
-    //  `checkpoints` in order from the save the game is on, each run with
-    //  run_checkpoint(), until one does not pass. One that fails is run
-    //  again after a reload (StoryGame::reload), up to
-    //  `attempts_per_checkpoint` runs, only when a reload returns to the
-    //  save it started from: the first checkpoint's, or one the checkpoint
-    //  before it saved at its end. No reload for a failure every attempt
-    //  would repeat: a lint, a console_only action, the game not running.
-    //  Logs "[Segment] <id>: ..." lines.
-    SegmentReport run_segment(
-        std::string_view id, std::span<const StoryCheckpoint> checkpoints, size_t attempts_per_checkpoint,
-        RunState& state
-    );
-
-private:
-    CheckpointReport run_steps(const StoryCheckpoint& checkpoint, RunState& state);
-    void save_if_passed(const StoryCheckpoint& checkpoint, StoryEngineReport& report);
-    //  Empties `state` and reloads the last save; the reload's pose, if it
-    //  says one, goes into `state`.
-    Outcome reload(RunState& state);
-    //  One checkpoint of a segment until it passes or runs out of attempts.
-    StoryEngineReport run_with_retries(
-        const StoryCheckpoint& checkpoint, size_t attempts, RunState& state, CheckpointRun& run
-    );
-
-    const StoryGame<PoseType>& m_game;
-    StoryBackend<PoseType>& m_backend;
-    StoryActionRegistry<PoseType> m_registry;
-    StoryStepRunner<PoseType> m_runner;
-};
-
-//  Instantiated for ZonePose (Pokemon_ZonePose.h), in
-//  Pokemon_StoryEngine.cpp.
-extern template class StoryEngine<ZonePose>;
+//  Runs `checkpoints` in order from `state`. Returns std::nullopt when every
+//  checkpoint passed, else the failure that ended the run.
+//  After a failure that does not repeat, game.reload says which checkpoint's
+//  start the game is at and the run goes on from there, until a checkpoint
+//  fails game.attempts_per_checkpoint times. A step that throws is logged and
+//  the exception passes through.
+std::optional<CheckpointFailure> run_checkpoints(
+    StoryBackend& backend, std::span<StoryCheckpoint> checkpoints,
+    StoryGame& game, RunState& state
+);
 
 
 

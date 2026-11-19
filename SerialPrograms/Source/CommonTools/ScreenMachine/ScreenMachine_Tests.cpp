@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -99,34 +100,36 @@ std::vector<ScreenState> test_states(std::vector<std::string>& acted){
         };
         return result;
     };
-    ScreenState fade = state("fade", ScreenEvent::FADE_BLACK);
-    fade.act = nullptr;
-    fade.max_still = 30s;
-    ScreenState choice = state("choice", ScreenEvent::CHOICE_BOX);
-    choice.terminal = true;
-    ScreenState text = state("text", ScreenEvent::DIALOG_BOX);
-    text.max_visits = 10;
-    return {std::move(fade), std::move(choice), state("prompt", ScreenEvent::INTERACT_PROMPT), std::move(text)};
+    std::vector<ScreenState> states;
+    states.push_back(state("fade", ScreenEvent::FADE_BLACK));
+    states.back().act = nullptr;
+    states.back().max_still = 30s;
+    states.push_back(state("choice", ScreenEvent::CHOICE_BOX));
+    states.back().terminal = true;
+    states.push_back(state("prompt", ScreenEvent::INTERACT_PROMPT));
+    states.push_back(state("text", ScreenEvent::DIALOG_BOX));
+    states.back().max_visits = 10;
+    return states;
 }
 
 
 struct RunCase{
-    std::string name;
+    std::string name = {};
     struct Input{
         //  The looks, the last repeating.
-        std::vector<Look> looks;
+        std::vector<Look> looks = {};
         Milliseconds timeout = 600s;
     };
-    Input input;
+    Input input = {};
     struct Expectation{
         //  The terminal state, or "failed: <failure>".
-        std::string end;
+        std::string end = {};
         //  The steps taken, joined by ", "; none: not checked.
         std::optional<std::string> acted = std::nullopt;
         //  The log's lines, joined by "; "; none: not checked.
         std::optional<std::string> log = std::nullopt;
     };
-    Expectation expectation;
+    Expectation expectation = {};
 };
 
 const RunCase RUN_CASES[] = {
@@ -231,9 +234,16 @@ const RunCase RUN_CASES[] = {
     },
 };
 
+//  The terminal state's name, or "failed: <reason>".
+std::string end_of(const ScreenMachineResult& result){
+    const ScreenMachineFailure* failure = std::get_if<ScreenMachineFailure>(&result);
+    return failure != nullptr
+        ? std::format("failed: {}", failure->reason)
+        : std::get<ScreenMachineTerminal>(result).state_name;
+}
+
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     std::vector<std::string> acted;
-    const std::vector<ScreenState> states = test_states(acted);
     std::vector<std::string> lines;
     const std::function<void(std::string_view line)> log = [&lines](std::string_view line){
         lines.emplace_back(line);
@@ -245,8 +255,7 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
         next++;
         return observation_of(look, start);
     };
-    const ScreenMachineResult result = run_screen_machine(observe, scope, states, test.input.timeout, log);
-    const std::string end = result.succeeded() ? result.terminal : std::format("failed: {}", result.failure);
+    const std::string end = end_of(run_screen_machine(observe, scope, test_states(acted), test.input.timeout, log));
     if (end != test.expectation.end){
         return std::format("expected \"{}\", got \"{}\"", test.expectation.end, end);
     }
