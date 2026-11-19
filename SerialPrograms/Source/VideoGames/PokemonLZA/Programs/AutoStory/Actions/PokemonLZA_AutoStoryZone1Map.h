@@ -39,6 +39,11 @@ struct MapWaypoint{
 //  ~10 marker units: a 52-pixel leg to the 60 spot ended 7.8 pixels past it.
 inline constexpr double CATCH_STOP_RADIUS = 12;
 
+//  The road below the rocks. Going straight from the rocks to the 100 spot
+//  stops on an obstacle at about (467, 226) 3 runs in 5 (2026-11-18/19);
+//  through here the heading to the spot keeps south of it.
+inline constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 456, .y = 231}, .provisional = true};
+
 //  About 1.2 map pixels to a marker unit from the "!"; the road's middle is
 //  y = 245 - 0.3 (x - 410). Each waypoint is the point on that line at its
 //  marker distance times 1.2 from the "!".

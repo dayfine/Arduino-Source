@@ -47,8 +47,8 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  Straight, past the rock on its right.
-constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_SPOT_100};
+//  Via the road, past the rock on its right.
+constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_ROAD_ENTRY, ZONE1_SPOT_100};
 
 //  How long the watcher must see the "Registered!" banner before it fires.
 constexpr Milliseconds REGISTERED_BANNER_HOLD(100);
