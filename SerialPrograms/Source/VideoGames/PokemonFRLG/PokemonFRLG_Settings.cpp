@@ -36,6 +36,7 @@ GameSettings::GameSettings()
         "Refer to the documentation for specific setups.",
         {
             {Device::switch_1_2,            "switch_1_2",           "Nintendo Switch 1 and 2"},
+            {Device::emulator,              "emulator",             "Emulator (mGBA)"},
             //{Device::dev_test,              "dev_test",             "dev test rg35xx"},
             //{Device::custom,                "custom",               "Custom"},
         },
@@ -126,6 +127,7 @@ GameSettings::GameSettings()
 void GameSettings::on_config_value_changed(void* object){
     switch (DEVICE){
     case Device::switch_1_2:
+    case Device::emulator:
         GAME_BOX.X.set(0.09375);
         GAME_BOX.Y.set(0.00462963);
         GAME_BOX.WIDTH.set(0.8125);

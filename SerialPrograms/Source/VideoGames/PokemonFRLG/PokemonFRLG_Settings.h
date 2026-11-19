@@ -28,6 +28,7 @@ public:
 
     enum class Device{
         switch_1_2,
+        emulator,
         dev_test,
         custom,
     };
