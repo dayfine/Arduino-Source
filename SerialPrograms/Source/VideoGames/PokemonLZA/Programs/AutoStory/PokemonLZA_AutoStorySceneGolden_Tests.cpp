@@ -356,7 +356,7 @@ const GoldenCase GOLDEN_CASES[] = {
 46.0s: controls hint
 )"},
         .expectation = {
-            .keys = {{"black fade, still", "-"}, {"still", "- or A"}, {"nothing", "- or +"}, {"controls hint", "-"}},
+            .keys = {{"black fade, still", "-"}, {"still", "- or A or +"}, {"nothing", "- or A or +"}, {"controls hint", "-"}},
             .verdict = "done", .end = "[PLZA scene] done on controls_hint.",
         },
     },

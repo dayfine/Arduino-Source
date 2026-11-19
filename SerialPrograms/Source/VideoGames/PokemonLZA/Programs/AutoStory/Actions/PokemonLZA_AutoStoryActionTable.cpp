@@ -198,11 +198,12 @@ Pokemon::StoryActionParser move_hints_action(){
     return [](const JsonObject& args) -> StoryStepRun{
         reject_unknown_keys(args, {
             "min_length_ms", "quiet_ms", "press_a_first", "quiet_is_control", "end_after_black_fades",
-            "gap_press_ms", "advance_with_a",
+            "gap_press_ms", "advance_with_a", "talk",
         });
         SceneMachineConfig config;
         config.quiet = ms_or(args, "quiet_ms", 60s);
         config.quiet_is_control = flag(args, "quiet_is_control");
+        config.talk = flag(args, "talk");
         config.min_length = ms_or(args, "min_length_ms", 0ms);
         if (flag(args, "advance_with_a")){
             config.text_button = BUTTON_A;
