@@ -6,7 +6,8 @@ Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-serv
 durable control plane ([below](#slice-3-the-durable-control-plane)): leases, request records,
 tickets and events in SQLite. Slice 5a: leased `run_program` and `stop_program`
 ([below](#slice-5a-run_program-and-stop_program)); Slice 5b: `preflight_program`, options bound to
-its token, and `cfr_batch` ([below](#slice-5b-preflight_program-options-on-run_program-cfr_batch)).
+its token, and `cfr_batch` ([below](#slice-5b-preflight_program-options-on-run_program-cfr_batch)). Slice 6 (save facts) is a
+design ([below](#slice-6-save-facts-design-not-built)).
 All are served only by `serve --actions`, which nothing is wired to yet.
 
 New here? Start with [GUIDE.md](GUIDE.md): what pa-lab is and what it gives you today.
@@ -510,6 +511,115 @@ event, and each UI Start/Stop shows up once. Run it yourself during a run you ar
      `sqlite3 "$DB" "SELECT seq, type, at, payload FROM events WHERE at >= '$T0' AND type IN ('lease_changed', 'stopped') ORDER BY seq"`.
 6. Pass: no mismatches. Note the counts (requests, actions, `done/` files, events) and any mismatch
    with its request id in the run record; a mismatch is a bug in the daemon, not in the run.
+
+## Slice 6: save facts (design, not built)
+
+Goal: the daemon knows which save is on console B and refuses a run that would start from the
+wrong one. User page: [guide/saves.md](guide/saves.md). Today `console://B/save` reads
+`Lab/save.json` (nothing writes it yet) and goes `stale` on a UI Start/Stop or a `cfr_batch`.
+
+**What the fact means.** A save fact says what a reload gives: the game, the slot and the place
+(a checkpoint's start, or a named place outside the story). Moving in the game does not change
+it; only a save does. So "stale" means *the save may have changed and nobody recorded where*. A
+hooked program moving the player after its save leaves the fact `known`; the separate field
+`game` says whether the game in memory is still at the save (`at_save`), has moved (`moved`), or
+is not known (`unknown`). A run that reloads needs `known`; a run that starts in place
+(chained, no reload) needs `known` and `at_save`.
+
+**What makes it known.** Only the app writes a fact, and only from a program that knows where
+it is (a hooked program):
+
+| Event | `basis` | Place |
+|---|---|---|
+| A checkpoint's save step (FRLG, BDSP; PLZA's manual saves) | `program_save` | that checkpoint's start |
+| A save the game makes itself at a point the plan declares: FRLG Hall of Fame, PLZA autosaves listed in the plan (catch, scene, check-in) | `game_save` | the declared place (PLZA checkpoints start at autosave points, so the next checkpoint's start) |
+| A backup load (PLZA title combo Up+B+X, plza/lean #644): the program reads the backup card (registered count, play time) and maps it to a checkpoint start by its table | `backup_load` | the mapped checkpoint; no match leaves the fact `stale` / `backup_unmapped` |
+| An RNG program's save before resets | `program_save` | `checkpoint: null`, `place` = the program's own name for it |
+| No save on the console: the save-delete tool (`delete_save.sh`) reads the game's title back off Data Management and confirms the delete, or a new-game program finds no save at the title (PLZA 01.00a's "no save data" start) | `no_save` | `checkpoint: null`, `place: "none"`; a new-game row (01.00a) needs exactly this |
+| A save-screen read: a hooked program opens the in-game save screen (PLZA menu, R) and reads its location, play time and registered count, mapped to a checkpoint start by the same table as the backup card | `save_screen` | the mapped checkpoint; no match leaves the fact `stale` / `save_screen_unmapped` |
+
+The autosave detector is not a fact by itself: on 2026-11-16 the green zone walls fired it with
+no save. An autosave seen where the plan declares one writes the fact for that place; one seen
+anywhere else makes the fact `stale` / `unexpected_autosave`. A false badge then costs a reload
+from the backup, never a run from the wrong save. A missed real autosave is the unsafe case;
+plans declare every autosave seen on the console so it becomes a declared one.
+
+FRLG's League is one checkpoint with no save until the Hall of Fame: a failed League run leaves
+the fact `known` at the League start with `game: moved`, so the next run reloads and is allowed.
+The program writes the Hall of Fame fact as soon as it sees the Hall of Fame screen, before
+anything else.
+
+**What makes it stale.** Anything that could save without writing a fact:
+
+| Event | Seen by | `reason` |
+|---|---|---|
+| UI Start/Stop, or the hold file (the user plays) | daemon: `last_transition`, `Lab/hold` (built for UI Start/Stop) | `user_lease` |
+| Keyboard or virtual-controller input in the app, `cfrun.sh` / any channel button line not sent by the daemon | app: `input.last_unhooked` in `state.json` | `user_input`, `cfr_batch` |
+| `cfr_batch` through the daemon | daemon: the save mark (built) | `cfr_batch` |
+| A program that does not report saves runs | app: `input.last_unhooked.source: program`, with the program id | `unhooked_program` |
+| A hooked run ends by error or Stop inside a step that the plan marks as a game save, without writing the fact | app | `run_ended_in_save_step` |
+| An autosave outside the declared places; a backup card that maps to nothing | app | `unexpected_autosave`, `backup_unmapped` |
+| A new app instance started after `saved_at` | daemon: `instance.id` with its `started_at` | `app_restarted` |
+
+A stale fact becomes known again only by a new fact. There is no "confirm by hand" in v1: after
+a hand session, the user saves at the checkpoint start and a program confirms it with a
+save-screen read (`save_screen`), or the program rewinds itself (backup load) and writes the fact.
+On 2026-11-18 the agent loaded the PLZA backup (03.06's Center) and saved from the menu by hand to
+pin the main save there; a `save_screen` read (Vert Sector 8, play time 0:33, registered 1) is
+what turns that hand save back into a known fact. The same day the user deleted the save by hand
+for a new game: `user_input` made it stale, and the new-game row's own title read (`no_save`)
+confirms it.
+
+**Record format.** `save_fact` stays `schema: 1`; the new fields are optional (an open object):
+`basis`, `place` (a name outside the story), `play_time` and `registered` (what the card read,
+PLZA), and `backup` (PLZA: the backup card's own `checkpoint`, `play_time`, `registered`, read at
+the last title visit). `run_id` is the run that wrote it. `save_resource` goes to `schema: 2`,
+since its `reason` enum changes: `known` names the fact's `basis` (`program_save`, `game_save`,
+`backup_load`, `save_screen`, `no_save`) instead of `hooked_save`, and `stale` gains `user_input`,
+`run_ended_in_save_step`, `unexpected_autosave`, `backup_unmapped`, `save_screen_unmapped` and
+`app_restarted`. It also gains `game` (`at_save` / `moved` / `unknown`). The
+daemon is its only writer, so the switch is one PR; the stdio `console_status` client reads it
+through the same parser.
+
+```json
+{"schema": 1, "game": "PokemonLZA", "slot": 0, "checkpoint": "03.08", "position": null,
+ "saved_at": "2026-11-16T05:12:40.118Z", "run_id": "3c1e...", "basis": "backup_load",
+ "registered": 4, "play_time": "1:12",
+ "producer": {"program": "PokemonLZA:AutoStory", "build": "plza/lean@446bc024e"}}
+```
+
+**How the app reports it.** Through the Lab channel, not the log: a program calls one
+`report_save(fact)`, which replaces `Lab/save.json` atomically (write beside, rename) and appends
+the same line to `Lab/saves.jsonl` (history; the daemon reads it for run records; `disk_gc.sh`
+keeps the last 7 days). The program also logs `[SaveFact] 03.08 backup_load` for people; the
+daemon never parses the log. `state.json` gains `input.last_unhooked: {source, program?, at} |
+null` and `instance.started_at`. Both are optional fields of `app_state` v1.
+
+**`save_at(place)`.** A start check in the program's list (`skippable: true` for the user's own
+Start). The app checks its own `save.json`, its `input.last_unhooked` and the run's start mode;
+the daemon checks again in `preflight_program` before sending, with what only it sees (hold,
+restart, its `cfr_batch` marks), and refuses a candidate that turns the check off. Refusal:
+`precheck_failed`, `check: save_at`, with `evidence.{status, reason, since, checkpoint, game}`.
+It passes when the fact is `known`, its game is the program's, and its checkpoint is the run's
+start checkpoint; for an in-place start also `game: at_save`; for a PLZA run with backup rewind on,
+the backup's checkpoint may match instead. The preflight token already binds the save resource,
+so a fact that goes stale between preflight and run refuses the run (`preflight_stale`).
+
+**The run record.** Each `run_program` becomes one `run_record` (new kind, daemon-written,
+`console://B/runs/{run_id}` and a `run_ended` event): run id, panel, options hash, the save
+resource at the start, start and end times, how it ended (`program`, `error`, `lab`, `ui`), the
+`[Checkpoint]` result lines, the facts it wrote (from `saves.jsonl` by `run_id`), and the newest
+failure frame path. It needs the app's `run_id` on transitions (#116).
+
+**Slice plan.** Small PRs, each tests first (red goldens or fake-lab cases before code):
+
+| PR | Side | What |
+|---|---|---|
+| 6a | server | Contracts: `save_fact` optional fields, `save_resource` v2, `app_state` `input` and `instance.started_at`; goldens + invalid cases; the reader's new reasons against the fake lab |
+| 6b | app | `report_save` (save.json + saves.jsonl), `input.last_unhooked` from the keyboard, virtual controller, channel button lines and unhooked programs; native test against the 6a goldens |
+| 6c | app | Hooks: FRLG/BDSP checkpoint saves and FRLG Hall of Fame; PLZA declared autosaves and `backup_load` from plza/lean's (#644) card mapping, the same table for `save_screen`; `no_save` from `delete_save.sh` and 01.00a's title read; unit tests of the mapping table and the declared-autosave rule |
+| 6d | both | `save_at` in the AutoStory precheck lists and in `preflight_program`; refusal goldens |
+| 6e | server | `run_record`, `console://B/runs/{run_id}`, `run_ended`; after #116 |
 
 ## User pages
 

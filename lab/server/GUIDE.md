@@ -107,7 +107,7 @@ are updated as each piece lands.
 |---|---|---|
 | 4 (rest) | Every program lists what it needs before it starts; FRLG AutoStory's list is next (fork #488) | [start-checks.md](guide/start-checks.md) |
 | 5 | Leased actions: an agent asks to run or stop a program; the server refuses whenever you hold the console, and (5b) when a start check fails. Every action gets exactly one record. 5a is built in #592 and 5b's server side on branch `lab/server-slice-5b`; neither is switched on, and the app does not yet run start checks on request. | [actions.md](guide/actions.md) |
-| 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; run records become readable | [saves.md](guide/saves.md) |
+| 6 | Save facts: the server knows which save is on the console and refuses a run that would start from the wrong one; PLZA rewinds to its backup and says where it landed; run records become readable. Designed, not built. | [saves.md](guide/saves.md) |
 | 7 | The server launches and supervises the lab app itself, so a build always starts with the right profile | [app-lifecycle.md](guide/app-lifecycle.md) |
 | 8 | Optional: a local worker for builds and test runs | [worker.md](guide/worker.md) |
 
