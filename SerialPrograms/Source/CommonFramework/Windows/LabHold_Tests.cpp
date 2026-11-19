@@ -108,8 +108,8 @@ UnitTestResult test_runs_while_held(){
 
 //  One check of the selected program, for LabHoldTrigger::check().
 struct Observation{
-    std::optional<ProgramTransition> transition;
-    std::optional<WallClock> last_user_input;
+    std::optional<ProgramTransition> transition = std::nullopt;
+    std::optional<WallClock> last_user_input = std::nullopt;
 };
 
 const WallClock SELECTED = WallClock{} + 1000s;
