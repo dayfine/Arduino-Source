@@ -17,68 +17,41 @@
 namespace PokemonAutomation{
 namespace{
 
-enum class FakeBehavior{
-    SUCCEED,
-    REPORT_ERROR,
-    REFUSE_START,
-};
+enum class FakeBehavior{SUCCEED, REPORT_ERROR, REFUSE_START};
 
-class FakeComputerInstance final : public ComputerProgramInstance{
+class FakeInstance final : public ComputerProgramInstance{
 public:
-    explicit FakeComputerInstance(FakeBehavior behavior)
-        : m_behavior(behavior)
-    {}
-
+    explicit FakeInstance(FakeBehavior b) : m_b(b) {}
     virtual std::string check_validity() const override{
-        return m_behavior == FakeBehavior::REFUSE_START ? "invalid configuration" : "";
+        return m_b == FakeBehavior::REFUSE_START ? "invalid configuration" : "";
     }
-
     virtual void program(ProgramEnvironment&, CancellableScope&) override{
-        if (m_behavior == FakeBehavior::REPORT_ERROR){
+        if (m_b == FakeBehavior::REPORT_ERROR){
             throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "simulated failure");
         }
     }
-
 private:
-    FakeBehavior m_behavior;
+    FakeBehavior m_b;
 };
 
-class FakeComputerDescriptor final : public ComputerProgramDescriptor{
+class FakeProgramDescriptor final : public ComputerProgramDescriptor{
 public:
-    FakeComputerDescriptor(std::string identifier, FakeBehavior behavior)
-        : ComputerProgramDescriptor(
-            std::move(identifier),
-            "Fake",
-            "FakeProgram",
-            /*doc_link=*/"",
-            /*description=*/"",
-            PanelQualityStanding::DEVELOPER
-        )
-        , m_behavior(behavior)
+    FakeProgramDescriptor(std::string id, FakeBehavior b)
+        : ComputerProgramDescriptor(std::move(id), "Fake", "FakeProgram", /*doc_link=*/"", /*description=*/"", PanelQualityStanding::DEVELOPER)
+        , m_b(b)
     {}
-
     virtual std::unique_ptr<ComputerProgramInstance> make_instance() const override{
-        return std::make_unique<FakeComputerInstance>(m_behavior);
+        return std::make_unique<FakeInstance>(m_b);
     }
-
 private:
-    FakeBehavior m_behavior;
+    FakeBehavior m_b;
 };
 
 class FakeSettingsDescriptor final : public PanelDescriptor{
 public:
-    explicit FakeSettingsDescriptor(std::string identifier)
-        : PanelDescriptor(
-            std::move(identifier),
-            "Fake",
-            "FakeSettings",
-            /*doc_link=*/"",
-            /*description=*/"",
-            PanelQualityStanding::DEVELOPER,
-            /*restore_defaults_button=*/false
-        )
+    explicit FakeSettingsDescriptor(std::string id)
+        : PanelDescriptor(std::move(id), "Fake", "FakeSettings", /*doc_link=*/"", /*description=*/"", PanelQualityStanding::DEVELOPER, /*restore_defaults_button=*/false)
     {}
-
     virtual std::unique_ptr<PanelSession> make_panel() const override{
         return std::make_unique<PanelSession>(*this);
     }
@@ -86,16 +59,13 @@ public:
 
 class FakeListDescriptor final : public PanelListDescriptor{
 public:
-    FakeListDescriptor()
-        : PanelListDescriptor("Fake")
-    {}
-
+    FakeListDescriptor() : PanelListDescriptor("Fake") {}
 protected:
     virtual std::vector<PanelEntry> make_panels() const override{
         std::vector<PanelEntry> ret;
-        ret.emplace_back(std::make_unique<FakeComputerDescriptor>("Fake:Ok", FakeBehavior::SUCCEED));
-        ret.emplace_back(std::make_unique<FakeComputerDescriptor>("Fake:Err", FakeBehavior::REPORT_ERROR));
-        ret.emplace_back(std::make_unique<FakeComputerDescriptor>("Fake:Refused", FakeBehavior::REFUSE_START));
+        ret.emplace_back(std::make_unique<FakeProgramDescriptor>("Fake:Ok", FakeBehavior::SUCCEED));
+        ret.emplace_back(std::make_unique<FakeProgramDescriptor>("Fake:Err", FakeBehavior::REPORT_ERROR));
+        ret.emplace_back(std::make_unique<FakeProgramDescriptor>("Fake:Refused", FakeBehavior::REFUSE_START));
         ret.emplace_back(std::make_unique<FakeSettingsDescriptor>("Fake:Settings"));
         return ret;
     }
