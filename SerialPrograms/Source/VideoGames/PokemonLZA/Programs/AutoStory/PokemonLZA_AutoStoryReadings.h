@@ -16,13 +16,13 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  1: the station platform with free control after the opening cutscene.
-constexpr std::string_view PLATFORM_READING = "scene.platform";
 
 //  1: the autosave badge ("Saving...", top right).
 constexpr std::string_view AUTOSAVE_READING = "scene.autosave";
 
-//  1: the tutorial's controls hint ("(L) Move"): the player has control.
+//  1: the tutorial's controls hint ("(L) Move"): the player has control
+//  (also on 01.01's station platform, which shows no party bar).
+
 constexpr std::string_view CONTROLS_HINT_READING = "scene.controls_hint";
 
 //  1: the advance chevron, at a dialogue box or boxless subtitles.

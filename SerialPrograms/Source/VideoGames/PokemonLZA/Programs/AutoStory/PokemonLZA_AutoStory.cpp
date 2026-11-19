@@ -32,7 +32,7 @@
 #include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "Detectors/PokemonLZA_AutoStoryMinimapMatch.h"
-#include "Detectors/PokemonLZA_AutoStoryPlatformArrivalDetector.h"
+
 #include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
 #include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
@@ -189,7 +189,7 @@ constexpr std::string_view RECORD_START_MINIMAPS_LABEL =
 
 constexpr std::string_view RELOAD_PROBE_AFTER_LABEL =
     "<b>Reload Probe After:</b><br>For developers: checkpoint ids, comma-separated (e.g. 03.03). After each passes, reload the latest save "
-    "once, log where it lands by the minimap references and the platform (\"[ReloadProbe]\") with a screenshot in the AutoStoryDev folder "
+    "once, log where it lands by the minimap references (\"[ReloadProbe]\") with a screenshot in the AutoStoryDev folder "
     "of the user files, and go on from the checkpoint whose start the screen shows. Empty: off.";
 
 //  A run after the new game starts from the latest save, not from wherever
@@ -315,7 +315,7 @@ std::set<std::string, std::less<>> checkpoint_ids(std::string_view text){
     return ids;
 }
 
-//  "[ReloadProbe] after 03.03: landed at 03.04-start (platform no; 03.04-start 8.2,
+//  "[ReloadProbe] after 03.03: landed at 03.04-start (03.04-start 8.2,
 //  03.05-start 24.0, 03.03-start 31.5)", and the frame. Presses nothing.
 void log_reload_landing(StoryEnv& story, PlzaBackend& backend, const StoryCheckpoint& passed){
     story.context.wait_for_all_requests();
@@ -324,13 +324,13 @@ void log_reload_landing(StoryEnv& story, PlzaBackend& backend, const StoryCheckp
         backend.log(std::format("[ReloadProbe] after {}: landed at unknown (no frame)", passed.id));
         return;
     }
-    const bool platform = PlatformArrivalDetector().detect(*snapshot.frame);
     const std::vector<MinimapDistance> distances = minimap_distances(*snapshot.frame);
-    std::string scores = std::format("platform {}", platform ? "yes" : "no");
+    std::string scores;
     for (size_t index = 0; index < distances.size() && index < 3; index++){
-        scores += std::format("{} {} {:.1f}", index == 0 ? ";" : ",", distances[index].reference, distances[index].distance);
+        scores += std::format("{}{} {:.1f}", index == 0 ? "" : ", ", distances[index].reference, distances[index].distance);
     }
-    const std::string landed = platform ? "platform" : matching_minimap(*snapshot.frame).value_or("unknown");
+    const std::string landed = matching_minimap(*snapshot.frame).value_or("unknown");
+
     backend.log(std::format("[ReloadProbe] after {}: landed at {} ({})", passed.id, landed, scores));
     const std::string folder = start_minimaps_folder();
     Filesystem::create_directories(Filesystem::Path(folder));

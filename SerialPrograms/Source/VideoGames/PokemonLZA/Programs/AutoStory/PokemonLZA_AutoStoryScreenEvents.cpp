@@ -27,8 +27,7 @@ const ImageFloatBox BATTLE_HINT_BOX{0.40, 0.84, 0.20, 0.10};
 
 
 PlzaScreenObserver::PlzaScreenObserver()
-    : m_dialog({.white = WhiteDialogPart::BOX_ONLY})
-    , m_choice_arrow(COLOR_YELLOW, nullptr, SelectionArrowType::RIGHT, dialog_choice_box())
+    : m_choice_arrow(COLOR_YELLOW, nullptr, SelectionArrowType::RIGHT, dialog_choice_box())
     , m_interact(COLOR_RED, ButtonType::ButtonA, INTERACT_PROMPT_BOX)
     , m_battle_hint(COLOR_CYAN, ButtonType::ButtonA, BATTLE_HINT_BOX)
     , m_battle_panel(COLOR_GREEN)
@@ -48,17 +47,15 @@ ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
     if (fade_in(out) != WarpFade::NONE){
         return out;
     }
-    const bool box = m_dialog.detect(screen);
-    out.set(ScreenEvent::DIALOG_BOX, box);
     out.set(ScreenEvent::CHOICE_BOX, m_choice_arrow.detect(screen));
-    out.set(ScreenEvent::INTERACT_PROMPT, !box && m_interact.detect(screen));
+    out.set(ScreenEvent::INTERACT_PROMPT, m_interact.detect(screen));
     out.set(ScreenEvent::BATTLE_STARTED, m_battle_hint.detect(screen) || (m_battle_panel.detect(screen) && m_battle_markers.detect(screen)));
-    out.set(ScreenEvent::PLAYER_CAN_MOVE, !box && m_party.detect(screen));
+    out.set(ScreenEvent::PLAYER_CAN_MOVE, m_party.detect(screen));
     return out;
 }
 
 void PlzaScreenObserver::make_overlays(VideoOverlaySet& items) const{
-    m_dialog.make_overlays(items);
+
     m_choice_arrow.make_overlays(items);
     m_interact.make_overlays(items);
     m_battle_hint.make_overlays(items);

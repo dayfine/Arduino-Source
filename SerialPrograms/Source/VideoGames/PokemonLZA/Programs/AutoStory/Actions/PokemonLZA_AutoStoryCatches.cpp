@@ -47,6 +47,11 @@ using namespace std::chrono_literals;
 
 namespace{
 
+//  The road below the rocks. Going straight from the rocks to the 100 spot
+//  stops on an obstacle at about (467, 226) 3 runs in 5 (2026-11-18/19);
+//  through here the heading to the spot keeps south of it.
+constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 456, .y = 231}, .provisional = true};
+
 //  Via the road, past the rock on its right.
 constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_ROAD_ENTRY, ZONE1_SPOT_100};
 

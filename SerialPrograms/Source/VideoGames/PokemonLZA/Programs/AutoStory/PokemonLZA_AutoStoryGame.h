@@ -35,9 +35,8 @@ namespace PokemonLZA{
 //  (which must outlive it) saw; no reload.
 Pokemon::StoryGame plza_story_game(const MarkedCheckpoints& marked, AutosaveSightings& sightings);
 
-//  Reloads the latest save. Fails as "older_save" when it lands on the
-//  station platform but `checkpoint` is not 01.01, "no_reload" when `game` has
-//  none, "reload_failed" when the reload says it is at no start.
+//  Reloads the latest save. Fails as "no_reload" when `game` has none,
+//  "reload_failed" when the reload says it is at no start.
 std::optional<Pokemon::StoryFailure> load_checkpoint_start(
     Pokemon::StoryGame& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& checkpoint
 );
@@ -70,9 +69,8 @@ struct CheckpointRunOptions{
 //  - reload_when_chained checkpoints reload and must land at their start:
 //    "reload_off_start", or "reload_unchecked" with no start or reader.
 //  - other checkpoints are checked on the live screen: "chain_off_start" when
-//    elsewhere; no start or reader runs on unchecked. On the station
-//    platform, the checkpoint's start is reloaded, "no_start_save" when no
-//    autosave was seen.
+//    elsewhere; no start or reader runs on unchecked.
+
 std::optional<Pokemon::CheckpointFailure> run_plza_checkpoints(
     Pokemon::StoryGame& game, std::span<Pokemon::StoryCheckpoint> checkpoints, CheckpointRunOptions& options,
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings

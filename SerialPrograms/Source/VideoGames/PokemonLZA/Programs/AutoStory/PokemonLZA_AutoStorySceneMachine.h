@@ -77,13 +77,15 @@ struct SceneMachineConfig{
 //  moving screen (a cutscene can play a minute with no text).
 bool scene_under_way(const ScreenObservation& look);
 
-//  A text box, or the advance chevron without one.
+//  Text waiting for A: the advance chevron, with or without a box.
 bool text_shows(const ScreenObservation& look);
 
 //  A black or a white fade.
 bool fade_shows(const ScreenObservation& look);
 
-//  The party bar with no text box over it (it shows between a talk's lines too).
+//  The party bar with nothing busy over it: no advance arrow, fade or choice
+//  (it shows under a talk's lines too).
+
 bool party_bar_free(const ScreenObservation& look);
 
 //  "text box, advance arrow": `look`'s events and readings; "nothing" for none.

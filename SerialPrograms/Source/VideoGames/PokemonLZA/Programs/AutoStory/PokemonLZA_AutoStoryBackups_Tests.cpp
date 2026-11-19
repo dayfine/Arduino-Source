@@ -255,7 +255,7 @@ bool has_line(const std::vector<std::string>& lines, std::string_view wanted){
 constexpr Milliseconds OWN_BADGE = 2000ms;
 
 std::vector<ScreenObservation> badge_in_first_step(){
-    return {look({}), look({AUTOSAVE_READING}, OWN_BADGE), look({PLATFORM_READING}, OWN_BADGE + 1000ms)};
+    return {look({}), look({AUTOSAVE_READING}, OWN_BADGE), look({CONTROLS_HINT_READING}, OWN_BADGE + 1000ms)};
 }
 
 //  The backup card reads 1 registered: 03.06's start.
@@ -311,7 +311,7 @@ UnitTestResult check_rewind(const RewindCase& test, CancellableScope& scope){
     return check_run(
         RewindRun{
             .rows = story_rows(), .first = RUN_FROM, .last = RUN_TO,
-            .looks = test.input.autosave_in_failed_run ? badge_in_first_step() : std::vector{look({PLATFORM_READING})},
+            .looks = test.input.autosave_in_failed_run ? badge_in_first_step() : std::vector{look({CONTROLS_HINT_READING})},
             .failed_catches = test.input.failed_catches, .failure = test.input.failure,
             .card = test.input.card, .max_rewinds = test.input.max_rewinds,
         },
@@ -397,8 +397,8 @@ UnitTestResult check_gate(const GateCase& test, CancellableScope& scope){
     const std::vector<ScreenObservation> looks = test.input.badge == BadgeIn::FIRST_STEP
         ? badge_in_first_step()
         : std::vector{
-            look({}), look({PLATFORM_READING}, 1000ms), look({PLATFORM_READING}, 1300ms),
-            look({AUTOSAVE_READING}, OWN_BADGE), look({PLATFORM_READING}, OWN_BADGE + 1000ms),
+            look({}), look({CONTROLS_HINT_READING}, 1000ms), look({CONTROLS_HINT_READING}, 1300ms),
+            look({AUTOSAVE_READING}, OWN_BADGE), look({CONTROLS_HINT_READING}, OWN_BADGE + 1000ms),
         };
     return check_run(
         RewindRun{

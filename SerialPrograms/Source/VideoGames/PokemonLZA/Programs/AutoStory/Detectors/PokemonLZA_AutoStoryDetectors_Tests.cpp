@@ -27,7 +27,6 @@
 #include "PokemonLZA_AutoStoryDetectors_Tests.h"
 #include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "PokemonLZA_AutoStoryMissionCompleteDetector.h"
-#include "PokemonLZA_AutoStoryPlatformArrivalDetector.h"
 #include "PokemonLZA_AutoStoryTutorialCardDetector.h"
 
 namespace PokemonAutomation{
@@ -43,7 +42,6 @@ constexpr size_t HEIGHT = 1080;
 
 //  Per detector: the expected read, or none when not checked.
 struct DetectorReads{
-    std::optional<bool> platform = {};
     std::optional<bool> autosave = {};
     std::optional<bool> controls_hint = {};
     std::optional<bool> advance_arrow = {};
@@ -57,7 +55,6 @@ struct DetectorField{
     std::optional<bool> DetectorReads::* read;
 };
 const DetectorField DETECTOR_FIELDS[] = {
-    {"platform", &DetectorReads::platform},
     {"autosave", &DetectorReads::autosave},
     {"controls hint", &DetectorReads::controls_hint},
     {"advance arrow", &DetectorReads::advance_arrow},
@@ -96,7 +93,6 @@ std::string mismatches(const DetectorReads& got, const DetectorReads& want){
 }
 
 struct StoryDetectors{
-    PlatformArrivalDetector platform;
     AutosaveDetector autosave;
     ControlsHintDetector hint;
     AdvanceArrowDetector arrow;
@@ -106,7 +102,7 @@ struct StoryDetectors{
 
     DetectorReads read(const ImageViewRGB32& frame){
         return DetectorReads{
-            .platform = platform.detect(frame), .autosave = autosave.detect(frame),
+            .autosave = autosave.detect(frame),
             .controls_hint = hint.detect(frame), .advance_arrow = arrow.detect(frame),
             .mission_banner = banner.detect(frame), .mission_complete = complete.detect(frame),
             .party_bar = party_bar.detect(frame),
@@ -187,7 +183,7 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
 UnitTestResult check_synthetic_frame(const SyntheticFrameCase& test, Logger& logger){
     StoryDetectors detectors;
     const DetectorReads got = detectors.read(test.input.frame());
-    logger.log(std::format("{}: {}{}", test.name, to_string(detectors.platform.last_distances()), firing(got)));
+    logger.log(std::format("{} reads{}", test.name, firing(got)));
     const std::string wrong = mismatches(got, test.expectation.reads);
     if (!wrong.empty()){
         return std::format("Wrong on {}:{}", test.name, wrong);
@@ -216,13 +212,13 @@ DetectorReads as_named(std::string_view name){
         return name.find(reading) != std::string_view::npos;
     };
     return DetectorReads{
-        .platform = has("+platform"), .autosave = has("+autosave"),
+        .autosave = has("+autosave"),
         .controls_hint = has("+controls_hint"), .advance_arrow = has("+advance_arrow"),
         .mission_banner = has("+mission_banner"), .mission_complete = has("+mission_complete"),
     };
 }
 
-//  The opening cutscene up to the platform: none is the platform.
+//  The opening cutscene up to the platform: no detector fires.
 std::optional<DetectorReads> opening(std::string_view){
     return DetectorReads{};
 }
@@ -234,7 +230,6 @@ std::optional<DetectorReads> arrival_to_ad(std::string_view name){
         return std::nullopt;
     }
     return DetectorReads{
-        .platform = name.find("+platform") != std::string_view::npos,
         .controls_hint = *index <= 6, .advance_arrow = *index == 40,
     };
 }
@@ -247,7 +242,6 @@ std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
     }
     const bool box_arrow = *index == 44 || *index == 49 || *index == 53 || *index == 78;
     return DetectorReads{
-        .platform = name.find("+platform") != std::string_view::npos,
         .controls_hint = *index <= 6,
         .advance_arrow = box_arrow || (*index >= 93 && *index <= 115),
     };
@@ -260,7 +254,6 @@ std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
         return std::nullopt;
     }
     return DetectorReads{
-        .platform = name.find("+platform") != std::string_view::npos,
         .controls_hint = name.find("+controls_hint") != std::string_view::npos,
         .advance_arrow = name.find("+advance_arrow") != std::string_view::npos,
         .mission_banner = *index == 181,
@@ -356,7 +349,7 @@ UnitTestResult check_frame_folder(const FrameFolderCase& test, Logger& logger){
             continue;
         }
         const DetectorReads got = detectors.read(ImageRGB32(path.string()));
-        logger.log(std::format("{}: {}{}", name, to_string(detectors.platform.last_distances()), firing(got)));
+        logger.log(std::format("{} reads{}", name, firing(got)));
         const std::string wrong = mismatches(got, every_detector(*want));
         if (!wrong.empty()){
             failures += std::format(" {}:{};", name, wrong);
