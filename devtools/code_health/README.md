@@ -122,7 +122,7 @@ function or class exceed their limit. Checks are the metric names in the table a
 `file_lines`, `function_lines`, `nesting`, `parameters`, `public_methods`, `public_data`,
 `single_method_interface`, `header_symbols`. Style findings that take a tag too: `char_pointer`,
 `overload_prefix`, `out_param_order`, `string_concat`, `param_comment`, `test_only_api`, `extern_template`,
-`free_function`, `uncalled_method`, `one_user_alias` and `bool_with_failure`, for a C API
+`free_function`, `uncalled_method`, `one_user_alias`, `bool_with_failure` and `enum_string_switch`, for a C API
 or a fixed interface that needs them; so do `learned_rule_test` and `special_case` (see
 [Systematic fixes](#systematic-fixes)). Other style and layering
 findings have no bypass.
@@ -191,6 +191,7 @@ lexer, not a parser: rules that need types stay in review.
 | A public method a header adds to a class without bases, not virtual, that no file outside the class's .h/.cpp and tests calls as `.name`, `->name` or `::name`; a call counts only in a file that, or whose own header, names the class or includes its header. Not reported: `begin`/`end` and kin | advisory (tag: `uncalled_method`) | same (#648: `registry()`, `run_checkpoint`) |
 | A namespace-scope `using X = ...;` a header adds that one other header uses (or, with no header, one other module), counting files that include the header (`review_rules.py`) | advisory (tag: `one_user_alias`) | same (#648: `EventLogger`) |
 | A struct with a `bool` completed/passed/ok/succeeded/success/failed next to an `Outcome`, `*Report`, `*Result` or `*failure*`/`*error*` member: one `std::optional<Failure>` | advisory (tag: `bool_with_failure`) | same (#648: `CheckpointReport`, `StoryEngineReport`) |
+| A `switch` an added line starts whose cases are `Enum::VALUE` labels (several may share one return; `default:` too) and whose every statement is `return "<literal>";`: a hand-written enum-to-string function. The reverse (string to enum) is not checked (`review_rules.py`) | advisory (tag: `enum_string_switch`) | user review on fork #667 (`screen_event_name`, `warp_fade_name`): use `EnumStringMap<T>` (`Common/Cpp/EnumStringMap.h`) |
 
 Advisories print as `Advisory:` lines and `::warning` annotations and never fail.
 
