@@ -40,9 +40,8 @@ std::string current_exception_text(){
     }
 }
 
-//  Runs event `number` of `checkpoint`; if it succeeded knowing where it
-//  left the player, that becomes the run's pose. Logs its start and end,
-//  and a throw as its and the checkpoint's failure before it goes on.
+//  Runs event `number` (from 1) of `checkpoint`; a throw is logged and
+//  passes through.
 Outcome run_event(size_t number, Checkpoint& checkpoint, RunState& state, EventLogger& log){
     Event& event = checkpoint.events[number - 1];
     log(event_log_line(checkpoint.id, number, event.name, "start"));
@@ -70,24 +69,18 @@ Outcome run_event(size_t number, Checkpoint& checkpoint, RunState& state, EventL
 } // namespace
 
 
-CheckpointReport run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLogger& log){
-    CheckpointReport report;
+CheckpointRunResult run_checkpoint(RunState& state, Checkpoint& checkpoint, EventLogger& log){
     const std::string& id = checkpoint.id;
     log(checkpoint_start_line(id, checkpoint.events.size()));
     for (size_t c = 0; c < checkpoint.events.size(); c++){
-        report.events_run++;
         Outcome outcome = run_event(c + 1, checkpoint, state, log);
         if (!outcome.succeeded()){
-            report.failed_event = c + 1;
-            report.failed_name = checkpoint.events[c].name;
-            log(checkpoint_log_line(id, std::format("failed at {} {}: {}", c + 1, report.failed_name, to_string(outcome))));
-            report.failure = std::move(outcome);
-            return report;
+            log(checkpoint_log_line(id, std::format("failed at {} {}: {}", c + 1, checkpoint.events[c].name, to_string(outcome))));
+            return CheckpointRunResult{.failure = CheckpointFailure{.event_index = c, .outcome = std::move(outcome)}};
         }
     }
-    report.completed = true;
-    log(checkpoint_log_line(id, std::format("done, {} run", report.events_run)));
-    return report;
+    log(checkpoint_log_line(id, std::format("done, {} run", checkpoint.events.size())));
+    return CheckpointRunResult{};
 }
 
 

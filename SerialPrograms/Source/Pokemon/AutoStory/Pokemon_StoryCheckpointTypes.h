@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A checkpoint as the event runner sees it: its events, and the report of
- *  a run of it.
+ *  A checkpoint as events, and the result of running it.
  *
  */
 
@@ -11,9 +10,9 @@
 #define PokemonAutomation_Pokemon_StoryCheckpointTypes_H
 
 #include <cstddef>
+#include <optional>
 #include <string>
 #include <vector>
-#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Pokemon_StoryEvent.h"
 
 namespace PokemonAutomation{
@@ -26,18 +25,21 @@ struct Checkpoint{
     std::vector<Event> events = {};
 };
 
-// Result report from executing a checkpoint.
-struct CheckpointReport{
-    bool completed = false;
-    //  1-based number of the event that failed; 0 when nothing failed.
-    size_t failed_event = 0;
-    std::string failed_name = {};
-    Outcome failure = {};
-    size_t events_run = 0;
+//  Where and why a checkpoint run stopped.
+struct CheckpointFailure{
+    //  0-based; none when the checkpoint failed outside its events (a lint
+    //  or a reload).
+    std::optional<size_t> event_index = std::nullopt;
+    Outcome outcome = {};
 };
 
-//  Where the runner writes its log lines.
-using EventLogger = MoveOnlyFunction<void(const std::string& line)>;
+//  How a checkpoint run ended.
+struct CheckpointRunResult{
+    //  None: every event passed.
+    std::optional<CheckpointFailure> failure = std::nullopt;
+    //  The run is on a save made at the checkpoint's end.
+    bool saved = false;
+};
 
 
 

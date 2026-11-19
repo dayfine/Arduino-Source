@@ -1528,26 +1528,20 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_StoryStepJson_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryPoseConcept.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ZonePose.h
     Source/Pokemon/AutoStory/Pokemon_CheckpointAttempts.cpp
@@ -1580,7 +1574,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryRegisteredArg.h
-    Source/Pokemon/AutoStory/Types/Pokemon_StorySegmentTypes.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.cpp
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStepKind.h

@@ -7,6 +7,7 @@
 #include <format>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -35,7 +36,7 @@ struct EventsCase{
     };
     Input input;
     struct Expectation{
-        //  "completed 2 run, pose Lobby" or "failed at 2 e2: scripted, 2 run".
+        //  "completed 2 run, pose Lobby" or "failed at index 1: scripted".
         std::string report;
         //  The log, one line each, joined by " | "; "throws" when it throws.
         std::string log;
@@ -48,7 +49,7 @@ const EventsCase CASES[] = {
         .name = "every event runs in order",
         .input = {.events = {ScriptedAct::PASS, ScriptedAct::PASS}},
         .expectation = {
-            .report = "completed, 2 run, pose ?",
+            .report = "completed, pose ?",
             .log = "[Checkpoint] 01.01: start, 2 events | [Event] 01.01/1 e1: start | [Event] 01.01/1 e1: done"
                 " | [Event] 01.01/2 e2: start | [Event] 01.01/2 e2: done | [Checkpoint] 01.01: done, 2 run",
         },
@@ -57,7 +58,7 @@ const EventsCase CASES[] = {
         .name = "a failed event stops the checkpoint",
         .input = {.events = {ScriptedAct::PASS, ScriptedAct::FAIL, ScriptedAct::PASS}},
         .expectation = {
-            .report = "failed at 2 e2: scripted, 2 run",
+            .report = "failed at index 1: scripted",
             .log = "[Checkpoint] 01.01: start, 3 events | [Event] 01.01/1 e1: start | [Event] 01.01/1 e1: done"
                 " | [Event] 01.01/2 e2: start | [Event] 01.01/2 e2: failed: scripted: as scripted"
                 " | [Checkpoint] 01.01: failed at 2 e2: scripted: as scripted",
@@ -67,7 +68,7 @@ const EventsCase CASES[] = {
         .name = "an action's pose becomes the run's",
         .input = {.events = {ScriptedAct::PASS_AT_LOBBY}},
         .expectation = {
-            .report = "completed, 1 run, pose Lobby",
+            .report = "completed, pose Lobby",
             .log = "[Checkpoint] 01.01: start, 1 events | [Event] 01.01/1 e1: start | [Event] 01.01/1 e1: done | [Checkpoint] 01.01: done, 1 run",
         },
     },
@@ -104,16 +105,16 @@ UnitTestResult check_case(const EventsCase& test){
         checkpoint.events.push_back(Event{.name = std::format("e{}", c + 1), .why = "", .act = act_of(test.input.events[c])});
     }
     std::string log;
-    EventLogger logger = [&log](const std::string& line){
-        log += (log.empty() ? "" : " | ") + line;
+    EventLogger logger = [&log](std::string_view line){
+        log += std::string(log.empty() ? "" : " | ") + std::string(line);
     };
     RunState state;
     std::string report = "throws";
     try{
-        const CheckpointReport run = run_checkpoint(state, checkpoint, logger);
-        report = run.completed
-            ? std::format("completed, {} run, pose {}", run.events_run, state.pose.map.empty() ? "?" : state.pose.map)
-            : std::format("failed at {} {}: {}, {} run", run.failed_event, run.failed_name, run.failure.failure, run.events_run);
+        const CheckpointRunResult run = run_checkpoint(state, checkpoint, logger);
+        report = !run.failure
+            ? std::format("completed, pose {}", state.pose.map.empty() ? "?" : state.pose.map)
+            : std::format("failed at index {}: {}", run.failure->event_index.value_or(0), run.failure->outcome.failure);
     }catch (const std::runtime_error&){}
     if (report != test.expectation.report){
         return std::format("expected \"{}\", got \"{}\"", test.expectation.report, report);

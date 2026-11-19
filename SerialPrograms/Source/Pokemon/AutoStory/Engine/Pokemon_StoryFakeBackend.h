@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A scripted game for engine tests, with no console and no model: each
- *  observe() returns the script's next look (the last one repeats), every
- *  input and log line is recorded, and a battle ends as scripted. A fault
- *  is a script: a walk whose fade never comes.
+ *  A scripted backend for tests: it records every input and log line.
  *
  */
 
@@ -13,18 +10,18 @@
 #define PokemonAutomation_Pokemon_StoryFakeBackend_H
 
 #include <cstddef>
+#include <format>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Pokemon_StoryBackend.h"
-#include "Pokemon_ZonePose.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
 //  What a FakeStoryBackend shows and does.
-//  code-health: allow test_only_api -- a test double: tests build it by its fields, so no name use shows
 template <StoryPose PoseType>
 struct FakeStoryScript{
     //  observe()'s answers in order; the last repeats. None: an empty look.
@@ -36,14 +33,16 @@ struct FakeStoryScript{
     Outcome battle = outcome_ok();
 };
 
-//  The backend of the engine's unit tests and of a game's scripted tests,
-//  for any pose type.
+//  Records every input and log line; observe() plays the script.
 //  code-health: allow public_methods -- the backend calls it fakes plus the three recordings tests read; nothing to split
 //  code-health: allow test_only_api -- a test double: the scripted backend the engine and game tests run on
 template <StoryPose PoseType>
 class FakeStoryBackend : public StoryBackend<PoseType>{
 public:
-    FakeStoryBackend(FakeStoryScript<PoseType> script, CancellableScope& scope);
+    FakeStoryBackend(FakeStoryScript<PoseType> script, CancellableScope& scope)
+        : m_script(std::move(script))
+        , m_scope(scope)
+    {}
 
     //  Each input, in order: "press A", "press +" (by button_to_string()),
     //  "stick 90deg 150ms walk", "stick 90deg 150ms walk, release 300ms"
@@ -60,15 +59,43 @@ public:
         return m_overlay_lines;
     }
 
-    virtual StoryBackendKind kind() const override;
-    virtual void press(NintendoSwitch::Button button, Milliseconds hold, Milliseconds release) override;
-    virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override;
-    virtual void wait(Milliseconds duration) override;
-    virtual Observation<PoseType> observe() override;
-    virtual Outcome battle(const StoryActionArgs& args) override;
-    virtual void log(std::string_view line) override;
-    virtual void log_detail(std::string_view line) override;
-    virtual CancellableScope& scope() override;
+    virtual StoryBackendKind kind() const override{
+        return m_script.kind;
+    }
+    virtual void press(NintendoSwitch::Button button, Milliseconds, Milliseconds) override{
+        m_inputs.push_back(std::format("press {}", NintendoSwitch::button_to_string(button)));
+    }
+    virtual void stick(double degrees, Milliseconds duration, Milliseconds release, StoryPace pace) override{
+        std::string input = std::format("stick {}deg {}ms {}", degrees, duration.count(), pace == StoryPace::RUN ? "run" : "walk");
+        if (release > Milliseconds::zero()){
+            input += std::format(", release {}ms", release.count());
+        }
+        m_inputs.push_back(std::move(input));
+    }
+    virtual void wait(Milliseconds duration) override{
+        m_inputs.push_back(std::format("wait {}ms", duration.count()));
+    }
+    virtual Observation<PoseType> observe() override{
+        if (m_script.looks.empty()){
+            return {};
+        }
+        const size_t look = m_next_look < m_script.looks.size() ? m_next_look++ : m_script.looks.size() - 1;
+        return m_script.looks[look];
+    }
+    virtual Outcome battle(const StoryActionArgs&) override{
+        m_inputs.push_back("battle");
+        return m_script.battle;
+    }
+    virtual void log(std::string_view line) override{
+        m_lines.emplace_back(line);
+        m_overlay_lines.emplace_back(line);
+    }
+    virtual void log_detail(std::string_view line) override{
+        m_lines.emplace_back(line);
+    }
+    virtual CancellableScope& scope() override{
+        return m_scope;
+    }
 
 private:
     FakeStoryScript<PoseType> m_script;
@@ -79,9 +106,6 @@ private:
     std::vector<std::string> m_overlay_lines;
 };
 
-//  Instantiated for ZonePose (Pokemon_ZonePose.h), in
-//  Pokemon_StoryFakeBackend.cpp.
-extern template class FakeStoryBackend<ZonePose>;
 
 
 

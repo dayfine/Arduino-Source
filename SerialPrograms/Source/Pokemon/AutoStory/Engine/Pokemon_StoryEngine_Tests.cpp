@@ -11,6 +11,7 @@
 
 #include <format>
 #include <set>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -18,6 +19,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_StoryEngine.h"
 #include "Pokemon_StoryFakeBackend.h"
+#include "Pokemon_ZonePose.h"
 #include "Pokemon_StoryEngine_Tests.h"
 
 namespace PokemonAutomation{
@@ -125,19 +127,24 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
 
 //  "done | runs 01.00:pass/1 | reloads 0" or
 //  "failed at 01.01 fail: scripted_failure | runs ... | reloads 1".
-std::string summary(const SegmentReport& report){
-    std::vector<std::string> runs;
-    for (const CheckpointRun& run : report.runs){
-        runs.push_back(std::format("{}:{}/{}", run.id, run.passed ? "pass" : "fail", run.attempts));
+std::string summary(const std::vector<CheckpointRun>& runs, const std::vector<StoryCheckpoint>& checkpoints){
+    std::vector<std::string> texts;
+    size_t reloads = 0;
+    for (const CheckpointRun& run : runs){
+        texts.push_back(std::format("{}:{}/{}", run.id, run.result.failure ? "fail" : "pass", run.attempts));
+        reloads += run.attempts - 1;
     }
-    const std::string verdict = report.completed
-        ? "done"
-        : std::format("failed at {} {}: {}", report.failed_checkpoint, report.failed_event, report.failure.failure);
-    return std::format("{} | runs {} | reloads {}", verdict, joined(runs), report.reloads);
+    std::string verdict = "done";
+    if (!runs.empty() && runs.back().result.failure){
+        const CheckpointFailure& failure = *runs.back().result.failure;
+        const std::string event = failure.event_index ? checkpoints[runs.size() - 1].steps[*failure.event_index].name : "";
+        verdict = std::format("failed at {} {}: {}", runs.back().id, event, failure.outcome.failure);
+    }
+    return std::format("{} | runs {} | reloads {}", verdict, joined(texts), reloads);
 }
 
 
-struct SegmentCase{
+struct RangeCase{
     std::string name;
     struct Input{
         std::vector<StoryCheckpoint> checkpoints;
@@ -150,7 +157,7 @@ struct SegmentCase{
     };
     Input input;
     struct Expectation{
-        //  summary() of the segment's report.
+        //  summary() of the run.
         std::string summary;
         //  The backend's inputs, joined by ", ".
         std::string inputs = {};
@@ -160,7 +167,7 @@ struct SegmentCase{
     Expectation expectation;
 };
 
-const SegmentCase SEGMENT_CASES[] = {
+const RangeCase RANGE_CASES[] = {
     {
         .name = "two checkpoints pass and save",
         .input = {.checkpoints = {checkpoint_of("01.00", {"ok", "press_a"}), checkpoint_of("01.01", {"ok"})}, .autosaves = {"01.00", "01.01"}},
@@ -177,7 +184,7 @@ const SegmentCase SEGMENT_CASES[] = {
         .expectation = {.summary = "done | runs 01.00:pass/1 | reloads 0", .inputs = "", .line = "[Save] 01.00: save failed: save_error: the disk is full"},
     },
     {
-        .name = "a failed step stops the segment with its event",
+        .name = "a failed step stops the run at its event",
         .input = {.checkpoints = {checkpoint_of("01.00", {"ok", "fail", "press_a"})}},
         .expectation = {.summary = "failed at 01.00 fail: scripted_failure | runs 01.00:fail/1 | reloads 0", .inputs = "", .line = "[Checkpoint] 01.00: failed at 2 fail: scripted_failure"},
     },
@@ -189,7 +196,7 @@ const SegmentCase SEGMENT_CASES[] = {
     {
         .name = "no reload after a checkpoint that did not save",
         .input = {.checkpoints = {checkpoint_of("01.00", {"ok"}), checkpoint_of("01.01", {"fail"})}, .attempts = 3},
-        .expectation = {.summary = "failed at 01.01 fail: scripted_failure | runs 01.00:pass/1 01.01:fail/1 | reloads 0", .inputs = "", .line = "[Segment] test: 01.01: no save at its start, so no reload if it fails"},
+        .expectation = {.summary = "failed at 01.01 fail: scripted_failure | runs 01.00:pass/1 01.01:fail/1 | reloads 0", .inputs = "", .line = "[Checkpoint] 01.01: no save at its start, so no reload if it fails"},
     },
     {
         .name = "a reload after a checkpoint that saved",
@@ -197,7 +204,7 @@ const SegmentCase SEGMENT_CASES[] = {
         .expectation = {.summary = "failed at 01.01 fail: scripted_failure | runs 01.00:pass/1 01.01:fail/2 | reloads 1", .inputs = "press HOME"},
     },
     {
-        .name = "a failed reload ends the segment",
+        .name = "a failed reload ends the run",
         .input = {.checkpoints = {checkpoint_of("01.01", {"fail"})}, .attempts = 3, .reload_fails = true},
         .expectation = {.summary = "failed at 01.01 : reload_failed | runs 01.01:fail/1 | reloads 0", .inputs = "press HOME"},
     },
@@ -237,14 +244,13 @@ const SegmentCase SEGMENT_CASES[] = {
     },
 };
 
-UnitTestResult check_segment(const SegmentCase& test, CancellableScope& scope){
+UnitTestResult check_range(const RangeCase& test, CancellableScope& scope){
     TestWorld world;
-    const StoryGame<ZonePose> game = test_game(test.input.autosaves, test.input.save_failures, test.input.reload_fails, world);
+    StoryGame<ZonePose> game = test_game(test.input.autosaves, test.input.save_failures, test.input.reload_fails, world);
+    game.attempts_per_checkpoint = test.input.attempts;
     FakeStoryBackend<ZonePose> backend({.looks = test.input.looks, .kind = test.input.kind}, scope);
-    StoryEngine<ZonePose> engine(game, backend);
     RunState state;
-    const SegmentReport report = engine.run_segment("test", test.input.checkpoints, test.input.attempts, state);
-    const std::string got = summary(report);
+    const std::string got = summary(run_checkpoints(game, backend, std::span<const StoryCheckpoint>(test.input.checkpoints), state), test.input.checkpoints);
     if (got != test.expectation.summary){
         return std::format("expected \"{}\", got \"{}\"", test.expectation.summary, got);
     }
@@ -266,24 +272,24 @@ UnitTestResult check_segment(const SegmentCase& test, CancellableScope& scope){
 
 class StoryEngineTest : public UnitTest{
 public:
-    explicit StoryEngineTest(SegmentCase test_case)
+    explicit StoryEngineTest(RangeCase test_case)
         : UnitTest(std::format("Pokemon::StoryEngine - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        return check_segment(m_case, scope);
+        return check_range(m_case, scope);
     }
 
 private:
-    SegmentCase m_case;
+    RangeCase m_case;
 };
 
 } // namespace
 
 
 void add_tests_StoryEngine(UnitTestDatabase& database){
-    for (const SegmentCase& test : SEGMENT_CASES){
+    for (const RangeCase& test : RANGE_CASES){
         database.add<StoryEngineTest>(test);
     }
 }
