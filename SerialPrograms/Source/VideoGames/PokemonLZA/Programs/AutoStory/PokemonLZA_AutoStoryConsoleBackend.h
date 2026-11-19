@@ -16,6 +16,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
@@ -71,6 +72,9 @@ public:
     virtual CancellableScope& scope() override;
 
 private:
+    //  The main menu, its Save button and the map.
+    void read_menus(const ImageViewRGB32& frame, ScreenObservation& look);
+
     StoryEnv& m_env;
     HomeMenuDetector m_home;
     PlzaScreenObserver m_observer;
@@ -81,6 +85,7 @@ private:
     MainMissionBannerDetector m_mission_banner;
     MissionCompleteDetector m_mission_complete;
     MainMenuDetector m_main_menu;
+    MapDetector m_map;
     SelectionArrowDetector m_save_button;
     VideoSnapshot m_previous;
 };

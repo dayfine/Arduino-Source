@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Readings from the main menu's detectors, for the menu save.
+ *  Readings from the main menu's detectors, for the menu save, and the map's.
  *
  */
 
@@ -21,6 +21,9 @@ constexpr std::string_view MAIN_MENU_READING = "menu.main";
 
 //  1 while the arrow is on Save, after R on the main menu.
 constexpr std::string_view MENU_SAVE_BUTTON_READING = "menu.save_button";
+
+//  1: the full map, which Plus opens on free control.
+constexpr std::string_view MAP_READING = "menu.map";
 
 
 

@@ -77,12 +77,7 @@ ScreenObservation PlzaConsoleBackend::observe(){
         if (tutorial_card_shows(*frame.frame)){
             look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
         }
-        if (m_main_menu.detect(*frame.frame)){
-            look.readings[std::string(MAIN_MENU_READING)] = 1;
-        }
-        if (m_save_button.detect(*frame.frame)){
-            look.readings[std::string(MENU_SAVE_BUTTON_READING)] = 1;
-        }
+        read_menus(*frame.frame, look);
         if (look.events.has(ScreenEvent::CHOICE_BOX)){
             const std::optional<DialogChoiceRows> rows = read_dialog_choice_rows(*frame.frame);
             if (rows){
@@ -98,6 +93,18 @@ ScreenObservation PlzaConsoleBackend::observe(){
     m_previous = frame;
     look.frame = std::move(frame);
     return look;
+}
+
+void PlzaConsoleBackend::read_menus(const ImageViewRGB32& frame, ScreenObservation& look){
+    if (m_main_menu.detect(frame)){
+        look.readings[std::string(MAIN_MENU_READING)] = 1;
+    }
+    if (m_save_button.detect(frame)){
+        look.readings[std::string(MENU_SAVE_BUTTON_READING)] = 1;
+    }
+    if (m_map.detect(frame)){
+        look.readings[std::string(MAP_READING)] = 1;
+    }
 }
 
 void PlzaConsoleBackend::log(std::string_view line){

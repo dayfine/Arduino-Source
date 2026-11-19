@@ -455,7 +455,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "A"}, {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"},
                 //  The VS splash's subtitles show only the chevron.
                 {"still, advance arrow", "A"}, {"advance arrow", "A"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"},
                 {"battle, controls hint", "-"},
             },
             .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
@@ -559,7 +559,7 @@ const GoldenCase GOLDEN_CASES[] = {
             .keys = {
                 //  B: an A as the text ends could land on the choice.
                 {"text box", "B"}, {"text box, advance arrow", "B"},
-                {"still", "-"}, {"nothing", "-"},
+                {"still", "-"}, {"nothing", "- or +"},
                 {"text box, choice box", "-"},
             },
             .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
@@ -619,7 +619,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 //  A B landing as the choice opens would take its last row.
                 {"text box", "A"}, {"text box, advance arrow", "A"},
                 {"text box, choice box, 2 rows, row 0", "A"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"},
             },
             .verdict = "done", .end = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
@@ -726,7 +726,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {
                 {"text box", "B"}, {"text box, advance arrow", "B"}, {"advance arrow", "A"},
-                {"nothing", "-"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
+                {"nothing", "- or +"}, {"still", "-"}, {"black fade", "-"}, {"black fade, still", "-"},
                 {"party bar", "-"}, {"party bar, still", "-"},
             },
             .verdict = "done", .end = "[PLZA scene] done on can_move.",
@@ -765,7 +765,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {
                 {"text box", "B"}, {"text box, advance arrow", "B"},
-                {"nothing", "B"}, {"still", "B"},
+                {"nothing", "B or +"}, {"still", "B"},
                 {"black fade", "-"}, {"party bar", "-"},
             },
             .verdict = "done", .end = "[PLZA scene] done on can_move.",

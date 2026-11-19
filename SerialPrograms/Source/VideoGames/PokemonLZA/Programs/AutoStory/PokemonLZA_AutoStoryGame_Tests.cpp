@@ -499,7 +499,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .line = "[PLZA mash_to_move_hints] done on controls_hint."},
     },
     {
-        .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second",
+        .name = "01.01's arrival ends 5 s after its third black fade, not after the banner that follows its second; Plus in the 5 s with no text",
         .input = {.checkpoint = "01.01", .first_step = 2, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)),
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(1000)),
@@ -518,7 +518,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press B, wait 250ms, wait 250ms, press B, wait 250ms, wait 250ms, wait 500ms, wait 500ms, wait 250ms, wait 500ms",
+            .inputs = "press B, wait 250ms, wait 250ms, press B, wait 250ms, wait 250ms, wait 500ms, press +, wait 250ms, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done on fade_settled.",
         },
     },

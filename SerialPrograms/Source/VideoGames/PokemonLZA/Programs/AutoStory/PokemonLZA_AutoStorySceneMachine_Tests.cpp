@@ -17,6 +17,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "PokemonLZA_AutoStoryMenuReadings.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStorySceneMachine_Tests.h"
@@ -248,6 +249,8 @@ struct RunCase{
         std::string verdict;
         size_t a_presses = 0;
         size_t b_presses = 0;
+        //  Plus held to skip a cutscene.
+        size_t plus_presses = 0;
         //  Empty: not checked.
         std::string line = {};
         //  Joined by ", "; empty: not checked.
@@ -297,8 +300,8 @@ const RunCase RUN_CASES[] = {
         SceneMachineConfig config = arrival_config();
         config.gap_press = 2000ms;
         return config;
-    }()}, .expectation = {.verdict = "done", .a_presses = 1, .b_presses = 1}},
-    {.name = "no gap_press: the same box gets no press", .input = {.looks = gift_box_scene()}, .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1}},
+    }()}, .expectation = {.verdict = "done", .a_presses = 1, .b_presses = 1, .plus_presses = 1}},
+    {.name = "no gap_press: the same box gets no press", .input = {.looks = gift_box_scene()}, .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .plus_presses = 1}},
     {
         .name = "a black fade longer than the quiet time is waited out",
         .input = {
@@ -418,7 +421,7 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "done", .a_presses = 0, .states = "scene_still, hint_showing, controls_hint"},
     },
     {
-        .name = "01.01's arrival: B at the text, none in the flyover, done on the controls hint",
+        .name = "01.01's arrival: B at the text, Plus in the flyover, done on the controls hint",
         .input = {.looks = {
             look_at(0ms, DIALOG),
             look_at(1000ms),
@@ -429,7 +432,7 @@ const RunCase RUN_CASES[] = {
             look_at(/*at=*/24500ms, NOTHING, {CONTROLS_HINT_READING}),
             look_at(/*at=*/25100ms, NOTHING, {CONTROLS_HINT_READING}),
         }},
-        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .line = "[PLZA test] done on controls_hint."},
+        .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 2, .plus_presses = 1, .line = "[PLZA test] done on controls_hint."},
     },
     {
         .name = "the mission banner ends the scene, which then waits for it to go",
@@ -659,8 +662,9 @@ const RunCase RUN_CASES[] = {
             .verdict = "done",
             .a_presses = 0,
             .b_presses = 1,
+            .plus_presses = 1,
             .line = "[PLZA test] done on talk_prompt.",
-            .states = "dialog, scene_moving, prompt_showing, talk_prompt",
+            .states = "dialog, scene_moving, skip_cutscene, prompt_showing, talk_prompt",
         },
     },
     {
@@ -772,6 +776,40 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {.verdict = "done", .a_presses = 0, .b_presses = 1, .line = "[PLZA test] screen 3: mission_banner at 0.8s: mission banner"},
     },
+    {
+        .name = "a cutscene moving 3 s with no text or HUD gets Plus, then A on the skip prompt's default row",
+        .input = {.looks = {
+            look_at(0ms, BLACK), look_at(1000ms), look_at(2000ms), look_at(5000ms), choice_at(/*at=*/7000ms, /*rows=*/2, /*selected=*/1),
+            look_at(8000ms, BLACK), look_at(9000ms), look_at(/*at=*/10000ms, NOTHING, {CONTROLS_HINT_READING}),
+            look_at(/*at=*/11100ms, NOTHING, {CONTROLS_HINT_READING}),
+        }},
+        .expectation = {
+            .verdict = "done", .a_presses = 1, .b_presses = 0, .plus_presses = 1,
+            .states = "fade_black, scene_moving, skip_cutscene, skip_prompt, fade_black, hint_showing, controls_hint",
+        },
+    },
+    {
+        .name = "a cutscene Plus does not skip gets one Plus until the next text or HUD",
+        .input = {.looks = {
+            look_at(0ms, DIALOG), look_at(1000ms), look_at(4000ms), look_at(7000ms), look_at(10000ms), look_at(12000ms),
+            look_at(/*at=*/13000ms, NOTHING, {CONTROLS_HINT_READING}), look_at(/*at=*/14100ms, NOTHING, {CONTROLS_HINT_READING}),
+        }},
+        .expectation = {
+            .verdict = "done", .a_presses = 0, .b_presses = 1, .plus_presses = 1,
+            .states = "dialog, scene_moving, skip_cutscene, scene_moving, hint_showing, controls_hint",
+        },
+    },
+    {
+        .name = "the map Plus opens on free control gets B",
+        .input = {.looks = {
+            look_at(0ms, DIALOG), look_at(1000ms), look_at(4000ms), look_at(/*at=*/6500ms, STILL, {MAP_READING}),
+            look_at(7000ms, PARTY), look_at(8100ms, PARTY),
+        }},
+        .expectation = {
+            .verdict = "done", .a_presses = 0, .b_presses = 2, .plus_presses = 1,
+            .states = "dialog, scene_moving, skip_cutscene, map, party_bar, can_move",
+        },
+    },
 };
 
 //  "dialog, scene_still", each once where only the readings changed.
@@ -809,6 +847,10 @@ UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     const size_t b_presses = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "press B");
     if (b_presses != test.expectation.b_presses){
         return std::format("expected {} B presses, got {}: {}", test.expectation.b_presses, b_presses, joined(backend.inputs(), ", "));
+    }
+    const size_t plus_presses = (size_t)std::count(backend.inputs().begin(), backend.inputs().end(), "press +");
+    if (plus_presses != test.expectation.plus_presses){
+        return std::format("expected {} Plus presses, got {}: {}", test.expectation.plus_presses, plus_presses, joined(backend.inputs(), ", "));
     }
     if (!test.expectation.states.empty() && traced_states(backend.lines()) != test.expectation.states){
         return std::format("expected the states \"{}\", got \"{}\"", test.expectation.states, traced_states(backend.lines()));
