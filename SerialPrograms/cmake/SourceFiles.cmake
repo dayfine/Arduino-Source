@@ -737,6 +737,20 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Startup/NewVersionCheck.h
     Source/CommonFramework/Startup/SetupSettings.cpp
     Source/CommonFramework/Startup/SetupSettings.h
+    Source/CommonFramework/Startup/StartupArguments.cpp
+    Source/CommonFramework/Startup/StartupArguments.h
+    Source/CommonFramework/Devices/LabDeviceAccessQt.cpp
+    Source/CommonFramework/Devices/LabDeviceAccessQt.h
+    Source/CommonFramework/Devices/LabDeviceRuntime.cpp
+    Source/CommonFramework/Devices/LabDeviceRuntime.h
+    Source/CommonFramework/Devices/LabDeviceAccessQt_Tests.cpp
+    Source/CommonFramework/Devices/LabDeviceAccessQt_Tests.h
+    Source/CommonFramework/Startup/LabStartupPolicy.cpp
+    Source/CommonFramework/Startup/LabStartupPolicy.h
+    Source/CommonFramework/Startup/LabStartupPolicy_Tests.cpp
+    Source/CommonFramework/Startup/LabStartupPolicy_Tests.h
+    Source/CommonFramework/Startup/StartupArguments_Tests.cpp
+    Source/CommonFramework/Startup/StartupArguments_Tests.h
     Source/CommonFramework/Tools/DebugDumper.cpp
     Source/CommonFramework/Tools/DebugDumper.h
     Source/CommonFramework/Tools/ErrorDumper.cpp
@@ -813,6 +827,16 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonFramework/Windows/ButtonDiagram.h
     Source/CommonFramework/Windows/DpiScaler.cpp
     Source/CommonFramework/Windows/DpiScaler.h
+    Source/CommonFramework/Headless/HeadlessHost.cpp
+    Source/CommonFramework/Headless/HeadlessHost.h
+    Source/CommonFramework/Headless/HeadlessHost_Tests.cpp
+    Source/CommonFramework/Headless/HeadlessHost_Tests.h
+    Source/CommonFramework/Windows/LabChannel.cpp
+    Source/CommonFramework/Windows/LabChannel.h
+    Source/CommonFramework/Windows/LabChannel_Tests.cpp
+    Source/CommonFramework/Windows/LabChannel_Tests.h
+    Source/CommonFramework/Windows/LabRequest.cpp
+    Source/CommonFramework/Windows/LabRequest.h
     Source/CommonFramework/Windows/MainWindow.cpp
     Source/CommonFramework/Windows/MainWindow.h
     Source/CommonFramework/Windows/WindowTracker.cpp
@@ -1398,6 +1422,14 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Options/NintendoSwitch_StartInGripMenuOption.h
     Source/NintendoSwitch/Options/TurboMacroTable.cpp
     Source/NintendoSwitch/Options/TurboMacroTable.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileParsing.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_CommandFileRunner_Tests.h
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.cpp
+    Source/NintendoSwitch/Programs/CommandFileRunner/NintendoSwitch_LabCommands.h
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch2_DateSkippers.cpp
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.cpp
     Source/NintendoSwitch/Programs/DateManip/NintendoSwitch_DateManip.h
@@ -1452,6 +1484,10 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.cpp
     Source/NintendoSwitch/Programs/Typewriter/NintendoSwitch_TypewriterTextMapping.h
+    Source/PanelCatalog.cpp
+    Source/PanelCatalog.h
+    Source/PanelCatalog_Tests.cpp
+    Source/PanelCatalog_Tests.h
     Source/PanelLists.cpp
     Source/PanelLists.h
     Source/Pokemon/Inference/Pokemon_AbilityReader.cpp
