@@ -1,6 +1,6 @@
 # AutoStory shared core
 
-Current state, decided with the user on 2026-11-17. Update this file when a decision changes; it
+Current state, decided with the user on 2026-11-17 and 2026-11-18 (core shape, S1-S17). Update this file when a decision changes; it
 is not a log. The PLZA upstream queue is in [plza/UPSTREAM_PLAN.md](plza/UPSTREAM_PLAN.md).
 
 Detail notes (local, not in git): `~/BDSPLab/notes/autostory-shared-core-map-2026-11-17.md`
@@ -11,8 +11,8 @@ Detail notes (local, not in git): `~/BDSPLab/notes/autostory-shared-core-map-202
 ## What the core is
 
 - **The core is PLZA's version** of the shared AutoStory files (screen events, screen machine,
-  outcome/pose/log, step types and JSON, story files, event runner, engine), where PLZA's version is
-  a strict subset of FRLG's and the infra tests prove PLZA works on it. PLZA is the only
+  outcome/log, step types and JSON, story files, event runner, engine), where PLZA's version is
+  a strict subset of FRLG's and the infra tests prove PLZA works on it, cut down by S1-S17 below. PLZA is the only
   console-proven user of `StoryEngine`.
 - **FRLG additions stay on the FRLG chain as extensions** of core files (step and checkpoint
   fields, conditions/recoveries/interrupts, readers, verify, grid layer). They add fields
@@ -23,24 +23,57 @@ Detail notes (local, not in git): `~/BDSPLab/notes/autostory-shared-core-map-202
   Merged into `plza/lean` ([#644](https://github.com/dayfine/Arduino-Source/pull/644)) at
   3e4afef53.
 - Guard suites: every change to a core file keeps PLZA's suites green, in particular
-  StoryEngine_Tests on `ZonePose` and PokemonLZA_AutoStoryGame_Tests.
+  StoryEngine_Tests and PokemonLZA_AutoStoryGame_Tests.
 
 ## Saves
 
-- **Save is a policy seam:** `StorySavePolicy` (`Engine/Pokemon_StorySavePolicy.h`), held by
-  `StoryGame::save`.
-- The core has **only PLZA's `autosave_policy()`**.
-- The core row save enum is `StoryRowSave{NONE, AUTOSAVE, UNVERIFIED}`. **No `MENU`:** autosave is
-  SV/PLZA only, and menu saving is not a core concept.
+- The core keeps only the `StoryGame::save` hook (S5); it does not track saves (S6).
+- PLZA owns `autosave_policy()` and reads its own `execution` block (S5, S13).
 - FRLG's menu save (with its phase gate) and the Hall of Fame self-save are **FRLG policies**
   (E6). BDSP's save-at-start becomes a BDSP end-of-checkpoint policy (E9).
+
+## Core shape (S1-S17, decided 2026-11-18)
+
+The shared core is `Pokemon/AutoStory` on `autostory/shared-core`.
+
+| # | Decision | Why |
+|---|---|---|
+| S1 | No `PoseType` template anywhere in the core. | One concrete engine; no game type leaks into it. |
+| S2 | No pose in the core: `Pose`, `Position`, `RunState::pose`, `Observation::pose`, `Outcome::pose`, `StoryPose` and `ZonePose` leave. FRLG keeps its grid pose in its own backend/game state, read only by its walk actions. | PLZA never read a pose; only FRLG walks do. |
+| S3 | No `StoryBackend::kind()`, `StoryBackendKind` or `console_only`: each game registers only the actions its backend can run; an unsupported step fails the lint ("no action named X"). | Capability is which actions exist, not a flag. |
+| S4 | No `StoryBackend::battle()`: a game's battle action calls its own battle code. Backend = press, stick, wait, observe (returns `ScreenObservation`), log, scope. | Battles are game logic, not a console primitive. |
+| S5 | `autosave_policy()` and its tests move to PLZA; the core keeps only the `StoryGame::save` hook. | Autosave is PLZA/SV only. |
+| S6 | The engine does not track saves (no `start_saved`, no `CheckpointRunResult::saved`): `game.reload(backend, checkpoint)` reports whether it landed at that checkpoint's start; retry only then. | The reload knows where it landed; the engine guessed. |
+| S7 | The retry loop is ~15 lines inline in `run_checkpoints`; `CheckpointAttempts`, `AttemptResult`, `CheckpointAttemptsResult` and their tests leave the core (FRLG keeps its copy until it moves onto the engine). | Three types for one loop. |
+| S8 | No declared start in the core: `DeclaredPose`, `ZoneDeclared`, `read_declared_pose` and `StoryCheckpoint::start` go; plans keep `start` as notes; start checks stay game-owned (PLZA `start_signature`). | Follows S2; each game checks its start its own way. |
+| S9 | No REGISTERED arg type: `StoryRegisteredArgValue` (`std::any`), `StoryArgKind`, `make_registered_arg`/`registered_arg` go. | Replaced by S10's typed args. |
+| S10 | Parse, don't validate: each action provides `parse(const JsonObject& args)` returning its own typed args or an error, at plan load; a step stores a ready-to-run handler. `StoryArgValue`, `StoryArgType`, the arg map, `StoryArgSpec`, fallbacks, `with_fallbacks` and `story_args_errors` go; one small "unknown key" helper stays. Lint = parse every step of every plan. | Errors at load; no untyped arg bag at run time. |
+| S11 | No `StoryStepKind` enum: a step names its action (`"action": "talk"`); games register actions by name; a one-time script rewrites plan files. | Adding an action does not touch the core. |
+| S12 | `StoryCheckpointMetadata` (phase etc.) leaves the core; FRLG reads `metadata.phase` in its own save policy (an `EnumStringMap` enum named for what it describes, e.g. `CheckpointTestingStatus`). | Only FRLG's save policy reads it. |
+| S13 | The core does not read `execution`: `StoryRowExecution`, `StoryRowSave`, `StoryReload`, `StoryRows`, `StoryData<Checkpoint>` and the `game_fields` workaround leave; each game reads its own block (a shared save/`reload_when_chained` helper may live in game-side code). | Execution fields differ per game. |
+| S14 | One checkpoint runner: the engine runs plan steps; `StoryEvent` and the second `run_checkpoint` in `Pokemon_StoryEvents.h` are inlined or deleted. | Two runners drift. |
+| S15 | Result is StatusOr-like: `std::optional<StoryFailure>`, `StoryFailure{std::string code; std::string detail; bool repeats = false;}`; `nullopt` = success. `repeats` replaces the engine's failure-code list; `GAME_NOT_RUNNING` is just a `repeats = true` failure; failure codes stay game-owned strings; `changed_nothing` moves to FRLG. | One result shape; the engine knows no game codes. |
+| S16 | `CommonTools/ScreenEvents` + `ScreenMachine` come out of #648 into their own infra PR at the bottom of the stack; #648 depends on it. | Infra gets its own strict review. |
+| S17 | Landing order below: one agent per step, each pushed + CI + user review before the next. | Small reviewable steps. |
+
+### Landing order (S17)
+
+1. Screen PR split (S16).
+2. #648 deletions: S2-S4, S8, S9, S5, S12, S13, S14.
+3. #648 engine core: S15, S6, S7, plus the round-2 style rules (AGENTS.md, "Types, names and
+   comments": `= {}` on every field, header order, `Testing/`, `MoveOnlyFunction`, `EnumStringMap`,
+   `std::formatter` + `= default` equality, enum names).
+4. #648 plan format: S10, S11 + the plan-rewrite script.
+5. `plza/lean` merges #648 and migrates: autosave policy and `execution` reading into PLZA, plans
+   rewritten.
+6. `frlg/lean` later, after its own planning round.
 
 ## Migration of FRLG and BDSP (E1-E10, accepted as recommended)
 
 | # | Decision |
 |---|---|
 | E1 | The old runner (`StorySegments`, `StoryStepExecutor`, `TableExecutor`, `StoryRun`, `RunnerExecutor`) never goes upstream. It is frozen on the fork (fixes only) and deleted there after BDSP switches. |
-| E2 | Migrate FRLG, then BDSP, on the fork in parallel with the core going upstream. Gate: the FRLG fit check (all FRLG plans on `StoryEngine<GridPose>` in the sim) passes before core PR 8 (engine seams) goes upstream. |
+| E2 | Migrate FRLG, then BDSP, on the fork in parallel with the core going upstream. Gate: the FRLG fit check (all FRLG plans on `StoryEngine` in the sim; no pose template, S1) passes before core PR 8 (engine seams) goes upstream. |
 | E3 | A `grid-core` branch level between the core and the game lines: shared FRLG+BDSP infra, no game code, no old runner. |
 | E4 | Verify mode, verify rows and postconditions are free functions over the engine (`Engine/Pokemon_StoryVerifyRuns.*`), not engine methods. |
 | E5 | FRLG checkpoints already passed are proven by sim + replay, not rerun on console B. mGBA is the efficient test bed from here on. The next fresh FRLG playthrough runs on the engine end to end. |
@@ -53,7 +86,8 @@ Detail notes (local, not in git): `~/BDSPLab/notes/autostory-shared-core-map-202
 ## Order
 
 1. Dead code cut on `plza/lean`: done (#644, d395be998).
-2. Shared core #648: done, merged into `plza/lean` (3e4afef53).
+2. Shared core #648: first cut merged into `plza/lean` (3e4afef53); reshaped by the landing
+   order above (S17), which runs before steps 4-6.
 3. PLZA duplicate and comment cuts on `plza/lean` (audit parts B and D).
 4. FRLG merges the core (`frlg/core-adopt`), adapting the C1-C8 call sites.
 5. Korean new-game run on console B: the final PLZA check before the split.

@@ -77,6 +77,7 @@ There are two different checks, and neither replaces the other:
 
 | What | Where | Use |
 |---|---|---|
+| AutoStory shared core plan (#648 shape S1-S17, landing order) | [autostory/SHARED_CORE.md](autostory/SHARED_CORE.md) | Agents on the core or its PLZA/FRLG merges follow it; one landing step per agent. |
 | BBQ notes and run records | [pokemon_sv/](pokemon_sv/) ([where to look first](#plans-and-state-where-to-look-first)) | Milestones, ledgers, runs. |
 | Harness and trial records | [harness/](harness/) | ccache trial, FRLG license notes, issue #40 state. |
 | Fork branch sync | launchd `com.dayfine.pa-sync`, 07:00: `~/Projects/pa-tools/sync_branches.py` | Needs `~/.zshenv` for `GH_TOKEN`. Logs: `~/Library/Logs/pa-sync/`. |
@@ -276,6 +277,18 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
     prefix for display. #648: `run_segment` became a range run.
   - **No `extern template`:** define the template in the header, or drop the template when one
     type uses it.
+  - **Every struct field gets `= {}`** (or another default): Windows clang errors on a designated
+    initializer that skips a field without one (see Construction, Initialize every scalar).
+    #648: the question on `CheckpointRun`'s fields.
+  - **Header order:** public declarations, then public definitions, then internal helpers.
+    #648: `save_checkpoint` is declared first; the internal templates go after `run_checkpoints`.
+  - **Test-only code lives under `Testing/`.** #648: `FakeBackend`.
+  - **Stored callables are `MoveOnlyFunction`,** not `std::function` (merges with the
+    `MoveOnlyFunction` seam above). #648: `StoryArgKind::read`.
+  - **Enum <-> string via `EnumStringMap`, and an enum is named for what it describes.**
+    #648: `StoryPhase` with hand-written name/read; the phase is a testing status.
+  - **Printing via `std::formatter<T>`; equality via `operator== = default`** (see Construction,
+    `= default`). #648: `pose_text`.
 - **Match the repo's style:**
   - comments explain why, at the density of the surrounding code
   - `virtual ... override`
