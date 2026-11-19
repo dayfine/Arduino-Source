@@ -40,12 +40,20 @@ constexpr std::chrono::seconds READINESS_TIMEOUT{10};
 constexpr std::chrono::seconds STOP_TIMEOUT{5};
 
 #if !defined(_WIN32)
-std::atomic<int> g_signal_write_fd{-1}; // code-health: allow — POSIX signal handler write end
-std::atomic<int> g_last_signal{0};      // code-health: allow — POSIX signal handler signal number
+struct SignalHandlerGlobals{
+    std::atomic<int> write_fd{-1};
+    std::atomic<int> last_signal{0};
+};
+
+SignalHandlerGlobals& signal_handler_globals(){
+    static SignalHandlerGlobals globals;
+    return globals;
+}
 
 void posix_signal_handler(int sig){
-    g_last_signal.store(sig, std::memory_order_relaxed);
-    const int fd = g_signal_write_fd.load(std::memory_order_relaxed);
+    SignalHandlerGlobals& globals = signal_handler_globals();
+    globals.last_signal.store(sig, std::memory_order_relaxed);
+    const int fd = globals.write_fd.load(std::memory_order_relaxed);
     if (fd >= 0){
         const char byte = static_cast<char>(sig);
         const ssize_t ignored = ::write(fd, &byte, /*nbyte=*/1);
@@ -66,7 +74,7 @@ public:
                 ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
             }
         }
-        g_signal_write_fd.store(m_fds[1], std::memory_order_release);
+        signal_handler_globals().write_fd.store(m_fds[1], std::memory_order_release);
 
         struct sigaction sa{};
         sa.sa_handler = posix_signal_handler;
@@ -83,7 +91,7 @@ public:
             std::array<char, 64> buf;
             while (::read(m_fds[0], buf.data(), buf.size()) > 0){
             }
-            on_signal(g_last_signal.load(std::memory_order_relaxed));
+            on_signal(signal_handler_globals().last_signal.load(std::memory_order_relaxed));
         });
     }
 
@@ -94,7 +102,7 @@ public:
         if (m_installed_term){
             ::sigaction(SIGTERM, &m_old_term, nullptr);
         }
-        g_signal_write_fd.store(-1, std::memory_order_release);
+        signal_handler_globals().write_fd.store(-1, std::memory_order_release);
         m_notifier.reset();
         for (int& fd : m_fds){
             if (fd >= 0){

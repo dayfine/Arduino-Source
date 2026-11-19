@@ -345,6 +345,19 @@ int run_gui_application(int argc, char *argv[]){
     return ret;
 }
 
+bool load_headless_options(const StartupPlan& plan, Logger& logger, std::optional<JsonValue>& out){
+    if (!plan.options_path){
+        return true;
+    }
+    try{
+        out = load_json_file(*plan.options_path);
+        return true;
+    }catch (const Exception& e){
+        logger.log("Failed to read --options \"" + *plan.options_path + "\": " + e.to_str(), COLOR_RED);
+        return false;
+    }
+}
+
 int run_headless_application(QApplication& application, const StartupPlan& plan){
     ScopeExit service_cleanup([]{
         stop_application_services();
@@ -364,13 +377,8 @@ int run_headless_application(QApplication& application, const StartupPlan& plan)
     logger.log("Starting Headless Program: " + *plan.run_program);
 
     std::optional<JsonValue> options_override;
-    if (plan.options_path){
-        try{
-            options_override = load_json_file(*plan.options_path);
-        }catch (const Exception& e){
-            logger.log("Failed to read --options \"" + *plan.options_path + "\": " + e.to_str(), COLOR_RED);
-            return static_cast<int>(HeadlessExit::BAD_REQUEST);
-        }
+    if (!load_headless_options(plan, logger, options_override)){
+        return static_cast<int>(HeadlessExit::BAD_REQUEST);
     }
 
     if (!init_common_runtime(logger, StartupDialogs::LOG_ONLY, /*fail_on_settings_error=*/true)){
