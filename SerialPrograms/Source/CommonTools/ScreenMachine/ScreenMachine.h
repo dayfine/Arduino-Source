@@ -2,12 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  A closed loop over known screens: look at the game, take the one step that
- *  screen calls for, look again. Every step follows a look, and each state says
- *  how often it may come up and how long the screen may stay unchanged on it,
- *  so a dropped or wrong input shows up as a state that keeps coming back or a
- *  screen that stops changing. The looks are ScreenObservations, so the same
- *  machine runs on a console and on a scripted backend.
+ *  A closed loop over known screens: look, take that screen's step, look again.
  *
  */
 
@@ -31,8 +26,7 @@ namespace PokemonAutomation{
 //  One recognizable screen: how to tell it, and the step to take on it.
 struct ScreenState{
     std::string name = {};
-    //  Whether a look shows this screen. States are tried in order; the first
-    //  match wins.
+    //  Whether a look shows this screen; the first matching state wins.
     std::function<bool(const ScreenObservation& observation)> matches;
     //  The one step to take on this screen; none for a state that only
     //  waits.
@@ -41,13 +35,8 @@ struct ScreenState{
     size_t max_visits = SIZE_MAX;
     //  End the run after this state's step.
     bool terminal = false;
-    //  How long the screen may stay unchanged on this state. A waiting
-    //  state (a fade, a still cutscene, a hold before a screen counts) sets
-    //  it: its looks never count as a stall, and it fails only once the
-    //  screen has not changed for longer than this. Zero: the state's step
-    //  is input that should change the screen, and
-    //  ScreenMachineChecks::MAX_UNCHANGED (ScreenMachine.cpp) such steps
-    //  that do not are a stall.
+    //  How long a waiting state may leave the screen unchanged. Zero: its
+    //  step should change the screen, and repeated steps that don't stall.
     Milliseconds max_still = Milliseconds::zero();
 };
 
@@ -56,8 +45,7 @@ struct ScreenState{
 struct ScreenMachineResult{
     //  The terminal state that acted; empty when the run failed.
     std::string terminal = {};
-    //  Why it failed: no state matched, a state seen too often, a stall, or
-    //  the timeout.
+    //  Why it failed; empty when it succeeded.
     std::string failure = {};
 
     bool succeeded() const{
@@ -65,13 +53,9 @@ struct ScreenMachineResult{
     }
 };
 
-//  Runs `states` over looks from `observe` until a terminal one has acted:
-//  each look picks the first state that matches it, the checks apply, then
-//  the state acts. Each change of state goes to `log` once, timed from the
-//  first look ("screen 2: dialog at 1.5s"); an empty `log` logs nothing.
-//  Time is the looks' own (`when`): the run fails once `timeout` has passed
-//  since the first look, and after 10000 looks in any case. A failure is
-//  returned, not thrown.
+//  Runs `states` over looks from `observe` until a terminal one has acted,
+//  or fails after `timeout` of look time. Logs each change of state to `log`
+//  when set.
 ScreenMachineResult run_screen_machine(
     const std::function<ScreenObservation()>& observe, CancellableScope& scope,
     const std::vector<ScreenState>& states, Milliseconds timeout,

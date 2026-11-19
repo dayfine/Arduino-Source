@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The words a program uses for what the screen shows: a fade, a dialogue
- *  box, a battle starting. ScreenEvents.h watches a stream for them.
+ *  What a frame shows, in words every game shares.
  *
  */
 
@@ -34,7 +33,7 @@ enum class ScreenEvent : uint8_t{
     SCREEN_STILL,       //  The screen barely changed since the frame before.
     SWITCH_HOME_MENU,   //  The Switch's HOME menu: the game is not on the screen.
 };
-//  How many ScreenEvent values there are.
+//  The number of ScreenEvent values.
 constexpr size_t SCREEN_EVENT_COUNT = 11;
 static_assert((size_t)ScreenEvent::SWITCH_HOME_MENU + 1 == SCREEN_EVENT_COUNT, "SWITCH_HOME_MENU is the last ScreenEvent");
 //  "dialog box", for the log.
