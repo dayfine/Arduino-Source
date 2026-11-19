@@ -22,7 +22,6 @@ namespace PokemonAutomation{
 
 //  One look at the game.
 struct ScreenObservation{
-    //  When the look was taken.
     WallClock when = WallClock::min();
     ScreenEvents events = {};
     //  Named numbers the game's readers found, by names the game chooses;

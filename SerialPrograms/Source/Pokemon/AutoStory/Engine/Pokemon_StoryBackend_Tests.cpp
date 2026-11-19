@@ -38,7 +38,7 @@ struct BackendCase{
 };
 
 std::string observation_text(ScreenEvents events){
-    return describe(screen_observation(events).events);
+    return std::format("{}", screen_observation(events).events);
 }
 
 std::string matches_text(){
@@ -62,7 +62,7 @@ std::string fake_text(CancellableScope& scope){
     backend.wait(100ms);
     std::string looks;
     for (size_t c = 0; c < 3; c++){
-        looks += std::format("{}{}", looks.empty() ? "" : " / ", describe(backend.observe().events));
+        looks += std::format("{}{}", looks.empty() ? "" : " / ", backend.observe().events);
     }
     std::string text;
     for (const std::string& input : backend.inputs()){
