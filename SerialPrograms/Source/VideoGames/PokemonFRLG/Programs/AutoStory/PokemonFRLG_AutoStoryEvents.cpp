@@ -107,6 +107,15 @@ WallCheck wall_check(const StoryEnv& env){
     return Pokemon::runs_check(env.checks, Pokemon::StoryCheckKind::LEG_END_TAP) ? WallCheck::TAP : WallCheck::SKIP;
 }
 
+OpenLegCheck open_leg_check(){
+    return GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator
+        ? OpenLegCheck::TRUST
+        : OpenLegCheck::REANCHOR;
+}
+
+//  The story's interrupts for `step`'s walk, with FRLG's screen observer,
+//  which places a wild battle seen only after an open leg's hold
+//  (OverworldInterruptSet::make_observer).
 OverworldInterruptSet walk_interrupts(StoryEnv& env, const StoryStep& step){
     OverworldInterruptSet out = story_interrupts(env.supplies, arg<bool>(step, "fight_wild"), env.checks, env.language);
     out.make_observer = []() -> std::unique_ptr<ScreenEventObserver>{
@@ -152,6 +161,7 @@ std::optional<StoryFailure> walk_route(StoryEnv& env, FrlgRunState& state, const
         .label = step.name,
         .checkpoint = env.checkpoint,
         .wall_check = wall_check(env),
+        .open_leg_check = open_leg_check(),
         .pause = &env.pause,
         .beaten_trainers = beaten_trainers(state.flags),
         .progress = &progress,
@@ -196,6 +206,7 @@ std::optional<StoryFailure> walk_legs(StoryEnv& env, FrlgRunState& state, const 
         .label = step.name,
         .checkpoint = env.checkpoint,
         .wall_check = wall_check(env),
+        .open_leg_check = open_leg_check(),
         .pause = &env.pause,
         .beaten_trainers = beaten_trainers(state.flags),
     };
