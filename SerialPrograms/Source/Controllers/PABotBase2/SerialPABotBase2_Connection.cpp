@@ -146,7 +146,7 @@ bool SerialPABotBase2_Connection::open_serial_port(){
 
     //  Prolific is banned
     if (info.description().indexOf("Prolific") != -1){
-        if (!STATIC_GLOBALS.HEADLESS_MODE){
+        if (!is_headless_mode()){
             QMessageBox box;
             box.critical(
                 nullptr,

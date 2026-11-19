@@ -211,6 +211,9 @@ void ProgramSession::load_historical_stats(){
     }
 }
 void ProgramSession::update_historical_stats_with_current(){
+    if (is_headless_mode()){
+        return;
+    }
     if (m_current_stats){
         m_logger.log("Saving historical stats...");
         bool ok = StatSet::update_file(
@@ -449,9 +452,7 @@ void ProgramSession::run_program(){
     {
         std::lock_guard<Mutex> lg(m_lock);
         push_stats();
-        if (!STATIC_GLOBALS.HEADLESS_MODE){
         update_historical_stats_with_current();
-    }
         set_state(ProgramState::STOPPED);
     }
 }

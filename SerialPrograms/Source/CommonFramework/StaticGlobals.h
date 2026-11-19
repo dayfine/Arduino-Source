@@ -25,7 +25,6 @@ public:
     JsonValue to_json_debug() const;
 
 public:
-    bool HEADLESS_MODE = false;
     bool NAUGHTY_MODE = false;
     bool DEVELOPER_MODE = false;
     bool INTERNAL_DEVELOPER_MODE = false;
@@ -67,7 +66,11 @@ public:
 
 extern StaticGlobals STATIC_GLOBALS;
 
+//  True when running under --headless (no MainWindow/QWidget dialogs or persistent writes).
+bool is_headless_mode();
 
+//  Set headless mode once during startup before creating sessions.
+void set_headless_mode(bool enabled);
 
 }
 #endif

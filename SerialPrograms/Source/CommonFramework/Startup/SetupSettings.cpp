@@ -83,7 +83,7 @@ bool check_resource_folder(Logger& logger){
         return true;
     }
     logger.log("No Resources/ folder at " + RESOURCE_PATH());
-    if (!STATIC_GLOBALS.HEADLESS_MODE){
+    if (!is_headless_mode()){
         QMessageBox box;
         box.setTextFormat(Qt::RichText);
         box.critical(

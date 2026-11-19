@@ -25,10 +25,11 @@ enum class FakeBehavior{
     REFUSE_START,
 };
 
-class FakeProgramSession final : public ProgramSession{
+class FakeProgramSession final : public PanelSession, public ProgramSession{
 public:
     FakeProgramSession(const ProgramDescriptor& descriptor, FakeBehavior behavior)
-        : ProgramSession(descriptor)
+        : PanelSession(descriptor)
+        , ProgramSession(descriptor)
         , m_behavior(behavior)
     {}
 
@@ -44,7 +45,7 @@ protected:
 
     virtual void internal_run_program(ProgramEnvironment&) override{
         if (m_behavior == FakeBehavior::REPORT_ERROR){
-            throw OperationFailedException(ErrorReport::NO_ERROR_REPORT, "simulated failure");
+            throw OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "simulated failure");
         }
     }
 

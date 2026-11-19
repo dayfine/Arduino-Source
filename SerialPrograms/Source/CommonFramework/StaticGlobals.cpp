@@ -4,6 +4,7 @@
  *
  */
 
+#include <atomic>
 #include <set>
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -15,6 +16,23 @@
 #endif
 
 namespace PokemonAutomation{
+
+namespace{
+
+std::atomic<bool>& headless_mode_flag(){
+    static std::atomic<bool> flag{false};
+    return flag;
+}
+
+} // namespace
+
+bool is_headless_mode(){
+    return headless_mode_flag().load(std::memory_order_acquire);
+}
+
+void set_headless_mode(bool enabled){
+    headless_mode_flag().store(enabled, std::memory_order_release);
+}
 
 
 

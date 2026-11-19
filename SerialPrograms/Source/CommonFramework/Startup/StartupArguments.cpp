@@ -51,6 +51,25 @@ QtArgument consume_qt_argument(std::span<const std::string_view> arguments, size
     return QtArgument::UNKNOWN;
 }
 
+StartupPlan validate_startup_plan(StartupPlan plan){
+    if (plan.run_program && plan.mode != StartupMode::HEADLESS){
+        return {.error = "--run requires --headless."};
+    }
+    if (plan.options_path && !plan.run_program){
+        return {.error = "--options requires --run."};
+    }
+    if (plan.mode == StartupMode::HEADLESS && !plan.run_program){
+        return {.error = "--headless requires --run <identifier>."};
+    }
+    if (plan.augment_color_distortions && plan.mode != StartupMode::TESTS){
+        return {.error = "--augment-color-distortions requires --command-line-test-mode."};
+    }
+    if (plan.mode == StartupMode::TESTS && plan.profile){
+        return {.error = "Test launches cannot select a console profile."};
+    }
+    return plan;
+}
+
 } // namespace
 
 StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments){
@@ -93,22 +112,7 @@ StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments)
             }
         }
     }
-    if (plan.run_program && plan.mode != StartupMode::HEADLESS){
-        return {.error = "--run requires --headless."};
-    }
-    if (plan.options_path && !plan.run_program){
-        return {.error = "--options requires --run."};
-    }
-    if (plan.mode == StartupMode::HEADLESS && !plan.run_program){
-        return {.error = "--headless requires --run <identifier>."};
-    }
-    if (plan.augment_color_distortions && plan.mode != StartupMode::TESTS){
-        return {.error = "--augment-color-distortions requires --command-line-test-mode."};
-    }
-    if (plan.mode == StartupMode::TESTS && plan.profile){
-        return {.error = "Test launches cannot select a console profile."};
-    }
-    return plan;
+    return validate_startup_plan(std::move(plan));
 }
 
 int dispatch_startup(const StartupPlan& plan, const StartupHandlers& handlers){

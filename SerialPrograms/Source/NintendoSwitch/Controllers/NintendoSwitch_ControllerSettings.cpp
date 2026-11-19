@@ -583,7 +583,7 @@ ControllerProfile ControllerSettingsTable::get_or_make_profile(
 //    PERSISTENT_SETTINGS().write();
 
 #ifdef QT_CORE_LIB
-    if (!STATIC_GLOBALS.HEADLESS_MODE){
+    if (!is_headless_mode()){
         //  This is brutal (tech-debt). The only way to force the settings to save
         //  is to load the panel. TODO: Redesign panels to allow external editing.
         //  This is also coming in from a different thread (not the main Qt thread).
