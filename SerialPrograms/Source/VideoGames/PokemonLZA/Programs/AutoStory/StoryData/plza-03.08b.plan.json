@@ -11,13 +11,13 @@
       {
         "id": "zone_1_back_to_road",
         "kind": "game_action",
-        "why": "step 62: back onto the road at the catch spots (60, and 100 first when further), by the objective marker. The marker is past the far gate to its left, behind the zone's fence: walking at it from 60 gets stuck inside the zone.",
+        "why": "back onto the road at the catch spots by the marker; walking straight at the marker from 60 gets stuck on the zone's fence",
         "action": "walk_back_to_zone_road"
       },
       {
         "id": "zone_1_to_far_gate",
         "kind": "game_action",
-        "why": "step 62: from 60 the far gate's green pillars are straight down the road (~4.7 s walking). Faces 265 by the minimap first (L after the turn), then runs straight on to the A prompt by upstream's run_towards_gate_with_A_button, as 03.07 enters the zone; 8 s of running is ample.",
+        "why": "face 265 by the minimap, then run down the road to the far gate's A prompt (~4.7 s)",
         "action": "aimed_run_to_gate",
         "args": {
           "timeout_ms": 4000
@@ -26,7 +26,7 @@
       {
         "id": "leave_zone_1",
         "kind": "game_action",
-        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up).",
+        "why": "A Leave, out on the street",
         "action": "mash_to_move_hints",
         "args": {
           "press_a_first": true
@@ -35,19 +35,19 @@
       {
         "id": "out_of_zone_1",
         "kind": "game_action",
-        "why": "the save below must be out of the zone, 03.09's start: the map pin out of Wild Zone 1 on two reads, else the run stops here unsaved. The gate walk can end with the lead's panel gone while still in the zone.",
+        "why": "the save below must be out of the zone: the map pin on two reads, else stop unsaved; the lead's panel can vanish while still inside",
         "action": "check_out_of_zone_1"
       },
       {
         "id": "save_outside_zone_1",
         "kind": "game_action",
-        "why": "the latest save is the last catch's autosave, wherever in the zone it was; a menu save here makes it this spot, 03.09's start: on the street just out of the far gate, where leave_zone_1 ends (party bar up, no A prompt). The game's first menu save shows a tutorial screen, which the save presses through.",
+        "why": "a menu save here, 03.09's start; the latest save is otherwise the last catch, anywhere in the zone",
         "action": "save_from_menu"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game; split from 03.08 at the last catch's autosave, so a checkpoint starts where a save reloads. Starts where that autosave reloads, in Wild Zone 1 at the last catch spot; ends out on the street just through the far gate (user, 2026-11-14), with a menu save there: 03.09's start (user, 2026-11-16). Start signature: party 5 after the fifth catch, no A prompt, the lead's panel up (console B 2026-11-16: it shows in the zone)."
+      "source": "played from a new game; starts at the last catch's autosave, ends on the street just through the far gate"
     }
   },
   "execution": {

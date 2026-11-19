@@ -11,7 +11,7 @@
       {
         "id": "on_platform",
         "kind": "game_action",
-        "why": "start check: on the station platform with free control, as 01.00b ends",
+        "why": "start check: on the platform with free control",
         "action": "wait_for_platform",
         "args": {
           "timeout_ms": 10000
@@ -20,7 +20,7 @@
       {
         "id": "platform_to_plaza",
         "kind": "game_action",
-        "why": "down the platform for 4.5 s, then right, holding the last leg until the white fade into the arrival scenes; 10 s bounds it. not planned: the station platform, before any map; the walk ends on the white fade into the arrival scenes.",
+        "why": "down the platform, then right until the white fade into the arrival scenes. not planned: the platform has no map",
         "action": "walk",
         "args": {
           "legs": [[0, 4500], [90, 10000]],
@@ -30,7 +30,7 @@
       {
         "id": "arrival_scenes",
         "kind": "game_action",
-        "why": "title card, city flyover, the starters, \"You're a tourist?\" (top choice), the rival, Pancham steals the bag, the MAIN MISSION 01 banner; three black fades (~113 s, ~201 s, ~252 s in). Ends once the third fade has settled (the banner detector can miss the banner), or on the controls hint",
+        "why": "arrival scenes to the MAIN MISSION 01 banner; ends once the third black fade settles (the banner can be missed), or on the controls hint",
         "action": "mash_to_move_hints",
         "args": {
           "end_after_black_fades": 3
@@ -39,7 +39,7 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played step by step from a new game"
+      "source": "played from a new game"
     }
   },
   "execution": {

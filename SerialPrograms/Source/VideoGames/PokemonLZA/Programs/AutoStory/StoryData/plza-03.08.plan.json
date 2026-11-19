@@ -11,13 +11,13 @@
       {
         "id": "catch_more_species",
         "kind": "game_action",
-        "why": "step 64: the lab gate asks for five registered species, 3/5 after the tutorial: catch two new ones here, Scatterbug (on the road at 100 from the far gate) and Mareep (in the grass right of the road at 60). From Taunie's rocks: L, left 900 ms off the rocks, the start checked by the map pin at the rocks (476, 224) (the marker's digits may not read there), then the marker walk to 103 or less, 8 s at most (the rocks hide the marker); fails before any catch when either misses. Then it patrols 100, 60, 100, 60, ... (walking to 100 and back respawns Pokemon at 60); 10 visits, 10 minutes, 12 throws at most. At each stop it locks on as upstream's InPlaceCatcher does, throws at the nearest plate not caught, again after a miss, and weakens a target that broke out. The party bar's filled slots decide, read before the first stop and after each stop that threw: 5 means done, since every catch is a new species and the \"Registered!\" banner is missed at times. Unread, the banners' and plates' tally decides.",
+        "why": "the lab gate needs five species, 3 after the tutorial: catch Scatterbug (road, marker 100) and Mareep (grass, 60). Off Taunie's rocks, checked by the map pin, then patrol 100, 60, ... (going to 100 respawns 60); 10 visits, 10 min, 12 throws at most. The party bar's count decides (5 = done), since the \"Registered!\" banner can be missed",
         "action": "catch_in_zone"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends at the last catch: each catch autosaves, and the 2026-11-14 run logs showed that autosave after the catches, logged at the far-gate walk (zone_1_to_far_gate) on plza/autostory, so 03.08 is split there (03.08b walks out). Short on species, it fails inside the zone. Its start save is 03.07's after_catches autosave: runs 2 and 3 on console B, 2026-11-16, reloaded the latest save at Taunie's rocks inside the zone. Start signature: the lead's panel shows there (it_0308 frames, console B 2026-11-16), and the party bar shows 3: the starter and the tutorial's two catches. The lead's panel alone does not tell the zone from the street: a save on the street past 03.09 read \"in a wild zone\" (console B, 2026-11-16 18:34), and 03.08 ran as a no-op there; its party (5) tells it apart. No menu save at its end: 03.08b's first step walks back to the road from wherever the last catch was."
+      "source": "played from a new game; starts at 03.07's autosave at Taunie's rocks, ends on the last catch's autosave (03.08b walks out). The lead's panel alone does not tell the zone from the street; party 3 does"
     }
   },
   "execution": {

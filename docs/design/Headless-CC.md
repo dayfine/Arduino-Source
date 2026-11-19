@@ -40,15 +40,15 @@ Extend `StartupMode` (`HEADLESS`) and `StartupPlan` on `lab/main`:
 
 Currently `ProgramSelect` (`SerialPrograms/Source/PanelLists.h`, `PanelLists.cpp`) owns `std::vector<std::unique_ptr<PanelListDescriptor>> m_lists` and `select_program(identifier)`, while `PanelListWidget::handle_panel_clicked()` (`CommonFramework/Panels/UI/PanelListWidget.cpp:90`) stores `std::shared_ptr<const PanelDescriptor>`, calls `make_panel()`, loads JSON, calls `load_panel()`, and writes `PERSISTENT_SETTINGS().panels[JSON_PROGRAM_PANEL]`.
 
-Extract a widget-free `PanelCatalog` (in PR 1, no behavior change):
-- **Ownership (no caching in PR 1):** `PanelListDescriptor::panels()` creates a fresh `std::vector<PanelEntry>` per call (`PanelList.h`). `PanelCatalog::find_panel(identifier)` scans `panels()` per lookup (matching `ProgramSelect::select_program()` today) and converts the matching `PanelEntry`'s `std::unique_ptr<PanelDescriptor>` into an owning `std::shared_ptr<const PanelDescriptor>`. `HeadlessHost` keeps that `shared_ptr` alongside `m_current_panel` so it outlives the `PanelSession`.
+Extract widget-free free functions `make_all_panel_lists()` and `find_panel(lists, identifier)` into `Source/PanelCatalog.{h,cpp}` (in PR 1, no behavior change):
+- **Ownership (no caching in PR 1):** `PanelListDescriptor::panels()` creates a fresh `std::vector<PanelEntry>` per call (`PanelList.h`). `find_panel(lists, identifier)` scans `panels()` per lookup (matching `ProgramSelect::select_program()` today) and returns the matching `PanelEntry` with its category index; the caller converts its `std::unique_ptr<PanelDescriptor>` into an owning `std::shared_ptr<const PanelDescriptor>`. `HeadlessHost` keeps that `shared_ptr` alongside `m_current_panel` so it outlives the `PanelSession`.
 - **Shared load helper:** Extract the `report_new_panel_intent()` -> `make_panel()` -> `load_json()` -> `load_panel()` sequence out of `PanelListWidget::handle_panel_clicked()` into a shared helper with a `bool persist_selection` flag (`true` in GUI, `false` in headless) that reports errors via return/exception instead of opening `QMessageBox` directly.
 
 ### 3.3 `HeadlessHost` (Widgetless `PanelHolder`)
 
 Add `HeadlessHost : public PanelHolder`:
 - **Owns:**
-  - `PanelCatalog&`
+  - the panel lists from `make_all_panel_lists()`
   - `std::shared_ptr<const PanelDescriptor> m_current_panel_descriptor`
   - `std::unique_ptr<PanelSession> m_current_panel`
   - (`ProgramSession::run_program()` already holds a `SleepSuppressScope` at `ProgramSession.cpp:323`, so `HeadlessHost` needs no `m_sleep_scope` and does not rely on `on_busy()`/`on_idle()`.)
@@ -69,7 +69,7 @@ Add `HeadlessHost : public PanelHolder`:
 
 ### 3.5 One-Shot Execution, Readiness, Exit Codes, and Concurrency
 
-1. **Select & verify runnable:** `HeadlessHost` looks up `<id>` via `PanelCatalog::find_panel()`, instantiates `PanelSession`, applies `PERSISTENT_SETTINGS().panels[id]`, validates/applies `--options` (rejecting `ConsoleSetup` or parse errors with exit `4`), and casts with `dynamic_cast<ProgramSession*>` (`LabChannel.cpp:58`). If null (e.g. a settings panel), exit `4`.
+1. **Select & verify runnable:** `HeadlessHost` looks up `<id>` via `find_panel()`, instantiates `PanelSession`, applies `PERSISTENT_SETTINGS().panels[id]`, validates/applies `--options` (rejecting `ConsoleSetup` or parse errors with exit `4`), and casts with `dynamic_cast<ProgramSession*>` (`LabChannel.cpp:58`). If null (e.g. a settings panel), exit `4`.
 2. **Per-device leases & readiness:**
    - Per-device leases (`acquire_lab_serial`, `acquire_lab_capture` from `lab-devices.json`) throw `UserSetupError` on the connect path; in headless mode, log the error and fail fast with exit `5` (no wait, no dialog).
    - Otherwise, if the panel has a console (`UnitTestRunner` has no console and skips this wait), wait up to a bounded timeout (e.g. 10 s) for the controller status (`"ready"` / `"none"` / `""`, factored from `LabChannel.h:88`, `LabRequest.h:70` without requiring `LabChannel`) to become `"ready"`, exiting `5` on timeout.
@@ -94,7 +94,7 @@ Add `HeadlessHost : public PanelHolder`:
 ## 4. Rollout Plan
 
 1. **PR 1 — `PanelCatalog` extraction (no behavior change):**
-   - Extract `PanelCatalog` from `ProgramSelect` (`PanelLists.{h,cpp}`) and share the panel-load helper with `PanelListWidget::handle_panel_clicked()`.
+   - Move the panel-list factories and the lookup out of `ProgramSelect` (`PanelLists.{h,cpp}`) into `make_all_panel_lists()` / `find_panel()` and share the panel-load helper with `PanelListWidget::handle_panel_clicked()`.
    - Acceptance: Existing GUI behavior and `StartupArguments_Tests` / `LabStartupPolicy_Tests` unchanged.
 2. **PR 2 — `--headless --run` + `HeadlessHost` (macOS-only):**
    - Add `StartupMode::HEADLESS`, `--headless`, `--run`, `--options` to `StartupArguments` + `LabStartupPolicy` (macOS-only, requires `--profile`) with unit tests.

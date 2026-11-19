@@ -74,7 +74,7 @@ const StoryDataCase STORY_DATA_CASES[] = {
             "01.00a:new_game:choices 01.00b:new_game:autosave 01.01:from_save:unverified 01.02:from_save:unverified 01.03:from_save:unverified "
             "02.01:from_save:unverified 02.02:from_save:unverified 02.03:from_save:unverified 02.04:from_save:unverified "
             "02.05:from_save:unverified 02.06:from_save:autosave 02.07:from_save:unverified "
-            "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save 03.03:from_save:autosave 03.04:from_save:autosave "
+            "03.01:from_save:unverified 03.02:from_save:autosave 03.02b:from_save:autosave 03.03:from_save:autosave 03.04:from_save:autosave "
             "03.05:from_save:autosave 03.06:from_save:autosave 03.07:from_save:autosave 03.08:from_save:autosave 03.08b:from_save:autosave "
             "03.09:from_save:autosave "
             "03.10:from_save:autosave 03.11:from_save:autosave"
@@ -1110,7 +1110,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.03 climbs the ladder: sidestep right, face it, A, then up to the top",
-        .input = {.checkpoint = "03.03", .first_step = 3, .steps = 1, .looks = {CUTSCENE}},
+        .input = {.checkpoint = "03.03", .first_step = 4, .steps = 1, .looks = {CUTSCENE}},
         .expectation = {
             .verdict = "done",
             .inputs = "stick 90deg 600ms walk, release 300ms, stick 0deg 150ms walk, release 300ms, press A, "
@@ -1120,7 +1120,7 @@ const RunCase RUN_CASES[] = {
     //  Looks: two for control, one as the leg starts, one per 250 ms slice.
     {
         .name = "03.03's walk off the roof stops on two looks of a scene",
-        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = {
             party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), DIALOG, DIALOG,
         }},
         .expectation = {
@@ -1131,7 +1131,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.03's walk off the roof walks on past one look of a scene",
-        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = {
             party_bar(Milliseconds(0)), party_bar(Milliseconds(0)), party_bar(Milliseconds(0)),
             DIALOG, party_bar(Milliseconds(0)), BLACK_FADE, BLACK_FADE,
         }},
@@ -1142,7 +1142,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.03's walk off the roof fails when no scene takes control",
-        .input = {.checkpoint = "03.03", .first_step = 5, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at off_the_roof: walk_no_scene"},
     },
     {

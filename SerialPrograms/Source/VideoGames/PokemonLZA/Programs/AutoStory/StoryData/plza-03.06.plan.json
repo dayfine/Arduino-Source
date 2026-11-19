@@ -12,7 +12,7 @@
       {
         "id": "out_of_pokemon_center",
         "kind": "game_action",
-        "why": "UNVERIFIED, NEEDS CONSOLE: from the nurse's counter out of the Center to where 03.04's scene left the player (outside, by the door), facing as it did, so the legs after it still hold. These legs only reverse an in-Center walk to the counter and do not leave the Center; the way out is not measured. not planned: Lumiose has no tile grid to plan a route target on.",
+        "why": "guess: back out of the Center to where 03.04 left the player, facing the same way; these legs do not leave the Center. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[180, 1500], [90, 0]]
@@ -21,7 +21,7 @@
       {
         "id": "center_to_zone_1",
         "kind": "game_action",
-        "why": "step 56: from the Pokemon Center toward Wild Zone 1's gate, ~5 units/s. not planned: no map pin was read on this walk to measure map waypoints from, and Lumiose has no tile grid to plan on; it ends in the street in control, which no screen event marks; toward_zone_1_gate goes on from there.",
+        "why": "from the Pokemon Center toward Wild Zone 1's gate; ends in the street in control. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 2000], [0, 3000], [0, 6000]]
@@ -30,7 +30,7 @@
       {
         "id": "toward_zone_1_gate",
         "kind": "game_action",
-        "why": "step 57: toward the gate, into Taunie's scene. not planned: no map pin was read on this walk to measure map waypoints from, and Lumiose has no tile grid to plan on; it ends where Taunie's scene takes over, with no one screen event.",
+        "why": "toward the gate, into Taunie's scene. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[-45, 0], [15, 2500]]
@@ -39,13 +39,13 @@
       {
         "id": "wild_zones_tutorial",
         "kind": "scene",
-        "why": "step 57: Taunie on wild zones, the Wild Zones card",
+        "why": "Taunie on wild zones, the Wild Zones card",
         "action": "a"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends on the autosave in wild_zones_tutorial, its last step (console B, 2026-11-16: badge at 41.4 s), so a checkpoint starts where that save reloads; 03.07 goes on into Wild Zone 1. The menu save of plza/autostory is dropped. Backup card: after 03.08 autosaved, the title's backup (Up + B + X) showed 1 registered and loaded at the Center counter, this checkpoint's start (console B, 2026-11-16). It is the first checkpoint a backup can load at: the start_signature's \"registered\" marks it, and a run never opens the backup card before it (runs 12 and 15 tried at 02.05 and 03.01 and read no card, console B 2026-11-16). Start signature: at the counter the A Talk prompt shows and no lead panel (za_bk5_g, console B 2026-11-16)."
+      "source": "played from a new game; ends on the autosave in wild_zones_tutorial. The first checkpoint the title's backup save loads at (the start_signature's \"registered\")"
     }
   },
   "execution": {

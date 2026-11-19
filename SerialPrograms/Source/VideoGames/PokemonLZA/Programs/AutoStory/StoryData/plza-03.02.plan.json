@@ -11,7 +11,7 @@
       {
         "id": "to_hotel_front_door",
         "kind": "game_action",
-        "why": "step 40: across the lobby to the front door's \"A Leave\". not planned: before the full map opens (03.02b's Map & Missions card) no map pin reads, and Lumiose has no tile grid to plan on; it ends at the front door, its A prompt not held for (it shows only some of the time), and leave_hotel_z presses A at the door.",
+        "why": "across the lobby to the front door; its A prompt shows only some of the time, so leave_hotel_z presses A. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 6000]]
@@ -20,14 +20,14 @@
       {
         "id": "leave_hotel_z",
         "kind": "game_action",
-        "why": "steps 40-41: A Leave at the door (a scene step ends at once on its prompt), the Main Menu tutorial card",
+        "why": "A Leave, the Main Menu tutorial card",
         "action": "mash_to_move_hints",
         "args": {"press_a_first": true}
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends outside Hotel Z at the autosave seen in leave_hotel_z, after the Main Menu card (console B, 2026-11-16: badge at 116 s in the step), so a checkpoint starts where that save reloads; 03.02b goes on to Taunie."
+      "source": "played from a new game; ends outside Hotel Z at the autosave after the Main Menu card"
     }
   },
   "execution": {
