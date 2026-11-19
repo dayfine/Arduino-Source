@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include <iterator>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -235,6 +236,10 @@ const AtPrompt THROUGH_PROMPT{
     .name = "press_through_prompt",
 };
 
+//  Sideways from the facing: 5 left, then 11 right, back past the start.
+//  03.03b's ladder showed after 9 (console B, 2026-11-19).
+constexpr double PROMPT_SIDESTEPS[] = {-90, -90, -90, -90, -90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90};
+
 //  Only a walk of one straight leg to the first A prompt ahead; one that
 //  turns, has earlier legs, or an `end_after` goes to a prompt elsewhere.
 bool ends_before_walking(
@@ -277,11 +282,28 @@ std::optional<std::optional<Pokemon::StoryFailure>> end_event_look(
     return std::nullopt;
 }
 
+//  Where the player faces after `move`, from the camera: L recenters it
+//  after each turn but a HELD walk's.
+double last_leg_facing(const StoryMove& move){
+    return move.style == StoryWalkStyle::HELD && !move.legs.empty() ? move.legs.back().turn : 0;
+}
+
 //  A last leg that only turns (to face the clerk).
-std::optional<Pokemon::StoryFailure> end_after_turn(PlzaBackend& backend, std::string_view walk, ScreenEvent end){
+std::optional<Pokemon::StoryFailure> end_after_turn(
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end
+){
     if (backend.observe().events.has(end)){
         backend.log(std::format("[PLZA] {}: the end event after the last turn.", walk));
         return std::nullopt;
+    }
+    if (end == ScreenEvent::INTERACT_PROMPT){
+        backend.log(std::format("[PLZA] {}: no prompt after the last turn; stepping along for it", walk));
+        const std::optional<size_t> steps = step_along_until_prompt(backend, last_leg_facing(move));
+        if (steps){
+            backend.log(std::format("[PLZA] {}: the A prompt after {} steps along", walk, *steps));
+            return std::nullopt;
+        }
+        backend.log(std::format("[PLZA] {}: no A prompt after {} steps along", walk, std::size(PROMPT_SIDESTEPS)));
     }
     return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event after the last turn", walk)};
 }
@@ -348,7 +370,7 @@ std::optional<Pokemon::StoryFailure> walk_until(
         return walked;
     }
     if (hold == 0ms && end){
-        return end_after_turn(backend, walk, *end);
+        return end_after_turn(backend, walk, move, *end);
     }
     size_t scene_looks = 0;
     LastLegHold leg(hold);
@@ -380,6 +402,20 @@ std::optional<Pokemon::StoryFailure> walk_until(
         return Pokemon::StoryFailure{.code = "walk_no_scene", .detail = std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, leg.elapsed().count())};
     }
     return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event within {} ms of the last leg", walk, leg.elapsed().count())};
+}
+
+std::optional<size_t> step_along_until_prompt(PlzaBackend& backend, double facing_degrees){
+    for (size_t steps = 0; ; steps++){
+        backend.scope().throw_if_cancelled();
+        if (backend.observe().events.has(ScreenEvent::INTERACT_PROMPT)){
+            return steps;
+        }
+        if (steps == std::size(PROMPT_SIDESTEPS)){
+            return std::nullopt;
+        }
+        backend.stick(facing_degrees + PROMPT_SIDESTEPS[steps], /*duration=*/250ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
+        backend.stick(facing_degrees, /*duration=*/120ms, /*release=*/500ms, Pokemon::StoryPace::WALK);
+    }
 }
 
 std::optional<Pokemon::StoryFailure> talk_at_prompt(PlzaBackend& backend){

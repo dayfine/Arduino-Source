@@ -107,28 +107,16 @@ std::optional<Pokemon::StoryFailure> talk_through_map_screen(PlzaBackend& backen
     )};
 }
 
-//  Along the wall from where the side street leg stops: left first, then
-//  back past the start to the right. Each stop faces the wall again, since
-//  "Climb Up" shows only facing the ladder.
-constexpr int LADDER_SIDESTEP_DEGREES[] = {-90, -90, -90, -90, -90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90};
-
 std::optional<Pokemon::StoryFailure> climb_ladder(PlzaBackend& backend){
     //  The run-pace side street leg stops left or right of the ladder
     //  (2026-11-19): a fixed sidestep missed it, so step along the wall
-    //  until the prompt shows.
+    //  until the prompt shows. "Climb Up" shows only facing the ladder.
     backend.stick(/*degrees=*/0, /*duration=*/150ms, /*release=*/500ms, Pokemon::StoryPace::WALK);
-    size_t steps = 0;
-    while (!backend.observe().events.has(ScreenEvent::INTERACT_PROMPT)){
-        if (steps == std::size(LADDER_SIDESTEP_DEGREES)){
-            return Pokemon::StoryFailure{.code = "ladder_not_found", .detail = std::format(
-                "no Climb Up prompt after {} steps along the wall", steps
-            )};
-        }
-        backend.stick(LADDER_SIDESTEP_DEGREES[steps], /*duration=*/250ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
-        backend.stick(/*degrees=*/0, /*duration=*/120ms, /*release=*/500ms, Pokemon::StoryPace::WALK);
-        steps++;
+    const std::optional<size_t> steps = step_along_until_prompt(backend, /*facing_degrees=*/0);
+    if (!steps){
+        return Pokemon::StoryFailure{.code = "ladder_not_found", .detail = "no Climb Up prompt stepping along the wall"};
     }
-    backend.log(std::format("[PLZA] climb_ladder: Climb Up after {} steps along the wall", steps));
+    backend.log(std::format("[PLZA] climb_ladder: Climb Up after {} steps along the wall", *steps));
     press_through_prompt(backend);
     backend.stick(/*degrees=*/0, /*duration=*/LADDER_CLIMB, /*release=*/500ms, Pokemon::StoryPace::WALK);
     return std::nullopt;

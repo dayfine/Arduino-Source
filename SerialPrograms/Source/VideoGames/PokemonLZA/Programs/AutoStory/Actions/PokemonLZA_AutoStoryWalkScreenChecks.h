@@ -13,6 +13,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryWalkScreenChecks_H
 #define PokemonAutomation_PokemonLZA_AutoStoryWalkScreenChecks_H
 
+#include <cstddef>
 #include <optional>
 #include <string_view>
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
@@ -42,6 +43,13 @@ void finish_walk(PlzaBackend& backend, std::string_view walk);
 std::optional<Pokemon::StoryFailure> walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, std::optional<ScreenEvent> end, Milliseconds end_after
 );
+
+//  A walk to an A prompt can stop beside its target at run pace (03.03b's
+//  ladder, 03.04's Center door, 2026-11-19). Steps sideways, left first,
+//  then back past the start to the right, facing `facing_degrees` from the
+//  camera again after each step, until a look shows the A prompt. The
+//  steps taken; none when no prompt showed.
+std::optional<size_t> step_along_until_prompt(PlzaBackend& backend, double facing_degrees);
 
 //  "talk": A on the prompt of what the player faces, A again while it stays
 //  up with nothing open (the game can drop an A). Fails as "talk_no_prompt"
