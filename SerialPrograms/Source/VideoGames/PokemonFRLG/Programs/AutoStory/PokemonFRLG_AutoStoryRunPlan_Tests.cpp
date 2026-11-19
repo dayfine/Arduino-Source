@@ -622,21 +622,24 @@ UnitTestResult test_misty_grind_order(){
 }
 
 UnitTestResult test_emulator_device_skips_rng_handoffs(){
-    if (frlg_starter_rng_mode(GameSettings::Device::emulator, true, true) != Pokemon::RngHandoffMode::OFF){
+    const FrlgHandoffOptions all_on{
+        .stop_for_sid_helper = true,
+        .stop_for_starter_rng = true,
+        .run_starter_rng = true,
+        .run_gift_rng = true,
+        .has_sid = false,
+    };
+    if (frlg_starter_rng_mode(GameSettings::Device::emulator, all_on) != Pokemon::RngHandoffMode::OFF){
         return "emulator device must disable starter RNG handoff.";
     }
-    const StoryHandoffs emu_handoffs = frlg_story_handoffs(
-        GameSettings::Device::emulator, true, true, true, true, false
-    );
+    const StoryHandoffs emu_handoffs = frlg_story_handoffs(GameSettings::Device::emulator, all_on);
     if (emu_handoffs.sid_helper || emu_handoffs.starter_rng || emu_handoffs.gift_rng){
         return "emulator device must disable all RNG handoffs.";
     }
-    if (frlg_starter_rng_mode(GameSettings::Device::switch_1_2, false, true) != Pokemon::RngHandoffMode::RUN){
+    if (frlg_starter_rng_mode(GameSettings::Device::switch_1_2, {.run_starter_rng = true}) != Pokemon::RngHandoffMode::RUN){
         return "switch_1_2 device must preserve starter RNG RUN handoff.";
     }
-    const StoryHandoffs switch_handoffs = frlg_story_handoffs(
-        GameSettings::Device::switch_1_2, true, true, true, true, false
-    );
+    const StoryHandoffs switch_handoffs = frlg_story_handoffs(GameSettings::Device::switch_1_2, all_on);
     if (!switch_handoffs.sid_helper || !switch_handoffs.starter_rng || !switch_handoffs.gift_rng){
         return "switch_1_2 device must preserve enabled RNG handoffs.";
     }

@@ -762,22 +762,17 @@ static void send_story_finished(
 
 Pokemon::RngHandoffMode frlg_starter_rng_mode(
     GameSettings::Device device,
-    bool stop_for_starter_rng,
-    bool run_starter_rng
+    const FrlgHandoffOptions& options
 ){
     if (device == GameSettings::Device::emulator){
         return Pokemon::RngHandoffMode::OFF;
     }
-    return Pokemon::rng_handoff_mode({.stop = stop_for_starter_rng, .run = run_starter_rng});
+    return Pokemon::rng_handoff_mode({.stop = options.stop_for_starter_rng, .run = options.run_starter_rng});
 }
 
 StoryHandoffs frlg_story_handoffs(
     GameSettings::Device device,
-    bool stop_for_sid_helper,
-    bool stop_for_starter_rng,
-    bool run_starter_rng,
-    bool run_gift_rng,
-    bool has_sid
+    const FrlgHandoffOptions& options
 ){
     if (device == GameSettings::Device::emulator){
         return {};
@@ -785,25 +780,27 @@ StoryHandoffs frlg_story_handoffs(
     //  Running Starter RNG here splits 01.05 at the ball as its stop does,
     //  and sets the SID at 01.01 when it isn't known.
     return StoryHandoffs{
-        .sid_helper = run_starter_rng ? !has_sid : stop_for_sid_helper,
-        .starter_rng = frlg_starter_rng_mode(device, stop_for_starter_rng, run_starter_rng) != Pokemon::RngHandoffMode::OFF,
-        .gift_rng = run_gift_rng,
+        .sid_helper = options.run_starter_rng ? !options.has_sid : options.stop_for_sid_helper,
+        .starter_rng = frlg_starter_rng_mode(device, options) != Pokemon::RngHandoffMode::OFF,
+        .gift_rng = options.run_gift_rng,
     };
 }
 
 Pokemon::RngHandoffMode AutoStory::starter_rng_mode() const{
-    return frlg_starter_rng_mode(GameSettings::instance().DEVICE, STOP_FOR_STARTER_RNG, RUN_STARTER_RNG);
+    return frlg_starter_rng_mode(GameSettings::instance().DEVICE, {
+        .stop_for_starter_rng = STOP_FOR_STARTER_RNG,
+        .run_starter_rng = RUN_STARTER_RNG,
+    });
 }
 
 StoryHandoffs AutoStory::story_handoffs() const{
-    return frlg_story_handoffs(
-        GameSettings::instance().DEVICE,
-        STOP_FOR_SID_HELPER,
-        STOP_FOR_STARTER_RNG,
-        RUN_STARTER_RNG,
-        RUN_GIFT_RNG,
-        !static_cast<std::string>(RNG_PLAN.SID).empty()
-    );
+    return frlg_story_handoffs(GameSettings::instance().DEVICE, {
+        .stop_for_sid_helper = STOP_FOR_SID_HELPER,
+        .stop_for_starter_rng = STOP_FOR_STARTER_RNG,
+        .run_starter_rng = RUN_STARTER_RNG,
+        .run_gift_rng = RUN_GIFT_RNG,
+        .has_sid = !static_cast<std::string>(RNG_PLAN.SID).empty(),
+    });
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){

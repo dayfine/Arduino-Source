@@ -33,22 +33,26 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Flags controlling RNG handoffs for a story run.
+struct FrlgHandoffOptions{
+    bool stop_for_sid_helper = false;
+    bool stop_for_starter_rng = false;
+    bool run_starter_rng = false;
+    bool run_gift_rng = false;
+    bool has_sid = false;
+};
+
 //  RNG handoff mode for starter RNG, disabled when running on Device::emulator.
 Pokemon::RngHandoffMode frlg_starter_rng_mode(
     GameSettings::Device device,
-    bool stop_for_starter_rng,
-    bool run_starter_rng
+    const FrlgHandoffOptions& options
 );
 
 //  Story handoffs for a run, disabled when running on Device::emulator so
 //  emulators take normal gifts and never claim RNG results.
 StoryHandoffs frlg_story_handoffs(
     GameSettings::Device device,
-    bool stop_for_sid_helper,
-    bool stop_for_starter_rng,
-    bool run_starter_rng,
-    bool run_gift_rng,
-    bool has_sid
+    const FrlgHandoffOptions& options
 );
 
 
