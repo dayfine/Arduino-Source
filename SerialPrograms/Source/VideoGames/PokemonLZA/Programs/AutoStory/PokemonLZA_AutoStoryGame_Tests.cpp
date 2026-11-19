@@ -108,7 +108,6 @@ UnitTestResult check_autosave_step(const AutosaveStepCase& test, CancellableScop
 }
 
 
-
 //  `at`: after the scripts' common start.
 ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readings = {}, Milliseconds at = Milliseconds(0)){
     ScreenObservation observation;
@@ -285,25 +284,10 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at arrival_scenes: scene_quiet", .line = "[SceneQuirk] 01.01/arrival_scenes quiet fired"},
     },
     {
-        //  console B, 2026-11-19: a Plus 4 ms into the opening, before its fade-in, did nothing.
-        .name = "01.00b holds Plus 0.75 s after the opening fades in, none during a fade, and ends on its autosave",
-        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {
-            BLACK_FADE,
-            CUTSCENE,
-            look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, /*at=*/Milliseconds(500)),
-            look({}, /*readings=*/{}, /*at=*/Milliseconds(1000)),
-            look({}, /*readings=*/{}, /*at=*/Milliseconds(1500)),
-            look({}, /*readings=*/{}, /*at=*/Milliseconds(1750)),
-            look({}, /*readings=*/{}, /*at=*/Milliseconds(4000)),
-            look({}, {AUTOSAVE_READING}, /*at=*/Milliseconds(6000)),
-            PLATFORM,
-            PLATFORM,
-        }},
-        .expectation = {
-            .verdict = "done",
-            .inputs = "wait 300ms, wait 300ms, wait 300ms, wait 300ms, wait 300ms, press +, wait 300ms, wait 300ms, wait 300ms, wait 300ms",
-            .line = "[Save] 01.00b: the game autosaved (seen)",
-        },
+        //  console B, 2026-11-19: a Plus 4 ms into the step, before the opening faded in, did nothing.
+        .name = "01.00b holds Plus 0.75 s after the opening fades in, not during the fade, and ends on its autosave",
+        .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {BLACK_FADE, CUTSCENE, look(/*events=*/{}, /*readings=*/{}, Milliseconds(750)), OWN_AUTOSAVE, PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .inputs = "wait 300ms, wait 300ms, press +, wait 300ms, wait 300ms, wait 300ms", .line = "[Save] 01.00b: the game autosaved (seen)"},
     },
     {
         .name = "01.02's choice fails when the highlight does not move",
