@@ -268,7 +268,7 @@ HeadlessExit run_program_event_loop(ProgramSession& program, bool handle_signals
             }
             signal_exit = code;
             logger.log("Signal received; stopping program...", COLOR_ORANGE);
-            program.stop_program();
+            program.stop_program(ActionSource::UI, std::nullopt);
             QObject::connect(&stop_timer, &QTimer::timeout, &loop, [&logger, code]{
                 logger.log("Stop timeout expired; exiting immediately.", COLOR_RED);
                 std::_Exit(static_cast<int>(code));
@@ -280,7 +280,7 @@ HeadlessExit run_program_event_loop(ProgramSession& program, bool handle_signals
     (void)handle_signals;
 #endif
 
-    const std::string err = program.start_program();
+    const std::string err = program.start_program(ActionSource::UI, std::nullopt);
     if (!err.empty()){
         logger.log(std::format("Failed to start program: {}", err), COLOR_RED);
         program.remove_listener(observer);
