@@ -57,6 +57,10 @@ constexpr Milliseconds STILL_WAIT = 10s;
 //  The longest a cutscene may hold one still frame.
 constexpr Milliseconds SCENE_STILL_WAIT = 60s;
 constexpr Milliseconds POLL = 250ms;
+//  In a talk (a scene sign seen, no overworld sign since), a quiet screen
+//  gets A this often: a box with no advance arrow (03.01's letter, console
+//  B 2026-11-19) only the shadow box detector sees.
+constexpr Milliseconds TALK_BEAT = 600ms;
 //  "MAIN MISSION 01" shows ~3 s, hence 3 s + 2 s. Every banner that ended a
 //  scene on console B through 2026-11-19 stayed the whole wait (then 10 s)
 //  and went at the first A.
@@ -127,7 +131,6 @@ enum class SceneAction{
     WAIT_FADE,      //  until the fade lifts, up to FADE_WAIT
     WAIT_STILL,     //  until the screen is another, up to STILL_WAIT
     POLL,           //  one POLL
-    POLL_TWICE,
 };
 
 bool action_presses(SceneAction action){
@@ -190,7 +193,7 @@ constexpr SceneScreenRule SCREEN_RULES[] = {
     {.screen = SceneScreen::QUIET_END, .action = SceneAction::END, .field = "quiet"},
     {.screen = SceneScreen::SKIP_CUTSCENE, .action = SceneAction::HOLD_PLUS, .on_overlay = true},
     {.screen = SceneScreen::BLIND_PRESS, .action = SceneAction::PRESS_BLIND, .max_still = SCENE_STILL_WAIT},
-    {.screen = SceneScreen::SCENE_MOVING, .action = SceneAction::POLL_TWICE},
+    {.screen = SceneScreen::SCENE_MOVING, .action = SceneAction::POLL},
     {.screen = SceneScreen::SCENE_STILL, .action = SceneAction::WAIT_STILL, .max_still = SCENE_STILL_WAIT},
 };
 
@@ -346,6 +349,11 @@ struct SceneClock{
     //  The last look busy or with a sign of control.
     WallClock last_cue = {};
     bool seen = false;
+    //  The last look with a scene sign (scene_under_way(), or a Plus press)...
+    WallClock last_sign = {};
+    //  ...and with a sign of the overworld and none of a scene: the HUD or
+    //  the mission banner.
+    std::optional<WallClock> last_overworld = std::nullopt;
     std::optional<WallClock> last_blind_press = std::nullopt;
 };
 
@@ -433,7 +441,13 @@ private:
 
     std::optional<WallClock> quiet_end_due() const;
     bool gap_press_due(WallClock now) const;
-    bool blind_press_due(WallClock now) const;
+    //  blind_press_after's presses.
+    bool configured_press_due(WallClock now) const;
+    //  A scene sign seen and no overworld sign since.
+    bool in_talk() const;
+    //  On a still look: a moving one is a scene sign itself.
+    bool talk_beat_due(const ScreenObservation& look) const;
+    bool blind_press_due(const ScreenObservation& look) const;
     bool skip_pending(WallClock now) const;
     bool skip_due(const ScreenObservation& look) const;
     bool banner_press_due(WallClock now) const;
@@ -461,7 +475,7 @@ private:
 
 SceneTimeline::SceneTimeline(SceneMachineConfig config, WallClock start)
     : m_config(std::move(config))
-    , m_scene{.start = start, .quiet_from = start + m_config.min_length, .last_busy = start, .last_cue = start}
+    , m_scene{.start = start, .quiet_from = start + m_config.min_length, .last_busy = start, .last_cue = start, .last_sign = start}
     , m_skip{.last_cue = start}
 {}
 
@@ -557,7 +571,7 @@ SceneScreen SceneTimeline::classify_idle(const ScreenObservation& look) const{
     if (skip_due(look)){
         return SceneScreen::SKIP_CUTSCENE;
     }
-    if (blind_press_due(look.when)){
+    if (blind_press_due(look)){
         return SceneScreen::BLIND_PRESS;
     }
     return look.events.has(ScreenEvent::SCREEN_STILL) ? SceneScreen::SCENE_STILL : SceneScreen::SCENE_MOVING;
@@ -568,7 +582,9 @@ std::optional<WallClock> SceneTimeline::quiet_end_due() const{
     if (!m_config.quiet){
         return std::nullopt;
     }
-    return std::max(m_scene.quiet_from, m_scene.last_busy + *m_config.quiet);
+    //  In a talk the quiet counts only once the beat's presses change nothing.
+    const WallClock quiet_since = in_talk() ? std::max(m_scene.last_busy, m_scene.last_sign) : m_scene.last_busy;
+    return std::max(m_scene.quiet_from, quiet_since + *m_config.quiet);
 }
 
 bool SceneTimeline::gap_press_due(WallClock now) const{
@@ -576,14 +592,31 @@ bool SceneTimeline::gap_press_due(WallClock now) const{
     return m_config.gap_press && m_scene.seen && !pressed_since_cue && now - m_scene.last_cue >= *m_config.gap_press;
 }
 
-bool SceneTimeline::blind_press_due(WallClock now) const{
-    if (gap_press_due(now)){
-        return true;
-    }
+bool SceneTimeline::configured_press_due(WallClock now) const{
     if (!m_config.blind_press_after || now - m_scene.last_cue < *m_config.blind_press_after){
         return false;
     }
     return !m_scene.last_blind_press || now - *m_scene.last_blind_press >= m_config.blind_press_every;
+}
+
+bool SceneTimeline::in_talk() const{
+    return m_scene.seen && (!m_scene.last_overworld || *m_scene.last_overworld < m_scene.last_sign);
+}
+
+//  Not after a battle's fade, as skip_due().
+bool SceneTimeline::talk_beat_due(const ScreenObservation& look) const{
+    const WallClock now = look.when;
+    if (!in_talk() || !look.events.has(ScreenEvent::SCREEN_STILL) || (m_config.stop_at_battle && m_lock_on.after_fade)){
+        return false;
+    }
+    if (now - m_scene.last_sign < TALK_BEAT){
+        return false;
+    }
+    return !m_scene.last_blind_press || now - *m_scene.last_blind_press >= TALK_BEAT;
+}
+
+bool SceneTimeline::blind_press_due(const ScreenObservation& look) const{
+    return gap_press_due(look.when) || configured_press_due(look.when) || talk_beat_due(look);
 }
 
 //  A Plus press with no cue since, whose skip prompt may still come.
@@ -592,8 +625,9 @@ bool SceneTimeline::skip_pending(WallClock now) const{
 }
 
 //  Not after a battle's fade: its effects move with no HUD while the camera
-//  looks away (03.02b's Tepig battle). Not with blind presses: those are
-//  for menus no detector reads (03.04's Pokedex), not cutscenes.
+//  looks away (03.02b's Tepig battle). Not with blind_press_after: that is
+//  for menus no detector reads (03.04's Pokedex), not cutscenes. A talk's
+//  beat presses leave skipping on.
 bool SceneTimeline::skip_due(const ScreenObservation& look) const{
     if ((m_config.stop_at_battle && m_lock_on.after_fade) || m_config.blind_press_after || !held_for(m_skip.cutscene_since, look.when, SKIP_AFTER)){
         return false;
@@ -643,8 +677,9 @@ std::vector<std::string_view> SceneTimeline::fields_fired(SceneScreen screen, co
     //  Without it, the banner's second look ends the machine.
     add(screen == SceneScreen::BANNER_SHOWING && m_config.end_after_black_fades && m_banner.looks >= 1, "end_after_black_fades");
     add(gap, "gap_press");
-    add(blind && !gap, "blind_press_after");
-    add(blind && !gap && m_scene.last_blind_press.has_value(), "blind_press_every");
+    const bool configured = blind && !gap && configured_press_due(look.when);
+    add(configured, "blind_press_after");
+    add(configured && m_scene.last_blind_press.has_value(), "blind_press_every");
     add(blind && m_config.blind_button != BUTTON_A, "blind_button");
     add(screen == SceneScreen::DIALOG && !look.events.has(ScreenEvent::CHOICE_BOX) &&
         dialog_button(m_config, look) != default_text_button(m_config, look), "text_button");
@@ -674,6 +709,7 @@ void SceneTimeline::record_presses(SceneScreen screen, WallClock now){
     }
     if (screen == SceneScreen::SKIP_CUTSCENE){
         m_skip.last_press = now;
+        m_scene.last_sign = now;
     }
     if (screen == SceneScreen::BANNER_PRESS){
         m_banner.presses++;
@@ -706,7 +742,13 @@ void SceneTimeline::record_control(const ScreenObservation& look){
     if (busy(look)){
         m_scene.last_busy = look.when;
     }
-    m_scene.seen = m_scene.seen || scene_under_way(look);
+    const bool scene_sign = scene_under_way(look);
+    m_scene.seen = m_scene.seen || scene_sign;
+    if (scene_sign){
+        m_scene.last_sign = look.when;
+    }else if (hud_shows(look) || look.readings.contains(MISSION_BANNER_READING)){
+        m_scene.last_overworld = look.when;
+    }
     const bool text = text_shows(look);
     track_since(party_bar_is_control(m_config) && party_bar_free(look), look.when, m_control.party_bar_since);
     const bool control_instead = !party_bar_is_control(m_config) && look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !busy(look);
@@ -1076,11 +1118,8 @@ void SceneRunner::wait(SceneAction action){
             return m_timeline.classify(look) != SceneScreen::SCENE_STILL;
         });
         return;
-    case SceneAction::POLL:
-        m_backend.wait(POLL);
-        return;
     default:
-        m_backend.wait(2 * POLL);
+        m_backend.wait(POLL);
         return;
     }
 }
