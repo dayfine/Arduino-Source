@@ -750,11 +750,12 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "02.01 waits 3 s for the NPCs, then holds its legs",
+        //  Held legs run with B held: the walk times stay walk times (console B, 2026-11-19).
+        .name = "02.01 waits 3 s for the NPCs, then runs its held legs",
         .input = {.checkpoint = "02.01", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 3000ms, wait 250ms, stick 10deg 4250ms walk, press L, stick 90deg 6000ms walk, press L, stick 90deg 6500ms walk",
+            .inputs = "wait 3000ms, wait 250ms, stick 10deg 4250ms run, press L, stick 90deg 6000ms run, press L, stick 90deg 6500ms run",
         },
     },
     {
