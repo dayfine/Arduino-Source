@@ -282,28 +282,13 @@ std::optional<std::optional<Pokemon::StoryFailure>> end_event_look(
     return std::nullopt;
 }
 
-//  Where the player faces after `move`, from the camera: L recenters it
-//  after each turn but a HELD walk's.
-double last_leg_facing(const StoryMove& move){
-    return move.style == StoryWalkStyle::HELD && !move.legs.empty() ? move.legs.back().turn : 0;
-}
-
-//  A last leg that only turns (to face the clerk).
-std::optional<Pokemon::StoryFailure> end_after_turn(
-    PlzaBackend& backend, std::string_view walk, const StoryMove& move, ScreenEvent end
-){
+//  A last leg that only turns (to face the clerk). No steps sideways when the
+//  prompt is missing: the walk did not reach its target, and steps from the
+//  wall beside 03.04's Center opening walked back out (console B 2026-11-19).
+std::optional<Pokemon::StoryFailure> end_after_turn(PlzaBackend& backend, std::string_view walk, ScreenEvent end){
     if (backend.observe().events.has(end)){
         backend.log(std::format("[PLZA] {}: the end event after the last turn.", walk));
         return std::nullopt;
-    }
-    if (end == ScreenEvent::INTERACT_PROMPT){
-        backend.log(std::format("[PLZA] {}: no prompt after the last turn; stepping along for it", walk));
-        const std::optional<size_t> steps = step_along_until_prompt(backend, last_leg_facing(move));
-        if (steps){
-            backend.log(std::format("[PLZA] {}: the A prompt after {} steps along", walk, *steps));
-            return std::nullopt;
-        }
-        backend.log(std::format("[PLZA] {}: no A prompt after {} steps along", walk, std::size(PROMPT_SIDESTEPS)));
     }
     return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event after the last turn", walk)};
 }
@@ -370,7 +355,7 @@ std::optional<Pokemon::StoryFailure> walk_until(
         return walked;
     }
     if (hold == 0ms && end){
-        return end_after_turn(backend, walk, move, *end);
+        return end_after_turn(backend, walk, *end);
     }
     size_t scene_looks = 0;
     LastLegHold leg(hold);
