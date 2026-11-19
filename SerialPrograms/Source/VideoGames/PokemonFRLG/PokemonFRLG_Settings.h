@@ -28,7 +28,7 @@ public:
 
     enum class Device{
         switch_1_2,
-        emulator,
+        GbaEmulator,
         dev_test,
         custom,
     };

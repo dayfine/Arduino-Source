@@ -629,12 +629,12 @@ UnitTestResult test_emulator_device_skips_rng_handoffs(){
         .run_gift_rng = true,
         .has_sid = false,
     };
-    if (frlg_starter_rng_mode(GameSettings::Device::emulator, all_on) != Pokemon::RngHandoffMode::OFF){
-        return "emulator device must disable starter RNG handoff.";
+    if (frlg_starter_rng_mode(GameSettings::Device::GbaEmulator, all_on) != Pokemon::RngHandoffMode::OFF){
+        return "GBA emulator device must disable starter RNG handoff.";
     }
-    const StoryHandoffs emu_handoffs = frlg_story_handoffs(GameSettings::Device::emulator, all_on);
+    const StoryHandoffs emu_handoffs = frlg_story_handoffs(GameSettings::Device::GbaEmulator, all_on);
     if (emu_handoffs.sid_helper || emu_handoffs.starter_rng || emu_handoffs.gift_rng){
-        return "emulator device must disable all RNG handoffs.";
+        return "GBA emulator device must disable all RNG handoffs.";
     }
     if (frlg_starter_rng_mode(GameSettings::Device::switch_1_2, {.run_starter_rng = true}) != Pokemon::RngHandoffMode::RUN){
         return "switch_1_2 device must preserve starter RNG RUN handoff.";
@@ -684,7 +684,7 @@ const AutoStoryCase AUTO_STORY_CASES[] = {
         .expectation = {},
     },
     {
-        .input = {"Device::emulator skips all RNG handoffs and keeps switch_1_2 unchanged", test_emulator_device_skips_rng_handoffs},
+        .input = {"Device::GbaEmulator skips all RNG handoffs and keeps switch_1_2 unchanged", test_emulator_device_skips_rng_handoffs},
         .expectation = {},
     },
 };

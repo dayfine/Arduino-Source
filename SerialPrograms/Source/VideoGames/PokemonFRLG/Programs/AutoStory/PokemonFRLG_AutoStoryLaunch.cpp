@@ -265,7 +265,7 @@ Pokemon::Outcome launch_frlg_save_emulator(ConsoleHandle& console, ProController
 
 Pokemon::Outcome launch_frlg_save(ConsoleHandle& console, ProControllerContext& context){
     Pokemon::Outcome launched = Pokemon::outcome_ok();
-    if (GameSettings::instance().DEVICE == GameSettings::Device::emulator){
+    if (GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator){
         launched = launch_frlg_save_emulator(console, context);
     }else{
         FrlgLaunchBackend backend(console, context);

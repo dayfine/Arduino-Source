@@ -764,7 +764,7 @@ Pokemon::RngHandoffMode frlg_starter_rng_mode(
     GameSettings::Device device,
     const FrlgHandoffOptions& options
 ){
-    if (device == GameSettings::Device::emulator){
+    if (device == GameSettings::Device::GbaEmulator){
         return Pokemon::RngHandoffMode::OFF;
     }
     return Pokemon::rng_handoff_mode({.stop = options.stop_for_starter_rng, .run = options.run_starter_rng});
@@ -774,7 +774,7 @@ StoryHandoffs frlg_story_handoffs(
     GameSettings::Device device,
     const FrlgHandoffOptions& options
 ){
-    if (device == GameSettings::Device::emulator){
+    if (device == GameSettings::Device::GbaEmulator){
         return {};
     }
     //  Running Starter RNG here splits 01.05 at the ball as its stop does,
@@ -814,7 +814,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const std::string player_name = PLAYER_NAME;
     check_setup(env.console, checkpoints, first, last, NEW_GAME_FROM_TITLE, player_name);
     require_preflight(env.console, context);
-    if (GameSettings::instance().DEVICE == GameSettings::Device::emulator
+    if (GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator
         && (STOP_FOR_SID_HELPER || STOP_FOR_STARTER_RNG || RUN_STARTER_RNG || RUN_GIFT_RNG)){
         env.console.log("Emulator device selected: skipping RNG handoffs and taking normal gifts.", COLOR_BLUE);
     }
