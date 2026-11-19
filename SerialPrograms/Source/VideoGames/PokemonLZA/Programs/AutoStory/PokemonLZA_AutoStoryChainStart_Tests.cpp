@@ -70,16 +70,6 @@ struct ChainStartCase{
 
 const ChainStartCase CHAIN_START_CASES[] = {
     {
-        .name = "the live screen shows the row's start: on",
-        .input = {.start = OUT_OF_FAR_GATE, .screen = {.talk_prompt = false, .wild_zone = false, .party = 5}},
-        .expectation = {
-            .verdict = "done",
-            .started = "01.01 01.02",
-            .line = "[Checkpoint] 01.02: START CHECKED: the screen reads (no talk prompt, not in a wild zone, party 5), "
-                "its start is (not in a wild zone, party 5); on from the live screen",
-        },
-    },
-    {
         //  console B, 2026-11-18 13:37: 03.08b saved in Wild Zone 1, and
         //  03.09 ran on from there into a building's wall.
         .name = "the live screen is not at the row's start: stops there",

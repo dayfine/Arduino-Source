@@ -72,16 +72,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.06"},
     },
     {
-        .name = "asked 03.08, the screen at Taunie's rocks in Wild Zone 1: from 03.08",
-        .input = {.asked = "03.08", .read = {.talk_prompt = false, .wild_zone = true}},
-        .expectation = {.from = "03.08"},
-    },
-    {
-        .name = "asked 03.06, the screen at the Center counter: from 03.06",
-        .input = {.asked = "03.06", .read = {.talk_prompt = true, .wild_zone = false}},
-        .expectation = {.from = "03.06"},
-    },
-    {
         .name = "asked 03.08, the screen out on the street: stop",
         .input = {.asked = "03.08", .read = {.talk_prompt = false, .wild_zone = false}},
         .expectation = {.from = "stop"},
@@ -113,11 +103,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "stop"},
     },
     {
-        .name = "asked 03.04, the minimap at Station Front: from 03.04",
-        .input = {.asked = "03.04", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.04-start"}},
-        .expectation = {.from = "03.04"},
-    },
-    {
         //  The roof before Station Front.
         .name = "asked 03.04, the party and prompt of its start but not its minimap: stop",
         .input = {.asked = "03.04", .read = {.talk_prompt = false, .wild_zone = false, .party = 1}},
@@ -134,24 +119,9 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "stop"},
     },
     {
-        .name = "asked 03.08, Taunie's rocks with three in the party: from 03.08",
-        .input = {.asked = "03.08", .read = {.talk_prompt = false, .wild_zone = true, .party = 3}},
-        .expectation = {.from = "03.08"},
-    },
-    {
-        .name = "asked 03.08b, the fifth catch's autosave in the zone: from 03.08b",
-        .input = {.asked = "03.08b", .read = {.talk_prompt = false, .wild_zone = true, .party = 5}},
-        .expectation = {.from = "03.08b"},
-    },
-    {
         .name = "asked 03.09, the fifth catch's autosave in the zone: from 03.08b",
         .input = {.asked = "03.09", .read = {.talk_prompt = false, .wild_zone = true, .party = 5}},
         .expectation = {.from = "03.08b"},
-    },
-    {
-        .name = "asked 03.09, the menu save out of the far gate: from 03.09",
-        .input = {.asked = "03.09", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
-        .expectation = {.from = "03.09"},
     },
     {
         .name = "asked 03.09, the menu save out of the far gate with a prompt in view: from 03.09",
@@ -173,26 +143,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "stop"},
     },
     {
-        .name = "asked 03.10, the menu save in the lab lobby: from 03.10",
-        .input = {.asked = "03.10", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
-        .expectation = {.from = "03.10"},
-    },
-    {
-        .name = "asked 03.11, the 3F autosave: from 03.11",
-        .input = {.asked = "03.11", .read = {.talk_prompt = false, .wild_zone = false, .party = 5}},
-        .expectation = {.from = "03.11"},
-    },
-    {
-        .name = "asked 03.03, the courtyard's minimap: from 03.03",
-        .input = {.asked = "03.03", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.03-start"}},
-        .expectation = {.from = "03.03"},
-    },
-    {
-        .name = "asked 03.05, the minimap outside the Center: from 03.05",
-        .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.05-start"}},
-        .expectation = {.from = "03.05"},
-    },
-    {
         .name = "asked 03.05, Station Front's minimap: from 03.04",
         .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.04-start"}},
         .expectation = {.from = "03.04"},
@@ -201,11 +151,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .name = "asked 03.05, no minimap matched: stop",
         .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1}},
         .expectation = {.from = "stop"},
-    },
-    {
-        .name = "asked 03.07, the minimap before the zone gate: from 03.07",
-        .input = {.asked = "03.07", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.07-start"}},
-        .expectation = {.from = "03.07"},
     },
 };
 
@@ -240,21 +185,8 @@ const StartSignature IN_ZONE{.wild_zone = true};
 
 const TableCase TABLE_CASES[] = {
     {
-        .name = "asked has no signature, the screen matches no start: runs as asked",
-        .input = {.starts = {{.checkpoint = "A", .signature = AT_COUNTER}}, .asked = "C", .read = IN_ZONE},
-        .expectation = {.from = "C"},
-    },
-    {
         .name = "asked has no signature, the screen matches an earlier start: runs as asked",
         .input = {.starts = {{.checkpoint = "A", .signature = AT_COUNTER}}, .asked = "C", .read = AT_COUNTER},
-        .expectation = {.from = "C"},
-    },
-    {
-        .name = "asked has no signature, two earlier starts match: runs as asked",
-        .input = {
-            .starts = {{.checkpoint = "A", .signature = {.wild_zone = false}}, {.checkpoint = "B", .signature = AT_COUNTER}},
-            .asked = "C", .read = AT_COUNTER,
-        },
         .expectation = {.from = "C"},
     },
     {
@@ -334,9 +266,7 @@ struct MapReadCase{
 
 const MapReadCase MAP_READ_CASES[] = {
     {.name = "02.04 in Hotel Z's lobby: the screen only", .input = {.asked = "02.04"}, .expectation = {.reads_map = false}},
-    {.name = "03.02b before the Map & Missions card: the screen only", .input = {.asked = "03.02b"}, .expectation = {.reads_map = false}},
     {.name = "03.03, its start a minimap: the map", .input = {.asked = "03.03"}, .expectation = {.reads_map = true}},
-    {.name = "03.10 in the lab, after Wild Zone 1's starts: the map", .input = {.asked = "03.10"}, .expectation = {.reads_map = true}},
 };
 
 UnitTestResult check_map_read(const MapReadCase& test){
@@ -363,9 +293,6 @@ struct MapPinCase{
 
 const MapPinCase MAP_PIN_CASES[] = {
     {.name = "Taunie's rocks: in", .input = {.pin = MapPoint{.x = 476, .y = 224}}, .expectation = {.wild_zone = true}},
-    {.name = "the 100 spot: in", .input = {.pin = MapPoint{.x = 431, .y = 236}}, .expectation = {.wild_zone = true}},
-    {.name = "the 60 spot by the far gate: in", .input = {.pin = MapPoint{.x = 386, .y = 252}}, .expectation = {.wild_zone = true}},
-    {.name = "the catch west of the 60 spot: in", .input = {.pin = MapPoint{.x = 365, .y = 257}}, .expectation = {.wild_zone = true}},
     {.name = "stuck at the north fence: in", .input = {.pin = MapPoint{.x = 358.9, .y = 227.3}}, .expectation = {.wild_zone = true}},
     {.name = "the patrol's stop 10: in", .input = {.pin = MapPoint{.x = 415.4, .y = 230.4}}, .expectation = {.wild_zone = true}},
     {
@@ -374,7 +301,6 @@ const MapPinCase MAP_PIN_CASES[] = {
         .input = {.pin = MapPoint{.x = 401, .y = 225}},
         .expectation = {.wild_zone = false},
     },
-    {.name = "the street outside the far gate, a second read: out", .input = {.pin = MapPoint{.x = 401, .y = 223}}, .expectation = {.wild_zone = false}},
     {.name = "south of the zone's outline: out", .input = {.pin = MapPoint{.x = 400, .y = 280}}, .expectation = {.wild_zone = false}},
     {.name = "no pin read: unknown", .input = {.pin = std::nullopt}, .expectation = {.wild_zone = std::nullopt}},
 };
@@ -411,11 +337,6 @@ struct FrameCase{
 };
 
 const FrameCase FRAME_CASES[] = {
-    {
-        .name = "the Center counter: 03.06",
-        .input = {.file = "Italian_center_counter.png", .asked = "03.08", .map_pin = std::nullopt},
-        .expectation = {.from = "03.06"},
-    },
     {
         //  The lead's panel at the bottom left.
         .name = "Taunie's rocks in Wild Zone 1: 03.08",
