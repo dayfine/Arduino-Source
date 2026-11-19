@@ -4,6 +4,8 @@
  *
  */
 
+#include "Common/Cpp/Json/JsonObject.h"
+#include "CommonFramework/PersistentSettings.h"
 #include "Pokemon/Pokemon_Strings.h"
 
 #include "PokemonFRLG_Settings.h"
@@ -36,6 +38,7 @@ GameSettings::GameSettings()
         "Refer to the documentation for specific setups.",
         {
             {Device::switch_1_2,            "switch_1_2",           "Nintendo Switch 1 and 2"},
+            {Device::GbaEmulator,           "gba_emulator",         "GBA Emulator"},
             //{Device::dev_test,              "dev_test",             "dev test rg35xx"},
             //{Device::custom,                "custom",               "Custom"},
         },
@@ -114,6 +117,12 @@ GameSettings::GameSettings()
     PA_ADD_OPTION(m_catch_audio_settings);
     PA_ADD_OPTION(CATCH_FANFARE_THRESHOLD);
 
+    if (const JsonObject* panel = PERSISTENT_SETTINGS().panels.get_object("PokemonFRLG:GlobalSettings")){
+        if (const JsonValue* saved = panel->get_value("settings")){
+            load_json(*saved);
+        }
+    }
+
     GameSettings::on_config_value_changed(this);
     DEVICE.add_listener(*this);
     GAME_BOX.add_listener(*this);
@@ -126,6 +135,7 @@ GameSettings::GameSettings()
 void GameSettings::on_config_value_changed(void* object){
     switch (DEVICE){
     case Device::switch_1_2:
+    case Device::GbaEmulator:
         GAME_BOX.X.set(0.09375);
         GAME_BOX.Y.set(0.00462963);
         GAME_BOX.WIDTH.set(0.8125);

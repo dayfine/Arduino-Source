@@ -22,6 +22,7 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryRngLoop.h"
@@ -30,6 +31,29 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
+
+//  Flags controlling RNG handoffs for a story run.
+struct FrlgHandoffOptions{
+    bool stop_for_sid_helper = false;
+    bool stop_for_starter_rng = false;
+    bool run_starter_rng = false;
+    bool run_gift_rng = false;
+    bool has_sid = false;
+};
+
+//  RNG handoff mode for starter RNG, disabled when running on Device::emulator.
+Pokemon::RngHandoffMode frlg_starter_rng_mode(
+    GameSettings::Device device,
+    const FrlgHandoffOptions& options
+);
+
+//  Story handoffs for a run, disabled when running on Device::emulator so
+//  emulators take normal gifts and never claim RNG results.
+StoryHandoffs frlg_story_handoffs(
+    GameSettings::Device device,
+    const FrlgHandoffOptions& options
+);
 
 
 //  Program descriptor for FRLG AutoStory.
