@@ -35,8 +35,7 @@ constexpr uint32_t ZONE_GREEN = 0xff98efad;
 constexpr uint32_t ARROW_BLUE = 0xff00a0ff;
 constexpr uint32_t CONE_BLUE = 0xff5ec9ea;
 
-//  A filled square of `colour`, `side` pixels, centred at (x, y) in map
-//  coordinates (800 x 450), on a 1920x1080 frame.
+//  A `side` px square centred at (x, y) in map coordinates, on a 1920x1080 frame.
 struct Square{
     double x;
     double y;

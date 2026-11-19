@@ -18,31 +18,23 @@ namespace{
 
 //  Rows read from the bottom up before the reader stops looking.
 constexpr size_t MAX_CHOICE_ROWS = 6;
-//  A menu has two rows at least. One white strip alone is not one: light
-//  pavement reads as a highlighted row (ArrivalToAd 0038).
+//  One white strip alone is not a menu: light pavement reads as a highlighted row.
 constexpr size_t MIN_CHOICE_ROWS = 2;
 
-//  The menu's geometry at 1920 x 1080. Measured on the console on the
-//  tourist's two rows (Traditional Chinese), the Research Lab elevator's
-//  three (Japanese) and Villy's two at 01.02 (Italian, French). The panel
-//  is anchored at its bottom right: it ends at x 1728, y 808 whatever its
-//  rows, and grows left to fit its longest row (x 1408 in Japanese, 1343
-//  in Italian, 1198 in French). The highlight runs from 10 right of the
-//  panel's left to x 1715; the bottom row's from y 732 to 800, each row
-//  above 80 higher. The rows' text starts 35 right of the panel's left
-//  and ends at x 1690 at most (Italian's and French's longest rows: 1688).
+//  At 1920 x 1080 the panel ends at x 1728, y 808 and grows left to fit its longest
+//  row (x 1198-1408). The highlight runs from 10 right of the panel's left to x 1715,
+//  the bottom row's at y 732-800, each row above 80 higher. The text starts 35 right
+//  of the panel's left and ends by x 1690.
 constexpr double ROW_PITCH = 80.0 / 1080;
 constexpr double STRIP_TOP = 748.0 / 1080;
 constexpr double STRIP_HEIGHT = 40.0 / 1080;
 constexpr double TEXT_END_X = 1690.0 / 1920;
-//  Where the leftward scan for the highlight's left end starts, and the
-//  bottom row's highlight 4 below its top and 4 above its bottom: few
-//  glyphs reach both.
+//  Start of the leftward highlight scan; bands 4 inside the bottom row's highlight's
+//  top and bottom, which few glyphs reach.
 constexpr double HIGHLIGHT_SCAN_X = 1700.0 / 1920;
 constexpr double HIGHLIGHT_TOP_BAND_Y = 736.0 / 1080;
 constexpr double HIGHLIGHT_BOTTOM_BAND_Y = 796.0 / 1080;
-//  A plain row's share of bright text pixels: 0.07 to 0.2 on the console,
-//  0 on the elevator's wall above its top row.
+//  Plain rows measure 0.07-0.2; the elevator's wall above its top row 0.
 constexpr double MIN_TEXT_SHARE = 0.005;
 
 //  Right of any row's text, inside the highlight.
@@ -50,8 +42,7 @@ ImageFloatBox right_strip(size_t from_bottom){
     return ImageFloatBox(1698.0 / 1920, STRIP_TOP - ROW_PITCH * from_bottom, 14.0 / 1920, STRIP_HEIGHT);
 }
 
-//  Where a row's text can be, from 10 right of the highlight's left end
-//  (`highlight_left`, a share of the width) to the text's right limit.
+//  From 10 right of `highlight_left` (a share of the width) to the text's right limit.
 ImageFloatBox text_band(size_t from_bottom, double highlight_left){
     const double left = highlight_left + 10.0 / 1920;
     return ImageFloatBox(left, STRIP_TOP - ROW_PITCH * from_bottom, TEXT_END_X - left, STRIP_HEIGHT);
@@ -70,10 +61,8 @@ enum class ChoiceSlot{
     OTHER,
 };
 
-//  A slot's right strip: the highlighted row 255 white, flat; a plain row
-//  the panel's dark blue, (35-45, 60-73, 108-120), spread 3-7. The wall
-//  above the elevator's top row is as dark and blue, (23-24, 58-62,
-//  102-107); `row_has_text` tells it from a row.
+//  Highlighted: flat 255 white; plain: panel blue (35-45, 60-73, 108-120), spread 3-7.
+//  The elevator's wall above its top row is as blue; `row_has_text` tells it apart.
 ChoiceSlot classify_slot(const ImageViewRGB32& frame, size_t from_bottom){
     const ImageStats right = image_stats(extract_box_reference(frame, right_strip(from_bottom)));
     if (right.count == 0 || right.stddev.sum() > 30){
@@ -90,9 +79,7 @@ ChoiceSlot classify_slot(const ImageViewRGB32& frame, size_t from_bottom){
     return dark_blue ? ChoiceSlot::PANEL : ChoiceSlot::OTHER;
 }
 
-//  The highlight's left end on the row `from_bottom` slots up, as a share
-//  of the width: scanned left from inside its right end while its top or
-//  bottom band is white.
+//  As a share of the width: scanned left while the top or bottom band is white.
 double highlight_left(const ImageViewRGB32& frame, size_t from_bottom){
     const double pitch = ROW_PITCH * from_bottom;
     const size_t top_y = (size_t)((HIGHLIGHT_TOP_BAND_Y - pitch) * frame.height());
@@ -104,8 +91,6 @@ double highlight_left(const ImageViewRGB32& frame, size_t from_bottom){
     return (double)x / frame.width();
 }
 
-//  Whether a plain row's text band has text: white glyphs on the panel,
-//  whatever the language or the row's length.
 bool row_has_text(const ImageViewRGB32& frame, size_t from_bottom, double highlight_left){
     const ImageViewRGB32 band = extract_box_reference(frame, text_band(from_bottom, highlight_left));
     const size_t area = band.width() * band.height();
@@ -126,10 +111,8 @@ bool row_has_text(const ImageViewRGB32& frame, size_t from_bottom, double highli
 } // namespace
 
 
-//  The selection arrow sits left of the panel: from 13 left of it to 27
-//  right (x 1185 to 1225 on French's panel at 1198). French's 01.02 rows,
-//  35 characters, take 455 of the panel's 530; the box starts at x 960,
-//  room for a panel at x 973, rows of about 54 such characters.
+//  The arrow sits 13 left to 27 right of the panel's left (x 1185-1225 on French's
+//  panel at 1198); from x 960 leaves room for rows of about 54 characters.
 const ImageFloatBox& dialog_choice_box(){
     static const ImageFloatBox box{960.0 / 1920, 0.481553, 0.949837 - 960.0 / 1920, 0.312621};
     return box;
@@ -139,7 +122,6 @@ std::optional<DialogChoiceRows> read_dialog_choice_rows(const ImageViewRGB32& fr
     if (!frame || frame.width() < 192 || frame.height() < 108){
         return std::nullopt;
     }
-    //  The menu's slots from the bottom up, highlighted or panel blue.
     std::vector<ChoiceSlot> slots;
     std::optional<size_t> first_highlighted;
     while (slots.size() < MAX_CHOICE_ROWS){

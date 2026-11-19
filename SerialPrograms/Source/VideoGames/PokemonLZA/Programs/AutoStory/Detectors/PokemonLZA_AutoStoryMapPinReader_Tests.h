@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the map pin reader's tests: synthetic frames, and console
-//  frames from CommandLineTests/PokemonLZA/AutoStoryDetectors/Zone1Map/.
+//  Registers the map pin reader's tests.
 void add_tests_AutoStoryMapPinReader(UnitTestDatabase& database);
 
 

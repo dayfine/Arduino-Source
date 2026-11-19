@@ -23,8 +23,7 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The "rrggbb" at `offset` of `hex` as a color. Throws ParseException
-//  naming `source` for a character that is not a hex digit.
+//  Throws ParseException naming `source` on a non-hex digit.
 FloatPixel hex_pixel(std::string_view hex, size_t offset, std::string_view source){
     const auto channel = [&](size_t index){
         const std::string_view digits = hex.substr(offset + index * 2, 2);

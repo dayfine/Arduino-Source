@@ -16,7 +16,6 @@ namespace PokemonLZA{
 
 namespace{
 
-//  The shares of the badge's and the bar's pixels that make the panel.
 constexpr double BADGE_SHARE = 0.5;
 constexpr double BAR_SHARE = 0.8;
 

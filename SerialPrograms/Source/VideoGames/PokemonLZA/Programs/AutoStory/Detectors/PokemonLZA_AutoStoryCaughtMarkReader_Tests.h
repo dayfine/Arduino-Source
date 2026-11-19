@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the lock-on plate and caught mark reader's tests, on
-//  synthetic frames.
+//  Registers the lock-on plate and caught mark tests.
 void add_tests_AutoStoryCaughtMarkReader(UnitTestDatabase& database);
 
 

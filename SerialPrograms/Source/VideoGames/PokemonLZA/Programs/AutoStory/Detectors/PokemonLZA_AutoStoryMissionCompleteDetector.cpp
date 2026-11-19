@@ -14,9 +14,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  On 1920x1080: the word's green fills x 615-1300,
-//  y 271-349, none of it 20 px above or below; the bar's yellow fills
-//  y 390-585, read left and right of the name as for the banner.
+//  On 1080p: none of the word's green 20 px above or below; the bar is read left and
+//  right of the name, as for the banner.
 MissionCompleteDetector::MissionCompleteDetector(Color color)
     : m_color(color)
     , m_word(640.0 / 1920, 285.0 / 1080, 640.0 / 1920, 55.0 / 1080)
@@ -34,9 +33,8 @@ void MissionCompleteDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_bar_right);
 }
 
-//  On the card the word is 70% green, nothing around it is green and both
-//  bar boxes are 100% yellow. Other screens have the word 11% green at
-//  most; the main mission banners, which have the same bar, 2% at most.
+//  On the card: word 70% green, nothing green around, bar boxes 100% yellow. Others:
+//  word 11% at most; the mission banners (same bar) 2%.
 bool MissionCompleteDetector::detect(const ImageViewRGB32& screen){
     if (complete_green_share(screen, m_word) < 0.40){
         return false;

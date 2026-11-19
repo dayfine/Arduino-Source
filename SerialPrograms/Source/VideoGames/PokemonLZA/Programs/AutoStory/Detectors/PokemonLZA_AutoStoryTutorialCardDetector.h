@@ -23,9 +23,7 @@ namespace PokemonLZA{
 //  edges.
 bool tutorial_card_shows(const ImageViewRGB32& frame);
 
-//  The story backend's reading set to 1 while a tutorial card shows. Only
-//  A turns its pages; a catch in the tutorial ends on "Battling wild
-//  Pokemon" cards (03.07).
+//  The backend's reading set to 1 while a tutorial card shows; only A turns its pages.
 constexpr std::string_view TUTORIAL_CARD_READING = "scene.tutorial_card";
 
 

@@ -19,18 +19,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Counts the filled slots of the overworld party bar (bottom left, 6
-//  slots). The bar is on screen when its D-pad marker shows
-//  (OverworldPartySelectionDetector, a party of 2 or more) or when its last
-//  slot (slot 6) shows empty (a party of 1 to 5, which the marker misses
-//  with a party of 1: Hotel Z's lobby on 02.05, console B 2026-11-16).
-//  Cutscenes and dialogs hide the bar. A filled slot has an HP bar under
-//  its icon: green, yellow or red by its HP, over a dark trough. The slot
-//  whose partner is sent out (the D-pad down marker's) shows a Poke Ball
-//  and no HP bar: it counts too. An empty slot shows only its frame: a
-//  thin light line over the scene darkened inside it.
-//  Boxes measured on 1920x1080 frames (console B, 2026-11-14): the bars
-//  on rows 1028-1031, slot i from x = 86 + 76.4 * i, 52 wide.
+//  Counts the filled slots of the overworld party bar (bottom left, 6 slots). The bar
+//  shows when its D-pad marker does (party of 2+) or its last slot shows empty (party
+//  of 1-5). A filled slot has an HP bar, or a Poke Ball if its partner is sent out.
 class PartyBarDetector : public StaticScreenDetector{
 public:
     PartyBarDetector(Color color = COLOR_RED, VideoOverlay* overlay = nullptr);
@@ -45,13 +36,11 @@ public:
         m_filled_slots = 0;
     }
 
-    //  The filled slots of the bar on the last detect()'s screen: 0 when
-    //  no bar was on it.
+    //  0 when the last detect() saw no bar.
     int filled_slots() const{ return m_filled_slots; }
 
 private:
-    //  Whether slot `index`'s HP bar shows: the bar's box is mostly HP
-    //  color or darker than the card above it (the trough).
+    //  Mostly HP color, or darker than the card above it (the trough).
     bool slot_has_hp_bar(const ImageViewRGB32& screen, size_t index) const;
 
     OverworldPartySelectionDetector m_selection;

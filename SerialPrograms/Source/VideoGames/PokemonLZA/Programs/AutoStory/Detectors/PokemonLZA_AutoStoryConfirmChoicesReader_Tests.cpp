@@ -29,10 +29,7 @@ constexpr uint32_t BACKGROUND = 0xff0a1d40;
 constexpr uint32_t SLATE = 0xff23344f;
 constexpr uint32_t WHITE = 0xffffffff;
 
-//  "Confirm Choices" drawn as the console shows it (1920 x 1080): dark blue,
-//  three slate rows x 144 to 742, the two choices from y 578 and 662 (68
-//  high) and "Ready!" from y 790 (112 high), the rows in `highlighted`
-//  white.
+//  "Confirm Choices" with the reader's geometry, the rows in `highlighted` white.
 ImageRGB32 confirm_choices_frame(std::initializer_list<size_t> highlighted){
     ImageRGB32 image(1920, 1080);
     image.fill(BACKGROUND);
@@ -113,8 +110,6 @@ private:
 };
 
 
-//  The folder named by the environment variable `variable`; none if it is
-//  unset or not a folder.
 std::optional<std::string> env_folder(std::string_view variable){
     const auto* value = std::getenv(std::string(variable).c_str());
     if (value == nullptr){
@@ -127,9 +122,7 @@ std::optional<std::string> env_folder(std::string_view variable){
     return folder;
 }
 
-//  01.00b's start check on the console's intro screens, from the folder in
-//  PLZA_INTRO_SCREENS: it accepts Confirm Choices as it opens, and refuses
-//  every other intro screen. A file the folder lacks is skipped.
+//  The 01.00b start check on the intro screens in PLZA_INTRO_SCREENS; missing files are skipped.
 struct CaptureCase{
     std::string name;
     struct Input{
@@ -180,10 +173,7 @@ private:
 };
 
 
-//  "Confirm Choices" on the console in each game language, one frame per
-//  highlighted row: PokemonLZA/AutoStoryConfirmChoices/
-//  <language>_<row>.png, row 0 to CONFIRM_CHOICES_READY_ROW. Each frame
-//  reads as its row.
+//  PokemonLZA/AutoStoryConfirmChoices/<language>_<row>.png reads as its row.
 struct LanguageFramesCase{
     std::string name;
     struct Input{

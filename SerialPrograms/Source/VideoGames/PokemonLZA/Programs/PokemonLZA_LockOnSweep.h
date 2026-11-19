@@ -15,15 +15,13 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-// Sweep the camera to lock on to a wild pokemon: `rounds` rounds of turning the camera with
-// the right stick at `camera_x` (negative turns left) for 1 s, D-pad up, then mashing ZL
-// for 1 s and holding it for 0.5 s. Then press L to put the camera back behind the player.
-// This only presses buttons. Run it with a MoveEffectivenessSymbolWatcher to stop at a lock-on.
+// `rounds` rounds of: right stick at `camera_x` (negative turns left) for 1 s, D-pad up,
+// ZL mashed 1 s and held 0.5 s; then L puts the camera back. Presses only: pair it with
+// a MoveEffectivenessSymbolWatcher.
 void sweep_camera_for_lock_on(ProControllerContext& context, double camera_x, int rounds);
 
-// Run sweep_camera_for_lock_on() until the battle menu's move effectiveness symbols show,
-// which means ZL has locked on to a wild pokemon.
-// Return true if locked on, false if the whole sweep ended without a lock-on.
+// sweep_camera_for_lock_on() until the move effectiveness symbols show (a lock-on);
+// false if the sweep ended without one.
 bool lock_on_by_sweep(ConsoleHandle& console, ProControllerContext& context, double camera_x, int rounds);
 
 

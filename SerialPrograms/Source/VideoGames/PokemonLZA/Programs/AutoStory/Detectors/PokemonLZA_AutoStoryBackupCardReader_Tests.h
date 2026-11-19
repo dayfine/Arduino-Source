@@ -14,9 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the backup card reader's tests: synthetic frames always; the
-//  console's frames from the test images (PokemonLZA/AutoStoryBackupCard/),
-//  skipped when a frame is not there.
+//  Registers the backup card reader's tests; console frames are skipped when missing.
 void add_tests_AutoStoryBackupCardReader(UnitTestDatabase& database);
 
 

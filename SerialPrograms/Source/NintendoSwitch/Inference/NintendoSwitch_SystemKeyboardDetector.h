@@ -2,19 +2,12 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The Switch's own on-screen keyboard, which games open for names (e.g. the
- *  player's name in BDSP and in Legends: Z-A): detect it, read the key under its
- *  cursor, and tell whether its text field is empty. Typing with it is in
- *  Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h.
+ *  The Switch's own on-screen keyboard (game name entry): detect it, read the key
+ *  under its cursor, and tell whether its text field is empty.
  *
- *  Supported: the Latin keyboard (QWERTY; AZERTY shares the key grid but has no
- *  test screenshot yet). Its layout follows the console's system language, not
- *  the game's. Measured on 1920x1080 Switch 1 captures of BDSP's and Legends:
- *  Z-A's name entry, the latter with the game in English, Spanish, German,
- *  Italian, French and Japanese (all QWERTY on an English console). Not
- *  supported: the Korean keyboard, whose candidate strip
- *  moves the keys down (the detector returns false on it), and probably the
- *  Chinese ones (not tested). Switch 2 is not tested.
+ *  Supported: the Latin keyboard (QWERTY; AZERTY untested), whose layout follows
+ *  the system language. Korean is not supported (detector returns false); Chinese
+ *  and Switch 2 are untested.
  *
  */
 
@@ -31,10 +24,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 
 
-//  The key panel, the bar below it, and the OK button: white panel and bar and a
-//  blue OK (grey while the field is empty) in the light theme, dark grey panel
-//  and bar and a flat OK in the dark one (Basic Black). Works wherever the
-//  cursor is.
+//  The key panel, the bar below it and the OK button, in the light or dark theme,
+//  wherever the cursor is.
 class SystemKeyboardDetector : public StaticScreenDetector{
 public:
     SystemKeyboardDetector(Color color = COLOR_CYAN);
@@ -44,9 +35,7 @@ public:
 
 private:
     Color m_color;
-    //  Two strips across the key panel, one over the gap between rows 0 and 1 and
-    //  one over the gap between rows 2 and 3. The cursor's border reaches into at
-    //  most one of them, so the panel is white if either is.
+    //  Strips over the row 0-1 and 2-3 gaps; the cursor's border reaches at most one.
     ImageFloatBox m_key_panel_upper;
     ImageFloatBox m_key_panel_lower;
     ImageFloatBox m_bottom_bar;
@@ -62,12 +51,9 @@ public:
 };
 
 
-//  A key of the keyboard.
-//  Rows 0-3 are the character rows (0: digits .. 3: "zxcv"), row 4 is the bottom
-//  row (globe, Shift, ABC, #+=, the accent pages and Space).
-//  Columns 0-10 are the character columns. Column 11 is the right column, whose
-//  keys are taller: backspace is (0, 11), Return (1, 11) and OK (3, 11).
-//  A row-4 key reports the character column nearest its centre (Space: 8).
+//  Rows 0-3: character rows (0: digits); row 4: the bottom row. Columns 0-10:
+//  characters; column 11: backspace (0, 11), Return (1, 11), OK (3, 11).
+//  A row-4 key reports the nearest character column (Space: 8).
 struct SystemKeyboardKey{
     uint8_t row;
     uint8_t col;
@@ -79,14 +65,12 @@ struct SystemKeyboardKey{
 //  The keyboard remembers the cursor between uses, so read it, don't assume it.
 std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB32& screen);
 
-//  Whether the text field holds any text: the backspace key is dark then and light
-//  grey while the field is empty. Pressing B on an empty field closes the
-//  keyboard, so delete only while this is true.
+//  The backspace key is dark with text, light grey without. B on an empty field
+//  closes the keyboard, so delete only while this is true.
 bool system_keyboard_field_has_text(const ImageViewRGB32& screen);
 
-//  The number of white pixels in the text field. Each typed character adds some
-//  (a "1" adds about 110 at 1920x1080), so comparing two counts tells whether a
-//  key press reached the field.
+//  White pixels in the text field (a "1" adds about 110 at 1080p): compare two
+//  counts to tell whether a key press reached the field.
 size_t system_keyboard_text_pixels(const ImageViewRGB32& screen);
 
 

@@ -92,8 +92,7 @@ const CaptureCase CAPTURE_CASES[] = {
         .input = {.file = "Italian_card_loaded.png"}, .expectation = {.registered = 1},
     },
     {.name = "the title screen", .input = {.file = "Italian_title.png"}, .expectation = {.registered = std::nullopt}},
-    //  The count reads "3" and the counter kanji hiki: English OCR reads "3a", which the number
-    //  reader's misread table turned into 34.
+    //  English OCR reads the "3" and the counter kanji as "3a".
     {.name = "the Japanese backup card, 3 registered and a counter word", .input = {.file = "Japanese_card.png"}, .expectation = {.registered = 3}},
     {.name = "in the game after the load", .input = {.file = "Italian_in_game.png"}, .expectation = {.registered = std::nullopt}},
 };

@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  On 1920x1080: the card at x 946-971,
-//  y 868-901 with its spine at x 974-976; the "?" at x 953-965, y 876-894.
+//  On 1080p: the card at x 946-971, y 868-901, spine x 974-976; "?" at x 953-965, y 876-894.
 ControlsHintDetector::ControlsHintDetector(Color color)
     : m_color(color)
     , m_card(947.0 / 1920, 872.0 / 1080, 24.0 / 1920, 28.0 / 1080)
@@ -35,13 +34,9 @@ void ControlsHintDetector::make_overlays(VideoOverlaySet& items) const{
     }
 }
 
-//  With the hint up the card is 88%+ sky blue, the "?" at most 48%, and
-//  nothing around it is. A sky behind the card comes closest (card 76%),
-//  but then the "?" and the area around it are blue too (100%, 54%).
-//  The card sits higher the more rows the hint has: with three rows ("Move",
-//  "Control Camera", "Reset Camera") it is 16-24 px above the two-row one
-//  the boxes were measured on (English and Italian 01.01, console B
-//  2026-11-15), so it is looked for from 60 px above to 20 px below.
+//  With the hint up the card is 88%+ sky blue, the "?" at most 48%, nothing around it.
+//  A sky behind comes closest (card 76%, but "?" 100%, around 54%). More rows raise the
+//  card (three rows: 16-24 px), so it is searched from 60 px above to 20 px below.
 bool ControlsHintDetector::detect(const ImageViewRGB32& screen){
     for (double dy = -60; dy <= 20; dy += 2){
         if (card_at(screen, dy)){

@@ -19,8 +19,6 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  The D-pad presses that scroll `right_scrolls` balls: right when positive,
-//  left when negative.
 struct BallScrolls{
     DpadPosition direction;
     size_t count;

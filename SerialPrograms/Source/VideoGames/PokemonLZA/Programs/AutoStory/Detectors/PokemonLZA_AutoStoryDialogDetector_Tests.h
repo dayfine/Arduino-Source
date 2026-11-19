@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the tests of StoryDialogDetector: synthetic frames, and the
-//  upstream dialog detectors' frames in CommandLineTests.
+//  Registers StoryDialogDetector's tests.
 void add_tests_AutoStoryDialogDetector(UnitTestDatabase& database);
 
 

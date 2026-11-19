@@ -25,7 +25,6 @@ double dim_cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     });
 }
 
-//  The share of `box`'s pixels whose every channel is above 200.
 double white_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     return share_of(screen, box, [](Color pixel){
         return pixel.red() > 200 && pixel.green() > 200 && pixel.blue() > 200;

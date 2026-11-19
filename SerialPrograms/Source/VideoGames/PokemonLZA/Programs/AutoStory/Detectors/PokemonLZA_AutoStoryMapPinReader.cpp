@@ -30,14 +30,11 @@ constexpr double WINDOW_MAX_X = 540;
 constexpr double WINDOW_MIN_Y = 170;
 constexpr double WINDOW_MAX_Y = 290;
 
-//  The arrow's blue, (0, 160, 255) on console B, as ARGB bounds: red
-//  0-64, green 128-192, blue 225-255. Its white rim and the camera's cone
-//  (about (95, 200, 235)) are out of range.
+//  The arrow's blue (0, 160, 255); its white rim and the cone (95, 200, 235) are out.
 constexpr uint32_t ARROW_MIN = 0xff0080e1;
 constexpr uint32_t ARROW_MAX = 0xff40c0ff;
 
-//  The fewest arrow pixels at 1920 x 1080: the arrow reads 536 at the north
-//  fence and 465 by the zone's badge, which hides a corner of it.
+//  The arrow reads 536 px at 1080p, 465 with a corner under the zone's badge.
 constexpr double ARROW_MIN_AREA = 150;
 
 } // namespace

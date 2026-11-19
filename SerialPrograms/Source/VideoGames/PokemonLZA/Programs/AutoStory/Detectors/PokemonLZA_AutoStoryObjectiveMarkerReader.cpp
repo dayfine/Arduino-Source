@@ -22,8 +22,8 @@ std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const Image
     if (!screen){
         return std::nullopt;
     }
-    //  The hexagon's orange, about (245, 175, 40) on console B: the largest
-    //  hexagon-sized blob outside the minimap (its marker is there too).
+    //  The largest hexagon-sized blob of the hexagon's orange (about 245, 175, 40) outside
+    //  the minimap, which has a marker too.
     const double scale = screen.height() / 1080.0;
     PackedBinaryMatrix matrix = compress_rgb32_to_binary_range(screen, /*min_red=*/220, /*max_red=*/255, /*min_green=*/140, /*max_green=*/215, /*min_blue=*/0, /*max_blue=*/90);
     std::unique_ptr<WaterfillSession> session = make_WaterfillSession(matrix);
@@ -31,9 +31,8 @@ std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const Image
     std::optional<WaterfillObject> best;
     WaterfillObject object;
     while (iter->find_next(object, false)){
-        //  The minimap: a circle of radius 125 around (180, 180) on
-        //  1920x1080. A box around it also covered the real marker when it
-        //  sat at the left edge, high up (console B, 2026-11-10).
+        //  The minimap: a circle of radius 125 around (180, 180) on 1080p; a box around it
+        //  also covered a real marker high on the left edge.
         const double dx = object.center_of_gravity_x() / scale - 180;
         const double dy = object.center_of_gravity_y() / scale - 180;
         const bool in_minimap = dx * dx + dy * dy < 140 * 140;

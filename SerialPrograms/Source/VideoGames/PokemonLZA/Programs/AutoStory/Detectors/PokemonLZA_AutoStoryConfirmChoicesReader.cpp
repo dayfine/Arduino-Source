@@ -21,10 +21,8 @@ double brightness(const ImageStats& stats){
     return stats.average.sum() / 3;
 }
 
-//  The right ends of the "Confirm Choices" rows, right of their text: the
-//  boxes span x 144 to 742 at 1920 x 1080, the two choices from y 578 and
-//  662 (68 high), "Ready!" from y 790 (112 high). Each strip is 100 wide
-//  from x 620.
+//  Rows span x 144-742: the choices from y 578 and 662 (68 high), "Ready!" from y 790
+//  (112 high). Each strip is 100 wide from x 620, right of the text.
 ImageFloatBox confirm_row_strip(size_t row){
     switch (row){
     case 0:
@@ -36,10 +34,8 @@ ImageFloatBox confirm_row_strip(size_t row){
     }
 }
 
-//  A "Confirm Choices" row's strip: the highlighted row white, flat; the
-//  others slate. The highlight's glow pulses over the row next to it: on
-//  the console's frames in ten languages that row's spread went
-//  up to 20.
+//  Highlighted: white, flat; others slate. The highlight's glow raises the next row's
+//  spread up to 20.
 constexpr SlateRows CONFIRM_ROWS_SLATE{
     .min_red = 20, .max_red = 55,
     .min_green = 40, .max_green = 80,
@@ -48,13 +44,9 @@ constexpr SlateRows CONFIRM_ROWS_SLATE{
     .max_spread = 30,
 };
 
-//  The dark blue, dotted background round the rows: between the choices and
-//  "Ready!", and right of all three. The highlight's blue glow reaches 40
-//  pixels out and fills the gap under "Change looks" when that row is
-//  highlighted: (12-13, 56-59, 102-106), spread up to 51, against the plain
-//  background's (10-11, 29-37, 63-75), spread up to 31 (the console, ten
-//  languages). Both are dark and blue with little red; the
-//  intro's other screens are not.
+//  The dotted background between the choices and "Ready!" and right of all three:
+//  (10-13, 29-59, 63-106), spread up to 51 under the highlight's glow. Dark and blue
+//  with little red; the intro's other screens are not.
 bool confirm_background_dark(const ImageViewRGB32& frame){
     const ImageFloatBox boxes[] = {
         ImageFloatBox(620.0 / 1920, 742.0 / 1080, 100.0 / 1920, 40.0 / 1080),
@@ -75,11 +67,8 @@ bool confirm_background_dark(const ImageViewRGB32& frame){
 } // namespace
 
 
-//  Measured on the console, "Confirm Choices" as it opens: the
-//  highlighted row 255 white, flat; the others slate, (35-36, 52-61,
-//  82-95), spread under 10; the background (10, 29-31, 64-66), spread under
-//  25. The intro's language list and look picker fall on the background's
-//  strips, so neither reads as this screen.
+//  The language list and look picker fall on the background strips, so neither reads
+//  as this screen.
 std::optional<size_t> read_confirm_choices_cursor(const ImageViewRGB32& frame){
     if (!frame || frame.width() < 160 || frame.height() < 90){
         return std::nullopt;

@@ -2,9 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The new game's "Confirm Choices" screen, where checkpoint 01.00b starts:
- *  the PROFILE screen after the name keyboard, with its rows "Change hair
- *  color", "Change look" and "Ready!".
+ *  The new game's "Confirm Choices" screen (PROFILE), where checkpoint 01.00b starts.
  *
  */
 
@@ -20,13 +18,10 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  "Confirm Choices" has three rows: "Change hair color" (0, highlighted as
-//  it opens), "Change look" and "Ready!", the last.
+//  Rows: "Change hair color" (0), "Change look" and "Ready!".
 constexpr size_t CONFIRM_CHOICES_READY_ROW = 2;
 
-//  On "Confirm Choices", the highlighted row, 0 to
-//  CONFIRM_CHOICES_READY_ROW: the one white box of the three, the others
-//  slate. Nullopt for any other frame, an empty one included.
+//  The highlighted row on "Confirm Choices"; nullopt for any other frame.
 std::optional<size_t> read_confirm_choices_cursor(const ImageViewRGB32& frame);
 
 

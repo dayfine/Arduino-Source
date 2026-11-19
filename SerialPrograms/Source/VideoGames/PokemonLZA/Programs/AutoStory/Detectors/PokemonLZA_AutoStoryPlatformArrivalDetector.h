@@ -2,9 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The station platform once the new game's opening cutscene ends and the
- *  player has control (PlatformArrivalDetector): the frame's top and sides
- *  against a reference of that first frame, with the player cropped out.
+ *  The station platform once the opening cutscene ends and the player has control.
  *
  */
 
@@ -22,18 +20,15 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  How far a frame's regions are from the platform reference: each region
-//  is averaged into cells, and the distance is the RMSD over its cells of
-//  the summed squared channel differences (0 = the same, at most 441).
+//  Per region, the RMSD over its cells of the summed squared channel differences
+//  (0 = the same, at most 441).
 struct PlatformDistances{
     double top;
     double left;
     double right;
 };
 
-//  The reference as a `width` x `height` frame: each cell painted its
-//  color, the player's area black. A frame the detector sees as the
-//  platform, for tests.
+//  The reference as a frame (the player's area black): the platform, for tests.
 //  code-health: allow test_only_api -- the tests' platform frame needs the reference cells that only this .cpp reads
 ImageRGB32 platform_reference_image(size_t width, size_t height);
 
@@ -50,7 +45,6 @@ public:
     virtual void make_overlays(VideoOverlaySet& items) const override;
     virtual bool detect(const ImageViewRGB32& screen) override;
 
-    //  The distances of the last detect().
     const PlatformDistances& last_distances() const{
         return m_last;
     }

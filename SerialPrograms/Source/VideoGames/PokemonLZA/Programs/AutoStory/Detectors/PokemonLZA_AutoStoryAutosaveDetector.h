@@ -19,10 +19,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The autosave badge at the top right: a white pencil with a cyan glow at
-//  x 1603-1630, y 73-104 on 1920x1080 (the glow dim over a dark scene),
-//  and nothing white or cyan just left of it, above it or below it. Only
-//  the icon is read, so any language matches.
+//  The badge's pencil (white, cyan glow) at x 1603-1630, y 73-104 on 1920x1080, with
+//  nothing white or cyan around it. Only the icon is read, so any language matches.
 class AutosaveDetector : public StaticScreenDetector{
 public:
     explicit AutosaveDetector(Color color = COLOR_YELLOW);

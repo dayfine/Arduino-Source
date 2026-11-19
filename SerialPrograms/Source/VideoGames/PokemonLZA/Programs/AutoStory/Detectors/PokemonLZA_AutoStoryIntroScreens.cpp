@@ -40,18 +40,15 @@ ImageStats box_stats(const ImageViewRGB32& frame, const ImageFloatBox& box){
     return image_stats(extract_box_reference(frame, box));
 }
 
-//  A strip at the left end of entry `index`'s box, left of its text and
-//  right of the cursor's arrow. The boxes are 576 x 84 at 1920 x 1080, the
-//  columns' left edges at x 347 and 996, the rows' tops 108 apart from
-//  y 342; the strip is 65 x 54 from 38 right of the edge and 15 down.
+//  A 65 x 54 strip of entry `index`'s box (576 x 84; columns at x 347 and 996, rows
+//  108 apart from y 342), 38 right of its edge and 15 down: left of the text.
 ImageFloatBox language_box_strip(size_t index){
     const size_t column = index / LANGUAGE_LIST_ROWS;
     const size_t row = index % LANGUAGE_LIST_ROWS;
     return ImageFloatBox(column == 0 ? 0.2005 : 0.5365, 0.331 + 0.1 * (double)row, 0.034, 0.05);
 }
 
-//  The highlighted box is 255 white, flat; the others slate blue, about
-//  (54, 60-76, 82-107), each channel's spread under 3.
+//  Highlighted: flat 255 white; others slate, about (54, 60-76, 82-107), spread under 3.
 constexpr SlateRows LANGUAGE_LIST_ROWS_SLATE{
     .min_red = 35, .max_red = 90,
     .min_green = 45, .max_green = 110,
@@ -66,8 +63,7 @@ bool column_gap_dark(const ImageViewRGB32& frame){
     return gap.count > 0 && brightness(gap) < 70;
 }
 
-//  The look picker's tiles are 240 x 240 at 1920 x 1080, their left edges
-//  at x 373, 685, 997 and 1309, their tops at y 324 and 609.
+//  Tiles are 240 x 240: left edges x 373, 685, 997, 1309; tops y 324, 609.
 double look_tile_left(size_t look){
     return (373.0 + 312.0 * (double)((look - 1) % LOOK_COLUMNS)) / 1920;
 }
@@ -75,18 +71,15 @@ double look_tile_top(size_t look){
     return (look <= LOOK_COLUMNS ? 324.0 : 609.0) / 1080;
 }
 
-//  Corner `corner` of look `look`'s tile (0 top left, 1 top right, 2 bottom
-//  left, 3 bottom right): 12 x 12, 10 in from both edges. The highlighted
-//  look's white card reaches about 12 past the tile on every side, so the
-//  patches stay on it while it is enlarged.
+//  12 x 12, 10 in from both edges (0 TL, 1 TR, 2 BL, 3 BR). The highlighted card
+//  reaches ~12 past the tile, so the patches stay on it while it is enlarged.
 ImageFloatBox look_corner_patch(size_t look, size_t corner){
     const double dx = (corner % 2 == 0 ? 10.0 : 218.0) / 1920;
     const double dy = (corner < 2 ? 10.0 : 218.0) / 1080;
     return ImageFloatBox(look_tile_left(look) + dx, look_tile_top(look) + dy, 12.0 / 1920, 12.0 / 1080);
 }
 
-//  The face in the middle of look `look`'s tile: 60 x 60 from 90 right of
-//  its edge and 100 down.
+//  60 x 60 from 90 right of the tile's edge and 100 down.
 ImageFloatBox look_face_patch(size_t look){
     return ImageFloatBox(look_tile_left(look) + 90.0 / 1920, look_tile_top(look) + 100.0 / 1080, 60.0 / 1920, 60.0 / 1080);
 }
@@ -97,10 +90,8 @@ enum class LookCorner{
     OTHER,
 };
 
-//  Measured on the console's look pickers (67 frames in English, German
-//  and Japanese): the highlighted card's corners (240-248, 245-250,
-//  246-251), spread under 17; the others slate or, past a tile's rounded
-//  corner, the background: (21-34, 29-57, 56-91), spread under 32.
+//  Measured on 67 frames: highlighted card (240-248, 245-250, 246-251), spread under
+//  17; other tiles or background (21-34, 29-57, 56-91), spread under 32.
 LookCorner classify_look_corner(const ImageStats& stats){
     if (stats.count == 0){
         return LookCorner::OTHER;
@@ -116,9 +107,8 @@ LookCorner classify_look_corner(const ImageStats& stats){
     return LookCorner::OTHER;
 }
 
-//  How many of look `look`'s 4 corners are white; nullopt if the tile is
-//  not a look picker tile: a corner neither white nor dark, or no face in
-//  its middle (on the same frames brightness 108-196, spread over 117).
+//  Nullopt if a corner is neither white nor dark, or no face is in the middle
+//  (faces: brightness 108-196, spread over 117).
 std::optional<size_t> look_white_corners(const ImageViewRGB32& frame, size_t look){
     const ImageStats face = box_stats(frame, look_face_patch(look));
     if (face.count == 0 || brightness(face) < 80 || face.stddev.sum() < 60){
@@ -139,8 +129,7 @@ std::optional<size_t> look_white_corners(const ImageViewRGB32& frame, size_t loo
     return white;
 }
 
-//  The look picker as read from `frame`: whether it shows, and the look
-//  highlighted, the one with 4 white corners while the other 7 have none.
+//  The highlighted look has 4 white corners while the other 7 have none.
 struct LookPickerReading{
     bool shows = false;
     std::optional<size_t> highlighted;
@@ -171,8 +160,6 @@ LookPickerReading read_look_picker(const ImageViewRGB32& frame){
     return reading;
 }
 
-//  The number at `text[pos]`, moving `pos` past it; nullopt when no digit
-//  is there.
 std::optional<size_t> read_digits(std::string_view text, size_t& pos){
     const size_t start = pos;
     size_t value = 0;
@@ -213,8 +200,7 @@ std::optional<size_t> parse_counter(std::string_view text){
     return limit;
 }
 
-//  `box` of `frame` as black text on white for OCR: the pixels with every
-//  channel at least `min_channel` are the text.
+//  Pixels with every channel >= `min_channel` are the text.
 std::string read_light_text(const ImageViewRGB32& frame, const ImageFloatBox& box, Language language, uint8_t min_channel){
     const uint32_t mins = 0xff000000 | ((uint32_t)min_channel << 16) | ((uint32_t)min_channel << 8) | min_channel;
     const ImageRGB32 filtered = to_blackwhite_rgb32_range(
@@ -226,9 +212,8 @@ std::string read_light_text(const ImageViewRGB32& frame, const ImageFloatBox& bo
 } // namespace
 
 
-//  The title line runs y 215-266 at 1920 x 1080, from the highlighted
-//  tile's left edge; the tile row's cyan border starts at y 277. The text
-//  is about (10, 212, 224) on (241, 241, 241).
+//  Title line y 215-266 from the highlighted tile's left edge (row border from
+//  y 277); text about (10, 212, 224) on (241, 241, 241).
 bool is_home_tile_plza(const ImageViewRGB32& frame){
     if (!usable(frame)){
         return false;
@@ -265,14 +250,10 @@ bool is_look_picker(const ImageViewRGB32& frame){
     return read_look_picker(frame).shows;
 }
 
-//  The question area (x 1056-1824, y 54-184 at 1920 x 1080) is dark and
-//  flat: 27, spread 3 on all ten languages' keyboards; the intro's other
-//  screens are 46 or brighter there, or busy. The keys' bottom row
-//  (y 929-950) averages 205-211; elsewhere 160 at most. In the console's
-//  dark theme (Basic Black) the question area is navy (5, 28, 48: 27, spread
-//  4) and the keys are dark grey (111 on that row), so the bar below them
-//  (y 1010-1042) tells it instead: flat grey 76, where the intro's other
-//  screens are 56 or darker and HOME's dark theme is 51.
+//  Question area (x 1056-1824, y 54-184): flat 27 (spread 3) in all ten languages;
+//  other intro screens are 46+ or busy. Light theme: key row y 929-950 averages
+//  205-211 (elsewhere <= 160). Dark theme: the area is navy (27, spread 4), and the
+//  bar at y 1010-1042 is flat grey 76 (other screens <= 56, HOME's dark theme 51).
 bool is_name_keyboard(const ImageViewRGB32& frame){
     if (!usable(frame)){
         return false;
@@ -289,10 +270,8 @@ bool is_name_keyboard(const ImageViewRGB32& frame){
     return bar.count > 0 && brightness(bar) >= 65 && brightness(bar) <= 90 && bar.stddev.sum() < 10;
 }
 
-//  The counter is grey (about 128) on the dark question area: with a
-//  12-character field ("0/12") at x 1645-1725, y 325-355; with a 6-character
-//  one ("0/6") at x 1275-1335, y 355-385 (Japanese) or 340-370 (Korean,
-//  Chinese, whose keyboards are taller). The field's underline runs just
+//  Grey counter (about 128): "0/12" at x 1645-1725, y 325-355; "0/6" at x 1275-1335,
+//  y 355-385 (Japanese) or 340-370 (Korean, Chinese). The field's underline sits just
 //  above each, so each layout gets its own box.
 std::optional<size_t> read_name_keyboard_limit(const ImageViewRGB32& frame){
     if (!usable(frame)){
@@ -312,8 +291,7 @@ std::optional<size_t> read_name_keyboard_limit(const ImageViewRGB32& frame){
     return std::nullopt;
 }
 
-//  The values right of the "Language" and "Name" labels: white, from x 345;
-//  the language's row y 400-450, the name's 468-522.
+//  White text from x 345: language row y 400-450, name row y 468-522.
 std::string read_confirm_choices_name(const ImageViewRGB32& frame){
     if (!usable(frame)){
         return "";

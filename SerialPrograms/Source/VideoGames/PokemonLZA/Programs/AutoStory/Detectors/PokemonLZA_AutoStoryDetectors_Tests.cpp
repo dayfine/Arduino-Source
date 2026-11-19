@@ -42,8 +42,7 @@ constexpr size_t WIDTH = 1920;
 constexpr size_t HEIGHT = 1080;
 
 
-//  What each detector reads on a frame: true or false, or none when a test
-//  does not check that detector.
+//  Per detector: the expected read, or none when not checked.
 struct DetectorReads{
     std::optional<bool> platform = {};
     std::optional<bool> autosave = {};
@@ -76,7 +75,6 @@ DetectorReads every_detector(DetectorReads reads){
     return reads;
 }
 
-//  The detectors that fire in `got`, for the log: ", platform, autosave".
 std::string firing(const DetectorReads& got){
     std::string text;
     for (const DetectorField& field : DETECTOR_FIELDS){
@@ -87,8 +85,6 @@ std::string firing(const DetectorReads& got){
     return text;
 }
 
-//  The detectors `want` checks that `got` reads otherwise: " platform
-//  (expected yes)"; empty when all agree.
 std::string mismatches(const DetectorReads& got, const DetectorReads& want){
     std::string text;
     for (const DetectorField& field : DETECTOR_FIELDS){
@@ -100,7 +96,6 @@ std::string mismatches(const DetectorReads& got, const DetectorReads& want){
     return text;
 }
 
-//  Every detector of this module, one of each.
 struct StoryDetectors{
     PlatformArrivalDetector platform;
     AutosaveDetector autosave;
@@ -121,8 +116,6 @@ struct StoryDetectors{
 };
 
 
-//  Synthetic frames.
-
 void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
     for (size_t y = min_y; y < max_y; y++){
         for (size_t x = min_x; x < max_x; x++){
@@ -137,8 +130,7 @@ ImageRGB32 solid_frame(uint32_t color){
     return image;
 }
 
-//  The controls hint's card drawn on black: sky blue with a dark block for
-//  the top of its "?".
+//  The controls hint's sky-blue card on black, with the dark top of its "?".
 ImageRGB32 controls_hint_frame(){
     ImageRGB32 image = solid_frame(0xff000000);
     fill_box(/*min_x=*/946, /*min_y=*/868, /*max_x=*/972, /*max_y=*/902, /*color=*/0xff7dd2fa, image);
@@ -146,16 +138,14 @@ ImageRGB32 controls_hint_frame(){
     return image;
 }
 
-//  The platform reference with the player's area (x 780-1200, y 330-1080),
-//  which is in no region, painted white.
+//  The platform reference with the player's area (x 780-1200, y 330-1080) painted white.
 ImageRGB32 platform_with_player_frame(){
     ImageRGB32 image = platform_reference_image(WIDTH, HEIGHT);
     fill_box(/*min_x=*/780, /*min_y=*/330, /*max_x=*/1200, HEIGHT, /*color=*/0xffffffff, image);
     return image;
 }
 
-//  The advance chevron drawn in `ink` on `background`: a V 32x19 at
-//  x 1400, y 1004, each arm 18% of the width across.
+//  A V 32x19 at x 1400, y 1004, each arm 18% of the width across.
 ImageRGB32 chevron_frame(uint32_t background, uint32_t ink){
     ImageRGB32 image = solid_frame(background);
     for (size_t y = 0; y < 19; y++){
@@ -170,16 +160,14 @@ ImageRGB32 chevron_frame(uint32_t background, uint32_t ink){
     return image;
 }
 
-//  A solid white block the chevron's size on the ad's light blue.
 ImageRGB32 chevron_sized_block_frame(){
     ImageRGB32 image = solid_frame(0xffc1ecf0);
     fill_box(/*min_x=*/1400, /*min_y=*/1004, /*max_x=*/1432, /*max_y=*/1023, /*color=*/0xffffffff, image);
     return image;
 }
 
-//  The autosave badge's pencil, 48 px right of the Chinese badge's (where
-//  the shorter Japanese text puts it), over `background`: a white stroke 4 px
-//  wide in a `glow` band 12 px wide.
+//  The pencil 48 px right of the Chinese badge's (the shorter Japanese text):
+//  a white 4 px stroke in a `glow` band 12 px wide.
 ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(background);
@@ -188,9 +176,8 @@ ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
     return image;
 }
 
-//  autosave_badge_frame() with a bright glow over a dark scene, and bands
-//  of a building banner's mint green (about 96, 203, 147) 4 px high across
-//  the strips above and below the icon, as on 01.01 in English.
+//  A bright glow over a dark scene, with 4 px bands of banner mint green
+//  (about 96, 203, 147) above and below the icon, as on 01.01 in English.
 ImageRGB32 autosave_badge_by_mint_banner_frame(){
     ImageRGB32 image = autosave_badge_frame(/*background=*/0xff101418, /*glow=*/0xff28c8e6);
     fill_box(/*min_x=*/1600, /*min_y=*/60, /*max_x=*/1720, /*max_y=*/64, /*color=*/0xff60cb93, image);
@@ -198,15 +185,13 @@ ImageRGB32 autosave_badge_by_mint_banner_frame(){
     return image;
 }
 
-//  How mission_banner_frame() draws the icon.
 enum class BannerIcon{
     NONE,
     DRAWN,
 };
 
-//  The mission banner drawn on a grey scene: the yellow bar, and with
-//  BannerIcon::DRAWN the icon's white hexagon (as a block) with the orange
-//  stroke, `dx` right of where the detector expects it.
+//  The yellow bar on grey; with DRAWN, the icon's white hexagon and orange
+//  stroke `dx` right of where the detector expects it.
 ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
     ImageRGB32 image = solid_frame(0xff606060);
     fill_box(/*min_x=*/345, /*min_y=*/410, /*max_x=*/1590, /*max_y=*/600, /*color=*/0xfffad228, image);
@@ -217,10 +202,8 @@ ImageRGB32 mission_banner_frame(size_t dx, BannerIcon icon){
     return image;
 }
 
-//  The white title card after the plaza's white fade ("POKEMON LEGENDS:
-//  Z-A" centered in black, x 450-1450, y 520-560): 01.01's end, where a
-//  rerun from 01.01 finds the game before it reloads. Each letter a black
-//  block 30 px wide, 20 px apart.
+//  The white title card at 01.01's end: "POKEMON LEGENDS: Z-A" as black
+//  blocks 30 px wide, 20 px apart, in x 450-1450, y 520-560.
 ImageRGB32 title_card_frame(){
     ImageRGB32 image = solid_frame(0xffffffff);
     for (size_t x = 450; x + 30 <= 1450; x += 50){
@@ -229,8 +212,7 @@ ImageRGB32 title_card_frame(){
     return image;
 }
 
-//  The mission complete card drawn on a grey scene: the yellow bar, and
-//  "COMPLETE" as green strokes (three columns in four) above it.
+//  The yellow bar on grey with "COMPLETE" as green strokes above it.
 ImageRGB32 mission_complete_frame(){
     ImageRGB32 image = solid_frame(0xff606060);
     fill_box(/*min_x=*/345, /*min_y=*/390, /*max_x=*/1590, /*max_y=*/585, /*color=*/0xfffad228, image);
@@ -240,8 +222,7 @@ ImageRGB32 mission_complete_frame(){
     return image;
 }
 
-//  mission_complete_frame() with green right above the word: a green
-//  scene, not the card.
+//  Green right above the word: a green scene, not the card.
 ImageRGB32 mission_complete_green_above_frame(){
     ImageRGB32 image = mission_complete_frame();
     fill_box(/*min_x=*/615, /*min_y=*/245, /*max_x=*/1300, /*max_y=*/270, /*color=*/0xffa5f07d, image);
@@ -306,9 +287,7 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .input = {.frame = platform_with_player_frame},
         .expectation = {.reads = {.platform = true}},
     },
-    //  The autosave badge's glow is bright over a dark sky and dim over a
-    //  lamp-lit wall (about 28, 70, 85: 02.04's check-in,
-    //  frame 0075, which the badge detector missed).
+    //  The badge's glow is dim over a lamp-lit wall (about 28, 70, 85: 02.04, frame 0075).
     {
         .name = "the autosave badge with a bright glow",
         .input = {.frame = []{ return autosave_badge_frame(0xff101418, 0xff28c8e6); }},
@@ -414,10 +393,6 @@ UnitTestResult check_synthetic_frame(const SyntheticFrameCase& test, Logger& log
 }
 
 
-//  Console frames, from folders in CommandLineTests.
-
-//  The number of `digits` digits at `offset` in a frame's file name; none
-//  if they are not all digits.
 std::optional<int> frame_number(std::string_view name, size_t offset, size_t digits){
     if (name.size() < offset + digits){
         return std::nullopt;
@@ -431,9 +406,8 @@ std::optional<int> frame_number(std::string_view name, size_t offset, size_t dig
     return number;
 }
 
-//  What a frame shows, from the readings in its name
-//  ("0001-nothing+platform+controls_hint.jpg"); a reading of a detector
-//  not in this module is ignored.
+//  Reads from the file name ("0001-nothing+platform+controls_hint.jpg");
+//  detectors not in this module are ignored.
 DetectorReads as_named(std::string_view name){
     const auto has = [name](std::string_view reading){
         return name.find(reading) != std::string_view::npos;
@@ -450,10 +424,7 @@ std::optional<DetectorReads> opening(std::string_view){
     return DetectorReads{};
 }
 
-//  The platform (as named) with the controls hint (0001-0006), the walk,
-//  the white fade, the title card, the text-free flyover, the starters, the tourist choice and the start of the
-//  ad: no autosave badge, the advance chevron only on the one box with its
-//  text done (0040).
+//  As named, but no autosave badge and the advance chevron only on 0040.
 std::optional<DetectorReads> arrival_to_ad(std::string_view name){
     const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
@@ -465,9 +436,7 @@ std::optional<DetectorReads> arrival_to_ad(std::string_view name){
     };
 }
 
-//  As arrival_to_ad(), on to the ad's subtitles (0090-0115). The advance
-//  chevron on the boxes with their text done (0044, 0049, 0053, 0078) and
-//  on the subtitles once typed (0093-0115).
+//  As arrival_to_ad(), plus the chevron on 0044, 0049, 0053, 0078 and 0093-0115.
 std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
     const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
@@ -481,9 +450,7 @@ std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
     };
 }
 
-//  As arrival_to_ad_subtitles(), on through the ad and the bag scene. The
-//  platform, the controls hint and the advance chevron as named; the
-//  mission banner on 0181 only, the last frame.
+//  As named; the mission banner on 0181 only.
 std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
@@ -497,10 +464,7 @@ std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     };
 }
 
-//  Every detector as named: the banner on 0181-0189, the three-row
-//  controls hint from 0198. The autosave badge on 0197 too: it is named
-//  "nothing" but shows the badge
-//  (Traditional Chinese, top right), right after the black fade.
+//  As named, plus the autosave badge on 0197 (named "nothing").
 std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
     DetectorReads want = as_named(name);
     if (name.starts_with("0197-")){
@@ -509,9 +473,7 @@ std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
     return want;
 }
 
-//  The end of Main Mission 01 to Main Mission 02 (01.03's end): as named,
-//  and the complete card on 0045 and 0046 (named "nothing"); the next
-//  mission's banner (0133-0139) is not the card.
+//  As named, plus the complete card on 0045-0046 (named "nothing").
 std::optional<DetectorReads> mission_complete_to_next_banner(std::string_view name){
     DetectorReads want = as_named(name);
     want.mission_complete = name.starts_with("0045-") || name.starts_with("0046-");
@@ -525,9 +487,8 @@ struct FrameFolderCase{
     };
     Input input;
     struct Expectation{
-        size_t frames = 0;  //  How many frames of the folder `reads` has an expectation for.
-        //  Each frame's reads, by file name; none for a file not in the set.
-        //  A detector it leaves unset must not fire.
+        size_t frames = 0;
+        //  Reads by file name; none for a file not in the set.
         std::function<std::optional<DetectorReads>(std::string_view name)> reads = {};
     };
     Expectation expectation;

@@ -14,8 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the tests of the AutoStory detectors (Detectors/): synthetic
-//  frames, and console frames from CommandLineTests.
+//  Registers the AutoStory detectors' tests.
 void add_tests_AutoStoryDetectors(UnitTestDatabase& database);
 
 

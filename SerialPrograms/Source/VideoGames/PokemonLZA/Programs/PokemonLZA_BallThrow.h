@@ -28,8 +28,7 @@ struct BallThrowOptions{
     //  ZL alone before ZR joins it, to lock on first. 0 presses both at once.
     Milliseconds lock_on = Milliseconds(0);
 
-    //  ZL + ZR held before the first scroll, or before the throw when there
-    //  is no scroll.
+    //  ZL + ZR held before the first scroll or the throw.
     Milliseconds aim = Milliseconds(500);
 
     //  Balls to scroll to the right while aiming. Negative scrolls left.
@@ -37,7 +36,6 @@ struct BallThrowOptions{
     Milliseconds scroll_hold = Milliseconds(120);
     Milliseconds scroll_release = Milliseconds(80);
 
-    //  Wait after letting go of ZL + ZR.
     Milliseconds after_throw = Milliseconds(0);
 };
 

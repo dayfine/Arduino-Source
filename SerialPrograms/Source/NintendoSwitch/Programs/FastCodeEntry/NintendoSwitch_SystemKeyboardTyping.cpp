@@ -29,17 +29,15 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  Waits after each press. They are longer than the code entry delays because
-//  the next step reads the screen: the cursor animation and the capture latency
-//  must be over first.
+//  Longer than the code entry delays: the next step reads the screen, so the cursor
+//  animation and the capture latency must be over.
 constexpr Milliseconds MOVE_RELEASE = 200ms;
 constexpr Milliseconds WRAP_RELEASE = 400ms;    //  Wrapping around a side animates for longer.
 constexpr Milliseconds SETTLE = 300ms;          //  Before reading the cursor after moving it.
 constexpr Milliseconds SHIFT_RELEASE = 250ms;
 constexpr Milliseconds KEY_RELEASE = 300ms;
 
-//  A press made while the keyboard is still sliding in is ignored, so the
-//  cursor is read again after each try until it is on the target.
+//  Presses while the keyboard slides in are ignored, so the cursor is re-read each try.
 constexpr size_t MAX_MOVE_TRIES = 10;
 
 //  Reads of the text field after a key press, SETTLE apart, before giving up.
@@ -49,8 +47,6 @@ constexpr size_t MAX_FIELD_READS = 3;
 constexpr size_t MIN_CHARACTER_PIXELS = 10;
 
 
-//  The key of each character of `text`. Throws UserSetupError, listing every
-//  character that has no key, before anything is typed.
 std::vector<KeyboardEntryPosition> text_keys(Logger& logger, const std::string& text, KeyboardLayout layout){
     const std::map<char, KeyboardEntryPosition>& positions = KEYBOARD_POSITIONS(layout);
     std::vector<KeyboardEntryPosition> keys;
@@ -73,7 +69,6 @@ std::vector<KeyboardEntryPosition> text_keys(Logger& logger, const std::string& 
     return keys;
 }
 
-//  How long to hold each button: the hold of the code entry timings for Switch 1.
 Milliseconds button_hold(ProControllerContext& context){
     const ConsoleSettings& settings = ConsoleSettings::instance();
     const CodeEntryDelays delays = context->performance_class() == ControllerPerformanceClass::SerialPABotBase_Wired
@@ -82,7 +77,6 @@ Milliseconds button_hold(ProControllerContext& context){
     return delays.hold;
 }
 
-//  The D-pad direction of a move.
 DpadPosition move_direction(CodeEntryAction action){
     switch (action){
     case CodeEntryAction::NORM_MOVE_UP:
@@ -102,8 +96,8 @@ DpadPosition move_direction(CodeEntryAction action){
     }
 }
 
-//  The moves toward `target`. Off the character grid (the right column or the
-//  bottom row), one step back onto it, after which the cursor is read again.
+//  Off the character grid (the right column or bottom row), one step back onto it,
+//  then the cursor is read again.
 std::vector<CodeEntryAction> path_toward(SystemKeyboardKey cursor, KeyboardEntryPosition target){
     if (cursor.col == 11){
         return {CodeEntryAction::NORM_MOVE_LEFT};

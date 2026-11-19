@@ -23,10 +23,8 @@ using namespace Kernels::Waterfill;
 
 namespace{
 
-//  How well `blob` (a Waterfill object kept with its pixels) fills a V
-//  across its bounds: its overlap with the V over their union. Each arm
-//  runs from 10% in at the top to the middle at the bottom, 22% of the
-//  width across.
+//  `blob`'s overlap with a V over their union; each arm runs from 10% in at the top to
+//  the middle at the bottom, 22% of the width across.
 double v_match(const WaterfillObject& blob){
     const double width = double(blob.width());
     const double height = double(blob.height());
@@ -49,9 +47,7 @@ double v_match(const WaterfillObject& blob){
     return either == 0 ? 0 : double(both) / double(either);
 }
 
-//  The pixels of `mask` outside `blob` within `margin` of its bounds, per
-//  pixel of the blob. The blob lies inside the window, so they are the
-//  window's pixels less its own.
+//  Pixels of `mask` within `margin` of `blob`'s bounds but outside it, per blob pixel.
 double stray_share(const PackedBinaryMatrix& mask, const WaterfillObject& blob, size_t margin){
     const size_t min_x = blob.min_x > margin ? blob.min_x - margin : 0;
     const size_t min_y = blob.min_y > margin ? blob.min_y - margin : 0;
@@ -68,8 +64,7 @@ double stray_share(const PackedBinaryMatrix& mask, const WaterfillObject& blob, 
     return double(in_window - blob.area) / double(blob.area);
 }
 
-//  Whether `blob` of `mask` is the chevron, on a screen `scale` times 1080p:
-//  32x19 measured, 30-33 x 18-20 on every frame with it.
+//  32x19 measured on 1080p, 30-33 x 18-20 on every frame with it.
 bool chevron_blob(const PackedBinaryMatrix& mask, const WaterfillObject& blob, double scale){
     const double width = double(blob.width()) / scale;
     const double height = double(blob.height()) / scale;
@@ -83,8 +78,6 @@ bool chevron_blob(const PackedBinaryMatrix& mask, const WaterfillObject& blob, d
     return stray_share(mask, blob, size_t(4 * scale + 0.5)) <= 0.09 && v_match(blob) >= 0.45;
 }
 
-//  Whether a 4-connected blob of the pixels of `area` in the colour range
-//  `mins`-`maxs` is the chevron.
 bool chevron_in(const ImageViewRGB32& area, double scale, uint32_t mins, uint32_t maxs){
     const PackedBinaryMatrix mask = compress_rgb32_to_binary_range(area, mins, maxs);
     PackedBinaryMatrix unfilled = mask.copy();
@@ -111,20 +104,13 @@ void AdvanceArrowDetector::make_overlays(VideoOverlaySet& items) const{
     items.add(m_color, m_area);
 }
 
-//  On 1920x1080 frames saved as JPEG (quality 80) the chevron (on the ad's
-//  subtitles, on white boxes, on the opening's blue box) fills the V
-//  0.51-0.71 with at most 6% stray pixels. The closest other shape in size
-//  and shape, a dark blade of scenery, fills the V 0.48 but has 13% stray
-//  pixels, so stray pixels are allowed up to 9%; shapes with nothing
-//  around them fill the V 0.43 or less and are out of the chevron's size.
-//  JPEG keeps colour at half resolution, so a white chevron over orange
-//  (the player's shorts) loses blue below 235 at its edges: white asks
-//  for 220 in blue (any floor from 190 to 230 reads every frame right).
+//  On JPEG frames the chevron fills the V 0.51-0.71 with at most 6% stray pixels; the
+//  closest other shape (a dark blade) 0.48 with 13%, so strays are allowed up to 9%.
+//  JPEG halves colour resolution, so white over orange loses blue at its edges: white
+//  asks for blue 220 (190-230 all work).
 bool AdvanceArrowDetector::detect(const ImageViewRGB32& screen){
     const double scale = double(screen.height()) / 1080;
     const ImageViewRGB32 area = extract_box_reference(screen, m_area);
-    //  White: red and green 235 or more, blue 220 or more; dark: every
-    //  channel 110 or under.
     return chevron_in(area, scale, /*mins=*/0x00ebebdc, /*maxs=*/0xffffffff) || chevron_in(area, scale, /*mins=*/0x00000000, /*maxs=*/0xff6e6e6e);
 }
 

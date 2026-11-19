@@ -16,8 +16,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The main mission's objective marker in the overworld: an orange hexagon
-//  "!" with the distance above it in white digits.
+//  The objective marker: an orange hexagon "!" with the distance above in white digits.
 struct ObjectiveMarker{
     //  The hexagon's middle, 0 (left edge) to 1 (right edge).
     double x = 0;

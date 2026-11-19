@@ -2,9 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The player's Pokemon's panel at the bottom left in a battle: its level
- *  badge ("L. 7") and HP bar. It shows the whole battle, locked on or not;
- *  the move list and its hints show only while the player is locked on.
+ *  The player's Pokemon's panel at the bottom left in a battle, shown the whole
+ *  battle, locked on or not.
  *
  */
 
@@ -20,12 +19,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The panel's level badge, sky blue (about 140, 210, 235) at x 240-320,
-//  y 799-818 on 1920x1080, over half its pixels; and its HP bar at x
-//  236-440, y 882-902 (left of the "4/24"), over 80% its HP color or its
-//  grey trough (about 95, 95, 95). Taunie's battle not locked on (03.02b,
-//  console B 2026-11-16): badge 0.78, bar 0.95; overworld frames: badge
-//  0.18 at most, bar 0.20 at most.
+//  The level badge sky blue (about 140, 210, 235) at x 240-320, y 799-818 on 1080p over
+//  half its pixels, and the HP bar at x 236-440, y 882-902 over 80% fill or grey trough.
+//  In battle: badge 0.78, bar 0.95; overworld: at most 0.18 and 0.20.
 class BattlePanelDetector : public StaticScreenDetector{
 public:
     explicit BattlePanelDetector(Color color = COLOR_GREEN);

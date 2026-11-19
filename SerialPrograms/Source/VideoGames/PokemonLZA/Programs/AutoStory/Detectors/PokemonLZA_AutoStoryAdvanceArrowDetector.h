@@ -19,13 +19,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The "press A to go on" chevron (a V about 32x19 on 1920x1080) at the
-//  right end of a dialogue box and of boxless subtitles: dark on a white
-//  box, white on a blue box and on the ad's subtitles. Found by shape in
-//  x 1370-1480, y 930-1050: a blob of white (red and green 235+, blue 220+) or dark
-//  (every channel 110 or under) pixels the size of the chevron, filling a
-//  V, with no other pixel of its colour around it. Text is not read, so
-//  any language matches.
+//  The chevron (a V about 32x19 on 1080p) at the right end of a dialogue box or
+//  subtitles, dark on white or white on blue. Found by shape in x 1370-1480,
+//  y 930-1050: a white or dark blob filling a V with nothing of its colour around it.
 class AdvanceArrowDetector : public StaticScreenDetector{
 public:
     explicit AdvanceArrowDetector(Color color = COLOR_GREEN);

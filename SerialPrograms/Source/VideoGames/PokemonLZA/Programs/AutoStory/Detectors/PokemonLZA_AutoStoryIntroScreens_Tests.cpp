@@ -28,7 +28,6 @@ std::string describe(std::optional<size_t> value){
     return value ? std::format("{}", *value) : std::string("none");
 }
 
-//  One console frame and what each reader makes of it.
 struct FrameCase{
     std::string name;
     struct Input{
@@ -72,7 +71,6 @@ const FrameCase FRAME_CASES[] = {
     {.name = "keyboard in Simplified Chinese", .input = {.file = "AutoStoryNameKeyboard/zh-Hans_6.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
     {.name = "keyboard in Traditional Chinese", .input = {.file = "AutoStoryNameKeyboard/zh-Hant_6.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
     {.name = "Confirm Choices is none of them", .input = {.file = "AutoStoryConfirmChoices/German_0.png"}, .expectation = {}},
-    //  The console's frames of 2026-11-15, one launch per language.
     {.name = "2026-11-15: the language list opens on English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_langlist.png"}, .expectation = {.language_entry = 0}},
     {.name = "2026-11-15: the language list on Espanol (Espana)", .input = {.file = "AutoStoryNewGame/2026-11-15/esES_langsel.png"}, .expectation = {.language_entry = 1}},
     {.name = "2026-11-15: the language list on Espanol (Latinoamerica)", .input = {.file = "AutoStoryNewGame/2026-11-15/esLA_langsel.png"}, .expectation = {.language_entry = 2}},
@@ -108,7 +106,6 @@ const FrameCase FRAME_CASES[] = {
     //  HOME's tiles in last-played order: FireRed first, Z-A second.
     {.name = "2026-11-15: HOME on FireRed's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_firered.png"}, .expectation = {}},
     {.name = "2026-11-15: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_plza.png"}, .expectation = {.home_plza = true}},
-    //  The console in its dark theme (Basic Black), 2026-11-18.
     {.name = "2026-11-18 dark theme: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-18/en_kb_dark.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
     {.name = "2026-11-18 dark theme: HOME on Pokemon HOME's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile0.png"}, .expectation = {}},
     {.name = "2026-11-18 dark theme: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile1.png"}, .expectation = {.home_plza = true}},
@@ -161,8 +158,7 @@ private:
 };
 
 
-//  Confirm Choices' name and language, read with OCR. The console's frames
-//  were taken with the name "q".
+//  Confirm Choices' name and language (OCR); the frames were taken with the name "q".
 class Test_ConfirmChoicesProfile : public ImageUnitTest{
 public:
     Test_ConfirmChoicesProfile()
@@ -185,9 +181,7 @@ public:
 };
 
 
-//  The name keyboard as the Switch's keyboard typer (type_on_system_keyboard())
-//  reads it when it opens: the cursor on "1". Every language the program
-//  types in (Korean is not one).
+//  The keyboard as type_on_system_keyboard() reads it on opening: the cursor on "1".
 struct SystemKeyboardCase{
     std::string name;
     struct Input{
@@ -234,9 +228,8 @@ public:
 };
 
 
-//  Confirm Choices after the name "1" was typed and submitted (the console's
-//  frames of 2026-11-15): its highlight, the name, and for the languages
-//  English OCR reads, a part of the language's name.
+//  Confirm Choices after the name "1" was submitted: its highlight, the name, and part
+//  of the language's name where English OCR reads it.
 struct ConfirmCase{
     std::string name;
     struct Input{

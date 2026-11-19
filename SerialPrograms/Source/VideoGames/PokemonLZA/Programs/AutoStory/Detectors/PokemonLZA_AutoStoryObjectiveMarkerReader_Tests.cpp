@@ -30,8 +30,7 @@ constexpr uint32_t BACKGROUND = 0xff304030;
 //  The hexagon's orange on console B.
 constexpr uint32_t ORANGE = 0xfff5af28;
 
-//  A filled rectangle of the marker's orange, in pixels of a 1920x1080
-//  frame.
+//  A filled rectangle of the marker's orange, in 1080p pixels.
 struct Patch{
     size_t x;
     size_t y;

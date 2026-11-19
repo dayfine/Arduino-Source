@@ -21,8 +21,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  A menu's plain rows: each channel's average within its bounds, blue over
-//  red by `min_blue_over_red`, the channels' spreads summing to
+//  Plain rows: blue over red by `min_blue_over_red`, channel spreads summing to
 //  `max_spread` at most.
 struct SlateRows{
     double min_red;
@@ -35,9 +34,8 @@ struct SlateRows{
     double max_spread;
 };
 
-//  The index of the one strip of `strips` on `frame` that is white and flat
-//  (every channel 200 or more, spreads summing to 30 at most), the others
-//  `slate`. Nullopt when none or two are white, or a strip is neither.
+//  The one white, flat strip (channels 200+, spreads summing <= 30) among `slate` ones;
+//  nullopt when none or two are white, or a strip is neither.
 std::optional<size_t> highlighted_row(const ImageViewRGB32& frame, std::span<const ImageFloatBox> strips, const SlateRows& slate);
 
 

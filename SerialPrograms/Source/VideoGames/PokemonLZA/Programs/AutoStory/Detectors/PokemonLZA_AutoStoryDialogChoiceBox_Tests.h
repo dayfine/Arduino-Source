@@ -14,9 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers the tests of the choice rows reader on synthetic menus and on
-//  console frames from CommandLineTests, and of the screen events' choice
-//  box on a console frame.
+//  Registers the choice rows reader and choice box tests.
 void add_tests_AutoStoryDialogChoiceBox(UnitTestDatabase& database);
 
 

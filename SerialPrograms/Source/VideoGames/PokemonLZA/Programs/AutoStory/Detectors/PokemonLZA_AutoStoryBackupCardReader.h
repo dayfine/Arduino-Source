@@ -2,10 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The BACKUP card the title screen's Up + B + X opens: a white card with
- *  the backup's last save time, play time and "Registered in the Pokedex"
- *  count, over the button that loads it (console B, 2026-11-16, Italian:
- *  "Registrati nel Pokedex" 1, "Inizia usando i dati di backup").
+ *  The BACKUP card the title screen's Up + B + X opens: the backup's save time, play
+ *  time and "Registered in the Pokedex" count, over the button that loads it.
  *
  */
 
@@ -22,11 +20,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  On the backup card, its "Registered in the Pokedex" count: the digits
-//  that start the line under its label, so a counter word after them
-//  (Japanese "3" and the counter kanji hiki) is not read as a digit. The card is found by its
-//  white strips away from any text, so in every language. None for a
-//  frame with no backup card, an empty one included, or no number there.
+//  The backup card's "Registered in the Pokedex" count (leading digits only, so a
+//  Japanese counter word is not read). The card is found by white strips, so in every
+//  language. None for no card or no number.
 std::optional<size_t> read_backup_card_registered(Logger& logger, const ImageViewRGB32& frame);
 
 
