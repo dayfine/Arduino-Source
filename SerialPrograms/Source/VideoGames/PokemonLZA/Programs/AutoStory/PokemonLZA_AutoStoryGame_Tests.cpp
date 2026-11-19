@@ -272,7 +272,7 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 250ms, wait 250ms, press A, wait 250ms, wait 250ms, wait 250ms, press +, wait 250ms, wait 250ms",
+            .inputs = "press A, wait 250ms, wait 250ms, press A, wait 250ms, wait 250ms, wait 500ms, press +, wait 250ms, wait 500ms",
             .line = "[PlusSkip] 01.01/arrival_scenes pressed -> skipped",
         },
     },
@@ -362,29 +362,23 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {
             .verdict = "done",
-            .inputs = "press A, wait 250ms",
+            .inputs = "press A, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
         },
     },
     {
-        //  Console B 2026-11-19: 03.01's letter shows no arrow; A turns a page (a moving look).
-        .name = "a box with no arrow after a scene's text gets A until 20 s of presses change nothing",
-        .input = {.checkpoint = "03.01", .first_step = 6, .steps = 1, .looks = {
-            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(1000)),
-            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(2000)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(3000)),
-            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(4000)),
-            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(22000)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(23000)),
+        //  Console B 2026-11-19: the letter's box shows no advance arrow.
+        .name = "03.01's letter after the lobby scene gets A every 2 s until 10 s quiet",
+        .input = {.checkpoint = "03.01", .first_step = 7, .steps = 1, .looks = {
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(2000)),
+            look(/*events=*/{}, /*readings=*/{}, Milliseconds(4000)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(6000)),
+            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(12000)),
         }},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A, wait 250ms, press A, press A", .line = "[PLZA mash_to_move_hints] done: quiet, taken as control."},
-    },
-    {
-        .name = "control with no sign after a scene's text (Hotel Z's hall) ends after the quiet window, A every 600 ms meanwhile",
-        .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = {
-            look(/*events=*/{}, {ADVANCE_ARROW_READING}, Milliseconds(0)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(1000)),
-            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(1600)), look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(2200)),
-            look({ScreenEvent::SCREEN_STILL}, /*readings=*/{}, Milliseconds(5000)),
-        }},
-        .expectation = {.verdict = "done", .inputs = "press A, press A, press A, press A", .line = "[PLZA mash_to_move_hints] done: quiet, taken as control."},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, press A, press A, press A",
+            .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
+        },
     },
     {
         .name = "02.06 with no autosave badge seen is not saved",

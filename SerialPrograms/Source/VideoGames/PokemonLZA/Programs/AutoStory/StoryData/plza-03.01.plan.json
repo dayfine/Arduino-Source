@@ -52,7 +52,19 @@
       },
       {
         "id": "lobby_scene",
-        "why": "the ride, Z-A Royale, the outfit, AZ, Lida; autosave. 20 s quiet means control; Alton's choice is the top row",
+        "why": "the old lobby_scene (the ride, Z-A Royale, the outfit, AZ, Lida; autosave) up to its letter (\"Estimada Kosmos:\" on ES-LA) whose box shows no advance arrow: the scene goes quiet there (console B 2026-11-19), so 20 s quiet ends this part. When the arrow does read the letter, this part runs to control instead and the next two end on quiet",
+        "action": "mash_to_move_hints",
+        "args": {"quiet_ms": 20000, "quiet_is_control": true, "advance_with_a": true}
+      },
+      {
+        "id": "lobby_letter",
+        "why": "A every 2 s through the letter's pages; 10 s with no text ends it",
+        "action": "mash_to_move_hints",
+        "args": {"blind_a_after_ms": 0, "quiet_ms": 10000, "quiet_is_control": true, "advance_with_a": true}
+      },
+      {
+        "id": "lobby_scene_rest",
+        "why": "the rest of the scene after the letter (two cutscenes on console B 2026-11-19, which Plus skips). 20 s quiet means control; Alton's choice is the top row",
         "action": "mash_to_move_hints",
         "args": {"quiet_ms": 20000, "quiet_is_control": true, "advance_with_a": true}
       }

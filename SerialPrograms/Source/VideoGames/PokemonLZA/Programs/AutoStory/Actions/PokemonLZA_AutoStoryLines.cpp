@@ -44,10 +44,7 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
         if (look.when - *start >= limit){
             break;
         }
-        //  The next look right after a press: the press's 400 ms is the beat.
-        if (!card && !text){
-            backend.wait(LINES_POLL);
-        }
+        backend.wait(LINES_POLL);
     }
     passed.timed_out = true;
     return passed;
