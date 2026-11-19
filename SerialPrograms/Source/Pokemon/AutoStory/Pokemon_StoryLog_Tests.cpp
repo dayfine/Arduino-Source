@@ -30,9 +30,9 @@ struct StoryLogTestCase{
         std::string line;
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_StoryLog : public UnitTest{

@@ -46,8 +46,8 @@ struct ArgsCase{
         StoryActionArgs filled = {};
     };
 
-    Input input;
-    Expectation expectation;
+    Input input = {};
+    Expectation expectation = {};
 };
 
 const ArgsCase CASES[] = {

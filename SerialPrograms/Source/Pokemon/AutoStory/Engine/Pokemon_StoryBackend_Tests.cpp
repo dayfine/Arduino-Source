@@ -25,15 +25,15 @@ using namespace std::chrono_literals;
 
 //  A look at one piece: what it gives as text.
 struct BackendCase{
-    std::string name;
+    std::string name = {};
     struct Input{
         std::function<std::string(CancellableScope& scope)> read;
     };
-    Input input;
+    Input input = {};
     struct Expectation{
         std::string text;
     };
-    Expectation expectation;
+    Expectation expectation = {};
 };
 
 std::string observation_text(ScreenEvents events){

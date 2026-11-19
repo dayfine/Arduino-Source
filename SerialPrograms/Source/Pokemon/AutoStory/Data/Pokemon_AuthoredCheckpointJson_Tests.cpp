@@ -30,7 +30,7 @@ enum class Failure{
 };
 
 struct AuthoredCase{
-    std::string name;
+    std::string name = {};
     struct Input{
         std::string json;
         std::string game = "frlg";
@@ -43,8 +43,8 @@ struct AuthoredCase{
         Failure failure = Failure::NONE;
     };
 
-    Input input;
-    Expectation expectation;
+    Input input = {};
+    Expectation expectation = {};
 };
 
 const AuthoredCase CASES[] = {

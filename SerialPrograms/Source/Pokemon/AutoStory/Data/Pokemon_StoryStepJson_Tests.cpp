@@ -57,8 +57,8 @@ struct WireCase{
         bool rejected = false;
     };
 
-    Input input;
-    Expectation expectation;
+    Input input = {};
+    Expectation expectation = {};
 };
 
 std::string expect(bool ok, std::string_view what){

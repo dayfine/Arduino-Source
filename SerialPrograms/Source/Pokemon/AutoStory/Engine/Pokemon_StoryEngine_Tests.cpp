@@ -132,7 +132,7 @@ std::string verdict(const std::optional<CheckpointFailure>& failure, const std::
 
 
 struct RangeCase{
-    std::string name;
+    std::string name = {};
     struct Input{
         std::vector<StoryCheckpoint> checkpoints = {};
         size_t attempts = 1;
@@ -141,7 +141,7 @@ struct RangeCase{
         std::optional<std::string> reload_start = std::nullopt;
         std::vector<ScreenObservation> looks = {};
     };
-    Input input;
+    Input input = {};
     struct Expectation{
         //  verdict() of the run.
         std::string verdict = {};
@@ -150,7 +150,7 @@ struct RangeCase{
         //  A log line the run wrote, if any is checked.
         std::string line = {};
     };
-    Expectation expectation;
+    Expectation expectation = {};
 };
 
 const RangeCase RANGE_CASES[] = {
