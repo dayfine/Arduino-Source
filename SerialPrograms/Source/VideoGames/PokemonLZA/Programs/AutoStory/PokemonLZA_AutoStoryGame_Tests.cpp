@@ -145,6 +145,15 @@ std::vector<ScreenObservation> walk_into_white_fade(){
     return {PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE};
 }
 
+//  `count` party bar looks `every` apart from the start.
+std::vector<ScreenObservation> party_bars(Milliseconds every, size_t count){
+    std::vector<ScreenObservation> looks;
+    for (size_t index = 0; index < count; index++){
+        looks.push_back(party_bar(every * (int64_t)index));
+    }
+    return looks;
+}
+
 std::vector<ScreenObservation> concat(std::vector<ScreenObservation> first, const std::vector<ScreenObservation>& then){
     first.insert(first.end(), then.begin(), then.end());
     return first;
@@ -419,6 +428,15 @@ const RunCase RUN_CASES[] = {
         .name = "03.03's walk off the roof fails when no scene takes control",
         .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at off_the_roof: walk_no_scene"},
+    },
+    {
+        //  2026-11-19 03.03, ES-LA: 250 ms run slices took 111 ms; the leg ended 3.6 s in.
+        .name = "03.03's walk off the roof holds its last leg 8000 ms of game time, though a run slice takes less",
+        .input = {.checkpoint = "03.03", .first_step = 6, .steps = 1, .looks = concat(
+            party_bars(Milliseconds(111), 60),
+            {look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(6700)), look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(6800))}
+        )},
+        .expectation = {.verdict = "done"},
     },
     //  Arrow reads from a passing run: 272 out of the gate, 254 after one turn.
     {
