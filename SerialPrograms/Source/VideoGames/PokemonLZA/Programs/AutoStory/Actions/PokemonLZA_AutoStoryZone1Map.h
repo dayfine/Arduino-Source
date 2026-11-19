@@ -55,14 +55,15 @@ inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x =
 //  (386, 252): targets show on the right from here, none from (370, 256).
 inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 252}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
 
-//  The far gate's "!" on the full map, the point 03.08b aims its run at
-//  from wherever the catches left the player: a fixed 265 from (385, 253)
-//  ran into the gate's left pillar (console B, 2026-11-18).
-inline constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 313, .y = 253}, .provisional = true};
-//  On the far gate's line, ~40 pixels before it: an exact start (no stop
+//  The far gate where its "A Leave" prompt shows: the pin read between
+//  its pillars (console B, 2026-11-18). The "!" at (313, 253) is past it,
+//  outside the zone; runs aimed there from north of the road hit the
+//  right pillar.
+inline constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 361, .y = 253}, .provisional = false};
+//  On the far gate's line, ~15 pixels before it: an exact start (no stop
 //  area) for the straight run to it. A run from (385, 253) or (378, 245),
 //  the 60 spot's loose ends, hit a pillar (console B, 2026-11-18).
-inline constexpr MapWaypoint ZONE1_GATE_APPROACH{.name = "the far gate's approach", .pin = {.x = 353, .y = 253}, .provisional = true};
+inline constexpr MapWaypoint ZONE1_GATE_APPROACH{.name = "the far gate's approach", .pin = {.x = 376, .y = 253}, .provisional = true};
 //  From the rocks to the first catch spot: straight, past the rock on its
 //  right (a road entry leg before it took the left side).
 inline constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_SPOT_100};
