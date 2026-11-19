@@ -177,7 +177,7 @@ const OptionCase OPTION_CASES[] = {
 
 struct ProgramInput{
     std::string id;
-    std::optional<std::vector<PrecheckSummary>> prechecks;
+    std::optional<std::vector<PrecheckSummary>> prechecks = std::nullopt;
 };
 struct ProgramExpectation{
     size_t options;             //  Entries in "options": the static note is left out.
