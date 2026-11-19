@@ -49,9 +49,6 @@ struct GateWalk{
     //  The minimap heading to face first (face_heading(), by the arrow
     //  reader), along the street to the gate; none: no turn first.
     std::optional<double> heading = std::nullopt;
-    //  A full-map point to face first instead, by the map pin read there
-    //  (bearing()); `heading` when the pin is not read.
-    std::optional<MapPoint> aim = std::nullopt;
     //  Walking this long with no A prompt fails the walk.
     Milliseconds timeout = Milliseconds(15000);
 };
