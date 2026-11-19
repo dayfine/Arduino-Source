@@ -38,7 +38,7 @@ GameSettings::GameSettings()
         "Refer to the documentation for specific setups.",
         {
             {Device::switch_1_2,            "switch_1_2",           "Nintendo Switch 1 and 2"},
-            {Device::emulator,              "emulator",             "Emulator (mGBA)"},
+            {Device::emulator,              "emulator",             "GBA Emulator"},
             //{Device::dev_test,              "dev_test",             "dev test rg35xx"},
             //{Device::custom,                "custom",               "Custom"},
         },
