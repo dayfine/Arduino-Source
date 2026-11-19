@@ -364,7 +364,6 @@ const RunCase RUN_CASES[] = {
             .verdict = "done",
             .inputs = "press A, wait 500ms",
             .line = "[PLZA mash_to_move_hints] done: quiet, taken as control.",
-
         },
     },
     {
@@ -448,7 +447,6 @@ const RunCase RUN_CASES[] = {
             .inputs = "wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, stick 0deg 6500ms run, "
                 "press L, stick -90deg 150ms walk, release 100ms, press L, stick 0deg 250ms run, stick 0deg 250ms run",
             .line = "[PLZA] walk: a scene (text waiting for A) took control after 500 ms of the last leg: the walk stops.",
-
         },
     },
 };
@@ -549,7 +547,6 @@ const LoadCase LOAD_CASES[] = {
             .line = "[Checkpoint] 01.02: START UNCHECKED: nothing reads this row's own start",
         },
     },
-
     {
         .name = "01.01's start is left to its first step's platform check",
         .input = {.checkpoint = "01.01", .looks = {CUTSCENE}},
@@ -633,7 +630,6 @@ const ChainCase CHAIN_CASES[] = {
         },
         .expectation = {
             .verdict = "done", .reloads = 0,
-
             .line = "[Save] 01.01: not saved (the game autosaved in wait_for_platform, before wait_for_platform_again: a reload would skip wait_for_platform_again)",
         },
     },

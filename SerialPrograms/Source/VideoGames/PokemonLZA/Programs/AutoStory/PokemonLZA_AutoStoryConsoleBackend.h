@@ -25,9 +25,9 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAdvanceArrowDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionCompleteDetector.h"
-
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryHeading.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
@@ -85,12 +85,13 @@ private:
     StoryEnv& m_env;
     HomeMenuDetector m_home;
     PlzaScreenObserver m_observer;
-
     AutosaveDetector m_autosave;
     ControlsHintDetector m_controls_hint;
     AdvanceArrowDetector m_advance_arrow;
     MainMissionBannerDetector m_mission_banner;
     MissionCompleteDetector m_mission_complete;
+    //  The white box while its text types: SHADOW_DIALOG_BOX_READING, for the log.
+    StoryDialogDetector m_shadow_dialog_box;
     MainMenuDetector m_main_menu;
     MapDetector m_map;
     SelectionArrowDetector m_save_button;

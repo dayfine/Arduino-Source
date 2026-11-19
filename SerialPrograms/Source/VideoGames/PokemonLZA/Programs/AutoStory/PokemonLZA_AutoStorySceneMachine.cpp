@@ -28,6 +28,7 @@
 #include "PokemonLZA_AutoStoryMenuReadings.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
+#include "PokemonLZA_AutoStorySignalProbe.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -965,6 +966,10 @@ public:
     const SceneTimeline& timeline() const{
         return m_timeline;
     }
+    //  Since the last press.
+    const SignalProbe& signals() const{
+        return m_signals;
+    }
     //  A Plus press still waiting for its outcome did nothing.
     void finish();
     void act(SceneScreen screen, const ScreenObservation& look);
@@ -973,6 +978,8 @@ private:
     void perform(SceneAction action, const ScreenObservation& look);
     void wait(SceneAction action);
     void log_fields_fired(SceneScreen screen, const ScreenObservation& look);
+    //  "[Signals] <step> text_A|text_B by=arrow ...", not for a choice.
+    void log_text_press(Button button, const ScreenObservation& look);
     void log_skip(std::string_view outcome);
     //  Before all but the first, a quarter turn and L put the camera behind
     //  the player (the backend has no camera stick).
@@ -985,6 +992,7 @@ private:
     std::string m_step;
     std::set<std::string_view> m_fields_logged;
     std::optional<WallClock> m_skip_pressed;
+    SignalProbe m_signals;
 };
 
 SceneRunner::SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start, std::string_view step)
@@ -1011,12 +1019,16 @@ void SceneRunner::act(SceneScreen screen, const ScreenObservation& look){
         }
     }
     m_timeline.record(look);
+    m_signals.look(look);
     std::string readings = describe_look(look);
     if (screen == SceneScreen::FADE_BLACK){
         readings = std::format("{}, {}", readings, m_timeline.black_fade_count());
     }
     m_log.look(screen, readings, look.when, action_presses(action));
     perform(action, look);
+    if (action_presses(action)){
+        m_signals.restart();
+    }
 }
 
 void SceneRunner::perform(SceneAction action, const ScreenObservation& look){
@@ -1029,9 +1041,12 @@ void SceneRunner::perform(SceneAction action, const ScreenObservation& look){
     case SceneAction::PRESS_B:
         m_backend.press(BUTTON_B, PRESS_HOLD, PRESS_RELEASE);
         return;
-    case SceneAction::PRESS_TEXT:
-        m_backend.press(text_button(m_log, m_config, look), PRESS_HOLD, PRESS_RELEASE);
+    case SceneAction::PRESS_TEXT:{
+        const Button button = text_button(m_log, m_config, look);
+        log_text_press(button, look);
+        m_backend.press(button, PRESS_HOLD, PRESS_RELEASE);
         return;
+    }
     case SceneAction::PRESS_BLIND:
         m_backend.press(m_config.blind_button, PRESS_HOLD, PRESS_RELEASE);
         return;
@@ -1075,6 +1090,13 @@ void SceneRunner::log_fields_fired(SceneScreen screen, const ScreenObservation& 
         if (m_fields_logged.insert(field).second){
             m_log.detail(std::format("[SceneQuirk] {} {} fired", m_step, field));
         }
+    }
+}
+
+void SceneRunner::log_text_press(Button button, const ScreenObservation& look){
+    if (!look.events.has(ScreenEvent::CHOICE_BOX)){
+        //  Not through m_log: its detail() would cut the look counts short.
+        m_backend.log_detail(m_signals.line(m_step, button == BUTTON_B ? "text_B" : "text_A", /*by=*/"arrow"));
     }
 }
 
@@ -1145,6 +1167,24 @@ void wait_banner_gone(PlzaBackend& backend, std::string_view label){
     backend.log(std::format("[PLZA {}] the mission banner still shows after {} A presses; going on.", label, BANNER_PRESSES));
 }
 
+//  The signal that ended the machine on `terminal`, for its "[Signals]" line.
+std::string_view end_signal(SceneScreen terminal){
+    switch (terminal){
+    case SceneScreen::CAN_MOVE:
+        return "party_bar";
+    case SceneScreen::CONTROLS_HINT:
+        return "hint";
+    case SceneScreen::TALK_PROMPT:
+        return "prompt";
+    case SceneScreen::MISSION_BANNER:
+        return "banner";
+    case SceneScreen::QUIET_END:
+        return "quiet";
+    default:
+        return scene_screen_name(terminal);
+    }
+}
+
 //  The failure a terminal screen stands for, if any.
 std::optional<Pokemon::StoryFailure> terminal_failure(
     std::string_view label, const SceneMachineConfig& config, SceneScreen terminal, std::string_view expected
@@ -1212,7 +1252,6 @@ bool party_bar_free(const ScreenObservation& look){
     return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !busy(look);
 }
 
-
 bool scene_under_way(const ScreenObservation& look){
     if (scene_shows(look) || look.readings.contains(TUTORIAL_CARD_READING)){
         return true;
@@ -1240,6 +1279,10 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
     };
     const ScreenMachineResult result = run_screen_machine(observe, backend.scope(), scene_states(look, runner), timeout, /*log=*/nullptr);
     runner.finish();
+    if (const ScreenMachineTerminal* terminal = std::get_if<ScreenMachineTerminal>(&result)){
+        const SceneScreen screen = scene_screen_names().get_enum(terminal->state_name);
+        backend.log_detail(runner.signals().line(step, "scene_end", end_signal(screen)));
+    }
     if (config.end_after_black_fades){
         backend.log(std::format(
             "[PLZA {}] the mission banner {}.", label, runner.timeline().banner_seen() ? "showed" : "did not show (the detector may have missed it)"

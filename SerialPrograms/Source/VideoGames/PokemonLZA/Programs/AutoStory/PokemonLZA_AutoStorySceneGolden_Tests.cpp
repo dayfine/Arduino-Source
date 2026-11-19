@@ -4,7 +4,6 @@
  *
  */
 
-
 /*  Golden sequences: a scene step's screens as a console run logged them,
  *  played back through the built-in plan's step by time (the clock moves
  *  with its presses and waits), with the key it must press on each screen.
@@ -101,7 +100,6 @@ struct GoldenScreen{
 };
 
 //  One per line: "5.9s: party bar, advance arrow".
-
 std::vector<GoldenScreen> golden_screens(std::string_view text){
     std::vector<GoldenScreen> screens;
     size_t from = 0;

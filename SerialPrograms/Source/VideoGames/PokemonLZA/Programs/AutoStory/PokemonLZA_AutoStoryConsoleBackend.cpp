@@ -33,6 +33,7 @@ using namespace std::chrono_literals;
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
     : m_env(env)
     , m_home(env.env.console, COLOR_RED)
+    , m_shadow_dialog_box({.white = WhiteDialogPart::BOX_ONLY})
     , m_save_button(COLOR_GREEN, nullptr, SelectionArrowType::RIGHT, main_menu_save_arrow_box())
 {}
 
@@ -89,7 +90,6 @@ ScreenObservation PlzaConsoleBackend::observe(){
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
         look = Pokemon::screen_observation(m_observer.read(*frame.frame));
-
         if (m_autosave.detect(*frame.frame)){
             look.readings[std::string(AUTOSAVE_READING)] = 1;
         }
@@ -98,6 +98,9 @@ ScreenObservation PlzaConsoleBackend::observe(){
         }
         if (m_advance_arrow.detect(*frame.frame)){
             look.readings[std::string(ADVANCE_ARROW_READING)] = 1;
+        }
+        if (m_shadow_dialog_box.detect(*frame.frame)){
+            look.readings[std::string(SHADOW_DIALOG_BOX_READING)] = 1;
         }
         if (m_mission_complete.detect(*frame.frame)){
             look.readings[std::string(MISSION_COMPLETE_READING)] = 1;

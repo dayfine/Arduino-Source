@@ -8,6 +8,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryLines.h"
 
 namespace PokemonAutomation{
@@ -49,18 +50,31 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
     return passed;
 }
 
+namespace{
+
+//  The party bar or text on `look`, logged as the exit's "[Signals]" line.
+bool out_of_menu(const ScreenObservation& look, PlzaBackend& backend, SignalProbe& signals){
+    signals.look(look);
+    const bool party_bar = look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
+    if (!party_bar && !text_shows(look)){
+        return false;
+    }
+    backend.log_detail(signals.line("press_b_out_of_menu", "menu_exit", party_bar ? "party_bar" : "arrow"));
+    return true;
+}
+
+} // namespace
+
 bool press_b_out_of_menu(PlzaBackend& backend, size_t presses){
+    SignalProbe signals;
     for (size_t pressed = 0; pressed < presses; pressed++){
         backend.scope().throw_if_cancelled();
-        const ScreenObservation look = backend.observe();
-        if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || text_shows(look)){
+        if (out_of_menu(backend.observe(), backend, signals)){
             return true;
         }
         backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
     }
-    const ScreenObservation look = backend.observe();
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || text_shows(look);
-
+    return out_of_menu(backend.observe(), backend, signals);
 }
 
 

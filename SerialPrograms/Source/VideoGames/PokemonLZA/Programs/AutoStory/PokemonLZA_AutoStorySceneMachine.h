@@ -85,7 +85,6 @@ bool fade_shows(const ScreenObservation& look);
 
 //  The party bar with nothing busy over it: no advance arrow, fade or choice
 //  (it shows under a talk's lines too).
-
 bool party_bar_free(const ScreenObservation& look);
 
 //  "text box, advance arrow": `look`'s events and readings; "nothing" for none.

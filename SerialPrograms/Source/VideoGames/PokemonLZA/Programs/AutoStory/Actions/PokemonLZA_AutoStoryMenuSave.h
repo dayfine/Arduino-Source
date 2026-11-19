@@ -30,7 +30,6 @@ std::optional<Pokemon::StoryFailure> save_from_menu(PlzaBackend& backend);
 //  menu's tutorial card while it shows (1.5 s apart), then blind presses to
 //  the options' text speed and Fast (L, Up, A, Down, Right), then B until
 //  the party bar or the controls hint shows on two looks in a row. Fails as
-
 //  "text_speed_timeout" when not back within 30 s, and as GAME_NOT_RUNNING
 //  on the Switch's HOME.
 std::optional<Pokemon::StoryFailure> set_text_speed_fast(PlzaBackend& backend);

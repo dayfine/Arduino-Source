@@ -172,7 +172,6 @@ UnitTestResult check_dialog_frame(const DialogFrameCase& test){
     return true;
 }
 
-
 struct FolderCase{
     std::string name;
     struct Input{
