@@ -368,14 +368,7 @@ bool init_headless_runtime(Logger& logger){
     return check_hardware();
 }
 
-int run_headless_application(std::span<char*> argv, const StartupPlan& plan){
-    set_headless_mode(true);
-    register_all_statics();
-    setup_crash_handler();
-
-    int qt_argc = static_cast<int>(argv.size()) - 1;
-    QApplication application(qt_argc, argv.data());
-
+int run_headless_application(QApplication& application, const StartupPlan& plan){
     GlobalOutputRedirector redirect_stdout(std::cout, "stdout", Color());
     GlobalOutputRedirector redirect_stderr(std::cerr, "stderr", COLOR_RED);
     {
@@ -483,7 +476,11 @@ int main(int argc, char* argv[]){
         },
         .headless = [&](const PokemonAutomation::StartupPlan& selected){
             return PokemonAutomation::run_with_profile_lease(selected, 3, [&]{
-                return PokemonAutomation::run_headless_application(qt_argv, selected);
+                PokemonAutomation::set_headless_mode(true);
+                PokemonAutomation::register_all_statics();
+                PokemonAutomation::setup_crash_handler();
+                QApplication application(qt_argc, qt_argv.data());
+                return PokemonAutomation::run_headless_application(application, selected);
             });
         },
         .tests = [&](const PokemonAutomation::StartupPlan& selected){
