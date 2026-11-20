@@ -17,13 +17,9 @@ namespace PokemonLZA{
 
 namespace{
 
-//  Sidewalk by the blue kiosk between 100 and 60 (Weedle / Pichu lawn);
+//  Sidewalk by the blue kiosk (Weedle / Pichu lawn);
 //  inside the Wild Zone 1 pentagon, clear of both its red reticle ring and MAP_CENTRE.
 constexpr MapWaypoint ZONE1_SPOT_80{.name = "the 80 spot", .pin = {.x = 408, .y = 234}, .stop_radius = CATCH_STOP_RADIUS};
-
-//  Mareep's grass right of the road (marker 60); nudged south onto the road
-//  clear of the Wild Zone 1 badge's red reticle ring at (386, 246).
-constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 251}, .stop_radius = CATCH_STOP_RADIUS};
 
 } // namespace
 
@@ -33,8 +29,6 @@ std::optional<MapWaypoint> catch_spot_waypoint(int spot){
         return ZONE1_SPOT_100;
     case 80:
         return ZONE1_SPOT_80;
-    case 60:
-        return ZONE1_SPOT_60;
     default:
         return std::nullopt;
     }
@@ -60,7 +54,7 @@ constexpr double MAP_CENTRE_RADIUS = 3;
 constexpr size_t OUT_OF_ZONE_PIN_READS = 2;
 
 //  Into the far gate along its line, west down the road; a run 20 degrees
-//  off it from the 60 spot ended on a pillar (2026-11-17).
+//  off it ended on a pillar (2026-11-17).
 constexpr double GATE_HEADING = 270;
 constexpr double GATE_HEADING_TOLERANCE = 8;
 
@@ -69,9 +63,9 @@ constexpr double GATE_HEADING_TOLERANCE = 8;
 //  left pillar.
 constexpr MapPoint ZONE1_FAR_GATE{.x = 361, .y = 252};
 
-//  On the gate's line ~25 pixels east of the gate, below the 60 spot: the
-//  way onto the line when the point straight north or south of the player
-//  is not in the zone east of the gate.
+//  On the gate's line ~25 pixels east of the gate: the way onto the line
+//  when the point straight north or south of the player is not in the zone
+//  east of the gate.
 constexpr MapPoint ZONE1_GATE_RUN_UP{.x = 386, .y = 252};
 
 bool at_map_centre(MapPoint pin){

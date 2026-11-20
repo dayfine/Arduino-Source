@@ -10,7 +10,7 @@
     "events": [
       {
         "id": "catch_fifth_species",
-        "why": "catch Weedle/Pichu (spot 80, fallback Mareep at 60) from 03.08's autosave for five species; autosaves at party 5 (03.08b walks out)",
+        "why": "catch Weedle/Pichu (spot 80) from 03.08's autosave for five species; autosaves at party 5 (03.08b walks out)",
         "action": "catch_in_zone"
       }
     ],
