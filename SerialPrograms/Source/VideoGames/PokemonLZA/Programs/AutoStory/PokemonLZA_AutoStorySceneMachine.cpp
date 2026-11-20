@@ -18,6 +18,7 @@
 #include <vector>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "PokemonLZA_AutoStoryBattleOnScreen.h"
 #include "PokemonLZA_AutoStoryMenuReadings.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
@@ -56,7 +57,7 @@ constexpr Milliseconds TEXT_A_AGAIN = 2s;
 
 
 enum class SceneScreen{
-    BATTLE,         //  terminal, with stop_at_battle
+    BATTLE,         //  terminal, with stop_at_battle or end_at_battle
     LOCKED_ON,      //  terminal: the move symbols showed under ZL
     FADE,           //  waits: a fade decides nothing
     BLACK_FADE_END, //  terminal, with end_on_black_fade
@@ -184,6 +185,7 @@ public:
     SceneTimeline(SceneMachineConfig config, WallClock start)
         : m_config(std::move(config))
         , m_start(start)
+        , m_battle(battle_filter())
     {}
 
     SceneScreen classify(const ScreenObservation& look) const;
@@ -226,6 +228,7 @@ private:
     std::optional<WallClock> m_control_instead_since;
     size_t m_black_fades = 0;
     LockOnState m_lock_on;
+    FlickerFilter m_battle;
     //  text_a_to_choice: the last A on text, and whether its page showed the arrow.
     struct TextA{
         WallClock at;
@@ -235,7 +238,8 @@ private:
 };
 
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
-    if (m_config.stop_at_battle && look.events.has(ScreenEvent::BATTLE_STARTED)){
+    const bool battle = look.events.has(ScreenEvent::BATTLE_STARTED);
+    if ((m_config.stop_at_battle && battle) || (m_config.end_at_battle && m_battle.on_with(battle, look.when))){
         return SceneScreen::BATTLE;
     }
     if (m_lock_on.locked_on){
@@ -316,6 +320,7 @@ std::optional<Button> SceneTimeline::other_button() const{
 }
 
 void SceneTimeline::record(SceneScreen screen, const ScreenObservation& look){
+    m_battle.record(look.events.has(ScreenEvent::BATTLE_STARTED), look.when);
     record_battle(screen, look);
     if (screen != SceneScreen::TEXT){
         m_text_a.reset();
@@ -597,6 +602,10 @@ std::optional<Pokemon::StoryFailure> scene_outcome(
             "{}: the scene never started (player not at its trigger?): the HUD up and no text, choice, battle or cutscene for {} ms (expecting {}).",
             label, config.start_window ? config.start_window->count() : 0, expected
         )};
+    }
+    if (screen == SceneScreen::BATTLE && !config.stop_at_battle){
+        backend.log(std::format("[PLZA {}] the battle HUD is up: on to the story battle.", label));
+        return battle_on_screen_failure();
     }
     if (screen == SceneScreen::ENDED_IN_CONTROL){
         return Pokemon::StoryFailure{.code = "scene_ended_in_control", .detail = std::format(

@@ -43,6 +43,10 @@ struct SceneMachineConfig{
     //  gets ZL held while `lock_on` watches for the move symbols, then up to
     //  4 quarter turns + L. A cutscene (moving, no party bar) gets no ZL.
     bool stop_at_battle = false;
+    //  Ends at the battle HUD (battle_filter()) as battle_on_screen_failure(),
+    //  for a step before the checkpoint's battle step: a trainer's battle can
+    //  start before the plan's walk to them (03.02b), and A there is a move.
+    bool end_at_battle = false;
     //  None: no lock-on (a backend that models none).
     std::optional<LockOnWatch> lock_on = std::nullopt;
     //  For text and screens no detector reads: B where A does something else

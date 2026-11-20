@@ -40,6 +40,7 @@
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryHeading_Tests.h"
+#include "Programs/AutoStory/PokemonLZA_AutoStoryBattleOnScreen_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryChainStart_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h"
 #include "Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.h"
@@ -78,6 +79,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryNewGame(database);
     add_tests_AutoStoryHeading(database);
     add_tests_AutoStoryGame(database);
+    add_tests_AutoStoryBattleOnScreen(database);
     add_tests_AutoStoryChainStart(database);
     add_tests_AutoStoryLines(database);
     add_tests_AutoStoryMenuSave(database);
