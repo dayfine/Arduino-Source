@@ -2214,6 +2214,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_WeatherDetector.cpp
@@ -2256,6 +2258,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/NonShinyHunting/PokemonLZA_StatsReset.h
     Source/VideoGames/PokemonLZA/Programs/NonShinyHunting/PokemonLZA_WeatherFinder.cpp
     Source/VideoGames/PokemonLZA/Programs/NonShinyHunting/PokemonLZA_WeatherFinder.h
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.cpp
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BoxSorter.cpp
@@ -2270,6 +2274,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.h
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.cpp
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.cpp
