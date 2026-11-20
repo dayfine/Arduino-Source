@@ -20,13 +20,13 @@
       },
       {
         "id": "heal_party",
-        "why": "the heal (top answers), until control at the counter; the heal saves, so the title's backup save is this spot",
+        "why": "the heal (top answers), until control at the counter; the heal saves",
         "action": "a"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "not recorded: added so Main Mission 03 has a backup save to retry from; 03.04's autosave may make it unneeded (user's call)"
+      "source": "not recorded: added so Main Mission 03 has a save at the Center to retry from; 03.04's autosave may make it unneeded (user's call)"
     }
   },
   "execution": {

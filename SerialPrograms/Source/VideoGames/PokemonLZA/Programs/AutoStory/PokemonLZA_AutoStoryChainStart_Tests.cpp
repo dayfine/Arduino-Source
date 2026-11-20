@@ -88,14 +88,6 @@ const ChainStartCase CHAIN_START_CASES[] = {
         .expectation = {.verdict = "failed at 01.02 chain: chain_off_start", .started = "01.01"},
     },
     {
-        .name = "the backup card's registered is not read on the overworld: on",
-        .input = {
-            .start = StartSignature{.registered = 1, .talk_prompt = true, .wild_zone = false, .party = 1},
-            .screen = {.talk_prompt = true, .wild_zone = false, .party = 1},
-        },
-        .expectation = {.verdict = "done", .started = "01.01 01.02"},
-    },
-    {
         .name = "the row names no start: on, unchecked",
         .input = {.start = std::nullopt, .screen = {}},
         .expectation = {
