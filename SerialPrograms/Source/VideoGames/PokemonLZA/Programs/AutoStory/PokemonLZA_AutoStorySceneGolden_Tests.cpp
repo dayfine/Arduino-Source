@@ -732,7 +732,7 @@ const GoldenCase GOLDEN_CASES[] = {
     },
     {
         //  The nurse's text box after the A is synthetic.
-        .name = "03.04 into_pokemon_center, a timed walk whose last turn faces the nurse's A prompt: A, her talk (passed 2026-11-17 14:26)",
+        .name = "03.04 into_pokemon_center, a timed walk whose last leg ends at the nurse's A prompt: A, her talk (passed 2026-11-17 14:26)",
         .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
 0.0s: party bar
 9.5s: party bar, A prompt
@@ -740,7 +740,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "A"}, {"text box, still", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 0 ms of the last leg started a talk.",
+            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 2000 ms of the last leg started a talk.",
         },
     },
     {
