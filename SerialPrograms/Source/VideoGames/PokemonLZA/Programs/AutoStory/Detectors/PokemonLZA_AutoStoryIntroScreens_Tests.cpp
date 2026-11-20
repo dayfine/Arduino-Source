@@ -13,7 +13,6 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "Tests/ImageUnitTest.h"
-#include "PokemonLZA_AutoStoryConfirmChoicesReader.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryIntroScreens_Tests.h"
 

@@ -13,7 +13,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
-#include "PokemonLZA_AutoStoryConfirmChoicesReader.h"
+#include "PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryConfirmChoicesReader_Tests.h"
 
 namespace PokemonAutomation{

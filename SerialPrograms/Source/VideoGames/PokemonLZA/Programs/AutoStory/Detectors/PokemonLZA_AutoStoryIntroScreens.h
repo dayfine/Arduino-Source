@@ -48,6 +48,12 @@ std::string read_confirm_choices_name(const ImageViewRGB32& frame);
 //  The language "Confirm Choices" shows, read with OCR in `language`.
 std::string read_confirm_choices_language(const ImageViewRGB32& frame, Language language);
 
+//  Rows on "Confirm Choices": "Change hair color" (0), "Change look" (1), "Ready!" (2).
+constexpr size_t CONFIRM_CHOICES_READY_ROW = 2;
+
+//  The highlighted row on "Confirm Choices"; nullopt for any other frame.
+std::optional<size_t> read_confirm_choices_cursor(const ImageViewRGB32& frame);
+
 
 
 } // namespace PokemonLZA

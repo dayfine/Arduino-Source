@@ -31,25 +31,6 @@ double white_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     });
 }
 
-double sky_blue_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
-    return share_of(screen, box, [](Color pixel){
-        return pixel.blue() > 200 && pixel.green() > 160 && pixel.blue() > pixel.red() + 60;
-    });
-}
-
-double banner_yellow_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
-    return share_of(screen, box, [](Color pixel){
-        return pixel.red() > 200 && pixel.green() > 140 && pixel.blue() < 130 &&
-            pixel.red() > pixel.blue() + 110;
-    });
-}
-
-double complete_green_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
-    return share_of(screen, box, [](Color pixel){
-        return pixel.green() > 180 && pixel.green() > pixel.red() + 40 && pixel.green() > pixel.blue() + 70;
-    });
-}
-
 ImageFloatBox shifted(ImageFloatBox box, double dx, double dy){
     box.x += dx / 1920;
     box.y += dy / 1080;

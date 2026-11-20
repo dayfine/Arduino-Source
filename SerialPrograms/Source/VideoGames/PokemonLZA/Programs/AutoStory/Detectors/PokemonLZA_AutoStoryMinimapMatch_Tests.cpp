@@ -20,7 +20,6 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "PokemonLZA_AutoStoryMinimapMatch.h"
 #include "PokemonLZA_AutoStoryMinimapMatch_Tests.h"
-#include "PokemonLZA_AutoStoryReferenceCells.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

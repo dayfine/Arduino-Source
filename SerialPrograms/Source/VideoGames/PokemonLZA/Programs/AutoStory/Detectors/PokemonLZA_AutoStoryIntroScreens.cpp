@@ -7,13 +7,13 @@
 #include <array>
 #include <cctype>
 #include <cstdint>
+#include <span>
 #include <string_view>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/OCR/OCR_Routines.h"
-#include "PokemonLZA_AutoStoryHighlightedRow.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
 
 namespace PokemonAutomation{
@@ -38,6 +38,107 @@ double brightness(const ImageStats& stats){
 
 ImageStats box_stats(const ImageViewRGB32& frame, const ImageFloatBox& box){
     return image_stats(extract_box_reference(frame, box));
+}
+
+//  Plain rows: blue over red by `min_blue_over_red`, channel spreads summing to
+//  `max_spread` at most.
+struct SlateRows{
+    double min_red;
+    double max_red;
+    double min_green;
+    double max_green;
+    double min_blue;
+    double max_blue;
+    double min_blue_over_red;
+    double max_spread;
+};
+
+enum class RowBox{
+    HIGHLIGHTED,
+    PLAIN,
+    OTHER,
+};
+
+RowBox classify_row(const ImageStats& stats, const SlateRows& slate){
+    if (stats.count == 0){
+        return RowBox::OTHER;
+    }
+    const FloatPixel& average = stats.average;
+    const double spread = stats.stddev.sum();
+    if (average.r >= 200 && average.g >= 200 && average.b >= 200 && spread <= 30){
+        return RowBox::HIGHLIGHTED;
+    }
+    const bool plain =
+        average.r >= slate.min_red && average.r <= slate.max_red &&
+        average.g >= slate.min_green && average.g <= slate.max_green &&
+        average.b >= slate.min_blue && average.b <= slate.max_blue &&
+        average.b >= average.r + slate.min_blue_over_red &&
+        spread <= slate.max_spread;
+    return plain ? RowBox::PLAIN : RowBox::OTHER;
+}
+
+//  The one white, flat strip (channels 200+, spreads summing <= 30) among `slate` ones;
+//  nullopt when none or two are white, or a strip is neither.
+std::optional<size_t> highlighted_row(const ImageViewRGB32& frame, std::span<const ImageFloatBox> strips, const SlateRows& slate){
+    std::optional<size_t> highlighted;
+    for (size_t row = 0; row < strips.size(); row++){
+        switch (classify_row(image_stats(extract_box_reference(frame, strips[row])), slate)){
+        case RowBox::HIGHLIGHTED:
+            if (highlighted){
+                return std::nullopt;
+            }
+            highlighted = row;
+            break;
+        case RowBox::PLAIN:
+            break;
+        case RowBox::OTHER:
+            return std::nullopt;
+        }
+    }
+    return highlighted;
+}
+
+//  Rows span x 144-742: the choices from y 578 and 662 (68 high), "Ready!" from y 790
+//  (112 high). Each strip is 100 wide from x 620, right of the text.
+ImageFloatBox confirm_row_strip(size_t row){
+    switch (row){
+    case 0:
+        return ImageFloatBox(620.0 / 1920, 592.0 / 1080, 100.0 / 1920, 40.0 / 1080);
+    case 1:
+        return ImageFloatBox(620.0 / 1920, 676.0 / 1080, 100.0 / 1920, 40.0 / 1080);
+    default:
+        return ImageFloatBox(620.0 / 1920, 820.0 / 1080, 100.0 / 1920, 60.0 / 1080);
+    }
+}
+
+//  Highlighted: white, flat; others slate. The highlight's glow raises the next row's
+//  spread up to 20.
+constexpr SlateRows CONFIRM_ROWS_SLATE{
+    .min_red = 20, .max_red = 55,
+    .min_green = 40, .max_green = 80,
+    .min_blue = 65, .max_blue = 115,
+    .min_blue_over_red = 25,
+    .max_spread = 30,
+};
+
+//  The dotted background between the choices and "Ready!" and right of all three:
+//  (10-13, 29-59, 63-106), spread up to 51 under the highlight's glow. Dark and blue
+//  with little red; the intro's other screens are not.
+bool confirm_background_dark(const ImageViewRGB32& frame){
+    const ImageFloatBox boxes[] = {
+        ImageFloatBox(620.0 / 1920, 742.0 / 1080, 100.0 / 1920, 40.0 / 1080),
+        ImageFloatBox(770.0 / 1920, 580.0 / 1080, 30.0 / 1920, 320.0 / 1080),
+    };
+    for (const ImageFloatBox& box : boxes){
+        const ImageStats stats = image_stats(extract_box_reference(frame, box));
+        if (stats.count == 0 || brightness(stats) >= 90 || stats.stddev.sum() > 80){
+            return false;
+        }
+        if (stats.average.r > 30 || stats.average.b < stats.average.r + 40){
+            return false;
+        }
+    }
+    return true;
 }
 
 //  A 65 x 54 strip of entry `index`'s box (576 x 84; columns at x 347 and 996, rows
@@ -315,6 +416,16 @@ std::string read_confirm_choices_language(const ImageViewRGB32& frame, Language 
     return read_light_text(
         frame, ImageFloatBox(340.0 / 1920, 400.0 / 1080, 760.0 / 1920, 50.0 / 1080), language, /*min_channel=*/150
     );
+}
+
+//  The language list and look picker fall on the background strips, so neither reads
+//  as this screen.
+std::optional<size_t> read_confirm_choices_cursor(const ImageViewRGB32& frame){
+    if (!usable(frame) || !confirm_background_dark(frame)){
+        return std::nullopt;
+    }
+    const std::array<ImageFloatBox, CONFIRM_CHOICES_READY_ROW + 1> strips{confirm_row_strip(0), confirm_row_strip(1), confirm_row_strip(2)};
+    return highlighted_row(frame, strips, CONFIRM_ROWS_SLATE);
 }
 
 

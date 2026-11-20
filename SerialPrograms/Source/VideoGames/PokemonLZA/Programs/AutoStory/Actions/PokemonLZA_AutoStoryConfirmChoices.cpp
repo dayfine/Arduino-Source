@@ -13,7 +13,6 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/OCR/OCR_Routines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryIntroScreens.h"
 #include "PokemonLZA_AutoStoryConfirmChoices.h"
 

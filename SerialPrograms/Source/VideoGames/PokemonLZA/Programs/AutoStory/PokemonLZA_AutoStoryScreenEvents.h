@@ -15,9 +15,8 @@
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleMarkersDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleHudDetectors.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetectors.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{

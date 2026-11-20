@@ -1,14 +1,13 @@
-/*  PokemonLZA AutoStory - Main mission banner detector
+/*  PokemonLZA AutoStory - Mission banner detectors
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The "MAIN MISSION 01" banner across the middle when a main mission
- *  starts.
+ *  Detectors for main-mission start banners and mission-complete cards.
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryMainMissionBannerDetector_H
-#define PokemonAutomation_PokemonLZA_AutoStoryMainMissionBannerDetector_H
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryMissionBannerDetectors_H
+#define PokemonAutomation_PokemonLZA_AutoStoryMissionBannerDetectors_H
 
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
@@ -19,8 +18,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  A see-through yellow bar (x 345-1590, y 410-600 on 1080p) with, above it, a white
-//  hexagon with an orange "!" left of the centred header. Text is not read.
+//  Detects a main mission's start banner without OCR (language-independent).
 class MainMissionBannerDetector : public StaticScreenDetector{
 public:
     explicit MainMissionBannerDetector(Color color = COLOR_ORANGE);
@@ -37,6 +35,23 @@ private:
     ImageFloatBox m_icon_left;
     ImageFloatBox m_icon_right;
     ImageFloatBox m_icon_stroke;
+};
+
+//  Detects the "COMPLETE" card shown when a main mission finishes (waits for A).
+class MissionCompleteDetector : public StaticScreenDetector{
+public:
+    explicit MissionCompleteDetector(Color color = COLOR_GREEN);
+
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+    virtual bool detect(const ImageViewRGB32& screen) override;
+
+private:
+    Color m_color;
+    ImageFloatBox m_word;
+    ImageFloatBox m_above;
+    ImageFloatBox m_below;
+    ImageFloatBox m_bar_left;
+    ImageFloatBox m_bar_right;
 };
 
 

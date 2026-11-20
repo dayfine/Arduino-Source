@@ -11,7 +11,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "PokemonLZA_AutoStoryDialogDetector.h"
+#include "PokemonLZA_AutoStoryDialogDetectors.h"
 #include "PokemonLZA_AutoStoryDialogDetector_Tests.h"
 
 namespace PokemonAutomation{

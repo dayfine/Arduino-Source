@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Battle markers detector
+/*  PokemonLZA AutoStory - Battle HUD detectors
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
+#include "PokemonLZA_AutoStoryBattleHudDetectors.h"
 #include "PokemonLZA_AutoStoryPixelShares.h"
-#include "PokemonLZA_AutoStoryBattleMarkersDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -16,6 +16,27 @@ namespace PokemonLZA{
 
 namespace{
 
+//  BattlePanelDetector: level badge blue at x 240-320, y 799-818 on 1080p over half
+//  its pixels, and HP bar at x 236-440, y 882-902 over 80% fill or grey trough. The
+//  badge is translucent: over grass and paving stone it is as dark as (80, 170, 190),
+//  with wider white "Nv." text in Spanish. In battle: badge 0.78-0.88, bar 0.88-0.95.
+constexpr double BADGE_SHARE = 0.5;
+constexpr double BAR_SHARE = 0.8;
+
+//  An HP bar pixel: its fill (red, yellow or green: channels 90 or more
+//  apart), or its grey trough (channels within 25, mean 60 to 140).
+bool hp_bar_pixel(Color color){
+    const int r = color.red();
+    const int g = color.green();
+    const int b = color.blue();
+    const int spread = std::max({r, g, b}) - std::min({r, g, b});
+    const int mean = (r + g + b) / 3;
+    return spread >= 90 || (spread <= 25 && mean >= 60 && mean <= 140);
+}
+
+//  BattleMarkersDetector: five 16 x 12 slots at x 405-513 (27 apart), y 806 on 1080p.
+//  In battle: one slot over 20% triangle blue (measured 0.27-0.44), and 3+ others
+//  6-50% white (measured 0.06-0.38 over light paving stone too) with no blue.
 constexpr double SLOT_CENTRES_X[] = {405, 432, 459, 486, 513};
 constexpr double SLOT_WIDTH = 16;
 constexpr double SLOT_HEIGHT = 12;
@@ -46,6 +67,22 @@ double dot_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
 }
 
 } // namespace
+
+
+BattlePanelDetector::BattlePanelDetector(Color color)
+    : m_color(color)
+    , m_badge(240.0 / 1920, 799.0 / 1080, 80.0 / 1920, 19.0 / 1080)
+    , m_bar(236.0 / 1920, 882.0 / 1080, 204.0 / 1920, 20.0 / 1080)
+{}
+
+void BattlePanelDetector::make_overlays(VideoOverlaySet& items) const{
+    items.add(m_color, m_badge);
+    items.add(m_color, m_bar);
+}
+
+bool BattlePanelDetector::detect(const ImageViewRGB32& screen){
+    return dim_cyan_share(screen, m_badge) >= BADGE_SHARE && share_of(screen, m_bar, hp_bar_pixel) >= BAR_SHARE;
+}
 
 
 BattleMarkersDetector::BattleMarkersDetector(Color color)

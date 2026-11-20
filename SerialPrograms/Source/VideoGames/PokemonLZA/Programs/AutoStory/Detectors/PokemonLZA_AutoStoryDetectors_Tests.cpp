@@ -21,12 +21,11 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
-#include "PokemonLZA_AutoStoryAdvanceArrowDetector.h"
+#include "PokemonLZA_AutoStoryDialogDetectors.h"
 #include "PokemonLZA_AutoStoryAutosaveDetector.h"
 #include "PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "PokemonLZA_AutoStoryDetectors_Tests.h"
-#include "PokemonLZA_AutoStoryMainMissionBannerDetector.h"
-#include "PokemonLZA_AutoStoryMissionCompleteDetector.h"
+#include "PokemonLZA_AutoStoryMissionBannerDetectors.h"
 #include "PokemonLZA_AutoStoryTutorialCardDetector.h"
 
 namespace PokemonAutomation{

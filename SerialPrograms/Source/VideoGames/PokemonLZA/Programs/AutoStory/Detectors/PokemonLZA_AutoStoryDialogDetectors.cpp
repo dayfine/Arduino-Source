@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Advance arrow detector
+/*  PokemonLZA AutoStory - Dialog detectors
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -7,18 +7,38 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTypes/BinaryImage.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/BinaryImage_FilterRgb32.h"
 #include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
-#include "PokemonLZA_AutoStoryAdvanceArrowDetector.h"
+#include "PokemonLZA_AutoStoryDialogDetectors.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace Kernels::Waterfill;
+
+
+StoryDialogDetector::StoryDialogDetector(StoryDialogKinds kinds)
+    : m_kinds(kinds)
+    , m_white(COLOR_RED)
+    , m_blue(COLOR_BLUE)
+    , m_teal(COLOR_GREEN)
+{}
+
+void StoryDialogDetector::make_overlays(VideoOverlaySet& items) const{
+    m_white.make_overlays(items);
+    m_blue.make_overlays(items);
+    m_teal.make_overlays(items);
+}
+
+bool StoryDialogDetector::detect(const ImageViewRGB32& screen){
+    const bool white = m_kinds.white == WhiteDialogPart::BOX_ONLY ? m_white.detect_box(screen) : m_white.detect(screen);
+    return white || m_blue.detect(screen) || m_teal.detect(screen);
+}
 
 
 namespace{
@@ -95,6 +115,7 @@ bool chevron_in(const ImageViewRGB32& area, double scale, uint32_t mins, uint32_
 } // namespace
 
 
+//  The chevron (a V about 32x19 on 1080p) at x 1370-1480, y 930-1050.
 AdvanceArrowDetector::AdvanceArrowDetector(Color color)
     : m_color(color)
     , m_area(1370.0 / 1920, 930.0 / 1080, 110.0 / 1920, 120.0 / 1080)
@@ -113,6 +134,7 @@ bool AdvanceArrowDetector::detect(const ImageViewRGB32& screen){
     const ImageViewRGB32 area = extract_box_reference(screen, m_area);
     return chevron_in(area, scale, /*mins=*/0x00ebebdc, /*maxs=*/0xffffffff) || chevron_in(area, scale, /*mins=*/0x00000000, /*maxs=*/0xff6e6e6e);
 }
+
 
 
 } // namespace PokemonLZA
