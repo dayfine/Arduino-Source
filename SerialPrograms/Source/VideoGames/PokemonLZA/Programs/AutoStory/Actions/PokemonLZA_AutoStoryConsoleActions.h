@@ -2,15 +2,18 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The console's code for the actions that run only on a console (new
- *  game, gates, catches, zone walks, Mable's reward), by action name, for
- *  PlzaConsoleHooks::console.
+ *  Console-only action handlers and story battle runner.
  *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryConsoleActions_H
 #define PokemonAutomation_PokemonLZA_AutoStoryConsoleActions_H
 
+#include <chrono>
+#include "CommonFramework/Tools/ProgramEnvironment.h"
+#include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
+#include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h"
 #include "PokemonLZA_AutoStoryActionTable.h"
 
@@ -19,9 +22,16 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Each catches the OperationFailedException its code throws as a failed
-//  step. `env` must outlive them.
+//  Builds the console-only action map for PlzaConsoleHooks::console.
+//  Each handler catches OperationFailedException as a failed step; `env` must outlive it.
 PlzaConsoleActions plza_console_actions(StoryEnv& env);
+
+//  Fights a story battle until a post-battle dialogue box appears.
+//  Throws OperationFailedException if the battle does not finish within `timeout`.
+void fight_story_battle(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, std::chrono::seconds timeout
+);
 
 
 

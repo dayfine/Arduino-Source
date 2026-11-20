@@ -9,6 +9,8 @@
 #include <format>
 #include <map>
 #include <vector>
+#include <optional>
+#include <string>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Strings/Unicode.h"
@@ -21,18 +23,20 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardEntryMappings.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryConfirmChoicesReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryIntroScreens.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTable.h"
-#include "PokemonLZA_AutoStoryLaunch.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
+#include "CommonTools/OCR/OCR_Routines.h"
+#include "NintendoSwitch/NintendoSwitch_Settings.h"
+#include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-
 namespace{
+
+constexpr size_t HOME_TILES_SEARCHED = 8;
 
 //  Ends every refusal and failure of 01.00a.
 constexpr std::string_view NEW_GAME_BY_HAND_HINT =
@@ -491,6 +495,156 @@ void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, 
     }
 }
 
+
+namespace{
+
+//  `dump`: save the frame read to DebugDumps under that name.
+std::optional<size_t> read_confirm_choices_now(
+    ConsoleHandle& console, ProControllerContext& context, Milliseconds window, const std::string& dump
+){
+    const WallClock deadline = current_time() + window;
+    while (true){
+        context.wait_for_all_requests();
+        const VideoSnapshot frame = console.video().snapshot();
+        const std::optional<size_t> cursor = frame ? read_confirm_choices_cursor(frame) : std::nullopt;
+        if (cursor || current_time() >= deadline){
+            if (frame){
+                dump_debug_image(console, "PokemonLZA/AutoStory/Intro", dump, frame);
+            }
+            return cursor;
+        }
+        context.wait_for(250ms);
+    }
+}
+
+void check_profile(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
+    context.wait_for_all_requests();
+    const VideoSnapshot frame = console.video().snapshot();
+    if (!frame){
+        return;
+    }
+    const std::string name = read_confirm_choices_name(frame);
+    if (name != choices.name){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("AutoStory intro: Confirm Choices shows the name \"{}\", not \"{}\". Nothing was confirmed.", name, choices.name),
+            console
+        );
+    }
+    const NewGameLanguageInfo& info = new_game_language_info(choices.language);
+    if (!OCR::ocr_language_available(info.ocr_language)){
+        console.log(std::format("AutoStory intro: Confirm Choices: no OCR for {}; its language is not checked.", info.tag));
+        return;
+    }
+    const std::string language = read_confirm_choices_language(frame, info.ocr_language);
+    if (language.find(info.confirm_text) == std::string::npos){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("AutoStory intro: Confirm Choices shows the language \"{}\", not {}. Nothing was confirmed.", language, info.tag),
+            console
+        );
+    }
+    console.log(std::format("AutoStory intro: Confirm Choices shows \"{}\" in {}.", name, info.tag));
+}
+
+} // namespace
+
+
+size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context){
+    const std::optional<size_t> cursor = read_confirm_choices_now(console, context, /*window=*/2000ms, "confirm-choices");
+    if (!cursor){
+        throw UserSetupError(
+            console,
+            "AutoStory: 01.00b starts on the new game's \"Confirm Choices\" screen, after the language, look "
+            "and name (01.00a, or made by hand). It is not on screen; nothing was pressed."
+        );
+    }
+    console.log(std::format("AutoStory intro: Confirm Choices on screen, row {} highlighted.", *cursor));
+    return *cursor;
+}
+
+void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
+    std::optional<size_t> cursor = require_confirm_choices(console, context);
+    check_profile(console, context, choices);
+    for (size_t press = 0; press < 6 && cursor; press++){
+        if (*cursor == CONFIRM_CHOICES_READY_ROW){
+            console.log("AutoStory intro: Confirm Choices: A on \"Ready!\".");
+            pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/2000ms);
+            context.wait_for_all_requests();
+            return;
+        }
+        console.log("AutoStory intro: Confirm Choices: DOWN.");
+        pbf_press_dpad(context, DPAD_DOWN, /*hold=*/160ms, /*release=*/500ms);
+        cursor = read_confirm_choices_now(console, context, /*window=*/1000ms, "confirm-choices-moved");
+        if (cursor){
+            console.log(std::format("AutoStory intro: Confirm Choices: the highlight is on row {}.", *cursor));
+        }
+    }
+    OperationFailedExceptionWithScreenshot::fire(
+        ErrorReportMode::SEND_ERROR_REPORT,
+        "AutoStory intro: the Confirm Choices highlight was not read on \"Ready!\".",
+        console
+    );
+}
+
+
+namespace{
+
+
+constexpr Milliseconds HOME_TILE_RELEASE = 500ms;
+
+bool highlighted_tile_is_plza(ConsoleHandle& console, ProControllerContext& context){
+    context.wait_for_all_requests();
+    const VideoSnapshot frame = console.video().snapshot();
+    return frame && is_home_tile_plza(frame);
+}
+
+} // namespace
+
+
+namespace{
+
+std::optional<size_t> find_plza_tile(MoveOnlyFunction<bool()> highlighted_is_plza, MoveOnlyFunction<void()> move_right){
+    for (size_t tile = 0; tile < HOME_TILES_SEARCHED; tile++){
+        if (tile > 0){
+            move_right();
+        }
+        if (highlighted_is_plza()){
+            return tile;
+        }
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
+void launch_plza_from_home(ConsoleHandle& console, ProControllerContext& context){
+    go_home(console, context);
+    const bool first_is_plza = highlighted_tile_is_plza(console, context);
+    console.log(std::format(
+        "AutoStory launch: HOME's first tile (the running game, if any) is {}; closing it.",
+        first_is_plza ? "PLZA" : "another game"
+    ));
+    close_game_from_home(console, context);
+
+    pbf_press_button(context, BUTTON_HOME, /*hold=*/160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
+    const std::optional<size_t> tile = find_plza_tile(
+        [&]{ return highlighted_tile_is_plza(console, context); },
+        [&]{ pbf_press_dpad(context, DPAD_RIGHT, /*hold=*/80ms, HOME_TILE_RELEASE); }
+    );
+    if (!tile){
+        throw UserSetupError(
+            console,
+            std::format(
+                "AutoStory: Pokemon Legends: Z-A is not on HOME's first {} tiles. Play it once so its tile moves to the front.",
+                HOME_TILES_SEARCHED
+            )
+        );
+    }
+    console.log(std::format("AutoStory launch: launching PLZA, HOME's tile {}.", *tile));
+    //  Slot 0: the cursor stays on PLZA's tile.
+    start_game_from_home(console, context, /*tolerate_update_menu=*/true, /*game_slot=*/0, /*user_slot=*/0);
+}
 
 
 } // namespace PokemonLZA

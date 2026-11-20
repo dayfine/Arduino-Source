@@ -9,7 +9,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Map.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{

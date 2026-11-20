@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  PLZA's detectors as the shared screen events
- *  (CommonTools/ScreenEvents/ScreenEvents.h), for the story backend.
+ *  PLZA's detectors exposed as shared ScreenEvents and start-screen signatures.
  *
  */
 
@@ -11,30 +10,28 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryScreenEvents_H
 
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleMarkersDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattlePanelDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleHudDetectors.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetectors.h"
+#include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The shared events from PLZA's detectors. DIALOG_BOX shows while the text
-//  still types. BATTLE_STARTED is the HUD's hints (only while locked on) or
-//  the player's panel with the battle markers (the panel alone shows all
-//  through a wild zone); story battles show no Run prompt.
+//  Maps PLZA screen detectors to shared ScreenEvents.
 class PlzaScreenObserver : public ScreenEventObserver{
 public:
     PlzaScreenObserver();
 
     virtual ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
 
-    //  observe() for a frame that is not a snapshot.
+    //  Runs detection directly on an image view without a VideoSnapshot wrapper.
     ScreenEvents read(const ImageViewRGB32& screen);
 
     virtual void make_overlays(VideoOverlaySet& items) const override;
@@ -48,6 +45,10 @@ private:
     BattleMarkersDetector m_battle_markers;
     PartyBarDetector m_party;
 };
+
+//  Reads overworld start-signature fields (talk_prompt, party, minimap) from `screen`.
+//  Returns an empty signature on fading or dialogue frames; wild_zone requires the full map.
+StartSignature read_start_screen(const ImageViewRGB32& screen);
 
 
 

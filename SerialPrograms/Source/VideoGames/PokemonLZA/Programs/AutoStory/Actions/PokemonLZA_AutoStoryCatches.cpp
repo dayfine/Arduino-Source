@@ -28,13 +28,10 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
-#include "PokemonLZA_AutoStoryCatchStop.h"
-#include "PokemonLZA_AutoStoryLines.h"
-#include "PokemonLZA_AutoStoryMapWalk.h"
-#include "PokemonLZA_AutoStoryMarkerWalk.h"
+#include "PokemonLZA_AutoStoryScenes.h"
+#include "PokemonLZA_AutoStoryWorldWalks.h"
 #include "PokemonLZA_AutoStorySpeciesCheck.h"
-#include "PokemonLZA_AutoStoryZone1Map.h"
-#include "PokemonLZA_AutoStoryZone1Road.h"
+#include "PokemonLZA_AutoStoryZone1.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 
 namespace PokemonAutomation{

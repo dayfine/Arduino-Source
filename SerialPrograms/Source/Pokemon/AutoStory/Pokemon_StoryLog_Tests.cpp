@@ -150,6 +150,16 @@ const StoryLogTestCase STORY_LOG_CASES[] = {
         .input = {.format = []{ return story_short_line(""); }},
         .expectation = {.line = ""},
     },
+    {
+        .name = "event jump with skipped steps",
+        .input = {.format = []{ return event_jump_line("01.02", "battle on screen", "walk_to_trainer", "trainer_battle", "approach, talk"); }},
+        .expectation = {.line = "[Event] 01.02: battle on screen during walk_to_trainer: jumping to trainer_battle, skipping approach, talk"},
+    },
+    {
+        .name = "event jump without skipped steps",
+        .input = {.format = []{ return event_jump_line("01.02", "battle on screen", "walk_to_trainer", "trainer_battle", ""); }},
+        .expectation = {.line = "[Event] 01.02: battle on screen during walk_to_trainer: jumping to trainer_battle"},
+    },
 };
 
 

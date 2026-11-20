@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The autosave badge, a pencil and "Saving...", which shows for 1-3 s
- *  after the game autosaves.
+ *  Language-independent detector for the top-right autosave badge.
  *
  */
 
@@ -19,8 +18,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The badge's pencil (white, cyan glow) at x 1603-1630, y 73-104 on 1920x1080, with
-//  nothing white or cyan around it. Only the icon is read, so any language matches.
+//  Detects the top-right autosave pencil icon in any game language.
 class AutosaveDetector : public StaticScreenDetector{
 public:
     explicit AutosaveDetector(Color color = COLOR_YELLOW);

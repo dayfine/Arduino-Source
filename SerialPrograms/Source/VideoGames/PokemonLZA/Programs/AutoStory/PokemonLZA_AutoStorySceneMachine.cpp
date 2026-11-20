@@ -17,12 +17,11 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/PrettyPrint.h"
-#include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
-#include "PokemonLZA_AutoStoryBattleOnScreen.h"
-#include "PokemonLZA_AutoStoryMenuReadings.h"
-#include "PokemonLZA_AutoStoryReadings.h"
+#include "CommonTools/ScreenEvents/ScreenEventTypes.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
-#include "PokemonLZA_AutoStorySignalProbe.h"
+#include "PokemonLZA_AutoStoryScreenPredicates.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -54,6 +53,38 @@ constexpr Milliseconds SUMMARY_EVERY = 30s;
 //  text_a_to_choice: one A per text page; the same page this long after
 //  its A takes another (a dropped press).
 constexpr Milliseconds TEXT_A_AGAIN = 2s;
+
+Pokemon::FlickerFilter battle_filter(){
+    return Pokemon::FlickerFilter(/*hits=*/2, /*window=*/2s, /*off_after=*/3s);
+}
+
+struct ProbedSignal{
+    std::string_view name;
+    bool (*shows)(const ScreenObservation& look);
+};
+
+bool has_reading(const ScreenObservation& look, std::string_view reading){
+    return look.readings.contains(reading);
+}
+
+constexpr std::array<ProbedSignal, 9> PROBED_SIGNAL_TABLE{{
+    {"party_bar", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::PLAYER_CAN_MOVE); }},
+    {"hint", [](const ScreenObservation& look){ return has_reading(look, CONTROLS_HINT_READING); }},
+    {"prompt", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::INTERACT_PROMPT); }},
+    {"arrow", [](const ScreenObservation& look){ return has_reading(look, ADVANCE_ARROW_READING); }},
+    {"dialog_box", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::DIALOG_BOX); }},
+    {"autosave", [](const ScreenObservation& look){ return has_reading(look, AUTOSAVE_READING); }},
+    {"banner", [](const ScreenObservation& look){ return has_reading(look, MISSION_BANNER_READING); }},
+    {"choice", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::CHOICE_BOX); }},
+    {"fade", [](const ScreenObservation& look){ return fade_shows(look); }},
+}};
+
+std::string probe_since(const std::optional<WallClock>& when, WallClock start){
+    if (!when){
+        return "-";
+    }
+    return std::to_string(std::chrono::duration_cast<Milliseconds>(*when - start).count());
+}
 
 
 enum class SceneScreen{
@@ -121,19 +152,9 @@ bool terminal(SceneScreen screen){
 }
 
 
-bool busy(const ScreenObservation& look){
-    return text_shows(look) || fade_shows(look) || look.readings.contains(MISSION_COMPLETE_READING) ||
-        look.readings.contains(TUTORIAL_CARD_READING);
-}
-
 bool hud_shows(const ScreenObservation& look){
     return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(CONTROLS_HINT_READING) ||
         look.events.has(ScreenEvent::INTERACT_PROMPT);
-}
-
-//  The party bar, the controls hint or an A prompt, none under a text box.
-bool control_shows(const ScreenObservation& look){
-    return hud_shows(look) && !look.events.has(ScreenEvent::DIALOG_BOX);
 }
 
 //  Not when stopping at a choice or a battle: the talk shows them between lines.
@@ -142,19 +163,7 @@ bool party_bar_is_control(const SceneMachineConfig& config){
 }
 
 bool ends_machine(const SceneMachineConfig& config, const ScreenObservation& look){
-    return party_bar_is_control(config) ? control_shows(look) : look.readings.contains(CONTROLS_HINT_READING) && !look.events.has(ScreenEvent::DIALOG_BOX);
-}
-
-void track_since(bool shows, WallClock when, std::optional<WallClock>& since){
-    if (!shows){
-        since.reset();
-    }else if (!since){
-        since = when;
-    }
-}
-
-bool held_for(const std::optional<WallClock>& since, WallClock now, Milliseconds hold){
-    return since && now - *since >= hold;
+    return party_bar_is_control(config) ? CONTROL_SHOWS.matches(look) : look.readings.contains(CONTROLS_HINT_READING) && !look.events.has(ScreenEvent::DIALOG_BOX);
 }
 
 //  "the battle HUD, the choice box, the controls hint, the party bar or the A prompt".
@@ -173,7 +182,8 @@ std::string expected_end(const SceneMachineConfig& config){
 //  stop_at_battle's lock-on, since the last text or choice.
 struct LockOnState{
     bool after_fade = false;
-    std::optional<WallClock> quiet_since = std::nullopt;
+    Pokemon::HoldTimer quiet_hold{LOCK_ON_AFTER};
+    Pokemon::HoldTimer control_hold{CONTROL_HOLD};
     size_t attempts = 0;
     bool locked_on = false;
 };
@@ -224,11 +234,11 @@ private:
     bool m_scene_seen = false;
     //  A sign of control after the scene started.
     bool m_overworld_seen = false;
-    std::optional<WallClock> m_control_since;
-    std::optional<WallClock> m_control_instead_since;
+    Pokemon::HoldTimer m_control_hold{CONTROL_HOLD};
+    Pokemon::HoldTimer m_control_instead_hold{CONTROL_INSTEAD_HOLD};
     size_t m_black_fades = 0;
     LockOnState m_lock_on;
-    FlickerFilter m_battle;
+    Pokemon::FlickerFilter m_battle;
     //  text_a_to_choice: the last A on text, and whether its page showed the arrow.
     struct TextA{
         WallClock at;
@@ -245,7 +255,7 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (m_lock_on.locked_on){
         return SceneScreen::LOCKED_ON;
     }
-    if (fade_shows(look)){
+    if (FADE_SHOWS.matches(look)){
         return m_config.end_on_black_fade && look.events.has(ScreenEvent::FADE_BLACK) ? SceneScreen::BLACK_FADE_END : SceneScreen::FADE;
     }
     if (look.events.has(ScreenEvent::CHOICE_BOX)){
@@ -254,7 +264,7 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
         }
         return SceneScreen::CHOICE;
     }
-    if (text_shows(look)){
+    if (TEXT_SHOWS.matches(look)){
         return SceneScreen::TEXT;
     }
     if (look.readings.contains(MAP_READING)){
@@ -267,10 +277,10 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
 }
 
 SceneScreen SceneTimeline::classify_rest(const ScreenObservation& look) const{
-    if (look.readings.contains(TUTORIAL_CARD_READING) || look.readings.contains(MISSION_COMPLETE_READING)){
+    if (CARD_SHOWS.matches(look)){
         return SceneScreen::CARD;
     }
-    if (control_shows(look)){
+    if (CONTROL_SHOWS.matches(look)){
         return classify_control(look);
     }
     return SceneScreen::OTHER;
@@ -280,21 +290,21 @@ SceneScreen SceneTimeline::classify_control(const ScreenObservation& look) const
     if (m_config.start_window && !m_scene_seen){
         return look.when - m_start >= *m_config.start_window ? SceneScreen::NEVER_STARTED : SceneScreen::AWAITING_SCENE;
     }
-    if (held_for(m_control_since, look.when, CONTROL_HOLD)){
+    if (m_control_hold.held(look.when)){
         return SceneScreen::CONTROL;
     }
-    if (held_for(m_control_instead_since, look.when, CONTROL_INSTEAD_HOLD)){
+    if (m_control_instead_hold.held(look.when)){
         return SceneScreen::ENDED_IN_CONTROL;
     }
     return SceneScreen::CONTROL_SHOWING;
 }
 
 bool SceneTimeline::lock_on_due(const ScreenObservation& look) const{
-    if (!m_config.stop_at_battle || !m_config.lock_on || !m_lock_on.after_fade || m_lock_on.attempts >= LOCK_ON_ATTEMPTS || busy(look)){
+    if (!m_config.stop_at_battle || !m_config.lock_on || !m_lock_on.after_fade || m_lock_on.attempts >= LOCK_ON_ATTEMPTS || SCENE_BUSY.matches(look)){
         return false;
     }
-    return held_for(m_lock_on.quiet_since, look.when, LOCK_ON_AFTER) ||
-        (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && held_for(m_control_instead_since, look.when, CONTROL_HOLD));
+    return m_lock_on.quiet_hold.held(look.when) ||
+        (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && m_lock_on.control_hold.held(look.when));
 }
 
 std::optional<Button> SceneTimeline::text_button(const ScreenObservation& look) const{
@@ -328,20 +338,21 @@ void SceneTimeline::record(SceneScreen screen, const ScreenObservation& look){
         m_text_a = TextA{look.when, look.readings.contains(ADVANCE_ARROW_READING)};
     }
     m_black_fades += look.events.has(ScreenEvent::FADE_BLACK) ? 1 : 0;
-    m_overworld_seen = m_overworld_seen || (m_scene_seen && control_shows(look));
+    m_overworld_seen = m_overworld_seen || (m_scene_seen && CONTROL_SHOWS.matches(look));
     m_scene_seen = m_scene_seen || scene_under_way(look);
-    track_since(ends_machine(m_config, look), look.when, m_control_since);
-    const bool control_instead = !party_bar_is_control(m_config) && control_shows(look) && !busy(look);
-    track_since(control_instead, look.when, m_control_instead_since);
+    m_control_hold.update(ends_machine(m_config, look), look.when);
+    const bool control_instead = !party_bar_is_control(m_config) && CONTROL_SHOWS.matches(look) && !SCENE_BUSY.matches(look);
+    m_control_instead_hold.update(control_instead, look.when);
+    m_lock_on.control_hold.update(control_instead, look.when);
 }
 
 void SceneTimeline::record_battle(SceneScreen screen, const ScreenObservation& look){
-    const bool talk = text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX);
+    const bool talk = TEXT_SHOWS.matches(look) || look.events.has(ScreenEvent::CHOICE_BOX);
     m_lock_on.attempts = talk ? 0 : m_lock_on.attempts + (screen == SceneScreen::LOCK_ON ? 1 : 0);
     m_lock_on.after_fade = (m_lock_on.after_fade && !talk) || look.events.has(ScreenEvent::FADE_BLACK);
     //  A cutscene (moving, no party bar) is not quiet.
     const bool settled = look.events.has(ScreenEvent::SCREEN_STILL) || look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-    track_since(m_lock_on.after_fade && !busy(look) && settled, look.when, m_lock_on.quiet_since);
+    m_lock_on.quiet_hold.update(m_lock_on.after_fade && !SCENE_BUSY.matches(look) && settled, look.when);
 }
 
 
@@ -625,19 +636,19 @@ std::string describe_scene_look(const ScreenObservation& look){
 }
 
 bool text_shows(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::DIALOG_BOX) || look.readings.contains(ADVANCE_ARROW_READING);
+    return TEXT_SHOWS.matches(look);
 }
 
 bool fade_shows(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::FADE_BLACK) || look.events.has(ScreenEvent::FADE_WHITE);
+    return FADE_SHOWS.matches(look);
 }
 
 bool party_bar_free(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && !look.events.has(ScreenEvent::DIALOG_BOX);
+    return PARTY_BAR_FREE.matches(look);
 }
 
 bool scene_under_way(const ScreenObservation& look){
-    if (text_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX) || look.events.has(ScreenEvent::BATTLE_STARTED) ||
+    if (TEXT_SHOWS.matches(look) || look.events.has(ScreenEvent::CHOICE_BOX) || look.events.has(ScreenEvent::BATTLE_STARTED) ||
         look.readings.contains(TUTORIAL_CARD_READING)
     ){
         return true;
@@ -645,7 +656,7 @@ bool scene_under_way(const ScreenObservation& look){
     if (hud_shows(look)){
         return false;
     }
-    return fade_shows(look) || !look.events.has(ScreenEvent::SCREEN_STILL);
+    return FADE_SHOWS.matches(look) || !look.events.has(ScreenEvent::SCREEN_STILL);
 }
 
 std::optional<Pokemon::StoryFailure> run_scene_machine(
@@ -659,6 +670,10 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
     const size_t max_looks = (size_t)(timeout / POLL) + 1;
     for (size_t looks = 1; ; looks++){
         backend.scope().throw_if_cancelled();
+        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
+            runner.finish();
+            return Pokemon::game_not_running_failure();
+        }
         const SceneScreen screen = runner.timeline().classify(look);
         runner.act(screen, look);
         if (terminal(screen)){
@@ -674,6 +689,61 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
         }
         look = backend.observe();
     }
+}
+
+Pokemon::StoryFailure battle_on_screen_failure(){
+    return Pokemon::StoryFailure{
+        .code = "battle_on_screen",
+        .detail = "battle on screen",
+        .resume_at_action = std::string(action_name(PlzaAction::STORY_BATTLE)),
+    };
+}
+
+bool battle_showing(PlzaBackend& backend){
+    Pokemon::FlickerFilter battle = battle_filter();
+    for (size_t looks = 0; looks < 8; looks++){
+        backend.scope().throw_if_cancelled();
+        const ScreenObservation look = backend.observe();
+        const bool seen = look.events.has(ScreenEvent::BATTLE_STARTED);
+        if (battle.on_with(seen, look.when)){
+            return true;
+        }
+        if (looks == 0 && !seen){
+            return false;
+        }
+        battle.record(seen, look.when);
+        backend.wait(250ms);
+    }
+    return false;
+}
+
+void SignalProbe::look(const ScreenObservation& look){
+    m_start = m_start.value_or(look.when);
+    m_last = look.when;
+    for (size_t index = 0; index < PROBED_SIGNALS; index++){
+        if (!m_first[index] && PROBED_SIGNAL_TABLE[index].shows(look)){
+            m_first[index] = look.when;
+        }
+    }
+    if (text_shows(look) || fade_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
+        m_last_busy = look.when;
+    }
+}
+
+void SignalProbe::restart(){
+    *this = SignalProbe{};
+}
+
+std::string SignalProbe::line(std::string_view where, std::string_view decision, std::string_view by) const{
+    const WallClock start = m_start.value_or(m_last);
+    std::string first;
+    for (size_t index = 0; index < PROBED_SIGNALS; index++){
+        first += std::format(" {}@{}", PROBED_SIGNAL_TABLE[index].name, probe_since(m_first[index], start));
+    }
+    return std::format(
+        "[Signals] {} {} by={} after={} first:{} last_busy@{}",
+        where, decision, by, probe_since(m_last, start), first, probe_since(m_last_busy, start)
+    );
 }
 
 

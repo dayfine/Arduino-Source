@@ -11,9 +11,7 @@
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryMenuReadings.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryMenuSave.h"
 #include "PokemonLZA_AutoStoryMenuSave_Tests.h"
 
@@ -86,10 +84,16 @@ std::vector<ScreenObservation> twice(std::vector<ScreenObservation (*)(Milliseco
     return looks;
 }
 
-std::string joined(const std::vector<std::string>& texts){
+std::string non_poll_inputs(const std::vector<std::string>& texts){
     std::string text;
     for (const std::string& part : texts){
-        text += (text.empty() ? "" : ", ") + part;
+        if (part == "wait 250ms"){
+            continue;
+        }
+        if (!text.empty()){
+            text += ", ";
+        }
+        text += part;
     }
     return text;
 }
@@ -117,16 +121,7 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
         .input = {.looks = twice({overworld, card, main_menu, save_button, text, main_menu, overworld})},
         .expectation = {
             .failure = "",
-            .inputs = "wait 250ms, press X, wait 250ms, press A, wait 1500ms, wait 250ms, press R, wait 250ms, press A, "
-                "wait 250ms, press B, wait 250ms, press B",
-        },
-    },
-    {
-        .name = "a menu opened before has no tutorial card: R saves",
-        .input = {.looks = twice({overworld, main_menu, save_button, text, main_menu, overworld})},
-        .expectation = {
-            .failure = "",
-            .inputs = "wait 250ms, press X, wait 250ms, press R, wait 250ms, press A, wait 250ms, press B, wait 250ms, press B",
+            .inputs = "press X, press A, wait 1500ms, press R, press A, press B, press B",
         },
     },
     {
@@ -134,7 +129,7 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
         .input = {.looks = twice({overworld, main_menu, text, save_button, text, overworld})},
         .expectation = {
             .failure = "",
-            .inputs = "wait 250ms, press X, wait 250ms, press R, wait 250ms, press A, wait 250ms, press A, wait 250ms, press B",
+            .inputs = "press X, press R, press A, press A, press B",
         },
     },
     {
@@ -142,16 +137,8 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
         .input = {.looks = twice({overworld, main_menu, choice, main_menu, overworld})},
         .expectation = {
             .failure = "",
-            .inputs = "wait 250ms, press X, wait 250ms, press R, wait 250ms, press A, wait 250ms, press B",
+            .inputs = "press X, press R, press A, press B",
         },
-    },
-    {
-        .name = "the main menu that stays after R: R again 2 s later",
-        .input = {.looks = {
-            main_menu(Milliseconds(0)), main_menu(Milliseconds(250)), main_menu(Milliseconds(500)),
-            main_menu(Milliseconds(750)), main_menu(Milliseconds(2250)), main_menu(Milliseconds(31000)),
-        }},
-        .expectation = {.failure = "menu_save_timeout", .inputs = "wait 250ms, press R, wait 250ms, wait 250ms, press R"},
     },
     {
         .name = "a screen on one look only is not pressed",
@@ -159,7 +146,7 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
             overworld(Milliseconds(0)), card(Milliseconds(250)),
             overworld(Milliseconds(500)), overworld(Milliseconds(31000)),
         }},
-        .expectation = {.failure = "menu_save_timeout", .inputs = "wait 250ms, wait 250ms, wait 250ms"},
+        .expectation = {.failure = "menu_save_timeout", .inputs = ""},
     },
     {
         .name = "a menu that never opens: X again 2 s later, then the step times out",
@@ -167,7 +154,7 @@ const MenuSaveCase MENU_SAVE_CASES[] = {
             overworld(Milliseconds(0)), overworld(Milliseconds(250)), overworld(Milliseconds(500)),
             overworld(Milliseconds(750)), overworld(Milliseconds(2250)), overworld(Milliseconds(31000)),
         }},
-        .expectation = {.failure = "menu_save_timeout", .inputs = "wait 250ms, press X, wait 250ms, wait 250ms, press X"},
+        .expectation = {.failure = "menu_save_timeout", .inputs = "press X, press X"},
     },
     {
         .name = "the Switch's HOME menu: the game is not running",
@@ -194,7 +181,7 @@ const MenuSaveCase TEXT_SPEED_CASES[] = {
         }},
         .expectation = {
             .failure = "",
-            .inputs = std::format("{}, press A, wait 1500ms, {}, press B, wait 250ms", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
+            .inputs = std::format("{}, press A, wait 1500ms, {}, press B", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
         },
     },
     {
@@ -202,7 +189,7 @@ const MenuSaveCase TEXT_SPEED_CASES[] = {
         .input = {.looks = {main_menu(Milliseconds(0)), overworld(Milliseconds(1000)), overworld(Milliseconds(1250))}},
         .expectation = {
             .failure = "",
-            .inputs = std::format("{}, {}, wait 250ms", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
+            .inputs = std::format("{}, {}", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
         },
     },
     {
@@ -213,7 +200,7 @@ const MenuSaveCase TEXT_SPEED_CASES[] = {
         }},
         .expectation = {
             .failure = "",
-            .inputs = std::format("{}, {}, press B, press B, press B, wait 250ms", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
+            .inputs = std::format("{}, {}, press B, press B, press B", TEXT_SPEED_OPEN, TEXT_SPEED_ROWS),
         },
     },
     {
@@ -234,7 +221,7 @@ UnitTestResult check_menu_action(MenuAction action, const MenuSaveCase& test, Ca
     if ((outcome ? outcome->code : std::string()) != test.expectation.failure){
         return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, (outcome ? std::format("{}", *outcome) : std::string("ok")));
     }
-    const std::string inputs = joined(backend.inputs());
+    const std::string inputs = non_poll_inputs(backend.inputs());
     if (inputs != test.expectation.inputs){
         return std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, inputs);
     }

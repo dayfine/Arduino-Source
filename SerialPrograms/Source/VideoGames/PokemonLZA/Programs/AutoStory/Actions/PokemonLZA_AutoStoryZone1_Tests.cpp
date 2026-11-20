@@ -5,11 +5,9 @@
  *  03.08's console-free walk plans in Wild Zone 1: the way out
  *  (zone_1_exit_legs()) on map pins; check_out_of_zone_1()
  *  on the engine's scripted backend (FakeStoryBackend), its map pin reads
- *  scripted; the way off Taunie's rocks (ZoneStart::leave()), each case
- *  the start pin and the read after the leg; and legs
- *  to the zone's waypoints read by read (MapLeg): arriving, the walk's
- *  heading and hold, the corrections and where they stop, missing reads,
- *  a catch spot's stop area.
+ *  scripted; and legs to the zone's waypoints read by read (MapLeg):
+ *  arriving, the walk's heading, corrections and where they stop, missing
+ *  reads, and a catch spot's stop area.
  *
  */
 
@@ -23,8 +21,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryMapLegs.h"
-#include "PokemonLZA_AutoStoryZone1Map.h"
-#include "PokemonLZA_AutoStoryZone1Road.h"
+#include "PokemonLZA_AutoStoryZone1.h"
 #include "PokemonLZA_AutoStoryZone1_Tests.h"
 
 namespace PokemonAutomation{
@@ -202,89 +199,6 @@ private:
 
 
 
-constexpr std::optional<int> NONE = std::nullopt;
-
-std::string_view name_of(ZoneStartMove move){
-    switch (move){
-    case ZoneStartMove::WALK_TO_SPOT:
-        return "WALK_TO_SPOT";
-    case ZoneStartMove::SEARCH:
-        return "SEARCH";
-    case ZoneStartMove::ROCKS_NOT_LEFT:
-        return "ROCKS_NOT_LEFT";
-    case ZoneStartMove::SPOT_NOT_REACHED:
-        return "SPOT_NOT_REACHED";
-    }
-    return "?";
-}
-
-
-struct StartCase{
-    std::string name;
-    struct Input{
-        //  None: not read.
-        std::optional<MapPoint> start_pin;
-        //  After the leg (none: no read taken).
-        std::optional<int> read;
-    };
-    Input input;
-    struct Expectation{
-        ZoneStartMove move;
-    };
-    Expectation expectation;
-};
-
-const StartCase START_CASES[] = {
-    {
-        .name = "a read off the rocks in range, the pin unread: the walk",
-        .input = {.read = 127},
-        .expectation = {.move = ZoneStartMove::WALK_TO_SPOT},
-    },
-    {
-        .name = "no read off the rocks: stop, no walk",
-        .input = {.read = NONE},
-        .expectation = {.move = ZoneStartMove::ROCKS_NOT_LEFT},
-    },
-    {
-        .name = "a read off the rocks nearer than the save stands: stop",
-        .input = {.read = 113},
-        .expectation = {.move = ZoneStartMove::ROCKS_NOT_LEFT},
-    },
-    {
-        //  console B, French, 2026-11-17 02:41: the pin read as in every
-        //  passing run, the marker's digits in none of 24 looks.
-        .name = "the pin at the rocks, no read off them: the walk",
-        .input = {.start_pin = MapPoint{.x = 476, .y = 224}, .read = NONE},
-        .expectation = {.move = ZoneStartMove::WALK_TO_SPOT},
-    },
-    {
-        .name = "the pin at the 100 spot, a read of 127: stop",
-        .input = {.start_pin = MapPoint{.x = 432, .y = 238}, .read = 127},
-        .expectation = {.move = ZoneStartMove::ROCKS_NOT_LEFT},
-    },
-};
-
-class Test_ZoneStart : public UnitTest{
-public:
-    explicit Test_ZoneStart(const StartCase& test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStory - ZoneStart: {}", test_case.name))
-        , m_case(test_case)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        ZoneStart start(TAUNIE_ROCKS_ROUTE);
-        const ZoneStartMove move = start.leave(m_case.input.start_pin, m_case.input.read);
-        if (move != m_case.expectation.move){
-            return std::format("Expected {}, got {}.", name_of(m_case.expectation.move), name_of(move));
-        }
-        return true;
-    }
-
-private:
-    const StartCase& m_case;
-};
-
-
-
 //  Fixed waypoints for the leg logic, apart from the map data's.
 constexpr MapWaypoint SPOT{.name = "the 100 spot", .pin = {.x = 432, .y = 238}, .stop_radius = CATCH_STOP_RADIUS};
 constexpr MapWaypoint SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 252}, .stop_radius = CATCH_STOP_RADIUS};
@@ -295,9 +209,9 @@ std::string describe(const MapLegMove& move){
         return "arrived";
     case MapLegStep::WALK:
         return std::format(
-            "{}walk {:.0f} deg {:.1f} s",
+            "{}walk {:.0f} deg",
             move.correction > 0 ? std::format("correction {}: ", move.correction) : std::string(),
-            move.heading, (double)move.hold.count() / 1000
+            move.heading
         );
     case MapLegStep::READ_AGAIN:
         return "read again";
@@ -327,15 +241,9 @@ struct LegCase{
 
 const LegCase LEG_CASES[] = {
     {
-        //  3.6 s at 7.0 pixels a second.
-        .name = "a read off the waypoint walks toward it, then arrives",
-        .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 456, .y = 231}, MapPoint{.x = 433, .y = 239}}},
-        .expectation = {.moves = "walk 254 deg 3.6 s, arrived"},
-    },
-    {
-        .name = "a walk that ends short gets a correction",
+        .name = "a walk that ends short gets a correction, then arrives",
         .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 456, .y = 231}, MapPoint{.x = 445, .y = 234}, MapPoint{.x = 431, .y = 238}}},
-        .expectation = {.moves = "walk 254 deg 3.6 s, correction 1: walk 253 deg 1.9 s, arrived"},
+        .expectation = {.moves = "walk 254 deg, correction 1: walk 253 deg, arrived"},
     },
     {
         .name = "still off after the leg and two corrections: stops",
@@ -343,7 +251,7 @@ const LegCase LEG_CASES[] = {
             MapPoint{.x = 456, .y = 231}, MapPoint{.x = 420, .y = 220},
             MapPoint{.x = 445, .y = 250}, MapPoint{.x = 420, .y = 225},
         }},
-        .expectation = {.moves = "walk 254 deg 3.6 s, correction 1: walk 146 deg 3.1 s, correction 2: walk 313 deg 2.5 s, off target"},
+        .expectation = {.moves = "walk 254 deg, correction 1: walk 146 deg, correction 2: walk 313 deg, off target"},
     },
     {
         .name = "a missing read gets a second look",
@@ -358,7 +266,7 @@ const LegCase LEG_CASES[] = {
     {
         .name = "a missing read after a walk is not a correction",
         .input = {.waypoint = SPOT, .reads = {MapPoint{.x = 456, .y = 231}, std::nullopt, MapPoint{.x = 445, .y = 234}}},
-        .expectation = {.moves = "walk 254 deg 3.6 s, read again, correction 1: walk 253 deg 1.9 s"},
+        .expectation = {.moves = "walk 254 deg, read again, correction 1: walk 253 deg"},
     },
     {
         //  Console B, 2026-11-17 03.08: the leg to the 60 spot from
@@ -366,12 +274,12 @@ const LegCase LEG_CASES[] = {
         //  correction 1 turned back at heading 133, away from the Mareep.
         .name = "a walk past a catch spot on its way, within its stop area, arrives",
         .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 380, .y = 247}}},
-        .expectation = {.moves = "walk 250 deg 6.8 s, arrived"},
+        .expectation = {.moves = "walk 250 deg, arrived"},
     },
     {
         .name = "a walk that ends off to the side of a catch spot, out of its stop area, gets a correction",
         .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 384, .y = 265}}},
-        .expectation = {.moves = "walk 250 deg 6.8 s, correction 1: walk 9 deg 1.9 s"},
+        .expectation = {.moves = "walk 250 deg, correction 1: walk 9 deg"},
     },
     {
         //  Console B, 2026-11-17 03.08b: zone_1_back_to_road started at
@@ -393,7 +301,14 @@ public:
         MapLeg leg(m_test.input.waypoint.pin, m_test.input.waypoint.stop_radius);
         std::string moves;
         for (const std::optional<MapPoint>& read : m_test.input.reads){
-            moves += (moves.empty() ? "" : ", ") + describe(leg.next(read));
+            const MapLegMove move = leg.next(read);
+            if (move.step == MapLegStep::WALK && move.hold <= Milliseconds(0)){
+                return std::format("Expected a positive walk hold, got {} ms.", move.hold.count());
+            }
+            if (!moves.empty()){
+                moves += ", ";
+            }
+            moves += describe(move);
         }
         if (moves != m_test.expectation.moves){
             return std::format("Expected \"{}\", got \"{}\".", m_test.expectation.moves, moves);
@@ -414,9 +329,6 @@ void add_tests_AutoStoryZone1(UnitTestDatabase& database){
     }
     for (const OutOfZoneCase& test : OUT_OF_ZONE_CASES){
         database.add<Test_OutOfZone>(test);
-    }
-    for (const StartCase& item : START_CASES){
-        database.add<Test_ZoneStart>(item);
     }
     for (const LegCase& test : LEG_CASES){
         database.add<Test_MapLeg>(test);

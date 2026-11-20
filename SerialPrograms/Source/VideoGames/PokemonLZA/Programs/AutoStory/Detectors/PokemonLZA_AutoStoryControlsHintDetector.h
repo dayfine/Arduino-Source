@@ -2,7 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The tutorial's controls hint under the player when they get control.
+ *  Language-independent detector for the tutorial controls hint card.
  *
  */
 
@@ -18,9 +18,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The hint's "?" card, sky blue with a dark "?", at x 947-971, y 872-900 on 1080p
-//  under a two-row hint (higher under more), with no sky blue around it. Only the
-//  card is read: the rows' icons move with the text's length.
+//  Detects the tutorial controls-hint "?" card shown during free control.
 class ControlsHintDetector : public StaticScreenDetector{
 public:
     explicit ControlsHintDetector(Color color = COLOR_BLUE);
@@ -29,7 +27,6 @@ public:
     virtual bool detect(const ImageViewRGB32& screen) override;
 
 private:
-    //  Whether the card shows `dy` px (of 1080) below the boxes.
     bool card_at(const ImageViewRGB32& screen, double dy) const;
 
     Color m_color;

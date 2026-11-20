@@ -1,0 +1,55 @@
+/*  PokemonLZA AutoStory - Battle HUD detectors
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  Detectors for the battle lead panel and battle-only status markers.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryBattleHudDetectors_H
+#define PokemonAutomation_PokemonLZA_AutoStoryBattleHudDetectors_H
+
+#include <vector>
+#include "Common/Cpp/Color.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonTools/VisualDetector.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonLZA{
+
+
+//  Detects the player's lead Pokemon panel at the bottom left.
+//  Also appears in wild zones; pair with BattleMarkersDetector for battle-only detection.
+class BattlePanelDetector : public StaticScreenDetector{
+public:
+    explicit BattlePanelDetector(Color color = COLOR_GREEN);
+
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+    virtual bool detect(const ImageViewRGB32& screen) override;
+
+private:
+    Color m_color;
+    ImageFloatBox m_badge;
+    ImageFloatBox m_bar;
+};
+
+//  Detects the battle-only row of five status markers beside the lead panel.
+class BattleMarkersDetector : public StaticScreenDetector{
+public:
+    explicit BattleMarkersDetector(Color color = COLOR_BLUE);
+
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+    virtual bool detect(const ImageViewRGB32& screen) override;
+
+private:
+    Color m_color;
+    std::vector<ImageFloatBox> m_slots;
+};
+
+
+
+} // namespace PokemonLZA
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

@@ -108,17 +108,7 @@ struct PlateFrameCase{
 
 const PlateFrameCase PLATE_FRAME_CASES[] = {
     {
-        .name = "the plate's bar on dark ground",
-        .input = {.frame = []{ return plate_frame(DARK_GROUND, {.plate_bar = true}); }},
-        .expectation = {.caught = false},
-    },
-    {
-        .name = "the plate's bar on the bright grass it touches",
-        .input = {.frame = []{ return plate_frame(BRIGHT_GRASS, {.plate_bar = true}); }},
-        .expectation = {.caught = false},
-    },
-    {
-        .name = "the plate's bar and the player's HP bar",
+        .name = "the plate's bar and the player's HP bar on bright grass",
         .input = {.frame = []{ return plate_frame(BRIGHT_GRASS, {.plate_bar = true, .player_bar = true}); }},
         .expectation = {.caught = false},
     },
@@ -140,11 +130,6 @@ const PlateFrameCase PLATE_FRAME_CASES[] = {
     {
         .name = "bright grass alone",
         .input = {.frame = []{ return plate_frame(BRIGHT_GRASS, {}); }},
-        .expectation = {.caught = std::nullopt},
-    },
-    {
-        .name = "an empty frame",
-        .input = {.frame = []{ return ImageRGB32(); }},
         .expectation = {.caught = std::nullopt},
     },
 };

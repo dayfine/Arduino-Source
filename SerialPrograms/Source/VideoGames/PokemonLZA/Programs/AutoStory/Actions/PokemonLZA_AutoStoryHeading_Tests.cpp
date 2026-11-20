@@ -15,7 +15,7 @@
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
-#include "PokemonLZA_AutoStoryHeading.h"
+#include "PokemonLZA_AutoStoryWalks.h"
 #include "PokemonLZA_AutoStoryHeading_Tests.h"
 
 namespace PokemonAutomation{

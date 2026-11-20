@@ -2,14 +2,17 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Presses through a run of scenes to free control: A by default, a few
- *  screens that take another press, and an end once a sign of control holds.
+ *  Scene progression state machine, battle-on-screen check, and signal probe
+ *  for PLZA AutoStory.
  *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
 #define PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
 
+#include <array>
+#include <cstddef>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -17,76 +20,73 @@
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryHeading.h"
-#include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  How long a Plus press is held to skip a cutscene, as upstream's
-//  AutoStory (#1933) holds it.
+//  How long a Plus press is held to skip a cutscene.
 constexpr Milliseconds CUTSCENE_SKIP_HOLD = Milliseconds(2000);
 
-//  What ends a scene machine besides control, and its exceptions to A.
+//  Holds ZL up to `hold`; true once the move-effectiveness symbols show (locked on).
+using LockOnWatch = std::function<bool(Milliseconds hold)>;
+
+//  Configuration for run_scene_machine(): terminal conditions and input overrides.
 struct SceneMachineConfig{
-    //  Ends at a choice box, for the step after to pick its row. Text gets B
-    //  then, and other screens nothing: an A in flight as the choice opens
-    //  would take its top row...
     bool stop_at_choice = false;
-    //  ...unless B closes the talk and the step takes the top row anyway (the
-    //  elevators): one A per text page.
     bool text_a_to_choice = false;
-    //  Ends at the battle HUD or a lock-on. The HUD shows only while locked
-    //  on, so after a black fade a still screen (3 s) or the party bar (1 s)
-    //  gets ZL held while `lock_on` watches for the move symbols, then up to
-    //  4 quarter turns + L. A cutscene (moving, no party bar) gets no ZL.
     bool stop_at_battle = false;
-    //  Ends at the battle HUD (battle_filter()) as battle_on_screen_failure(),
-    //  for a step before the checkpoint's battle step: a trainer's battle can
-    //  start before the plan's walk to them (03.02b), and A there is a move.
     bool end_at_battle = false;
-    //  None: no lock-on (a backend that models none).
     std::optional<LockOnWatch> lock_on = std::nullopt;
-    //  For text and screens no detector reads: B where A does something else
-    //  (03.04's Pokedex plays the entry's motions; Mable's menus in 03.10/03.11).
     Button button = BUTTON_A;
-    //  The step plays a scene: the HUD ends it only once a scene is under way.
-    //  Fails ("scene_never_started") when the HUD shows this long with no
-    //  scene: the player is not at the trigger.
     std::optional<Milliseconds> start_window = std::nullopt;
-    //  Ends at a black fade (01.01's, that opens the president's ad).
     bool end_on_black_fade = false;
 };
 
-//  Text, a choice, a battle, a tutorial card, or with no HUD up a fade or a
-//  moving screen (a cutscene can play a minute with no text).
+//  True when a scene is active (text, choice, battle, tutorial card, or non-HUD fade/motion).
 bool scene_under_way(const ScreenObservation& look);
 
-//  A text box, or the advance chevron without one.
+//  True when a dialogue box or advance chevron is visible.
 bool text_shows(const ScreenObservation& look);
 
-//  A black or a white fade.
+//  True when a black or white fade is visible.
 bool fade_shows(const ScreenObservation& look);
 
-//  The party bar with no text box over it (it shows between a talk's lines too).
+//  True when the party bar is visible without an overlapping text box.
 bool party_bar_free(const ScreenObservation& look);
 
-//  "text box, advance arrow": `look`'s events and readings; "nothing" for none.
+//  Formats `look`'s active events and readings as a comma-separated string, or "nothing".
 std::string describe_scene_look(const ScreenObservation& look);
 
-//  Presses through scenes until the party bar, the controls hint or an A
-//  prompt (none under a text box) holds 1 s. Each look: a choice takes its
-//  top row (Up to it, then A). A map gets B, a tutorial card A; text and
-//  anything else A, but B on a look with a sign of control and on every
-//  look once one has shown in the scene: A there starts a talk (03.02b's
-//  Vinci loop). Fades only wait.
-//  Fails as "scene_never_started", "scene_ended_in_control" or
-//  "scene_timeout" (by the looks' time); `step` is "<checkpoint>/<step>".
+//  Advances scenes according to `config` until a terminal screen is reached or `timeout` elapses.
+//  Returns failure codes: "scene_never_started", "battle_on_screen", "scene_ended_in_control",
+//  "game_not_running", or "scene_timeout".
 std::optional<Pokemon::StoryFailure> run_scene_machine(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout, std::string_view step
 );
+
+//  Returns the "battle_on_screen" failure that redirects execution to the checkpoint's next story_battle.
+Pokemon::StoryFailure battle_on_screen_failure();
+
+//  Polls for a confirmed battle HUD; returns false immediately if the first look does not show it.
+bool battle_showing(PlzaBackend& backend);
+
+//  Diagnostic timer recording when overlapping screen signals first appeared during a wait.
+class SignalProbe{
+public:
+    void look(const ScreenObservation& look);
+    void restart();
+    std::string line(std::string_view where, std::string_view decision, std::string_view by) const;
+
+private:
+    static constexpr size_t PROBED_SIGNALS = 9;
+    std::optional<WallClock> m_start;
+    WallClock m_last = WallClock::min();
+    std::array<std::optional<WallClock>, PROBED_SIGNALS> m_first = {};
+    std::optional<WallClock> m_last_busy;
+};
 
 
 

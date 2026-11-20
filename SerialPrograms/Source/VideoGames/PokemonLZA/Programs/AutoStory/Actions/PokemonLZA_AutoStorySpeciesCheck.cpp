@@ -53,6 +53,9 @@ bool party_has_species(std::optional<int> filled_slots, int dex_species){
 }
 
 std::optional<int> settled_party_slots(MoveOnlyFunction<std::optional<int>()> read_look){
+    //  A catch's new member joins the bar seconds after its banner: 03.08 read
+    //  4 of 5 slots and failed, and its retry at once read 5 (console B,
+    //  2026-11-18). Hold one count for 3 s; none if unread in 2 s; cap at 8 s.
     //  Looks are 250 ms apart.
     constexpr int FIRST_READ_LOOKS = 8;
     constexpr int HELD_LOOKS = 13;

@@ -14,6 +14,18 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+namespace{
+
+//  The controls hint's sky blue: blue over 200, green over 160, blue over red by 60.
+double sky_blue_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
+    return share_of(screen, box, [](Color pixel){
+        return pixel.blue() > 200 && pixel.green() > 160 && pixel.blue() > pixel.red() + 60;
+    });
+}
+
+} // namespace
+
+
 //  On 1080p: the card at x 946-971, y 868-901, spine x 974-976; "?" at x 953-965, y 876-894.
 ControlsHintDetector::ControlsHintDetector(Color color)
     : m_color(color)
