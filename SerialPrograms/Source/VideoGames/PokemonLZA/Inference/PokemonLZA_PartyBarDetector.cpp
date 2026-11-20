@@ -29,9 +29,11 @@ constexpr double BAR_HEIGHT = 0.0037;
 constexpr double CARD_Y = 0.9454;
 constexpr double CARD_HEIGHT = 0.0046;
 
-//  The trough is the card darkened: a black overlay at about half.
-constexpr double TROUGH_BRIGHTNESS_RATIO = 0.65;
-//  Bars read 0.79+ (a nearly empty red bar over bright teal); slots without, 0.16 at most.
+//  The trough is the card darkened (~0.46x scene + dark charcoal floor).
+//  Over dark asphalt (card ~73) a weakened bar's trough reads ~0.67x, while
+//  empty slots stay <= 0.25 bar-share at 0.72.
+constexpr double TROUGH_BRIGHTNESS_RATIO = 0.72;
+//  Bars read 0.74+ (a weakened yellow/red bar over dark asphalt); slots without, 0.25 at most.
 constexpr double BAR_SHARE_MIN = 0.5;
 
 bool is_hp_color(Color color){
