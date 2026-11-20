@@ -138,6 +138,10 @@ ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
+ScreenObservation text_page(Milliseconds at){
+    return look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, at);
+}
+
 ScreenObservation choice(int selected, int rows = 2, Milliseconds at = Milliseconds(0)){
     ScreenObservation observation = look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, /*readings=*/{}, at);
     observation.readings[std::string(CHOICE_ROWS_READING)] = rows;
@@ -384,24 +388,28 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  03.05 on console B 2026-11-19 18:58: after the heal the nurse asks
-        //  "anything else?" with her menu again; A took its top row, the heal,
-        //  and the talk looped 120 s.
+        //  03.05 on console B 2026-11-19 18:58: after the heal the nurse asks "anything else?" with
+        //  her menu again; A took its top row, the heal, and the talk looped 120 s.
         .name = "03.05's heal: A on the nurse's menu, B when it comes back after her text, done at control",
         .input = {.checkpoint = "03.05", .first_step = 1, .steps = 1, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, Milliseconds(0)),
-            choice(/*selected=*/0, /*rows=*/3, /*at=*/Milliseconds(400)),
-            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, Milliseconds(800)),
-            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, Milliseconds(1200)),
-            choice(/*selected=*/0, /*rows=*/3, /*at=*/Milliseconds(1600)),
-            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, Milliseconds(2000)),
+            text_page(Milliseconds(0)), choice(/*selected=*/0, /*rows=*/3, Milliseconds(400)), text_page(Milliseconds(800)),
+            text_page(Milliseconds(1200)), choice(/*selected=*/0, /*rows=*/3, Milliseconds(1600)), text_page(Milliseconds(2000)),
             party_bar(Milliseconds(2400)), party_bar(Milliseconds(3500)),
         }},
-        .expectation = {
-            .verdict = "done",
-            .inputs = "press A, press A, press A, press A, press B, press A, wait 250ms",
-            .line = "[PLZA scene] choice: 3 rows, shown again after A took it: B",
-        },
+        .expectation = {.verdict = "done", .inputs = "press A, press A, press A, press A, press B, press A, wait 250ms",
+            .line = "[PLZA scene] choice: 3 rows, shown again after A took it: B"},
+    },
+    {
+        //  03.11 on console B 2026-11-19 19:27: B on Mable's second 2-row question did nothing, for 120 s.
+        .name = "03.11's Mable talk: a second choice like the first gets B, still up after it gets A, done at control",
+        .input = {.checkpoint = "03.11", .first_step = 1, .steps = 1, .looks = {
+            text_page(Milliseconds(0)), choice(/*selected=*/0, /*rows=*/2, Milliseconds(400)), text_page(Milliseconds(800)),
+            text_page(Milliseconds(1200)), choice(/*selected=*/0, /*rows=*/2, Milliseconds(1600)),
+            choice(/*selected=*/0, /*rows=*/2, Milliseconds(2000)), text_page(Milliseconds(2400)),
+            party_bar(Milliseconds(2800)), party_bar(Milliseconds(3900)),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A, press A, press A, press A, press B, press A, press A, wait 250ms",
+            .line = "[PLZA scene] done on control."},
     },
     {
         //  01.03 on console B 2026-11-19 17:10: Taunie's A prompt shows at the
