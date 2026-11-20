@@ -456,7 +456,10 @@ std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::s
             }
         }
         prompt_first = false;
-        if (!prompt){
+        //  A only once the legs are done and the player stands: a prompt
+        //  passed mid-walk is someone else's, and A on it in 01.03 took
+        //  Taunie's line instead of Tepig's (console B, 2026-11-19 17:10).
+        if (!prompt || walking){
             if (!walking){
                 backend.wait(TALK_POLL);
                 tail += TALK_POLL;
