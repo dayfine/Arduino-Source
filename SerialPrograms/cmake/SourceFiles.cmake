@@ -1525,6 +1525,7 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_WallRecovery.h
     Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.h
+    Source/Pokemon/Navigation/Pokemon_WanderRules.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.h

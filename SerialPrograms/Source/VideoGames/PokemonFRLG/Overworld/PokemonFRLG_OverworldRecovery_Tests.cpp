@@ -25,6 +25,7 @@
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRecoveryWalk.h"
+#include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldWalkWatches.h"
 
 namespace PokemonAutomation{
@@ -973,6 +974,98 @@ UnitTestResult test_wanderer_wall_rehold(){
     return true;
 }
 
+UnitTestResult test_open_leg_wanderer_mid_hold_block(){
+    //  Models CeruleanCity 05.04: (10, 12) -> east 13 (open) -> (23, 12),
+    //  then north -> (23, 1) with a building wall above (17..18, 12) and a
+    //  wandering NPC stepping onto (18, 12) mid-leg.
+    std::vector<std::string> rows(16, std::string(26, '.'));
+    rows[0] = std::string(26, '#');
+    rows[15] = std::string(26, '#');
+    for (int y = 0; y < 16; y++){
+        rows[y][0] = '#';
+        rows[y][25] = '#';
+    }
+    //  Building wall north of row 12 from x=12..21, and column 24 walled
+    //  above row 12 so column 23 is the only path north while (23, 12) stays
+    //  an open stop (x=24, y=12 is walkable).
+    for (int y = 1; y <= 11; y++){
+        for (int x = 12; x <= 21; x++){
+            rows[y][x] = '#';
+        }
+        rows[y][24] = '#';
+    }
+    rows[13] = std::string(26, '#');
+    std::string tiles_json = "[";
+    std::string elev_json = "[";
+    for (size_t y = 0; y < rows.size(); y++){
+        if (y > 0){
+            tiles_json += ",";
+            elev_json += ",";
+        }
+        tiles_json += "\"" + rows[y] + "\"";
+        elev_json += "\"" + std::string(26, '3') + "\"";
+    }
+    tiles_json += "]";
+    elev_json += "]";
+    const std::string json = std::format(R"({{
+        "name": "CeruleanCity", "source": {{"decomp_file": "", "revision": "test", "date": "2026-11-20"}},
+        "tiles": {},
+        "elevation": {},
+        "objects": [
+            {{"name": "lass", "kind": "npc", "x": 18, "y": 12, "wander": {{"x0": 18, "y0": 12, "x1": 19, "y1": 12}}}}
+        ]
+    }})", tiles_json, elev_json);
+    const std::vector<MapData> maps{parse_map(json, "CeruleanCity")};
+    const MapPosition start{"CeruleanCity", {10, 12}};
+    const MapPosition goal{"CeruleanCity", {23, 1}};
+
+    //  1. Sim repro of the un-tapped hold bug: east 13 (not tapped) is bumped
+    //     at (18, 12), leaving the player at (17, 12), and north hits the wall.
+    {
+        RouteStep east = walk(Direction::EAST, 13, {"CeruleanCity", {23, 12}});
+        east.tapped = false;
+        RouteStep north = walk(Direction::NORTH, 11, goal);
+        north.to_wall = true;
+        SimScript script;
+        script.wanderer_blocks.push_back(SimWandererBlock{.map = "CeruleanCity", .tile = {18, 12}, .clear_after_waits = 1});
+        OverworldSim sim(maps, start, Direction::EAST, script);
+        OverworldSimWalker walker(sim, SimWalkerRules{});
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route"};
+        walker.run({east, north}, planning, Direction::EAST);
+        if (sim.state().position == goal){
+            return "Expected untap-marked hold to be bumped at (18, 12) and miss goal";
+        }
+    }
+
+    //  2. Planned route marks east 13 as tapped; OverworldRecovery waits for
+    //     the wanderer at (18, 12) and taps the remaining 6 tiles to (23, 12),
+    //     then walks north to (23, 1).
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, start, RouteGoal{goal, std::nullopt});
+    if (!route || route->empty()){
+        return "Failed to plan CeruleanCity route";
+    }
+    if (!(*route)[0].tapped){
+        return std::format("Expected first leg {} crossing wander box to be marked tapped", to_string((*route)[0]));
+    }
+    SimScript script;
+    script.wanderer_blocks.push_back(SimWandererBlock{.map = "CeruleanCity", .tile = {18, 12}, .clear_after_waits = 1});
+    OverworldSim sim(maps, start, Direction::EAST, script);
+    OverworldSimWalker walker(sim, SimWalkerRules{});
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route"};
+    const std::string err = walker.run(*route, planning, Direction::EAST);
+    if (!err.empty()){
+        return std::format("Expected route to succeed with wanderer recovery, failed: {}", err);
+    }
+    if (!(sim.state().position == goal)){
+        return std::format("Expected final position {}, got {}", to_string(goal), to_string(sim.state().position));
+    }
+    if (sim.state().time < WANDER_WAIT_DURATION){
+        return std::format("Expected sim time >= {} ms after wanderer wait, got {} ms",
+            WANDER_WAIT_DURATION.count(), sim.state().time.count());
+    }
+    return true;
+}
+
 const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "stop, recover, resume", .body = test_stop_recover_resume},
@@ -1060,6 +1153,10 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "wanderer wall re-hold", .body = test_wanderer_wall_rehold},
         .expectation = {.description = "waits and re-holds a to_wall leg touching a wander box when moved_past_wall detects movement"},
+    },
+    {
+        .input = {.name = "open leg wanderer mid-hold block", .body = test_open_leg_wanderer_mid_hold_block},
+        .expectation = {.description = "taps open legs crossing a wander box and waits/resumes when blocked mid-leg by a wandering NPC"},
     },
 
 };
