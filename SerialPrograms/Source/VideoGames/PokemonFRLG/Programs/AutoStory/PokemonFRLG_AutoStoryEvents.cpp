@@ -660,7 +660,7 @@ Outcome nugget_farm(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!nurse_pose){
         return Pokemon::outcome_failed("bad_nurse", Pokemon::to_string(nurse_input));
     }
-    const Pokemon::GridPose approach{"Route24", {TilePos{11, 16}}, Direction::NORTH};
+    const Pokemon::GridPose approach{"Route24", {TilePos{11, 15}}, Direction::NORTH};
     for (int64_t i = 0; i < count; i++){
         StoryStep walk;
         walk.kind = StoryStepKind::ROUTE;

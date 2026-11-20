@@ -7,6 +7,15 @@
     "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
+        "id": "cerulean_west_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[7, 29]], "facing": "west"}
+        },
+        "why": "loop south of the wandering boy to Cerulean west wall (7, 29)"
+      },
+      {
         "id": "west_of_rocket",
         "kind": "route",
         "action": "run",
@@ -32,6 +41,15 @@
         },
         "declared_after": {"map": "CeruleanCity", "tiles": [[33, 7]], "facing": "north"},
         "why": "Machop and Drowzee, Lv17; TM28 Dig"
+      },
+      {
+        "id": "route5_fence",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route5", "tiles": [[29, 33]], "facing": "south"}
+        },
+        "why": "align against the Route 5 horizontal fence (y=34) after the CeruleanCity->Route5 connection"
       },
       {
         "id": "route6_column15",
@@ -69,6 +87,24 @@
         },
         "declared_after": {"map": "Route6", "tiles": [[10, 33]], "facing": "east"},
         "why": "Spearow and Raticate, Lv16; Jeff stops at (11, 33)"
+      },
+      {
+        "id": "vermilion_south",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity", "tiles": [[19, 8]]}
+        },
+        "why": "cross Route6->VermilionCity south past the house wall (y=6)"
+      },
+      {
+        "id": "vermilion_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity", "tiles": [[19, 7]], "facing": "north"}
+        },
+        "why": "align against the house south wall (18, 6) before entering the Center"
       },
       {
         "id": "vermilion_nurse",
