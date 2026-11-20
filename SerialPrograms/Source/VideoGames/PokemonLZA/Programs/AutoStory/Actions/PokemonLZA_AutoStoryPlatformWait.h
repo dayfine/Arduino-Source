@@ -19,16 +19,16 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-enum class PlatformWait{
-    PLATFORM_ONLY,      //  "wait_for_platform": a start check
-    AFTER_AUTOSAVE,     //  "opening_to_platform": the autosave badge first
-};
+//  Passively waits (no button presses) until the station platform is live with
+//  free control (controls hint up, no autosave badge or dialog box).
+//  Fails as "platform_not_seen" after `timeout`, or GAME_NOT_RUNNING on HOME.
+std::optional<Pokemon::StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds timeout);
 
-//  The platform is its controls hint on two looks in a row. One A per
-//  advance arrow (A does not advance the cutscene). AFTER_AUTOSAVE: Plus held
-//  0.75 s after each fade-in of the opening, until it skips to the platform.
-//  Fails as "platform_not_seen".
-std::optional<Pokemon::StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds timeout, PlatformWait wait);
+//  Precondition: the new-game opening sequence has just been confirmed.
+//  Advances and skips the opening until the arrival autosave appears, then
+//  waits passively for the platform's free-control screen within the shared
+//  `timeout`. Fails as "platform_not_seen" or GAME_NOT_RUNNING on HOME.
+std::optional<Pokemon::StoryFailure> opening_to_platform(PlzaBackend& backend, Milliseconds timeout);
 
 
 
