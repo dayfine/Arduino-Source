@@ -28,7 +28,6 @@ struct StartSignature{
     std::optional<bool> talk_prompt = std::nullopt;
     std::optional<bool> wild_zone = std::nullopt;
     std::optional<size_t> party = std::nullopt;
-    std::optional<size_t> party_max = std::nullopt;
     std::optional<std::string> minimap = std::nullopt;
 
     bool operator==(const StartSignature&) const = default;
