@@ -646,7 +646,10 @@ Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal
     Patrol patrol{.party_slots = start.slots};
     GrassCatches& result = patrol.catches;
     std::vector<int> caught_at;
-    for (size_t i = start.first_stop; i < stops.size() && result.found < goal.new_species && result.throws < goal.max_throws; i++){
+    for (size_t i = start.first_stop; i < stops.size() && result.throws < goal.max_throws; i++){
+        if (patrol.party_slots ? party_has_species(patrol.party_slots, goal.party_species) : result.found >= goal.new_species){
+            break;
+        }
         backend.scope().throw_if_cancelled();
         if (current_time() > deadline){
             backend.log("[PLZA] catch_in_zone: out of time for the patrol");

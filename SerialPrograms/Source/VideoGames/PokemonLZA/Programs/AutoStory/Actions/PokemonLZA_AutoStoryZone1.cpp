@@ -19,8 +19,8 @@ namespace PokemonLZA{
 namespace{
 
 //  Sidewalk by the blue kiosk between 100 and 60 (Weedle / Pichu lawn);
-//  inside the Wild Zone 1 pentagon, clear of its red reticle ring (509 px).
-constexpr MapWaypoint ZONE1_SPOT_80{.name = "the 80 spot", .pin = {.x = 406, .y = 231}, .provisional = false, .stop_radius = CATCH_STOP_RADIUS};
+//  inside the Wild Zone 1 pentagon, clear of both its red reticle ring and MAP_CENTRE.
+constexpr MapWaypoint ZONE1_SPOT_80{.name = "the 80 spot", .pin = {.x = 408, .y = 234}, .provisional = false, .stop_radius = CATCH_STOP_RADIUS};
 
 //  Mareep's grass right of the road (marker 60); nudged south onto the road
 //  clear of the Wild Zone 1 badge's red reticle ring at (386, 246).
@@ -53,10 +53,10 @@ constexpr MapPoint ZONE1_OUTLINE[] = {
 };
 
 //  Out of every wild zone the map opens on the player at its centre: on the
-//  street outside the far gate the pin read (401, 225) and (401, 223); no
-//  pin in the zone read within 15 of it.
-constexpr MapPoint MAP_CENTRE{.x = 400, .y = 225};
-constexpr double MAP_CENTRE_RADIUS = 6;
+//  street outside the far gate the pin read (401, 223)-(401, 225). Keep the
+//  radius tight so catching Weedle at (402, 230) inside Wild Zone 1 stays in-zone.
+constexpr MapPoint MAP_CENTRE{.x = 401, .y = 224};
+constexpr double MAP_CENTRE_RADIUS = 3;
 
 constexpr size_t OUT_OF_ZONE_PIN_READS = 2;
 
