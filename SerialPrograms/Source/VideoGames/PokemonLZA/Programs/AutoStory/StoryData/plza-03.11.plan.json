@@ -33,7 +33,8 @@
       {
         "id": "mable_talk",
         "why": "Mable's research requests until control: A takes \"Yes\" and closes her \"Press X...\" line",
-        "action": "a"
+        "action": "scene",
+        "args": {"start_window_ms": 45000}
       },
       {
         "id": "rock_smash_tm",
@@ -42,8 +43,9 @@
       },
       {
         "id": "leave_mable",
-        "action": "mash",
-        "why": "through Mable's talk until control. Bare scene: B closes her mission and reward screens, which mash_to_move_hints sits on"
+        "action": "scene",
+        "args": {"button": "B"},
+        "why": "through Mable's talk until control. B closes her mission and reward screens, which the default A scene sits on"
       },
       {
         "id": "save_in_mable_office",

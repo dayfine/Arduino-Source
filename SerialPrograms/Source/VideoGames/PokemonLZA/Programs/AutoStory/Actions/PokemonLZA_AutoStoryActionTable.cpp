@@ -96,6 +96,17 @@ bool flag(const JsonObject& args, const std::string& key){
     return value != nullptr && value->to_boolean_throw();
 }
 
+Button scene_button(const JsonObject& args){
+    const JsonValue* value = args.get_value("button");
+    if (value == nullptr || value->to_string_throw() == "A"){
+        return BUTTON_A;
+    }
+    if (value->to_string_throw() == "B"){
+        return BUTTON_B;
+    }
+    throw ParseException("\"button\" must be \"A\" or \"B\"");
+}
+
 //  An action with no args: `run` as the step's run.
 template <typename Run>
 Pokemon::StoryActionParser no_args(Run run){
@@ -219,18 +230,41 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
 }
 
 
-//  01.01's arrival takes ~240 s, hence 360 s. "press_a_first": A on the
-//  prompt the walk ended at, to start the talk. "end_on_black_fade": done
-//  at a black fade.
-Pokemon::StoryActionParser move_hints_action(){
-    return [](const JsonObject& args) -> StoryStepRun{
-        reject_unknown_keys(args, {"press_a_first", "end_on_black_fade"});
-        const SceneMachineConfig config{.end_on_black_fade = flag(args, "end_on_black_fade")};
-        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
+//  Preserve the old scene actions' bounds: battle start 90 s; a choice,
+//  start window or B mash 120 s; the general story loop 360 s.
+Milliseconds scene_timeout(const SceneMachineConfig& config){
+    if (config.stop_at_battle){
+        return 90s;
+    }
+    if (config.stop_at_choice || config.start_window || config.button == BUTTON_B){
+        return 120s;
+    }
+    return 360s;
+}
+
+Pokemon::StoryActionParser scene_action(PlzaConsoleHooks& hooks){
+    return [&hooks](const JsonObject& args) -> StoryStepRun{
+        reject_unknown_keys(args, {
+            "button", "press_a_first", "stop_at_choice", "start_window_ms", "end_on_black_fade", "battle_start",
+        });
+        const Button button = scene_button(args);
+        const bool stop_at_choice = flag(args, "stop_at_choice");
+        const bool battle_start = flag(args, "battle_start");
+        const SceneMachineConfig config{
+            .stop_at_choice = stop_at_choice,
+            .text_a_to_choice = stop_at_choice && button == BUTTON_A,
+            .stop_at_battle = battle_start,
+            .lock_on = battle_start ? hooks.lock_on : std::nullopt,
+            .button = stop_at_choice ? BUTTON_A : button,
+            .start_window = optional_ms(args, "start_window_ms"),
+            .end_on_black_fade = flag(args, "end_on_black_fade"),
+        };
+        return [press_a_first = flag(args, "press_a_first"), battle_start, config](PlzaBackend& backend, RunState& state){
             if (press_a_first){
                 press_through_prompt(backend);
             }
-            return run_scene_machine(backend, "mash_to_move_hints", ending_at_battle(config, state), /*timeout=*/360s, state.step);
+            const SceneMachineConfig run = battle_start ? config : ending_at_battle(config, state);
+            return run_scene_machine(backend, "scene", run, /*timeout=*/scene_timeout(config), state.step);
         };
     };
 }
@@ -267,33 +301,6 @@ std::optional<StoryFailure> plus_skip_step(PlzaBackend& backend){
     backend.log(std::format("[PLZA] {}", detail));
     return StoryFailure{.code = "cutscene_not_skipped", .detail = detail};
 }
-
-//  01.02's Pancham scene takes ~60 s, hence 120 s. "advance_with_a": A on
-//  the text, where B closes the talk and the step after takes the top row.
-Pokemon::StoryActionParser text_to_choice_action(){
-    return [](const JsonObject& args) -> StoryStepRun{
-        reject_unknown_keys(args, {"advance_with_a"});
-        const SceneMachineConfig config{.stop_at_choice = true, .text_a_to_choice = flag(args, "advance_with_a")};
-        return [config](PlzaBackend& backend, RunState& state){
-            return run_scene_machine(backend, "text_to_choice", ending_at_battle(config, state), /*timeout=*/120s, state.step);
-        };
-    };
-}
-
-
-//  Fails as "scene_never_started" when the HUD shows 45 s with nothing
-//  else: the player is not at the scene's trigger.
-std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
-    const SceneMachineConfig config{.start_window = 45s};
-    return run_scene_machine(backend, "scene", ending_at_battle(config, state), /*timeout=*/120s, state.step);
-}
-
-//  B, not A: it closes the menus a talk opens (Mable's mission and reward screens).
-std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState& state){
-    const SceneMachineConfig config{.button = BUTTON_B};
-    return run_scene_machine(backend, "scene", ending_at_battle(config, state), /*timeout=*/120s, state.step);
-}
-
 
 //  As long as the start's lock-on holds ZL.
 constexpr Milliseconds BATTLE_LOCK_ON_HOLD = 2s;
@@ -383,11 +390,6 @@ StoryActionParser walk_action(PlzaConsoleHooks& hooks){
     };
 }
 
-std::optional<StoryFailure> story_battle_start_step(PlzaConsoleHooks& hooks, PlzaBackend& backend, RunState& state){
-    const SceneMachineConfig config{.stop_at_battle = true, .lock_on = hooks.lock_on};
-    return run_scene_machine(backend, "story_battle_start", config, /*timeout=*/90s, state.step);
-}
-
 std::optional<StoryFailure> menu_save_step(PlzaConsoleHooks& hooks, PlzaBackend& backend){
     std::optional<StoryFailure> failure = save_from_menu(backend);
     if (!failure && hooks.sightings != nullptr){
@@ -402,20 +404,13 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::WAIT_FOR_PLATFORM), platform_action(PlatformWait::PLATFORM_ONLY, /*fallback=*/180s)},
         {action_name(PlzaAction::OPENING_TO_PLATFORM), platform_action(PlatformWait::AFTER_AUTOSAVE, /*fallback=*/240s)},
         {action_name(PlzaAction::WALK), walk_action(hooks)},
-        {action_name(PlzaAction::TALK), no_args([](PlzaBackend& backend, RunState&){ return talk_at_prompt(backend); })},
         {action_name(PlzaAction::TALK_THROUGH_MAP_SCREEN), no_args([](PlzaBackend& backend, RunState&){ return talk_through_map_screen(backend); })},
         {action_name(PlzaAction::TALK_TO_POKEDEX_SCREEN), no_args(pokedex_step)},
         {action_name(PlzaAction::CLIMB_LADDER), no_args([](PlzaBackend& backend, RunState&){ return climb_ladder(backend); })},
         {action_name(PlzaAction::CHOOSE_0), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 0); })},
         {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
-        {action_name(PlzaAction::SCENE), no_args(scene_step)},
-        {action_name(PlzaAction::MASH), no_args(mash_scene_step)},
-        {action_name(PlzaAction::MASH_TO_MOVE_HINTS), move_hints_action()},
+        {action_name(PlzaAction::SCENE), scene_action(hooks)},
         {action_name(PlzaAction::PLUS_SKIP), no_args([](PlzaBackend& backend, RunState&){ return plus_skip_step(backend); })},
-        {action_name(PlzaAction::TEXT_TO_CHOICE), text_to_choice_action()},
-        {action_name(PlzaAction::STORY_BATTLE_START), no_args([&hooks](PlzaBackend& backend, RunState& state){
-            return story_battle_start_step(hooks, backend, state);
-        })},
         {action_name(PlzaAction::STORY_BATTLE), no_args([&hooks](PlzaBackend& backend, RunState&){ return battle_step(hooks, backend); })},
         {action_name(PlzaAction::SAVE_FROM_MENU), no_args([&hooks](PlzaBackend& backend, RunState&){ return menu_save_step(hooks, backend); })},
         {action_name(PlzaAction::SET_TEXT_SPEED_FAST), no_args([](PlzaBackend& backend, RunState&){ return set_text_speed_fast(backend); })},

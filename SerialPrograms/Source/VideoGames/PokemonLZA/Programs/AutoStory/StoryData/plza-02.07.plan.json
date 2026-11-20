@@ -17,7 +17,7 @@
       {
         "id": "first_evening",
         "why": "A Leave, Taunie, the rooftop, AZ, the Main Mission 03 banner and its autosave",
-        "action": "mash_to_move_hints",
+        "action": "scene",
         "args": {"press_a_first": true}
       }
     ],

@@ -17,7 +17,7 @@
       {
         "id": "hotel_z_lobby",
         "why": "A Enter, the loading screen, the lobby scene with Taunie; the game autosaves in the lobby, before the clerk",
-        "action": "mash_to_move_hints",
+        "action": "scene",
         "args": {"press_a_first": true}
       }
     ],

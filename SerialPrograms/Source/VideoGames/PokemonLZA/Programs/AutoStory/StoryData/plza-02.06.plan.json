@@ -15,15 +15,10 @@
         "args": {"legs": [[45, 1500]], "held": true, "end": "prompt", "end_after_ms": 750}
       },
       {
-        "id": "rest",
-        "action": "talk",
-        "why": "A Rest"
-      },
-      {
         "id": "rest_question",
-        "why": "\"Rest until tomorrow morning?\" before the choice shows",
-        "action": "text_to_choice",
-        "args": {"advance_with_a": true}
+        "why": "A Rest, then A to \"Rest until tomorrow morning?\" before the choice shows",
+        "action": "scene",
+        "args": {"press_a_first": true, "stop_at_choice": true}
       },
       {
         "id": "rest_until_morning",
@@ -33,7 +28,7 @@
       {
         "id": "wake_up",
         "why": "sleep and wake up, until the party bar shows, facing the door",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {

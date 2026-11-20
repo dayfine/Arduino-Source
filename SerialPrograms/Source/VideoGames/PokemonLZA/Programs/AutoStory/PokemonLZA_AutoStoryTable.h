@@ -49,11 +49,10 @@ bool checkpoint_starts_without_save(const Pokemon::StoryCheckpoint& checkpoint);
 bool checkpoint_makes_new_game_choices(const Pokemon::StoryCheckpoint& checkpoint);
 
 //  "<step>: <rule>" for each step of the plan `checkpoint` (its JSON) not
-//  right after the step it needs: a "talk" after a walk ending on an A
-//  prompt; a "story_battle" after "story_battle_start"; a scene ("a") after
-//  what starts it (a walk, talk, choice or battle), not after a step that
-//  presses through to control, which would play the scene itself. A bare
-//  "mash" may follow anything.
+//  right after the step it needs: a "story_battle" after a "battle_start"
+//  scene; a scene with a start window after what starts it (a walk, choice or
+//  battle), not after a step that presses through to control, which would play
+//  the scene itself.
 std::vector<std::string> checkpoint_lead_in_errors(const JsonObject& checkpoint);
 
 

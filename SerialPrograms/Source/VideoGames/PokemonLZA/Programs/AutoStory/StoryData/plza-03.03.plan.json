@@ -11,7 +11,7 @@
       {
         "id": "taunie_runs_off",
         "why": "the Main Missions card (A turns its pages), Taunie runs off; after a reload the card is gone and this ends on the move hints",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       },
       {
         "id": "through_hotel_gate",
@@ -24,7 +24,7 @@
       {
         "id": "rock_pile_scene",
         "why": "Taunie at the rocks blocking the street",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {

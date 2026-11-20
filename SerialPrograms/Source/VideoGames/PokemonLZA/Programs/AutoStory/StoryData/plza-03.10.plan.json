@@ -25,8 +25,9 @@
       },
       {
         "id": "take_lab_elevator",
-        "action": "talk",
-        "why": "A Take Elevator"
+        "action": "scene",
+        "args": {"press_a_first": true, "stop_at_choice": true},
+        "why": "A Take Elevator, then A through the attendant's question to the choices"
       },
       {
         "id": "ride_to_3f",
@@ -35,7 +36,8 @@
       },
       {
         "id": "arrive_3f",
-        "action": "mash",
+        "action": "scene",
+        "args": {"button": "B"},
         "why": "the ride, until control on 3F"
       }
     ],

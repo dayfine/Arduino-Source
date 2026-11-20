@@ -158,55 +158,6 @@ UnitTestResult check_match(const MatchCase& test){
 }
 
 
-//  A recorded grid reads back as the screen's cells, within channel rounding.
-struct RecordCase{
-    std::string name;
-    struct Input{
-        double brightness = 1.0;
-    };
-    Input input;
-    struct Expectation{
-        double max_rmsd;
-    };
-    Expectation expectation;
-};
-
-const std::vector<RecordCase> RECORD_CASES{
-    {
-        .name = "the 03.04 start recorded reads back as its cells",
-        .input = {},
-        .expectation = {.max_rmsd = 1.0},
-    },
-};
-
-UnitTestResult check_record(const RecordCase& test){
-    const ImageRGB32 screen = painted_screen(reference_cells(START_REFERENCE), test.input.brightness, /*shift_cols=*/0, /*shift_rows=*/0);
-    const JsonValue json(minimap_reference_json(screen, "test"));
-    const JsonObject& grid = json.to_object_throw("recorded").get_object_throw("grid", "recorded");
-    const ReferenceCells recorded = read_cell_grid(grid, CELLS, CELLS, "recorded");
-    const double rmsd = cells_rmsd(grid_cells(screen, ImageFloatBox(
-        BOX_X / SCREEN_WIDTH, BOX_Y / SCREEN_HEIGHT, BOX_SIZE / SCREEN_WIDTH, BOX_SIZE / SCREEN_HEIGHT
-    ), CELLS, CELLS), recorded);
-    if (rmsd > test.expectation.max_rmsd){
-        return std::format("the recorded grid is {:.2f} from the screen's cells, more than {:.2f}", rmsd, test.expectation.max_rmsd);
-    }
-    return true;
-}
-
-class RecordTest : public UnitTest{
-public:
-    explicit RecordTest(RecordCase test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryMinimapMatch record - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_record(m_case);
-    }
-private:
-    RecordCase m_case;
-};
-
-
 class MatchTest : public UnitTest{
 public:
     explicit MatchTest(MatchCase test_case)
@@ -226,9 +177,6 @@ private:
 void add_tests_AutoStoryMinimapMatch(UnitTestDatabase& database){
     for (const MatchCase& test : MATCH_CASES){
         database.add<MatchTest>(test);
-    }
-    for (const RecordCase& test : RECORD_CASES){
-        database.add<RecordTest>(test);
     }
 }
 

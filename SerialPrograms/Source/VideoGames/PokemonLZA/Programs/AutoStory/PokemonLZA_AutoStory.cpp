@@ -4,33 +4,25 @@
  *
  */
 
-#include <algorithm>
 #include <chrono>
 #include <format>
 #include <optional>
-#include <set>
 #include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Filesystem/Filesystem.h"
-#include "Common/Cpp/Json/JsonValue.h"
-#include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_DirectionArrowDetector.h"
 #include "Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
-#include "Detectors/PokemonLZA_AutoStoryMinimapMatch.h"
 #include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
 #include "PokemonLZA_AutoStoryConsoleGame.h"
@@ -172,16 +164,6 @@ constexpr std::string_view LOAD_SAVE_FIRST_LABEL =
 constexpr std::string_view RUN_FROM_LABEL =
     "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk. Running is checked on console from after Taunie's battle in 03.02b.";
 
-constexpr std::string_view RECORD_START_MINIMAPS_LABEL =
-    "<b>Record Start Minimaps:</b><br>For developers: at each checkpoint's start, after its start check, save the frame and its minimap "
-    "as plza-minimap-&lt;checkpoint&gt;-start.png and .json in the AutoStoryDev folder of the user files, "
-    "in the format of the minimap references. Nothing is saved where no minimap shows.";
-
-constexpr std::string_view RELOAD_PROBE_AFTER_LABEL =
-    "<b>Reload Probe After:</b><br>For developers: checkpoint ids, comma-separated (e.g. 03.03). After each passes, reload the latest save "
-    "once, log where it lands by the minimap references (\"[ReloadProbe]\") with a screenshot in the AutoStoryDev folder "
-    "of the user files, and go on from the checkpoint whose start the screen shows. Empty: off.";
-
 //  A run after the new game starts from the latest save, not from wherever
 //  the game is. Throws OperationFailedException if it does not load.
 void load_first_save(ConsoleHandle& console, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& checkpoint){
@@ -266,81 +248,6 @@ size_t checked_first_checkpoint(
     return *from;
 }
 
-std::string start_minimaps_folder(){
-    return std::format("{}AutoStoryDev/", USER_FILE_PATH());
-}
-
-//  Saves a ReferenceData/ minimap candidate; nothing when the minimap
-//  arrow does not show. Presses nothing.
-void record_start_minimap(ConsoleHandle& console, std::string_view checkpoint){
-    const VideoSnapshot snapshot = console.video().snapshot();
-    DirectionArrowDetector arrow;
-    if (!snapshot || !arrow.detect(*snapshot.frame)){
-        console.log(std::format("AutoStory: {}: no minimap on screen at its start; not recorded", checkpoint));
-        return;
-    }
-    const std::string folder = start_minimaps_folder();
-    Filesystem::create_directories(Filesystem::Path(folder));
-    const std::string name = std::format("plza-minimap-{}-start", checkpoint);
-    snapshot.frame->save(std::format("{}{}.png", folder, name));
-    const JsonValue json(minimap_reference_json(*snapshot.frame, std::format(
-        "the minimap at {}'s start, recorded by AutoStory (Record Start Minimaps), {}x{} ({}.png, {})",
-        checkpoint, snapshot.frame->width(), snapshot.frame->height(), name, now_to_filestring()
-    )));
-    json.dump(std::format("{}{}.json", folder, name));
-    console.log(std::format("AutoStory: {}: start minimap recorded as {}{}.json", checkpoint, folder, name));
-}
-
-//  "03.03, 03.08" as {"03.03", "03.08"}.
-std::set<std::string, std::less<>> checkpoint_ids(std::string_view text){
-    std::set<std::string, std::less<>> ids;
-    size_t begin = 0;
-    while (begin < text.size()){
-        const size_t end = std::min(text.find_first_of(", ", begin), text.size());
-        if (end > begin){
-            ids.emplace(text.substr(begin, end - begin));
-        }
-        begin = end + 1;
-    }
-    return ids;
-}
-
-//  "[ReloadProbe] after 03.03: landed at 03.04-start (03.04-start 8.2,
-//  03.06-start 24.0, 03.03-start 31.5)", and the frame. Presses nothing.
-void log_reload_landing(StoryEnv& story, PlzaBackend& backend, const StoryCheckpoint& passed){
-    story.context.wait_for_all_requests();
-    const VideoSnapshot snapshot = story.env.console.video().snapshot();
-    if (!snapshot){
-        backend.log(std::format("[ReloadProbe] after {}: landed at unknown (no frame)", passed.id));
-        return;
-    }
-    const std::vector<MinimapDistance> distances = minimap_distances(*snapshot.frame);
-    std::string scores;
-    for (size_t index = 0; index < distances.size() && index < 3; index++){
-        scores += std::format("{}{} {:.1f}", index == 0 ? "" : ", ", distances[index].reference, distances[index].distance);
-    }
-    const std::string landed = matching_minimap(*snapshot.frame).value_or("unknown");
-    backend.log(std::format("[ReloadProbe] after {}: landed at {} ({})", passed.id, landed, scores));
-    const std::string folder = start_minimaps_folder();
-    Filesystem::create_directories(Filesystem::Path(folder));
-    snapshot.frame->save(std::format("{}plza-reload-probe-after-{}-{}.png", folder, passed.id, now_to_filestring()));
-}
-
-CheckpointHook reload_landing_logger(StoryEnv& story, PlzaBackend& backend){
-    return [&story, &backend](const StoryCheckpoint& passed){
-        log_reload_landing(story, backend, passed);
-    };
-}
-
-CheckpointHook start_minimap_recorder(ConsoleHandle& console, bool record){
-    if (!record){
-        return {};
-    }
-    return [&console](const StoryCheckpoint& checkpoint){
-        record_start_minimap(console, checkpoint.id);
-    };
-}
-
 } // namespace
 
 
@@ -364,8 +271,6 @@ AutoStory::AutoStory()
     )
     , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/1, /*min_value=*/1, /*max_value=*/5)
     , LOAD_SAVE_FIRST(std::string(LOAD_SAVE_FIRST_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/true)
-    , RECORD_START_MINIMAPS(std::string(RECORD_START_MINIMAPS_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false)
-    , RELOAD_PROBE_AFTER(/*is_password=*/false, std::string(RELOAD_PROBE_AFTER_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"", /*placeholder_text=*/"03.03")
     , STARTER("<b>Starter:</b><br>The starter 01.03 picks.", starter_database(), LockMode::LOCK_WHILE_RUNNING, StarterChoice::CHIKORITA)
     , RUN_FROM(/*is_password=*/false, std::string(RUN_FROM_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"03.03", /*placeholder_text=*/"03.03")
     , GO_HOME_WHEN_DONE(false)
@@ -381,8 +286,6 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
-    PA_ADD_OPTION(RECORD_START_MINIMAPS);
-    PA_ADD_OPTION(RELOAD_PROBE_AFTER);
     PA_ADD_OPTION(STARTER);
     PA_ADD_OPTION(RUN_FROM);
     PA_ADD_OPTION(BATTLE_AI);
@@ -414,8 +317,6 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         .read_start = [&story, &backend](const StartSignature& start){
             return start.wild_zone ? read_start_position(story, backend) : read_start_signature(story.env.console, story.context);
         },
-        .at_start = start_minimap_recorder(env.console, RECORD_START_MINIMAPS),
-        .reload_probe_after = checkpoint_ids(std::string(RELOAD_PROBE_AFTER)), .log_landing = reload_landing_logger(story, backend),
     };
     if (!checkpoint_starts_without_save(checkpoints[first])){
         if (LOAD_SAVE_FIRST){
