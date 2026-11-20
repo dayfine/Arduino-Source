@@ -15,6 +15,7 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryActionNames.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBattleOnScreen.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryMenuSave.h"
 #include "PokemonLZA_AutoStoryMoves.h"
@@ -73,6 +74,17 @@ std::optional<Milliseconds> optional_ms(const JsonObject& args, const std::strin
         return std::nullopt;
     }
     return Milliseconds(value->to_integer_throw());
+}
+
+//  A story battle later in the checkpoint: a battle on screen before it
+//  ends the step, and the run goes on there.
+bool battle_ahead(const RunState& state){
+    return state.actions_ahead.contains(action_name(PlzaAction::STORY_BATTLE));
+}
+
+SceneMachineConfig ending_at_battle(SceneMachineConfig config, const RunState& state){
+    config.end_at_battle = battle_ahead(state);
+    return config;
 }
 
 Milliseconds ms_or(const JsonObject& args, const std::string& key, Milliseconds fallback){
@@ -216,7 +228,7 @@ Pokemon::StoryActionParser move_hints_action(){
             if (press_a_first){
                 press_through_prompt(backend);
             }
-            return run_scene_machine(backend, "mash_to_move_hints", SceneMachineConfig{}, /*timeout=*/360s, state.step);
+            return run_scene_machine(backend, "mash_to_move_hints", ending_at_battle({}, state), /*timeout=*/360s, state.step);
         };
     };
 }
@@ -228,7 +240,7 @@ Pokemon::StoryActionParser text_to_choice_action(){
         reject_unknown_keys(args, {"advance_with_a"});
         const SceneMachineConfig config{.stop_at_choice = true, .text_a_to_choice = flag(args, "advance_with_a")};
         return [config](PlzaBackend& backend, RunState& state){
-            return run_scene_machine(backend, "text_to_choice", config, /*timeout=*/120s, state.step);
+            return run_scene_machine(backend, "text_to_choice", ending_at_battle(config, state), /*timeout=*/120s, state.step);
         };
     };
 }
@@ -238,13 +250,13 @@ Pokemon::StoryActionParser text_to_choice_action(){
 //  else: the player is not at the scene's trigger.
 std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
     const SceneMachineConfig config{.start_window = 45s};
-    return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
+    return run_scene_machine(backend, "scene", ending_at_battle(config, state), /*timeout=*/120s, state.step);
 }
 
 //  B, not A: it closes the menus a talk opens (Mable's mission and reward screens).
 std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState& state){
     const SceneMachineConfig config{.button = BUTTON_B};
-    return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
+    return run_scene_machine(backend, "scene", ending_at_battle(config, state), /*timeout=*/120s, state.step);
 }
 
 
@@ -298,7 +310,7 @@ std::optional<StoryFailure> battle_step(PlzaConsoleHooks& hooks, PlzaBackend& ba
 //  (A plays the entry's motions).
 std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState& state){
     const SceneMachineConfig config{.button = BUTTON_B};
-    return run_scene_machine(backend, "talk_to_pokedex_screen", config, /*timeout=*/90s, state.step);
+    return run_scene_machine(backend, "talk_to_pokedex_screen", ending_at_battle(config, state), /*timeout=*/90s, state.step);
 }
 
 
@@ -320,8 +332,18 @@ StoryActionParser console_action(PlzaConsoleHooks& hooks, std::string_view name,
 
 StoryActionParser walk_action(PlzaConsoleHooks& hooks){
     return [&hooks](const JsonObject& args) -> StoryStepRun{
-        return [&hooks, walk = read_walk_args(args)](PlzaBackend& backend, RunState&){
-            return walk_step(hooks, aimed_at_starter(hooks, walk), backend, "walk");
+        //  With a story battle ahead, the battle HUD before the walk or after
+        //  a failed one ends it with battle_on_screen_failure().
+        return [&hooks, walk = read_walk_args(args)](PlzaBackend& backend, RunState& state) -> std::optional<StoryFailure>{
+            const bool battle = battle_ahead(state);
+            if (battle && battle_showing(backend)){
+                return battle_on_screen_failure();
+            }
+            std::optional<StoryFailure> walked = walk_step(hooks, aimed_at_starter(hooks, walk), backend, "walk");
+            if (walked && battle && battle_showing(backend)){
+                return battle_on_screen_failure();
+            }
+            return walked;
         };
     };
 }
