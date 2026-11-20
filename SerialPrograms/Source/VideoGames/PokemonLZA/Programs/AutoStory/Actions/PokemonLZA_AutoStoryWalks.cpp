@@ -509,17 +509,17 @@ void finish_walk(PlzaBackend& backend, std::string_view walk){
 }
 
 std::optional<Pokemon::StoryFailure> walk_until(
-    PlzaBackend& backend, std::string_view walk, const StoryMove& move, std::optional<ScreenEvent> end, Milliseconds end_after
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, const WalkStopOptions& options
 ){
-    if (end && ends_before_walking(backend, walk, move, *end, end_after)){
+    if (options.end && ends_before_walking(backend, walk, move, *options.end, options.end_after)){
         return std::nullopt;
     }
     const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
-    const std::optional<Pokemon::StoryFailure> walked = run_story_move_but_last_walk(backend, move);
-    if (walked){
+    if (std::optional<Pokemon::StoryFailure> walked = run_story_move_but_last_walk(backend, move)){
         return walked;
     }
     size_t scene_looks = 0;
+    Pokemon::ConfirmStreak battle_streak{2};
     LastLegHold leg(hold);
     //  The slices stop the stick only as long as a look takes.
     while (leg.holding()){
@@ -529,7 +529,11 @@ std::optional<Pokemon::StoryFailure> walk_until(
         const ScreenObservation look = backend.observe();
         leg.held_slice(slice, look.when);
         const Milliseconds held = leg.sliced();
-        if (!end){
+        if (options.stop_on_battle && battle_streak.update(look.events.has(ScreenEvent::BATTLE_STARTED))){
+            backend.log(std::format("[PLZA] {}: battle HUD showed after {} ms of the last leg: stopping walk.", walk, held.count()));
+            return battle_on_screen_failure();
+        }
+        if (!options.end){
             const std::optional<std::string_view> busy = not_free_control(look);
             scene_looks = busy ? scene_looks + 1 : 0;
             if (busy && scene_looks >= 2){
@@ -540,18 +544,19 @@ std::optional<Pokemon::StoryFailure> walk_until(
             }
             continue;
         }
-        const std::optional<std::optional<Pokemon::StoryFailure>> ended = end_event_look(backend, walk, look, *end, held, end_after);
-        if (ended){
+        if (const std::optional<std::optional<Pokemon::StoryFailure>> ended = end_event_look(backend, walk, look, *options.end, held, options.end_after)){
             return *ended;
         }
     }
-    if (!end){
+    if (!options.end){
         return Pokemon::StoryFailure{.code = "walk_no_scene", .detail = std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, leg.elapsed().count())};
     }
     return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event within {} ms of the last leg", walk, leg.elapsed().count())};
 }
 
-std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::string_view walk, const StoryMove& move, bool after_legs){
+std::optional<Pokemon::StoryFailure> walk_into_talk(
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, const WalkStopOptions& options
+){
     const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
     bool prompt_first = ends_before_walking(backend, walk, move, ScreenEvent::INTERACT_PROMPT, /*end_after=*/0ms);
     if (!prompt_first){
@@ -559,6 +564,7 @@ std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::s
             return walked;
         }
     }
+    Pokemon::ConfirmStreak battle_streak{2};
     LastLegHold leg(hold);
     Milliseconds tail = 0ms;
     while (tail < TALK_TAIL){
@@ -575,9 +581,13 @@ std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::s
             if (walking){
                 leg.held_slice(slice, look.when);
             }
+            if (options.stop_on_battle && battle_streak.update(look.events.has(ScreenEvent::BATTLE_STARTED))){
+                backend.log(std::format("[PLZA] {}: battle HUD showed after {} ms of the last leg: stopping walk.", walk, leg.sliced().count()));
+                return battle_on_screen_failure();
+            }
         }
         prompt_first = false;
-        if (!prompt || (walking && after_legs)){
+        if (!prompt || (walking && options.after_legs)){
             if (!walking){
                 backend.wait(TALK_POLL);
                 tail += TALK_POLL;

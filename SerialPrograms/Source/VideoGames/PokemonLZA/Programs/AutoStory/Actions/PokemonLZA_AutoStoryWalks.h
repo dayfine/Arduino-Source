@@ -69,16 +69,28 @@ std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::s
 //  Observes once after a walk completes so queued inputs have finished before the step ends.
 void finish_walk(PlzaBackend& backend, std::string_view walk);
 
-//  Walks `move`, slicing the final leg until `end` (after `end_after`) or a scene/fade occurs.
-//  Fails as "walk_no_end", "walk_no_scene", or "game_not_running".
+//  Stopping options for walk_until() and walk_into_talk().
+struct WalkStopOptions{
+    std::optional<ScreenEvent> end = std::nullopt;
+    Milliseconds end_after = Milliseconds(0);
+    bool after_legs = false;
+    bool stop_on_battle = false;
+};
+
+//  Walks `move`, slicing the final leg until `options.end` (after `options.end_after`) or a scene/fade occurs.
+//  When `options.stop_on_battle` is true, stops early with battle_on_screen_failure() if the battle HUD holds.
+//  Fails as "walk_no_end", "walk_no_scene", "battle_on_screen", or "game_not_running".
 std::optional<Pokemon::StoryFailure> walk_until(
-    PlzaBackend& backend, std::string_view walk, const StoryMove& move, std::optional<ScreenEvent> end, Milliseconds end_after
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, const WalkStopOptions& options
 );
 
 //  Walks `move` and presses A on the interact prompt to enter a scene.
-//  When `after_legs` is true, ignores prompts until all legs finish.
-//  Fails as "walk_no_end", "talk_no_scene", or "game_not_running".
-std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::string_view walk, const StoryMove& move, bool after_legs);
+//  When `options.after_legs` is true, ignores prompts until all legs finish.
+//  When `options.stop_on_battle` is true, stops early with battle_on_screen_failure() if the battle HUD holds.
+//  Fails as "walk_no_end", "talk_no_scene", "battle_on_screen", or "game_not_running".
+std::optional<Pokemon::StoryFailure> walk_into_talk(
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, const WalkStopOptions& options
+);
 
 //  Steps sideways along a wall while facing `facing_degrees` until an interact prompt appears.
 //  Returns the number of steps taken, or std::nullopt if no prompt was found.
