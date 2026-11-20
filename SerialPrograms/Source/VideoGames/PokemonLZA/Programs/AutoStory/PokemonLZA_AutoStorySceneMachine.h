@@ -52,10 +52,10 @@ struct SceneMachineConfig{
     //  Fails ("scene_never_started") when the HUD shows this long with no
     //  scene: the player is not at the trigger.
     std::optional<Milliseconds> start_window = std::nullopt;
-    //  The scene has a cutscene Plus skips: Plus held on a screen with no
-    //  text, HUD or fade that has lasted 5 s, once per such stretch, until
-    //  a black fade shows within 7 s of a press. The scene ending in
-    //  control before that fails it ("cutscene_not_skipped").
+    //  The scene has cutscenes Plus skips: Plus held on a screen with no
+    //  text, HUD or fade that has lasted 5 s, once per such stretch; a
+    //  black fade within 7 s of a press is a skip. The scene ending in
+    //  control with no skip fails it ("cutscene_not_skipped").
     bool skip_with_plus = false;
 };
 
@@ -83,7 +83,7 @@ std::string describe_scene_look(const ScreenObservation& look);
 //  tutorial card A; text and anything else A, but B on a look with a sign
 //  of control and on every look once one has shown in the scene: A there
 //  starts a talk (03.02b's Vinci loop). Fades only wait.
-//  `skip_with_plus`: Plus on the cutscene first. Fails as
+//  `skip_with_plus`: Plus on each cutscene. Fails as
 //  "scene_never_started", "scene_ended_in_control", "cutscene_not_skipped"
 //  or "scene_timeout" (by the looks' time); `step` is "<checkpoint>/<step>".
 std::optional<Pokemon::StoryFailure> run_scene_machine(

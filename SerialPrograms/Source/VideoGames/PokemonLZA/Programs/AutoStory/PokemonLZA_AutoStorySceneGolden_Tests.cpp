@@ -937,8 +937,9 @@ const GoldenCase GOLDEN_CASES[] = {
     {
         //  Console B, 2026-11-19 06:19, its times moved to this step's Plus:
         //  Plus held 3.7 s into the textless cutscene skipped it, the black
-        //  fade 2.7 s after the press (unskipped, it played 76 s).
-        .name = "02.02 street_scene, English, Plus 5 s into the textless cutscene, its black fade, then A through the talk to the party bar",
+        //  fade 2.7 s after the press (unskipped, it played 76 s); after the
+        //  talk a second stretch with no text took Plus and faded too.
+        .name = "02.02 street_scene, English, Plus 5 s into each textless cutscene, each skipped by a black fade, A through the talk between",
         .input = {.checkpoint = "02.02", .step = "street_scene", .screens = R"(
 0.0s: black fade, still
 5.6s: still
@@ -949,14 +950,16 @@ const GoldenCase GOLDEN_CASES[] = {
 21.4s: text box, advance arrow
 21.8s: nothing
 22.3s: text box
-26.0s: party bar
+24.0s: nothing
+31.0s: black fade
+33.0s: party bar
 )"},
         .expectation = {
             .keys = {
                 {"black fade, still", "-"}, {"still", "A"}, {"nothing", "A or +"}, {"black fade", "-"},
                 {"text box, advance arrow", "A"}, {"text box", "A"}, {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA scene] Plus skipped the cutscene: a black fade 3.8 s after it.",
+            .verdict = "done", .end = "[PLZA scene] Plus skip 2: a black fade 2.2 s after the press.",
         },
     },
 };

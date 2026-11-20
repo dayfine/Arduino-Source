@@ -195,8 +195,8 @@ struct PlusSkipState{
     //  The press awaiting its black fade.
     std::optional<WallClock> pressed_at = std::nullopt;
     size_t misses = 0;
-    //  Set once the skip's black fade showed: how long after its press.
-    std::optional<Milliseconds> fade_after = std::nullopt;
+    //  The presses a black fade followed.
+    size_t skips = 0;
 };
 
 //  The time-dependent part of the machine; a look's time is its `when`.
@@ -317,7 +317,7 @@ SceneScreen SceneTimeline::classify_control(const ScreenObservation& look) const
         return look.when - m_start >= *m_config.start_window ? SceneScreen::NEVER_STARTED : SceneScreen::AWAITING_SCENE;
     }
     if (held_for(m_control_since, look.when, CONTROL_HOLD)){
-        return m_config.skip_with_plus && !m_skip.fade_after ? SceneScreen::NOT_SKIPPED : SceneScreen::CONTROL;
+        return m_config.skip_with_plus && m_skip.skips == 0 ? SceneScreen::NOT_SKIPPED : SceneScreen::CONTROL;
     }
     if (held_for(m_control_instead_since, look.when, CONTROL_INSTEAD_HOLD)){
         return SceneScreen::ENDED_IN_CONTROL;
@@ -362,12 +362,12 @@ std::optional<Button> SceneTimeline::other_button() const{
 }
 
 bool SceneTimeline::plus_skip_due(const ScreenObservation& look) const{
-    return m_config.skip_with_plus && !m_skip.fade_after && !m_skip.pressed_at && !m_skip.pressed_in_stretch &&
+    return m_config.skip_with_plus && !m_skip.pressed_at && !m_skip.pressed_in_stretch &&
         held_for(m_skip.textless_since, look.when, SKIP_AFTER);
 }
 
 std::optional<std::string> SceneTimeline::record_plus_skip(SceneScreen screen, const ScreenObservation& look){
-    if (!m_config.skip_with_plus || m_skip.fade_after){
+    if (!m_config.skip_with_plus){
         return std::nullopt;
     }
     const bool textless = screen == SceneScreen::OTHER || screen == SceneScreen::PLUS_SKIP;
@@ -392,8 +392,9 @@ std::optional<std::string> SceneTimeline::record_plus_skip(SceneScreen screen, c
     if (!look.events.has(ScreenEvent::FADE_BLACK)){
         return std::nullopt;
     }
-    m_skip.fade_after = after;
-    return std::format("Plus skipped the cutscene: a black fade {} s after it.", tostr_fixed(std::chrono::duration<double>(after).count(), 1));
+    m_skip.pressed_at.reset();
+    m_skip.skips++;
+    return std::format("Plus skip {}: a black fade {} s after the press.", m_skip.skips, tostr_fixed(std::chrono::duration<double>(after).count(), 1));
 }
 
 std::optional<std::string> SceneTimeline::record(SceneScreen screen, const ScreenObservation& look){
