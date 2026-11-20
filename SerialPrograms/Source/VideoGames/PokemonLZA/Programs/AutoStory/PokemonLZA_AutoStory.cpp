@@ -176,7 +176,7 @@ constexpr std::string_view LOAD_SAVE_FIRST_LABEL =
     "Off: it starts from wherever the game is, which must be that checkpoint's start.";
 
 constexpr std::string_view RUN_FROM_LABEL =
-    "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk (the game has no dash yet).";
+    "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk. Running is checked on console from after Taunie's battle in 03.02b.";
 
 constexpr std::string_view RECORD_START_MINIMAPS_LABEL =
     "<b>Record Start Minimaps:</b><br>For developers: at each checkpoint's start, after its start check, save the frame and its minimap "
@@ -374,7 +374,7 @@ AutoStory::AutoStory()
     , RECORD_START_MINIMAPS(std::string(RECORD_START_MINIMAPS_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false)
     , RELOAD_PROBE_AFTER(/*is_password=*/false, std::string(RELOAD_PROBE_AFTER_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"", /*placeholder_text=*/"03.03")
     , STARTER("<b>Starter:</b><br>The starter 01.03 picks.", starter_database(), LockMode::LOCK_WHILE_RUNNING, StarterChoice::CHIKORITA)
-    , RUN_FROM(/*is_password=*/false, std::string(RUN_FROM_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"02.01", /*placeholder_text=*/"02.01")
+    , RUN_FROM(/*is_password=*/false, std::string(RUN_FROM_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"03.03", /*placeholder_text=*/"03.03")
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
