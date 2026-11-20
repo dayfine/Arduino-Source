@@ -17,7 +17,6 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
-#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
@@ -84,10 +83,8 @@ private:
     AutosaveDetector m_autosave;
     ControlsHintDetector m_controls_hint;
     AdvanceArrowDetector m_advance_arrow;
-    MainMissionBannerDetector m_mission_banner;
     MissionCompleteDetector m_mission_complete;
     MainMenuDetector m_main_menu;
-    MapDetector m_map;
     SelectionArrowDetector m_save_button;
     VideoSnapshot m_previous;
     std::optional<WallClock> m_run_end;

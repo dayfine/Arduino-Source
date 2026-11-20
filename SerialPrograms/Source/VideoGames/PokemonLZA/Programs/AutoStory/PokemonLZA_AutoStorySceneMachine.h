@@ -81,7 +81,7 @@ public:
     std::string line(std::string_view where, std::string_view decision, std::string_view by) const;
 
 private:
-    static constexpr size_t PROBED_SIGNALS = 9;
+    static constexpr size_t PROBED_SIGNALS = 8;
     std::optional<WallClock> m_start;
     WallClock m_last = WallClock::min();
     std::array<std::optional<WallClock>, PROBED_SIGNALS> m_first = {};

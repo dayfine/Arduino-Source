@@ -10,7 +10,6 @@
 #include <string>
 #include <string_view>
 #include <utility>
-#include <variant>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.h"
 #include "PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryStarts.h"
@@ -70,12 +69,7 @@ struct CheckpointRun{
     AutosaveSightings& sightings;
 };
 
-enum class Chain{
-    ON,         //  from the live screen
-    RELOAD,     //  from `checkpoint`'s start save
-};
-
-std::variant<Chain, Pokemon::StoryFailure> check_live_start(CheckpointRun& run, const Pokemon::StoryCheckpoint& checkpoint, bool seen){
+std::optional<Pokemon::StoryFailure> check_live_start(CheckpointRun& run, const Pokemon::StoryCheckpoint& checkpoint, bool seen){
     PlzaBackend& backend = run.backend;
     CheckpointRunOptions& options = run.options;
     const CheckpointStart* start = find_start(options.starts, checkpoint.id);
@@ -85,25 +79,25 @@ std::variant<Chain, Pokemon::StoryFailure> check_live_start(CheckpointRun& run, 
             checkpoint.id, start == nullptr ? "its plan names no start signature" : "nothing reads the screen", seen ? "seen" : "not seen"
         ));
         log_start_boundary(backend, checkpoint.id, seen ? "pinned by sighting" : "unchecked");
-        return Chain::ON;
+        return std::nullopt;
     }
     const StartSignature read = options.read_start(start->signature);
     const std::string screen = std::format("the screen reads ({}), its start is ({})", to_string(read), to_string(start->signature));
     if (start_confirmed(start->signature, read)){
         backend.log(std::format("[Checkpoint] {}: START CHECKED: {}; on from the live screen", checkpoint.id, screen));
         log_start_boundary(backend, checkpoint.id, "pinned by minimap");
-        return Chain::ON;
+        return std::nullopt;
     }
     backend.log(std::format("[Checkpoint] {}: START CHECK FAILED: {}; nothing run from there", checkpoint.id, screen));
     return Pokemon::StoryFailure{.code = "chain_off_start", .detail = std::format("the run is not at {}'s start: {}", checkpoint.id, screen)};
 }
 
 //  `seen`: whether the checkpoint before's autosave showed.
-std::variant<Chain, Pokemon::StoryFailure> decide_chain(CheckpointRun& run, const Pokemon::StoryCheckpoint& checkpoint, bool seen){
+std::optional<Pokemon::StoryFailure> check_chain_start(CheckpointRun& run, const Pokemon::StoryCheckpoint& checkpoint, bool seen){
     if (first_step_checks_start(checkpoint)){
         run.backend.log(std::format("[Checkpoint] {}: start check passed; on from the live screen", checkpoint.id));
         log_start_boundary(run.backend, checkpoint.id, "pinned by its first step");
-        return Chain::ON;
+        return std::nullopt;
     }
     return check_live_start(run, checkpoint, seen);
 }
@@ -154,25 +148,12 @@ std::optional<Pokemon::StoryFailure> reload_into(
 std::optional<Pokemon::StoryFailure> chain_into(
     CheckpointRun& run, const Pokemon::StoryCheckpoint& previous, const Pokemon::StoryCheckpoint& checkpoint, Pokemon::RunState& state
 ){
-    const bool reload = run.options.reload_when_chained.contains(checkpoint.id);
-    const std::variant<Chain, Pokemon::StoryFailure> chain = reload
-        ? std::variant<Chain, Pokemon::StoryFailure>(Chain::RELOAD)
-        : decide_chain(run, checkpoint, run.sightings.last_end_seen());
-    if (const Pokemon::StoryFailure* failure = std::get_if<Pokemon::StoryFailure>(&chain)){
-        return *failure;
+    if (!run.options.reload_when_chained.contains(checkpoint.id)){
+        return check_chain_start(run, checkpoint, run.sightings.last_end_seen());
     }
-    if (std::get<Chain>(chain) == Chain::ON){
-        return std::nullopt;
-    }
-    const std::optional<Pokemon::StoryFailure> loaded = reload
-        ? reload_into(run, previous, checkpoint)
-        : load_checkpoint_start(run.game, run.backend, checkpoint);
+    const std::optional<Pokemon::StoryFailure> loaded = reload_into(run, previous, checkpoint);
     if (!loaded){
         state = Pokemon::RunState{};
-    }
-    if (!loaded && !reload){
-        //  The start save is the autosave seen at the checkpoint before's end.
-        log_start_boundary(run.backend, checkpoint.id, "pinned by sighting");
     }
     return loaded;
 }

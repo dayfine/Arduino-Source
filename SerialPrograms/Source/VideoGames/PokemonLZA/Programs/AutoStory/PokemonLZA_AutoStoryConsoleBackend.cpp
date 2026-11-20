@@ -105,8 +105,6 @@ ScreenObservation PlzaConsoleBackend::observe(){
         }
         if (m_mission_complete.detect(*frame.frame)){
             look.readings[std::string(MISSION_COMPLETE_READING)] = 1;
-        }else if (m_mission_banner.detect(*frame.frame)){
-            look.readings[std::string(MISSION_BANNER_READING)] = 1;
         }
         if (tutorial_card_shows(*frame.frame)){
             look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
@@ -135,9 +133,6 @@ void PlzaConsoleBackend::read_menus(const ImageViewRGB32& frame, ScreenObservati
     }
     if (m_save_button.detect(frame)){
         look.readings[std::string(MENU_SAVE_BUTTON_READING)] = 1;
-    }
-    if (m_map.detect(frame)){
-        look.readings[std::string(MAP_READING)] = 1;
     }
 }
 

@@ -14,10 +14,8 @@
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "CommonTools/Images/SolidColorTest.h"
 #include "Tests/ImageUnitTest.h"
 #include "NintendoSwitch_SystemKeyboardDetector.h"
 
@@ -41,26 +39,6 @@ const ImageFloatBox KEYS_AREA(0.0, 0.43, 1.0, 0.49);
 //  The bottom row's page-key labels. The dark theme draws the current page's label
 //  cyan like the cursor (about 0, 230, 210), so the cursor read skips this band.
 const ImageFloatBox PAGE_LABELS(0.0, 0.829, 0.49, 0.065);
-
-//  The bar below the keys, which tells the console's theme.
-const ImageFloatBox BOTTOM_BAR(0.10, 0.935, 0.35, 0.030);
-
-enum class KeyboardTheme{
-    LIGHT,
-    DARK,   //  The console's "Basic Black" theme.
-};
-
-//  White (245) bar in the light theme, flat grey (76) in the dark one.
-std::optional<KeyboardTheme> keyboard_theme(const ImageViewRGB32& screen){
-    const ImageStats bar = image_stats(extract_box_reference(screen, BOTTOM_BAR));
-    if (is_white(bar)){
-        return KeyboardTheme::LIGHT;
-    }
-    if (is_grey(bar, /*min_rgb_sum=*/180, /*max_rgb_sum=*/270)){
-        return KeyboardTheme::DARK;
-    }
-    return std::nullopt;
-}
 
 bool in_box(double x, double y, const ImageFloatBox& box){
     return x >= box.x && x < box.x + box.width && y >= box.y && y < box.y + box.height;
@@ -146,48 +124,6 @@ KeyCells cyan_pixels_by_key(const ImageViewRGB32& keys){
 }  // namespace
 
 
-
-SystemKeyboardDetector::SystemKeyboardDetector(Color color)
-    : m_color(color)
-    , m_key_panel_upper(0.15, 0.532, 0.65, 0.036)
-    , m_key_panel_lower(0.15, 0.715, 0.65, 0.032)
-    , m_bottom_bar(BOTTOM_BAR)
-    , m_ok_button(0.875, 0.760, 0.045, 0.020)
-{}
-void SystemKeyboardDetector::make_overlays(VideoOverlaySet& items) const{
-    items.add(m_color, m_key_panel_upper);
-    items.add(m_color, m_key_panel_lower);
-    items.add(m_color, m_bottom_bar);
-    items.add(m_color, m_ok_button);
-}
-bool SystemKeyboardDetector::detect(const ImageViewRGB32& screen){
-    const std::optional<KeyboardTheme> theme = keyboard_theme(screen);
-    if (!theme){
-        return false;
-    }
-    //  Strips across keys and gaps: stddev sum about 11 (white keys) or 12 (dark keys).
-    const double max_panel_stddev = 20;
-    const ImageStats upper = image_stats(extract_box_reference(screen, m_key_panel_upper));
-    const ImageStats lower = image_stats(extract_box_reference(screen, m_key_panel_lower));
-    const ImageStats ok = image_stats(extract_box_reference(screen, m_ok_button));
-    if (*theme == KeyboardTheme::DARK){
-        const bool panel =
-            is_grey(upper, /*min_rgb_sum=*/210, /*max_rgb_sum=*/300, max_panel_stddev) ||
-            is_grey(lower, /*min_rgb_sum=*/210, /*max_rgb_sum=*/300, max_panel_stddev);
-        //  OK: flat grey (100) with an empty field, solid cyan (0, 233, 211) with text.
-        return panel && ok.stddev.sum() < 10;
-    }
-    const bool panel =
-        is_white(upper, /*min_rgb_sum=*/500, max_panel_stddev) ||
-        is_white(lower, /*min_rgb_sum=*/500, max_panel_stddev);
-    if (!panel){
-        return false;
-    }
-    //  OK: blue (40, 93, 255), or flat grey (221) with an empty field.
-    return is_solid(ok, {0.103, 0.240, 0.657}) || is_grey(ok, 600, 690);
-}
-
-
 std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB32& screen){
     //  Neighbouring keys overlap the border: take the centroid of cyan pixels outside
     //  solid cyan keys and map it to the nearest key.
@@ -214,16 +150,6 @@ std::optional<SystemKeyboardKey> read_system_keyboard_cursor(const ImageViewRGB3
     );
 }
 
-bool system_keyboard_field_has_text(const ImageViewRGB32& screen){
-    //  Left of the backspace key, clear of its icon and the cursor: light theme 221
-    //  empty, 52 with text; dark theme 100 empty, 254 with text.
-    const ImageStats stats = image_stats(extract_box_reference(screen, ImageFloatBox(0.878, 0.470, 0.008, 0.060)));
-    if (keyboard_theme(screen) == KeyboardTheme::DARK){
-        return !is_grey(stats, /*min_rgb_sum=*/255, /*max_rgb_sum=*/345);
-    }
-    return stats.average.sum() < 400;
-}
-
 size_t system_keyboard_text_pixels(const ImageViewRGB32& screen){
     //  The field, above its underline, which is white in some games.
     const ImageViewRGB32 field = extract_box_reference(screen, ImageFloatBox(0.03, 0.17, 0.87, 0.105));
@@ -245,8 +171,7 @@ namespace{
 
 class Test_SystemKeyboardDetector : public ImageUnitTest{
 public:
-    //  `cursor`: the key under the cursor, or nothing for a screen without the keyboard.
-    Test_SystemKeyboardDetector(const std::string& image, std::optional<SystemKeyboardKey> cursor, bool has_text)
+    Test_SystemKeyboardDetector(const std::string& image, SystemKeyboardKey cursor, bool has_text)
         : ImageUnitTest(std::format("NintendoSwitch::SystemKeyboardDetector - {}", image), {image})
         , m_cursor(cursor)
         , m_has_text(has_text)
@@ -257,22 +182,11 @@ public:
         const std::vector<ImageRGB32>& images
     ) const override{
         const ImageRGB32& image = images[0];
-        const bool keyboard = SystemKeyboardDetector().detect(image);
-        if (keyboard != m_cursor.has_value()){
-            return std::format("detect() returned {}.", keyboard);
-        }
-        if (!keyboard){
-            return true;
-        }
         const std::optional<SystemKeyboardKey> cursor = read_system_keyboard_cursor(image);
         if (cursor != m_cursor){
             return cursor
                 ? std::format("Read the cursor at ({}, {}).", cursor->row, cursor->col)
                 : std::format("Read no cursor.");
-        }
-        const bool has_text = system_keyboard_field_has_text(image);
-        if (has_text != m_has_text){
-            return std::format("system_keyboard_field_has_text() returned {}.", has_text);
         }
         //  An empty field has no white text pixels; one typed character has many.
         const size_t text_pixels = system_keyboard_text_pixels(image);
@@ -283,7 +197,7 @@ public:
     }
 
 private:
-    std::optional<SystemKeyboardKey> m_cursor;
+    SystemKeyboardKey m_cursor;
     bool m_has_text;
 };
 
@@ -316,12 +230,11 @@ void add_planned_tests(UnitTestDatabase& database){
     //  AZERTY needs a console whose system language uses it.
     struct Planned{
         std::string_view image;
-        std::optional<SystemKeyboardKey> cursor;
+        SystemKeyboardKey cursor;
         bool has_text;
     };
     const Planned planned[] = {
         {"AZERTY-Empty.png",    key_1,          false},
-        {"PLZA-Korean.png",     std::nullopt,   false},
     };
     for (const Planned& test : planned){
         const std::string image = test_image_path(test.image);
@@ -347,9 +260,6 @@ void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
     database.add<Test_SystemKeyboardDetector>(test_image_path("PLZA-English-Empty-Dark.png"), key_1, false);
     //  "K" typed: OK turns solid cyan, which is not the cursor (on "8").
     database.add<Test_SystemKeyboardDetector>(test_image_path("PLZA-English-Typed-Dark.png"), SystemKeyboardKey{0, 7}, true);
-    for (std::string_view image : {"BDSP-Dialog.png", "HomeMenu.png", "HomeMenu-OnlineLicensePopup.png", "UserSelect.png"}){
-        database.add<Test_SystemKeyboardDetector>(test_image_path(image), std::nullopt, false);
-    }
     add_cursor_tests(database);
     add_planned_tests(database);
 }

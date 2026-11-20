@@ -28,14 +28,13 @@ namespace PokemonLZA{
 struct MapWaypoint{
     std::string_view name = {};
     MapPoint pin = {};
-    bool provisional = true;
     double stop_radius = 0;
 };
 
 inline constexpr double CATCH_STOP_RADIUS = 12;
 
-inline constexpr MapWaypoint ZONE1_ROCKS{.name = "Taunie's rocks", .pin = {.x = 476, .y = 224}, .provisional = false};
-inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x = 442, .y = 227}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+inline constexpr MapWaypoint ZONE1_ROCKS{.name = "Taunie's rocks", .pin = {.x = 476, .y = 224}};
+inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x = 442, .y = 227}, .stop_radius = CATCH_STOP_RADIUS};
 
 //  Returns the waypoint for a catch spot distance in CATCH_SPOTS, or std::nullopt.
 std::optional<MapWaypoint> catch_spot_waypoint(int spot);
@@ -68,7 +67,6 @@ struct ZoneStartRoute{
     Milliseconds leg_hold;
     int leg_read_min;
     int leg_read_max;
-    Milliseconds walk_hold;
 };
 
 constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
@@ -79,15 +77,12 @@ constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
     .leg_hold = Milliseconds(900),
     .leg_read_min = 120,
     .leg_read_max = 135,
-    .walk_hold = Milliseconds(5600),
 };
 
 //  Next decision from ZoneStart::leave().
 enum class ZoneStartMove{
     WALK_TO_SPOT,
-    SEARCH,
     ROCKS_NOT_LEFT,
-    SPOT_NOT_REACHED,
 };
 
 //  Stateful route checker for leaving a zone start point; terminal stops remain sticky.

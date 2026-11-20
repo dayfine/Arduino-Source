@@ -67,14 +67,13 @@ bool has_reading(const ScreenObservation& look, std::string_view reading){
     return look.readings.contains(reading);
 }
 
-constexpr std::array<ProbedSignal, 9> PROBED_SIGNAL_TABLE{{
+constexpr std::array<ProbedSignal, 8> PROBED_SIGNAL_TABLE{{
     {"party_bar", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::PLAYER_CAN_MOVE); }},
     {"hint", [](const ScreenObservation& look){ return has_reading(look, CONTROLS_HINT_READING); }},
     {"prompt", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::INTERACT_PROMPT); }},
     {"arrow", [](const ScreenObservation& look){ return has_reading(look, ADVANCE_ARROW_READING); }},
     {"dialog_box", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::DIALOG_BOX); }},
     {"autosave", [](const ScreenObservation& look){ return has_reading(look, AUTOSAVE_READING); }},
-    {"banner", [](const ScreenObservation& look){ return has_reading(look, MISSION_BANNER_READING); }},
     {"choice", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::CHOICE_BOX); }},
     {"fade", [](const ScreenObservation& look){ return fade_shows(look); }},
 }};
@@ -95,7 +94,6 @@ enum class SceneScreen{
     CHOICE_END,     //  terminal, with stop_at_choice
     CHOICE,         //  A on its top row
     TEXT,           //  A, or B (text_button())
-    MAP,            //  B
     LOCK_ON,        //  ZL held while config.lock_on watches
     CARD,           //  a tutorial card or "mission complete": A
     NEVER_STARTED,  //  failing: the HUD for start_window and no scene
@@ -121,7 +119,6 @@ constexpr SceneScreenName SCREEN_NAMES[] = {
     {SceneScreen::CHOICE_END, "choice", false},
     {SceneScreen::CHOICE, "choice_top_row", true},
     {SceneScreen::TEXT, "text", false},
-    {SceneScreen::MAP, "map", true},
     {SceneScreen::LOCK_ON, "lock_on", false},
     {SceneScreen::CARD, "card", false},
     {SceneScreen::NEVER_STARTED, "never_started", false},
@@ -267,9 +264,6 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (TEXT_SHOWS.matches(look)){
         return SceneScreen::TEXT;
     }
-    if (look.readings.contains(MAP_READING)){
-        return SceneScreen::MAP;
-    }
     if (lock_on_due(look)){
         return SceneScreen::LOCK_ON;
     }
@@ -365,8 +359,7 @@ std::string describe_look(const ScreenObservation& look){
     };
     const std::pair<std::string_view, std::string_view> readings[] = {
         {CONTROLS_HINT_READING, "controls hint"}, {ADVANCE_ARROW_READING, "advance arrow"},
-        {MISSION_BANNER_READING, "mission banner"}, {MISSION_COMPLETE_READING, "mission complete"},
-        {TUTORIAL_CARD_READING, "tutorial card"}, {MAP_READING, "map"},
+        {MISSION_COMPLETE_READING, "mission complete"}, {TUTORIAL_CARD_READING, "tutorial card"},
     };
     std::string text;
     const auto add = [&text](std::string_view name){
@@ -546,8 +539,6 @@ std::optional<Button> SceneRunner::button_for(SceneScreen screen, const ScreenOb
         return choice_button(look);
     case SceneScreen::TEXT:
         return m_timeline.text_button(look);
-    case SceneScreen::MAP:
-        return BUTTON_B;
     case SceneScreen::CARD:
         return BUTTON_A;
     case SceneScreen::OTHER:

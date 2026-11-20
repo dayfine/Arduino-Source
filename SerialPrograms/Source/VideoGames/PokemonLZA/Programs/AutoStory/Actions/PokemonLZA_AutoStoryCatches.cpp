@@ -46,7 +46,7 @@ namespace{
 //  The road below the rocks. Going straight from the rocks to the 100 spot
 //  stops on an obstacle at about (467, 226) 3 runs in 5 (2026-11-18/19);
 //  through here the heading to the spot keeps south of it.
-constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 456, .y = 231}, .provisional = true};
+constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 456, .y = 231}};
 
 //  Via the road, past the rock on its right.
 constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_ROAD_ENTRY, ZONE1_SPOT_100};
@@ -465,8 +465,6 @@ GrassCatches fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
     return out;
 }
 
-//  After a catch the map pin is logged: where the catch spots really are,
-//  for their waypoints.
 GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_throws){
     GrassCatches out;
     CameraPitch pitch;
@@ -508,10 +506,6 @@ GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_
     }
     if (pitch.level_now()){
         level_camera(env);
-    }
-    if (out.found > 0 && !wild_battle_on(env)){
-        backend.log(std::format("[PLZA] catch_in_zone: the map pin after the catch at {}", at));
-        read_pin_on_map(env, backend);
     }
     return out;
 }
@@ -574,33 +568,19 @@ std::optional<int> read_at_marker(StoryEnv& env, PlzaBackend& backend){
 std::string_view start_move_name(ZoneStartMove move){
     switch (move){
     case ZoneStartMove::WALK_TO_SPOT:
-        return "off the rocks: the marker walk to the spot";
-    case ZoneStartMove::SEARCH:
-        return "at the spot: the patrol";
+        return "off the rocks: the map legs to the spot";
     case ZoneStartMove::ROCKS_NOT_LEFT:
         return "not at the rocks by the pin (or, unread, by the read off them): stop";
-    case ZoneStartMove::SPOT_NOT_REACHED:
-        return "the marker walk ended off the spot: stop";
     }
     return "?";
-}
-
-//  Logged only: a cross-check of the map's waypoints.
-std::optional<int> cross_check_marker(StoryEnv& env, PlzaBackend& backend, const MapWaypoint& waypoint){
-    const std::optional<int> distance = read_at_marker(env, backend);
-    backend.log(std::format(
-        "[PLZA] map leg cross-check: at {} the marker reads {}",
-        waypoint.name, distance ? std::to_string(*distance) : std::string("nothing")
-    ));
-    return distance;
 }
 
 //  The pin decides whether the player started at the rocks; the marker read
 //  after the leg decides only when the pin did not read.
 std::optional<Pokemon::StoryFailure> go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const ZoneStartRoute& route){
     backend.log(std::format(
-        "[PLZA] catch_in_zone: at the start, {} is put at ({:.0f}, {:.0f}) on the map{}",
-        route.start.name, route.start.pin.x, route.start.pin.y, route.start.provisional ? " [provisional]" : ""
+        "[PLZA] catch_in_zone: at the start, {} is put at ({:.0f}, {:.0f}) on the map",
+        route.start.name, route.start.pin.x, route.start.pin.y
     ));
     const std::optional<MapPoint> start_pin = read_pin_on_map(env, backend);
     backend.press(BUTTON_L, /*hold=*/Milliseconds(100), /*release=*/Milliseconds(150));
@@ -660,15 +640,14 @@ Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal
                 break;
             }
         }
-        const std::optional<int> at = cross_check_marker(env, backend, *waypoint);
         if (spot_visit(stops[i], caught_at) == SpotVisit::TURN_BACK && !wild_battle_on(env)){
-            backend.log(std::format("[PLZA] catch_in_zone: stop {} of {} at {} (for {}): a new species was caught here: turning back", i + 1, stops.size(), at.value_or(-1), stops[i]));
+            backend.log(std::format("[PLZA] catch_in_zone: stop {} of {} at {}: a new species was caught here: turning back", i + 1, stops.size(), stops[i]));
             continue;
         }
-        const GrassCatches stop = catch_at_stop(env, backend, at.value_or(stops[i]), goal.max_throws - result.throws);
+        const GrassCatches stop = catch_at_stop(env, backend, stops[i], goal.max_throws - result.throws);
         backend.log(std::format(
-            "[PLZA] catch_in_zone: stop {} of {} at {} (for {}): {} throws, {} new species, {} locks on caught species only",
-            i + 1, stops.size(), at.value_or(-1), stops[i], stop.throws, stop.found, stop.caught_seen
+            "[PLZA] catch_in_zone: stop {} of {} at {}: {} throws, {} new species, {} locks on caught species only",
+            i + 1, stops.size(), stops[i], stop.throws, stop.found, stop.caught_seen
         ));
         result += stop;
         if (stop.found > 0){

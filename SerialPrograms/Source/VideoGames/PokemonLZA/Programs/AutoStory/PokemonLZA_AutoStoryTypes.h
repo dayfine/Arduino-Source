@@ -29,10 +29,7 @@ constexpr std::string_view CONTROLS_HINT_READING = "scene.controls_hint";
 //  1: the advance chevron, at a dialogue box or boxless subtitles.
 constexpr std::string_view ADVANCE_ARROW_READING = "scene.advance_arrow";
 
-//  1: a main mission's banner ("MAIN MISSION 01" over a yellow bar).
-constexpr std::string_view MISSION_BANNER_READING = "scene.mission_banner";
-
-//  1: the "COMPLETE" card a main mission ends with; excludes MISSION_BANNER_READING.
+//  1: the "COMPLETE" card a main mission ends with.
 constexpr std::string_view MISSION_COMPLETE_READING = "scene.mission_complete";
 
 //  A choice box's row count; unset when the rows do not read.
@@ -50,9 +47,6 @@ constexpr std::string_view MAIN_MENU_READING = "menu.main";
 //  1 while the arrow is on Save, after R on the main menu.
 constexpr std::string_view MENU_SAVE_BUTTON_READING = "menu.save_button";
 
-//  1: the full map, which Plus opens on free control.
-constexpr std::string_view MAP_READING = "menu.map";
-
 //  Full-map coordinates scaled to 800 x 450.
 struct MapPoint{
     double x = 0;
@@ -64,7 +58,6 @@ enum class PlzaAction{
     OPENING_TO_PLATFORM,
     WALK,
     TALK_THROUGH_MAP_SCREEN,
-    TALK_TO_POKEDEX_SCREEN,
     CLIMB_LADDER,
     CHOOSE_0,
     CHOOSE_1,

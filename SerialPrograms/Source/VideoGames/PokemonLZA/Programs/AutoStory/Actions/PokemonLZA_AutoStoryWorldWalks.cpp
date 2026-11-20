@@ -40,7 +40,7 @@ std::string pin_text(const std::optional<MapPoint>& pin){
 }
 
 std::string waypoint_text(const MapWaypoint& waypoint){
-    return std::format("{} {}{}", waypoint.name, pin_text(waypoint.pin), waypoint.provisional ? " [provisional]" : "");
+    return std::format("{} {}", waypoint.name, pin_text(waypoint.pin));
 }
 
 } // namespace

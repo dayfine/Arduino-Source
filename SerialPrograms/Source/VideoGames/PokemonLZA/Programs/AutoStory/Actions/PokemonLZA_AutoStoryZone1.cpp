@@ -20,7 +20,7 @@ namespace{
 
 //  Mareep's grass right of the road (marker 60): targets show on the right
 //  from (386, 252), none from (370, 256); 6 north of that, toward the grass.
-constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .stop_radius = CATCH_STOP_RADIUS};
 
 } // namespace
 
@@ -148,20 +148,6 @@ std::vector<int> alternating_stops(std::span<const int> spots, size_t visits){
 }
 
 
-namespace{
-
-//  The search spot as the objective marker's distance: the plaza by the green advertising column.
-constexpr int ZONE_SPOT_DISTANCE = 100;
-//  The search's legs are a few steps either way along the road.
-constexpr int ZONE_SPOT_SLACK = 10;
-
-//  Whether an agreed distance read is at the search spot.
-bool at_zone_spot(std::optional<int> distance){
-    return distance && std::abs(*distance - ZONE_SPOT_DISTANCE) <= ZONE_SPOT_SLACK;
-}
-
-} // namespace
-
 ZoneStartMove ZoneStart::leave(std::optional<MapPoint> start_pin, std::optional<int> distance){
     if (!start_pin){
         return next(distance);
@@ -176,10 +162,6 @@ ZoneStartMove ZoneStart::next(std::optional<int> distance){
     if (!m_last){
         const bool in_range = distance && *distance >= m_route.leg_read_min && *distance <= m_route.leg_read_max;
         m_last = in_range ? ZoneStartMove::WALK_TO_SPOT : ZoneStartMove::ROCKS_NOT_LEFT;
-    }else if (*m_last == ZoneStartMove::WALK_TO_SPOT){
-        //  No read passes: the walk lands at 101 to 105, where the digits over
-        //  the green column often misread.
-        m_last = !distance || at_zone_spot(distance) ? ZoneStartMove::SEARCH : ZoneStartMove::SPOT_NOT_REACHED;
     }
     return *m_last;
 }

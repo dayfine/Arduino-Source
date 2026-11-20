@@ -59,8 +59,7 @@ ScreenObservation golden_look(Milliseconds at, std::string_view screen){
     };
     const std::pair<std::string_view, std::string_view> readings[] = {
         {"controls hint", CONTROLS_HINT_READING}, {"advance arrow", ADVANCE_ARROW_READING},
-        {"mission banner", MISSION_BANNER_READING}, {"mission complete", MISSION_COMPLETE_READING},
-        {"tutorial card", TUTORIAL_CARD_READING},
+        {"mission complete", MISSION_COMPLETE_READING}, {"tutorial card", TUTORIAL_CARD_READING},
     };
     ScreenObservation look;
     look.when = WallClock::min() + at;
@@ -335,7 +334,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "B"}, {"text box, advance arrow", "B"}, {"nothing", "B"}, {"still", "B"}, {"tutorial card", "A"},
                 {"still, tutorial card", "A"}, {"white fade", "-"}, {"black fade", "-"}, {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA talk_to_pokedex_screen] done on control.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
