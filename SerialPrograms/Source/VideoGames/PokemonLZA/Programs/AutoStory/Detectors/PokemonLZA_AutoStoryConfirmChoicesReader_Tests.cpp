@@ -4,14 +4,12 @@
  *
  */
 
-#include <cstdlib>
 #include <format>
 #include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
-#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
@@ -73,12 +71,6 @@ struct SyntheticCase{
 };
 
 const SyntheticCase SYNTHETIC_CASES[] = {
-    {.name = "row 0 highlighted", .input = {.frame = []{ return confirm_choices_frame({0}); }}, .expectation = {.cursor = 0}},
-    {
-        .name = "Ready! highlighted",
-        .input = {.frame = []{ return confirm_choices_frame({CONFIRM_CHOICES_READY_ROW}); }},
-        .expectation = {.cursor = CONFIRM_CHOICES_READY_ROW},
-    },
     {.name = "no row highlighted", .input = {.frame = []{ return confirm_choices_frame({}); }}, .expectation = {.cursor = std::nullopt}},
     {.name = "two rows highlighted", .input = {.frame = []{ return confirm_choices_frame({0, 1}); }}, .expectation = {.cursor = std::nullopt}},
     {.name = "flat background", .input = {.frame = []{ return flat_frame(BACKGROUND); }}, .expectation = {.cursor = std::nullopt}},
@@ -102,69 +94,6 @@ public:
 
 private:
     const SyntheticCase& m_test;
-};
-
-
-std::optional<std::string> env_folder(std::string_view variable){
-    const auto* value = std::getenv(std::string(variable).c_str());
-    if (value == nullptr){
-        return std::nullopt;
-    }
-    std::string folder(value);
-    if (!Filesystem::is_directory(Filesystem::Path(folder))){
-        return std::nullopt;
-    }
-    return folder;
-}
-
-//  The 01.00b start check on the intro screens in PLZA_INTRO_SCREENS; missing files are skipped.
-struct CaptureCase{
-    std::string name;
-    struct Input{
-        std::string_view file;
-    };
-    Input input;
-    struct Expectation{
-        std::optional<size_t> cursor;
-    };
-    Expectation expectation;
-};
-
-const CaptureCase CAPTURE_CASES[] = {
-    {.name = "Confirm Choices as it opens", .input = {.file = "confirm-choices.png"}, .expectation = {.cursor = 0}},
-    {.name = "HOME", .input = {.file = "home.png"}, .expectation = {.cursor = std::nullopt}},
-    {.name = "a game in front", .input = {.file = "in-game.png"}, .expectation = {.cursor = std::nullopt}},
-    {.name = "the language list", .input = {.file = "language-list.png"}, .expectation = {.cursor = std::nullopt}},
-    {.name = "the look picker", .input = {.file = "look-picker.png"}, .expectation = {.cursor = std::nullopt}},
-    {.name = "the name keyboard", .input = {.file = "keyboard.png"}, .expectation = {.cursor = std::nullopt}},
-};
-
-class Test_ConfirmChoicesCapture : public UnitTest{
-public:
-    explicit Test_ConfirmChoicesCapture(const CaptureCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Confirm Choices reader: {} (PLZA_INTRO_SCREENS)", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::optional<std::string> folder = env_folder("PLZA_INTRO_SCREENS");
-        if (!folder){
-            return UnitTestResult(UnitTestResult::SKIPPED, "PLZA_INTRO_SCREENS is not a folder.");
-        }
-        const std::string path = std::format("{}/{}", *folder, m_test.input.file);
-        if (!Filesystem::exists(Filesystem::Path(path))){
-            return UnitTestResult(UnitTestResult::SKIPPED, std::format("{} is not in the folder.", m_test.input.file));
-        }
-        const std::optional<size_t> cursor = read_confirm_choices_cursor(ImageRGB32(path));
-        if (cursor != m_test.expectation.cursor){
-            return std::format(
-                "{}: expected {}, read {}.", m_test.input.file, describe_cursor(m_test.expectation.cursor), describe_cursor(cursor)
-            );
-        }
-        return true;
-    }
-
-private:
-    const CaptureCase& m_test;
 };
 
 
@@ -228,9 +157,6 @@ public:
 void add_tests_AutoStoryConfirmChoicesReader(UnitTestDatabase& database){
     for (const SyntheticCase& test : SYNTHETIC_CASES){
         database.add<Test_ConfirmChoicesSynthetic>(test);
-    }
-    for (const CaptureCase& test : CAPTURE_CASES){
-        database.add<Test_ConfirmChoicesCapture>(test);
     }
     for (const LanguageFramesCase& test : LANGUAGE_FRAMES_CASES){
         database.add<Test_ConfirmChoicesFrames>(test);

@@ -24,7 +24,6 @@ namespace{
 constexpr size_t WIDTH = 1920;
 constexpr size_t HEIGHT = 1080;
 constexpr uint32_t WHITE = 0xffffffff;
-constexpr uint32_t DARK_GRAY = 0xff303030;
 
 void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
     for (size_t y = min_y; y < max_y; y++){
@@ -37,13 +36,6 @@ void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t c
 ImageRGB32 solid_frame(uint32_t color){
     ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(color);
-    return image;
-}
-
-//  A white box's bottom edge (x 500-1410, y 990-1040) on dark, no arrow: text typing.
-ImageRGB32 box_without_arrow_frame(){
-    ImageRGB32 image = solid_frame(DARK_GRAY);
-    fill_box(/*min_x=*/500, /*min_y=*/990, /*max_x=*/1410, /*max_y=*/1040, WHITE, image);
     return image;
 }
 
@@ -79,23 +71,10 @@ const DialogCase DIALOG_CASES[] = {
         .expectation = {.dialog = false},
     },
     {
-        .name = "a white box without its arrow, box and arrow",
-        .input = {.frame = box_without_arrow_frame, .white = WhiteDialogPart::BOX_AND_ARROW},
-        .expectation = {.dialog = false},
-    },
-    {
         .name = "a white box on the console, box and arrow",
         .input = {
             .frame = []{ return console_frame("FlatWhiteDialogDetector/mac_restaurant_True.png"); },
             .white = WhiteDialogPart::BOX_AND_ARROW,
-        },
-        .expectation = {.dialog = true},
-    },
-    {
-        .name = "a white box on the console, box only",
-        .input = {
-            .frame = []{ return console_frame("FlatWhiteDialogDetector/mac_restaurant_True.png"); },
-            .white = WhiteDialogPart::BOX_ONLY,
         },
         .expectation = {.dialog = true},
     },

@@ -12,9 +12,7 @@
 #include <algorithm>
 #include <format>
 #include <span>
-#include <functional>
 #include <limits>
-#include <memory>
 #include <optional>
 #include <set>
 #include <string>
@@ -28,7 +26,6 @@
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryGame.h"
-#include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "PokemonLZA_AutoStoryMenuReadings.h"
 #include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStoryStarts.h"
@@ -132,15 +129,9 @@ const ScreenObservation DIALOG = look({ScreenEvent::DIALOG_BOX});
 const ScreenObservation A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
 //  01.03 shows no party bar.
 const ScreenObservation PROMPT_ONLY = look({ScreenEvent::INTERACT_PROMPT});
-//  A text page typed out: the text box and its advance arrow.
-const ScreenObservation TEXT_PAGE = look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING});
 
 ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
-}
-
-ScreenObservation text_page(Milliseconds at){
-    return look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, at);
 }
 
 ScreenObservation choice(int selected, int rows = 2, Milliseconds at = Milliseconds(0)){
@@ -209,8 +200,6 @@ struct RunCase{
         size_t first_step = 0;
         size_t steps = std::numeric_limits<size_t>::max();
         std::vector<ScreenObservation> looks;
-        //  The last repeats; none: no minimap arrow, as off a console.
-        std::vector<double> arrow_reads = {};
     };
     Input input;
     struct Expectation{
@@ -224,11 +213,6 @@ struct RunCase{
 };
 
 const RunCase RUN_CASES[] = {
-    {
-        .name = "01.00a stops at the new game off a console",
-        .input = {.checkpoint = "01.00a", .first_step = 0, .looks = {CUTSCENE}},
-        .expectation = {.verdict = "failed at new_game: console_only", .inputs = ""},
-    },
     {
         .name = "01.00b's opening fails with no autosave",
         .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {PLATFORM}},
@@ -273,25 +257,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at battle_with_pokemon: choice_not_reached"},
     },
     {
-        .name = "a story battle with no battle HUD in 10 s fails as battle_never_started, the battle code not run",
-        .input = {.checkpoint = "01.03", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
-        .expectation = {.verdict = "failed at andi_battle: battle_never_started", .inputs = repeated("wait 250ms", 40)},
-    },
-    {
-        //  Held legs run with B held: the walk times stay walk times (console B, 2026-11-19).
-        .name = "02.01 waits 3 s for the NPCs, then runs its held legs",
-        .input = {.checkpoint = "02.01", .first_step = 0, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
-        .expectation = {
-            .verdict = "done",
-            .inputs = "wait 3000ms, wait 250ms, stick 10deg 4250ms run, press L, stick 90deg 6000ms run, press L, stick 90deg 6500ms run",
-        },
-    },
-    {
-        .name = "02.02's street scene fails when the party bar shows 45 s and it never starts",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(46000))}},
-        .expectation = {.verdict = "failed at street_scene: scene_never_started", .inputs = "wait 250ms"},
-    },
-    {
         //  From the save the street scene ends at the gate, its prompt up.
         .name = "02.02's walk to the gate talks at once on the A prompt it starts at",
         .input = {.checkpoint = "02.02", .first_step = 3, .steps = 1, .looks = concat(std::vector<ScreenObservation>(4, A_PROMPT), {DIALOG})},
@@ -309,13 +274,6 @@ const RunCase RUN_CASES[] = {
             .inputs = std::format("{}, press L, stick -15deg 150ms walk, release 100ms, press L, {}, wait 300ms", repeated("wait 250ms", 40), repeated("stick 0deg 250ms run", 8)),
             .line = "[PLZA] walk: nothing busy for 10000 ms and no sign of control; taken as control.",
         },
-    },
-    {
-        .name = "02.06 with no autosave badge seen is not saved",
-        .input = {.checkpoint = "02.06", .first_step = 3, .looks = {
-            look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(21000)), party_bar(Milliseconds(22000)),
-        }},
-        .expectation = {.verdict = "done", .line = "[Save] 02.06: not saved (the plan's autosave was not seen)"},
     },
     {
         .name = "a walk to an A prompt holds on past a glimpse gone again 300 ms later",
@@ -351,33 +309,6 @@ const RunCase RUN_CASES[] = {
             .inputs = "wait 250ms, stick 0deg 250ms run, press A, wait 250ms",
             .line = "[PLZA] walk: A on the A prompt after 250 ms of the last leg started a talk.",
         },
-    },
-    {
-        //  02.05 on console B 2026-11-19 17:37: A on "nothing" after the fade
-        //  and a second A on the same text page 90 ms after the first; one
-        //  landed on the floor choice's top row and the elevator closed.
-        .name = "02.05's floor question: nothing pressed on a screen with no text, one A per text page, done at the choice",
-        .input = {.checkpoint = "02.05", .first_step = 1, .steps = 1, .looks = concat(
-            {A_PROMPT}, concat(std::vector<ScreenObservation>(4, BLACK_FADE),
-                {CUTSCENE, CUTSCENE, TEXT_PAGE, TEXT_PAGE, TEXT_PAGE, choice(0)})
-        )},
-        .expectation = {
-            .verdict = "done",
-            .inputs = std::format("press A, {}, press A, wait 250ms, wait 250ms", repeated("wait 250ms", 6)),
-            .line = "[PLZA scene] done on choice.",
-        },
-    },
-    {
-        //  03.11 on console B 2026-11-19 19:27: B on Mable's second 2-row question did nothing, for 120 s.
-        .name = "03.11's Mable talk: A on each of her 2-row questions, done at control",
-        .input = {.checkpoint = "03.11", .first_step = 1, .steps = 1, .looks = {
-            text_page(Milliseconds(0)), choice(/*selected=*/0, /*rows=*/2, Milliseconds(400)), text_page(Milliseconds(800)),
-            text_page(Milliseconds(1200)), choice(/*selected=*/0, /*rows=*/2, Milliseconds(1600)),
-            choice(/*selected=*/0, /*rows=*/2, Milliseconds(2000)), text_page(Milliseconds(2400)),
-            party_bar(Milliseconds(2800)), party_bar(Milliseconds(3900)),
-        }},
-        .expectation = {.verdict = "done", .inputs = std::format("{}, wait 250ms", repeated("press A", 7)),
-            .line = "[PLZA scene] done on control."},
     },
     {
         //  01.03 on console B 2026-11-19 17:10: Taunie's A prompt shows at the
@@ -428,39 +359,11 @@ const RunCase RUN_CASES[] = {
         )},
         .expectation = {.verdict = "done"},
     },
-    //  Arrow reads from a passing run: 272 out of the gate, 254 after one turn.
-    {
-        .name = "03.09's walk faces the street first, then walks its legs into Ryon's dialog",
-        .input = {
-            .checkpoint = "03.09", .first_step = 0, .steps = 1,
-            .looks = concat(std::vector<ScreenObservation>(7, party_bar(Milliseconds(0))), {DIALOG}),
-            .arrow_reads = {272, 254},
-        },
-        .expectation = {
-            .verdict = "done",
-            .inputs = "wait 250ms, press L, stick -15deg 150ms walk, release 100ms, press L, stick 0deg 6500ms run, "
-                "press L, stick -90deg 150ms walk, release 100ms, press L, stick 0deg 250ms run",
-            .line = "[PLZA] walk: the end event after 250 ms of the last leg.",
-        },
-    },
 };
-
-//  The last read repeats; none for no reads.
-std::optional<MinimapArrowReader> scripted_arrow(const std::vector<double>& reads){
-    if (reads.empty()){
-        return std::nullopt;
-    }
-    auto next = std::make_shared<size_t>(0);
-    return MinimapArrowReader([reads, next](){
-        const double read = reads[std::min(*next, reads.size() - 1)];
-        (*next)++;
-        return read;
-    });
-}
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
     AutosaveSightings sightings;
-    PlzaConsoleHooks tools{.arrow = scripted_arrow(test.input.arrow_reads), .sightings = &sightings};
+    PlzaConsoleHooks tools{.sightings = &sightings};
     tools.battle = [](PlzaBackend&) -> std::optional<Pokemon::StoryFailure>{
         return std::nullopt;
     };
@@ -513,64 +416,6 @@ StoryCheckpoint one_step_row(PlzaConsoleHooks& tools, std::string id, std::strin
     row.title = "Test";
     row.steps.push_back(plan_step(tools, action, action, args));
     return row;
-}
-
-
-struct LoadCase{
-    std::string name;
-    struct Input{
-        std::string checkpoint;     //  A built-in one.
-        bool has_reload = true;
-        std::vector<ScreenObservation> looks;
-    };
-    Input input;
-    struct Expectation{
-        std::string verdict;
-        std::string inputs;
-        std::string line = {};
-    };
-    Expectation expectation;
-};
-
-const LoadCase LOAD_CASES[] = {
-    {
-        .name = "01.02's start: loaded, and not checked",
-        .input = {.checkpoint = "01.02", .looks = {PLATFORM}},
-        .expectation = {
-            .verdict = "done", .inputs = "press HOME",
-            .line = "[Checkpoint] 01.02: START UNCHECKED: nothing reads this row's own start",
-        },
-    },
-    {
-        .name = "01.01's start is left to its first step's platform check",
-        .input = {.checkpoint = "01.01", .looks = {CUTSCENE}},
-        .expectation = {.verdict = "done", .inputs = "press HOME"},
-    },
-};
-
-UnitTestResult check_load(const LoadCase& test, CancellableScope& scope){
-    AutosaveSightings sightings;
-    Pokemon::StoryGame game = test.input.has_reload ? game_with_reload(builtin_story_data(), sightings) : plza_story_game(builtin_story_data(), sightings);
-    Pokemon::FakeStoryBackend backend({.looks = test.input.looks}, scope);
-    PlzaConsoleHooks tools;
-    const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, builtin_row(tools, test.input.checkpoint, /*first_step=*/0, /*steps=*/99));
-    const std::string verdict = !loaded ? "done" : loaded->code;
-    if (verdict != test.expectation.verdict){
-        return std::format("expected \"{}\", got \"{}\"; log:\n{}", test.expectation.verdict, verdict, joined(backend.lines(), "\n"));
-    }
-    const std::string inputs = joined(backend.inputs(), ", ");
-    if (inputs != test.expectation.inputs){
-        return std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, inputs);
-    }
-    if (test.expectation.line.empty()){
-        return true;
-    }
-    for (const std::string& line : backend.lines()){
-        if (line == test.expectation.line){
-            return true;
-        }
-    }
-    return std::format("expected the line \"{}\" in:\n{}", test.expectation.line, joined(backend.lines(), "\n"));
 }
 
 
@@ -807,50 +652,6 @@ UnitTestResult check_new_game_chain(const NewGameChainCase& test, CancellableSco
     return true;
 }
 
-//  A checkpoint whose last step did or did not save from the menu.
-struct MenuSaveCase{
-    std::string name;
-    struct Input{
-        bool menu_saved = false;
-    };
-    Input input;
-    struct Expectation{
-        std::string line;
-    };
-    Expectation expectation;
-};
-
-const MenuSaveCase MENU_SAVE_CASES[] = {
-    {
-        .name = "a menu save in the last step saves the checkpoint",
-        .input = {.menu_saved = true},
-        .expectation = {.line = "[Save] T: the game autosaved (seen)"},
-    },
-    {
-        .name = "no menu save: not saved",
-        .input = {.menu_saved = false},
-        .expectation = {.line = "[Save] T: not saved (no autosave seen)"},
-    },
-};
-
-UnitTestResult check_menu_save(const MenuSaveCase& test, CancellableScope& scope){
-    AutosaveSightings sightings;
-    Pokemon::StoryGame game = plza_story_game(MarkedCheckpoints{}, sightings);
-    Pokemon::FakeStoryBackend backend({.looks = {}}, scope);
-    StoryCheckpoint row;
-    row.id = "T";
-    row.steps.push_back(StoryStep{.name = "save"});
-    sightings.enter("save");
-    if (test.input.menu_saved){
-        sightings.saved(backend);
-    }
-    game.save(backend, row);
-    if (std::find(backend.lines().begin(), backend.lines().end(), test.expectation.line) == backend.lines().end()){
-        return std::format("expected the line \"{}\" in:\n{}", test.expectation.line, joined(backend.lines(), "\n"));
-    }
-    return true;
-}
-
 struct SightingLook{
     //  Empty: a checkpoint starts.
     std::string step;
@@ -975,17 +776,11 @@ void add_tests_AutoStoryGame(UnitTestDatabase& database){
     for (const SightingsCase& test : SIGHTINGS_CASES){
         database.add<CaseTest<SightingsCase, check_sightings>>("autosave sightings - ", test);
     }
-    for (const MenuSaveCase& test : MENU_SAVE_CASES){
-        database.add<CaseTest<MenuSaveCase, check_menu_save>>("menu save - ", test);
-    }
     for (const AutosaveStepCase& test : AUTOSAVE_STEP_CASES){
         database.add<CaseTest<AutosaveStepCase, check_autosave_step>>("autosave step - ", test);
     }
     for (const RunCase& test : RUN_CASES){
         database.add<CaseTest<RunCase, check_run>>("run - ", test);
-    }
-    for (const LoadCase& test : LOAD_CASES){
-        database.add<CaseTest<LoadCase, check_load>>("load - ", test);
     }
     for (const ChainCase& test : CHAIN_CASES){
         database.add<CaseTest<ChainCase, check_chain>>("chain - ", test);

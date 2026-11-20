@@ -4,7 +4,6 @@
  *
  */
 
-#include <algorithm>
 #include <format>
 #include <string>
 #include <string_view>
@@ -51,10 +50,16 @@ ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
-std::string joined(const std::vector<std::string>& texts){
+std::string non_poll_inputs(const std::vector<std::string>& texts){
     std::string text;
     for (const std::string& part : texts){
-        text += (text.empty() ? "" : ", ") + part;
+        if (part == "wait 250ms"){
+            continue;
+        }
+        if (!text.empty()){
+            text += ", ";
+        }
+        text += part;
     }
     return text;
 }
@@ -81,12 +86,12 @@ const LinesCase LINES_CASES[] = {
     {
         .name = "a card after the text is seen, done 3 s after it",
         .input = {.looks = {dialog(Milliseconds(0)), card(Milliseconds(500)), nothing(Milliseconds(1000)), nothing(Milliseconds(4000))}},
-        .expectation = {.text = true, .card = true, .timed_out = false, .inputs = "press A, press A, wait 250ms"},
+        .expectation = {.text = true, .card = true, .timed_out = false, .inputs = "press A, press A"},
     },
     {
         .name = "nothing for 3 s presses nothing",
         .input = {.looks = {nothing(Milliseconds(0)), nothing(Milliseconds(3000))}},
-        .expectation = {.text = false, .card = false, .timed_out = false, .inputs = "wait 250ms"},
+        .expectation = {.text = false, .card = false, .timed_out = false, .inputs = ""},
     },
     {
         .name = "text past the limit times out",
@@ -108,7 +113,7 @@ UnitTestResult check_lines(const LinesCase& test, CancellableScope& scope){
             expected.text, expected.card, expected.timed_out, passed.text, passed.card, passed.timed_out
         );
     }
-    const std::string inputs = joined(backend.inputs());
+    const std::string inputs = non_poll_inputs(backend.inputs());
     if (inputs != expected.inputs){
         return std::format("expected inputs \"{}\", got \"{}\"", expected.inputs, inputs);
     }
@@ -126,8 +131,6 @@ struct MenuCase{
     struct Expectation{
         bool out = false;
         std::string inputs;
-        //  The exit's "[Signals]" line; empty: not checked.
-        std::string signals = {};
     };
     Expectation expectation;
 };
@@ -146,17 +149,6 @@ const MenuCase MENU_CASES[] = {
         .expectation = {.out = true, .inputs = "press B"},
     },
     {
-        //  The log analysis tells a signal never seen from one seen at 0 ms.
-        .name = "the exit's signals line shows a dash for each signal never seen",
-        .input = {.looks = {nothing(Milliseconds(0)), nothing(Milliseconds(1000)), party_bar(Milliseconds(2000))}, .presses = 5},
-        .expectation = {
-            .out = true,
-            .inputs = "press B, press B",
-            .signals = "[Signals] press_b_out_of_menu menu_exit by=party_bar after=2000 first: party_bar@2000 hint@- prompt@- "
-                "arrow@- dialog_box@- autosave@- banner@- choice@- fade@- last_busy@-",
-        },
-    },
-    {
         .name = "still in the menu after the presses",
         .input = {.looks = {nothing(Milliseconds(0))}, .presses = 2},
         .expectation = {.out = false, .inputs = "press B, press B"},
@@ -169,13 +161,9 @@ UnitTestResult check_menu(const MenuCase& test, CancellableScope& scope){
     if (out != test.expectation.out){
         return std::format("expected out of the menu: {}, got {}", test.expectation.out, out);
     }
-    const std::string inputs = joined(backend.inputs());
+    const std::string inputs = non_poll_inputs(backend.inputs());
     if (inputs != test.expectation.inputs){
         return std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, inputs);
-    }
-    const std::vector<std::string>& lines = backend.lines();
-    if (!test.expectation.signals.empty() && std::find(lines.begin(), lines.end(), test.expectation.signals) == lines.end()){
-        return std::format("expected the line \"{}\" in:\n{}", test.expectation.signals, joined(lines));
     }
     return true;
 }

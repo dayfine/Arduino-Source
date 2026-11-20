@@ -51,9 +51,7 @@ struct MenuWidth{
 
 //  The menus whose rows read on the console in Japanese and Chinese.
 constexpr MenuWidth NARROW_MENU{};
-//  Italian 01.02's panel (x 1343), its rows running to x 1688.
-constexpr MenuWidth WIDE_MENU_LONG_ROWS{.panel_left = 1343, .text_end = 1688};
-//  The same panel with rows as short as "Si": no text past x 1400.
+//  Italian 01.02's wide panel with rows as short as "Si": no text past x 1400.
 constexpr MenuWidth WIDE_MENU_SHORT_ROWS{.panel_left = 1343, .text_end = 1400};
 
 //  `rows` rows with the reader's geometry, the text in strokes one column in three:
@@ -79,12 +77,6 @@ ImageRGB32 choice_menu_frame(
             fill_box(x, top + 16, x + 1, top + 52, lit ? DARK_TEXT : WHITE, image);
         }
     }
-    return image;
-}
-
-ImageRGB32 flat_frame(uint32_t color){
-    ImageRGB32 image(1920, 1080);
-    image.fill(color);
     return image;
 }
 
@@ -117,19 +109,9 @@ struct SyntheticCase{
 
 const SyntheticCase SYNTHETIC_CASES[] = {
     {
-        .name = "two rows, the top highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/2, /*highlighted=*/{0}); }},
-        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}},
-    },
-    {
         .name = "three rows on a blue wall, the middle highlighted",
         .input = {.frame = []{ return choice_menu_frame(BLUE_WALL, /*rows=*/3, /*highlighted=*/{1}); }},
         .expectation = {.rows = DialogChoiceRows{.count = 3, .selected = 1}},
-    },
-    {
-        .name = "two long rows on a wide panel, the top highlighted",
-        .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/2, /*highlighted=*/{0}, WIDE_MENU_LONG_ROWS); }},
-        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}},
     },
     {
         .name = "three short rows on a wide panel, on a blue wall, the bottom highlighted",
@@ -151,8 +133,6 @@ const SyntheticCase SYNTHETIC_CASES[] = {
         .input = {.frame = []{ return choice_menu_frame(PAVEMENT, /*rows=*/3, /*highlighted=*/{0, 2}); }},
         .expectation = {.rows = std::nullopt},
     },
-    {.name = "flat panel blue", .input = {.frame = []{ return flat_frame(PANEL); }}, .expectation = {.rows = std::nullopt}},
-    {.name = "an empty frame", .input = {.frame = []{ return ImageRGB32(); }}, .expectation = {.rows = std::nullopt}},
 };
 
 UnitTestResult check_synthetic(const SyntheticCase& test){

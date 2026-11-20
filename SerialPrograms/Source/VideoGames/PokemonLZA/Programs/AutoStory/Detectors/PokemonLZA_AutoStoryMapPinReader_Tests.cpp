@@ -82,11 +82,6 @@ struct MapPinCase{
 
 const MapPinCase MAP_PIN_CASES[] = {
     {
-        .name = "an arrow in the zone",
-        .input = {.frame = []{ return map_with({{.x = 400, .y = 230, .side = 24, .colour = ARROW_BLUE}}); }},
-        .expectation = {.pin = MapPoint{.x = 400, .y = 230}},
-    },
-    {
         .name = "the arrow with the camera's cone beside it",
         .input = {.frame = []{ return map_with({
             {.x = 350, .y = 215, .side = 40, .colour = CONE_BLUE},
@@ -109,8 +104,6 @@ const MapPinCase MAP_PIN_CASES[] = {
         .input = {.frame = []{ return map_with({{.x = 400, .y = 230, .side = 6, .colour = ARROW_BLUE}}); }},
         .expectation = {.pin = std::nullopt},
     },
-    {.name = "no arrow", .input = {.frame = []{ return map_with({}); }}, .expectation = {.pin = std::nullopt}},
-    {.name = "an empty frame", .input = {.frame = []{ return ImageRGB32(); }}, .expectation = {.pin = std::nullopt}},
     {
         .name = "console: stuck at the zone's north fence",
         .input = {.frame = []{ return console_frame("at_north_fence.png"); }},

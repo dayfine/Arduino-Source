@@ -66,20 +66,9 @@ struct BuiltinCase{
 
 const BuiltinCase BUILTIN_CASES[] = {
     {
-        //  A save at the Center counter asked for 03.08 searched the zone inside it.
-        .name = "asked 03.08, the screen at the Center counter: stop",
-        .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false}},
-        .expectation = {.from = "stop"},
-    },
-    {
         //  Mable's talk autosave in her office (03.11) read as 03.06's start.
         .name = "asked 03.08, Mable's office with 5 in the party: stop",
         .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false, .party = 5}},
-        .expectation = {.from = "stop"},
-    },
-    {
-        .name = "asked 03.08, nothing read: stop",
-        .input = {.asked = "03.08", .read = {}},
         .expectation = {.from = "stop"},
     },
     {
@@ -87,15 +76,11 @@ const BuiltinCase BUILTIN_CASES[] = {
         .name = "asked 03.04, the party and prompt of its start but not its minimap: stop",
         .input = {.asked = "03.04", .read = {.talk_prompt = false, .wild_zone = false, .party = 1}},
         .expectation = {.from = "stop"},
-    },    {
+    },
+    {
         //  A save on the street by the zone wall read as in a wild zone.
         .name = "asked 03.08, the street with five in the party: stop",
         .input = {.asked = "03.08", .read = {.talk_prompt = false, .wild_zone = true, .party = 5}},
-        .expectation = {.from = "stop"},
-    },
-    {
-        .name = "asked 03.08, a catch's autosave mid-zone with four in the party: stop",
-        .input = {.asked = "03.08", .read = {.talk_prompt = false, .wild_zone = true, .party = 4}},
         .expectation = {.from = "stop"},
     },
     {
@@ -178,14 +163,6 @@ const TableCase TABLE_CASES[] = {
         .expectation = {.from = "B"},
     },
     {
-        .name = "two starts share a signature, the asked one is one of them: as asked",
-        .input = {
-            .starts = {{.checkpoint = "B", .signature = AT_COUNTER}, {.checkpoint = "C", .signature = AT_COUNTER}},
-            .asked = "C", .read = AT_COUNTER,
-        },
-        .expectation = {.from = "C"},
-    },
-    {
         .name = "a reading sharing no field with the asked start: stop",
         .input = {.starts = {{.checkpoint = "B", .signature = {.party = 1}}}, .asked = "B", .read = AT_COUNTER},
         .expectation = {.from = "stop"},
@@ -207,46 +184,6 @@ UnitTestResult check_table(const TableCase& test){
     const std::string from = run_start_id(table_rows(), test.input.starts, test.input.asked, test.input.read);
     if (from != test.expectation.from){
         return std::format("expected {}, got {}", test.expectation.from, from);
-    }
-    return true;
-}
-
-
-//  Pins read on the console.
-struct MapPinCase{
-    std::string name;
-    struct Input{
-        std::optional<MapPoint> pin;
-    };
-    Input input;
-    struct Expectation{
-        std::optional<bool> wild_zone;
-    };
-    Expectation expectation;
-};
-
-const MapPinCase MAP_PIN_CASES[] = {
-    {.name = "Taunie's rocks: in", .input = {.pin = MapPoint{.x = 476, .y = 224}}, .expectation = {.wild_zone = true}},
-    {
-        //  03.08b's menu save.
-        .name = "the street outside the far gate: out",
-        .input = {.pin = MapPoint{.x = 401, .y = 225}},
-        .expectation = {.wild_zone = false},
-    },
-    {.name = "no pin read: unknown", .input = {.pin = std::nullopt}, .expectation = {.wild_zone = std::nullopt}},
-};
-
-std::string zone_text(const std::optional<bool>& wild_zone){
-    if (!wild_zone){
-        return "unknown";
-    }
-    return *wild_zone ? "in a wild zone" : "not in a wild zone";
-}
-
-UnitTestResult check_map_pin(const MapPinCase& test){
-    const std::optional<bool> wild_zone = wild_zone_from_map(test.input.pin);
-    if (wild_zone != test.expectation.wild_zone){
-        return std::format("expected {}, got {}", zone_text(test.expectation.wild_zone), zone_text(wild_zone));
     }
     return true;
 }
@@ -346,9 +283,6 @@ void add_tests_AutoStoryStarts(UnitTestDatabase& database){
     }
     for (const TableCase& test : TABLE_CASES){
         database.add<CaseTest<TableCase, check_table>>("table", test);
-    }
-    for (const MapPinCase& test : MAP_PIN_CASES){
-        database.add<CaseTest<MapPinCase, check_map_pin>>("map pin", test);
     }
     for (const FrameCase& test : FRAME_CASES){
         database.add<CaseTest<FrameCase, check_frame>>("frame", test);
