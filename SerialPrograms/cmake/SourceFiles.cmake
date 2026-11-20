@@ -1520,8 +1520,13 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.h
@@ -3477,6 +3482,7 @@ set(LOGIC_TEST_SOURCES
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.cpp
