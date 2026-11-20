@@ -458,7 +458,6 @@ void add_console_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::BATTLE_THEN_CATCH), console_action(hooks, action_name(PlzaAction::BATTLE_THEN_CATCH))},
         {action_name(PlzaAction::CATCH_IN_ZONE), console_action(hooks, action_name(PlzaAction::CATCH_IN_ZONE))},
         {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), console_action(hooks, action_name(PlzaAction::CHECK_OUT_OF_ZONE_1))},
-        {action_name(PlzaAction::WALK_TO_UNREAD_MARKER), console_action(hooks, action_name(PlzaAction::WALK_TO_UNREAD_MARKER))},
         {action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD), console_action(hooks, action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD))},
     };
     for (auto& [name, parser] : table){

@@ -117,7 +117,7 @@ const FrameCase FRAME_CASES[] = {
         .expectation = {.battle = false},
     },
     {
-        //  Ends 03.09's walk (walk_to_unread_marker()).
+        //  Ends 03.09's walk to the lab gate.
         .name = "Ryon's five-species dialog at the lab gate on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0309_lab_gate_ryon_dialog.png"},
         .expectation = {.interact_prompt = false, .dialog = true},

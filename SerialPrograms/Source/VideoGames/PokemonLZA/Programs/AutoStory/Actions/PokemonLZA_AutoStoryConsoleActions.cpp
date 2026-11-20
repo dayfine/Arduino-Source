@@ -188,7 +188,6 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
                 return read_pin_on_map(env, backend);
             });
         }},
-        {action_name(PlzaAction::WALK_TO_UNREAD_MARKER), walk_to_unread_marker},
         {action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD), claim_research_reward},
     };
     return steps;

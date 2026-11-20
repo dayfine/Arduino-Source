@@ -34,7 +34,6 @@ std::string_view action_name(PlzaAction action){
         {PlzaAction::BATTLE_THEN_CATCH, "battle_then_catch"},
         {PlzaAction::CATCH_IN_ZONE, "catch_in_zone"},
         {PlzaAction::CHECK_OUT_OF_ZONE_1, "check_out_of_zone_1"},
-        {PlzaAction::WALK_TO_UNREAD_MARKER, "walk_to_unread_marker"},
         {PlzaAction::CLAIM_MABLE_RESEARCH_REWARD, "claim_mable_research_reward"},
     };
     return names.get_string(action);

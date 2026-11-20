@@ -49,11 +49,8 @@ bool pin_in_zone_1(MapPoint pin);
 //  Fails as "in_wild_zone" or "zone_unread".
 std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, MoveOnlyFunction<std::optional<MapPoint>()> pin);
 
-//  Objective-marker distances of Wild Zone 1's alternating catch patrol spots.
+//  Catch patrol spots in Wild Zone 1 (named by their former marker distances).
 inline constexpr int CATCH_SPOTS[] = {100, 60};
-
-//  Tolerance in marker units for considering a road stop reached.
-inline constexpr int ROAD_STOP_SLACK = 3;
 
 //  Builds a sequence of `visits` alternating stops cycling through `spots`.
 std::vector<int> alternating_stops(std::span<const int> spots, size_t visits);
@@ -65,8 +62,6 @@ struct ZoneStartRoute{
     double leg_x;
     double leg_y;
     Milliseconds leg_hold;
-    int leg_read_min;
-    int leg_read_max;
 };
 
 constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
@@ -75,32 +70,10 @@ constexpr ZoneStartRoute TAUNIE_ROCKS_ROUTE{
     .leg_x = -1,
     .leg_y = 0,
     .leg_hold = Milliseconds(900),
-    .leg_read_min = 120,
-    .leg_read_max = 135,
 };
 
-//  Next decision from ZoneStart::leave().
-enum class ZoneStartMove{
-    WALK_TO_SPOT,
-    ROCKS_NOT_LEFT,
-};
-
-//  Stateful route checker for leaving a zone start point; terminal stops remain sticky.
-class ZoneStart{
-public:
-    explicit ZoneStart(const ZoneStartRoute& route)
-        : m_route(route)
-    {}
-
-    //  Decides next move from `start_pin` (preferred) or post-leg marker `distance`.
-    ZoneStartMove leave(std::optional<MapPoint> start_pin, std::optional<int> distance);
-
-private:
-    ZoneStartMove next(std::optional<int> distance);
-
-    const ZoneStartRoute m_route;
-    std::optional<ZoneStartMove> m_last;
-};
+//  True if `pin` is present and within `route.start_radius` of `route.start.pin`.
+bool at_zone_start(std::optional<MapPoint> pin, const ZoneStartRoute& route);
 
 
 

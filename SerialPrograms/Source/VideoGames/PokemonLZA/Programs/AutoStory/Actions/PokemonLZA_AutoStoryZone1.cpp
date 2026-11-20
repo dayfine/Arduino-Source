@@ -8,7 +8,6 @@
 #include <format>
 #include <span>
 #include <string>
-#include <cstdlib>
 #include "PokemonLZA_AutoStoryMapLegs.h"
 #include "PokemonLZA_AutoStoryZone1.h"
 
@@ -148,22 +147,12 @@ std::vector<int> alternating_stops(std::span<const int> spots, size_t visits){
 }
 
 
-ZoneStartMove ZoneStart::leave(std::optional<MapPoint> start_pin, std::optional<int> distance){
-    if (!start_pin){
-        return next(distance);
+bool at_zone_start(std::optional<MapPoint> pin, const ZoneStartRoute& route){
+    if (!pin){
+        return false;
     }
-    const MapPoint start = m_route.start.pin;
-    const bool at_start = std::hypot(start_pin->x - start.x, start_pin->y - start.y) <= m_route.start_radius;
-    m_last = at_start ? ZoneStartMove::WALK_TO_SPOT : ZoneStartMove::ROCKS_NOT_LEFT;
-    return *m_last;
-}
-
-ZoneStartMove ZoneStart::next(std::optional<int> distance){
-    if (!m_last){
-        const bool in_range = distance && *distance >= m_route.leg_read_min && *distance <= m_route.leg_read_max;
-        m_last = in_range ? ZoneStartMove::WALK_TO_SPOT : ZoneStartMove::ROCKS_NOT_LEFT;
-    }
-    return *m_last;
+    const MapPoint start = route.start.pin;
+    return std::hypot(pin->x - start.x, pin->y - start.y) <= route.start_radius;
 }
 
 
