@@ -3311,6 +3311,7 @@ set(LOGIC_TEST_SOURCES
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
     Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.cpp
