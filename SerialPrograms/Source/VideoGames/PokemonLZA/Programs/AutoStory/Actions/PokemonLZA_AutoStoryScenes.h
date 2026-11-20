@@ -55,6 +55,10 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
 //  Presses B until the party bar or a text box appears; returns false if neither shows within `presses`.
 bool press_b_out_of_menu(PlzaBackend& backend, size_t presses);
 
+//  Opens the main menu options, sets text speed to Fast, and returns to the overworld.
+//  Fails as "text_speed_timeout" on timeout or "game_not_running" on HOME.
+std::optional<Pokemon::StoryFailure> set_text_speed_fast(PlzaBackend& backend);
+
 
 
 } // namespace PokemonLZA

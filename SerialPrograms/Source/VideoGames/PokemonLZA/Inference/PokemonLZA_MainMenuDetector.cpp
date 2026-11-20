@@ -30,10 +30,6 @@ bool MainMenuDetector::detect(const ImageViewRGB32& screen){
     return m_right_arrow_button.detect(screen) && m_b_button.detect(screen);
 }
 
-ImageFloatBox main_menu_save_arrow_box(){
-    return {0.287118, 0.638835, 0.064410, 0.108738};
-}
-
 class Test_MainMenuDetector : public ImageUnitTest{
 public:
     Test_MainMenuDetector(

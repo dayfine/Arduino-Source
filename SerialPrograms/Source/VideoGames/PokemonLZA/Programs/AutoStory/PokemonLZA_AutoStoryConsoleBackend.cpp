@@ -16,7 +16,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
+#include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/PokemonLZA_Settings.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
@@ -38,7 +38,6 @@ using namespace std::chrono_literals;
 PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
     : m_env(env)
     , m_home(env.env.console, COLOR_RED)
-    , m_save_button(COLOR_GREEN, nullptr, SelectionArrowType::RIGHT, main_menu_save_arrow_box())
 {}
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
@@ -93,7 +92,10 @@ ScreenObservation PlzaConsoleBackend::observe(){
     if (frame && m_home.detect(*frame.frame)){
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
-        look = Pokemon::screen_observation(m_observer.read(*frame.frame));
+        look.events = m_observer.read(*frame.frame);
+        if (look.events.has(ScreenEvent::CHOICE_BOX)){
+            look.events.set(ScreenEvent::DIALOG_BOX, true);
+        }
         if (m_autosave.detect(*frame.frame)){
             look.readings[std::string(AUTOSAVE_READING)] = 1;
         }
@@ -109,7 +111,6 @@ ScreenObservation PlzaConsoleBackend::observe(){
         if (tutorial_card_shows(*frame.frame)){
             look.readings[std::string(TUTORIAL_CARD_READING)] = 1;
         }
-        read_menus(*frame.frame, look);
         if (look.events.has(ScreenEvent::CHOICE_BOX)){
             const std::optional<DialogChoiceRows> rows = read_dialog_choice_rows(*frame.frame);
             if (rows){
@@ -125,15 +126,6 @@ ScreenObservation PlzaConsoleBackend::observe(){
     m_previous = frame;
     look.frame = std::move(frame);
     return look;
-}
-
-void PlzaConsoleBackend::read_menus(const ImageViewRGB32& frame, ScreenObservation& look){
-    if (m_main_menu.detect(frame)){
-        look.readings[std::string(MAIN_MENU_READING)] = 1;
-    }
-    if (m_save_button.detect(frame)){
-        look.readings[std::string(MENU_SAVE_BUTTON_READING)] = 1;
-    }
 }
 
 void PlzaConsoleBackend::log(std::string_view line){

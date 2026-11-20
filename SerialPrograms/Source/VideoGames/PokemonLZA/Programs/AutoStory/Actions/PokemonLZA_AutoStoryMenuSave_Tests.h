@@ -14,7 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers save_from_menu()'s tests.
+//  Registers set_text_speed_fast()'s tests.
 void add_tests_AutoStoryMenuSave(UnitTestDatabase& database);
 
 

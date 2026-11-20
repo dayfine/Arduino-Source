@@ -48,7 +48,7 @@ bool save_game_to_menu(ConsoleHandle& console, ProControllerContext& context){
             COLOR_GREEN,
             &console.overlay(),
             SelectionArrowType::RIGHT,
-            main_menu_save_arrow_box()
+            {0.287118, 0.638835, 0.064410, 0.108738}
         );
         BlueDialogWatcher dialog(COLOR_YELLOW, &console.overlay());
 

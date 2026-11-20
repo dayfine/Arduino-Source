@@ -17,8 +17,6 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
-#include "VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h"
-#include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
@@ -75,7 +73,6 @@ public:
 
 private:
     void wait_for_inputs();
-    void read_menus(const ImageViewRGB32& frame, ScreenObservation& look);
 
     StoryEnv& m_env;
     HomeMenuDetector m_home;
@@ -84,8 +81,6 @@ private:
     ControlsHintDetector m_controls_hint;
     AdvanceArrowDetector m_advance_arrow;
     MissionCompleteDetector m_mission_complete;
-    MainMenuDetector m_main_menu;
-    SelectionArrowDetector m_save_button;
     VideoSnapshot m_previous;
     std::optional<WallClock> m_run_end;
 };

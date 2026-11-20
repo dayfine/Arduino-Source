@@ -42,8 +42,8 @@ public:
     //  Records any debounced autosave badge present in `look`.
     void note(PlzaBackend& backend, const ScreenObservation& look);
 
-    //  Records a guaranteed save (e.g. menu save or catch autosave) in the current step.
-    void saved(PlzaBackend& backend, std::string_view how = "saved from the menu");
+    //  Records a guaranteed save (e.g. catch autosave) in the current step.
+    void saved(PlzaBackend& backend, std::string_view how);
 
     //  Sets the active step name attributed to subsequent note() and saved() calls.
     void enter(std::string_view step){

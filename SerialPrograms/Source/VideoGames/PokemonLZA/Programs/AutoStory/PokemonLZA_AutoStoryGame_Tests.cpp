@@ -609,7 +609,7 @@ const NewGameChainCase NEW_GAME_CHAIN_CASES[] = {
         .name = "01.00a, 01.00b and 01.01 in one run",
         //  01.01: the platform for the start check, the text speed's menu, the walk's free control.
         .input = {.rows = {"01.00a", "01.00b"}, .looks = {
-            CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, look({}, {MAIN_MENU_READING}), look({}, {MAIN_MENU_READING}),
+            CUTSCENE, OWN_AUTOSAVE, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE,
             CUTSCENE, CUTSCENE, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, PLATFORM, WHITE_FADE,
         }},
         .expectation = {.verdict = "done", .console_steps = "new_game_intro confirm_new_game"},

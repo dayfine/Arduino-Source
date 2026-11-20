@@ -41,12 +41,6 @@ constexpr std::string_view CHOICE_SELECTED_READING = "choice.selected";
 //  1 while a tutorial card shows; only A turns its pages.
 constexpr std::string_view TUTORIAL_CARD_READING = "scene.tutorial_card";
 
-//  1 while the main menu (X) shows.
-constexpr std::string_view MAIN_MENU_READING = "menu.main";
-
-//  1 while the arrow is on Save, after R on the main menu.
-constexpr std::string_view MENU_SAVE_BUTTON_READING = "menu.save_button";
-
 //  Full-map coordinates scaled to 800 x 450.
 struct MapPoint{
     double x = 0;
@@ -64,7 +58,6 @@ enum class PlzaAction{
     SCENE,
     PLUS_SKIP,
     STORY_BATTLE,
-    SAVE_FROM_MENU,
     SET_TEXT_SPEED_FAST,
     NEW_GAME_INTRO,
     CONFIRM_NEW_GAME,

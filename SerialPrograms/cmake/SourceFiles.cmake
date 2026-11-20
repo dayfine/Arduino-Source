@@ -2300,8 +2300,6 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWorldWalks.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWorldWalks.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.cpp
@@ -3424,7 +3422,6 @@ list(APPEND LOGIC_LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.cpp

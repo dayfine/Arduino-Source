@@ -46,11 +46,6 @@
         "action": "scene",
         "args": {"button": "B"},
         "why": "through Mable's talk until control. B closes her mission and reward screens, which the default A scene sits on"
-      },
-      {
-        "id": "save_in_mable_office",
-        "why": "the game autosaves before the reward, so a menu save here for the next start",
-        "action": "save_from_menu"
       }
     ],
     "metadata": {
@@ -59,7 +54,6 @@
     }
   },
   "execution": {
-    "save": "autosave",
-    "autosave_step": "save_in_mable_office"
+    "save": "unverified"
   }
 }
