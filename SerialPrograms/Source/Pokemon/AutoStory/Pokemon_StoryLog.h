@@ -79,6 +79,12 @@ std::string event_line(std::string_view checkpoint, size_t number, std::string_v
 //  A checkpoint's step `number`, named `event`, failed for `reason`:
 //      [Checkpoint] 00.04: failed at 2 to_lab: no_fade: no white fade in 3 slices
 std::string checkpoint_failed_line(std::string_view checkpoint, size_t number, std::string_view event, std::string_view reason);
+//  A step ended for `reason` and the checkpoint goes on at step `to`,
+//  past the steps `skipped` (", "-joined, empty for none):
+//      [Event] 03.02b: battle on screen during plaza_scene: jumping to battle_totodile, skipping to_taunie, taunie_battle_start
+std::string event_jump_line(
+    std::string_view checkpoint, std::string_view reason, std::string_view event, std::string_view to, std::string_view skipped
+);
 //  Every one of a checkpoint's `events` steps passed:
 //      [Checkpoint] 00.04: done, 3 run
 std::string checkpoint_done_line(std::string_view checkpoint, size_t events);

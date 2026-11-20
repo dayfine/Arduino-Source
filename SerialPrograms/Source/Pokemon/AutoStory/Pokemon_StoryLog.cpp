@@ -76,6 +76,15 @@ std::string checkpoint_failed_line(std::string_view checkpoint, size_t number, s
     return std::format("[Checkpoint] {}: failed at {} {}: {}", checkpoint, number, event, reason);
 }
 
+std::string event_jump_line(
+    std::string_view checkpoint, std::string_view reason, std::string_view event, std::string_view to, std::string_view skipped
+){
+    if (skipped.empty()){
+        return std::format("[Event] {}: {} during {}: jumping to {}", checkpoint, reason, event, to);
+    }
+    return std::format("[Event] {}: {} during {}: jumping to {}, skipping {}", checkpoint, reason, event, to, skipped);
+}
+
 std::string checkpoint_done_line(std::string_view checkpoint, size_t events){
     return std::format("[Checkpoint] {}: done, {} run", checkpoint, events);
 }
