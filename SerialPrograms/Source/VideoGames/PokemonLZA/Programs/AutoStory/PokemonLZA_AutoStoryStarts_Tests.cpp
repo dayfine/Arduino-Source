@@ -67,9 +67,9 @@ struct BuiltinCase{
 const BuiltinCase BUILTIN_CASES[] = {
     {
         //  A save at the Center counter asked for 03.08 searched the zone inside it.
-        .name = "asked 03.08, the screen at the Center counter: from 03.06",
+        .name = "asked 03.08, the screen at the Center counter: stop",
         .input = {.asked = "03.08", .read = {.talk_prompt = true, .wild_zone = false}},
-        .expectation = {.from = "03.06"},
+        .expectation = {.from = "stop"},
     },
     {
         //  Mable's talk autosave in her office (03.11) read as 03.06's start.
@@ -113,8 +113,8 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "03.09"},
     },
     {
-        .name = "asked 03.05, Station Front's minimap: from 03.04",
-        .input = {.asked = "03.05", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.04-start"}},
+        .name = "asked 03.06, Station Front's minimap: from 03.04",
+        .input = {.asked = "03.06", .read = {.talk_prompt = false, .wild_zone = false, .party = 1, .minimap = "03.04-start"}},
         .expectation = {.from = "03.04"},
     },
 };
@@ -288,14 +288,15 @@ const FrameCase FRAME_CASES[] = {
         .expectation = {.from = "03.03"},
     },
     {
-        .name = "03.05's street outside the Center: 03.05",
-        .input = {.file = "Spanish_0305_start.png", .asked = "03.05", .map_pin = std::nullopt},
-        .expectation = {.from = "03.05"},
+        .name = "03.06's street outside the Center: 03.06",
+        .input = {.file = "Spanish_0305_start.png", .asked = "03.06", .map_pin = std::nullopt},
+        .expectation = {.from = "03.06"},
     },
     {
-        .name = "the Center counter, asked 03.08: 03.06",
+        //  No checkpoint starts there.
+        .name = "the Center counter, asked 03.08: stop",
         .input = {.file = "Spanish_0306_start.png", .asked = "03.08", .map_pin = std::nullopt},
-        .expectation = {.from = "03.06"},
+        .expectation = {.from = "stop"},
     },
     {
         .name = "03.07's street before the zone gate: 03.07",
