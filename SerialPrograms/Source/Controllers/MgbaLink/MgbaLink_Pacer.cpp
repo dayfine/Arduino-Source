@@ -4,6 +4,8 @@
  *
  */
 
+#include <algorithm>
+#include <cmath>
 #include <format>
 #include <string>
 #include "Common/Cpp/Color.h"
@@ -13,6 +15,16 @@
 
 namespace PokemonAutomation{
 namespace MgbaLink{
+
+
+std::chrono::milliseconds Pacer::default_period(double speed){
+    if (speed <= 1.0){
+        return DEFAULT_PERIOD;
+    }
+    return std::chrono::milliseconds(
+        std::max<int64_t>(1, (int64_t)std::llround((double)DEFAULT_PERIOD.count() / speed))
+    );
+}
 
 
 Pacer::Pacer(
@@ -45,7 +57,7 @@ bool Pacer::running() const{
 void Pacer::run(){
     std::optional<uint64_t> last_grant;
     while (true){
-        uint64_t grant = grant_frame(m_clock, current_time(), KeySchedule::LEAD_FRAMES);
+        uint64_t grant = grant_frame(m_clock, current_time(), KeySchedule::lead_frames(m_clock.speed()));
         if (grant != last_grant){
             std::optional<std::string> error;
             if (std::shared_ptr<Connection> connection = m_connection.lock()){

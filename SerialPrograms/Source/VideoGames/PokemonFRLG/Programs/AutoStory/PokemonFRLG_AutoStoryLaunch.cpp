@@ -89,7 +89,7 @@ public:
     }
     virtual void stick(double, Milliseconds, Milliseconds, Pokemon::StoryPace) override{}
     virtual void wait(Milliseconds duration) override{
-        m_context.wait_for(duration);
+        m_context.wait_for(scale_emulator_duration(duration));
     }
     virtual ScreenObservation observe() override;
     virtual void log(std::string_view line) override{

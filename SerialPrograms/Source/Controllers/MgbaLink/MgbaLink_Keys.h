@@ -77,6 +77,7 @@ public:
     //  The pacer grants this far ahead, so commands for the next frames
     //  still reach the bridge before it runs them.
     static constexpr uint64_t LEAD_FRAMES = 2;
+    static uint64_t lead_frames(double speed);
 
     explicit KeySchedule(FrameClock clock)
         : m_clock(clock)

@@ -13,6 +13,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Inference/Map/PokemonFRLG_PokemonLeagueDetectors.h"
 #include "PokemonFRLG_AutoStoryHallOfFame.h"
 
@@ -94,8 +95,9 @@ void take_shots(ConsoleHandle& console, ProControllerContext& context){
     VideoSnapshot run_start;
     size_t mons = 0;
     const WallClock end = current_time() + SHOTS_TIMEOUT;
+    const Milliseconds look_period = scale_emulator_duration(HALL_OF_FAME_LOOK);
     while (!shots.done() && current_time() < end){
-        context.wait_for(HALL_OF_FAME_LOOK);
+        context.wait_for(look_period);
         VideoSnapshot frame = console.video().snapshot();
         if (!frame){
             continue;

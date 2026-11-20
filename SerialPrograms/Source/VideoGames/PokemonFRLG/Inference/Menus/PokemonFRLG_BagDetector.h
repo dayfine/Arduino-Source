@@ -38,7 +38,7 @@ private:
 class BagWatcher : public DetectorToFinder<BagDetector>{
 public:
     BagWatcher(Color color)
-        : DetectorToFinder("BagWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("BagWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

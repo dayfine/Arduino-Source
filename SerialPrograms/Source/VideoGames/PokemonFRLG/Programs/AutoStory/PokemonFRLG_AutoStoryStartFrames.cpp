@@ -285,9 +285,10 @@ StartRead check_console_start(
     ConsoleHandle& console, ProControllerContext& context, const StartFrameStore& store, const std::string& checkpoint
 ){
     size_t frames = 0;
+    const Milliseconds frame_wait = scale_emulator_duration(CONSOLE_START_FRAME_WAIT);
     return read_start_frames(store.load(checkpoint), [&]{
         if (frames++ > 0){
-            context.wait_for(CONSOLE_START_FRAME_WAIT);
+            context.wait_for(frame_wait);
         }
         return console_start_frame(console, context);
     }, CONSOLE_START_FRAME_TRIES);

@@ -13,6 +13,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/VisualDetector.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
     class CancellableScope;
@@ -38,7 +39,7 @@ private:
 class SummaryWatcher : public DetectorToFinder<SummaryDetector>{
 public:
     SummaryWatcher(Color color)
-        : DetectorToFinder("SummaryWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("SummaryWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -60,7 +61,7 @@ private:
 class SummaryPage2Watcher : public DetectorToFinder<SummaryPage2Detector>{
 public:
     SummaryPage2Watcher(Color color)
-        : DetectorToFinder("SummaryPage2Watcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("SummaryPage2Watcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -81,7 +82,7 @@ private:
 class SummaryPage3Watcher : public DetectorToFinder<SummaryPage3Detector>{
 public:
     SummaryPage3Watcher(Color color)
-        : DetectorToFinder("SummaryPage3Watcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("SummaryPage3Watcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

@@ -14,6 +14,7 @@
 #include "CommonFramework/Language.h"
 #include "CommonTools/VisualDetector.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
     class CancellableScope;
@@ -38,7 +39,7 @@ private:
 class PartySelectionWatcher : public DetectorToFinder<PartySelectionDetector>{
 public:
     PartySelectionWatcher(Color color)
-        : DetectorToFinder("PartySelectionWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("PartySelectionWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -68,7 +69,7 @@ private:
 class PartyLevelUpWatcher : public DetectorToFinder<PartyLevelUpDetector>{
 public:
     PartyLevelUpWatcher(Color color, PartyLevelUpDialog dialog_type, Language language)
-        : DetectorToFinder("PartyLevelUpWatcher", std::chrono::milliseconds(250), color, dialog_type, language)
+        : DetectorToFinder("PartyLevelUpWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color, dialog_type, language)
     {}
 };
 
@@ -89,7 +90,7 @@ private:
 class PartyMoveLearnWatcher : public DetectorToFinder<PartyMoveLearnDetector>{
 public:
     PartyMoveLearnWatcher(Color color)
-        : DetectorToFinder("PartyMoveLearnWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("PartyMoveLearnWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

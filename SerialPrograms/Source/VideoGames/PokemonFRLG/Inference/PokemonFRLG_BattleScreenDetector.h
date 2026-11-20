@@ -19,6 +19,7 @@
 #include "CommonTools/VisualDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_BattleDialogs.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattlePokemonDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -44,7 +45,7 @@ private:
 class BattleScreenWatcher : public DetectorToFinder<BattleScreenDetector>{
 public:
     BattleScreenWatcher(Color color = COLOR_RED)
-        : DetectorToFinder("BattleScreenWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("BattleScreenWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

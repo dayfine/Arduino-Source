@@ -13,6 +13,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/VisualDetector.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
     class CancellableScope;
@@ -37,7 +38,7 @@ private:
 class KantoMapWatcher : public DetectorToFinder<KantoMapDetector>{
 public:
     KantoMapWatcher(Color color)
-        : DetectorToFinder("KantoMapWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("KantoMapWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

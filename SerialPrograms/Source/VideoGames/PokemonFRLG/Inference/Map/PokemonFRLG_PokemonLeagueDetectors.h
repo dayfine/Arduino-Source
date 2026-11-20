@@ -19,6 +19,7 @@
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -64,7 +65,7 @@ private:
 class EliteFourRoomWatcher : public DetectorToFinder<EliteFourRoomDetector>{
 public:
     EliteFourRoomWatcher(Color color, EliteFourRoom room)
-        : DetectorToFinder("EliteFourRoomWatcher", std::chrono::milliseconds(250), color, room)
+        : DetectorToFinder("EliteFourRoomWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color, room)
     {}
 };
 
@@ -91,13 +92,13 @@ private:
 class HallOfFameSavingWatcher : public DetectorToFinder<HallOfFameSavingDetector>{
 public:
     HallOfFameSavingWatcher(Color color)
-        : DetectorToFinder("HallOfFameSavingWatcher", std::chrono::milliseconds(100), color)
+        : DetectorToFinder("HallOfFameSavingWatcher", scale_emulator_duration(std::chrono::milliseconds(100)), color)
     {}
 };
 class HallOfFameSavingOverWatcher : public DetectorToFinder<HallOfFameSavingDetector>{
 public:
     HallOfFameSavingOverWatcher(Color color)
-        : DetectorToFinder("HallOfFameSavingOverWatcher", FinderType::GONE, std::chrono::milliseconds(100), color)
+        : DetectorToFinder("HallOfFameSavingOverWatcher", FinderType::GONE, scale_emulator_duration(std::chrono::milliseconds(100)), color)
     {}
 };
 

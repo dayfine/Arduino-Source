@@ -9,6 +9,7 @@
 
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -111,7 +112,7 @@ public:
         const ImageFloatBox& box,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-         : DetectorToFinder("SelectionArrowWatcher", hold_duration, color, overlay, box)
+         : DetectorToFinder("SelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, box)
     {}
     SelectionArrowWatcher(
         Color color,
@@ -119,7 +120,7 @@ public:
         SelectionArrowPositionStartMenu position,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("SelectionArrowWatcher", hold_duration, color, overlay, arrow_box_for_position(position))
+        : DetectorToFinder("SelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, arrow_box_for_position(position))
     {
     }
     SelectionArrowWatcher(
@@ -128,7 +129,7 @@ public:
         SelectionArrowPositionSafariMenu position,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("SelectionArrowWatcher", hold_duration, color, overlay, arrow_box_for_position(position))
+        : DetectorToFinder("SelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, arrow_box_for_position(position))
     {
     }
     SelectionArrowWatcher(
@@ -137,7 +138,7 @@ public:
         SelectionArrowPositionConfirmationMenu position,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("SelectionArrowWatcher", hold_duration, color, overlay, arrow_box_for_position(position))
+        : DetectorToFinder("SelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, arrow_box_for_position(position))
     {
     }
 };
