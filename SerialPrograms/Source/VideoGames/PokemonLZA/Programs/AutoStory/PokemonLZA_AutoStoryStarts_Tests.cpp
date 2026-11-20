@@ -83,16 +83,6 @@ const BuiltinCase BUILTIN_CASES[] = {
         .expectation = {.from = "stop"},
     },
     {
-        .name = "asked 03.08, the backup card shows 1 registered: from 03.06",
-        .input = {.asked = "03.08", .read = {.registered = 1}},
-        .expectation = {.from = "03.06"},
-    },
-    {
-        .name = "asked 03.08, an unknown backup card: stop",
-        .input = {.asked = "03.08", .read = {.registered = 7}},
-        .expectation = {.from = "stop"},
-    },
-    {
         //  The roof before Station Front.
         .name = "asked 03.04, the party and prompt of its start but not its minimap: stop",
         .input = {.asked = "03.04", .read = {.talk_prompt = false, .wild_zone = false, .party = 1}},
@@ -197,7 +187,7 @@ const TableCase TABLE_CASES[] = {
     },
     {
         .name = "a reading sharing no field with the asked start: stop",
-        .input = {.starts = {{.checkpoint = "B", .signature = {.registered = 1}}}, .asked = "B", .read = AT_COUNTER},
+        .input = {.starts = {{.checkpoint = "B", .signature = {.party = 1}}}, .asked = "B", .read = AT_COUNTER},
         .expectation = {.from = "stop"},
     },
 };

@@ -27,13 +27,11 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Pokemon_Strings.h"
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_DirectionArrowDetector.h"
-#include "Actions/PokemonLZA_AutoStoryBackupSave.h"
 #include "Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
 #include "Detectors/PokemonLZA_AutoStoryMinimapMatch.h"
 #include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
-#include "PokemonLZA_AutoStoryBackups.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
 #include "PokemonLZA_AutoStoryConsoleGame.h"
 #include "PokemonLZA_AutoStoryGame.h"
@@ -166,10 +164,6 @@ void connect_controller(ConsoleHandle& console, ProControllerContext& context, c
 
 constexpr std::string_view ATTEMPTS_PER_CHECKPOINT_LABEL =
     "<b>Attempts per Checkpoint:</b><br>A failed checkpoint that started from a save reloads it and tries again, up to this many times in all.";
-constexpr std::string_view REWINDS_TO_BACKUP_LABEL =
-    "<b>Rewinds to the Backup Save:</b><br>A checkpoint that fails after the game autosaved in it cannot reload its start. "
-    "The run then closes the game, opens the backup save's card at the title (Up + B + X), and when the card matches a checkpoint's start "
-    "(\"start_signature\" in its plan), loads it and plays on from that checkpoint, up to this many times. An unknown backup is never loaded.";
 
 constexpr std::string_view LOAD_SAVE_FIRST_LABEL =
     "Load the save first: a run from a checkpoint after 01.00b loads the latest save before it starts. "
@@ -233,14 +227,14 @@ StartSignature read_start_position(StoryEnv& story, PlzaBackend& backend){
     return read;
 }
 
-//  The checkpoint to play from: `plan.first` or an earlier one, by where the player
-//  stands. An unknown start rewinds to `backup` when `plan.max_rewinds`
-//  allows, else throws "start_position_unknown": nothing runs from the wrong place.
-size_t checked_first_checkpoint(StoryEnv& story, PlzaBackend& backend, const RewindPlan& plan, const BackupSave& backup){
+//  The checkpoint to play from: `first` or an earlier one, by where the player
+//  stands. An unknown start throws "start_position_unknown": nothing runs
+//  from the wrong place.
+size_t checked_first_checkpoint(
+    StoryEnv& story, PlzaBackend& backend,
+    std::span<const StoryCheckpoint> checkpoints, size_t first, std::span<const CheckpointStart> starts
+){
     ConsoleHandle& console = story.env.console;
-    const std::span<const StoryCheckpoint> checkpoints = plan.checkpoints;
-    const size_t first = plan.first;
-    const std::span<const CheckpointStart> starts = plan.run_options.starts;
     //  The new game's checkpoints, before any save.
     if (find_start(starts, checkpoints[first].id) == nullptr){
         console.log(std::format("AutoStory: {} has no start signature: running it, no start check", checkpoints[first].id));
@@ -250,7 +244,7 @@ size_t checked_first_checkpoint(StoryEnv& story, PlzaBackend& backend, const Rew
     const StartSignature read = builtin_start_reads_map(checkpoints[first].id)
         ? read_start_position(story, backend)
         : read_start_signature(console, story.context);
-    const std::optional<size_t> from = start_or_rewind(backend, plan, read, backup);
+    const std::optional<size_t> from = checkpoint_at(checkpoints, starts, first, read);
     if (!from){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::NO_ERROR_REPORT,
@@ -369,7 +363,6 @@ AutoStory::AutoStory()
         LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"Kosmos", /*placeholder_text=*/"Kosmos"
     )
     , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/1, /*min_value=*/1, /*max_value=*/5)
-    , REWINDS_TO_BACKUP(std::string(REWINDS_TO_BACKUP_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/2, /*min_value=*/0, /*max_value=*/5)
     , LOAD_SAVE_FIRST(std::string(LOAD_SAVE_FIRST_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/true)
     , RECORD_START_MINIMAPS(std::string(RECORD_START_MINIMAPS_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/false)
     , RELOAD_PROBE_AFTER(/*is_password=*/false, std::string(RELOAD_PROBE_AFTER_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"", /*placeholder_text=*/"03.03")
@@ -387,7 +380,6 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(PLAYER_LOOK);
     PA_ADD_OPTION(PLAYER_NAME);
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
-    PA_ADD_OPTION(REWINDS_TO_BACKUP);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
     PA_ADD_OPTION(RECORD_START_MINIMAPS);
     PA_ADD_OPTION(RELOAD_PROBE_AFTER);
@@ -407,7 +399,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     note_autosaves(story_data.checkpoints, sightings);
     std::vector<StoryCheckpoint>& checkpoints = story_data.checkpoints;
     walk_before(checkpoints, RUN_FROM, story);
-    const size_t first = RANGE.start_index();
+    size_t first = RANGE.start_index();
     const size_t last = RANGE.end_index();
     check_checkpoint_range(env.console, first, last, checkpoints.size());
     check_new_game_choices(env.console, std::span<const StoryCheckpoint>(checkpoints).subspan(first, last - first + 1), new_game);
@@ -416,7 +408,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     PlzaConsoleBackend backend(story);
     StoryGame game = make_plza_story_game(story, story_data, sightings);
     RunState state;
-    RewindPlan plan{.checkpoints = checkpoints, .first = first, .last = last, .run_options = {
+    CheckpointRunOptions run_options{
         .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT, .reload_when_chained = story_data.reload_when_chained,
         .starts = builtin_checkpoint_starts(),
         .read_start = [&story, &backend](const StartSignature& start){
@@ -424,16 +416,17 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         },
         .at_start = start_minimap_recorder(env.console, RECORD_START_MINIMAPS),
         .reload_probe_after = checkpoint_ids(std::string(RELOAD_PROBE_AFTER)), .log_landing = reload_landing_logger(story, backend),
-    }, .max_rewinds = REWINDS_TO_BACKUP};
-    const BackupSave backup = console_backup_save(story);
+    };
     if (!checkpoint_starts_without_save(checkpoints[first])){
         if (LOAD_SAVE_FIRST){
             load_first_save(env.console, game, backend, checkpoints[first]);
         }
-        plan.first = checked_first_checkpoint(story, backend, plan, backup);
+        first = checked_first_checkpoint(story, backend, checkpoints, first, run_options.starts);
     }
 
-    const std::optional<CheckpointFailure> failure = run_plza_with_rewinds(game, plan, backup, backend, sightings, state);
+    const std::optional<CheckpointFailure> failure = run_plza_checkpoints(
+        game, std::span<StoryCheckpoint>(checkpoints).subspan(first, last - first + 1), run_options, backend, state, sightings
+    );
     if (failure){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
