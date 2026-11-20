@@ -68,6 +68,10 @@ const BallThrowOptions STORY_THROW{
 constexpr Milliseconds LINES_QUIET(3000);
 constexpr Milliseconds LINES_LIMIT(30000);
 
+//  Right, toward the grass right of the road where the catches were.
+constexpr double SWEEP_STICK_X = 0.5;
+constexpr int SWEEP_ROUNDS = 8;
+
 //  The Run prompt, or the alert bar with the eye while a wild Pokemon
 //  attacks before the partner is out.
 bool wild_battle_on(StoryEnv& env){
@@ -137,8 +141,14 @@ std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBacken
     for (int round = 0; round < max_rounds; round++){
         const int landed = weaken_target(env, backend);
         if (landed == 0 && round > 0){
-            backend.log(std::format("[PLZA] battle_then_catch: nothing to lock on in round {}: caught", round + 1));
-            return std::nullopt;
+            if (!wild_battle_on(env)){
+                backend.log(std::format("[PLZA] battle_then_catch: nothing to lock on in round {}: caught", round + 1));
+                return std::nullopt;
+            }
+            backend.log(std::format("[PLZA] battle_then_catch: nothing to lock on in round {}, still in battle: sweeping camera", round + 1));
+            if (!lock_on_by_sweep(env.env.console, env.context, SWEEP_STICK_X, SWEEP_ROUNDS)){
+                continue;
+            }
         }
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         throw_ball(env.context, STORY_THROW);
@@ -160,10 +170,6 @@ constexpr size_t PATROL_VISITS = 10;
 //  The lock shows over 1.5 s after ZL at times.
 constexpr Milliseconds LOCK_ON_WAIT(3000);
 constexpr double TARGET_FLICK = 0.8;
-
-//  Right, toward the grass right of the road where the catches were.
-constexpr double SWEEP_STICK_X = 0.5;
-constexpr int SWEEP_ROUNDS = 8;
 
 
 //  After a ZL lock-on the camera looks steeply down: down 1500 ms pins the
