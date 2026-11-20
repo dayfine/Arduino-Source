@@ -58,33 +58,6 @@ Pokemon::FlickerFilter battle_filter(){
     return Pokemon::FlickerFilter(/*hits=*/2, /*window=*/2s, /*off_after=*/3s);
 }
 
-struct ProbedSignal{
-    std::string_view name;
-    bool (*shows)(const ScreenObservation& look);
-};
-
-bool has_reading(const ScreenObservation& look, std::string_view reading){
-    return look.readings.contains(reading);
-}
-
-constexpr std::array<ProbedSignal, 8> PROBED_SIGNAL_TABLE{{
-    {"party_bar", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::PLAYER_CAN_MOVE); }},
-    {"hint", [](const ScreenObservation& look){ return has_reading(look, CONTROLS_HINT_READING); }},
-    {"prompt", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::INTERACT_PROMPT); }},
-    {"arrow", [](const ScreenObservation& look){ return has_reading(look, ADVANCE_ARROW_READING); }},
-    {"dialog_box", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::DIALOG_BOX); }},
-    {"autosave", [](const ScreenObservation& look){ return has_reading(look, AUTOSAVE_READING); }},
-    {"choice", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::CHOICE_BOX); }},
-    {"fade", [](const ScreenObservation& look){ return fade_shows(look); }},
-}};
-
-std::string probe_since(const std::optional<WallClock>& when, WallClock start){
-    if (!when){
-        return "-";
-    }
-    return std::to_string(std::chrono::duration_cast<Milliseconds>(*when - start).count());
-}
-
 
 enum class SceneScreen{
     BATTLE,         //  terminal, with stop_at_battle or end_at_battle
@@ -467,20 +440,15 @@ void SceneLog::write_summary(){
 //  Logs each look, then presses for its screen.
 class SceneRunner{
 public:
-    SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start, std::string_view step)
+    SceneRunner(PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, WallClock start)
         : m_backend(backend)
         , m_config(config)
         , m_timeline(config, start)
         , m_log(backend, label, start)
-        , m_step(step)
     {}
 
     const SceneTimeline& timeline() const{
         return m_timeline;
-    }
-    //  Since the last press.
-    const SignalProbe& signals() const{
-        return m_signals;
     }
     void finish(){
         m_log.flush();
@@ -492,8 +460,6 @@ private:
     std::optional<Button> button_for(SceneScreen screen, const ScreenObservation& look);
     //  A choice: Up until the top row is highlighted (03.01's German lobby), then A.
     Button choice_button(const ScreenObservation& look);
-    //  "[Signals] <step> text_A|text_B by=arrow|dialog_box ...".
-    void log_text_press(Button button, const ScreenObservation& look);
     //  Before all but the first, a quarter turn and L put the camera behind
     //  the player (the backend has no camera stick).
     void lock_on();
@@ -502,14 +468,11 @@ private:
     SceneMachineConfig m_config;
     SceneTimeline m_timeline;
     SceneLog m_log;
-    std::string m_step;
-    SignalProbe m_signals;
 };
 
 void SceneRunner::act(SceneScreen screen, const ScreenObservation& look){
     const std::optional<Button> button = button_for(screen, look);
     m_timeline.record(screen, look);
-    m_signals.look(look);
     std::string readings = describe_look(look);
     if (look.events.has(ScreenEvent::FADE_BLACK)){
         readings = std::format("{}, black fade {}", readings, m_timeline.black_fades());
@@ -517,7 +480,6 @@ void SceneRunner::act(SceneScreen screen, const ScreenObservation& look){
     m_log.look(screen, readings, look.when, button.has_value() || screen == SceneScreen::LOCK_ON);
     if (screen == SceneScreen::LOCK_ON){
         lock_on();
-        m_signals.restart();
         return;
     }
     if (!button){
@@ -526,11 +488,7 @@ void SceneRunner::act(SceneScreen screen, const ScreenObservation& look){
         }
         return;
     }
-    if (screen == SceneScreen::TEXT){
-        log_text_press(*button, look);
-    }
     m_backend.press(*button, PRESS_HOLD, PRESS_RELEASE);
-    m_signals.restart();
 }
 
 std::optional<Button> SceneRunner::button_for(SceneScreen screen, const ScreenObservation& look){
@@ -563,12 +521,6 @@ Button SceneRunner::choice_button(const ScreenObservation& look){
     return BUTTON_A;
 }
 
-void SceneRunner::log_text_press(Button button, const ScreenObservation& look){
-    //  Not through m_log: it would cut the look counts short.
-    const std::string_view by = look.readings.contains(ADVANCE_ARROW_READING) ? "arrow" : "dialog_box";
-    m_backend.log_detail(m_signals.line(m_step, button == BUTTON_B ? "text_B" : "text_A", by));
-}
-
 void SceneRunner::lock_on(){
     const size_t attempt = m_timeline.lock_ons();
     if (attempt > 1){
@@ -581,18 +533,6 @@ void SceneRunner::lock_on(){
     }
     const std::string seen = symbols ? "the move symbols showed" : std::format("no move symbols in {} ms", LOCK_ON_HOLD.count());
     m_log.note(std::format("lock-on {}/{}: {}ZL held: {}.", attempt, LOCK_ON_ATTEMPTS, attempt > 1 ? "turned 90 degrees right, L, " : "", seen));
-}
-
-
-//  The signal that ended the machine, for its "[Signals]" line.
-std::string_view end_signal(SceneScreen screen, const ScreenObservation& look){
-    if (screen != SceneScreen::CONTROL){
-        return name_of(screen).name;
-    }
-    if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE)){
-        return "party_bar";
-    }
-    return look.readings.contains(CONTROLS_HINT_READING) ? "hint" : "prompt";
 }
 
 std::optional<Pokemon::StoryFailure> scene_outcome(
@@ -651,12 +591,12 @@ bool scene_under_way(const ScreenObservation& look){
 }
 
 std::optional<Pokemon::StoryFailure> run_scene_machine(
-    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout, std::string_view step
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 ){
     backend.log(std::format("[PLZA {}] start, expecting {}.", label, expected_end(config)));
     ScreenObservation look = backend.observe();
     const WallClock start = look.when;
-    SceneRunner runner(backend, label, config, start, step);
+    SceneRunner runner(backend, label, config, start);
     //  Each look waits or presses at least POLL; this bounds a script whose time stands still.
     const size_t max_looks = (size_t)(timeout / POLL) + 1;
     for (size_t looks = 1; ; looks++){
@@ -669,7 +609,6 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
         runner.act(screen, look);
         if (terminal(screen)){
             runner.finish();
-            backend.log_detail(runner.signals().line(step, "scene_end", end_signal(screen, look)));
             return scene_outcome(backend, label, config, screen);
         }
         if (look.when - start >= timeout || looks >= max_looks){
@@ -706,35 +645,6 @@ bool battle_showing(PlzaBackend& backend){
         backend.wait(250ms);
     }
     return false;
-}
-
-void SignalProbe::look(const ScreenObservation& look){
-    m_start = m_start.value_or(look.when);
-    m_last = look.when;
-    for (size_t index = 0; index < PROBED_SIGNALS; index++){
-        if (!m_first[index] && PROBED_SIGNAL_TABLE[index].shows(look)){
-            m_first[index] = look.when;
-        }
-    }
-    if (text_shows(look) || fade_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
-        m_last_busy = look.when;
-    }
-}
-
-void SignalProbe::restart(){
-    *this = SignalProbe{};
-}
-
-std::string SignalProbe::line(std::string_view where, std::string_view decision, std::string_view by) const{
-    const WallClock start = m_start.value_or(m_last);
-    std::string first;
-    for (size_t index = 0; index < PROBED_SIGNALS; index++){
-        first += std::format(" {}@{}", PROBED_SIGNAL_TABLE[index].name, probe_since(m_first[index], start));
-    }
-    return std::format(
-        "[Signals] {} {} by={} after={} first:{} last_busy@{}",
-        where, decision, by, probe_since(m_last, start), first, probe_since(m_last_busy, start)
-    );
 }
 
 

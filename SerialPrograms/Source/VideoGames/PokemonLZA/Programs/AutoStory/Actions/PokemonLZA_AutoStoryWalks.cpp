@@ -450,7 +450,6 @@ std::optional<std::optional<Pokemon::StoryFailure>> talk_at_walk_prompt(PlzaBack
 
 struct FreeControlWatch{
     std::string_view last_busy = "nothing";
-    std::string_view decided_by;
     Pokemon::ConfirmStreak control_streak{2};
     Pokemon::HoldTimer quiet_hold{QUIET_IS_CONTROL};
     Pokemon::HoldTimer prompt_hold{PROMPT_IS_CONTROL};
@@ -466,19 +465,16 @@ bool check_free_control(PlzaBackend& backend, std::string_view walk, const Scree
     }
     const bool quiet_ready = watch.quiet_hold.update(!busy.has_value(), poll_time);
     if (watch.control_streak.update(OVERWORLD_FREE.matches(look))){
-        watch.decided_by = look.events.has(ScreenEvent::PLAYER_CAN_MOVE) ? "party_bar" : "hint";
         return true;
     }
     if (watch.prompt_hold.update(!busy && look.events.has(ScreenEvent::INTERACT_PROMPT), poll_time)){
         backend.log(std::format("[PLZA] {}: the A prompt held {} ms with nothing busy: control.", walk, PROMPT_IS_CONTROL.count()));
-        watch.decided_by = "prompt";
         return true;
     }
     if (quiet_ready){
         backend.log(std::format(
             "[PLZA] {}: nothing busy for {} ms and no sign of control; taken as control.", walk, QUIET_IS_CONTROL.count()
         ));
-        watch.decided_by = "quiet";
         return true;
     }
     return false;
@@ -489,22 +485,17 @@ bool check_free_control(PlzaBackend& backend, std::string_view walk, const Scree
 
 std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::string_view walk){
     FreeControlWatch watch;
-    SignalProbe signals;
     const Pokemon::WaitOutcome outcome = Pokemon::wait_for(
         backend,
         [&](const ScreenObservation& look){
             return check_free_control(backend, walk, look, watch);
         },
-        Pokemon::WaitRule{.poll = FREE_CONTROL_LOOK, .timeout = FREE_CONTROL_WAIT},
-        [&](const ScreenObservation& look){
-            signals.look(look);
-        }
+        Pokemon::WaitRule{.poll = FREE_CONTROL_LOOK, .timeout = FREE_CONTROL_WAIT}
     );
     if (const auto* failure = std::get_if<Pokemon::StoryFailure>(&outcome)){
         return *failure;
     }
     if (std::holds_alternative<Pokemon::WaitMatched>(outcome)){
-        backend.log_detail(signals.line(walk, "walk_control", watch.decided_by));
         return std::nullopt;
     }
     return Pokemon::StoryFailure{.code = "walk_not_free", .detail =

@@ -2,16 +2,13 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Scene progression state machine, battle-on-screen check, and signal probe
- *  for PLZA AutoStory.
+ *  Scene progression state machine and battle-on-screen check for PLZA AutoStory.
  *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
 #define PokemonAutomation_PokemonLZA_AutoStorySceneMachine_H
 
-#include <array>
-#include <cstddef>
 #include <functional>
 #include <optional>
 #include <string>
@@ -64,7 +61,7 @@ std::string describe_scene_look(const ScreenObservation& look);
 //  Returns failure codes: "scene_never_started", "battle_on_screen", "scene_ended_in_control",
 //  "game_not_running", or "scene_timeout".
 std::optional<Pokemon::StoryFailure> run_scene_machine(
-    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout, std::string_view step
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 );
 
 //  Returns the "battle_on_screen" failure that redirects execution to the checkpoint's next story_battle.
@@ -72,21 +69,6 @@ Pokemon::StoryFailure battle_on_screen_failure();
 
 //  Polls for a confirmed battle HUD; returns false immediately if the first look does not show it.
 bool battle_showing(PlzaBackend& backend);
-
-//  Diagnostic timer recording when overlapping screen signals first appeared during a wait.
-class SignalProbe{
-public:
-    void look(const ScreenObservation& look);
-    void restart();
-    std::string line(std::string_view where, std::string_view decision, std::string_view by) const;
-
-private:
-    static constexpr size_t PROBED_SIGNALS = 8;
-    std::optional<WallClock> m_start;
-    WallClock m_last = WallClock::min();
-    std::array<std::optional<WallClock>, PROBED_SIGNALS> m_first = {};
-    std::optional<WallClock> m_last_busy;
-};
 
 
 

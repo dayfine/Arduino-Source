@@ -266,7 +266,7 @@ Pokemon::StoryActionParser scene_action(PlzaConsoleHooks& hooks){
                 press_through_prompt(backend);
             }
             const SceneMachineConfig run = battle_start ? config : ending_at_battle(config, state);
-            return run_scene_machine(backend, "scene", run, /*timeout=*/scene_timeout(config), state.step);
+            return run_scene_machine(backend, "scene", run, /*timeout=*/scene_timeout(config));
         };
     };
 }
