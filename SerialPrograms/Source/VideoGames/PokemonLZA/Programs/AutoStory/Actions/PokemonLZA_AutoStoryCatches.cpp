@@ -161,7 +161,7 @@ std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBacken
 
 namespace{
 
-//  60 is just before the far gate; past it is the city.
+//  Furthest catch spot along Wild Zone 1's road.
 constexpr int ROAD_FLOOR = CATCH_SPOTS[std::size(CATCH_SPOTS) - 1] - ROAD_STOP_SLACK;
 
 constexpr Milliseconds PATROL_LIMIT(600000);
