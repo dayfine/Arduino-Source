@@ -3,8 +3,8 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  03.08's waypoints in Wild Zone 1 on the full map (read_map_pin()):
- *  where its map legs (MapLeg) end, and whether the player is out of the
- *  zone.
+ *  where its map legs (MapLeg) end, the way out through the far gate, and
+ *  whether the player is out of the zone.
  *
  */
 
@@ -53,16 +53,30 @@ inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x =
 inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
 
 
+//  The pin between the far gate's pillars, where "A Leave" shows; 1 north
+//  of the (361, 253) read, as runs with no prompt ended at y 255 on the
+//  left pillar.
+inline constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 361, .y = 252}, .provisional = false};
+
+
 //  None for distances other than CATCH_SPOTS.
 std::optional<MapWaypoint> catch_spot_waypoint(int spot);
+
+//  Where to run first on the way out from `start`, the one pin read before
+//  it: none when a run from `start` at the far gate already comes in along
+//  the gate's line (west down the road), else a point on that line east of
+//  the gate. Runs in off the line hit a pillar.
+std::optional<MapPoint> zone_1_exit_via(MapPoint start);
 
 
 //  Inside the zone's outline and not at the map's centre, where the map
 //  puts a player out of every wild zone.
 bool pin_in_zone_1(MapPoint pin);
 
-//  Reads `pin` twice (none: the pin does not show); out only when both are. Fails as "in_wild_zone" on a
-//  read in the zone and as "zone_unread" on a read with no pin or reader.
+//  Reads `pin` (none: the pin does not show) until it is sure: out on one read
+//  at the map's centre, where the map puts a player out of every wild zone;
+//  out elsewhere only when a second read is out too. Fails as "in_wild_zone"
+//  on a read in the zone and as "zone_unread" on a read with no pin or reader.
 std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, MoveOnlyFunction<std::optional<MapPoint>()> pin);
 
 

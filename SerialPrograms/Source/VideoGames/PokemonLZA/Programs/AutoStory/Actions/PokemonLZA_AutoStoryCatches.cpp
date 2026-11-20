@@ -87,20 +87,30 @@ bool wild_battle_on(StoryEnv& env){
 
 //  Attacks until 3 land (12 tries at most); two lock-ons in a row with no
 //  move symbols press D-pad up (twice at most): the partner may not be out.
-int weaken_target(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battle_state){
+//  The target stays the one in front: TrainerBattleState turns the camera
+//  after 3 misses in a row, which lost the attacker for ~2 s (console B,
+//  2026-11-19 22:46:34), so it starts afresh after every 2.
+int weaken_target(StoryEnv& env, PlzaBackend& backend){
+    std::optional<TrainerBattleState> attacker(std::in_place, env.battle_ai);
     int landed = 0;
     int misses = 0;
     int sends = 0;
     for (int tries = 0; tries < 12 && landed < 3; tries++){
-        if (battle_state.attempt_one_attack(env.env, env.env.console, env.context)){
+        if (attacker->attempt_one_attack(env.env, env.env.console, env.context)){
             landed++;
             misses = 0;
-        }else if (++misses == 2 && sends < 2){
+            continue;
+        }
+        if (++misses < 2){
+            continue;
+        }
+        if (sends < 2){
             backend.log("[PLZA] weaken_target: no lock-on twice: D-pad up to send the partner out");
             backend.press(BUTTON_UP, /*hold=*/100ms, /*release=*/2000ms);
-            misses = 0;
             sends++;
         }
+        attacker.emplace(env.battle_ai);
+        misses = 0;
     }
     return landed;
 }
@@ -109,7 +119,6 @@ int weaken_target(StoryEnv& env, PlzaBackend& backend, TrainerBattleState& battl
 
 
 std::optional<Pokemon::StoryFailure> catch_tutorial(StoryEnv& env, PlzaBackend& backend, int max_throws){
-    TrainerBattleState battle_state(env.battle_ai);
     for (int throws = 1; throws <= max_throws; throws++){
         throw_ball(env.context, STORY_THROW);
         if (press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT).card){
@@ -117,7 +126,7 @@ std::optional<Pokemon::StoryFailure> catch_tutorial(StoryEnv& env, PlzaBackend& 
             return std::nullopt;
         }
         if (throws < max_throws && wild_battle_on(env)){
-            const int landed = weaken_target(env, backend, battle_state);
+            const int landed = weaken_target(env, backend);
             backend.log(std::format("[PLZA] catch_tutorial: throw {} broke out into a battle: {} attacks landed", throws, landed));
             press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         }
@@ -129,9 +138,8 @@ std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBacken
     backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/840ms);
     press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
     backend.press(BUTTON_UP, /*hold=*/100ms, /*release=*/2000ms);
-    TrainerBattleState battle_state(env.battle_ai);
     for (int round = 0; round < max_rounds; round++){
-        const int landed = weaken_target(env, backend, battle_state);
+        const int landed = weaken_target(env, backend);
         if (landed == 0 && round > 0){
             backend.log(std::format("[PLZA] battle_then_catch: nothing to lock on in round {}: caught", round + 1));
             return std::nullopt;
@@ -200,10 +208,9 @@ struct WeakenThrows{
 //  Ends on the "Registered!" banner, a round after the first that finds
 //  nothing to lock on, or `max_throws` throws.
 WeakenThrows weaken_then_throw(StoryEnv& env, PlzaBackend& backend, int max_throws){
-    TrainerBattleState battle_state(env.battle_ai);
     WeakenThrows out;
     while (out.throws < max_throws){
-        const int landed = weaken_target(env, backend, battle_state);
+        const int landed = weaken_target(env, backend);
         if (landed == 0 && out.throws > 0){
             backend.log(std::format("[PLZA] catch_in_zone: nothing to lock on in round {}: gone", out.throws + 1));
             return out;
@@ -427,9 +434,8 @@ bool sweep_for_lock_on(StoryEnv& env, PlzaBackend& backend, int at){
 
 //  For a species already caught: no throws. 3 rounds at most.
 void fight_off(StoryEnv& env, PlzaBackend& backend){
-    TrainerBattleState battle_state(env.battle_ai);
     for (int round = 1; round <= 3; round++){
-        const int landed = weaken_target(env, backend, battle_state);
+        const int landed = weaken_target(env, backend);
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         const bool still_on = wild_battle_on(env);
         backend.log(std::format("[PLZA] catch_in_zone: fighting off, round {}: {} attacks landed, battle {}", round, landed, still_on ? "on" : "over"));
@@ -712,15 +718,6 @@ std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& b
     return std::nullopt;
 }
 
-std::optional<Pokemon::StoryFailure> walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend){
-    const std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&ZONE1_SPOT_60, 1));
-    if (walked){
-        return walked;
-    }
-    cross_check_marker(env, backend, ZONE1_SPOT_60);
-    face_marker(env, backend);
-    return std::nullopt;
-}
 
 
 } // namespace PokemonLZA

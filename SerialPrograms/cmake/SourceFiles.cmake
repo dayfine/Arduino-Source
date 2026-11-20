@@ -3510,6 +3510,7 @@ list(APPEND LOGIC_LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryHeading.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerArrival.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerDistance.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave.cpp

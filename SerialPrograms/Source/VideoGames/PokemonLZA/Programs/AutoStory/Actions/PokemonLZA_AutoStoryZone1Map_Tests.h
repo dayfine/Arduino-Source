@@ -14,7 +14,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers check_out_of_zone_1()'s tests, on scripted map pin reads.
+//  Registers zone_1_exit_via()'s and check_out_of_zone_1()'s tests, the
+//  latter on scripted map pin reads.
 void add_tests_AutoStoryZone1Map(UnitTestDatabase& database);
 
 

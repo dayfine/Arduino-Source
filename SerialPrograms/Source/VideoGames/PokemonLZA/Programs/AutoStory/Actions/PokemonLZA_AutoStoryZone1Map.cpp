@@ -8,6 +8,7 @@
 #include <format>
 #include <span>
 #include <string>
+#include "PokemonLZA_AutoStoryMapLegs.h"
 #include "PokemonLZA_AutoStoryZone1Map.h"
 
 namespace PokemonAutomation{
@@ -45,6 +46,19 @@ constexpr double MAP_CENTRE_RADIUS = 6;
 
 constexpr size_t OUT_OF_ZONE_PIN_READS = 2;
 
+//  Into the far gate along its line, west down the road; a run 20 degrees
+//  off it from the 60 spot ended on a pillar (2026-11-17).
+constexpr double GATE_HEADING = 270;
+constexpr double GATE_HEADING_TOLERANCE = 8;
+
+//  On the gate's line ~25 pixels east of the gate, below the 60 spot: a
+//  15 pixel run-up after a 90 degree turn ended on the left pillar.
+constexpr MapPoint ZONE1_GATE_RUN_UP{.x = 386, .y = 252};
+
+bool at_map_centre(MapPoint pin){
+    return std::hypot(pin.x - MAP_CENTRE.x, pin.y - MAP_CENTRE.y) <= MAP_CENTRE_RADIUS;
+}
+
 //  Even-odd rule.
 bool inside(std::span<const MapPoint> outline, MapPoint point){
     bool in = false;
@@ -66,10 +80,17 @@ bool inside(std::span<const MapPoint> outline, MapPoint point){
 } // namespace
 
 bool pin_in_zone_1(MapPoint pin){
-    if (std::hypot(pin.x - MAP_CENTRE.x, pin.y - MAP_CENTRE.y) <= MAP_CENTRE_RADIUS){
+    if (at_map_centre(pin)){
         return false;
     }
     return inside(ZONE1_OUTLINE, pin);
+}
+
+std::optional<MapPoint> zone_1_exit_via(MapPoint start){
+    if (start.x > ZONE1_FAR_GATE.pin.x && std::abs(bearing(start, ZONE1_FAR_GATE.pin) - GATE_HEADING) <= GATE_HEADING_TOLERANCE){
+        return std::nullopt;
+    }
+    return ZONE1_GATE_RUN_UP;
 }
 
 std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, MoveOnlyFunction<std::optional<MapPoint>()> pin){
@@ -87,6 +108,9 @@ std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, M
         if (pin_in_zone_1(*at)){
             backend.log(std::format("[PLZA] still in Wild Zone 1: the map pin reads {}", reads));
             return Pokemon::StoryFailure{.code = "in_wild_zone", .detail = std::format("still in Wild Zone 1: the map pin reads {}", reads)};
+        }
+        if (at_map_centre(*at)){
+            break;
         }
     }
     backend.log(std::format("[PLZA] out of Wild Zone 1: the map pin reads {}", reads));
