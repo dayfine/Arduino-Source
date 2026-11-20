@@ -148,26 +148,30 @@ struct Holder{
                                                             '} // namespace Story'))))
 
     def test_limit_and_base_comparison(self):
-        nine = measure_header(HEADER, self.STORY)
-        self.assertEqual(10, nine[0].value)
-        self.assertEqual(1, len(evaluate(nine, [])))
-        self.assertIn('header_symbols=10, limit=8', evaluate(nine, [])[0].message)
-        self.assertEqual([], evaluate(nine, nine))  # an unchanged legacy count may stay
-        smaller = measure_header(HEADER, wrap('void a();\nvoid b();\nvoid c();\nvoid d();\nvoid e();'
-                                              '\nvoid f();\nvoid g();'))
-        self.assertEqual(7, smaller[0].value)
-        self.assertEqual([], evaluate(smaller, []))
-        self.assertEqual(1, len(advisories(smaller, [])))
+        over = measure_header(HEADER, wrap('\n'.join(f'void f{i}();' for i in range(18))))
+        self.assertEqual(18, over[0].value)
+        self.assertEqual(1, len(evaluate(over, [])))
+        self.assertIn('header_symbols=18, limit=16', evaluate(over, [])[0].message)
+        self.assertEqual([], evaluate(over, over))  # an unchanged legacy count may stay
+        advisory = measure_header(HEADER, wrap('\n'.join(f'void f{i}();' for i in range(13))))
+        self.assertEqual(13, advisory[0].value)
+        self.assertEqual([], evaluate(advisory, []))
+        self.assertEqual(1, len(advisories(advisory, [])))
+        within = measure_header(HEADER, wrap('\n'.join(f'void f{i}();' for i in range(12))))
+        self.assertEqual(12, within[0].value)
+        self.assertEqual([], evaluate(within, []))
+        self.assertEqual([], advisories(within, []))
         self.assertEqual([], measure_header(CPP, self.STORY))
 
     def test_file_level_tag_attaches(self):
         source = ('// code-health: allow header_symbols -- one table of story names that callers '
-                  'always use together\n' + self.STORY)
+                  'always use together\n' + wrap('\n'.join(f'void f{i}();' for i in range(18))))
         metrics = measure_header(HEADER, source)
         allowances, errors = allow.parse(HEADER, source)
         self.assertEqual([], errors)
         allowed, misplaced = allow.attach(HEADER, source, allowances, metrics)
         self.assertEqual([], misplaced)
+        self.assertEqual(1, len(evaluate(metrics, [])))
         self.assertEqual([], evaluate(metrics, [], allowed))
 
 
