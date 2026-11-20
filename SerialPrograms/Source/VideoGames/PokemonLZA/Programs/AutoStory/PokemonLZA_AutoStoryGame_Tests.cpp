@@ -308,13 +308,13 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "02.02's street scene fails when the party bar shows 45 s and it never starts",
-        .input = {.checkpoint = "02.02", .first_step = 1, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(46000))}},
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0)), party_bar(Milliseconds(46000))}},
         .expectation = {.verdict = "failed at street_scene: scene_never_started", .inputs = "wait 250ms"},
     },
     {
         //  From the save the street scene ends at the gate, its prompt up.
         .name = "02.02's walk to the gate talks at once on the A prompt it starts at",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = concat(std::vector<ScreenObservation>(4, A_PROMPT), {DIALOG})},
+        .input = {.checkpoint = "02.02", .first_step = 3, .steps = 1, .looks = concat(std::vector<ScreenObservation>(4, A_PROMPT), {DIALOG})},
         .expectation = {
             .verdict = "done",
             .inputs = "wait 250ms, wait 300ms, press A, wait 250ms",

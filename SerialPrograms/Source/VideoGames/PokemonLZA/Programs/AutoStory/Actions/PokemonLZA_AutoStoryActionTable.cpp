@@ -208,12 +208,12 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
 
 
 //  01.01's arrival takes ~240 s, hence 360 s. "press_a_first": A on the
-//  prompt the walk ended at, to start the talk. "skip_with_plus": Plus
-//  skips its cutscene (SceneMachineConfig).
+//  prompt the walk ended at, to start the talk. "end_on_black_fade": done
+//  at a black fade.
 Pokemon::StoryActionParser move_hints_action(){
     return [](const JsonObject& args) -> StoryStepRun{
-        reject_unknown_keys(args, {"press_a_first", "skip_with_plus"});
-        const SceneMachineConfig config{.skip_with_plus = flag(args, "skip_with_plus")};
+        reject_unknown_keys(args, {"press_a_first", "end_on_black_fade"});
+        const SceneMachineConfig config{.end_on_black_fade = flag(args, "end_on_black_fade")};
         return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
             if (press_a_first){
                 press_through_prompt(backend);
@@ -221,6 +221,39 @@ Pokemon::StoryActionParser move_hints_action(){
             return run_scene_machine(backend, "mash_to_move_hints", config, /*timeout=*/360s, state.step);
         };
     };
+}
+
+
+constexpr Milliseconds PLUS_SKIP_POLL = 250ms;
+//  Console B, 2026-11-19: Plus 3.0-3.4 s after the opening fade ended
+//  skipped 01.01's ad and 02.02's street cutscene; the skip's black fade
+//  showed 2.2-2.8 s after the press started.
+constexpr Milliseconds PLUS_SKIP_AFTER_FADE = 2500ms;
+constexpr Milliseconds PLUS_SKIP_FADE_WITHIN = 5000ms;
+constexpr size_t PLUS_SKIP_FADE_LOOKS = 60;
+
+//  From a cutscene's opening black fade: once it ends, Plus, then the
+//  skip's black fade. Fails as "fade_not_ended" or "cutscene_not_skipped".
+std::optional<StoryFailure> plus_skip_step(PlzaBackend& backend){
+    for (size_t looks = 0; backend.observe().events.has(ScreenEvent::FADE_BLACK); looks++){
+        if (looks >= PLUS_SKIP_FADE_LOOKS){
+            return StoryFailure{.code = "fade_not_ended", .detail = "plus_skip: the black fade did not end within 15 s"};
+        }
+        backend.wait(PLUS_SKIP_POLL);
+    }
+    backend.wait(PLUS_SKIP_AFTER_FADE);
+    backend.press(BUTTON_PLUS, CUTSCENE_SKIP_HOLD, /*release=*/0ms);
+    for (Milliseconds waited = 0ms; waited <= PLUS_SKIP_FADE_WITHIN; waited += PLUS_SKIP_POLL){
+        backend.scope().throw_if_cancelled();
+        if (backend.observe().events.has(ScreenEvent::FADE_BLACK)){
+            backend.log(std::format("[PLZA] plus_skip: a black fade {} ms after the hold.", waited.count()));
+            return std::nullopt;
+        }
+        backend.wait(PLUS_SKIP_POLL);
+    }
+    const std::string detail = std::format("plus_skip: no black fade within {} ms after the hold.", PLUS_SKIP_FADE_WITHIN.count());
+    backend.log(std::format("[PLZA] {}", detail));
+    return StoryFailure{.code = "cutscene_not_skipped", .detail = detail};
 }
 
 //  01.02's Pancham scene takes ~60 s, hence 120 s. "advance_with_a": A on
@@ -237,16 +270,10 @@ Pokemon::StoryActionParser text_to_choice_action(){
 
 
 //  Fails as "scene_never_started" when the HUD shows 45 s with nothing
-//  else: the player is not at the scene's trigger. "skip_with_plus":
-//  Plus skips its cutscene (SceneMachineConfig).
-Pokemon::StoryActionParser scene_action(){
-    return [](const JsonObject& args) -> StoryStepRun{
-        reject_unknown_keys(args, {"skip_with_plus"});
-        const SceneMachineConfig config{.start_window = 45s, .skip_with_plus = flag(args, "skip_with_plus")};
-        return [config](PlzaBackend& backend, RunState& state){
-            return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
-        };
-    };
+//  else: the player is not at the scene's trigger.
+std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
+    const SceneMachineConfig config{.start_window = 45s};
+    return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
 }
 
 //  B, not A: it closes the menus a talk opens (Mable's mission and reward screens).
@@ -359,9 +386,10 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::CLIMB_LADDER), no_args([](PlzaBackend& backend, RunState&){ return climb_ladder(backend); })},
         {action_name(PlzaAction::CHOOSE_0), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 0); })},
         {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
-        {action_name(PlzaAction::SCENE), scene_action()},
+        {action_name(PlzaAction::SCENE), no_args(scene_step)},
         {action_name(PlzaAction::MASH), no_args(mash_scene_step)},
         {action_name(PlzaAction::MASH_TO_MOVE_HINTS), move_hints_action()},
+        {action_name(PlzaAction::PLUS_SKIP), no_args([](PlzaBackend& backend, RunState&){ return plus_skip_step(backend); })},
         {action_name(PlzaAction::TEXT_TO_CHOICE), text_to_choice_action()},
         {action_name(PlzaAction::STORY_BATTLE_START), no_args([&hooks](PlzaBackend& backend, RunState& state){
             return story_battle_start_step(hooks, backend, state);
