@@ -21,6 +21,7 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,7 +48,7 @@ private:
 class NamingScreenWatcher : public DetectorToFinder<NamingScreenDetector>{
 public:
     NamingScreenWatcher(Color color = COLOR_RED)
-        : DetectorToFinder("NamingScreenWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("NamingScreenWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

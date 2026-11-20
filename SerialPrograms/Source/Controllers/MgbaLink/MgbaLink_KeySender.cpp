@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
@@ -43,18 +44,26 @@ JumpCommand JumpCommand::reset(){
 }
 
 
+uint64_t KeySender::send_ahead_frames(double speed){
+    uint64_t lead = KeySchedule::lead_frames(speed);
+    uint64_t extra = speed <= 1.0 ? 3 : (uint64_t)std::ceil(3.0 * speed);
+    return lead + extra;
+}
+
 KeySender::KeySender(
     Logger& logger,
     ThreadPool& thread_pool,
     LinkRegistry& registry,
     std::string address,
-    std::chrono::milliseconds grant_period
+    std::chrono::milliseconds grant_period,
+    double speed
 )
     : m_logger(logger)
     , m_thread_pool(thread_pool)
     , m_registry(registry)
     , m_address(std::move(address))
     , m_grant_period(grant_period)
+    , m_speed((std::isfinite(speed) && speed > 0.0) ? std::clamp(speed, FrameClock::MIN_SPEED, FrameClock::MAX_SPEED) : 1.0)
 {}
 KeySender::~KeySender(){
     std::lock_guard<Mutex> lg(m_lock);
@@ -103,7 +112,7 @@ KeySender::Attachment& KeySender::attach(){
     //  it from there.
     WallClock now = current_time();
     uint64_t frame = hold_and_read_frame(m_logger, *link->connection);
-    FrameClock clock(now, frame);
+    FrameClock clock(now, frame, m_speed);
     m_attachment.emplace(Attachment{
         .serial = link->serial,
         .connection = link->connection,
@@ -129,7 +138,7 @@ void KeySender::restart_schedule(Attachment& attachment){
     uint64_t next = attachment.last_sent_frame
         ? *attachment.last_sent_frame + 1
         : attachment.clock.anchor_frame();
-    attachment.schedule = KeySchedule(FrameClock(attachment.clock.timestamp(next), next));
+    attachment.schedule = KeySchedule(FrameClock(attachment.clock.timestamp(next), next, attachment.clock.speed()));
     attachment.held_mask.reset();
 }
 
@@ -181,8 +190,9 @@ void KeySender::push(Cancellable* cancellable, uint16_t mask, WallDuration durat
     Attachment* attachment = &attach();
 
     uint64_t start = attachment->schedule.end_frame();
-    if (start > SEND_AHEAD_FRAMES){
-        if (!wait_for_frame(lg, cancellable, start - SEND_AHEAD_FRAMES, epoch)){
+    uint64_t send_ahead = send_ahead_frames(attachment->clock.speed());
+    if (start > send_ahead){
+        if (!wait_for_frame(lg, cancellable, start - send_ahead, epoch)){
             return;
         }
         //  The connection may have changed while waiting.
@@ -264,7 +274,7 @@ uint64_t KeySender::jump(const JumpCommand& command){
     //  The bridge dropped its queued KEYS but still holds the last keys it
     //  applied: release them on the first frame of the new timeline.
     bool keys_sent = attachment.last_sent_frame.has_value();
-    attachment.clock = FrameClock(now, frame);
+    attachment.clock = FrameClock(now, frame, m_speed);
     attachment.last_sent_frame.reset();
     m_input_log = InputLog();
     if (keys_sent){

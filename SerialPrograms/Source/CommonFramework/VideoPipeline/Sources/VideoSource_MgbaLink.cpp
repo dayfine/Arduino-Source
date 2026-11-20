@@ -4,7 +4,9 @@
  *
  */
 
+#include <algorithm>
 #include <charconv>
+#include <cmath>
 #include <format>
 #include <QImage>
 #include <QPainter>
@@ -34,6 +36,15 @@ constexpr std::chrono::milliseconds RECONNECT_DELAY(2000);
 
 //  One GBA frame, rounded down: polling faster only repeats a frame number.
 constexpr std::chrono::milliseconds POLL_PERIOD(16);
+
+std::chrono::milliseconds poll_period_for_speed(double speed){
+    if (speed <= 1.0){
+        return POLL_PERIOD;
+    }
+    return std::chrono::milliseconds(
+        std::max<int64_t>(2, (int64_t)std::llround((double)POLL_PERIOD.count() / speed))
+    );
+}
 
 
 //  Forwards to "logger" every line but a repeat of the last one forwarded:
@@ -249,6 +260,8 @@ void VideoSource_MgbaLink::run_connection(Logger& logger, const std::string& hos
 }
 
 void VideoSource_MgbaLink::poll_connected(Logger& logger, Connection& connection){
+    const double speed = speed_multiplier();
+    const std::chrono::milliseconds poll_period = poll_period_for_speed(speed);
     std::optional<FrameClock> clock;
     uint64_t last_frame = 0;
     do{
@@ -258,7 +271,7 @@ void VideoSource_MgbaLink::poll_connected(Logger& logger, Connection& connection
             continue;
         }
         if (!clock){
-            clock.emplace(now, reply.frame);
+            clock.emplace(now, reply.frame, speed);
         }
         FrameClock::Stamp stamp = clock->stamp(now, reply.frame, MAX_CLOCK_LAG);
         if (stamp.reanchored_after_lag){
@@ -275,7 +288,7 @@ void VideoSource_MgbaLink::poll_connected(Logger& logger, Connection& connection
             ));
         }
         publish_frame(compose_mgba_frame(gba_frame), stamp.time);
-    }while (!wait_or_stop(POLL_PERIOD));
+    }while (!wait_or_stop(poll_period));
 }
 
 void VideoSource_MgbaLink::publish_frame(ImageRGB32 frame, WallClock timestamp){

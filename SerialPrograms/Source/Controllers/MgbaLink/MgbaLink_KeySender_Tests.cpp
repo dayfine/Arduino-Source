@@ -314,6 +314,7 @@ std::optional<std::vector<std::string>> with_fake_link(Logger& logger, Body&& bo
 //  The pacer: GRANTs that follow app time, two frames ahead.
 struct PacerInput{
     milliseconds run_time{};
+    double speed = 1.0;
 };
 struct PacerExpectation{
     uint64_t first_grant = 0;
@@ -339,7 +340,13 @@ public:
             [&](ThreadPool& thread_pool, LinkRegistry&, const std::string&, std::shared_ptr<Connection> connection){
                 start = current_time();
                 {
-                    Pacer pacer(logger, thread_pool, connection, FrameClock(start, BRIDGE_FRAME));
+                    Pacer pacer(
+                        logger,
+                        thread_pool,
+                        connection,
+                        FrameClock(start, BRIDGE_FRAME, m_case.input.speed),
+                        Pacer::default_period(m_case.input.speed)
+                    );
                     std::this_thread::sleep_for(m_case.input.run_time);
                 }
                 stop = current_time();
@@ -365,7 +372,11 @@ public:
                 return std::format("GRANTs not increasing: {}", join_lines(*commands));
             }
         }
-        uint64_t latest = grant_frame(FrameClock(start, BRIDGE_FRAME), stop, KeySchedule::LEAD_FRAMES);
+        uint64_t latest = grant_frame(
+            FrameClock(start, BRIDGE_FRAME, m_case.input.speed),
+            stop,
+            KeySchedule::lead_frames(m_case.input.speed)
+        );
         if (grants.back() > latest){
             return std::format("last GRANT {} is past {}, the grant at the time the pacer stopped", grants.back(), latest);
         }
@@ -385,6 +396,13 @@ void add_pacer_tests(UnitTestDatabase& database){
             .name = "grants follow app time",
             .input = {milliseconds(200)},
             .expectation = {.first_grant = BRIDGE_FRAME + 2, .min_grants = 6},
+        },
+        {
+            //  About 48 frames in 200 ms at 4x; at least 20 grants even on
+            //  a loaded machine.
+            .name = "grants follow 4x app time",
+            .input = {milliseconds(200), 4.0},
+            .expectation = {.first_grant = BRIDGE_FRAME + 8, .min_grants = 20},
         },
     };
     for (const PacerCase& test_case : PACER_CASES){

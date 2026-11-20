@@ -85,12 +85,14 @@ private:
 
 
 //  Maps emulated frame numbers to app time. Anchored at a known pair
-//  (t0, F0): frame F happened at t0 + (F - F0) * 1000 / 59.7275 ms, so a
-//  frame's timestamp comes from its number, not from when the app read it.
+//  (t0, F0): frame F happened at t0 + (F - F0) * 1000 / (59.7275 * speed) ms,
+//  so a frame's timestamp comes from its number, not from when the app read it.
 class FrameClock{
 public:
     //  GBA frame rate: 16.78 MHz / 280,896 cycles per frame.
     static constexpr double GBA_FRAMES_PER_SECOND = 59.7275;
+    static constexpr double MIN_SPEED = 0.5;
+    static constexpr double MAX_SPEED = 8.0;
 
     //  The time a frame is stamped with, and whether the clock had to catch
     //  up with a paused or slow mGBA to get it.
@@ -99,10 +101,7 @@ public:
         bool reanchored_after_lag = false;
     };
 
-    FrameClock(WallClock t0, uint64_t f0)
-        : m_t0(t0)
-        , m_f0(f0)
-    {}
+    FrameClock(WallClock t0, uint64_t f0, double speed = 1.0);
 
     WallClock timestamp(uint64_t frame) const;
 
@@ -121,12 +120,27 @@ public:
     uint64_t anchor_frame() const{
         return m_f0;
     }
+    double speed() const{
+        return m_speed;
+    }
+    double frames_per_second() const{
+        return GBA_FRAMES_PER_SECOND * m_speed;
+    }
 
 private:
     WallClock m_t0;
     uint64_t m_f0;
+    double m_speed;
     std::optional<WallClock> m_last_stamp;
 };
+
+//  Parses a speed multiplier string and clamps it to [MIN_SPEED, MAX_SPEED].
+//  Returns 1.0 if null, empty, non-numeric, or non-positive.
+double parse_speed_multiplier(const char* value);
+
+//  Reads PA_MGBA_SPEED from the environment once (clamped to [0.5, 8.0],
+//  defaulting to 1.0).
+double speed_multiplier();
 
 
 }  // namespace MgbaLink
