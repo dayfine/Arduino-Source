@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Every action a PLZA plan file may name, each parsing its own args from
- *  the checkpoint's JSON. Walks, waits and the scene machine run on any
- *  backend; the actions that need the console's own code run it through
- *  PlzaConsoleHooks.
+ *  Registry binding PLZA plan action names to pure and console-hooked handlers.
  *
  */
 
@@ -21,42 +18,34 @@
 #include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
-#include "PokemonLZA_AutoStoryHeading.h"
-#include "PokemonLZA_AutoStoryMoves.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
+#include "PokemonLZA_AutoStoryWalks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  A console-only action. `timeout` is the step's "timeout_ms": the gate
-//  runs read it, the others ignore it.
+//  Console-only action callback invoked with the step's timeout budget.
 using PlzaConsoleAction = MoveOnlyFunction<std::optional<Pokemon::StoryFailure>(PlzaBackend& backend, Milliseconds timeout)>;
 using PlzaConsoleActions = std::map<std::string, PlzaConsoleAction, std::less<>>;
 
-//  Fights the battle on screen until it ends.
+//  Callback that fights the active story battle until completion or failure.
 using PlzaBattleRunner = MoveOnlyFunction<std::optional<Pokemon::StoryFailure>(PlzaBackend& backend)>;
 
-//  The console's own code that plza_story_actions() composes into the
-//  actions: each console-only action name forwards to `console`, a walk
-//  with a "heading" reads `arrow`, a scene with "battle_start" holds ZL
-//  with `lock_on`, and "story_battle" runs `battle`. Off a console (the sim, the
-//  logic tests) all are empty, so the same plan files load and run there
-//  and a step that needs the console fails as "console_only".
+//  Optional console-specific hooks composed into plza_story_actions().
+//  Unset hooks cause console-only steps to fail with "console_only".
 struct PlzaConsoleHooks{
     PlzaConsoleActions console = {};
     std::optional<MinimapArrowReader> arrow = std::nullopt;
     std::optional<LockOnWatch> lock_on = std::nullopt;
     PlzaBattleRunner battle = {};
-    //  Where a menu save counts as an autosave; none: nowhere.
     AutosaveSightings* sightings = nullptr;
-    //  The walk with "to_starter" (01.03's starter pick); none: the plan's legs.
     std::optional<StoryMove> starter_move = std::nullopt;
 };
 
-//  Every action a PLZA checkpoint may name, bound to `hooks`, which must
-//  outlive the steps parsed with them.
+//  Returns the action parser table for PLZA plans bound to `hooks`, which must outlive parsed steps.
 Pokemon::StoryActions plza_story_actions(PlzaConsoleHooks& hooks);
 
 

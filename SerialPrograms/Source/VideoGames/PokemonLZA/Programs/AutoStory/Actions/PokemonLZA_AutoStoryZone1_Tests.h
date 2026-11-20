@@ -15,7 +15,7 @@ namespace PokemonLZA{
 
 
 //  Registers the tests of 03.08's walk plans in Wild Zone 1: out of the
-//  zone, the start off Taunie's rocks (ZoneStart) and the map legs (MapLeg).
+//  zone and the map legs (MapLeg).
 void add_tests_AutoStoryZone1(UnitTestDatabase& database);
 
 

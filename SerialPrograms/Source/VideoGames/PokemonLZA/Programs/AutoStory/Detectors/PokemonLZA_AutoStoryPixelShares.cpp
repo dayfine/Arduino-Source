@@ -11,6 +11,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  Cyan glow: blue over red by 50, green over red by 30, blue over 120, blue >= green
+//  - 20 (keeps out mint and sign green, which have green far over blue).
 double cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     return share_of(screen, box, [](Color pixel){
         return pixel.blue() > pixel.red() + 50 && pixel.green() > pixel.red() + 30 && pixel.blue() > 120 &&
@@ -18,6 +20,7 @@ double cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     });
 }
 
+//  Dimmer cyan glow (red margins 40 and 25, blue over 70): autosave glow over dark scenes.
 double dim_cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     return share_of(screen, box, [](Color pixel){
         return pixel.blue() > pixel.red() + 40 && pixel.green() > pixel.red() + 25 && pixel.blue() > 70 &&
@@ -25,28 +28,10 @@ double dim_cyan_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     });
 }
 
+//  Bright white: every channel above 200.
 double white_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     return share_of(screen, box, [](Color pixel){
         return pixel.red() > 200 && pixel.green() > 200 && pixel.blue() > 200;
-    });
-}
-
-double sky_blue_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
-    return share_of(screen, box, [](Color pixel){
-        return pixel.blue() > 200 && pixel.green() > 160 && pixel.blue() > pixel.red() + 60;
-    });
-}
-
-double banner_yellow_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
-    return share_of(screen, box, [](Color pixel){
-        return pixel.red() > 200 && pixel.green() > 140 && pixel.blue() < 130 &&
-            pixel.red() > pixel.blue() + 110;
-    });
-}
-
-double complete_green_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
-    return share_of(screen, box, [](Color pixel){
-        return pixel.green() > 180 && pixel.green() > pixel.red() + 40 && pixel.green() > pixel.blue() + 70;
     });
 }
 

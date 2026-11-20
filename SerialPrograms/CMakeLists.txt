@@ -120,9 +120,9 @@ if(PA_CORE_ONLY)
         # PLZA AutoStory's checkpoint and reference files, which its logic tests read.
         include(cmake/EmbedTextFiles.cmake)
         pa_embed_text_files(LogicLib Source/VideoGames/PokemonLZA/Programs/AutoStory/StoryData
-            VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
+            VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
         pa_embed_text_files(LogicLib Source/VideoGames/PokemonLZA/Programs/AutoStory/ReferenceData
-            VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryReferenceCells.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
+            VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
     endif()
     if(COMMAND_LINE_EXE)
         include(Source/CommandLine/CommandLineExecutable.cmake)
@@ -242,9 +242,9 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 # Data files built into the program (see cmake/EmbedTextFiles.cmake).
 include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/StoryData
-    VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
+    VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
 pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/ReferenceData
-    VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryReferenceCells.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
+    VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
 
 
 # Create binary target

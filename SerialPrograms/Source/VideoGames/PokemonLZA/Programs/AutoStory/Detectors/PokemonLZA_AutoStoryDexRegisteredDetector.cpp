@@ -13,6 +13,8 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  Cyan ring arcs (x 852-872 and 1100-1120, y 140-220 on 1080p) and the slate
+//  "No.###" tag (x 845-945, y 268-298) with white text.
 DexRegisteredDetector::DexRegisteredDetector(Color color)
     : m_color(color)
     , m_left_arc(852.0 / 1920, 140.0 / 1080, 20.0 / 1920, 80.0 / 1080)

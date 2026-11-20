@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
 #include "PokemonLZA_AutoStoryNewGame_Tests.h"
 

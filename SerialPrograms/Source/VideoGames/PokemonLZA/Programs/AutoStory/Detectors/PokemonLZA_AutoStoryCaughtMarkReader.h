@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Whether the wild Pokemon locked on to is of a species already caught:
- *  its name plate then shows a Poke Ball after the level and gender.
+ *  Reads a locked-on wild Pokemon's name plate and caught-species mark.
  *
  */
 
@@ -19,14 +18,10 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  While ZL locks on: whether the name plate shows the caught mark; nothing when no
-//  plate was found. The plate is found by its HP bar; the mark, pinkish red over white,
-//  sits above the bar's right end, right of the orange gender mark. The plate shows
-//  whether or not the partner is out.
+//  Returns whether the locked-on name plate shows a caught Poke Ball mark, or std::nullopt if no plate is found.
 std::optional<bool> lock_target_caught(const ImageViewRGB32& screen);
 
-//  While ZL locks on: the plate's HP bar as screen shares, nothing when no plate was
-//  found. A lower bar is a nearer target.
+//  Returns the locked-on name plate's HP bar bounds (normalized screen coordinates), or std::nullopt if not found.
 std::optional<ImageFloatBox> lock_target_plate_bar(const ImageViewRGB32& screen);
 
 

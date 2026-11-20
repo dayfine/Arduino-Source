@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Where a dialogue's selection arrow can be, and a reader for the choice rows
- *  (how many, and which one is highlighted).
+ *  Choice-arrow search region and choice-row reader for dialogue menus.
  *
  */
 
@@ -20,18 +19,16 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Where a dialogue's selection arrow can be, widened left to x 960 for long languages.
+//  Returns the normalized search box for the dialogue selection arrow.
 const ImageFloatBox& dialog_choice_box();
 
-//  Row count and the highlighted row, 0 the top.
+//  Row count and 0-based highlighted row index (0 = top).
 struct DialogChoiceRows{
     size_t count = 0;
     size_t selected = 0;
 };
 
-//  The panel is anchored at its bottom right, so rows are counted from the bottom up,
-//  each highlighted (white right of the text) or plain (blue, with text), until a slot
-//  is neither. None for fewer than two rows or unless exactly one is highlighted.
+//  Reads choice-box rows and the single highlighted row from `frame`, or returns std::nullopt.
 std::optional<DialogChoiceRows> read_dialog_choice_rows(const ImageViewRGB32& frame);
 
 

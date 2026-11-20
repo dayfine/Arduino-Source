@@ -20,7 +20,8 @@
       {
         "id": "pokedex_app",
         "why": "the Pokedex app, Chikorita's entry, the nurse, Taunie's scene outside (autosave), until control outside the Center",
-        "action": "talk_to_pokedex_screen"
+        "action": "scene",
+        "args": {"button": "B"}
       }
     ],
     "metadata": {

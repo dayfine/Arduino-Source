@@ -20,15 +20,13 @@
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
 #include "Pokemon/Pokemon_Strings.h"
-#include "Actions/PokemonLZA_AutoStoryConfirmChoices.h"
-#include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
-#include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
+#include "Actions/PokemonLZA_AutoStoryWorldWalks.h"
+#include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
-#include "PokemonLZA_AutoStoryConsoleGame.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStarts.h"
-#include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryPlan.h"
 #include "PokemonLZA_AutoStory.h"
 
 namespace PokemonAutomation{
@@ -44,7 +42,8 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to the end of Main Mission 01, picking Chikorita. "
+        "Play the main story of Pokemon Legends: Z-A from a new game through Main Mission 03 (checkpoints 01.00a through 03.11), "
+        "choosing the selected starter. "
         "Checkpoint 01.00a starts a new game (delete the save first) from the HOME screen (its tile among the first 8; a running game is closed) "
         "and makes the language, look and name below, up to Confirm Choices. 01.00b starts on Confirm Choices (made by the program or by hand), "
         "checks them and confirms. "
@@ -164,15 +163,26 @@ constexpr std::string_view LOAD_SAVE_FIRST_LABEL =
 constexpr std::string_view RUN_FROM_LABEL =
     "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk. Running is checked on console from after Taunie's battle in 03.02b.";
 
+//  Captures the failure screenshot while the game is still on screen, then
+//  immediately suspends to Switch HOME so PLZA cannot be attacked or overwrite
+//  the save while stopped.
+[[noreturn]] void stop_with_error(
+    ConsoleHandle& console, ProControllerContext& context,
+    ErrorReportMode mode, std::string message
+){
+    const VideoSnapshot frame = console.video().snapshot();
+    go_home(console, context);
+    OperationFailedExceptionWithScreenshot::fire(mode, std::move(message), console, frame.frame);
+}
+
 //  A run after the new game starts from the latest save, not from wherever
 //  the game is. Throws OperationFailedException if it does not load.
-void load_first_save(ConsoleHandle& console, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& checkpoint){
+void load_first_save(ConsoleHandle& console, ProControllerContext& context, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& checkpoint){
     const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, checkpoint);
     if (loaded){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("AutoStory: could not load the save for {}: {}", checkpoint.id, *loaded),
-            console
+        stop_with_error(
+            console, context, ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("AutoStory: could not load the save for {}: {}", checkpoint.id, *loaded)
         );
     }
     console.log(std::format("AutoStory: loaded the latest save for {}.", checkpoint.id));
@@ -228,13 +238,12 @@ size_t checked_first_checkpoint(
         : read_start_signature(console, story.context);
     const std::optional<size_t> from = checkpoint_at(checkpoints, starts, first, read);
     if (!from){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::NO_ERROR_REPORT,
+        stop_with_error(
+            console, story.context, ErrorReportMode::NO_ERROR_REPORT,
             std::format(
                 "AutoStory: start_position_unknown: the screen ({}) matches no checkpoint start up to {}; nothing was run",
                 to_string(read), checkpoints[first].id
-            ),
-            console
+            )
         );
     }
     if (*from != first){
@@ -269,7 +278,7 @@ AutoStory::AutoStory()
         /*is_password=*/false, "<b>Player Name:</b><br>Letters, digits and - / : ' , . ? ! (the keyboard's first page); at most 12 characters, 6 in Japanese and Chinese.",
         LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"Kosmos", /*placeholder_text=*/"Kosmos"
     )
-    , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/1, /*min_value=*/1, /*max_value=*/5)
+    , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/3, /*min_value=*/1, /*max_value=*/5)
     , LOAD_SAVE_FIRST(std::string(LOAD_SAVE_FIRST_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/true)
     , STARTER("<b>Starter:</b><br>The starter 01.03 picks.", starter_database(), LockMode::LOCK_WHILE_RUNNING, StarterChoice::CHIKORITA)
     , RUN_FROM(/*is_password=*/false, std::string(RUN_FROM_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"03.03", /*placeholder_text=*/"03.03")
@@ -320,7 +329,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     };
     if (!checkpoint_starts_without_save(checkpoints[first])){
         if (LOAD_SAVE_FIRST){
-            load_first_save(env.console, game, backend, checkpoints[first]);
+            load_first_save(env.console, context, game, backend, checkpoints[first]);
         }
         first = checked_first_checkpoint(story, backend, checkpoints, first, run_options.starts);
     }
@@ -329,10 +338,9 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         game, std::span<StoryCheckpoint>(checkpoints).subspan(first, last - first + 1), run_options, backend, state, sightings
     );
     if (failure){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("AutoStory stopped at {}: {}", failure->checkpoint_id, failure->failure),
-            env.console
+        stop_with_error(
+            env.console, context, ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("AutoStory stopped at {}: {}", failure->checkpoint_id, failure->failure)
         );
     }
     env.console.log(std::format("AutoStory: done through {}.", checkpoints[last].id));

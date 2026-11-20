@@ -12,7 +12,6 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-
 std::string_view LockTarget::caught_text() const{
     if (!caught){
         return "caught mark unread";
@@ -108,6 +107,50 @@ int LockTargetCycle::flicks_to(size_t index) const{
     return (int)index - (int)m_current;
 }
 
+
+namespace{
+
+//  So a target that keeps dodging does not take all of the patrol's throws.
+constexpr int THROWS_AT_ONE_TARGET = 3;
+
+} // namespace
+
+SpotVisit spot_visit(int spot, std::span<const int> caught_at){
+    const bool caught = std::find(caught_at.begin(), caught_at.end(), spot) != caught_at.end();
+    return caught ? SpotVisit::TURN_BACK : SpotVisit::CATCH;
+}
+
+AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked, int throws_at_lock){
+    if (seen.registered){
+        return AfterThrow::STOP_ENDS;
+    }
+    if (battle){
+        return AfterThrow::WEAKEN;
+    }
+    if (seen.new_species()){
+        return AfterThrow::STOP_ENDS;
+    }
+    if (relocked && relocked->caught != true){
+        return throws_at_lock >= THROWS_AT_ONE_TARGET ? AfterThrow::MOVE_ON : AfterThrow::THROW_AGAIN;
+    }
+    return AfterThrow::LOOK_AGAIN;
+}
+
+StopAim stop_aim(bool locked_on, const std::vector<LockTarget>& plates){
+    if (!locked_on){
+        return StopAim::MOVE_ON;
+    }
+    if (plates.empty()){
+        return StopAim::LOOK_AGAIN;
+    }
+    return nearest_uncaught(plates) ? StopAim::THROW : StopAim::LOOK_FURTHER;
+}
+
+bool CameraPitch::level_now(){
+    const bool tipped = m_tipped;
+    m_tipped = false;
+    return tipped;
+}
 
 
 } // namespace PokemonLZA

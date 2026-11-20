@@ -2,16 +2,17 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The console-free choices behind Wild Zone 1's catches: which lock-on
- *  target to throw at and whether to walk toward it first (the stops
- *  along the road are in PokemonLZA_AutoStoryZone1Road.h).
+ *  Pure target selection, lock-on cycling, throw-outcome, and stop-control
+ *  decisions for Wild Zone 1 catches.
  *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryCatchPlan_H
 #define PokemonAutomation_PokemonLZA_AutoStoryCatchPlan_H
 
+#include <cstddef>
 #include <optional>
+#include <span>
 #include <string_view>
 #include <vector>
 
@@ -20,9 +21,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  A wild Pokemon locked on to with ZL held, by its name plate's HP bar:
-//  middle and width as shares of the screen; `caught` unset when the mark
-//  did not read.
+//  Locked-on wild Pokemon name-plate geometry and caught-mark reading.
 struct LockTarget{
     double x = 0;
     double y = 0;
@@ -32,54 +31,44 @@ struct LockTarget{
     std::string_view caught_text() const;
 };
 
-//  Only while its plate reads far (its bar above 0.45 of the screen's
-//  height): 4 steps at most before the first throw and 2 after each miss.
+//  True when the player should step closer to `target` given prior `misses` and `steps`.
 bool step_toward_target(const LockTarget& target, int misses, int steps);
 
-//  Within 0.03 of the screen both ways.
+//  True when two lock-on plates refer to the same target within position tolerance.
 bool same_lock_target(const LockTarget& a, const LockTarget& b);
 
-//  The one whose plate is lowest on the screen; nothing when all are caught.
+//  Index of the nearest uncaught target in `targets`, or std::nullopt if all are caught.
 std::optional<size_t> nearest_uncaught(const std::vector<LockTarget>& targets);
 
-//  Why a throw at a locked target counts as a new species.
+//  Evidence that a throw registered a new species.
 enum class NewSpeciesSign{
     BANNER,
-    //  No banner, but the plate read "not caught" before the throw, and after
-    //  it no battle is on and no plate locks on. The banner can be missed while
-    //  the capture lags.
     PLATE_NOT_CAUGHT,
 };
 
-//  What a throw at a locked target showed.
+//  Observations collected around a single throw at a locked target.
 struct ThrowSeen{
     bool registered = false;
-    //  Read before the throw.
     std::optional<bool> plate_caught;
-    //  After it, no wild battle is on and no plate locks on.
     bool target_gone = false;
 
-    //  Nothing when it did not, or may not have.
     std::optional<NewSpeciesSign> new_species() const;
-
     std::string_view new_species_text() const;
 };
 
-//  The targets seen while flicking right with ZL held. It stops at a view
-//  equal to the last (no other target that way) or to the first (the
-//  targets went round), or at `max_views`.
+//  Records targets seen while cycling right under ZL until wrap-around or `max_views`.
 class LockTargetCycle{
 public:
     explicit LockTargetCycle(size_t max_views);
 
-    //  Returns whether to flick right again.
+    //  Records `target`; returns true if cycling should continue.
     bool add(const LockTarget& target);
 
     const std::vector<LockTarget>& targets() const{
         return m_targets;
     }
 
-    //  Positive: right.
+    //  Signed flick count from current target to `index` (positive = right).
     int flicks_to(size_t index) const;
 
 private:
@@ -87,6 +76,52 @@ private:
     std::vector<LockTarget> m_targets;
     size_t m_current = 0;
     bool m_done = false;
+};
+
+//  Patrol decision at a catch spot.
+enum class SpotVisit{
+    CATCH,
+    TURN_BACK,
+};
+
+//  Returns TURN_BACK if `spot` is already in `caught_at`, otherwise CATCH.
+SpotVisit spot_visit(int spot, std::span<const int> caught_at);
+
+//  Next action after a throw at a locked target.
+enum class AfterThrow{
+    STOP_ENDS,
+    WEAKEN,
+    THROW_AGAIN,
+    LOOK_AGAIN,
+    MOVE_ON,
+};
+
+//  Decides next action from throw observations, battle state, relock plate, and throw count.
+AfterThrow after_throw(const ThrowSeen& seen, bool battle, const std::optional<LockTarget>& relocked, int throws_at_lock);
+
+//  Next action after a lock-on sweep at a catch stop.
+enum class StopAim{
+    MOVE_ON,
+    LOOK_AGAIN,
+    LOOK_FURTHER,
+    THROW,
+};
+
+//  Decides whether to throw, look again, turn further, or move on from sweep `plates`.
+StopAim stop_aim(bool locked_on, const std::vector<LockTarget>& plates);
+
+//  Tracks whether ZL has tipped camera pitch down and needs leveling.
+class CameraPitch{
+public:
+    void zl_held(){
+        m_tipped = true;
+    }
+
+    //  Returns true once if camera pitch needs leveling, then clears the flag.
+    bool level_now();
+
+private:
+    bool m_tipped = false;
 };
 
 

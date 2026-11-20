@@ -8,8 +8,7 @@
 #include <format>
 #include <string>
 #include <utility>
-#include "PokemonLZA_AutoStoryReadings.h"
-#include "PokemonLZA_AutoStoryActionNames.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 
 namespace PokemonAutomation{
@@ -113,13 +112,13 @@ void AutosaveSightings::note(PlzaBackend& backend, const ScreenObservation& look
     }
 }
 
-void AutosaveSightings::saved(PlzaBackend& backend){
+void AutosaveSightings::saved(PlzaBackend& backend, std::string_view how){
     const std::string& step = m_step;
     if (!m_seen_in){
         m_seen_in = std::string(step);
     }
     m_last_seen_in = std::string(step);
-    backend.log(std::format("[PLZA] saved from the menu in {}", step));
+    backend.log(std::format("[PLZA] {} in {}", how, step));
 }
 
 std::optional<std::string> AutosaveSightings::finish(std::string_view last_step){
