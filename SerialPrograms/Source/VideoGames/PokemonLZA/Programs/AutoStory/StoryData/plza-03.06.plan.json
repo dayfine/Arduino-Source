@@ -6,17 +6,9 @@
     "title": "To the Wild Zones card",
     "start": {
       "place": "LumioseCity",
-      "spot": "PokemonCenter"
+      "spot": "PokemonCenterDoor"
     },
     "events": [
-      {
-        "id": "out_of_pokemon_center",
-        "why": "guess: back out of the Center to where 03.04 left the player. not planned: no tile grid in Lumiose",
-        "action": "walk",
-        "args": {
-          "legs": [[180, 1500], [90, 0]]
-        }
-      },
       {
         "id": "center_to_zone_1",
         "why": "from the Pokemon Center toward Wild Zone 1's gate; ends in the street in control. not planned: no tile grid in Lumiose",
@@ -41,12 +33,12 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played from a new game; ends on the autosave in wild_zones_tutorial. The first checkpoint the title's backup save loads at (the start_signature's \"registered\")"
+      "source": "played from a new game; starts outside the Center where 03.04's autosave ends; ends on the autosave in wild_zones_tutorial"
     }
   },
   "execution": {
     "save": "autosave",
     "autosave_step": "wild_zones_tutorial",
-    "start_signature": {"registered": 1, "talk_prompt": true, "wild_zone": false, "party": 1}
+    "start_signature": {"minimap": "03.06-start"}
   }
 }

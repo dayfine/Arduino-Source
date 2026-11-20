@@ -312,7 +312,7 @@ std::set<std::string, std::less<>> checkpoint_ids(std::string_view text){
 }
 
 //  "[ReloadProbe] after 03.03: landed at 03.04-start (03.04-start 8.2,
-//  03.05-start 24.0, 03.03-start 31.5)", and the frame. Presses nothing.
+//  03.06-start 24.0, 03.03-start 31.5)", and the frame. Presses nothing.
 void log_reload_landing(StoryEnv& story, PlzaBackend& backend, const StoryCheckpoint& passed){
     story.context.wait_for_all_requests();
     const VideoSnapshot snapshot = story.env.console.video().snapshot();

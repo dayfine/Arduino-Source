@@ -127,9 +127,9 @@ const std::vector<MatchCase> MATCH_CASES{
         .expectation = {.match = "03.03-start"},
     },
     {
-        .name = "03.05's street outside the Center 20% darker: 03.05's start",
-        .input = {.reference = "03.05-start", .brightness = 0.8},
-        .expectation = {.match = "03.05-start"},
+        .name = "03.06's street outside the Center 20% darker: 03.06's start",
+        .input = {.reference = "03.06-start", .brightness = 0.8},
+        .expectation = {.match = "03.06-start"},
     },
     {
         .name = "03.07's street before the zone gate 20% darker: 03.07's start",
@@ -137,8 +137,8 @@ const std::vector<MatchCase> MATCH_CASES{
         .expectation = {.match = "03.07-start"},
     },
     {
-        .name = "03.05's street moved one cell east: no match",
-        .input = {.reference = "03.05-start", .shift_cols = 1},
+        .name = "03.06's street moved one cell east: no match",
+        .input = {.reference = "03.06-start", .shift_cols = 1},
         .expectation = {.match = std::nullopt},
     },
 };

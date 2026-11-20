@@ -553,31 +553,35 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        .name = "03.05 heal_party, the nurse's talk to control (passed 2026-11-16 06:59)",
-        .input = {.checkpoint = "03.05", .step = "heal_party", .screens = R"(
-0.0s: still
-0.3s: text box, still
-0.7s: text box
-2.3s: nothing
-2.8s: text box
-4.2s: party bar
-4.7s: party bar, A prompt
-)"},
-        .expectation = {
-            .keys = {
-                {"text box", "A"}, {"text box, still", "A"}, {"still", "A"}, {"nothing", "A"}, {"party bar", "-"},
-                {"party bar, A prompt", "-"}
-            },
-            .verdict = "done", .end = "[PLZA scene] done on control.",
-        },
-    },
-    {
         .name = "03.01 lobby_scene, German, A on the text as Alton's choice opens (B in flight picked his cancel row, 2026-11-17 00:12)",
         .input = {.checkpoint = "03.01", .step = "lobby_scene", .screens = LOBBY_ALTON_DE},
         .expectation = {
             .keys = {
                 {"text box", "A"}, {"text box, advance arrow", "A"}, {"text box, choice box, 2 rows, row 0", "A"},
                 {"nothing", "A"}, {"still", "A"}, {"black fade", "-"}, {"party bar", "-"}
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+        },
+    },
+    {
+        //  03.01 on console B 2026-11-19: Taunie asks one 2-row question after
+        //  another; B on the next one (taken for the last one back) made her ask
+        //  again, B each time, for minutes.
+        .name = "03.01 lobby_scene, a 2-row choice, text, another 2-row choice: A on both",
+        .input = {.checkpoint = "03.01", .step = "lobby_scene", .screens = R"(
+0.0s: text box, advance arrow
+0.4s: text box, choice box, 2 rows, row 0
+0.8s: nothing
+1.2s: text box, advance arrow
+1.6s: nothing
+2.0s: text box, choice box, 2 rows, row 0
+2.4s: nothing
+5.0s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"}, {"text box, choice box, 2 rows, row 0", "A"}, {"nothing", "A"},
+                {"party bar", "-"}
             },
             .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
         },
@@ -766,16 +770,6 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        .name = "03.06 out_of_pokemon_center, a timed walk, no end event (passed 2026-11-17 14:27)",
-        .input = {.checkpoint = "03.06", .step = "out_of_pokemon_center", .screens = R"(
-0.0s: party bar
-)"},
-        .expectation = {
-            .keys = {{"party bar", "L or stick or hold"}},
-            .verdict = "done", .end = "[PLZA] walk: legs done, screen now: player can move",
-        },
-    },
-    {
         .name = "03.11 to_mable, a walk to her dialog that a black fade ends (passed 2026-11-17 14:36)",
         .input = {.checkpoint = "03.11", .step = "to_mable", .screens = R"(
 0.0s: party bar
@@ -829,30 +823,6 @@ const GoldenCase GOLDEN_CASES[] = {
             .verdict = "failed: battle_never_started",
             .end = "[Event] 03.02b/1 battle_tepig: failed: battle_never_started: no battle HUD and no move symbols under ZL "
                 "within 10 s",
-        },
-    },
-    {
-        //  heal_party's screens start where the talk hands over (3.5 s).
-        .name = "03.05 whole checkpoint: the walk to the nurse, the talk, her heal to control (passed 2026-11-17 14:27)",
-        .input = {.checkpoint = "03.05", .step = "", .screens = R"(
-0.0s: party bar
-2.6s: party bar, A prompt
-3.5s: text box, still
-3.9s: text box
-4.7s: text box, advance arrow
-5.1s: text box
-6.0s: nothing
-6.5s: text box, advance arrow
-6.9s: nothing
-7.9s: party bar
-8.4s: party bar, A prompt
-)"},
-        .expectation = {
-            .keys = {
-                {"party bar", "L or stick"}, {"party bar, A prompt", "A"}, {"text box", "A"}, {"text box, still", "-"},
-                {"text box, advance arrow", "A"}, {"nothing", "A"}
-            },
-            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
