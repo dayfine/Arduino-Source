@@ -7,6 +7,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <utility>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "VideoGames/PokemonLZA/PokemonLZA_Settings.h"
@@ -45,7 +46,7 @@ std::optional<Pokemon::StoryFailure> reload_latest_save(StoryEnv& env){
 } // namespace
 
 
-PlzaConsoleHooks plza_console_hooks(StoryEnv& env, AutosaveSightings& sightings, double starter_turn){
+PlzaConsoleHooks plza_console_hooks(StoryEnv& env, AutosaveSightings& sightings, std::optional<StoryMove> starter_move){
     return PlzaConsoleHooks{
         .console = plza_console_actions(env),
         .arrow = minimap_arrow(env),
@@ -59,7 +60,7 @@ PlzaConsoleHooks plza_console_hooks(StoryEnv& env, AutosaveSightings& sightings,
             return std::nullopt;
         },
         .sightings = &sightings,
-        .starter_turn = starter_turn,
+        .starter_move = std::move(starter_move),
     };
 }
 

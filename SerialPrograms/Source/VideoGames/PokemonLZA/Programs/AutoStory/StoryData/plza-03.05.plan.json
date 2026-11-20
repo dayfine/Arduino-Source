@@ -11,17 +11,12 @@
     "events": [
       {
         "id": "back_to_nurse",
-        "why": "guess: these legs are from inside the Center and do not reach the nurse from outside. not planned: no tile grid in Lumiose",
+        "why": "guess: these legs are from inside the Center and do not reach the nurse from outside; A on her \"A Talk\". not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[90, 3000]],
-          "end": "prompt"
+          "end": "talk"
         }
-      },
-      {
-        "id": "talk_to_nurse",
-        "action": "talk",
-        "why": "A at the nurse"
       },
       {
         "id": "heal_party",

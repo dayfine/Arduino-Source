@@ -32,17 +32,12 @@
       },
       {
         "id": "to_taunie",
-        "why": "on through the arch to Taunie's \"A Talk\". not planned: no tile grid in Lumiose",
+        "why": "on through the arch to Taunie's \"A Talk\", A on it. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[0, 8000]],
-          "end": "prompt"
+          "end": "talk"
         }
-      },
-      {
-        "id": "talk_to_taunie",
-        "action": "talk",
-        "why": "A at Taunie"
       },
       {
         "id": "taunie_battle_start",

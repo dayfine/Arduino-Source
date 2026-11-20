@@ -44,6 +44,19 @@ std::optional<Pokemon::StoryFailure> walk_until(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, std::optional<ScreenEvent> end, Milliseconds end_after
 );
 
+//  Walks `move` into a talk: A on any look of an A prompt during or up to
+//  1 s after the last leg (a prompt at the edge of reach shows on single
+//  looks, 01.03 on console B 2026-11-19), and again while it stays with
+//  nothing open; walks on when the prompt goes with nothing started. A
+//  straight one-leg walk with the prompt already up does not walk. Done
+//  once a scene is under way; nothing is pressed with no prompt up. Fails
+//  as "walk_no_end" when no talk starts, "talk_no_scene" when the prompt
+//  stays through the As.
+//  `after_legs`: A only once the legs are done, for a walk measured to end
+//  facing its target past other prompts: in 01.03 a prompt mid-walk was
+//  Taunie's, and A on it took her line, not Tepig's (console B, 2026-11-19).
+std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::string_view walk, const StoryMove& move, bool after_legs);
+
 //  A walk to an A prompt can stop beside its target at run pace (03.03b's
 //  ladder, 2026-11-19). Steps sideways, left first,
 //  then back past the start to the right, facing `facing_degrees` from the

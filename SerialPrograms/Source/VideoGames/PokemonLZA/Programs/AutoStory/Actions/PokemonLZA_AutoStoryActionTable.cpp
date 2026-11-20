@@ -44,6 +44,10 @@ constexpr std::string_view CONSOLE_ONLY = "console_only";
 //  A walk "end" that holds the last leg until a scene takes control.
 constexpr std::string_view WALK_UNTIL_SCENE = "scene";
 
+//  A walk "end" that presses A on the first look of an A prompt and ends
+//  once the talk starts (walk_into_talk()).
+constexpr std::string_view WALK_INTO_TALK = "talk";
+
 //  The other walk "end"s: held until this event.
 constexpr std::pair<std::string_view, ScreenEvent> WALK_ENDS[] = {
     {"fade_white", ScreenEvent::FADE_WHITE},
@@ -109,8 +113,10 @@ struct WalkArgs{
     std::optional<std::optional<ScreenEvent>> end = std::nullopt;
     Milliseconds end_after = 0ms;
     std::optional<double> heading = std::nullopt;
-    //  The first leg turns toward the chosen starter.
-    bool turn_to_starter = false;
+    //  "end": "talk": the walk starts the talk at the prompt it reaches.
+    bool into_talk = false;
+    //  The chosen starter's walk replaces the legs, if it has one.
+    bool to_starter = false;
 };
 
 //  [[turn degrees, walk ms], ...]
@@ -127,12 +133,12 @@ std::vector<StoryWalkLeg> read_legs(const JsonArray& rows){
 }
 
 WalkArgs read_walk_args(const JsonObject& args){
-    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading", "turn_to_starter"});
+    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading", "to_starter"});
     WalkArgs walk;
     walk.move.legs = read_legs(args.get_array_throw("legs"));
-    walk.turn_to_starter = flag(args, "turn_to_starter");
-    if (walk.turn_to_starter && walk.move.legs.empty()){
-        throw ParseException("\"turn_to_starter\" needs a leg to turn");
+    walk.to_starter = flag(args, "to_starter");
+    if (walk.to_starter && walk.move.legs.empty()){
+        throw ParseException("\"to_starter\" needs the legs of the starter with no walk of its own");
     }
     if (flag(args, "held")){
         walk.move.style = StoryWalkStyle::HELD;
@@ -141,14 +147,17 @@ WalkArgs read_walk_args(const JsonObject& args){
     if (const JsonValue* end = args.get_value("end")){
         const std::string& word = end->to_string_throw();
         const std::optional<ScreenEvent> event = walk_end_event(word);
-        if (word != WALK_UNTIL_SCENE && !event){
-            throw ParseException("\"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\"");
+        walk.into_talk = word == WALK_INTO_TALK;
+        if (word != WALK_UNTIL_SCENE && !walk.into_talk && !event){
+            throw ParseException("\"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\", \"talk\" or \"scene\"");
         }
-        walk.end = event;
+        if (!walk.into_talk){
+            walk.end = event;
+        }
     }
     if (const std::optional<Milliseconds> end_after = optional_ms(args, "end_after_ms")){
         if (!walk.end){
-            throw ParseException("\"end_after_ms\" needs an \"end\"");
+            throw ParseException("\"end_after_ms\" needs an \"end\" other than \"talk\"");
         }
         walk.end_after = *end_after;
     }
@@ -158,10 +167,12 @@ WalkArgs read_walk_args(const JsonObject& args){
     return walk;
 }
 
-//  With "turn_to_starter", the first leg turns to hooks.starter_turn.
+//  With "to_starter", hooks.starter_move replaces the legs.
 WalkArgs aimed_at_starter(PlzaConsoleHooks& hooks, WalkArgs walk){
-    if (walk.turn_to_starter){
-        walk.move.legs.front().turn = hooks.starter_turn;
+    if (walk.to_starter && hooks.starter_move){
+        const Milliseconds wait_first = walk.move.wait_first;
+        walk.move = *hooks.starter_move;
+        walk.move.wait_first = wait_first;
     }
     return walk;
 }
@@ -182,6 +193,9 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
             return faced;
         }
     }
+    if (walk.into_talk){
+        return walk_into_talk(backend, name, walk.move, /*after_legs=*/walk.to_starter);
+    }
     if (walk.end){
         return walk_until(backend, name, walk.move, *walk.end, walk.end_after);
     }
@@ -193,44 +207,26 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
 }
 
 
-//  01.01's arrival takes ~240 s, hence 360 s. No blind A: one at the end of
-//  a talk restarts it.
+//  01.01's arrival takes ~240 s, hence 360 s. "press_a_first": A on the
+//  prompt the walk ended at, to start the talk.
 Pokemon::StoryActionParser move_hints_action(){
     return [](const JsonObject& args) -> StoryStepRun{
-        reject_unknown_keys(args, {
-            "min_length_ms", "quiet_ms", "press_a_first", "quiet_is_control", "end_after_black_fades",
-            "gap_press_ms", "advance_with_a",
-        });
-        SceneMachineConfig config;
-        config.quiet = ms_or(args, "quiet_ms", 60s);
-        config.quiet_is_control = flag(args, "quiet_is_control");
-        config.min_length = ms_or(args, "min_length_ms", 0ms);
-        if (flag(args, "advance_with_a")){
-            config.text_button = BUTTON_A;
-        }
-        if (const std::optional<Milliseconds> gap = optional_ms(args, "gap_press_ms")){
-            config.gap_press = *gap;
-        }
-        if (const JsonValue* fades = args.get_value("end_after_black_fades")){
-            config.end_after_black_fades = (size_t)fades->to_integer_throw();
-        }
-        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
+        reject_unknown_keys(args, {"press_a_first"});
+        return [press_a_first = flag(args, "press_a_first")](PlzaBackend& backend, RunState& state){
             if (press_a_first){
                 press_through_prompt(backend);
             }
-            return run_scene_machine(backend, "mash_to_move_hints", config, 360s, state.step);
+            return run_scene_machine(backend, "mash_to_move_hints", SceneMachineConfig{}, /*timeout=*/360s, state.step);
         };
     };
 }
 
-//  B, not A: an A as the text ends could land on the choice. 01.02's Pancham
-//  scene takes ~60 s, hence 120 s.
+//  01.02's Pancham scene takes ~60 s, hence 120 s. "advance_with_a": A on
+//  the text, where B closes the talk and the step after takes the top row.
 Pokemon::StoryActionParser text_to_choice_action(){
     return [](const JsonObject& args) -> StoryStepRun{
         reject_unknown_keys(args, {"advance_with_a"});
-        SceneMachineConfig config;
-        config.stop_at_choice = true;
-        config.text_button = flag(args, "advance_with_a") ? BUTTON_A : BUTTON_B;
+        const SceneMachineConfig config{.stop_at_choice = true, .text_a_to_choice = flag(args, "advance_with_a")};
         return [config](PlzaBackend& backend, RunState& state){
             return run_scene_machine(backend, "text_to_choice", config, /*timeout=*/120s, state.step);
         };
@@ -238,22 +234,16 @@ Pokemon::StoryActionParser text_to_choice_action(){
 }
 
 
-//  B through the text (B cannot talk again once it ends). Fails as
-//  "scene_never_started" when the HUD shows 45 s with nothing else: the
-//  player is not at the scene's trigger.
+//  Fails as "scene_never_started" when the HUD shows 45 s with nothing
+//  else: the player is not at the scene's trigger.
 std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
-    SceneMachineConfig config;
-    config.start_window = 45s;
+    const SceneMachineConfig config{.start_window = 45s};
     return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
 }
 
-//  B on every other look closes the menus a talk opens (Mable's mission and
-//  reward screens), which mash_to_move_hints sits on.
+//  B, not A: it closes the menus a talk opens (Mable's mission and reward screens).
 std::optional<StoryFailure> mash_scene_step(PlzaBackend& backend, RunState& state){
-    SceneMachineConfig config;
-    config.blind_press_after = 0ms;
-    config.blind_press_every = 0ms;
-    config.blind_button = BUTTON_B;
+    const SceneMachineConfig config{.button = BUTTON_B};
     return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
 }
 
@@ -304,13 +294,10 @@ std::optional<StoryFailure> battle_step(PlzaConsoleHooks& hooks, PlzaBackend& ba
 }
 
 
-//  Blind B: no detector reads the Pokedex screens yet, and only B closes
-//  them (A plays the entry's motions).
+//  B: no detector reads the Pokedex screens yet, and only B closes them
+//  (A plays the entry's motions).
 std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState& state){
-    SceneMachineConfig config;
-    config.text_button = BUTTON_B;
-    config.blind_press_after = 0ms;
-    config.blind_button = BUTTON_B;
+    const SceneMachineConfig config{.button = BUTTON_B};
     return run_scene_machine(backend, "talk_to_pokedex_screen", config, /*timeout=*/90s, state.step);
 }
 
@@ -340,9 +327,7 @@ StoryActionParser walk_action(PlzaConsoleHooks& hooks){
 }
 
 std::optional<StoryFailure> story_battle_start_step(PlzaConsoleHooks& hooks, PlzaBackend& backend, RunState& state){
-    SceneMachineConfig config;
-    config.stop_at_battle = true;
-    config.lock_on = hooks.lock_on;
+    const SceneMachineConfig config{.stop_at_battle = true, .lock_on = hooks.lock_on};
     return run_scene_machine(backend, "story_battle_start", config, /*timeout=*/90s, state.step);
 }
 
