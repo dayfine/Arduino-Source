@@ -13,7 +13,8 @@
         "why": "to the chosen starter's \"A Talk\" prompt and A on it; the legs are Chikorita's; the Starter option's own walk replaces them. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
-          "legs": [[-70, 1500]],
+          "legs": [[-66, 600]],
+          "held": true,
           "end": "talk",
           "to_starter": true
         }
