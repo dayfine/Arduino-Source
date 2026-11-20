@@ -9,7 +9,6 @@
 #include <string>
 #include <utility>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_ScreenObservation.h"
 #include "Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Pokemon_StoryBackend_Tests.h"
@@ -36,10 +35,6 @@ struct BackendCase{
     Expectation expectation = {};
 };
 
-std::string observation_text(ScreenEvents events){
-    return std::format("{}", screen_observation(events).events);
-}
-
 //  The scripted backend's inputs and looks.
 std::string fake_text(CancellableScope& scope){
     ScreenObservation fade;
@@ -61,18 +56,6 @@ std::string fake_text(CancellableScope& scope){
 }
 
 const BackendCase CASES[] = {
-    {
-        .name = "a look keeps the engine's events",
-        .input = {.read = [](CancellableScope&){
-            return observation_text({ScreenEvent::FADE_WHITE, ScreenEvent::LOCATION_BANNER, ScreenEvent::SWITCH_HOME_MENU});
-        }},
-        .expectation = {.text = "white fade"},
-    },
-    {
-        .name = "a choice box in a look is also a dialog box",
-        .input = {.read = [](CancellableScope&){ return observation_text({ScreenEvent::CHOICE_BOX}); }},
-        .expectation = {.text = "dialog box, choice box"},
-    },
     {
         .name = "the scripted backend records inputs and repeats its last look",
         .input = {.read = fake_text},

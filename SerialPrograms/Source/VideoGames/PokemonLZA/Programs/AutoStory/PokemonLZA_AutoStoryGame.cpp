@@ -42,7 +42,7 @@ void log_start_boundary(PlzaBackend& backend, std::string_view id, std::string_v
 
 
 Pokemon::StoryGame plza_story_game(const MarkedCheckpoints& marked, AutosaveSightings& sightings){
-    return Pokemon::StoryGame{.id = "plza", .save = autosave_policy(marked, sightings)};
+    return Pokemon::StoryGame{.save = autosave_policy(marked, sightings)};
 }
 
 std::optional<Pokemon::StoryFailure> load_checkpoint_start(Pokemon::StoryGame& game, PlzaBackend& backend, const Pokemon::StoryCheckpoint& checkpoint){
@@ -198,7 +198,6 @@ std::optional<Pokemon::CheckpointFailure> run_plza_checkpoints(
         }
         sightings.restart();
         Pokemon::StoryGame retry{
-            .id = game.id,
             .save = [&game](PlzaBackend& on, const Pokemon::StoryCheckpoint& passed) -> std::optional<Pokemon::StoryFailure>{
                 return game.save ? game.save(on, passed) : std::nullopt;
             },

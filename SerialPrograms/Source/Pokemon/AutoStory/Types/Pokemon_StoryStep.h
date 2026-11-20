@@ -26,7 +26,6 @@ namespace Pokemon{
 
 //  What a run knows; a reload empties it.
 struct RunState{
-    std::set<std::string> flags = {};
     //  The step under way, "<checkpoint>/<step>", for its log lines.
     std::string step = {};
     //  The actions of the checkpoint's steps after the one under way.

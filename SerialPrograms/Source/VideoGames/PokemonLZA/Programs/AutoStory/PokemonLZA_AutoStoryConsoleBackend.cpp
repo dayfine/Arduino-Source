@@ -16,7 +16,6 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Programs/NintendoSwitch_GameEntry.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h"
 #include "VideoGames/PokemonLZA/PokemonLZA_Settings.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
@@ -93,7 +92,10 @@ ScreenObservation PlzaConsoleBackend::observe(){
     if (frame && m_home.detect(*frame.frame)){
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
-        look = Pokemon::screen_observation(m_observer.read(*frame.frame));
+        look.events = m_observer.read(*frame.frame);
+        if (look.events.has(ScreenEvent::CHOICE_BOX)){
+            look.events.set(ScreenEvent::DIALOG_BOX, true);
+        }
         if (m_autosave.detect(*frame.frame)){
             look.readings[std::string(AUTOSAVE_READING)] = 1;
         }
