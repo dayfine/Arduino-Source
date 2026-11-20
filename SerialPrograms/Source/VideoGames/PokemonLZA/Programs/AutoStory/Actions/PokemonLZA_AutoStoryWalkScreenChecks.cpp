@@ -433,10 +433,6 @@ std::optional<Pokemon::StoryFailure> walk_until(
 std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::string_view walk, const StoryMove& move){
     const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
     bool prompt_first = ends_before_walking(backend, walk, move, ScreenEvent::INTERACT_PROMPT, /*end_after=*/0ms);
-    //  A prompt up as the walk starts is what it walks away from: 01.03's
-    //  start shows Taunie's, still up after the first leg to Tepig, and A on
-    //  it took her line (console B, 2026-11-19 17:04). A waits until it goes.
-    bool start_prompt = !prompt_first && backend.observe().events.has(ScreenEvent::INTERACT_PROMPT);
     if (!prompt_first){
         if (std::optional<Pokemon::StoryFailure> walked = run_story_move_but_last_walk(backend, move)){
             return walked;
@@ -460,8 +456,7 @@ std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::s
             }
         }
         prompt_first = false;
-        start_prompt = start_prompt && prompt;
-        if (!prompt || start_prompt){
+        if (!prompt){
             if (!walking){
                 backend.wait(TALK_POLL);
                 tail += TALK_POLL;
