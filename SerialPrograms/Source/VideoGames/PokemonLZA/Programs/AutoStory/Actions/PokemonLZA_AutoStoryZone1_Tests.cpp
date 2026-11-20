@@ -65,8 +65,8 @@ struct ExitCase{
     };
     Input input;
     struct Expectation{
-        //  One run at the gate, no waypoint first.
-        bool straight = false;
+        //  The point run to before the gate; none: one run at the gate.
+        std::optional<MapPoint> waypoint;
     };
     Expectation expectation;
 };
@@ -76,13 +76,19 @@ const ExitCase EXIT_CASES[] = {
         //  console B, 2026-11-19 22:47:41: the run from here reached the A prompt.
         .name = "on the gate's line: one straight run",
         .input = {.start = {.x = 379, .y = 250}},
-        .expectation = {.straight = true},
+        .expectation = {.waypoint = std::nullopt},
     },
     {
-        //  console B, 2026-11-19 22:47:04: 03.08b's start after the last catch.
-        .name = "by the 60 spot, north of the gate's line: onto the line first",
-        .input = {.start = {.x = 377, .y = 246}},
-        .expectation = {.straight = false},
+        //  console B, 2026-11-19 23:40: 03.08b's start after the last catch;
+        //  the run to (386, 252) first went 11 east, then back west past it.
+        .name = "by the 60 spot, north of the gate's line: straight south onto the line",
+        .input = {.start = {.x = 375, .y = 245}},
+        .expectation = {.waypoint = MapPoint{.x = 375, .y = 252}},
+    },
+    {
+        .name = "west of the gate: onto the line east of the gate",
+        .input = {.start = {.x = 340, .y = 240}},
+        .expectation = {.waypoint = MapPoint{.x = 386, .y = 252}},
     },
 };
 
@@ -93,8 +99,15 @@ constexpr double GATE_HEADING_TOLERANCE = 10;
 
 UnitTestResult check_exit(const ExitCase& test){
     const std::vector<MapPoint> legs = zone_1_exit_legs(test.input.start);
-    if (legs.empty() || (legs.size() == 1) != test.expectation.straight){
-        return std::format("Expected {}, got {} legs.", test.expectation.straight ? "a straight run" : "a waypoint first", legs.size());
+    const std::optional<MapPoint> waypoint = legs.size() == 2 ? std::optional<MapPoint>(legs.front()) : std::nullopt;
+    const auto same = [](std::optional<MapPoint> a, std::optional<MapPoint> b){
+        return a.has_value() == b.has_value() && (!a || (a->x == b->x && a->y == b->y));
+    };
+    if (legs.empty() || legs.size() > 2 || !same(waypoint, test.expectation.waypoint)){
+        const auto shown = [](std::optional<MapPoint> point){
+            return point ? std::format("({:.0f}, {:.0f}) first", point->x, point->y) : std::string("a straight run");
+        };
+        return std::format("Expected {}, got {} in {} legs.", shown(test.expectation.waypoint), shown(waypoint), legs.size());
     }
     const double heading = bearing(legs.size() == 1 ? test.input.start : legs[legs.size() - 2], legs.back());
     if (std::abs(heading - GATE_HEADING) > GATE_HEADING_TOLERANCE){

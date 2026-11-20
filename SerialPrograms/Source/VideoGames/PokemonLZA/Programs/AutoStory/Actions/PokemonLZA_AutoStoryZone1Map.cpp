@@ -64,8 +64,9 @@ constexpr double GATE_HEADING_TOLERANCE = 8;
 //  left pillar.
 constexpr MapPoint ZONE1_FAR_GATE{.x = 361, .y = 252};
 
-//  On the gate's line ~25 pixels east of the gate, below the 60 spot: a
-//  15 pixel run-up after a 90 degree turn ended on the left pillar.
+//  On the gate's line ~25 pixels east of the gate, below the 60 spot: the
+//  way onto the line when the point straight north or south of the player
+//  is not in the zone east of the gate.
 constexpr MapPoint ZONE1_GATE_RUN_UP{.x = 386, .y = 252};
 
 bool at_map_centre(MapPoint pin){
@@ -102,6 +103,10 @@ bool pin_in_zone_1(MapPoint pin){
 std::vector<MapPoint> zone_1_exit_legs(MapPoint start){
     if (start.x > ZONE1_FAR_GATE.x && std::abs(bearing(start, ZONE1_FAR_GATE) - GATE_HEADING) <= GATE_HEADING_TOLERANCE){
         return {ZONE1_FAR_GATE};
+    }
+    const MapPoint onto_line{.x = start.x, .y = ZONE1_FAR_GATE.y};
+    if (start.x > ZONE1_FAR_GATE.x && inside(ZONE1_OUTLINE, onto_line)){
+        return {onto_line, ZONE1_FAR_GATE};
     }
     return {ZONE1_GATE_RUN_UP, ZONE1_FAR_GATE};
 }

@@ -57,7 +57,8 @@ std::optional<MapWaypoint> catch_spot_waypoint(int spot);
 //  The run out from `start`, the one pin read before it: the far gate's pin
 //  last (run at until its A prompt), and before it a point on the gate's
 //  line when a run from `start` would not come in along that line (west
-//  down the road). Runs in off the line hit a pillar.
+//  down the road): straight north or south of `start` when that is in the
+//  zone east of the gate. Runs in off the line hit a pillar.
 std::vector<MapPoint> zone_1_exit_legs(MapPoint start);
 
 
