@@ -257,21 +257,16 @@ OpeningOutcome skip_opening_to_autosave(PlzaBackend& backend, Milliseconds timeo
 
 
 std::optional<StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds timeout){
-    SignalProbe signals;
     const Pokemon::WaitOutcome outcome = Pokemon::wait_for(
         backend,
         PLATFORM_HINT,
-        Pokemon::WaitRule{.poll = PLATFORM_POLL, .timeout = timeout, .confirm_looks = PLATFORM_LOOKS},
-        [&](const ScreenObservation& look){
-            signals.look(look);
-        }
+        Pokemon::WaitRule{.poll = PLATFORM_POLL, .timeout = timeout, .confirm_looks = PLATFORM_LOOKS}
     );
     if (const auto* failure = std::get_if<StoryFailure>(&outcome)){
         return *failure;
     }
     if (const auto* matched = std::get_if<Pokemon::WaitMatched>(&outcome)){
         backend.log(std::format("[PLZA] platform wait: on the platform after {} looks", matched->looks));
-        backend.log_detail(signals.line("wait_for_platform", "platform", /*by=*/"hint"));
         return std::nullopt;
     }
     return StoryFailure{.code = "platform_not_seen", .detail = std::format(
@@ -329,28 +324,20 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
 
 namespace{
 
-//  The party bar or a text box on `look`, logged as the exit's "[Signals]" line.
-bool out_of_menu(const ScreenObservation& look, PlzaBackend& backend, SignalProbe& signals){
-    signals.look(look);
-    const bool party_bar = look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-    if (!party_bar && !look.events.has(ScreenEvent::DIALOG_BOX)){
-        return false;
-    }
-    backend.log_detail(signals.line("press_b_out_of_menu", "menu_exit", party_bar ? "party_bar" : "dialog_box"));
-    return true;
+bool out_of_menu(const ScreenObservation& look){
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.events.has(ScreenEvent::DIALOG_BOX);
 }
 
 } // namespace
 
 bool press_b_out_of_menu(PlzaBackend& backend, size_t presses){
-    SignalProbe signals;
     for (size_t pressed = 0; pressed < presses; pressed++){
         backend.scope().throw_if_cancelled();
         const ScreenObservation look = backend.observe();
         if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
             return false;
         }
-        if (out_of_menu(look, backend, signals)){
+        if (out_of_menu(look)){
             return true;
         }
         backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
@@ -359,7 +346,7 @@ bool press_b_out_of_menu(PlzaBackend& backend, size_t presses){
     if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
         return false;
     }
-    return out_of_menu(look, backend, signals);
+    return out_of_menu(look);
 }
 
 

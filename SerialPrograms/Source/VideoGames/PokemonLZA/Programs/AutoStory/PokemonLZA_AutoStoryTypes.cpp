@@ -18,7 +18,6 @@ std::string_view action_name(PlzaAction action){
         {PlzaAction::OPENING_TO_PLATFORM, "opening_to_platform"},
         {PlzaAction::WALK, "walk"},
         {PlzaAction::TALK_THROUGH_MAP_SCREEN, "talk_through_map_screen"},
-        {PlzaAction::TALK_TO_POKEDEX_SCREEN, "talk_to_pokedex_screen"},
         {PlzaAction::CLIMB_LADDER, "climb_ladder"},
         {PlzaAction::CHOOSE_0, "choose_0"},
         {PlzaAction::CHOOSE_1, "choose_1"},
@@ -35,7 +34,6 @@ std::string_view action_name(PlzaAction action){
         {PlzaAction::BATTLE_THEN_CATCH, "battle_then_catch"},
         {PlzaAction::CATCH_IN_ZONE, "catch_in_zone"},
         {PlzaAction::CHECK_OUT_OF_ZONE_1, "check_out_of_zone_1"},
-        {PlzaAction::WALK_TO_UNREAD_MARKER, "walk_to_unread_marker"},
         {PlzaAction::CLAIM_MABLE_RESEARCH_REWARD, "claim_mable_research_reward"},
     };
     return names.get_string(action);

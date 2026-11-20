@@ -8,7 +8,6 @@
 #include <format>
 #include <span>
 #include <string>
-#include <cstdlib>
 #include "PokemonLZA_AutoStoryMapLegs.h"
 #include "PokemonLZA_AutoStoryZone1.h"
 
@@ -20,11 +19,11 @@ namespace{
 
 //  Sidewalk by the blue kiosk between 100 and 60 (Weedle / Pichu lawn);
 //  inside the Wild Zone 1 pentagon, clear of its red reticle ring (509 px).
-constexpr MapWaypoint ZONE1_SPOT_80{.name = "the 80 spot", .pin = {.x = 406, .y = 231}, .provisional = false, .stop_radius = CATCH_STOP_RADIUS};
+constexpr MapWaypoint ZONE1_SPOT_80{.name = "the 80 spot", .pin = {.x = 406, .y = 231}, .stop_radius = CATCH_STOP_RADIUS};
 
 //  Mareep's grass right of the road (marker 60); nudged south onto the road
 //  clear of the Wild Zone 1 badge's red reticle ring at (386, 246).
-constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 251}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 251}, .stop_radius = CATCH_STOP_RADIUS};
 
 } // namespace
 
@@ -154,40 +153,12 @@ std::vector<int> alternating_stops(std::span<const int> spots, size_t visits){
 }
 
 
-namespace{
-
-//  The search spot as the objective marker's distance: the plaza by the green advertising column.
-constexpr int ZONE_SPOT_DISTANCE = 100;
-//  The search's legs are a few steps either way along the road.
-constexpr int ZONE_SPOT_SLACK = 10;
-
-//  Whether an agreed distance read is at the search spot.
-bool at_zone_spot(std::optional<int> distance){
-    return distance && std::abs(*distance - ZONE_SPOT_DISTANCE) <= ZONE_SPOT_SLACK;
-}
-
-} // namespace
-
-ZoneStartMove ZoneStart::leave(std::optional<MapPoint> start_pin, std::optional<int> distance){
-    if (!start_pin){
-        return next(distance);
+bool at_zone_start(std::optional<MapPoint> pin, const ZoneStartRoute& route){
+    if (!pin){
+        return false;
     }
-    const MapPoint start = m_route.start.pin;
-    const bool at_start = std::hypot(start_pin->x - start.x, start_pin->y - start.y) <= m_route.start_radius;
-    m_last = at_start ? ZoneStartMove::WALK_TO_SPOT : ZoneStartMove::ROCKS_NOT_LEFT;
-    return *m_last;
-}
-
-ZoneStartMove ZoneStart::next(std::optional<int> distance){
-    if (!m_last){
-        const bool in_range = distance && *distance >= m_route.leg_read_min && *distance <= m_route.leg_read_max;
-        m_last = in_range ? ZoneStartMove::WALK_TO_SPOT : ZoneStartMove::ROCKS_NOT_LEFT;
-    }else if (*m_last == ZoneStartMove::WALK_TO_SPOT){
-        //  No read passes: the walk lands at 101 to 105, where the digits over
-        //  the green column often misread.
-        m_last = !distance || at_zone_spot(distance) ? ZoneStartMove::SEARCH : ZoneStartMove::SPOT_NOT_REACHED;
-    }
-    return *m_last;
+    const MapPoint start = route.start.pin;
+    return std::hypot(pin->x - start.x, pin->y - start.y) <= route.start_radius;
 }
 
 

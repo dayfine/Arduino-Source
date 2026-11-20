@@ -14,7 +14,6 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryMenuSave.h"
 
 namespace PokemonAutomation{
@@ -177,7 +176,6 @@ void press_text_speed_rows(PlzaBackend& backend){
 
 //  B until the overworld holds; B on the overworld does nothing.
 std::optional<Pokemon::StoryFailure> back_to_overworld(PlzaBackend& backend){
-    SignalProbe signals;
     const Pokemon::WaitOutcome outcome = Pokemon::poll_until(
         backend,
         [](const ScreenObservation& look){
@@ -190,9 +188,6 @@ std::optional<Pokemon::StoryFailure> back_to_overworld(PlzaBackend& backend){
             }else{
                 backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
             }
-        },
-        [&](const ScreenObservation& look){
-            signals.look(look);
         }
     );
     if (const auto* failure = std::get_if<Pokemon::StoryFailure>(&outcome)){
@@ -200,8 +195,6 @@ std::optional<Pokemon::StoryFailure> back_to_overworld(PlzaBackend& backend){
     }
     if (const auto* matched = std::get_if<Pokemon::WaitMatched>(&outcome)){
         backend.log(std::format("[PLZA set_text_speed_fast] text speed set, back on the overworld at {:.1f}s", matched->elapsed.count() / 1000.0));
-        const bool party_bar = matched->look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-        backend.log_detail(signals.line("set_text_speed_fast", "text_speed_exit", party_bar ? "party_bar" : "hint"));
         return std::nullopt;
     }
     return Pokemon::StoryFailure{.code = "text_speed_timeout", .detail = std::format(

@@ -42,7 +42,8 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A. Prototype: from a new game to the end of Main Mission 01, picking Chikorita. "
+        "Play the main story of Pokemon Legends: Z-A from a new game through Main Mission 03 (checkpoints 01.00a through 03.11), "
+        "choosing the selected starter. "
         "Checkpoint 01.00a starts a new game (delete the save first) from the HOME screen (its tile among the first 8; a running game is closed) "
         "and makes the language, look and name below, up to Confirm Choices. 01.00b starts on Confirm Choices (made by the program or by hand), "
         "checks them and confirms. "

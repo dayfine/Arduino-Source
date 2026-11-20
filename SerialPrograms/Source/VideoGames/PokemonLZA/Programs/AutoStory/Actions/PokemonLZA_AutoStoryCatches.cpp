@@ -8,7 +8,6 @@
 #include <cmath>
 #include <format>
 #include <chrono>
-#include <iterator>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -26,7 +25,6 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryWorldWalks.h"
@@ -46,7 +44,7 @@ namespace{
 //  The road below the rocks. Going straight from the rocks to the 100 spot
 //  stops on an obstacle at about (467, 226) 3 runs in 5 (2026-11-18/19);
 //  through here the heading to the spot keeps south of it.
-constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 456, .y = 231}, .provisional = true};
+constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 456, .y = 231}};
 
 //  Via the road, past the rock on its right.
 constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_ROAD_ENTRY, ZONE1_SPOT_100};
@@ -160,9 +158,6 @@ std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBacken
 
 
 namespace{
-
-//  60 is just before the far gate; past it is the city.
-constexpr int ROAD_FLOOR = CATCH_SPOTS[std::size(CATCH_SPOTS) - 1] - ROAD_STOP_SLACK;
 
 constexpr Milliseconds PATROL_LIMIT(600000);
 constexpr size_t PATROL_VISITS = 10;
@@ -465,8 +460,6 @@ GrassCatches fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
     return out;
 }
 
-//  After a catch the map pin is logged: where the catch spots really are,
-//  for their waypoints.
 GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_throws){
     GrassCatches out;
     CameraPitch pitch;
@@ -509,10 +502,6 @@ GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_
     if (pitch.level_now()){
         level_camera(env);
     }
-    if (out.found > 0 && !wild_battle_on(env)){
-        backend.log(std::format("[PLZA] catch_in_zone: the map pin after the catch at {}", at));
-        read_pin_on_map(env, backend);
-    }
     return out;
 }
 
@@ -539,89 +528,29 @@ std::optional<int> read_party_slots(StoryEnv& env, PlzaBackend& backend){
     return slots;
 }
 
-bool face_marker(StoryEnv& env, PlzaBackend& backend){
-    for (int turns = 0; turns < 12; turns++){
-        backend.scope().throw_if_cancelled();
-        const ScreenObservation look = backend.observe();
-        std::optional<ObjectiveMarker> marker;
-        if (look.frame && *look.frame){
-            marker = read_objective_marker(env.env.console, *look.frame->frame);
-        }
-        if (!marker){
-            pbf_move_right_joystick(env.context, /*position=*/{0.5, 0}, /*hold=*/Milliseconds(500), /*release=*/Milliseconds(200));
-            continue;
-        }
-        const double off = marker->x - 0.5;
-        if (off > -0.06 && off < 0.06){
-            return true;
-        }
-        const Milliseconds turn((int)(std::min(1.0, std::abs(off) * 4) * 400) + 80);
-        pbf_move_right_joystick(env.context, /*position=*/{off > 0 ? 0.4 : -0.4, 0}, turn, /*release=*/Milliseconds(150));
-    }
-    return false;
-}
-
-std::optional<int> read_at_marker(StoryEnv& env, PlzaBackend& backend){
-    level_camera(env);
-    if (!face_marker(env, backend)){
-        backend.log("[PLZA] catch_in_zone: no objective marker found to read");
-        return std::nullopt;
-    }
-    //  The digits flicker over leaves and sky.
-    return read_marker_distance(env, backend, ROAD_FLOOR, /*looks=*/24);
-}
-
-std::string_view start_move_name(ZoneStartMove move){
-    switch (move){
-    case ZoneStartMove::WALK_TO_SPOT:
-        return "off the rocks: the marker walk to the spot";
-    case ZoneStartMove::SEARCH:
-        return "at the spot: the patrol";
-    case ZoneStartMove::ROCKS_NOT_LEFT:
-        return "not at the rocks by the pin (or, unread, by the read off them): stop";
-    case ZoneStartMove::SPOT_NOT_REACHED:
-        return "the marker walk ended off the spot: stop";
-    }
-    return "?";
-}
-
-//  Logged only: a cross-check of the map's waypoints.
-std::optional<int> cross_check_marker(StoryEnv& env, PlzaBackend& backend, const MapWaypoint& waypoint){
-    const std::optional<int> distance = read_at_marker(env, backend);
-    backend.log(std::format(
-        "[PLZA] map leg cross-check: at {} the marker reads {}",
-        waypoint.name, distance ? std::to_string(*distance) : std::string("nothing")
-    ));
-    return distance;
-}
-
-//  The pin decides whether the player started at the rocks; the marker read
-//  after the leg decides only when the pin did not read.
+//  The pin decides whether the player started at the rocks.
 std::optional<Pokemon::StoryFailure> go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const ZoneStartRoute& route){
     backend.log(std::format(
-        "[PLZA] catch_in_zone: at the start, {} is put at ({:.0f}, {:.0f}) on the map{}",
-        route.start.name, route.start.pin.x, route.start.pin.y, route.start.provisional ? " [provisional]" : ""
+        "[PLZA] catch_in_zone: at the start, {} is put at ({:.0f}, {:.0f}) on the map",
+        route.start.name, route.start.pin.x, route.start.pin.y
     ));
     const std::optional<MapPoint> start_pin = read_pin_on_map(env, backend);
+    const std::string pin_text = start_pin ? std::format("({:.0f}, {:.0f})", start_pin->x, start_pin->y) : std::string("not read");
+    if (!at_zone_start(start_pin, route)){
+        backend.log(std::format(
+            "[PLZA] catch_in_zone: pin at the start {}, not within {:.0f} of ({:.0f}, {:.0f}): stop",
+            pin_text, route.start_radius, route.start.pin.x, route.start.pin.y
+        ));
+        return Pokemon::StoryFailure{.code = "rocks_not_left", .detail = std::format(
+            "the pin at the start was {}, not within {:.0f} of ({:.0f}, {:.0f})",
+            pin_text, route.start_radius, route.start.pin.x, route.start.pin.y
+        )};
+    }
+    backend.log(std::format("[PLZA] catch_in_zone: pin at the start {}: off the rocks to the spot", pin_text));
     backend.press(BUTTON_L, /*hold=*/Milliseconds(100), /*release=*/Milliseconds(150));
     backend.observe();
     backend.log(std::format("[PLZA] catch_in_zone: at Taunie's rocks, the arrow reads {:.0f} deg", minimap_arrow(env)()));
     pbf_move_left_joystick(env.context, /*position=*/{route.leg_x, route.leg_y}, route.leg_hold, /*release=*/Milliseconds(300));
-    ZoneStart start(route);
-    const std::optional<int> distance = read_at_marker(env, backend);
-    const ZoneStartMove move = start.leave(start_pin, distance);
-    const std::string pin_text = start_pin ? std::format("({:.0f}, {:.0f})", start_pin->x, start_pin->y) : std::string("not read");
-    const std::string distance_text = distance ? std::to_string(*distance) : std::string("not read");
-    backend.log(std::format(
-        "[PLZA] catch_in_zone: pin at the start {}, distance off the rocks {} (expected {} to {}): {}",
-        pin_text, distance_text, route.leg_read_min, route.leg_read_max, start_move_name(move)
-    ));
-    if (move != ZoneStartMove::WALK_TO_SPOT){
-        return Pokemon::StoryFailure{.code = "rocks_not_left", .detail = std::format(
-            "the pin at the start was {}, not within {:.0f} of ({:.0f}, {:.0f}); the read off Taunie's rocks was {}, not {} to {}",
-            pin_text, route.start_radius, route.start.pin.x, route.start.pin.y, distance_text, route.leg_read_min, route.leg_read_max
-        )};
-    }
     return walk_map_legs(env, backend, ROCKS_TO_SPOT_100);
 }
 
@@ -663,15 +592,14 @@ Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal
                 break;
             }
         }
-        const std::optional<int> at = cross_check_marker(env, backend, *waypoint);
         if (spot_visit(stops[i], caught_at) == SpotVisit::TURN_BACK && !wild_battle_on(env)){
-            backend.log(std::format("[PLZA] catch_in_zone: stop {} of {} at {} (for {}): a new species was caught here: turning back", i + 1, stops.size(), at.value_or(-1), stops[i]));
+            backend.log(std::format("[PLZA] catch_in_zone: stop {} of {} at {}: a new species was caught here: turning back", i + 1, stops.size(), stops[i]));
             continue;
         }
-        const GrassCatches stop = catch_at_stop(env, backend, at.value_or(stops[i]), goal.max_throws - result.throws);
+        const GrassCatches stop = catch_at_stop(env, backend, stops[i], goal.max_throws - result.throws);
         backend.log(std::format(
-            "[PLZA] catch_in_zone: stop {} of {} at {} (for {}): {} throws, {} new species, {} locks on caught species only",
-            i + 1, stops.size(), at.value_or(-1), stops[i], stop.throws, stop.found, stop.caught_seen
+            "[PLZA] catch_in_zone: stop {} of {} at {}: {} throws, {} new species, {} locks on caught species only",
+            i + 1, stops.size(), stops[i], stop.throws, stop.found, stop.caught_seen
         ));
         result += stop;
         if (stop.found > 0){

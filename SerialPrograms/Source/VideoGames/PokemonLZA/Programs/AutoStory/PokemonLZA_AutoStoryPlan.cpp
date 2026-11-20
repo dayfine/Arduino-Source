@@ -67,7 +67,7 @@ LeadIn lead_in(const JsonValue& event){
 //  A scene that needs nothing to start plays inside such a step.
 bool plays_to_control(const LeadIn& step){
     return (step.action == action_name(PlzaAction::SCENE) && !step.stop_at_choice && !step.battle_start && !step.end_on_black_fade) ||
-        step.action == action_name(PlzaAction::TALK_TO_POKEDEX_SCREEN) || step.action == action_name(PlzaAction::TALK_THROUGH_MAP_SCREEN);
+        step.action == action_name(PlzaAction::TALK_THROUGH_MAP_SCREEN);
 }
 
 //  Throws ParseException naming `where` for an unknown field or a wrong value.
@@ -255,7 +255,7 @@ const std::vector<CheckpointStart>& builtin_checkpoint_starts(){
 bool builtin_start_reads_map(std::string_view asked){
     for (const Pokemon::StoryCheckpoint& checkpoint : builtin_story_data().checkpoints){
         const CheckpointStart* start = find_start(builtin_checkpoint_starts(), checkpoint.id);
-        if (start != nullptr && (start->signature.wild_zone || start->signature.minimap)){
+        if (start != nullptr && start->signature.wild_zone){
             return true;
         }
         if (checkpoint.id == asked){

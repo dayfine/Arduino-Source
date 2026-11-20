@@ -266,7 +266,7 @@ Pokemon::StoryActionParser scene_action(PlzaConsoleHooks& hooks){
                 press_through_prompt(backend);
             }
             const SceneMachineConfig run = battle_start ? config : ending_at_battle(config, state);
-            return run_scene_machine(backend, "scene", run, /*timeout=*/scene_timeout(config), state.step);
+            return run_scene_machine(backend, "scene", run, /*timeout=*/scene_timeout(config));
         };
     };
 }
@@ -384,14 +384,6 @@ std::optional<StoryFailure> battle_step(PlzaConsoleHooks& hooks, PlzaBackend& ba
 }
 
 
-//  B: no detector reads the Pokedex screens yet, and only B closes them
-//  (A plays the entry's motions).
-std::optional<StoryFailure> pokedex_step(PlzaBackend& backend, RunState& state){
-    const SceneMachineConfig config{.button = BUTTON_B};
-    return run_scene_machine(backend, "talk_to_pokedex_screen", ending_at_battle(config, state), /*timeout=*/90s, state.step);
-}
-
-
 //  A console action: the console's code when `hooks` has it, else
 //  CONSOLE_ONLY. `timeout`: the step's "timeout_ms" fallback; none: no args.
 StoryActionParser console_action(PlzaConsoleHooks& hooks, std::string_view name, std::optional<Milliseconds> timeout = std::nullopt){
@@ -441,7 +433,6 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::OPENING_TO_PLATFORM), platform_action(opening_to_platform, /*fallback=*/240s)},
         {action_name(PlzaAction::WALK), walk_action(hooks)},
         {action_name(PlzaAction::TALK_THROUGH_MAP_SCREEN), no_args([](PlzaBackend& backend, RunState&){ return talk_through_map_screen(backend); })},
-        {action_name(PlzaAction::TALK_TO_POKEDEX_SCREEN), no_args(pokedex_step)},
         {action_name(PlzaAction::CLIMB_LADDER), no_args([](PlzaBackend& backend, RunState&){ return climb_ladder(backend); })},
         {action_name(PlzaAction::CHOOSE_0), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 0); })},
         {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
@@ -467,7 +458,6 @@ void add_console_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::BATTLE_THEN_CATCH), console_action(hooks, action_name(PlzaAction::BATTLE_THEN_CATCH))},
         {action_name(PlzaAction::CATCH_IN_ZONE), console_action(hooks, action_name(PlzaAction::CATCH_IN_ZONE))},
         {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), console_action(hooks, action_name(PlzaAction::CHECK_OUT_OF_ZONE_1))},
-        {action_name(PlzaAction::WALK_TO_UNREAD_MARKER), console_action(hooks, action_name(PlzaAction::WALK_TO_UNREAD_MARKER))},
         {action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD), console_action(hooks, action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD))},
     };
     for (auto& [name, parser] : table){

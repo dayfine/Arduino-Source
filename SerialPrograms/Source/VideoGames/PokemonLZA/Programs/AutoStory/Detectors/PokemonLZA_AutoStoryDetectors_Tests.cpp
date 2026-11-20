@@ -44,7 +44,6 @@ struct DetectorReads{
     std::optional<bool> autosave = {};
     std::optional<bool> controls_hint = {};
     std::optional<bool> advance_arrow = {};
-    std::optional<bool> mission_banner = {};
     std::optional<bool> mission_complete = {};
     std::optional<bool> party_bar = {};
 };
@@ -57,7 +56,6 @@ const DetectorField DETECTOR_FIELDS[] = {
     {"autosave", &DetectorReads::autosave},
     {"controls hint", &DetectorReads::controls_hint},
     {"advance arrow", &DetectorReads::advance_arrow},
-    {"mission banner", &DetectorReads::mission_banner},
     {"mission complete", &DetectorReads::mission_complete},
     {"party bar", &DetectorReads::party_bar},
 };
@@ -95,7 +93,6 @@ struct StoryDetectors{
     AutosaveDetector autosave;
     ControlsHintDetector hint;
     AdvanceArrowDetector arrow;
-    MainMissionBannerDetector banner;
     MissionCompleteDetector complete;
     PartyBarDetector party_bar;
 
@@ -103,7 +100,7 @@ struct StoryDetectors{
         return DetectorReads{
             .autosave = autosave.detect(frame),
             .controls_hint = hint.detect(frame), .advance_arrow = arrow.detect(frame),
-            .mission_banner = banner.detect(frame), .mission_complete = complete.detect(frame),
+            .mission_complete = complete.detect(frame),
             .party_bar = party_bar.detect(frame),
         };
     }
@@ -213,7 +210,7 @@ DetectorReads as_named(std::string_view name){
     return DetectorReads{
         .autosave = has("+autosave"),
         .controls_hint = has("+controls_hint"), .advance_arrow = has("+advance_arrow"),
-        .mission_banner = has("+mission_banner"), .mission_complete = has("+mission_complete"),
+        .mission_complete = has("+mission_complete"),
     };
 }
 
@@ -246,16 +243,14 @@ std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
     };
 }
 
-//  As named; the mission banner on 0181 only.
+//  As named for controls_hint and advance_arrow.
 std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
-    const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
-    if (!index){
+    if (!frame_number(name, /*offset=*/0, /*digits=*/4)){
         return std::nullopt;
     }
     return DetectorReads{
         .controls_hint = name.find("+controls_hint") != std::string_view::npos,
         .advance_arrow = name.find("+advance_arrow") != std::string_view::npos,
-        .mission_banner = *index == 181,
     };
 }
 

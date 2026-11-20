@@ -148,9 +148,6 @@ public:
     {}
     virtual UnitTestResult run_on_images(Logger&, CancellableScope&, const std::vector<ImageRGB32>& images) const override{
         const ImageRGB32& frame = images[0];
-        if (!SystemKeyboardDetector().detect(frame)){
-            return std::string("The system keyboard was not detected.");
-        }
         const std::optional<SystemKeyboardKey> cursor = read_system_keyboard_cursor(frame);
         if (cursor != SystemKeyboardKey{.row = 0, .col = 0}){
             return std::format(
