@@ -331,6 +331,9 @@ public:
         if (in_trainer_line(step.next)){
             step.extra_cost += route_cost(m_costs, RouteCost::LINE_TILE);
         }
+        if (wander_object_at(m_maps[step.next.map], step.next.state.position) != nullptr){
+            step.extra_cost += route_cost(m_costs, RouteCost::WANDER_TILE);
+        }
         return step;
     }
     bool held_at(const State& state, Direction direction) const{

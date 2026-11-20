@@ -828,6 +828,9 @@ RouteCalls console_route_calls(
         const bool stepped = planning.pause != nullptr && !planning.pause->step_label().empty();
         return save_route_screenshot(console, stepped ? planning.pause->step_label() : planning.label, leg_text);
     };
+    calls.wait = [&context](Milliseconds duration){
+        context.wait_for(duration);
+    };
     return calls;
 }
 

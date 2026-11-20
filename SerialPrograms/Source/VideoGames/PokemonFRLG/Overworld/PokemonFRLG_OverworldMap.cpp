@@ -204,6 +204,27 @@ const MapObject* object_at(const MapData& map, const TilePos& point){
     return nullptr;
 }
 
+const MapObject* stationary_object_at(const MapData& map, const TilePos& point){
+    for (const MapObject& object : map.objects){
+        if (!object.wander && object.x == point.x && object.y == point.y){
+            return &object;
+        }
+    }
+    return nullptr;
+}
+
+const MapObject* wander_object_at(const MapData& map, const TilePos& point){
+    for (const MapObject& object : map.objects){
+        if (object.wander
+            && object.wander->x0 <= point.x && point.x <= object.wander->x1
+            && object.wander->y0 <= point.y && point.y <= object.wander->y1
+        ){
+            return &object;
+        }
+    }
+    return nullptr;
+}
+
 bool trainer_may_see(const MapData& map, const MapObject& object, const TilePos& tile){
     if (!object.trainer){
         return false;
@@ -242,7 +263,7 @@ StepKind classify_step_onto(
         && level != state.elevation;
     if (mismatch){
         //  CanStopSurfing() and IsPlayerFacingSurfableFishableWater().
-        if (state.surfing && level == ELEVATION_GROUND && object_at(to, destination) == nullptr){
+        if (state.surfing && level == ELEVATION_GROUND && stationary_object_at(to, destination) == nullptr){
             return StepKind::STOP_SURFING;
         }
         if (!state.surfing && state.elevation == ELEVATION_GROUND && is_water(to, destination)){
@@ -251,7 +272,7 @@ StepKind classify_step_onto(
         return StepKind::BLOCKED;
     }
 
-    if (object_at(to, destination) != nullptr){
+    if (stationary_object_at(to, destination) != nullptr){
         return StepKind::BLOCKED;
     }
     return StepKind::WALK;

@@ -47,7 +47,7 @@ const MapData* map_named(const std::vector<MapData>& maps, const std::string& na
 bool standable(const std::vector<MapData>& maps, const MapPosition& position, bool surfing){
     const MapData* map = map_named(maps, position.map);
     return map != nullptr && in_bounds(*map, position.point)
-        && !is_wall(*map, position.point) && object_at(*map, position.point) == nullptr
+        && !is_wall(*map, position.point) && stationary_object_at(*map, position.point) == nullptr
         && is_water(*map, position.point) == surfing;
 }
 

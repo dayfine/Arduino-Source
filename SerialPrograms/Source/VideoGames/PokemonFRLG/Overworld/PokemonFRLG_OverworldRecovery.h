@@ -46,6 +46,7 @@
 #include <set>
 #include <string>
 #include <vector>
+#include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryBreakpoints.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
@@ -140,11 +141,17 @@ struct RouteCalls{
     //  (MovementMechanics::BIKE_TAP_ONLY_TURNS), and the next leg's hold
     //  turns the player anyway. Not set: on foot.
     std::function<bool(const RouteStep& step)> riding;
+    //  Waits `duration` before retrying a leg blocked by a wandering NPC.
+    //  Not set: no wait (unit tests).
+    std::function<void(Milliseconds duration)> wait;
 };
 
 
 //  How often a route may stop part-way before it gives up.
 constexpr size_t MAX_ROUTE_STOPS = 8;
+//  How many times a leg blocked by a wandering NPC waits and retries.
+constexpr size_t MAX_WANDER_WAITS = 4;
+constexpr Milliseconds WANDER_WAIT_DURATION = std::chrono::milliseconds(1000);
 
 //  Walks `route` from `facing`, logging it in the shared route log lines:
 //  the plan, each leg as it starts and how it ended, and where the player

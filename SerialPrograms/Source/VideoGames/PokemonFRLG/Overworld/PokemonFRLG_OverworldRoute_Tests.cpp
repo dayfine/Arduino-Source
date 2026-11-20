@@ -478,6 +478,119 @@ UnitTestResult test_ground_only_elevation_left_out(){
     return true;
 }
 
+struct RevisitInput{
+    std::vector<RouteStep> route;
+};
+struct RevisitExpectation{
+    std::vector<MapPosition> revisited;
+};
+struct RevisitCase{
+    std::string_view name;
+    RevisitInput input;
+    RevisitExpectation expectation;
+};
+
+RouteStep sign_room_walk(Direction direction, int tiles, TilePos end, bool to_wall){
+    RouteStep step;
+    step.direction = direction;
+    step.tiles = tiles;
+    step.to_wall = to_wall;
+    step.end = MapPosition{"SignRoom", end};
+    return step;
+}
+
+//  The routes from the sign room's (1, 3), its south-west corner.
+const MapPosition SIGN_ROOM_CORNER{"SignRoom", {1, 3}};
+const MapPosition SIGN_ROOM_SOUTH_MIDDLE{"SignRoom", {2, 3}};
+const std::vector<RouteStep> EAST_AND_BACK{
+    sign_room_walk(Direction::EAST, 2, {3, 3}, true),
+    sign_room_walk(Direction::WEST, 1, {2, 3}, false),
+};
+const std::vector<RouteStep> EAST_THEN_NORTH{
+    sign_room_walk(Direction::EAST, 2, {3, 3}, true),
+    sign_room_walk(Direction::NORTH, 2, {3, 1}, true),
+};
+const std::vector<RouteStep> ROUND_TO_THE_CORNER{
+    sign_room_walk(Direction::NORTH, 2, {1, 1}, true),
+    sign_room_walk(Direction::EAST, 1, {2, 1}, false),
+    sign_room_walk(Direction::SOUTH, 2, {2, 3}, true),
+    sign_room_walk(Direction::WEST, 1, {1, 3}, true),
+};
+
+//  revisited_tiles() on the sign room: a leg back over the one before
+//  crosses its tiles again; a turn the other way doesn't.
+UnitTestResult test_revisited_tiles(){
+    const std::vector<MapData> maps{parse_map(TEST_SIGN_ROOM_JSON, "SignRoom")};
+    const RevisitCase CASES[] = {
+        {
+            .name = "east to the wall, then back west",
+            .input = {.route = EAST_AND_BACK},
+            .expectation = {.revisited = {SIGN_ROOM_SOUTH_MIDDLE}},
+        },
+        {
+            .name = "east, then north",
+            .input = {.route = EAST_THEN_NORTH},
+            .expectation = {.revisited = {}},
+        },
+        {
+            .name = "round the room to the start",
+            .input = {.route = ROUND_TO_THE_CORNER},
+            .expectation = {.revisited = {SIGN_ROOM_CORNER}},
+        },
+    };
+    for (const RevisitCase& test_case : CASES){
+        const std::vector<MapPosition> revisited = revisited_tiles(maps, SIGN_ROOM_CORNER, test_case.input.route, {});
+        if (revisited != test_case.expectation.revisited){
+            std::string text;
+            for (const MapPosition& tile : revisited){
+                text += std::format(" {}", to_string(tile));
+            }
+            return std::format("{}: revisited{}:{}", test_case.name, text.empty() ? " none" : text, describe(test_case.input.route));
+        }
+    }
+    return true;
+}
+
+UnitTestResult test_wander_box_routing(){
+    const std::string detour_json = R"({
+        "name": "Hall", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-19"},
+        "tiles": ["#######", "#.....#", "#.....#", "#######"],
+        "elevation": ["3333333", "3333333", "3333333", "3333333"],
+        "objects": [
+            {"name": "youngster", "kind": "npc", "x": 3, "y": 1, "wander": {"x0": 2, "y0": 1, "x1": 4, "y1": 1}}
+        ]
+    })";
+    const std::vector<MapData> detour_maps{parse_map(detour_json, "Hall")};
+    const std::optional<std::vector<RouteStep>> detour_route = plan_overworld_route(
+        detour_maps, {"Hall", {1, 1}}, {{"Hall", {5, 1}}, std::nullopt}
+    );
+    if (!detour_route){
+        return "Expected a detour route around the wander box.";
+    }
+    for (const RouteStep& step : *detour_route){
+        if (step.end.point.y == 1 && step.end.point.x >= 2 && step.end.point.x <= 4){
+            return "Expected route to detour around wander box (2..4, 1), got:" + describe(*detour_route);
+        }
+    }
+
+    const std::string corridor_json = R"({
+        "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-19"},
+        "tiles": ["#######", "#.....#", "#######"],
+        "elevation": ["3333333", "3333333", "3333333"],
+        "objects": [
+            {"name": "youngster", "kind": "npc", "x": 3, "y": 1, "wander": {"x0": 2, "y0": 1, "x1": 4, "y1": 1}}
+        ]
+    })";
+    const std::vector<MapData> corridor_maps{parse_map(corridor_json, "Corridor")};
+    const std::optional<std::vector<RouteStep>> corridor_route = plan_overworld_route(
+        corridor_maps, {"Corridor", {1, 1}}, {{"Corridor", {5, 1}}, std::nullopt}
+    );
+    if (!corridor_route){
+        return "Expected route through wander box when no detour exists.";
+    }
+    return true;
+}
+
 const RouteTestCase ROUTE_CASES[] = {
     {
         .input = {.name = "route through a warp", .body = test_route_through_warp},
@@ -534,6 +647,10 @@ const RouteTestCase ROUTE_CASES[] = {
     {
         .input = {.name = "Mewtwo's tile is blocked", .body = test_mewtwo_tile_unreachable},
         .expectation = {.description = "Mewtwo's tile is blocked"},
+    },
+    {
+        .input = {.name = "wander box routing", .body = test_wander_box_routing},
+        .expectation = {.description = "detours around short wander boxes and crosses when no detour exists"},
     },
 };
 
