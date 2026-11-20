@@ -10,6 +10,7 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -35,7 +36,7 @@ private:
 class DaycareManWatcher : public DetectorToFinder<DaycareManDetector>{
 public:
     DaycareManWatcher(Color color)
-        : DetectorToFinder("DaycareManWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("DaycareManWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

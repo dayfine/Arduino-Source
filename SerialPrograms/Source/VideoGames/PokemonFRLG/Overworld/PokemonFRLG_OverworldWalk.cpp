@@ -402,7 +402,7 @@ bool arrived_unseen(ConsoleHandle& console, ProControllerContext& context, const
     }
     context.wait_for_all_requests();
     const VideoSnapshot now = console.video().snapshot();
-    context.wait_for(DIM_WARP_POLL);
+    context.wait_for(scale_emulator_duration(DIM_WARP_POLL));
     const VideoSnapshot later = console.video().snapshot();
     if (!now || !later){
         return false;
@@ -468,8 +468,9 @@ void wait_out_dim_warp(ConsoleHandle& console, ProControllerContext& context, co
     const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
     VideoSnapshot last;
     const WallClock deadline = current_time() + WARP_TIMEOUT;
+    const Milliseconds poll = scale_emulator_duration(DIM_WARP_POLL);
     while (current_time() < deadline){
-        context.wait_for(DIM_WARP_POLL);
+        context.wait_for(poll);
         VideoSnapshot now = console.video().snapshot();
         if (!now){
             continue;

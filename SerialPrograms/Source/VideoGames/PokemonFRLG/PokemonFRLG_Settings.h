@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_Settings_H
 #define PokemonAutomation_PokemonFRLG_Settings_H
 
+#include "Common/Cpp/Time.h"
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/StaticTextOption.h"
@@ -73,6 +74,15 @@ public:
 private:
     GameSettings& settings;
 };
+
+//  Scales a game-time duration to wall-clock time for a given speed
+//  multiplier. Returns `duration` unchanged when `duration <= 0` or `speed == 1.0`.
+Milliseconds scale_duration_for_speed(Milliseconds duration, double speed);
+
+//  Wall-clock duration for a game-time duration when running on
+//  Device::GbaEmulator (scales by 1 / PA_MGBA_SPEED). Returns `duration`
+//  unchanged on Switch or when speed is 1.0.
+Milliseconds scale_emulator_duration(Milliseconds duration);
 
 
 }

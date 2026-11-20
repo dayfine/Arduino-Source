@@ -77,6 +77,7 @@ public:
     //  the sending thread wakes a frame or two late. It is also how long a
     //  cancelled state can still play.
     static constexpr uint64_t SEND_AHEAD_FRAMES = KeySchedule::LEAD_FRAMES + 3;
+    static uint64_t send_ahead_frames(double speed);
 
     //  Granted when the sender stops, so mGBA runs on instead of stalling
     //  at the last grant. Never reached.
@@ -87,7 +88,8 @@ public:
         ThreadPool& thread_pool,
         LinkRegistry& registry,
         std::string address,
-        std::chrono::milliseconds grant_period = Pacer::DEFAULT_PERIOD
+        std::chrono::milliseconds grant_period = Pacer::default_period(speed_multiplier()),
+        double speed = speed_multiplier()
     );
 
     //  Stops the pacer, releases held keys and lets mGBA run on (best effort).
@@ -153,6 +155,7 @@ private:
     LinkRegistry& m_registry;
     const std::string m_address;
     const std::chrono::milliseconds m_grant_period;
+    const double m_speed;
 
     mutable Mutex m_lock;
     ConditionVariable m_cv;
