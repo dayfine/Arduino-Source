@@ -122,6 +122,7 @@ const ScreenObservation STILL = look({ScreenEvent::SCREEN_STILL});
 const ScreenObservation WHITE_FADE = look({ScreenEvent::FADE_WHITE});
 const ScreenObservation BLACK_FADE = look({ScreenEvent::FADE_BLACK});
 const ScreenObservation DIALOG = look({ScreenEvent::DIALOG_BOX});
+const ScreenObservation TEXT_PAGE = look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING});
 const ScreenObservation A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
 //  01.03 shows no party bar.
 const ScreenObservation PROMPT_ONLY = look({ScreenEvent::INTERACT_PROMPT});
@@ -311,22 +312,21 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  01.03 on console B 2026-11-19 17:10: Taunie's A prompt shows at the
+        //  01.03 on console B 2026-11-19 17:10 & 2026-11-20: Taunie's A prompt shows at the
         //  start and on the way; an A on it mid-walk took her line, not the
-        //  starter's. The starter walk presses A only once its legs are done.
-        //  The turn looks twice, then each 250 ms slice of the legs once.
+        //  starter's. The starter walk holds 600 ms and presses A once done.
         .name = "01.03's walk to the starter: no A on a prompt during its legs, A on the prompt after them, done when the talk starts",
         .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = concat(
             std::vector<ScreenObservation>(5, PROMPT_ONLY),
-            concat(std::vector<ScreenObservation>(8, A_PROMPT), {A_PROMPT, DIALOG})
+            concat(std::vector<ScreenObservation>(4, A_PROMPT), {DIALOG})
         )},
         .expectation = {
             .verdict = "done",
             .inputs = std::format(
-                "{}, press L, stick -70deg 150ms walk, release 100ms, press L, {}, press A, wait 250ms",
-                repeated("wait 250ms", 4), repeated("stick 0deg 250ms run", 6)
+                "{}, {}, stick -66deg 100ms run, press A, wait 250ms",
+                repeated("wait 250ms", 4), repeated("stick -66deg 250ms run", 2)
             ),
-            .line = "[PLZA] walk: A on the A prompt after 1500 ms of the last leg started a talk.",
+            .line = "[PLZA] walk: A on the A prompt after 600 ms of the last leg started a talk.",
         },
     },
     {
