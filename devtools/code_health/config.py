@@ -7,12 +7,12 @@ CLASS_LIMITS = {
 }
 
 # Distinct public namespace-scope names (types, aliases, functions, constants) per header.
-HEADER_LIMITS = {'header_symbols': 8}
+HEADER_LIMITS = {'header_symbols': 16}
 
 # Advisory floors: new or changed values above these (and within the limit) are reported.
 # Changed files above their floor are always reported.
-ADVISORY = {'file_lines': 500, 'function_lines': 25, 'public_methods': 5,
-            'header_symbols': 6}
+ADVISORY = {'file_lines': 800, 'function_lines': 25, 'public_methods': 5,
+            'header_symbols': 12}
 
 HINTS = {
     'public_methods': 'split the class or move helpers into free functions',

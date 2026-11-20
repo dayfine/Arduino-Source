@@ -7,6 +7,7 @@ from pathlib import Path
 
 from . import allow, exposure, review_rules, header_api, layering, learned_rules, param_comments, plan_lint, special_cases, style
 from .classes import measure_classes
+from .config import ADVISORY
 from .cpp_text import normalize
 from .findings import annotations
 from .git_files import changed_files, changed_paths, default_base, read_revision
@@ -130,7 +131,7 @@ def run(root, base_ref=None, github=False):
         failures.extend([f for f in kept if f in style_errors] + unattached)
         bypassed.extend(waived)
         notes.extend(f for f in kept if f not in style_errors)
-        advisory += sum(m.check == 'file_lines' and 500 < m.value <= 1000 for m in metrics)
+        advisory += sum(m.check == 'file_lines' and ADVISORY['file_lines'] < m.value <= m.limit for m in metrics)
     lost, lost_waived = lost_tests(root, base_ref, paths, repo)
     failures.extend(lost)
     bypassed.extend(lost_waived)
@@ -140,7 +141,7 @@ def run(root, base_ref=None, github=False):
     for name, (total, with_reason) in sorted(legs.items()):
         print(f'Plan lint: {name}: {total} legs events in the changed plans, {with_reason} with a '
               '"not planned:" reason; only new or edited ones must have one.')
-    print(f'Advisory: {advisory} changed files exceed 500 lines; prefer functions <=25 lines.')
+    print(f'Advisory: {advisory} changed files exceed {ADVISORY["file_lines"]} lines; prefer functions <={ADVISORY["function_lines"]} lines.')
     for note in notes:
         print(f'Advisory: {note}')
     for notice in bypassed:
