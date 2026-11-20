@@ -10,10 +10,10 @@
     "events": [
       {
         "id": "chase_pancham",
-        "why": "after Pancham, through the archway, around the starters into the scene; a 0 ms leg only turns. not planned: no tile grid in Lumiose",
+        "why": "after Pancham, through the archway, around the starters into the scene. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
-          "legs": [[-15, 4000], [-75, 3500], [90, 9000], [-90, 0], [90, 1000], [-90, 4000]]
+          "legs": [[-15, 4000], [-75, 3500], [90, 10000], [-90, 4000]]
         }
       },
       {
