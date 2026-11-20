@@ -26,6 +26,9 @@ PocketRead read_whole_pocket(PocketList& list){
     bool end = false;
     for (int shown = 0; !end && shown < ITEM_LIST_ROWS; shown++){
         std::optional<BagRow> row = list.read_shown(shown);
+        if (row && row->item == "cancel"){
+            read.saw_cancel = true;
+        }
         end = !row || row->item == "cancel";
         if (!end){
             reads.push_back(std::move(*row));
@@ -45,6 +48,9 @@ PocketRead read_whole_pocket(PocketList& list){
         std::optional<BagRow> row = list.read_shown(ITEM_LIST_ROWS - 1);
         //  The same row again: the list stopped scrolling, its CANCEL unread.
         const bool same = row && row->item == reads.back().item && row->count == reads.back().count;
+        if (row && row->item == "cancel"){
+            read.saw_cancel = true;
+        }
         end = !row || row->item == "cancel" || same;
         if (!end){
             reads.push_back(std::move(*row));
@@ -127,11 +133,14 @@ void open_battle_bag(ProControllerContext& context, size_t rows){
     }
 }
 
-std::vector<BagRow> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language, size_t rows){
+std::optional<std::vector<BagRow>> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language, size_t rows){
     open_battle_bag(context, rows);
-    std::vector<BagRow> read = read_open_pocket(console, context, language).rows;
+    PocketRead read = read_open_pocket(console, context, language);
     pbf_press_button(context, BUTTON_B, /*hold=*/160ms, /*release=*/1500ms);
-    return read;
+    if (read.rows.empty() && !read.saw_cancel){
+        return std::nullopt;
+    }
+    return std::move(read.rows);
 }
 
 

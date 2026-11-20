@@ -91,10 +91,10 @@ ConsoleBattleBag::ConsoleBattleBag(
 {}
 
 std::vector<BagRow> ConsoleBattleBag::read_pocket(const Supplies& supplies){
-    std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, rows_to_top(supplies));
+    std::optional<std::vector<BagRow>> rows = read_battle_pocket(m_console, m_context, m_language, rows_to_top(supplies));
     //  A read ends with the cursor on the top row.
     m_cursor.row = 0;
-    return rows;
+    return rows ? std::move(*rows) : std::vector<BagRow>{};
 }
 
 bool ConsoleBattleBag::use_row(const Supplies& supplies, int row, int shown, const std::string& item){
