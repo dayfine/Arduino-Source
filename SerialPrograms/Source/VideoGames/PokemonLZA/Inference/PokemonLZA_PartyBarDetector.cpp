@@ -29,9 +29,14 @@ constexpr double BAR_HEIGHT = 0.0037;
 constexpr double CARD_Y = 0.9454;
 constexpr double CARD_HEIGHT = 0.0046;
 
-//  The trough is the card darkened: a black overlay at about half.
+//  The trough is the card darkened (~0.46x scene + dark charcoal floor).
+//  Keep 0.65 when no HP-colored pixels show (prevents empty slots over shadow
+//  edges from false-positiving), and relax to 0.72 only when an HP segment
+//  already shows (catches weakened yellow/red bars over dark asphalt, card ~73).
 constexpr double TROUGH_BRIGHTNESS_RATIO = 0.65;
-//  Bars read 0.79+ (a nearly empty red bar over bright teal); slots without, 0.16 at most.
+constexpr double WEAKENED_TROUGH_BRIGHTNESS_RATIO = 0.72;
+constexpr double HP_COLOR_SHARE_MIN = 0.05;
+//  Bars read 0.74+ (a weakened yellow/red bar over dark asphalt); slots without, 0.16 at most.
 constexpr double BAR_SHARE_MIN = 0.5;
 
 bool is_hp_color(Color color){
@@ -153,16 +158,29 @@ bool PartyBarDetector::slot_has_hp_bar(const ImageViewRGB32& screen, size_t inde
     if (total == 0 || card.width() * card.height() == 0){
         return false;
     }
-    const double trough_max = image_average(card).sum() / 3.0 * TROUGH_BRIGHTNESS_RATIO;
-    size_t count = 0;
+    const double card_brightness = image_average(card).sum() / 3.0;
+    const double strict_trough_max = card_brightness * TROUGH_BRIGHTNESS_RATIO;
+    const double relaxed_trough_max = card_brightness * WEAKENED_TROUGH_BRIGHTNESS_RATIO;
+    size_t hp_count = 0;
+    size_t strict_count = 0;
+    size_t relaxed_count = 0;
     for (size_t y = 0; y < bar.height(); y++){
         for (size_t x = 0; x < bar.width(); x++){
             const Color color(bar.pixel(x, y));
-            if (is_hp_color(color) || brightness(color) < trough_max){
-                count++;
+            if (is_hp_color(color)){
+                hp_count++;
+                strict_count++;
+                relaxed_count++;
+            }else if (brightness(color) < strict_trough_max){
+                strict_count++;
+                relaxed_count++;
+            }else if (brightness(color) < relaxed_trough_max){
+                relaxed_count++;
             }
         }
     }
+    const bool has_hp = (double)hp_count / (double)total >= HP_COLOR_SHARE_MIN;
+    const size_t count = has_hp ? relaxed_count : strict_count;
     return (double)count / (double)total >= BAR_SHARE_MIN;
 }
 
@@ -176,9 +194,11 @@ bool PartyBarDetector::detect(const ImageViewRGB32& screen){
         return false;
     }
     const uint8_t sent_out = m_selection.dpad_down_idx();
+    //  Party slots fill left-to-right; a fainted lead has no green bar
+    //  and a darkened card, so the rightmost lit slot gives the party count.
     for (size_t i = 0; i < 6; i++){
         if (i == sent_out || slot_has_hp_bar(screen, i)){
-            m_filled_slots++;
+            m_filled_slots = static_cast<int>(i) + 1;
         }
     }
     return true;
