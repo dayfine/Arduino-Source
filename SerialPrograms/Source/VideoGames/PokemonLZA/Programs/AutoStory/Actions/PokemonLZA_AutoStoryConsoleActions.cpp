@@ -9,6 +9,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
@@ -34,17 +35,8 @@ using namespace std::chrono_literals;
 
 namespace{
 
-//  The pin between the gate's pillars, where "A Leave" shows; 1 north of
-//  the (361, 253) read, as runs with no prompt ended at y 255 on the left
-//  pillar.
-constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 361, .y = 252}, .provisional = false};
-//  ~15 pixels east of ZONE1_GATE_APPROACH, so the leg from it walks the
-//  gate's own heading; a leg in from the north and a 90 degree turn there
-//  ended on the left pillar.
-constexpr MapWaypoint ZONE1_GATE_LINE{.name = "the far gate's line", .pin = {.x = 391, .y = 252}, .provisional = true};
-//  ~15 pixels before the gate, an exact start (no stop area): runs from the
-//  60 spot's loose ends hit a pillar.
-constexpr MapWaypoint ZONE1_GATE_APPROACH{.name = "the far gate's approach", .pin = {.x = 376, .y = 252}, .provisional = true};
+//  Runs at the far gate, each planned on one pin read.
+constexpr int GATE_RUNS = 3;
 
 
 //  An OperationFailedException becomes a failed std::optional<Pokemon::StoryFailure>.
@@ -79,33 +71,67 @@ std::optional<Pokemon::StoryFailure> run_to_gate(StoryEnv& env, Milliseconds tim
 
 using GateStep = std::optional<Pokemon::StoryFailure> (*)(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout);
 
-//  A run with no A prompt (a pillar) walks the legs again: a bearing from
-//  next to the gate is noise.
-std::optional<Pokemon::StoryFailure> aimed_gate_run(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout){
-    const MapWaypoint approach[] = {ZONE1_GATE_LINE, ZONE1_GATE_APPROACH};
-    std::optional<Pokemon::StoryFailure> ran = std::nullopt;
-    for (int runs = 0; runs < 3; runs++){
-        if (runs > 0){
-            backend.log(std::format("[PLZA] aimed_run_to_gate: no prompt on run {}, back along the gate's line", runs));
+//  From `from` to `to` by dead reckoning, B held: no map read until the
+//  gate's run has missed.
+std::optional<Pokemon::StoryFailure> run_exit_leg(StoryEnv& env, PlzaBackend& backend, MapPoint from, MapPoint to){
+    const MapLegMove leg = MapLeg(to, /*stop_radius=*/0).next(from);
+    if (leg.step != MapLegStep::WALK){
+        return std::nullopt;
+    }
+    backend.log(std::format(
+        "[PLZA] run_out_of_zone_1: to ({:.0f}, {:.0f}) first, heading {:.0f}, hold {} ms",
+        to.x, to.y, leg.heading, leg.hold.count()
+    ));
+    const std::optional<Pokemon::StoryFailure> faced = face_heading(backend, minimap_arrow(env), leg.heading);
+    if (faced){
+        return faced;
+    }
+    backend.stick(/*degrees=*/0, leg.hold, /*release=*/300ms, Pokemon::StoryPace::RUN);
+    return std::nullopt;
+}
+
+struct ExitRun{
+    //  None: at the gate's A prompt.
+    std::optional<Pokemon::StoryFailure> failure = std::nullopt;
+    //  A run that missed the prompt, worth planning again from a new read.
+    bool missed = false;
+};
+
+//  zone_1_exit_legs() from `pin`, the last until the gate's A prompt.
+ExitRun run_exit_legs(StoryEnv& env, PlzaBackend& backend, MapPoint pin, Milliseconds timeout){
+    const std::vector<MapPoint> legs = zone_1_exit_legs(pin);
+    MapPoint from = pin;
+    for (size_t leg = 0; leg + 1 < legs.size(); from = legs[leg++]){
+        const std::optional<Pokemon::StoryFailure> ran_leg = run_exit_leg(env, backend, from, legs[leg]);
+        if (ran_leg){
+            return {.failure = ran_leg};
         }
-        const std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, approach);
-        if (walked){
-            return walked;
-        }
+    }
+    const std::optional<Pokemon::StoryFailure> faced = face_heading(backend, minimap_arrow(env), bearing(from, legs.back()));
+    if (faced){
+        return {.failure = faced};
+    }
+    const std::optional<Pokemon::StoryFailure> ran = run_to_gate(env, timeout);
+    return {.failure = ran, .missed = ran.has_value()};
+}
+
+//  One pin read, then held-B runs: onto the gate's line when off it, and at
+//  the far gate until its A prompt. A wild battle on does not stop it:
+//  leaving the zone ends the battle. A run with no prompt (a pillar) reads
+//  the pin again and plans from there.
+std::optional<Pokemon::StoryFailure> run_out_of_zone_1(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout){
+    ExitRun run{.missed = true};
+    for (int runs = 0; runs < GATE_RUNS && run.missed; runs++){
         const std::optional<MapPoint> pin = read_pin_on_map(env, backend);
         if (!pin){
             return Pokemon::StoryFailure{.code = "map_pin_not_read", .detail = "no map pin before the run to the far gate"};
         }
-        const std::optional<Pokemon::StoryFailure> faced = face_heading(backend, minimap_arrow(env), bearing(*pin, ZONE1_FAR_GATE.pin));
-        if (faced){
-            return faced;
+        if (runs > 0){
+            backend.log(std::format("[PLZA] run_out_of_zone_1: no prompt on run {}, again from ({:.0f}, {:.0f})", runs, pin->x, pin->y));
         }
-        ran = run_to_gate(env, timeout);
-        if (!ran){
-            return ran;
-        }
+        run = run_exit_legs(env, backend, *pin, timeout);
     }
-    return ran;
+    return run.failure;
 }
 
 PlzaConsoleAction gate_handler(StoryEnv& env, std::string_view name, GateStep step){
@@ -155,7 +181,6 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
             //  5 registered species, 3 after the tutorial: 2 new; 12 throws.
             return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
         }},
-        {action_name(PlzaAction::WALK_BACK_TO_ZONE_ROAD), walk_back_to_zone_road},
         {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), [](StoryEnv& env, PlzaBackend& backend){
             return check_out_of_zone_1(backend, [&env, &backend]{
                 return read_pin_on_map(env, backend);
@@ -192,7 +217,7 @@ PlzaConsoleActions plza_console_actions(StoryEnv& env){
     actions.emplace(action_name(PlzaAction::RUN_TO_GATE), gate_handler(env, action_name(PlzaAction::RUN_TO_GATE), [](StoryEnv& story, PlzaBackend&, Milliseconds timeout){
         return run_to_gate(story, timeout);
     }));
-    actions.emplace(action_name(PlzaAction::AIMED_RUN_TO_GATE), gate_handler(env, action_name(PlzaAction::AIMED_RUN_TO_GATE), aimed_gate_run));
+    actions.emplace(action_name(PlzaAction::RUN_OUT_OF_ZONE_1), gate_handler(env, action_name(PlzaAction::RUN_OUT_OF_ZONE_1), run_out_of_zone_1));
     for (const auto& [name, step] : console_steps()){
         actions.emplace(name, console_handler(env, name, step));
     }

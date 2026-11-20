@@ -2,7 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  03.08's console-free walk plans in Wild Zone 1: check_out_of_zone_1()
+ *  03.08's console-free walk plans in Wild Zone 1: the way out
+ *  (zone_1_exit_legs()) on map pins; check_out_of_zone_1()
  *  on the engine's scripted backend (FakeStoryBackend), its map pin reads
  *  scripted; the way off Taunie's rocks (ZoneStart::leave()), each case
  *  the start pin and the read after the leg; and legs
@@ -13,6 +14,7 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <optional>
 #include <string>
@@ -34,14 +36,15 @@ namespace{
 
 using FakeBackend = Pokemon::FakeStoryBackend;
 
-//  Reads `pins` in turn, the last repeating; none when `pins` is empty.
-MoveOnlyFunction<std::optional<MapPoint>()> pins_of(const std::vector<MapPoint>& pins){
+//  Reads `pins` in turn, the last repeating, counting into `reads`; none
+//  when `pins` is empty.
+MoveOnlyFunction<std::optional<MapPoint>()> pins_of(const std::vector<MapPoint>& pins, size_t& reads){
     if (pins.empty()){
         return nullptr;
     }
-    return [pins, next = size_t(0)]() mutable -> std::optional<MapPoint>{
-        const MapPoint pin = pins[std::min(next, pins.size() - 1)];
-        next++;
+    return [pins, &reads]() -> std::optional<MapPoint>{
+        const MapPoint pin = pins[std::min(reads, pins.size() - 1)];
+        reads++;
         return pin;
     };
 }
@@ -50,6 +53,69 @@ MoveOnlyFunction<std::optional<MapPoint>()> pins_of(const std::vector<MapPoint>&
 //  console B 2026-11-17 01:06), and at Wild Zone 1's 60 catch spot.
 constexpr MapPoint OUT_OF_ZONE_PIN{.x = 401, .y = 225};
 constexpr MapPoint IN_ZONE_PIN{.x = 386, .y = 252};
+//  Outside the zone's outline but not where the map centres a player out
+//  of every zone.
+constexpr MapPoint OFF_CENTRE_OUT_PIN{.x = 420, .y = 262};
+
+
+struct ExitCase{
+    std::string name;
+    struct Input{
+        MapPoint start;
+    };
+    Input input;
+    struct Expectation{
+        //  One run at the gate, no waypoint first.
+        bool straight = false;
+    };
+    Expectation expectation;
+};
+
+const ExitCase EXIT_CASES[] = {
+    {
+        //  console B, 2026-11-19 22:47:41: the run from here reached the A prompt.
+        .name = "on the gate's line: one straight run",
+        .input = {.start = {.x = 379, .y = 250}},
+        .expectation = {.straight = true},
+    },
+    {
+        //  console B, 2026-11-19 22:47:04: 03.08b's start after the last catch.
+        .name = "by the 60 spot, north of the gate's line: onto the line first",
+        .input = {.start = {.x = 377, .y = 246}},
+        .expectation = {.straight = false},
+    },
+};
+
+//  Runs coming in off the gate's line hit a pillar: the run at the gate
+//  heads west along it whatever the start.
+constexpr double GATE_HEADING = 270;
+constexpr double GATE_HEADING_TOLERANCE = 10;
+
+UnitTestResult check_exit(const ExitCase& test){
+    const std::vector<MapPoint> legs = zone_1_exit_legs(test.input.start);
+    if (legs.empty() || (legs.size() == 1) != test.expectation.straight){
+        return std::format("Expected {}, got {} legs.", test.expectation.straight ? "a straight run" : "a waypoint first", legs.size());
+    }
+    const double heading = bearing(legs.size() == 1 ? test.input.start : legs[legs.size() - 2], legs.back());
+    if (std::abs(heading - GATE_HEADING) > GATE_HEADING_TOLERANCE){
+        return std::format("The run at the gate heads {:.0f}, not along its line ({:.0f}).", heading, GATE_HEADING);
+    }
+    return true;
+}
+
+class Test_ZoneExit : public UnitTest{
+public:
+    explicit Test_ZoneExit(const ExitCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - zone_1_exit_legs: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_exit(m_test);
+    }
+
+private:
+    const ExitCase& m_test;
+};
 
 
 struct OutOfZoneCase{
@@ -62,40 +128,47 @@ struct OutOfZoneCase{
     struct Expectation{
         //  None: out of the zone.
         std::optional<std::string> failure;
+        //  Map openings.
+        size_t reads = 0;
     };
     Expectation expectation;
 };
 
 const OutOfZoneCase OUT_OF_ZONE_CASES[] = {
     {
-        .name = "out of the zone on every read",
+        //  console B, 2026-11-19 22:47:51: two map openings for one answer.
+        .name = "out at the map's centre: one map read",
         .input = {.pins = {OUT_OF_ZONE_PIN}},
-        .expectation = {.failure = std::nullopt},
+        .expectation = {.failure = std::nullopt, .reads = 1},
     },
     {
         //  console B, 2026-11-18 13:37: 03.08b saved in Wild Zone 1.
         .name = "in the zone: no save there",
         .input = {.pins = {IN_ZONE_PIN}},
-        .expectation = {.failure = "in_wild_zone"},
+        .expectation = {.failure = "in_wild_zone", .reads = 1},
     },
     {
-        .name = "out on the first read, in on the next: in the zone",
-        .input = {.pins = {OUT_OF_ZONE_PIN, IN_ZONE_PIN}},
-        .expectation = {.failure = "in_wild_zone"},
+        .name = "out off the map's centre, in on the next read: in the zone",
+        .input = {.pins = {OFF_CENTRE_OUT_PIN, IN_ZONE_PIN}},
+        .expectation = {.failure = "in_wild_zone", .reads = 2},
     },
     {
         .name = "no map pin reader: not known to be out",
         .input = {.pins = {}},
-        .expectation = {.failure = "zone_unread"},
+        .expectation = {.failure = "zone_unread", .reads = 0},
     },
 };
 
 UnitTestResult check_out_of_zone(const OutOfZoneCase& test, CancellableScope& scope){
     FakeBackend backend(Pokemon::FakeStoryScript{.looks = {}}, scope);
-    const std::optional<Pokemon::StoryFailure> outcome = check_out_of_zone_1(backend, pins_of(test.input.pins));
+    size_t reads = 0;
+    const std::optional<Pokemon::StoryFailure> outcome = check_out_of_zone_1(backend, pins_of(test.input.pins, reads));
     const std::optional<std::string> failure = !outcome ? std::nullopt : std::optional<std::string>(outcome->code);
     if (failure != test.expectation.failure){
         return std::format("Expected {}, got {}.", test.expectation.failure.value_or("a pass"), (outcome ? std::format("{}", *outcome) : std::string("ok")));
+    }
+    if (reads != test.expectation.reads){
+        return std::format("Expected {} map reads, got {}.", test.expectation.reads, reads);
     }
     return true;
 }
@@ -323,6 +396,9 @@ private:
 
 
 void add_tests_AutoStoryZone1(UnitTestDatabase& database){
+    for (const ExitCase& test : EXIT_CASES){
+        database.add<Test_ZoneExit>(test);
+    }
     for (const OutOfZoneCase& test : OUT_OF_ZONE_CASES){
         database.add<Test_OutOfZone>(test);
     }
