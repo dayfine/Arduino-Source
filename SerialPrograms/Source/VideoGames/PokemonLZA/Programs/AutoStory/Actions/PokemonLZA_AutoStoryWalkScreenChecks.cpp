@@ -487,6 +487,17 @@ std::optional<size_t> step_along_until_prompt(PlzaBackend& backend, double facin
     }
 }
 
+std::optional<Pokemon::StoryFailure> search_sides_into_talk(PlzaBackend& backend, std::string_view walk){
+    const std::optional<size_t> steps = step_along_until_prompt(backend, /*facing_degrees=*/0);
+    if (!steps){
+        return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format(
+            "{}: no A prompt on the walk or in {} steps to the sides", walk, std::size(PROMPT_SIDESTEPS)
+        )};
+    }
+    backend.log(std::format("[PLZA] {}: no A prompt on the walk; the A prompt after {} steps to the sides.", walk, *steps));
+    return talk_at_prompt(backend);
+}
+
 std::optional<Pokemon::StoryFailure> talk_at_prompt(PlzaBackend& backend){
     if (!talk_prompt_settled(backend)){
         return Pokemon::StoryFailure{.code = "talk_no_prompt", .detail = std::format("no A prompt on two looks within {} ms: not at what the talk is for", TALK_PROMPT_WAIT.count())};

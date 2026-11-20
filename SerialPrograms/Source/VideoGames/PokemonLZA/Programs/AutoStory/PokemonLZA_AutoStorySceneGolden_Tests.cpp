@@ -735,8 +735,23 @@ const GoldenCase GOLDEN_CASES[] = {
 10.0s: text box, still
 )"},
         .expectation = {
+            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "stick or A"}, {"text box, still", "-"}},
+            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 250 ms of the last leg started a talk.",
+        },
+    },
+    {
+        //  The last turn left the player short of the counter, out of the
+        //  nurse's reach (console B 2026-11-19 18:51); the prompt and her
+        //  text box after it are synthetic.
+        .name = "03.04 into_pokemon_center, the nurse's A prompt only on the short walk on into the counter: A, her talk",
+        .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
+0.0s: party bar
+10.6s: party bar, A prompt
+11.0s: text box, still
+)"},
+        .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "A"}, {"text box, still", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 0 ms of the last leg started a talk.",
+            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 600 ms of the last leg started a talk.",
         },
     },
     {
@@ -800,6 +815,21 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
+        //  Taunie stood left of the straight path and the walk ran past her
+        //  into the arch (console B 2026-11-19 18:04); her prompt during the
+        //  steps to the sides and the fade after it are synthetic.
+        .name = "03.02b to_taunie, Taunie off the path: no A prompt on the walk, steps to the sides until hers, A, her talk",
+        .input = {.checkpoint = "03.02b", .step = "to_taunie", .screens = R"(
+0.0s: party bar
+9.5s: party bar, A prompt
+10.5s: black fade, still
+)"},
+        .expectation = {
+            .keys = {{"party bar", "stick"}, {"party bar, A prompt", "A"}, {"black fade, still", "-"}},
+            .verdict = "done", .end = "[PLZA] walk: no A prompt on the walk; the A prompt after 6 steps to the sides.",
+        },
+    },
+    {
         .name = "01.03 andi_battle, the battle code on the battle HUD (passed 2026-11-16 22:51)",
         .input = {.checkpoint = "01.03", .step = "andi_battle", .screens = R"(
 0.0s: battle, controls hint
@@ -857,6 +887,8 @@ const GoldenCase GOLDEN_CASES[] = {
     },
     {
         //  From the black fade on; the controls hint at the end is synthetic.
+        //  Recorded with no Plus: the step's Plus gets no black fade, so the
+        //  scene ends with its cutscene not skipped.
         .name = "01.01 arrival_scenes, Italian, Jacinthe's subtitles each after a quiet spell, then the controls hint (stopped as a loop 2026-11-15 22:27)",
         .input = {.checkpoint = "01.01", .step = "arrival_scenes", .screens = R"(
 0.0s: black fade
@@ -876,10 +908,11 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "A"}, {"advance arrow", "A"}, {"nothing", "A"}, {"still", "A"}, {"black fade", "-"},
+                {"text box", "A"}, {"advance arrow", "A"}, {"nothing", "A or +"}, {"still", "A or +"}, {"black fade", "-"},
                 {"controls hint", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+            .verdict = "failed: cutscene_not_skipped",
+            .end = "[PLZA mash_to_move_hints] Plus 1: no black fade within 7 s; Plus again once a new stretch with no text lasts 5 s.",
         },
     },
     {
@@ -913,7 +946,9 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        //  The controls hint after the cutscene is synthetic.
+        //  The controls hint after the cutscene is synthetic. Recorded with
+        //  no Plus: the step's Plus gets no black fade, so the scene ends
+        //  with its cutscene not skipped, not as never started.
         .name = "02.02 street_scene, English, a textless cutscene past the start window, then the controls hint (failed as scene_never_started 2026-11-15 23:23)",
         .input = {.checkpoint = "02.02", .step = "street_scene", .screens = R"(
 0.0s: black fade, still
@@ -923,9 +958,38 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"black fade, still", "-"}, {"still", "A"}, {"nothing", "A"}, {"controls hint", "-"}
+                {"black fade, still", "-"}, {"still", "A"}, {"nothing", "A or +"}, {"controls hint", "-"}
             },
-            .verdict = "done", .end = "[PLZA scene] done on control.",
+            .verdict = "failed: cutscene_not_skipped",
+            .end = "[PLZA scene] Plus 1: no black fade within 7 s; Plus again once a new stretch with no text lasts 5 s.",
+        },
+    },
+    {
+        //  Console B, 2026-11-19 06:19, its times moved to this step's Plus:
+        //  Plus held 3.7 s into the textless cutscene skipped it, the black
+        //  fade 2.7 s after the press (unskipped, it played 76 s); after the
+        //  talk a second stretch with no text took Plus and faded too.
+        .name = "02.02 street_scene, English, Plus 5 s into each textless cutscene, each skipped by a black fade, A through the talk between",
+        .input = {.checkpoint = "02.02", .step = "street_scene", .screens = R"(
+0.0s: black fade, still
+5.6s: still
+7.4s: nothing
+14.5s: black fade
+19.3s: still
+20.4s: nothing
+21.4s: text box, advance arrow
+21.8s: nothing
+22.3s: text box
+24.0s: nothing
+31.0s: black fade
+33.0s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"black fade, still", "-"}, {"still", "A"}, {"nothing", "A or +"}, {"black fade", "-"},
+                {"text box, advance arrow", "A"}, {"text box", "A"}, {"party bar", "-"}
+            },
+            .verdict = "done", .end = "[PLZA scene] Plus skip 2: a black fade 2.2 s after the press.",
         },
     },
 };
