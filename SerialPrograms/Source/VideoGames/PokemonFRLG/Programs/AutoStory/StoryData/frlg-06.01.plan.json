@@ -6,6 +6,28 @@
     "title": "The S.S. Anne: the rival, HM01 Cut from the Captain, back to Vermilion's Pokemon Center",
     "start": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
+
+      {
+        "id": "vermilion_mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "why": "out of Vermilion Center to Vermilion Mart clerk"
+      },
+      {
+        "id": "buy_ss_anne_supplies",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "VermilionCity_Mart",
+          "sell": [{"item": "nugget", "quantity": 2}],
+          "items": [{"item": "super-potion", "quantity": 15}, {"item": "awakening", "quantity": 10}],
+          "if_affordable": true
+        },
+        "why": "Super Potions and Awakenings for S.S. Anne Rival Ivysaur"
+      },
       {
         "id": "above_ticket_check",
         "kind": "route",
