@@ -26,13 +26,8 @@
       },
       {
         "id": "out_of_zone_1",
-        "why": "the save below must be out of the zone: the map pin at the map's centre (a second read when elsewhere), else stop unsaved",
+        "why": "confirm the map pin is out of Wild Zone 1 before chaining into 03.09",
         "action": "check_out_of_zone_1"
-      },
-      {
-        "id": "save_outside_zone_1",
-        "why": "a menu save here, 03.09's start; the latest save is otherwise the last catch, anywhere in the zone",
-        "action": "save_from_menu"
       }
     ],
     "metadata": {
@@ -41,8 +36,7 @@
     }
   },
   "execution": {
-    "save": "autosave",
-    "autosave_step": "save_outside_zone_1",
+    "save": "unverified",
     "start_signature": {
       "party": 5,
       "talk_prompt": false,

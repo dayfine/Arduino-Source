@@ -19,7 +19,6 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
-#include "PokemonLZA_AutoStoryMenuSave.h"
 #include "PokemonLZA_AutoStoryWalks.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryActionTable.h"
@@ -288,9 +287,6 @@ const Pokemon::ScreenMatch NOT_BLACK_FADE{
 const Pokemon::ScreenMatch BLACK_FADE{
     .all_events = {ScreenEvent::FADE_BLACK},
 };
-const Pokemon::ScreenMatch BATTLE_SHOWS{
-    .all_events = {ScreenEvent::BATTLE_STARTED},
-};
 
 //  From a cutscene's opening black fade: once it ends, Plus, then the
 //  skip's black fade. Fails as "fade_not_ended" or "cutscene_not_skipped".
@@ -334,36 +330,28 @@ constexpr Seconds BATTLE_START_WAIT = 10s;
 //  A start that locked on and let go of ZL can leave the HUD down until ZL
 //  is held again, so `lock_on` also counts the move symbols under ZL.
 std::optional<StoryFailure> wait_for_battle_start(PlzaBackend& backend, const std::optional<LockOnWatch>& lock_on, Milliseconds within){
-    if (!lock_on){
-        const Pokemon::WaitOutcome outcome = Pokemon::wait_for(
-            backend,
-            BATTLE_SHOWS,
-            Pokemon::WaitRule{.poll = BATTLE_START_POLL, .timeout = within}
-        );
-        if (const auto* failure = std::get_if<StoryFailure>(&outcome)){
-            return *failure;
+    const Milliseconds step = lock_on ? BATTLE_LOCK_ON_HOLD : BATTLE_START_POLL;
+    std::optional<WallClock> start;
+    for (Milliseconds waited = 0ms; ; waited += step){
+        backend.scope().throw_if_cancelled();
+        const ScreenObservation look = backend.observe();
+        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
+            return Pokemon::game_not_running_failure();
         }
-        if (std::holds_alternative<Pokemon::WaitMatched>(outcome)){
+        if (look.events.has(ScreenEvent::BATTLE_STARTED)){
             return std::nullopt;
         }
-    }else{
-        for (Milliseconds waited = 0ms; ; ){
-            backend.scope().throw_if_cancelled();
-            const ScreenObservation look = backend.observe();
-            if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
-                return Pokemon::game_not_running_failure();
-            }
-            if (BATTLE_SHOWS.matches(look)){
-                return std::nullopt;
-            }
-            if (waited >= within){
-                break;
-            }
+        start = start.value_or(look.when);
+        if (waited >= within || (look.when > *start && look.when - *start >= within)){
+            break;
+        }
+        if (lock_on){
             if ((*lock_on)(BATTLE_LOCK_ON_HOLD)){
                 backend.log("[PLZA] story_battle: no battle HUD; ZL held: the move symbols showed.");
                 return std::nullopt;
             }
-            waited += BATTLE_LOCK_ON_HOLD;
+        }else{
+            backend.wait(BATTLE_START_POLL);
         }
     }
     return StoryFailure{
@@ -420,14 +408,6 @@ StoryActionParser walk_action(PlzaConsoleHooks& hooks){
     };
 }
 
-std::optional<StoryFailure> menu_save_step(PlzaConsoleHooks& hooks, PlzaBackend& backend){
-    std::optional<StoryFailure> failure = save_from_menu(backend);
-    if (!failure && hooks.sightings != nullptr){
-        hooks.sightings->saved(backend);
-    }
-    return failure;
-}
-
 //  The actions that need no console.
 void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     std::pair<std::string_view, StoryActionParser> table[] = {
@@ -441,7 +421,6 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::SCENE), scene_action(hooks)},
         {action_name(PlzaAction::PLUS_SKIP), no_args([](PlzaBackend& backend, RunState&){ return plus_skip_step(backend); })},
         {action_name(PlzaAction::STORY_BATTLE), no_args([&hooks](PlzaBackend& backend, RunState&){ return battle_step(hooks, backend); })},
-        {action_name(PlzaAction::SAVE_FROM_MENU), no_args([&hooks](PlzaBackend& backend, RunState&){ return menu_save_step(hooks, backend); })},
         {action_name(PlzaAction::SET_TEXT_SPEED_FAST), no_args([](PlzaBackend& backend, RunState&){ return set_text_speed_fast(backend); })},
     };
     for (auto& [name, parser] : table){
