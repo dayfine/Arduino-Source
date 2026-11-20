@@ -43,8 +43,6 @@ std::optional<Pokemon::StoryFailure> load_checkpoint_start(
 
 //  Reads the screen for the fields `start` names.
 using StartReader = MoveOnlyFunction<StartSignature(const StartSignature& start)>;
-//  Called with a checkpoint at a point of the run.
-using CheckpointHook = MoveOnlyFunction<void(const Pokemon::StoryCheckpoint& checkpoint)>;
 
 //  How run_plza_checkpoints() runs its checkpoints.
 struct CheckpointRunOptions{
@@ -53,13 +51,6 @@ struct CheckpointRunOptions{
     std::span<const CheckpointStart> starts = {};
     //  Unset: no start can be checked.
     StartReader read_start = {};
-    //  After the chain into a checkpoint, before its first step.
-    CheckpointHook at_start = {};
-    //  Dev (Reload Probe): after each of these checkpoints passes, reload once, log
-    //  where it lands with `log_landing`, and go on from the checkpoint whose start
-    //  the screen shows.
-    std::set<std::string, std::less<>> reload_probe_after = {};
-    CheckpointHook log_landing = {};
 };
 
 //  Runs `checkpoints` in order from the current save; none when all passed. A checkpoint

@@ -6,7 +6,6 @@
 
 #include <format>
 #include <optional>
-#include <set>
 #include <span>
 #include <string>
 #include <string_view>
@@ -178,37 +177,6 @@ std::optional<Pokemon::StoryFailure> chain_into(
     return loaded;
 }
 
-//  After `checkpoints[index]` passed: the next checkpoint, or with a Reload Probe after
-//  it (once), the checkpoint whose start the reload landed at.
-size_t checkpoint_after(
-    CheckpointRun& run, std::span<const Pokemon::StoryCheckpoint> checkpoints, size_t index, Pokemon::RunState& state, std::set<std::string>& probed
-){
-    Pokemon::StoryGame& game = run.game;
-    PlzaBackend& backend = run.backend;
-    CheckpointRunOptions& options = run.options;
-    const size_t next = index + 1;
-    const std::string& passed = checkpoints[index].id;
-    if (next >= checkpoints.size() || !game.reload || !options.reload_probe_after.contains(passed) || !probed.insert(passed).second){
-        return next;
-    }
-    if (!game.reload(backend, checkpoints[next])){
-        backend.log(std::format("[ReloadProbe] after {}: the reload failed; on to {}", passed, checkpoints[next].id));
-        return next;
-    }
-    state = Pokemon::RunState{};
-    if (options.log_landing){
-        options.log_landing(checkpoints[index]);
-    }
-    const CheckpointStart* start = find_start(options.starts, checkpoints[next].id);
-    const std::optional<size_t> from = start == nullptr || !options.read_start
-        ? std::nullopt
-        : checkpoint_at(checkpoints, options.starts, next, options.read_start(start->signature));
-    backend.log(std::format(
-        "[ReloadProbe] after {}: on from {}", passed, from ? checkpoints[*from].id : std::format("{}, no start matched", checkpoints[next].id)
-    ));
-    return from.value_or(next);
-}
-
 } // namespace
 
 std::optional<Pokemon::CheckpointFailure> run_plza_checkpoints(
@@ -216,8 +184,7 @@ std::optional<Pokemon::CheckpointFailure> run_plza_checkpoints(
     PlzaBackend& backend, Pokemon::RunState& state, AutosaveSightings& sightings
 ){
     CheckpointRun run{.game = game, .backend = backend, .options = options, .sightings = sightings};
-    std::set<std::string> probed;
-    for (size_t index = 0; index < checkpoints.size(); index = checkpoint_after(run, checkpoints, index, state, probed)){
+    for (size_t index = 0; index < checkpoints.size(); index++){
         Pokemon::StoryCheckpoint& checkpoint = checkpoints[index];
         const bool start_saved = index == 0 || options.reload_when_chained.contains(checkpoint.id) || sightings.last_end_seen();
         if (index > 0){
@@ -225,9 +192,6 @@ std::optional<Pokemon::CheckpointFailure> run_plza_checkpoints(
                 backend.log(std::format("[Event] {}/0 chain: failed: {}", checkpoint.id, *chained));
                 return Pokemon::CheckpointFailure{.checkpoint_id = checkpoint.id, .failure = std::move(*chained)};
             }
-        }
-        if (options.at_start){
-            options.at_start(checkpoint);
         }
         if (!start_saved && options.attempts_per_checkpoint > 1){
             backend.log(std::format("[Checkpoint] {}: no autosave seen at its start, so no reload if it fails", checkpoint.id));

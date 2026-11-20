@@ -116,36 +116,21 @@ const std::map<std::string, ReferenceCells, std::less<>>& minimap_references(){
 } // namespace
 
 
-std::vector<MinimapDistance> minimap_distances(const ImageViewRGB32& screen){
-    std::vector<MinimapDistance> distances;
-    if (minimap_references().empty()){
-        return distances;
-    }
-    const ReferenceCells ring = ring_of(grid_cells(screen, MINIMAP_BOX, MINIMAP_CELLS, MINIMAP_CELLS));
-    for (const auto& [name, reference] : minimap_references()){
-        distances.push_back(MinimapDistance{.reference = name, .distance = cells_rmsd(reference, gain_matched(reference, ring))});
-    }
-    std::stable_sort(distances.begin(), distances.end(), [](const MinimapDistance& a, const MinimapDistance& b){
-        return a.distance < b.distance;
-    });
-    return distances;
-}
-
 std::optional<std::string> matching_minimap(const ImageViewRGB32& screen){
-    const std::vector<MinimapDistance> distances = minimap_distances(screen);
-    if (distances.empty() || distances.front().distance > MINIMAP_MATCH_MAX){
+    if (minimap_references().empty()){
         return std::nullopt;
     }
-    return distances.front().reference;
-}
-
-JsonObject minimap_reference_json(const ImageViewRGB32& screen, std::string_view source){
-    JsonObject json;
-    json["source"] = JsonValue(std::format(
-        "{}; {}x{} cells over x 52-184, y 55-187 of 1280x720", source, MINIMAP_CELLS, MINIMAP_CELLS
-    ));
-    json["grid"] = JsonValue(write_cell_grid(grid_cells(screen, MINIMAP_BOX, MINIMAP_CELLS, MINIMAP_CELLS), MINIMAP_CELLS));
-    return json;
+    const ReferenceCells ring = ring_of(grid_cells(screen, MINIMAP_BOX, MINIMAP_CELLS, MINIMAP_CELLS));
+    std::optional<std::string> best;
+    double best_distance = MINIMAP_MATCH_MAX;
+    for (const auto& [name, reference] : minimap_references()){
+        const double distance = cells_rmsd(reference, gain_matched(reference, ring));
+        if (best ? distance < best_distance : distance <= best_distance){
+            best = name;
+            best_distance = distance;
+        }
+    }
+    return best;
 }
 
 

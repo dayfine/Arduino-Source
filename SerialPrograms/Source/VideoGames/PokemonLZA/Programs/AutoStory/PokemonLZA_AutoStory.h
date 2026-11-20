@@ -53,8 +53,6 @@ private:
     StringOption PLAYER_NAME;
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
     BooleanCheckBoxOption LOAD_SAVE_FIRST;
-    BooleanCheckBoxOption RECORD_START_MINIMAPS;
-    StringOption RELOAD_PROBE_AFTER;
     EnumDropdownOption<StarterChoice> STARTER;
     StringOption RUN_FROM;
     BattleAIOption BATTLE_AI;

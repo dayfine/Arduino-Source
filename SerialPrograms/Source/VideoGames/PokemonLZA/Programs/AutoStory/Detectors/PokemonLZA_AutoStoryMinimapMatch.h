@@ -14,9 +14,6 @@
 
 #include <optional>
 #include <string>
-#include <string_view>
-#include <vector>
-#include "Common/Cpp/Json/JsonObject.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 
 namespace PokemonAutomation{
@@ -24,20 +21,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-struct MinimapDistance{
-    std::string reference = {};
-    double distance = 0;
-};
-
-//  `screen`'s minimap ring's distance to each built-in reference, nearest
-//  first (gain-matched; the player's arrow and the rim's icons left out).
-std::vector<MinimapDistance> minimap_distances(const ImageViewRGB32& screen);
-
-//  The nearest of minimap_distances() within the match distance.
+//  The nearest built-in reference to `screen`'s minimap ring within the match
+//  distance (gain-matched; the player's arrow and the rim's icons left out).
 std::optional<std::string> matching_minimap(const ImageViewRGB32& screen);
-
-//  The minimap on `screen` as a ReferenceData/plza-minimap-<name>.json object.
-JsonObject minimap_reference_json(const ImageViewRGB32& screen, std::string_view source);
 
 
 
