@@ -561,16 +561,24 @@ struct Patrol{
     std::optional<std::optional<Pokemon::StoryFailure>> walk_failed;
 };
 
+struct PatrolStart{
+    std::optional<int> slots;
+    size_t first_stop = 0;
+    bool already_at_first = false;
+};
+
 //  A leg that fails stops the patrol. A wild battle that starts on the way
 //  is fought at the next stop.
-Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal, std::optional<int> slots){
+Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal, PatrolStart start){
     const std::vector<int> stops = alternating_stops(CATCH_SPOTS, PATROL_VISITS);
     const WallClock deadline = current_time() + PATROL_LIMIT;
-    Patrol patrol;
-    patrol.party_slots = slots;
+    Patrol patrol{.party_slots = start.slots};
     GrassCatches& result = patrol.catches;
     std::vector<int> caught_at;
-    for (size_t i = 0; i < stops.size() && result.found < goal.new_species && result.throws < goal.max_throws; i++){
+    for (size_t i = start.first_stop; i < stops.size() && result.throws < goal.max_throws; i++){
+        if (patrol.party_slots ? party_has_species(patrol.party_slots, goal.party_species) : result.found >= goal.new_species){
+            break;
+        }
         backend.scope().throw_if_cancelled();
         if (current_time() > deadline){
             backend.log("[PLZA] catch_in_zone: out of time for the patrol");
@@ -581,11 +589,9 @@ Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal
             backend.log(std::format("[PLZA] catch_in_zone: no map waypoint for the stop {}: the patrol ends", stops[i]));
             break;
         }
-        //  The first stop is where go_to_zone_spot() ended.
-        if (i > 0){
-            const std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&*waypoint, 1));
-            if (walked){
-                patrol.walk_failed = walked;
+        if (i > start.first_stop || !start.already_at_first){
+            if (std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&*waypoint, 1))){
+                patrol.walk_failed = std::move(walked);
                 break;
             }
         }
@@ -622,28 +628,42 @@ std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& b
         backend.log("[PLZA] catch_in_zone: the party already holds the species: nothing to catch");
         return std::nullopt;
     }
-    const std::optional<Pokemon::StoryFailure> at_spot = go_to_zone_spot(env, backend, TAUNIE_ROCKS_ROUTE);
-    if (at_spot){
-        return at_spot;
+    ZoneCatchGoal target = goal;
+    PatrolStart start{.slots = slots};
+    if (slots && *slots >= 4){
+        //  03.08a: already caught the fourth species (e.g. Scatterbug near 100);
+        //  walk straight from the current pin to the 80 spot for the fifth.
+        backend.log(std::format("[PLZA] catch_in_zone: party holds {} species: patrolling straight to the 80 spot for {}", *slots, target.party_species));
+        target.new_species = 1;
+        start.first_stop = 1;
+    }else{
+        //  03.08: catch the fourth species from Taunie's rocks so its autosave
+        //  becomes 03.08a's clean retry boundary.
+        target.new_species = 1;
+        target.party_species = 4;
+        if (std::optional<Pokemon::StoryFailure> at_spot = go_to_zone_spot(env, backend, TAUNIE_ROCKS_ROUTE)){
+            return at_spot;
+        }
+        start.already_at_first = true;
     }
-    const Patrol patrol = patrol_and_catch(env, backend, goal, slots);
+    const Patrol patrol = patrol_and_catch(env, backend, target, start);
     if (patrol.walk_failed){
         return *patrol.walk_failed;
     }
     const GrassCatches& result = patrol.catches;
-    const SpeciesTally tally = species_tally(result, goal.new_species);
+    const SpeciesTally tally = species_tally(result, target.new_species);
     backend.log(std::format(
         "[PLZA] catch_in_zone: {}",
-        catch_summary_text(result, patrol.party_slots, goal.new_species, goal.party_species)
+        catch_summary_text(result, patrol.party_slots, target.new_species, target.party_species)
     ));
-    if (party_has_species(patrol.party_slots, goal.party_species)){
+    if (party_has_species(patrol.party_slots, target.party_species)){
         return std::nullopt;
     }
     //  The party bar's count, when read, stands in for the Pokedex's.
-    if (!enough_species(tally, patrol.party_slots, goal.party_species)){
+    if (!enough_species(tally, patrol.party_slots, target.party_species)){
         return Pokemon::StoryFailure{.code = "short_of_species", .detail = patrol.party_slots
-            ? std::format("the party holds {} species of {} ({} new by the banners in {} throws)", *patrol.party_slots, goal.party_species, result.found, result.throws)
-            : std::format("{} new species of {} in {} throws", result.found, goal.new_species, result.throws)};
+            ? std::format("the party holds {} species of {} ({} new by the banners in {} throws)", *patrol.party_slots, target.party_species, result.found, result.throws)
+            : std::format("{} new species of {} in {} throws", result.found, target.new_species, result.throws)};
     }
     return std::nullopt;
 }

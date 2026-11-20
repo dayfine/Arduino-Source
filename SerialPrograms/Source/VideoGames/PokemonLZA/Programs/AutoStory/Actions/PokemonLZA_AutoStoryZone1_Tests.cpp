@@ -47,7 +47,7 @@ MoveOnlyFunction<std::optional<MapPoint>()> pins_of(const std::vector<MapPoint>&
 }
 
 //  The map pin on the street outside the far gate (03.08b's menu save,
-//  console B 2026-11-17 01:06), and at Wild Zone 1's 60 catch spot.
+//  console B 2026-11-17 01:06), and inside Wild Zone 1.
 constexpr MapPoint OUT_OF_ZONE_PIN{.x = 401, .y = 225};
 constexpr MapPoint IN_ZONE_PIN{.x = 386, .y = 252};
 //  Outside the zone's outline but not where the map centres a player out
@@ -78,7 +78,7 @@ const ExitCase EXIT_CASES[] = {
     {
         //  console B, 2026-11-19 23:40: 03.08b's start after the last catch;
         //  the run to (386, 252) first went 11 east, then back west past it.
-        .name = "by the 60 spot, north of the gate's line: straight south onto the line",
+        .name = "north of the gate's line: straight south onto the line",
         .input = {.start = {.x = 375, .y = 245}},
         .expectation = {.waypoint = MapPoint{.x = 375, .y = 252}},
     },
@@ -201,7 +201,7 @@ private:
 
 //  Fixed waypoints for the leg logic, apart from the map data's.
 constexpr MapWaypoint SPOT{.name = "the 100 spot", .pin = {.x = 432, .y = 238}, .stop_radius = CATCH_STOP_RADIUS};
-constexpr MapWaypoint SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 252}, .stop_radius = CATCH_STOP_RADIUS};
+constexpr MapWaypoint SECOND_SPOT{.name = "the second catch spot", .pin = {.x = 386, .y = 252}, .stop_radius = CATCH_STOP_RADIUS};
 
 std::string describe(const MapLegMove& move){
     switch (move.step){
@@ -269,24 +269,20 @@ const LegCase LEG_CASES[] = {
         .expectation = {.moves = "walk 254 deg, read again, correction 1: walk 253 deg"},
     },
     {
-        //  Console B, 2026-11-17 03.08: the leg to the 60 spot from
-        //  (431, 236) ended at (380, 247), 7.8 pixels past it on its way;
-        //  correction 1 turned back at heading 133, away from the Mareep.
+        //  A walk that overshoots a catch spot along its heading but lands
+        //  within the stop radius arrives without turning back.
         .name = "a walk past a catch spot on its way, within its stop area, arrives",
-        .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 380, .y = 247}}},
+        .input = {.waypoint = SECOND_SPOT, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 380, .y = 247}}},
         .expectation = {.moves = "walk 250 deg, arrived"},
     },
     {
         .name = "a walk that ends off to the side of a catch spot, out of its stop area, gets a correction",
-        .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 384, .y = 265}}},
+        .input = {.waypoint = SECOND_SPOT, .reads = {MapPoint{.x = 431, .y = 236}, MapPoint{.x = 384, .y = 265}}},
         .expectation = {.moves = "walk 250 deg, correction 1: walk 9 deg"},
     },
     {
-        //  Console B, 2026-11-17 03.08b: zone_1_back_to_road started at
-        //  the pin where 03.08's last catch ended and walked back to the
-        //  60 spot before heading for the road.
         .name = "a first read within a catch spot's stop area arrives without a walk",
-        .input = {.waypoint = SPOT_60, .reads = {MapPoint{.x = 380, .y = 247}}},
+        .input = {.waypoint = SECOND_SPOT, .reads = {MapPoint{.x = 380, .y = 247}}},
         .expectation = {.moves = "arrived"},
     },
 };

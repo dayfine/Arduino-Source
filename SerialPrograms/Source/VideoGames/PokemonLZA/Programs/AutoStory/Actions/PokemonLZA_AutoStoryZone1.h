@@ -50,7 +50,7 @@ bool pin_in_zone_1(MapPoint pin);
 std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, MoveOnlyFunction<std::optional<MapPoint>()> pin);
 
 //  Catch patrol spots in Wild Zone 1 (named by their former marker distances).
-inline constexpr int CATCH_SPOTS[] = {100, 60};
+inline constexpr int CATCH_SPOTS[] = {100, 80};
 
 //  Builds a sequence of `visits` alternating stops cycling through `spots`.
 std::vector<int> alternating_stops(std::span<const int> spots, size_t visits);
