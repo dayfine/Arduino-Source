@@ -69,7 +69,7 @@ class CliTests(unittest.TestCase):
     def test_header_api_rules_and_style_waiver(self):
         self.source(3)
         self.commit()
-        names = ''.join(f'// Name {i}.\nvoid f{i}();\n' for i in range(9))
+        names = ''.join(f'// Name {i}.\nvoid f{i}();\n' for i in range(17))
         (self.root / 'Common/api.h').write_text(
             'namespace A{\n' + names + '// Overload.\nvoid f0(int x);\n'
             '// code-health: allow char_pointer -- the C library callback hands us this pointer\n'
@@ -77,10 +77,10 @@ class CliTests(unittest.TestCase):
         self.git('add', '.')
         result = self.cli()
         self.assertEqual(1, result.returncode, result.stderr)
-        self.assertIn('header_symbols=10, limit=8', result.stderr)
+        self.assertIn('header_symbols=18, limit=16', result.stderr)
         self.assertIn('f0: overload () is a prefix of (int)', result.stderr)
         self.assertNotIn('char*', result.stderr)
-        self.assertIn('Bypass: Common/api.h:23: char_pointer bypassed by the tag at line 22', result.stdout)
+        self.assertIn('Bypass: Common/api.h:39: char_pointer bypassed by the tag at line 38', result.stdout)
 
     def test_allow_tag_waives_advisory_style_findings(self):
         self.source(3)

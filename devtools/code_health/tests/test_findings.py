@@ -36,11 +36,11 @@ class AdvisoryLocationTests(unittest.TestCase):
         return [(f.path, f.line, f.message.split(' (')[0]) for f in advisories(metrics, list(previous))]
 
     def test_long_changed_file_is_reported_at_line_one(self):
-        self.assertEqual([(self.PATH, 1, '<file>: file_lines=600')],
-                         self.locations([Metric(self.PATH, '', 'file_lines', 600, 1000)]))
-        same_length = Metric(self.PATH, '', 'file_lines', 600, 1000)
+        self.assertEqual([(self.PATH, 1, '<file>: file_lines=850')],
+                         self.locations([Metric(self.PATH, '', 'file_lines', 850, 1000)]))
+        same_length = Metric(self.PATH, '', 'file_lines', 850, 1000)
         self.assertEqual(1, len(self.locations([same_length], [same_length])))
-        self.assertEqual([], self.locations([Metric(self.PATH, '', 'file_lines', 500, 1000)]))
+        self.assertEqual([], self.locations([Metric(self.PATH, '', 'file_lines', 800, 1000)]))
 
     def test_function_between_25_and_50_lines_is_reported_at_its_start(self):
         metrics = [Metric(self.PATH, 'f()', 'function_lines', 26, 50, 40),
