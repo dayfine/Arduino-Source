@@ -44,11 +44,6 @@ struct ZoneCatchGoal{
 //  decides. Fails as "short_of_species", still in the zone.
 std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal);
 
-//  Back onto the road at the 60 spot by a map leg: the marker is past the
-//  far gate behind the zone's fence, so a walk at the marker wanders off.
-//  Ends with the camera on the marker. Fails as walk_map_legs() does.
-std::optional<Pokemon::StoryFailure> walk_back_to_zone_road(StoryEnv& env, PlzaBackend& backend);
-
 
 
 } // namespace PokemonLZA

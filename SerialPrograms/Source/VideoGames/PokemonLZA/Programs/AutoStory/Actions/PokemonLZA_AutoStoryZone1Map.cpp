@@ -8,12 +8,21 @@
 #include <format>
 #include <span>
 #include <string>
+#include "PokemonLZA_AutoStoryMapLegs.h"
 #include "PokemonLZA_AutoStoryZone1Map.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
+
+namespace{
+
+//  Mareep's grass right of the road (marker 60): targets show on the right
+//  from (386, 252), none from (370, 256); 6 north of that, toward the grass.
+constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+
+} // namespace
 
 std::optional<MapWaypoint> catch_spot_waypoint(int spot){
     switch (spot){
@@ -45,6 +54,25 @@ constexpr double MAP_CENTRE_RADIUS = 6;
 
 constexpr size_t OUT_OF_ZONE_PIN_READS = 2;
 
+//  Into the far gate along its line, west down the road; a run 20 degrees
+//  off it from the 60 spot ended on a pillar (2026-11-17).
+constexpr double GATE_HEADING = 270;
+constexpr double GATE_HEADING_TOLERANCE = 8;
+
+//  The pin between the far gate's pillars, where "A Leave" shows; 1 north
+//  of the (361, 253) read, as runs with no prompt ended at y 255 on the
+//  left pillar.
+constexpr MapPoint ZONE1_FAR_GATE{.x = 361, .y = 252};
+
+//  On the gate's line ~25 pixels east of the gate, below the 60 spot: the
+//  way onto the line when the point straight north or south of the player
+//  is not in the zone east of the gate.
+constexpr MapPoint ZONE1_GATE_RUN_UP{.x = 386, .y = 252};
+
+bool at_map_centre(MapPoint pin){
+    return std::hypot(pin.x - MAP_CENTRE.x, pin.y - MAP_CENTRE.y) <= MAP_CENTRE_RADIUS;
+}
+
 //  Even-odd rule.
 bool inside(std::span<const MapPoint> outline, MapPoint point){
     bool in = false;
@@ -66,10 +94,21 @@ bool inside(std::span<const MapPoint> outline, MapPoint point){
 } // namespace
 
 bool pin_in_zone_1(MapPoint pin){
-    if (std::hypot(pin.x - MAP_CENTRE.x, pin.y - MAP_CENTRE.y) <= MAP_CENTRE_RADIUS){
+    if (at_map_centre(pin)){
         return false;
     }
     return inside(ZONE1_OUTLINE, pin);
+}
+
+std::vector<MapPoint> zone_1_exit_legs(MapPoint start){
+    if (start.x > ZONE1_FAR_GATE.x && std::abs(bearing(start, ZONE1_FAR_GATE) - GATE_HEADING) <= GATE_HEADING_TOLERANCE){
+        return {ZONE1_FAR_GATE};
+    }
+    const MapPoint onto_line{.x = start.x, .y = ZONE1_FAR_GATE.y};
+    if (start.x > ZONE1_FAR_GATE.x && inside(ZONE1_OUTLINE, onto_line)){
+        return {onto_line, ZONE1_FAR_GATE};
+    }
+    return {ZONE1_GATE_RUN_UP, ZONE1_FAR_GATE};
 }
 
 std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, MoveOnlyFunction<std::optional<MapPoint>()> pin){
@@ -87,6 +126,9 @@ std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, M
         if (pin_in_zone_1(*at)){
             backend.log(std::format("[PLZA] still in Wild Zone 1: the map pin reads {}", reads));
             return Pokemon::StoryFailure{.code = "in_wild_zone", .detail = std::format("still in Wild Zone 1: the map pin reads {}", reads)};
+        }
+        if (at_map_centre(*at)){
+            break;
         }
     }
     backend.log(std::format("[PLZA] out of Wild Zone 1: the map pin reads {}", reads));

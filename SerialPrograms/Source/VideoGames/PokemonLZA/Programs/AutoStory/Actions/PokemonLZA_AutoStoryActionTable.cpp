@@ -426,13 +426,12 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
 void add_console_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     std::pair<std::string_view, StoryActionParser> table[] = {
         {action_name(PlzaAction::RUN_TO_GATE), console_action(hooks, action_name(PlzaAction::RUN_TO_GATE), /*timeout=*/8s)},
-        {action_name(PlzaAction::AIMED_RUN_TO_GATE), console_action(hooks, action_name(PlzaAction::AIMED_RUN_TO_GATE), /*timeout=*/4s)},
+        {action_name(PlzaAction::RUN_OUT_OF_ZONE_1), console_action(hooks, action_name(PlzaAction::RUN_OUT_OF_ZONE_1), /*timeout=*/5s)},
         {action_name(PlzaAction::NEW_GAME_INTRO), console_action(hooks, action_name(PlzaAction::NEW_GAME_INTRO))},
         {action_name(PlzaAction::CONFIRM_NEW_GAME), console_action(hooks, action_name(PlzaAction::CONFIRM_NEW_GAME))},
         {action_name(PlzaAction::CATCH_TUTORIAL), console_action(hooks, action_name(PlzaAction::CATCH_TUTORIAL))},
         {action_name(PlzaAction::BATTLE_THEN_CATCH), console_action(hooks, action_name(PlzaAction::BATTLE_THEN_CATCH))},
         {action_name(PlzaAction::CATCH_IN_ZONE), console_action(hooks, action_name(PlzaAction::CATCH_IN_ZONE))},
-        {action_name(PlzaAction::WALK_BACK_TO_ZONE_ROAD), console_action(hooks, action_name(PlzaAction::WALK_BACK_TO_ZONE_ROAD))},
         {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), console_action(hooks, action_name(PlzaAction::CHECK_OUT_OF_ZONE_1))},
         {action_name(PlzaAction::WALK_TO_UNREAD_MARKER), console_action(hooks, action_name(PlzaAction::WALK_TO_UNREAD_MARKER))},
         {action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD), console_action(hooks, action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD))},

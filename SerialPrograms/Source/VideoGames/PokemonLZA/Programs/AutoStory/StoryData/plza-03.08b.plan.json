@@ -9,16 +9,11 @@
     },
     "events": [
       {
-        "id": "zone_1_back_to_road",
-        "why": "back onto the road at the catch spots by the marker; walking straight at the marker from 60 gets stuck on the zone's fence",
-        "action": "walk_back_to_zone_road"
-      },
-      {
         "id": "zone_1_to_far_gate",
-        "why": "face 265 by the minimap, then run down the road to the far gate's A prompt (~4.7 s)",
-        "action": "aimed_run_to_gate",
+        "why": "one map read, then B held: onto the gate's line when off it (runs in off the line hit a pillar), and down the road to the far gate's A prompt; a wild battle does not stop it, leaving ends it",
+        "action": "run_out_of_zone_1",
         "args": {
-          "timeout_ms": 4000
+          "timeout_ms": 5000
         }
       },
       {
@@ -31,7 +26,7 @@
       },
       {
         "id": "out_of_zone_1",
-        "why": "the save below must be out of the zone: the map pin on two reads, else stop unsaved",
+        "why": "the save below must be out of the zone: the map pin at the map's centre (a second read when elsewhere), else stop unsaved",
         "action": "check_out_of_zone_1"
       },
       {
