@@ -17,10 +17,13 @@
 #define PokemonAutomation_VideoPipeline_VideoSource_MgbaLink_H
 
 #include <stdint.h>
+#include <chrono>
+#include <deque>
 #include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/Concurrency/AsyncTask.h"
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
@@ -61,6 +64,17 @@ ImageRGB32 compose_mgba_frame(
 std::optional<std::pair<std::string, uint16_t>> parse_mgba_address(std::string_view address);
 
 
+//  Exports frames within `window` of the latest frame as "<ms>.png" in
+//  `folder` (compatible with Pokemon::ReplayFrameSource::from_folder()),
+//  plus "input_log.json" if `input_log` is non-empty. Returns exported count.
+size_t export_mgba_frame_replay(
+    const std::vector<VideoSnapshot>& frames,
+    const std::string& folder,
+    std::chrono::milliseconds window,
+    const std::vector<MgbaLink::InputLogEntry>& input_log = {}
+);
+
+
 
 //  Selects an mGBA bridge by "host:port" (saved in the profile).
 class VideoSourceDescriptor_MgbaLink : public VideoSourceDescriptor{
@@ -92,6 +106,17 @@ private:
     std::string m_address;
 };
 
+
+
+class VideoSource_MgbaLink;
+
+//  Exports the last `window` of captured frames (and input log, if any)
+//  from `source` into `folder` as "<ms>.png" files.
+size_t export_frame_replay(
+    const VideoSource_MgbaLink& source,
+    const std::string& folder,
+    std::chrono::milliseconds window = std::chrono::seconds(20)
+);
 
 
 //  Polls FRAME on its own connection and keeps the latest composed frame;
@@ -127,6 +152,11 @@ public:
 
 private:
     friend class VideoWidget_MgbaLink;
+    friend size_t export_frame_replay(
+        const VideoSource_MgbaLink& source,
+        const std::string& folder,
+        std::chrono::milliseconds window
+    );
 
     void poll_loop();
     void run_connection(Logger& logger, const std::string& host, uint16_t port);
@@ -139,10 +169,11 @@ private:
     const std::string m_address;
     VideoFormatSet m_formats;
 
-    Mutex m_lock;
+    mutable Mutex m_lock;
     ConditionVariable m_cv;
     bool m_stopping = false;
     VideoSnapshot m_last;
+    std::deque<VideoSnapshot> m_history;
     //  The poller's open connection, if any; the destructor aborts it so it
     //  never waits out a reply timeout.
     MgbaLink::Connection* m_connection = nullptr;

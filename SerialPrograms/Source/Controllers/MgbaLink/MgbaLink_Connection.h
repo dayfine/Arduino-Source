@@ -23,6 +23,7 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/Concurrency/ConditionVariable.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 #include "Common/Cpp/Concurrency/ThreadPool.h"
@@ -32,6 +33,14 @@
 
 namespace PokemonAutomation{
 namespace MgbaLink{
+
+
+//  One key-state transition sent to the bridge, recorded at the effective
+//  frame it landed on (frame + late).
+struct InputLogEntry{
+    uint64_t frame = 0;
+    uint16_t mask = 0;
+};
 
 
 //  A synchronous MgbaLink v1 client: open(), then one command at a time.
@@ -72,6 +81,9 @@ public:
     //  frames late the command arrived (0 = on time).
     uint64_t keys(uint64_t frame, uint16_t mask);
 
+    //  Returns a snapshot of the recorded KEYS transitions on this connection.
+    std::vector<InputLogEntry> input_log() const;
+
 private:
     virtual void on_connect_finished(const std::string& error_message) override;
     virtual void on_receive_data(const void* data, size_t bytes) override;
@@ -99,6 +111,9 @@ private:
     bool m_aborted = false;
     LineSplitter m_splitter;
     std::deque<std::string> m_replies;
+
+    mutable Mutex m_input_log_lock;
+    std::vector<InputLogEntry> m_input_log;
 
     //  Last member: destroyed first, which joins its receive thread before
     //  the state above goes away.

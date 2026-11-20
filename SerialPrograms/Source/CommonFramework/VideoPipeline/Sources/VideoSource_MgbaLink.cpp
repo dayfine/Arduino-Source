@@ -6,6 +6,7 @@
 
 #include <charconv>
 #include <format>
+#include <fstream>
 #include <QImage>
 #include <QPainter>
 #include <QTimer>
@@ -13,6 +14,7 @@
 #include <QWidget>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Controllers/MgbaLink/MgbaLink_SharedLink.h"
 #include "CommonFramework/ImageTypes/ImageRGB32_Qt.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
@@ -31,6 +33,7 @@ namespace{
 constexpr std::chrono::milliseconds MAX_CLOCK_LAG(500);
 
 constexpr std::chrono::milliseconds RECONNECT_DELAY(2000);
+constexpr std::chrono::milliseconds MAX_HISTORY_WINDOW(30000);
 
 //  One GBA frame, rounded down: polling faster only repeats a frame number.
 constexpr std::chrono::milliseconds POLL_PERIOD(16);
@@ -283,6 +286,10 @@ void VideoSource_MgbaLink::publish_frame(ImageRGB32 frame, WallClock timestamp){
     {
         std::lock_guard<Mutex> lg(m_lock);
         m_last = snapshot;
+        m_history.push_back(snapshot);
+        while (m_history.size() > 1 && (timestamp - m_history.front().timestamp) > MAX_HISTORY_WINDOW){
+            m_history.pop_front();
+        }
     }
 
     //  For the FPS readout and stream history. The QImage shares the
@@ -329,6 +336,74 @@ private:
     VideoSource_MgbaLink& m_source;
 };
 
+
+size_t export_mgba_frame_replay(
+    const std::vector<VideoSnapshot>& frames,
+    const std::string& folder,
+    std::chrono::milliseconds window,
+    const std::vector<MgbaLink::InputLogEntry>& input_log
+){
+    if (frames.empty()){
+        return 0;
+    }
+    const WallClock latest = frames.back().timestamp;
+    std::vector<const VideoSnapshot*> selected;
+    for (const VideoSnapshot& snap : frames){
+        if (!snap.frame || snap.frame->width() == 0){
+            continue;
+        }
+        if (window <= std::chrono::milliseconds(0) || (latest - snap.timestamp) <= window){
+            selected.push_back(&snap);
+        }
+    }
+    if (selected.empty()){
+        return 0;
+    }
+
+    const Filesystem::Path dir(folder);
+    Filesystem::create_directories(dir);
+    const WallClock origin = selected.front()->timestamp;
+    for (const VideoSnapshot* snap : selected){
+        const auto offset_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+            snap->timestamp - origin
+        ).count();
+        const std::string file = (dir / (std::to_string(offset_ms) + ".png")).string();
+        snap->frame->save(file);
+    }
+
+    if (!input_log.empty()){
+        const std::string log_path = (dir / "input_log.json").string();
+        std::ofstream out(Filesystem::Path(log_path).stdpath());
+        out << "[\n";
+        for (size_t i = 0; i < input_log.size(); i++){
+            out << "  {\"frame\": " << input_log[i].frame
+                << ", \"mask\": " << input_log[i].mask << "}";
+            if (i + 1 < input_log.size()){
+                out << ",";
+            }
+            out << "\n";
+        }
+        out << "]\n";
+    }
+    return selected.size();
+}
+
+size_t export_frame_replay(
+    const VideoSource_MgbaLink& source,
+    const std::string& folder,
+    std::chrono::milliseconds window
+){
+    std::vector<VideoSnapshot> frames;
+    std::vector<MgbaLink::InputLogEntry> log;
+    {
+        std::lock_guard<Mutex> lg(source.m_lock);
+        frames.assign(source.m_history.begin(), source.m_history.end());
+        if (source.m_connection != nullptr){
+            log = source.m_connection->input_log();
+        }
+    }
+    return export_mgba_frame_replay(frames, folder, window, log);
+}
 
 QWidget* VideoSource_MgbaLink::make_display_QtWidget(QWidget* parent){
     return new VideoWidget_MgbaLink(parent, *this);

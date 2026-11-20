@@ -14,8 +14,10 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/VideoPipeline/Sources/VideoSource_MgbaLink.h"
 #include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker.h"
@@ -180,12 +182,53 @@ private:
     FrameReplayInput m_input;
 };
 
+UnitTestResult test_mgba_exported_folder_loads(){
+    const Filesystem::Path temp_dir = Filesystem::unique_temp_path(Filesystem::Path("mgba_frame_replay_test"));
+    struct Cleanup{
+        Filesystem::Path dir;
+        ~Cleanup(){
+            Filesystem::remove_all(dir);
+        }
+    } cleanup{temp_dir};
+
+    const WallClock t0 = current_time();
+    ImageRGB32 img0(16, 16);
+    img0.fill(0xFF000000);
+    ImageRGB32 img1(16, 16);
+    img1.fill(0xFFFFFFFF);
+
+    const std::vector<VideoSnapshot> snapshots = {
+        VideoSnapshot(std::move(img0), t0),
+        VideoSnapshot(std::move(img1), t0 + Milliseconds(100)),
+    };
+    const std::vector<MgbaLink::InputLogEntry> log = {
+        {.frame = 100, .mask = 1},
+        {.frame = 105, .mask = 0},
+    };
+    const size_t exported = export_mgba_frame_replay(snapshots, temp_dir.string(), Milliseconds(500), log);
+    if (exported != 2){
+        return std::format("expected 2 exported frames, got {}", exported);
+    }
+    if (!Filesystem::exists(temp_dir / "input_log.json")){
+        return "expected input_log.json to be exported alongside frames";
+    }
+    const ReplayFrameSource loaded = ReplayFrameSource::from_folder(temp_dir.string());
+    if (loaded.size() != 2){
+        return std::format("expected 2 loaded frames, got {}", loaded.size());
+    }
+    if (loaded.last_frame() != Milliseconds(100)){
+        return std::format("expected last_frame 100 ms, got {} ms", loaded.last_frame().count());
+    }
+    return true;
+}
+
 const FrameReplayCase FRAME_REPLAY_CASES[] = {
     {.input = {"the frame showing at a time", test_frame_at}, .expectation = {}},
     {.input = {"a missing recording throws", test_missing_folder}, .expectation = {}},
     {.input = {"the warp watcher sees a door's black", test_watcher_sees_fade}, .expectation = {}},
     {.input = {"a warp watcher along the hold sees a black over before it ends", test_watcher_along_hold_sees_fade}, .expectation = {}},
     {.input = {"the replayed events judged as a warp", test_events_judged}, .expectation = {}},
+    {.input = {"an mGBA FrameReplay export folder loads cleanly", test_mgba_exported_folder_loads}, .expectation = {}},
 };
 
 } // namespace
