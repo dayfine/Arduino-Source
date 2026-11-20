@@ -13,7 +13,7 @@
         "why": "after Pancham, through the archway, around the starters into the scene. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
-          "legs": [[-15, 4000], [-75, 3500], [90, 10000], [-90, 4000]]
+          "legs": [[-15, 4000], [-75, 3500], [90, 10500], [-90, 4000]]
         }
       },
       {
