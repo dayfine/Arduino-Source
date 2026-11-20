@@ -931,10 +931,6 @@ file(GLOB LIBRARY_SOURCES
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.h
     Source/CommonTools/ScreenEvents/ScreenFades.h
-    Source/CommonTools/ScreenMachine/ScreenMachine.cpp
-    Source/CommonTools/ScreenMachine/ScreenMachine.h
-    Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
-    Source/CommonTools/ScreenMachine/ScreenMachine_Tests.h
     Source/CommonTools/ScreenMachine/ScreenObservation.h
     Source/CommonTools/StartupChecks/StartProgramChecks.cpp
     Source/CommonTools/StartupChecks/StartProgramChecks.h
@@ -1519,8 +1515,6 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch_Tests.h
-    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h
@@ -3284,7 +3278,6 @@ set(LOGIC_LIBRARY_SOURCES
     Source/CommonFramework/VideoPipeline/VideoOverlayTypes.cpp
     Source/CommonTools/Images/SolidColorTest.cpp
     Source/CommonTools/ScreenEvents/ScreenEvents.cpp
-    Source/CommonTools/ScreenMachine/ScreenMachine.cpp
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix.cpp
     Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Core_64xH_Default.cpp
     Source/Kernels/BinaryMatrix/Kernels_PackedBinaryMatrixCore.tpp
@@ -3298,7 +3291,6 @@ set(LOGIC_LIBRARY_SOURCES
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_Default.cpp
     Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_TestInfra.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.cpp
-    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine.cpp
     Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
@@ -3309,7 +3301,6 @@ set(LOGIC_LIBRARY_SOURCES
 # make_logic_tests() (Source/Tests/LogicTests/LogicTests_Main.cpp).
 set(LOGIC_TEST_SOURCES
     Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
-    Source/CommonTools/ScreenMachine/ScreenMachine_Tests.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp

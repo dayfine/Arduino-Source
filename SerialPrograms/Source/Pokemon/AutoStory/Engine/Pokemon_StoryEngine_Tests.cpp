@@ -112,7 +112,6 @@ StoryActions test_actions(TestWorld& world){
 //  reload presses HOME and answers `reload_start`.
 StoryGame test_game(std::set<std::string> save_failures, std::optional<std::string> reload_start){
     StoryGame game;
-    game.id = "test";
     game.save = [save_failures = std::move(save_failures)](StoryBackend&, const StoryCheckpoint& checkpoint){
         if (save_failures.contains(checkpoint.id)){
             return std::optional<StoryFailure>(StoryFailure{.code = "save_error", .detail = "the disk is full"});

@@ -32,7 +32,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
-#include "CommonTools/ScreenMachine/ScreenMachine_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -43,7 +42,6 @@ UnitTestDatabase make_logic_tests(){
     UnitTestDatabase database;
     Pokemon::add_tests_AutoStory(database);
     add_tests_ScreenEvents(database);
-    add_tests_ScreenMachine(database);
     return database;
 }
 
