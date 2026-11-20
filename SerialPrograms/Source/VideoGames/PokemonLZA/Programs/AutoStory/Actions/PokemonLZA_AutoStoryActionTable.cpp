@@ -117,12 +117,14 @@ Pokemon::StoryActionParser no_args(Run run){
 }
 
 
-Pokemon::StoryActionParser platform_action(PlatformWait wait, Milliseconds fallback){
-    return [wait, fallback](const JsonObject& args) -> StoryStepRun{
+using PlatformStep = std::optional<StoryFailure> (*)(PlzaBackend&, Milliseconds);
+
+Pokemon::StoryActionParser platform_action(PlatformStep step, Milliseconds fallback){
+    return [step, fallback](const JsonObject& args) -> StoryStepRun{
         reject_unknown_keys(args, {"timeout_ms"});
         const Milliseconds timeout = ms_or(args, "timeout_ms", fallback);
-        return [wait, timeout](PlzaBackend& backend, RunState&){
-            return wait_for_platform(backend, timeout, wait);
+        return [step, timeout](PlzaBackend& backend, RunState&){
+            return step(backend, timeout);
         };
     };
 }
@@ -401,8 +403,8 @@ std::optional<StoryFailure> menu_save_step(PlzaConsoleHooks& hooks, PlzaBackend&
 //  The actions that need no console.
 void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     std::pair<std::string_view, StoryActionParser> table[] = {
-        {action_name(PlzaAction::WAIT_FOR_PLATFORM), platform_action(PlatformWait::PLATFORM_ONLY, /*fallback=*/180s)},
-        {action_name(PlzaAction::OPENING_TO_PLATFORM), platform_action(PlatformWait::AFTER_AUTOSAVE, /*fallback=*/240s)},
+        {action_name(PlzaAction::WAIT_FOR_PLATFORM), platform_action(wait_for_platform, /*fallback=*/180s)},
+        {action_name(PlzaAction::OPENING_TO_PLATFORM), platform_action(opening_to_platform, /*fallback=*/240s)},
         {action_name(PlzaAction::WALK), walk_action(hooks)},
         {action_name(PlzaAction::TALK_THROUGH_MAP_SCREEN), no_args([](PlzaBackend& backend, RunState&){ return talk_through_map_screen(backend); })},
         {action_name(PlzaAction::TALK_TO_POKEDEX_SCREEN), no_args(pokedex_step)},

@@ -39,12 +39,10 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-
 namespace{
 
 using Pokemon::StoryCheckpoint;
 using Pokemon::StoryStep;
-
 
 std::string joined(const std::vector<std::string>& texts, std::string_view separator){
     std::string text;
@@ -53,7 +51,6 @@ std::string joined(const std::vector<std::string>& texts, std::string_view separ
     }
     return text;
 }
-
 
 struct AutosaveStepCase{
     std::string name;
@@ -107,7 +104,6 @@ UnitTestResult check_autosave_step(const AutosaveStepCase& test, CancellableScop
     }
     return true;
 }
-
 
 //  `at`: after the scripts' common start.
 ScreenObservation look(ScreenEvents events, std::vector<std::string_view> readings = {}, Milliseconds at = Milliseconds(0)){
@@ -167,7 +163,6 @@ std::vector<ScreenObservation> concat(std::vector<ScreenObservation> first, cons
 std::string repeated(std::string_view text, size_t times){
     return joined(std::vector<std::string>(times, std::string(text)), ", ");
 }
-
 
 //  Steps [first_step, first_step + steps) of built-in checkpoint `id`,
 //  bound to `tools`.
@@ -233,6 +228,11 @@ const RunCase RUN_CASES[] = {
         .name = "01.00b's opening fails with no autosave",
         .input = {.checkpoint = "01.00b", .first_step = 1, .looks = {PLATFORM}},
         .expectation = {.verdict = "failed at opening: platform_not_seen"},
+    },
+    {
+        .name = "01.01's platform check is passive on dialog and ignores a hint under dialog",
+        .input = {.checkpoint = "01.01", .first_step = 0, .steps = 1, .looks = {TEXT_PAGE, look({ScreenEvent::DIALOG_BOX}, {CONTROLS_HINT_READING}), PLATFORM, PLATFORM}},
+        .expectation = {.verdict = "done", .inputs = "wait 300ms, wait 300ms, wait 300ms"},
     },
     {
         .name = "01.01's walk plays a dropped leg again",
