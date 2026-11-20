@@ -194,7 +194,7 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
         }
     }
     if (walk.into_talk){
-        return walk_into_talk(backend, name, walk.move);
+        return walk_into_talk(backend, name, walk.move, /*after_legs=*/walk.to_starter);
     }
     if (walk.end){
         return walk_until(backend, name, walk.move, *walk.end, walk.end_after);
