@@ -27,8 +27,6 @@ namespace PokemonLZA{
 //  What the screen shows where a checkpoint starts, one cheap reading per
 //  field; none: not known (a plan) or not read (a reading).
 struct StartSignature{
-    //  The backup card's "Registered in the Pokedex".
-    std::optional<size_t> registered = std::nullopt;
     std::optional<bool> talk_prompt = std::nullopt;
     //  In Wild Zone 1, by the map pin: the lead Pokemon's panel also shows on
     //  the street outside the zone.
@@ -42,7 +40,7 @@ struct StartSignature{
     bool operator==(const StartSignature&) const = default;
 };
 
-//  "registered 1, talk prompt, not in a wild zone, minimap 03.04-start";
+//  "talk prompt, not in a wild zone, minimap 03.04-start";
 //  "nothing read" when it has no field.
 std::string to_string(const StartSignature& signature);
 
@@ -64,9 +62,8 @@ std::optional<size_t> checkpoint_at(
     size_t asked, const StartSignature& read
 );
 
-//  For a chained run: every field `known` names but `registered` (backup
-//  card only) is read and agrees. Stricter than checkpoint_at(), which an
-//  unread field lets match.
+//  For a chained run: every field `known` names is read and agrees.
+//  Stricter than checkpoint_at(), which an unread field lets match.
 bool start_confirmed(const StartSignature& known, const StartSignature& read);
 
 //  None when the pin was not read.

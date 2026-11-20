@@ -41,12 +41,12 @@
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played from a new game; ends on the autosave in wild_zones_tutorial. The first checkpoint the title's backup save loads at (the start_signature's \"registered\")"
+      "source": "played from a new game; ends on the autosave in wild_zones_tutorial"
     }
   },
   "execution": {
     "save": "autosave",
     "autosave_step": "wild_zones_tutorial",
-    "start_signature": {"registered": 1, "talk_prompt": true, "wild_zone": false, "party": 1}
+    "start_signature": {"talk_prompt": true, "wild_zone": false, "party": 1}
   }
 }
