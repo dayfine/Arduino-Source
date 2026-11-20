@@ -50,26 +50,21 @@
       },
       {
         "id": "lab_lobby",
-        "why": "A Enter (up_the_lab_steps ended on its prompt; A waits for the fade), the receptionist; autosave",
+        "why": "A Enter (up_the_lab_steps ended on its prompt; A waits for the fade), the receptionist; autosaves when control returns in the lobby",
         "action": "scene",
         "args": {
           "press_a_first": true
         }
-      },
-      {
-        "id": "save_in_lab_lobby",
-        "why": "no run saw the lobby's autosave, so a menu save for 03.10's start",
-        "action": "save_from_menu"
       }
     ],
     "metadata": {
       "phase": "testing",
-      "source": "played from a new game; starts just outside Wild Zone 1's far gate; ends in the lab lobby with a menu save"
+      "source": "played from a new game; starts just outside Wild Zone 1's far gate; ends in the lab lobby"
     }
   },
   "execution": {
     "save": "autosave",
-    "autosave_step": "save_in_lab_lobby",
+    "autosave_step": "lab_lobby",
     "start_signature": {
       "party": 5,
       "wild_zone": false
