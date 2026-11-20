@@ -268,7 +268,7 @@ AutoStory::AutoStory()
         /*is_password=*/false, "<b>Player Name:</b><br>Letters, digits and - / : ' , . ? ! (the keyboard's first page); at most 12 characters, 6 in Japanese and Chinese.",
         LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"Kosmos", /*placeholder_text=*/"Kosmos"
     )
-    , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/1, /*min_value=*/1, /*max_value=*/5)
+    , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/3, /*min_value=*/1, /*max_value=*/5)
     , LOAD_SAVE_FIRST(std::string(LOAD_SAVE_FIRST_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/true)
     , STARTER("<b>Starter:</b><br>The starter 01.03 picks.", starter_database(), LockMode::LOCK_WHILE_RUNNING, StarterChoice::CHIKORITA)
     , RUN_FROM(/*is_password=*/false, std::string(RUN_FROM_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"03.03", /*placeholder_text=*/"03.03")

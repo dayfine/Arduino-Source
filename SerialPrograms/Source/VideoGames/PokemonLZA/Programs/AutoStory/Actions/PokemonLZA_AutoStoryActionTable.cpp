@@ -203,7 +203,9 @@ WalkArgs aimed_at_starter(PlzaConsoleHooks& hooks, WalkArgs walk){
 }
 
 //  Starts only with free control. "heading" needs the arrow, else CONSOLE_ONLY.
-std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& walk, PlzaBackend& backend, std::string_view name){
+std::optional<StoryFailure> walk_step(
+    PlzaConsoleHooks& hooks, const WalkArgs& walk, PlzaBackend& backend, std::string_view name, bool stop_on_battle
+){
     if (walk.move.wait_first > 0ms){
         backend.wait(walk.move.wait_first);
     }
@@ -219,10 +221,10 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
         }
     }
     if (walk.into_talk){
-        return walk_into_talk(backend, name, walk.move, /*after_legs=*/walk.to_starter);
+        return walk_into_talk(backend, name, walk.move, {.after_legs = walk.to_starter, .stop_on_battle = stop_on_battle});
     }
     if (walk.end){
-        return walk_until(backend, name, walk.move, *walk.end, walk.end_after);
+        return walk_until(backend, name, walk.move, {.end = *walk.end, .end_after = walk.end_after, .stop_on_battle = stop_on_battle});
     }
     std::optional<StoryFailure> walked = run_story_move(backend, walk.move);
     if (!walked){
@@ -409,7 +411,7 @@ StoryActionParser walk_action(PlzaConsoleHooks& hooks){
             if (battle && battle_showing(backend)){
                 return battle_on_screen_failure();
             }
-            std::optional<StoryFailure> walked = walk_step(hooks, aimed_at_starter(hooks, walk), backend, "walk");
+            std::optional<StoryFailure> walked = walk_step(hooks, aimed_at_starter(hooks, walk), backend, "walk", battle);
             if (walked && battle && battle_showing(backend)){
                 return battle_on_screen_failure();
             }
