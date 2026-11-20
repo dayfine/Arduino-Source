@@ -75,7 +75,9 @@ struct ScriptedRoute{
     std::string failure;
     //  Whether the tap past a leg's wall moves the player, and the taps made.
     bool moves_past_wall = false;
+    std::vector<bool> wall_tap_moves;
     size_t wall_taps = 0;
+    std::vector<Milliseconds> waits;
     //  The way each walked step started facing.
     std::vector<std::optional<Direction>> facings;
     //  How the watches for a trainer end, in order; DONE after these. The
@@ -96,9 +98,15 @@ struct ScriptedRoute{
             return std::optional<WarpBattle>(WarpBattle::NONE);
         };
         calls.log = [this](const std::string& message){ logs.push_back(message); };
-        calls.moved_past_wall = [this](const RouteStep&){
+        calls.moved_past_wall = [this](const RouteStep&) -> bool{
             wall_taps++;
+            if (wall_taps <= wall_tap_moves.size()){
+                return wall_tap_moves[wall_taps - 1];
+            }
             return moves_past_wall;
+        };
+        calls.wait = [this](Milliseconds duration){
+            waits.push_back(duration);
         };
         calls.fail = [this](const std::string& message){
             failure = message;
@@ -239,7 +247,7 @@ UnitTestResult test_open_water_legs(){
     for (size_t c = 0; c + 1 < route->size(); c++){
         RouteStep& step = (*route)[c];
         RouteStep& next = (*route)[c + 1];
-        if (step.surfing && step.action == RouteAction::WALK && !step.warps && next.action == RouteAction::WALK && !next.warps){
+        if (step.surfing && step.action == RouteAction::WALK && !step.warps && step.tiles > 20 && next.action == RouteAction::WALK && !next.warps){
             step.to_wall = false;
             step.lands_after = 0;
             next.to_wall = false;
@@ -249,6 +257,7 @@ UnitTestResult test_open_water_legs(){
     size_t chained = 0;
     while (chained + 1 < route->size() && !(
         (*route)[chained].surfing && !(*route)[chained].to_wall && !(*route)[chained].warps
+        && (*route)[chained].tiles > 20
         && (*route)[chained + 1].action == RouteAction::WALK && !(*route)[chained + 1].to_wall && !(*route)[chained + 1].warps
     )){
         chained++;
@@ -899,6 +908,71 @@ UnitTestResult test_grass_in_sight(){
     return expect_logged(script.logs, {"Robin (3, 1) (stopped by a trainer, now at (3, 2))"});
 }
 
+UnitTestResult test_wanderer_unmoved_wait_and_retry(){
+    const std::string json = R"({
+        "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-19"},
+        "tiles": ["#######", "#.....#", "#.....#", "#######"],
+        "elevation": ["3333333", "3333333", "3333333", "3333333"],
+        "objects": [
+            {"name": "youngster", "kind": "npc", "x": 3, "y": 1, "wander": {"x0": 3, "y0": 1, "x1": 3, "y1": 2}}
+        ]
+    })";
+    const std::vector<MapData> maps{parse_map(json, "Corridor")};
+    const MapPosition start{"Corridor", {2, 1}};
+    RouteStep leg = walk(Direction::EAST, 3, {"Corridor", {5, 1}});
+    leg.to_wall = true;
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route"};
+
+    //  Blocked twice by the wanderer, then succeeds on the 3rd attempt.
+    {
+        ScriptedRoute script;
+        script.ends[0] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
+        script.ends[1] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
+        if (script.run({leg}, &planning) || script.walked.size() != 3 || script.waits.size() != 2){
+            return std::format("Expected 3 walks and 2 waits, got {} walks, {} waits: {}",
+                script.walked.size(), script.waits.size(), script.failure);
+        }
+    }
+
+    //  Blocked more than MAX_WANDER_WAITS times: waits MAX_WANDER_WAITS times, then rejoins/fails.
+    {
+        ScriptedRoute script;
+        for (size_t i = 0; i < MAX_WANDER_WAITS + 3; i++){
+            script.ends[i] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
+        }
+        if (!script.run({leg}, &planning) || script.waits.size() != MAX_WANDER_WAITS){
+            return std::format("Expected failure after {} waits, got {} waits (failed={})",
+                MAX_WANDER_WAITS, script.waits.size(), !script.failure.empty());
+        }
+    }
+
+    return true;
+}
+
+UnitTestResult test_wanderer_wall_rehold(){
+    const std::string json = R"({
+        "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-19"},
+        "tiles": ["#######", "#.....#", "#######"],
+        "elevation": ["3333333", "3333333", "3333333"],
+        "objects": [
+            {"name": "youngster", "kind": "npc", "x": 3, "y": 1, "wander": {"x0": 3, "y0": 1, "x1": 4, "y1": 1}}
+        ]
+    })";
+    const std::vector<MapData> maps{parse_map(json, "Corridor")};
+    const MapPosition start{"Corridor", {1, 1}};
+    RouteStep leg = walk(Direction::EAST, 4, {"Corridor", {5, 1}});
+    leg.to_wall = true;
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route", .wall_check = WallCheck::TAP};
+
+    ScriptedRoute script;
+    script.wall_tap_moves = {true, false};
+    if (script.run({leg}, &planning) || script.walked.size() != 2 || script.waits.size() != 1){
+        return std::format("Expected 2 walks and 1 wait after moved_past_wall, got {} walks, {} waits: {}",
+            script.walked.size(), script.waits.size(), script.failure);
+    }
+    return true;
+}
+
 const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "stop, recover, resume", .body = test_stop_recover_resume},
@@ -978,6 +1052,14 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "the frame of a leg's interrupt", .body = test_interrupt_frame},
         .expectation = {.description = "saved under DebugDumps/AutoStory/route/, named for the interrupt"},
+    },
+    {
+        .input = {.name = "wanderer unmoved wait and retry", .body = test_wanderer_unmoved_wait_and_retry},
+        .expectation = {.description = "waits and retries up to MAX_WANDER_WAITS when blocked by a wandering NPC"},
+    },
+    {
+        .input = {.name = "wanderer wall re-hold", .body = test_wanderer_wall_rehold},
+        .expectation = {.description = "waits and re-holds a to_wall leg touching a wander box when moved_past_wall detects movement"},
     },
 
 };

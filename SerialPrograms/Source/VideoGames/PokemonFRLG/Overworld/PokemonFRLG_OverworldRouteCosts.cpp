@@ -26,6 +26,7 @@ const RouteCosts& default_route_costs(){
         {RouteCost::SIGN_OVERSHOOT, 3},
         {RouteCost::OPEN_WATER_STOP, 1000},
         {RouteCost::OPEN_CHECK, 10},
+        {RouteCost::WANDER_TILE, 8},
     };
     return COSTS;
 }

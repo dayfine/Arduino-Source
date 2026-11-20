@@ -27,6 +27,12 @@ namespace PokemonFRLG{
 //  The object standing, or maybe wandering, on this tile.
 const MapObject* object_at(const MapData& map, const TilePos& point);
 
+//  A stationary object (no wander box) standing on this tile.
+const MapObject* stationary_object_at(const MapData& map, const TilePos& point);
+
+//  A wandering object whose wander box contains this tile.
+const MapObject* wander_object_at(const MapData& map, const TilePos& point);
+
 //  Whether `object`, a trainer, may see the player on `tile`: up to its
 //  sight ahead, any way it looks, short of a wall, from its tile or, for
 //  one who wanders, from any tile it may wander to. False for an object
