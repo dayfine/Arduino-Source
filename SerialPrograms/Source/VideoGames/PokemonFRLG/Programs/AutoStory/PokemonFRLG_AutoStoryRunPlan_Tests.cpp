@@ -18,6 +18,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
+#include "PokemonFRLG_AutoStory.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryMart.h"
@@ -620,6 +621,40 @@ UnitTestResult test_misty_grind_order(){
     return true;
 }
 
+UnitTestResult test_emulator_device_skips_rng_handoffs(){
+    const FrlgHandoffOptions all_on{
+        .stop_for_sid_helper = true,
+        .stop_for_starter_rng = true,
+        .run_starter_rng = true,
+        .run_gift_rng = true,
+        .has_sid = false,
+    };
+    if (frlg_starter_rng_mode(GameSettings::Device::GbaEmulator, all_on) != Pokemon::RngHandoffMode::OFF){
+        return "GBA emulator device must disable starter RNG handoff.";
+    }
+    const StoryHandoffs emu_handoffs = frlg_story_handoffs(GameSettings::Device::GbaEmulator, all_on);
+    if (emu_handoffs.sid_helper || emu_handoffs.starter_rng || emu_handoffs.gift_rng){
+        return "GBA emulator device must disable all RNG handoffs.";
+    }
+    if (frlg_starter_rng_mode(GameSettings::Device::switch_1_2, {.run_starter_rng = true}) != Pokemon::RngHandoffMode::RUN){
+        return "switch_1_2 device must preserve starter RNG RUN handoff.";
+    }
+    const StoryHandoffs switch_handoffs = frlg_story_handoffs(GameSettings::Device::switch_1_2, all_on);
+    if (!switch_handoffs.sid_helper || !switch_handoffs.starter_rng || !switch_handoffs.gift_rng){
+        return "switch_1_2 device must preserve enabled RNG handoffs.";
+    }
+    const StoryRunPlan plan = plan_story_run(
+        story_checkpoints(),
+        row_index("01.01"),
+        row_index("04.04"),
+        emu_handoffs
+    );
+    if (plan.stop != StoryHandoff::NONE){
+        return "emulator device plan must not stop for RNG handoffs.";
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -646,6 +681,10 @@ const AutoStoryCase AUTO_STORY_CASES[] = {
     },
     {
         .input = {"05.01: Potions and Super Potions, a GRIND to Lv23, the nurse, then the Gym", test_misty_grind_order},
+        .expectation = {},
+    },
+    {
+        .input = {"Device::GbaEmulator skips all RNG handoffs and keeps switch_1_2 unchanged", test_emulator_device_skips_rng_handoffs},
         .expectation = {},
     },
 };

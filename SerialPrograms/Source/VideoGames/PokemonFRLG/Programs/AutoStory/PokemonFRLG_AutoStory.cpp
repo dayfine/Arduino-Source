@@ -760,18 +760,47 @@ static void send_story_finished(
     send_program_finished_notification(env, finished, message);
 }
 
-Pokemon::RngHandoffMode AutoStory::starter_rng_mode() const{
-    return Pokemon::rng_handoff_mode({.stop = STOP_FOR_STARTER_RNG, .run = RUN_STARTER_RNG});
+Pokemon::RngHandoffMode frlg_starter_rng_mode(
+    GameSettings::Device device,
+    const FrlgHandoffOptions& options
+){
+    if (device == GameSettings::Device::GbaEmulator){
+        return Pokemon::RngHandoffMode::OFF;
+    }
+    return Pokemon::rng_handoff_mode({.stop = options.stop_for_starter_rng, .run = options.run_starter_rng});
 }
 
-StoryHandoffs AutoStory::story_handoffs() const{
+StoryHandoffs frlg_story_handoffs(
+    GameSettings::Device device,
+    const FrlgHandoffOptions& options
+){
+    if (device == GameSettings::Device::GbaEmulator){
+        return {};
+    }
     //  Running Starter RNG here splits 01.05 at the ball as its stop does,
     //  and sets the SID at 01.01 when it isn't known.
     return StoryHandoffs{
-        .sid_helper = RUN_STARTER_RNG ? static_cast<std::string>(RNG_PLAN.SID).empty() : bool(STOP_FOR_SID_HELPER),
-        .starter_rng = starter_rng_mode() != Pokemon::RngHandoffMode::OFF,
-        .gift_rng = RUN_GIFT_RNG,
+        .sid_helper = options.run_starter_rng ? !options.has_sid : options.stop_for_sid_helper,
+        .starter_rng = frlg_starter_rng_mode(device, options) != Pokemon::RngHandoffMode::OFF,
+        .gift_rng = options.run_gift_rng,
     };
+}
+
+Pokemon::RngHandoffMode AutoStory::starter_rng_mode() const{
+    return frlg_starter_rng_mode(GameSettings::instance().DEVICE, {
+        .stop_for_starter_rng = STOP_FOR_STARTER_RNG,
+        .run_starter_rng = RUN_STARTER_RNG,
+    });
+}
+
+StoryHandoffs AutoStory::story_handoffs() const{
+    return frlg_story_handoffs(GameSettings::instance().DEVICE, {
+        .stop_for_sid_helper = STOP_FOR_SID_HELPER,
+        .stop_for_starter_rng = STOP_FOR_STARTER_RNG,
+        .run_starter_rng = RUN_STARTER_RNG,
+        .run_gift_rng = RUN_GIFT_RNG,
+        .has_sid = !static_cast<std::string>(RNG_PLAN.SID).empty(),
+    });
 }
 
 void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
@@ -785,6 +814,10 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const std::string player_name = PLAYER_NAME;
     check_setup(env.console, checkpoints, first, last, NEW_GAME_FROM_TITLE, player_name);
     require_preflight(env.console, context);
+    if (GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator
+        && (STOP_FOR_SID_HELPER || STOP_FOR_STARTER_RNG || RUN_STARTER_RNG || RUN_GIFT_RNG)){
+        env.console.log("Emulator device selected: skipping RNG handoffs and taking normal gifts.", COLOR_BLUE);
+    }
     const StoryHandoffs handoffs = story_handoffs();
     const std::string sid_before = RNG_PLAN.SID;
     StoryRunPlan plan = plan_story_run(checkpoints, first, last, handoffs);
