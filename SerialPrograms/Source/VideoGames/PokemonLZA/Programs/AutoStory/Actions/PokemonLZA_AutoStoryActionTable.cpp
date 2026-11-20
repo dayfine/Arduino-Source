@@ -44,6 +44,10 @@ constexpr std::string_view CONSOLE_ONLY = "console_only";
 //  A walk "end" that holds the last leg until a scene takes control.
 constexpr std::string_view WALK_UNTIL_SCENE = "scene";
 
+//  A walk "end" that presses A on the first look of an A prompt and ends
+//  once the talk starts (walk_into_talk()).
+constexpr std::string_view WALK_INTO_TALK = "talk";
+
 //  The other walk "end"s: held until this event.
 constexpr std::pair<std::string_view, ScreenEvent> WALK_ENDS[] = {
     {"fade_white", ScreenEvent::FADE_WHITE},
@@ -109,6 +113,8 @@ struct WalkArgs{
     std::optional<std::optional<ScreenEvent>> end = std::nullopt;
     Milliseconds end_after = 0ms;
     std::optional<double> heading = std::nullopt;
+    //  "end": "talk": the walk starts the talk at the prompt it reaches.
+    bool into_talk = false;
     //  The first leg turns toward the chosen starter.
     bool turn_to_starter = false;
 };
@@ -141,14 +147,17 @@ WalkArgs read_walk_args(const JsonObject& args){
     if (const JsonValue* end = args.get_value("end")){
         const std::string& word = end->to_string_throw();
         const std::optional<ScreenEvent> event = walk_end_event(word);
-        if (word != WALK_UNTIL_SCENE && !event){
-            throw ParseException("\"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\" or \"scene\"");
+        walk.into_talk = word == WALK_INTO_TALK;
+        if (word != WALK_UNTIL_SCENE && !walk.into_talk && !event){
+            throw ParseException("\"end\" must be \"fade_white\", \"fade_black\", \"dialog\", \"prompt\", \"talk\" or \"scene\"");
         }
-        walk.end = event;
+        if (!walk.into_talk){
+            walk.end = event;
+        }
     }
     if (const std::optional<Milliseconds> end_after = optional_ms(args, "end_after_ms")){
         if (!walk.end){
-            throw ParseException("\"end_after_ms\" needs an \"end\"");
+            throw ParseException("\"end_after_ms\" needs an \"end\" other than \"talk\"");
         }
         walk.end_after = *end_after;
     }
@@ -181,6 +190,9 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
         if (std::optional<StoryFailure> faced = face_heading(backend, *hooks.arrow, *walk.heading)){
             return faced;
         }
+    }
+    if (walk.into_talk){
+        return walk_into_talk(backend, name, walk.move);
     }
     if (walk.end){
         return walk_until(backend, name, walk.move, *walk.end, walk.end_after);

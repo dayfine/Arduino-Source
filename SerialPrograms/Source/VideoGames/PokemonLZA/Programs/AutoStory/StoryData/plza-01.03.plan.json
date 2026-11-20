@@ -10,18 +10,13 @@
     "events": [
       {
         "id": "approach_starter",
-        "why": "to the chosen starter's \"A Talk\" prompt; the turn is the Starter option's heading. not planned: no tile grid in Lumiose",
+        "why": "to the chosen starter's \"A Talk\" prompt and A on it; the turn is the Starter option's heading. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[-70, 1500]],
-          "end": "prompt",
+          "end": "talk",
           "turn_to_starter": true
         }
-      },
-      {
-        "id": "talk_to_starter",
-        "action": "talk",
-        "why": "A at the starter's \"A Talk\""
       },
       {
         "id": "andi_battle_start",
