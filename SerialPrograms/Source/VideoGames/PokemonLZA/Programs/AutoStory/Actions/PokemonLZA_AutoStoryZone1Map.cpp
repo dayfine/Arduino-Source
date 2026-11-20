@@ -16,6 +16,14 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+namespace{
+
+//  Mareep's grass right of the road (marker 60): targets show on the right
+//  from (386, 252), none from (370, 256); 6 north of that, toward the grass.
+constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+
+} // namespace
+
 std::optional<MapWaypoint> catch_spot_waypoint(int spot){
     switch (spot){
     case 100:
@@ -50,6 +58,11 @@ constexpr size_t OUT_OF_ZONE_PIN_READS = 2;
 //  off it from the 60 spot ended on a pillar (2026-11-17).
 constexpr double GATE_HEADING = 270;
 constexpr double GATE_HEADING_TOLERANCE = 8;
+
+//  The pin between the far gate's pillars, where "A Leave" shows; 1 north
+//  of the (361, 253) read, as runs with no prompt ended at y 255 on the
+//  left pillar.
+constexpr MapPoint ZONE1_FAR_GATE{.x = 361, .y = 252};
 
 //  On the gate's line ~25 pixels east of the gate, below the 60 spot: a
 //  15 pixel run-up after a 90 degree turn ended on the left pillar.
@@ -86,11 +99,11 @@ bool pin_in_zone_1(MapPoint pin){
     return inside(ZONE1_OUTLINE, pin);
 }
 
-std::optional<MapPoint> zone_1_exit_via(MapPoint start){
-    if (start.x > ZONE1_FAR_GATE.pin.x && std::abs(bearing(start, ZONE1_FAR_GATE.pin) - GATE_HEADING) <= GATE_HEADING_TOLERANCE){
-        return std::nullopt;
+std::vector<MapPoint> zone_1_exit_legs(MapPoint start){
+    if (start.x > ZONE1_FAR_GATE.x && std::abs(bearing(start, ZONE1_FAR_GATE) - GATE_HEADING) <= GATE_HEADING_TOLERANCE){
+        return {ZONE1_FAR_GATE};
     }
-    return ZONE1_GATE_RUN_UP;
+    return {ZONE1_GATE_RUN_UP, ZONE1_FAR_GATE};
 }
 
 std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, MoveOnlyFunction<std::optional<MapPoint>()> pin){

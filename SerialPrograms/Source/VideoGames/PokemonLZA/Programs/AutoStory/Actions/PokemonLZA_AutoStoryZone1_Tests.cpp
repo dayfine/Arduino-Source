@@ -3,7 +3,7 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  03.08's console-free walk plans in Wild Zone 1: the way out
- *  (zone_1_exit_via()) on map pins; check_out_of_zone_1()
+ *  (zone_1_exit_legs()) on map pins; check_out_of_zone_1()
  *  on the engine's scripted backend (FakeStoryBackend), its map pin reads
  *  scripted; the way off Taunie's rocks (ZoneStart::leave()), each case
  *  the start pin and the read after the leg; and legs
@@ -92,11 +92,11 @@ constexpr double GATE_HEADING = 270;
 constexpr double GATE_HEADING_TOLERANCE = 10;
 
 UnitTestResult check_exit(const ExitCase& test){
-    const std::optional<MapPoint> via = zone_1_exit_via(test.input.start);
-    if (via.has_value() == test.expectation.straight){
-        return std::format("Expected {}, got {}.", test.expectation.straight ? "a straight run" : "a waypoint first", via ? "a waypoint" : "a straight run");
+    const std::vector<MapPoint> legs = zone_1_exit_legs(test.input.start);
+    if (legs.empty() || (legs.size() == 1) != test.expectation.straight){
+        return std::format("Expected {}, got {} legs.", test.expectation.straight ? "a straight run" : "a waypoint first", legs.size());
     }
-    const double heading = bearing(via.value_or(test.input.start), ZONE1_FAR_GATE.pin);
+    const double heading = bearing(legs.size() == 1 ? test.input.start : legs[legs.size() - 2], legs.back());
     if (std::abs(heading - GATE_HEADING) > GATE_HEADING_TOLERANCE){
         return std::format("The run at the gate heads {:.0f}, not along its line ({:.0f}).", heading, GATE_HEADING);
     }
@@ -106,7 +106,7 @@ UnitTestResult check_exit(const ExitCase& test){
 class Test_ZoneExit : public UnitTest{
 public:
     explicit Test_ZoneExit(const ExitCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - zone_1_exit_via: {}", test.name))
+        : UnitTest(std::format("PokemonLZA::AutoStory - zone_1_exit_legs: {}", test.name))
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{

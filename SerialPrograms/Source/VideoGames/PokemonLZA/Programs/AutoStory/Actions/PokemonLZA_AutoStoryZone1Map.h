@@ -14,6 +14,7 @@
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include <optional>
 #include <string_view>
+#include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
@@ -48,25 +49,16 @@ inline constexpr MapWaypoint ZONE1_ROCKS{.name = "Taunie's rocks", .pin = {.x = 
 //  93 and 91, so ~10 pixels on toward the rocks, and 6 north of the road's
 //  middle: the patrol ran too far left on the road.
 inline constexpr MapWaypoint ZONE1_SPOT_100{.name = "the 100 spot", .pin = {.x = 442, .y = 227}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
-//  Mareep's grass right of the road (marker 60): targets show on the right
-//  from (386, 252), none from (370, 256); 6 north of that, toward the grass.
-inline constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
-
-
-//  The pin between the far gate's pillars, where "A Leave" shows; 1 north
-//  of the (361, 253) read, as runs with no prompt ended at y 255 on the
-//  left pillar.
-inline constexpr MapWaypoint ZONE1_FAR_GATE{.name = "the far gate", .pin = {.x = 361, .y = 252}, .provisional = false};
 
 
 //  None for distances other than CATCH_SPOTS.
 std::optional<MapWaypoint> catch_spot_waypoint(int spot);
 
-//  Where to run first on the way out from `start`, the one pin read before
-//  it: none when a run from `start` at the far gate already comes in along
-//  the gate's line (west down the road), else a point on that line east of
-//  the gate. Runs in off the line hit a pillar.
-std::optional<MapPoint> zone_1_exit_via(MapPoint start);
+//  The run out from `start`, the one pin read before it: the far gate's pin
+//  last (run at until its A prompt), and before it a point on the gate's
+//  line when a run from `start` would not come in along that line (west
+//  down the road). Runs in off the line hit a pillar.
+std::vector<MapPoint> zone_1_exit_legs(MapPoint start);
 
 
 //  Inside the zone's outline and not at the map's centre, where the map
