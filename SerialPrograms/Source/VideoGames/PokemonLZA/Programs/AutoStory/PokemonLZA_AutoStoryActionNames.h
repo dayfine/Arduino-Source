@@ -25,20 +25,15 @@ enum class PlzaAction{
     OPENING_TO_PLATFORM,
     //  Walks and talks.
     WALK,
-    TALK,
     TALK_THROUGH_MAP_SCREEN,
     TALK_TO_POKEDEX_SCREEN,
     CLIMB_LADDER,
     CHOOSE_0,
     CHOOSE_1,
-    //  Scenes, played by the scene machine.
+    //  A scene played by the scene machine.
     SCENE,
-    MASH,
-    MASH_TO_MOVE_HINTS,
     //  Plus on a cutscene once its opening black fade ends.
     PLUS_SKIP,
-    TEXT_TO_CHOICE,
-    STORY_BATTLE_START,
     STORY_BATTLE,
     //  Saves from the menu where a checkpoint would otherwise end on an
     //  autosave the plan does not place (a catch's).

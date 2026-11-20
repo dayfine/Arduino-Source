@@ -20,7 +20,7 @@
       {
         "id": "enter_zone_1",
         "why": "A Enter, Taunie, the Throwing Poke Balls card; the \"received 10 Poke Balls\" box has no detector and gets A as any unread screen",
-        "action": "mash_to_move_hints",
+        "action": "scene",
         "args": {"press_a_first": true}
       },
       {
@@ -36,7 +36,7 @@
       {
         "id": "after_catches",
         "why": "Taunie: tall grass, more Poke Balls, moves smash boulders",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {

@@ -19,7 +19,7 @@
       {
         "id": "leave_hotel_z",
         "why": "A Leave, the Main Menu tutorial card",
-        "action": "mash_to_move_hints",
+        "action": "scene",
         "args": {"press_a_first": true}
       }
     ],

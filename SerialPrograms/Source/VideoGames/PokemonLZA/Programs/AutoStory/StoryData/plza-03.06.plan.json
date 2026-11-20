@@ -20,7 +20,8 @@
       {
         "id": "wild_zones_tutorial",
         "why": "Taunie on wild zones, the Wild Zones card",
-        "action": "a"
+        "action": "scene",
+        "args": {"start_window_ms": 45000}
       }
     ],
     "metadata": {

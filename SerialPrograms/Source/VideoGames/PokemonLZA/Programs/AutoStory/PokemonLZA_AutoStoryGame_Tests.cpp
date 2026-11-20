@@ -21,6 +21,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
@@ -272,27 +273,6 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at battle_with_pokemon: choice_not_reached"},
     },
     {
-        .name = "02.06's talk fails when nothing starts after A: the prompt stays",
-        .input = {.checkpoint = "02.06", .first_step = 1, .steps = 1, .looks = {A_PROMPT}},
-        .expectation = {.verdict = "failed at rest: talk_no_scene"},
-    },
-    {
-        .name = "a talk presses A again while the A prompt stays with nothing open",
-        .input = {.checkpoint = "02.06", .first_step = 1, .steps = 1, .looks = concat(
-            std::vector<ScreenObservation>(7, A_PROMPT), {DIALOG}
-        )},
-        .expectation = {
-            .verdict = "done",
-            .inputs = std::format("wait 250ms, press A, {}, press A, wait 250ms", repeated("wait 250ms", 4)),
-            .line = "[PLZA] talk: the A prompt still up 1000 ms after A 1 with nothing open; A again",
-        },
-    },
-    {
-        .name = "a talk presses nothing on an A prompt seen on one look only",
-        .input = {.checkpoint = "02.06", .first_step = 1, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
-        .expectation = {.verdict = "failed at rest: talk_no_prompt", .inputs = repeated("wait 250ms", 12)},
-    },
-    {
         .name = "a story battle with no battle HUD in 10 s fails as battle_never_started, the battle code not run",
         .input = {.checkpoint = "01.03", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at andi_battle: battle_never_started", .inputs = repeated("wait 250ms", 40)},
@@ -323,7 +303,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "02.05's walk to room 202 starts after 10 s with nothing busy: the hall shows no party bar, then the door's A prompt",
-        .input = {.checkpoint = "02.05", .first_step = 5, .steps = 1, .looks = concat(std::vector<ScreenObservation>(50, CUTSCENE), {A_PROMPT})},
+        .input = {.checkpoint = "02.05", .first_step = 4, .steps = 1, .looks = concat(std::vector<ScreenObservation>(50, CUTSCENE), {A_PROMPT})},
         .expectation = {
             .verdict = "done",
             .inputs = std::format("{}, press L, stick -15deg 150ms walk, release 100ms, press L, {}, wait 300ms", repeated("wait 250ms", 40), repeated("stick 0deg 250ms run", 8)),
@@ -332,7 +312,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "02.06 with no autosave badge seen is not saved",
-        .input = {.checkpoint = "02.06", .first_step = 4, .looks = {
+        .input = {.checkpoint = "02.06", .first_step = 3, .looks = {
             look({ScreenEvent::DIALOG_BOX}, /*readings=*/{}, Milliseconds(0)), party_bar(Milliseconds(21000)), party_bar(Milliseconds(22000)),
         }},
         .expectation = {.verdict = "done", .line = "[Save] 02.06: not saved (the plan's autosave was not seen)"},
@@ -377,14 +357,14 @@ const RunCase RUN_CASES[] = {
         //  and a second A on the same text page 90 ms after the first; one
         //  landed on the floor choice's top row and the elevator closed.
         .name = "02.05's floor question: nothing pressed on a screen with no text, one A per text page, done at the choice",
-        .input = {.checkpoint = "02.05", .first_step = 2, .steps = 1, .looks = concat(
-            std::vector<ScreenObservation>(4, BLACK_FADE),
-            {CUTSCENE, CUTSCENE, TEXT_PAGE, TEXT_PAGE, TEXT_PAGE, choice(0)}
+        .input = {.checkpoint = "02.05", .first_step = 1, .steps = 1, .looks = concat(
+            {A_PROMPT}, concat(std::vector<ScreenObservation>(4, BLACK_FADE),
+                {CUTSCENE, CUTSCENE, TEXT_PAGE, TEXT_PAGE, TEXT_PAGE, choice(0)})
         )},
         .expectation = {
             .verdict = "done",
-            .inputs = std::format("{}, press A, wait 250ms, wait 250ms", repeated("wait 250ms", 6)),
-            .line = "[PLZA text_to_choice] done on choice.",
+            .inputs = std::format("press A, {}, press A, wait 250ms, wait 250ms", repeated("wait 250ms", 6)),
+            .line = "[PLZA scene] done on choice.",
         },
     },
     {
@@ -522,16 +502,16 @@ Pokemon::StoryGame game_with_reload(const MarkedCheckpoints& rows, AutosaveSight
     return game;
 }
 
-//  A step named `name` running `action` with no args, bound to `tools`.
-StoryStep plan_step(PlzaConsoleHooks& tools, std::string name, std::string_view action){
-    return StoryStep{.name = std::move(name), .action = std::string(action), .run = plza_story_actions(tools).at(std::string(action))(JsonObject())};
+//  A step named `name` running `action`, bound to `tools`.
+StoryStep plan_step(PlzaConsoleHooks& tools, std::string name, std::string_view action, const JsonObject& args = JsonObject()){
+    return StoryStep{.name = std::move(name), .action = std::string(action), .run = plza_story_actions(tools).at(std::string(action))(args)};
 }
 
-StoryCheckpoint one_step_row(PlzaConsoleHooks& tools, std::string id, std::string action){
+StoryCheckpoint one_step_row(PlzaConsoleHooks& tools, std::string id, std::string action, const JsonObject& args = JsonObject()){
     StoryCheckpoint row;
     row.id = std::move(id);
     row.title = "Test";
-    row.steps.push_back(plan_step(tools, action, action));
+    row.steps.push_back(plan_step(tools, action, action, args));
     return row;
 }
 
@@ -602,7 +582,8 @@ struct ChainCase{
         std::vector<ScreenObservation> looks;
         //  A repeated action's step is named "<action>_again".
         std::vector<std::string> first_actions = {"wait_for_platform"};
-        std::string second_action = "text_to_choice";
+        std::string second_action = "scene";
+        bool second_stops_at_choice = true;
         size_t attempts = 1;
         bool reload_when_chained = false;
         StartSignature landed = {};
@@ -618,6 +599,15 @@ struct ChainCase{
     };
     Expectation expectation;
 };
+
+JsonObject choice_scene_args(bool stop_at_choice){
+    JsonObject args;
+    if (stop_at_choice){
+        args["button"] = "B";
+        args["stop_at_choice"] = true;
+    }
+    return args;
+}
 
 const ScreenObservation PLATFORM_SAVING = look({}, {CONTROLS_HINT_READING, AUTOSAVE_READING}, Milliseconds(2000));
 const ScreenObservation IN_CONTROL = look({ScreenEvent::PLAYER_CAN_MOVE});
@@ -664,7 +654,7 @@ const ChainCase CHAIN_CASES[] = {
         .name = "reload when chained: waits for control after the row before's last scene, reloads, lands at the start and runs",
         .input = {
             .looks = concat(ROOF_SAVED, concat({BLACK_FADE, BLACK_FADE, IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)),
-            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .second_stops_at_choice = false,
             .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT,
         },
         .expectation = {
@@ -676,7 +666,7 @@ const ChainCase CHAIN_CASES[] = {
         .name = "reload when chained: control never comes back, no reload",
         .input = {
             .looks = concat(ROOF_SAVED, {BLACK_FADE}),
-            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .second_stops_at_choice = false,
             .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT,
         },
         .expectation = {.verdict = "failed at 01.02 chain: walk_not_free", .reloads = 0},
@@ -685,7 +675,7 @@ const ChainCase CHAIN_CASES[] = {
         .name = "reload when chained: the reload lands elsewhere, stops with nothing pressed",
         .input = {
             .looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)),
-            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .second_stops_at_choice = false,
             .reload_when_chained = true, .landed = {.talk_prompt = true, .party = 1}, .start = STATION_FRONT,
         },
         .expectation = {
@@ -699,7 +689,7 @@ const ChainCase CHAIN_CASES[] = {
         .name = "reload when chained: no start signature to check the landing against, stops with nothing pressed",
         .input = {
             .looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)),
-            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "mash_to_move_hints",
+            .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .second_stops_at_choice = false,
             .reload_when_chained = true, .landed = STATION_FRONT,
         },
         .expectation = {.verdict = "failed at 01.02 chain: reload_unchecked", .reloads = 1, .nothing_pressed_after_reload = true},
@@ -713,12 +703,13 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     Pokemon::RunState state;
     PlzaConsoleHooks tools{.sightings = &sightings};
     std::vector<StoryCheckpoint> rows;
-    rows.push_back(one_step_row(tools, "01.01", test.input.first_actions[0]));
+    rows.push_back(one_step_row(tools, /*id=*/"01.01", test.input.first_actions[0]));
     for (size_t index = 1; index < test.input.first_actions.size(); index++){
         const std::string& action = test.input.first_actions[index];
         rows[0].steps.push_back(plan_step(tools, std::format("{}_again", action), action));
     }
-    rows.push_back(one_step_row(tools, "01.02", test.input.second_action));
+    const bool stop_at_choice = test.input.second_action == "scene" && test.input.second_stops_at_choice;
+    rows.push_back(one_step_row(tools, /*id=*/"01.02", test.input.second_action, choice_scene_args(stop_at_choice)));
     note_autosaves(rows, sightings);
     std::vector<CheckpointStart> starts;
     if (test.input.start){
@@ -889,7 +880,7 @@ const SightingsCase SIGHTINGS_CASES[] = {
             {.step = "to_lobby_elevator", .badge = true, .at = Milliseconds(94700)},
             {.step = "to_lobby_elevator", .badge = true, .at = Milliseconds(95000)},
             {.step = "to_lobby_elevator", .badge = false, .at = Milliseconds(95500)},
-            {.step = "take_elevator_up", .badge = false, .at = Milliseconds(106000)},
+            {.step = "floor_question", .badge = false, .at = Milliseconds(106000)},
         }},
         .expectation = {.seen_in = std::nullopt},
     },
@@ -900,9 +891,9 @@ const SightingsCase SIGHTINGS_CASES[] = {
             {.step = ""},
             {.step = "to_lobby_elevator", .badge = true, .at = Milliseconds(94700)},
             {.step = "to_lobby_elevator", .badge = false, .at = Milliseconds(95500)},
-            {.step = "take_elevator_up", .badge = true, .at = Milliseconds(106000)},
+            {.step = "floor_question", .badge = true, .at = Milliseconds(106000)},
         }},
-        .expectation = {.seen_in = "take_elevator_up"},
+        .expectation = {.seen_in = "floor_question"},
     },
     {
         //  02.07's autosave still up 37 ms into 03.01 is 02.07's.
@@ -954,10 +945,33 @@ private:
     Case m_case;
 };
 
+struct SceneArgsCase{
+    std::string name;
+    struct Input{ std::string key; };
+    Input input;
+    struct Expectation{ bool rejected; };
+    Expectation expectation;
+};
+const SceneArgsCase SCENE_ARGS_CASES[] = {
+    {.name = "unknown key is rejected", .input = {.key = "advance_with_a"}, .expectation = {.rejected = true}},
+};
+UnitTestResult check_scene_args(const SceneArgsCase& test, CancellableScope&){
+    PlzaConsoleHooks tools;
+    JsonObject args;
+    args[test.input.key] = true;
+    try{
+        plza_story_actions(tools).at("scene")(args);
+        return test.expectation.rejected ? UnitTestResult(UnitTestResult::FAILED, "expected ParseException") : UnitTestResult(true);
+    }catch (const ParseException&){
+        return test.expectation.rejected ? UnitTestResult(true) : UnitTestResult(UnitTestResult::FAILED, "unexpected ParseException");
+    }
+}
 } // namespace
 
-
 void add_tests_AutoStoryGame(UnitTestDatabase& database){
+    for (const SceneArgsCase& test : SCENE_ARGS_CASES){
+        database.add<CaseTest<SceneArgsCase, check_scene_args>>("scene args - ", test);
+    }
     for (const SightingsCase& test : SIGHTINGS_CASES){
         database.add<CaseTest<SightingsCase, check_sightings>>("autosave sightings - ", test);
     }
@@ -980,8 +994,6 @@ void add_tests_AutoStoryGame(UnitTestDatabase& database){
         database.add<CaseTest<NewGameChainCase, check_new_game_chain>>("new game chain - ", test);
     }
 }
-
-
 
 } // namespace PokemonLZA
 } // namespace NintendoSwitch

@@ -449,7 +449,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"still, advance arrow", "A"}, {"advance arrow", "A"}, {"nothing", "A"}, {"still", "-"}, {"black fade", "-"},
                 {"battle, controls hint", "-"}
             },
-            .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
+            .verdict = "done", .end = "[PLZA scene] done on battle.",
         },
     },
     {
@@ -460,7 +460,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box, advance arrow", "A"}, {"text box", "A"}, {"tutorial card", "A"}, {"still, tutorial card", "A"},
                 {"nothing", "A"}, {"black fade", "-"}, {"still", "-"}, {"battle, still", "-"}
             },
-            .verdict = "done", .end = "[PLZA story_battle_start] done on battle.",
+            .verdict = "done", .end = "[PLZA scene] done on battle.",
         },
     },
     {
@@ -472,7 +472,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box, advance arrow", "A"}, {"tutorial card", "A"}, {"still, tutorial card", "A"}, {"nothing", "A"},
                 {"black fade", "-"}, {"party bar", "ZL"}
             },
-            .verdict = "done", .end = "[PLZA story_battle_start] done on locked_on.",
+            .verdict = "done", .end = "[PLZA scene] done on locked_on.",
         },
     },
     {
@@ -485,7 +485,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box, advance arrow", "A"}, {"tutorial card", "A"}, {"still, tutorial card", "A"}, {"nothing", "A"},
                 {"black fade", "-"}, {"party bar", "ZL or stick or L"}
             },
-            .verdict = "done", .end = "[PLZA story_battle_start] lock-on 2/5: turned 90 degrees right, L, ZL held: the move symbols showed.",
+            .verdict = "done", .end = "[PLZA scene] lock-on 2/5: turned 90 degrees right, L, ZL held: the move symbols showed.",
         },
     },
     {
@@ -497,26 +497,26 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"nothing", "-"},
                 {"party bar", "ZL"},
             },
-            .verdict = "done", .end = "[PLZA story_battle_start] done on locked_on.",
+            .verdict = "done", .end = "[PLZA scene] done on locked_on.",
         },
     },
     {
         .name = "02.05 floor_question, the elevator's talk with A to its choice (passed 2026-11-16 23:50)",
         .input = {.checkpoint = "02.05", .step = "floor_question", .screens = R"(
-0.0s: black fade, still
-1.3s: still
-2.1s: text box, still, advance arrow
-2.5s: nothing
-3.0s: text box, advance arrow
-3.4s: nothing
-3.9s: text box, choice box
+0.0s: party bar, A prompt
+0.5s: black fade, still
+1.8s: still
+2.6s: text box, still, advance arrow
+3.0s: nothing
+3.5s: text box, advance arrow
+3.9s: nothing
+4.4s: text box, choice box
 )"},
         .expectation = {
-            .keys = {
+            .keys = {{"party bar, A prompt", "A"},
                 {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"}, {"black fade, still", "-"},
-                {"still", "-"}, {"nothing", "-"}, {"text box, choice box", "-"}
-            },
-            .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
+                {"still", "-"}, {"nothing", "-"}, {"text box, choice box", "-"}},
+            .verdict = "done", .end = "[PLZA scene] done on choice.",
         },
     },
     {
@@ -527,7 +527,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "B"}, {"text box, advance arrow", "B"}, {"still", "-"}, {"nothing", "-"},
                 {"text box, choice box", "-"}
             },
-            .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
+            .verdict = "done", .end = "[PLZA scene] done on choice.",
         },
     },
     {
@@ -549,7 +549,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "A"}, {"text box, advance arrow", "A"}, {"nothing", "A"}, {"still", "A"}, {"black fade", "-"},
                 {"A prompt", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -560,7 +560,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "A"}, {"text box, advance arrow", "A"}, {"text box, choice box, 2 rows, row 0", "A"},
                 {"nothing", "A"}, {"still", "A"}, {"black fade", "-"}, {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -583,7 +583,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box, advance arrow", "A"}, {"text box, choice box, 2 rows, row 0", "A"}, {"nothing", "A"},
                 {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -662,7 +662,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "A"}, {"text box, advance arrow", "A"}, {"advance arrow", "A"}, {"nothing", "A"}, {"still", "A"},
                 {"black fade", "-"}, {"party bar, A prompt, controls hint", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -849,7 +849,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "A"}, {"advance arrow", "A"}, {"nothing", "A"}, {"still", "A"}, {"black fade", "-"},
                 {"controls hint", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -879,7 +879,7 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"text box", "A"}, {"text box, advance arrow", "A"}, {"nothing", "A"}, {"still", "A"}, {"black fade", "-"},
                 {"A prompt", "-"}
             },
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -911,7 +911,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"text box, advance arrow", "A"}, {"nothing", "A"}, {"black fade", "-"}},
-            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on black_fade.",
+            .verdict = "done", .end = "[PLZA scene] done on black_fade.",
         },
     },
     {

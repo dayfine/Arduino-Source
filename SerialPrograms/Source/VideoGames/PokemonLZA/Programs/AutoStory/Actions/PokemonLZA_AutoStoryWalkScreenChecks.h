@@ -64,12 +64,6 @@ std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::s
 //  steps taken; none when no prompt showed.
 std::optional<size_t> step_along_until_prompt(PlzaBackend& backend, double facing_degrees);
 
-//  "talk": A on the prompt of what the player faces, A again while it stays
-//  up with nothing open (the game can drop an A). Fails as "talk_no_prompt"
-//  with nothing pressed when no prompt settles within 3 s, "talk_no_scene"
-//  when nothing follows the As.
-std::optional<Pokemon::StoryFailure> talk_at_prompt(PlzaBackend& backend);
-
 //  A at a door's prompt, again while it stays with no fade or text. The
 //  party bar shows under the prompt, so a scene machine run right after
 //  would take it for control before a late fade.

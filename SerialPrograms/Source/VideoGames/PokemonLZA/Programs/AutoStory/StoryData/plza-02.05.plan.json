@@ -15,15 +15,10 @@
         "args": {"legs": [[0, 3000]], "end": "prompt", "end_after_ms": 1500}
       },
       {
-        "id": "take_elevator_up",
-        "action": "talk",
-        "why": "A Take Elevator"
-      },
-      {
         "id": "floor_question",
-        "why": "to \"Which floor?\", before the choice shows; B would close the talk",
-        "action": "text_to_choice",
-        "args": {"advance_with_a": true}
+        "why": "A Take Elevator, then A to \"Which floor?\", before the choice shows; B would close the talk",
+        "action": "scene",
+        "args": {"press_a_first": true, "stop_at_choice": true}
       },
       {
         "id": "ride_to_2f",
@@ -33,7 +28,7 @@
       {
         "id": "arrive_2f",
         "why": "the ride, until control on 2F (the party bar shows ~5 s after the doors open)",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       },
       {
         "id": "to_room_202",
@@ -44,7 +39,7 @@
       {
         "id": "enter_room_202",
         "why": "A Enter, until control in the room",
-        "action": "mash_to_move_hints",
+        "action": "scene",
         "args": {"press_a_first": true}
       }
     ],

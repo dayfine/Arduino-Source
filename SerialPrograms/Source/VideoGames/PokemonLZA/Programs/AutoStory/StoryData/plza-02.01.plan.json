@@ -21,7 +21,8 @@
       {
         "id": "brigitte_battle_start",
         "why": "A through her talk to \"Brigitte sent out Cleffa!\"",
-        "action": "story_battle_start"
+        "action": "scene",
+        "args": {"battle_start": true}
       },
       {
         "id": "brigitte_battle",
@@ -31,7 +32,8 @@
       {
         "id": "after_brigitte",
         "why": "until free control alone in the plaza",
-        "action": "a"
+        "action": "scene",
+        "args": {"start_window_ms": 45000}
       }
     ],
     "metadata": {

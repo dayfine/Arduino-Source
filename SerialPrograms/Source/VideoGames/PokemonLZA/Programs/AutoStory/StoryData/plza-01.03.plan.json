@@ -21,7 +21,8 @@
       {
         "id": "andi_battle_start",
         "why": "choose it (top choice), through the battle tutorial cards to the battle HUD",
-        "action": "story_battle_start"
+        "action": "scene",
+        "args": {"battle_start": true}
       },
       {
         "id": "andi_battle",
@@ -31,7 +32,7 @@
       {
         "id": "after_andi",
         "why": "through MAIN MISSION 01 COMPLETE (waits for A) to the Main Mission 02 banner",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {

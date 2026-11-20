@@ -61,8 +61,6 @@ struct ChainStartCase{
     struct Expectation{
         //  "done", or "failed at <checkpoint> <event>: <failure>".
         std::string verdict;
-        //  The rows SegmentRunOptions::at_start was called for.
-        std::string started;
         //  Empty: not checked.
         std::string line = {};
     };
@@ -77,7 +75,6 @@ const ChainStartCase CHAIN_START_CASES[] = {
         .input = {.start = OUT_OF_FAR_GATE, .screen = {.talk_prompt = false, .wild_zone = true, .party = 5}},
         .expectation = {
             .verdict = "failed at 01.02 chain: chain_off_start",
-            .started = "01.01",
             .line = "[Checkpoint] 01.02: START CHECK FAILED: the screen reads (no talk prompt, in a wild zone, party 5), "
                 "its start is (not in a wild zone, party 5); nothing run from there",
         },
@@ -85,14 +82,13 @@ const ChainStartCase CHAIN_START_CASES[] = {
     {
         .name = "a field of the row's start not read: stops there",
         .input = {.start = OUT_OF_FAR_GATE, .screen = {.talk_prompt = false, .party = 5}},
-        .expectation = {.verdict = "failed at 01.02 chain: chain_off_start", .started = "01.01"},
+        .expectation = {.verdict = "failed at 01.02 chain: chain_off_start"},
     },
     {
         .name = "the row names no start: on, unchecked",
         .input = {.start = std::nullopt, .screen = {}},
         .expectation = {
             .verdict = "done",
-            .started = "01.01 01.02",
             .line = "[Checkpoint] 01.02: START UNCHECKED: its plan names no start signature; on from the live screen (autosave before it not seen)",
         },
     },
@@ -117,10 +113,6 @@ UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& s
     options.read_start = [&test](const StartSignature&){
         return test.input.screen;
     };
-    std::string started;
-    options.at_start = [&started](const StoryCheckpoint& row){
-        started += started.empty() ? row.id : std::format(" {}", row.id);
-    };
     Pokemon::RunState state;
     const std::optional<Pokemon::CheckpointFailure> failure = run_plza_checkpoints(game, rows, options, backend, state, sightings);
     const std::string verdict = !failure
@@ -134,9 +126,6 @@ UnitTestResult check_chain_start(const ChainStartCase& test, CancellableScope& s
     }
     if (verdict != test.expectation.verdict){
         return std::format("expected \"{}\", got \"{}\"; log:{}", test.expectation.verdict, verdict, log);
-    }
-    if (started != test.expectation.started){
-        return std::format("expected at_start for \"{}\", got \"{}\"", test.expectation.started, started);
     }
     if (!has_line){
         return std::format("expected the line \"{}\" in:{}", test.expectation.line, log);

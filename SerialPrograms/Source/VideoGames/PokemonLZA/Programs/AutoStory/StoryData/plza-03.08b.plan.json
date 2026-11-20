@@ -19,7 +19,7 @@
       {
         "id": "leave_zone_1",
         "why": "A Leave, out on the street",
-        "action": "mash_to_move_hints",
+        "action": "scene",
         "args": {
           "press_a_first": true
         }

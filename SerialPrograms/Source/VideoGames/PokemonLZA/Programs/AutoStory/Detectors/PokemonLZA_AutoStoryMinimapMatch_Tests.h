@@ -14,7 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers matching_minimap() and minimap_reference_json() tests.
+//  Registers matching_minimap() tests.
 void add_tests_AutoStoryMinimapMatch(UnitTestDatabase& database);
 
 

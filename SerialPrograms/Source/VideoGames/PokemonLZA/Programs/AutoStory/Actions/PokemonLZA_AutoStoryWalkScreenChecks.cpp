@@ -118,27 +118,7 @@ bool prompt_steady(PlzaBackend& backend){
     return backend.observe().events.has(ScreenEvent::INTERACT_PROMPT);
 }
 
-//  The prompt can take seconds to come up after the walk to it (02.05's
-//  elevator in German).
-constexpr Milliseconds TALK_PROMPT_WAIT = 3000ms;
 constexpr Milliseconds TALK_POLL = 250ms;
-
-//  Two looks in a row: a walk that ends as it comes into reach can drift
-//  out of it again, and an A on that one look is lost.
-bool talk_prompt_settled(PlzaBackend& backend){
-    size_t prompt_looks = 0;
-    for (Milliseconds waited(0); ; waited += TALK_POLL){
-        backend.scope().throw_if_cancelled();
-        prompt_looks = backend.observe().events.has(ScreenEvent::INTERACT_PROMPT) ? prompt_looks + 1 : 0;
-        if (prompt_looks >= 2){
-            return true;
-        }
-        if (waited >= TALK_PROMPT_WAIT){
-            return false;
-        }
-        backend.wait(TALK_POLL);
-    }
-}
 
 struct AtPrompt{
     //  What shows the game took A, and on how many looks in a row.
@@ -214,16 +194,6 @@ AtPromptResult a_at_prompt(PlzaBackend& backend, const AtPrompt& at){
         since_press += TALK_POLL;
     }
 }
-
-const AtPrompt TALK{
-    .until = scene_under_way,
-    .until_looks = 2,
-    .retries = 3,
-    .retry_gap = 1000ms,
-    .wait = 5000ms,
-    .release = 240ms,
-    .name = "talk",
-};
 
 //  A late fade starts 1.8 s after the A.
 const AtPrompt THROUGH_PROMPT{
@@ -485,27 +455,6 @@ std::optional<size_t> step_along_until_prompt(PlzaBackend& backend, double facin
         backend.stick(facing_degrees + PROMPT_SIDESTEPS[steps], /*duration=*/250ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
         backend.stick(facing_degrees, /*duration=*/120ms, /*release=*/500ms, Pokemon::StoryPace::WALK);
     }
-}
-
-std::optional<Pokemon::StoryFailure> talk_at_prompt(PlzaBackend& backend){
-    if (!talk_prompt_settled(backend)){
-        return Pokemon::StoryFailure{.code = "talk_no_prompt", .detail = std::format("no A prompt on two looks within {} ms: not at what the talk is for", TALK_PROMPT_WAIT.count())};
-    }
-    const AtPromptResult result = a_at_prompt(backend, TALK);
-    switch (result.end){
-    case AtPromptEnd::TAKEN:
-        backend.log_detail(std::format(
-            "[PLZA] talk: started {} ms after A {}: {}", result.since_press.count(), result.presses, describe_scene_look(result.look)
-        ));
-        return std::nullopt;
-    case AtPromptEnd::PROMPT_STAYS:
-        return Pokemon::StoryFailure{.code = "talk_no_scene", .detail = std::format(
-            "the A prompt still up with nothing open after {} As: the game took none", result.presses
-        )};
-    case AtPromptEnd::NOTHING:
-        break;
-    }
-    return Pokemon::StoryFailure{.code = "talk_no_scene", .detail = std::format("nothing started within {} ms of A: the HUD stayed", TALK.wait->count())};
 }
 
 void press_through_prompt(PlzaBackend& backend){

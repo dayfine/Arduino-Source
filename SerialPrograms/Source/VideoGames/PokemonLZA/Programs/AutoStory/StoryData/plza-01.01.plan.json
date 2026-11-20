@@ -33,7 +33,7 @@
       {
         "id": "arrival_to_ad",
         "why": "arrival scenes to the black fade that opens the president's ad",
-        "action": "mash_to_move_hints",
+        "action": "scene",
         "args": {
           "end_on_black_fade": true
         }
@@ -46,7 +46,7 @@
       {
         "id": "arrival_scenes",
         "why": "the rest of the arrival scenes to the MAIN MISSION 01 banner; ends on the controls hint",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {

@@ -21,7 +21,7 @@
       {
         "id": "leave_room_202",
         "why": "A Leave, until the party bar shows in the 2F hall",
-        "action": "mash_to_move_hints",
+        "action": "scene",
         "args": {"press_a_first": true}
       },
       {
@@ -35,15 +35,10 @@
         }
       },
       {
-        "id": "take_elevator_down",
-        "action": "talk",
-        "why": "A Take Elevator"
-      },
-      {
         "id": "floor_question",
-        "why": "to \"Which floor?\", before the choice shows; B would close the talk",
-        "action": "text_to_choice",
-        "args": {"advance_with_a": true}
+        "why": "A Take Elevator, then A to \"Which floor?\", before the choice shows; B would close the talk",
+        "action": "scene",
+        "args": {"press_a_first": true, "stop_at_choice": true}
       },
       {
         "id": "ride_to_lobby",
@@ -53,7 +48,7 @@
       {
         "id": "lobby_scene",
         "why": "the ride, Z-A Royale, the outfit, AZ, Lida; autosave; Alton's choice is the top row",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {

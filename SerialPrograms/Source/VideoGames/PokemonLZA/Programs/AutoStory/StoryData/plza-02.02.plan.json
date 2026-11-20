@@ -25,7 +25,8 @@
       {
         "id": "street_scene",
         "why": "a Pokemon drives the trainers off (no battle)",
-        "action": "a"
+        "action": "scene",
+        "args": {"start_window_ms": 45000}
       },
       {
         "id": "to_battle_zone_gate",
@@ -39,7 +40,8 @@
       {
         "id": "out_of_battle_zone",
         "why": "Taunie: out of the Battle Zone",
-        "action": "a"
+        "action": "scene",
+        "args": {"start_window_ms": 45000}
       },
       {
         "id": "through_covered_passage",
@@ -53,7 +55,8 @@
       {
         "id": "hotel_z_arrival",
         "why": "the Hotel Z arrival scene",
-        "action": "a"
+        "action": "scene",
+        "args": {"start_window_ms": 45000}
       }
     ],
     "metadata": {
