@@ -449,6 +449,22 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     }
 }
 
+//  Wild catches always trigger an in-game autosave, even when the badge flashes
+//  before the post-throw animation finishes.
+StoryActionParser catch_in_zone_action(PlzaConsoleHooks& hooks){
+    return [&hooks, run_console = console_action(hooks, action_name(PlzaAction::CATCH_IN_ZONE))](
+        const JsonObject& args
+    ) mutable -> StoryStepRun{
+        return [&hooks, step = run_console(args)](PlzaBackend& backend, RunState& state) mutable -> std::optional<StoryFailure>{
+            std::optional<StoryFailure> failure = step(backend, state);
+            if (!failure && hooks.sightings != nullptr){
+                hooks.sightings->saved(backend, "autosave on catch");
+            }
+            return failure;
+        };
+    };
+}
+
 //  The actions that run only on a console, bound to `hooks.console`.
 void add_console_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
     std::pair<std::string_view, StoryActionParser> table[] = {
@@ -458,7 +474,7 @@ void add_console_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::CONFIRM_NEW_GAME), console_action(hooks, action_name(PlzaAction::CONFIRM_NEW_GAME))},
         {action_name(PlzaAction::CATCH_TUTORIAL), console_action(hooks, action_name(PlzaAction::CATCH_TUTORIAL))},
         {action_name(PlzaAction::BATTLE_THEN_CATCH), console_action(hooks, action_name(PlzaAction::BATTLE_THEN_CATCH))},
-        {action_name(PlzaAction::CATCH_IN_ZONE), console_action(hooks, action_name(PlzaAction::CATCH_IN_ZONE))},
+        {action_name(PlzaAction::CATCH_IN_ZONE), catch_in_zone_action(hooks)},
         {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), console_action(hooks, action_name(PlzaAction::CHECK_OUT_OF_ZONE_1))},
         {action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD), console_action(hooks, action_name(PlzaAction::CLAIM_MABLE_RESEARCH_REWARD))},
     };
