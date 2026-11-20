@@ -138,8 +138,8 @@ ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
 }
 
-ScreenObservation choice(int selected, int rows = 2){
-    ScreenObservation observation = look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX});
+ScreenObservation choice(int selected, int rows = 2, Milliseconds at = Milliseconds(0)){
+    ScreenObservation observation = look({ScreenEvent::DIALOG_BOX, ScreenEvent::CHOICE_BOX}, /*readings=*/{}, at);
     observation.readings[std::string(CHOICE_ROWS_READING)] = rows;
     observation.readings[std::string(CHOICE_SELECTED_READING)] = selected;
     return observation;
@@ -381,6 +381,26 @@ const RunCase RUN_CASES[] = {
             .verdict = "done",
             .inputs = std::format("{}, press A, wait 250ms, wait 250ms", repeated("wait 250ms", 6)),
             .line = "[PLZA text_to_choice] done on choice.",
+        },
+    },
+    {
+        //  03.05 on console B 2026-11-19 18:58: after the heal the nurse asks
+        //  "anything else?" with her menu again; A took its top row, the heal,
+        //  and the talk looped 120 s.
+        .name = "03.05's heal: A on the nurse's menu, B when it comes back after her text, done at control",
+        .input = {.checkpoint = "03.05", .first_step = 1, .steps = 1, .looks = {
+            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, Milliseconds(0)),
+            choice(/*selected=*/0, /*rows=*/3, /*at=*/Milliseconds(400)),
+            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, Milliseconds(800)),
+            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, Milliseconds(1200)),
+            choice(/*selected=*/0, /*rows=*/3, /*at=*/Milliseconds(1600)),
+            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, Milliseconds(2000)),
+            party_bar(Milliseconds(2400)), party_bar(Milliseconds(3500)),
+        }},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A, press A, press A, press A, press B, press A, wait 250ms",
+            .line = "[PLZA scene] choice: 3 rows, shown again after A took it: B",
         },
     },
     {
