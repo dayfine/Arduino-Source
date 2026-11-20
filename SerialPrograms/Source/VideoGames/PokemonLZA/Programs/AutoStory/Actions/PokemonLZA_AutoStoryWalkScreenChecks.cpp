@@ -10,8 +10,12 @@
 #include <optional>
 #include <string>
 #include <string_view>
+#include <variant>
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 
@@ -90,7 +94,7 @@ constexpr Milliseconds PROMPT_IS_CONTROL = 1000ms;
 constexpr Milliseconds PROMPT_STEADY_GAP = 300ms;
 
 bool prompt_taken(const ScreenObservation& look){
-    return fade_shows(look) || look.events.has(ScreenEvent::DIALOG_BOX) || look.events.has(ScreenEvent::CHOICE_BOX);
+    return PROMPT_TAKEN.matches(look);
 }
 
 //  What keeps control from being free; none when it is.
@@ -101,16 +105,10 @@ std::optional<std::string_view> not_free_control(const ScreenObservation& look){
     if (look.events.has(ScreenEvent::DIALOG_BOX)){
         return "a text box";
     }
-    if (fade_shows(look)){
+    if (FADE_SHOWS.matches(look)){
         return "a fade";
     }
     return std::nullopt;
-}
-
-//  The party bar, or the tutorial's controls hint (also 01.01's platform,
-//  which shows no party bar).
-bool control_shows(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(CONTROLS_HINT_READING);
 }
 
 bool prompt_steady(PlzaBackend& backend){
@@ -298,54 +296,67 @@ std::optional<std::optional<Pokemon::StoryFailure>> talk_at_walk_prompt(PlzaBack
     return std::nullopt;
 }
 
+struct FreeControlWatch{
+    std::string_view last_busy = "nothing";
+    std::string_view decided_by;
+    Pokemon::ConfirmStreak control_streak{2};
+    Pokemon::HoldTimer quiet_hold{QUIET_IS_CONTROL};
+    Pokemon::HoldTimer prompt_hold{PROMPT_IS_CONTROL};
+    size_t poll_looks = 0;
+};
+
+bool check_free_control(PlzaBackend& backend, std::string_view walk, const ScreenObservation& look, FreeControlWatch& watch){
+    const WallClock poll_time = WallClock::min() + watch.poll_looks * FREE_CONTROL_LOOK;
+    watch.poll_looks++;
+    const std::optional<std::string_view> busy = not_free_control(look);
+    if (busy){
+        watch.last_busy = *busy;
+    }
+    const bool quiet_ready = watch.quiet_hold.update(!busy.has_value(), poll_time);
+    if (watch.control_streak.update(OVERWORLD_FREE.matches(look))){
+        watch.decided_by = look.events.has(ScreenEvent::PLAYER_CAN_MOVE) ? "party_bar" : "hint";
+        return true;
+    }
+    if (watch.prompt_hold.update(!busy && look.events.has(ScreenEvent::INTERACT_PROMPT), poll_time)){
+        backend.log(std::format("[PLZA] {}: the A prompt held {} ms with nothing busy: control.", walk, PROMPT_IS_CONTROL.count()));
+        watch.decided_by = "prompt";
+        return true;
+    }
+    if (quiet_ready){
+        backend.log(std::format(
+            "[PLZA] {}: nothing busy for {} ms and no sign of control; taken as control.", walk, QUIET_IS_CONTROL.count()
+        ));
+        watch.decided_by = "quiet";
+        return true;
+    }
+    return false;
+}
+
 } // namespace
 
 
 std::optional<Pokemon::StoryFailure> check_can_walk(PlzaBackend& backend, std::string_view walk){
-    std::string_view last_busy = "nothing";
-    int control_looks = 0;
-    std::optional<Milliseconds> quiet_since;
-    std::optional<Milliseconds> prompt_since;
+    FreeControlWatch watch;
     SignalProbe signals;
-    for (Milliseconds waited = 0ms; waited <= FREE_CONTROL_WAIT; waited += FREE_CONTROL_LOOK){
-        const ScreenObservation look = backend.observe();
-        signals.look(look);
-        const std::optional<std::string_view> busy = not_free_control(look);
-        if (busy){
-            last_busy = *busy;
-            quiet_since.reset();
-        }else if (!quiet_since){
-            quiet_since = waited;
+    const Pokemon::WaitOutcome outcome = Pokemon::wait_for(
+        backend,
+        [&](const ScreenObservation& look){
+            return check_free_control(backend, walk, look, watch);
+        },
+        Pokemon::WaitRule{.poll = FREE_CONTROL_LOOK, .timeout = FREE_CONTROL_WAIT},
+        [&](const ScreenObservation& look){
+            signals.look(look);
         }
-        control_looks = !busy && control_shows(look) ? control_looks + 1 : 0;
-        if (control_looks >= 2){
-            const bool party_bar = look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-            backend.log_detail(signals.line(walk, "walk_control", party_bar ? "party_bar" : "hint"));
-            return std::nullopt;
-        }
-        if (!busy && look.events.has(ScreenEvent::INTERACT_PROMPT)){
-            if (!prompt_since){
-                prompt_since = waited;
-            }
-        }else{
-            prompt_since.reset();
-        }
-        if (prompt_since && waited - *prompt_since >= PROMPT_IS_CONTROL){
-            backend.log(std::format("[PLZA] {}: the A prompt held {} ms with nothing busy: control.", walk, PROMPT_IS_CONTROL.count()));
-            backend.log_detail(signals.line(walk, "walk_control", /*by=*/"prompt"));
-            return std::nullopt;
-        }
-        if (quiet_since && waited - *quiet_since >= QUIET_IS_CONTROL){
-            backend.log(std::format(
-                "[PLZA] {}: nothing busy for {} ms and no sign of control; taken as control.", walk, QUIET_IS_CONTROL.count()
-            ));
-            backend.log_detail(signals.line(walk, "walk_control", /*by=*/"quiet"));
-            return std::nullopt;
-        }
-        backend.wait(FREE_CONTROL_LOOK);
+    );
+    if (const auto* failure = std::get_if<Pokemon::StoryFailure>(&outcome)){
+        return *failure;
+    }
+    if (std::holds_alternative<Pokemon::WaitMatched>(outcome)){
+        backend.log_detail(signals.line(walk, "walk_control", watch.decided_by));
+        return std::nullopt;
     }
     return Pokemon::StoryFailure{.code = "walk_not_free", .detail =
-        std::format("{}: no free control within {} ms, last on {}", walk, FREE_CONTROL_WAIT.count(), last_busy)
+        std::format("{}: no free control within {} ms, last on {}", walk, FREE_CONTROL_WAIT.count(), watch.last_busy)
     };
 }
 

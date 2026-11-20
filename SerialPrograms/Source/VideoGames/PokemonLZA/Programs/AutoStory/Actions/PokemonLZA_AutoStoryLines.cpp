@@ -5,9 +5,9 @@
  */
 
 #include <optional>
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryLines.h"
 
@@ -25,20 +25,23 @@ LinesPassed press_a_through_lines(PlzaBackend& backend, Milliseconds quiet, Mill
     //  Bounds the looks too, for a script whose time stands still.
     const size_t max_looks = (size_t)(limit / LINES_POLL) + 1;
     std::optional<WallClock> start;
-    std::optional<WallClock> last_busy;
+    Pokemon::HoldTimer quiet_hold(quiet);
     for (size_t looks = 0; looks < max_looks; looks++){
         backend.scope().throw_if_cancelled();
         const ScreenObservation look = backend.observe();
+        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
+            passed.timed_out = true;
+            return passed;
+        }
         start = start.value_or(look.when);
-        last_busy = last_busy.value_or(look.when);
         const bool card = look.readings.contains(TUTORIAL_CARD_READING);
-        const bool text = text_shows(look);
+        const bool text = TEXT_SHOWS.matches(look);
         if (card || text){
             passed.card = passed.card || card;
             passed.text = passed.text || text;
-            last_busy = look.when;
+            quiet_hold.reset();
             backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
-        }else if (look.when - *last_busy >= quiet){
+        }else if (quiet_hold.update(true, look.when)){
             return passed;
         }
         if (look.when - *start >= limit){
@@ -72,12 +75,20 @@ bool press_b_out_of_menu(PlzaBackend& backend, size_t presses){
     SignalProbe signals;
     for (size_t pressed = 0; pressed < presses; pressed++){
         backend.scope().throw_if_cancelled();
-        if (out_of_menu(backend.observe(), backend, signals)){
+        const ScreenObservation look = backend.observe();
+        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
+            return false;
+        }
+        if (out_of_menu(look, backend, signals)){
             return true;
         }
         backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
     }
-    return out_of_menu(backend.observe(), backend, signals);
+    const ScreenObservation look = backend.observe();
+    if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
+        return false;
+    }
+    return out_of_menu(look, backend, signals);
 }
 
 

@@ -12,9 +12,7 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryBattleOnScreen_H
 #define PokemonAutomation_PokemonLZA_AutoStoryBattleOnScreen_H
 
-#include <cstddef>
-#include <deque>
-#include "Common/Cpp/Time.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonLZA_AutoStoryBackend.h"
 
@@ -23,24 +21,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  A reading that flickers (03.02b's battle HUD: on, off, on every 0.4 s):
-//  on once seen on `hits` looks within `window`, then on until unseen for
-//  `off_after`.
-class FlickerFilter{
-public:
-    FlickerFilter(size_t hits, Milliseconds window, Milliseconds off_after);
-    //  Whether it is on with a look at `when` that saw it or not.
-    bool on_with(bool seen, WallClock when) const;
-    void record(bool seen, WallClock when);
-
-private:
-    size_t m_hits;
-    Milliseconds m_window;
-    Milliseconds m_off_after;
-    //  The looks that saw it within `m_window`, and always the last one.
-    std::deque<WallClock> m_seen;
-    bool m_on = false;
-};
+using Pokemon::FlickerFilter;
 
 //  The battle HUD: on 2 looks within 2 s, off after 3 s unseen.
 FlickerFilter battle_filter();

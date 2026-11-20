@@ -6,8 +6,12 @@
 
 #include <chrono>
 #include <format>
+#include <variant>
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryPlatformWait.h"
 
@@ -30,6 +34,10 @@ constexpr size_t PLATFORM_LOOKS = 2;
 //  takes one this long after its picture fades in.
 constexpr Milliseconds OPENING_SKIP_AFTER_FADE_IN = 750ms;
 
+const Pokemon::ScreenMatch AUTOSAVE_SHOWS{
+    .all_readings = {AUTOSAVE_READING},
+};
+
 Milliseconds elapsed_since(WallClock start, WallClock now){
     if (now <= start){
         return 0ms;
@@ -37,43 +45,22 @@ Milliseconds elapsed_since(WallClock start, WallClock now){
     return std::chrono::duration_cast<Milliseconds>(now - start);
 }
 
-//  Bounds a scripted test whose observation timestamps stand still.
-size_t max_poll_looks(Milliseconds timeout){
-    if (timeout <= 0ms){
-        return 1;
-    }
-    return (size_t)(timeout / PLATFORM_POLL) + 1;
-}
-
-//  The platform has no party bar; its controls hint ("(L) Move") stands in,
-//  provided no autosave badge or dialog box covers it.
-bool controls_hint_free(const ScreenObservation& look){
-    return look.readings.contains(CONTROLS_HINT_READING) &&
-        !look.readings.contains(AUTOSAVE_READING) &&
-        !look.events.has(ScreenEvent::DIALOG_BOX);
-}
-
 struct OpeningProgress{
     //  On the last look.
-    bool text_waiting = false;
-    bool fade_shown = false;
+    Pokemon::EdgeTrigger text_waiting;
+    Pokemon::EdgeTrigger fade_shown;
     //  When the picture came back after a fade, until Plus is held for it.
     std::optional<WallClock> faded_in = std::nullopt;
 };
 
-//  The opening's last line ("Your train has arrived in Lumiose City!") waits for A.
-bool text_waiting_for_a(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::DIALOG_BOX) && look.readings.contains(ADVANCE_ARROW_READING);
-}
-
 void track_fade_in(const ScreenObservation& look, OpeningProgress& progress){
-    const bool fade = fade_shows(look);
+    const bool fade = FADE_SHOWS.matches(look);
     if (fade){
         progress.faded_in.reset();
-    }else if (progress.fade_shown){
+    }
+    if (progress.fade_shown.falling(fade)){
         progress.faded_in = look.when;
     }
-    progress.fade_shown = fade;
 }
 
 //  Once per fade-in, while the opening plays. Plus on the platform opens the
@@ -83,17 +70,15 @@ bool opening_skip_due(const ScreenObservation& look, const OpeningProgress& prog
         return false;
     }
     return elapsed_since(*progress.faded_in, look.when) >= OPENING_SKIP_AFTER_FADE_IN &&
-        !text_shows(look) &&
+        !TEXT_SHOWS.matches(look) &&
         !look.readings.contains(CONTROLS_HINT_READING);
 }
 
 void advance_opening(PlzaBackend& backend, const ScreenObservation& look, OpeningProgress& progress){
-    const bool text_now = text_waiting_for_a(look);
-    if (text_now && !progress.text_waiting){
+    if (progress.text_waiting.rising(TEXT_WAITING_FOR_A.matches(look))){
         backend.log("[PLZA] platform wait: text waiting for A; A");
         backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
     }
-    progress.text_waiting = text_now;
     track_fade_in(look, progress);
     if (opening_skip_due(look, progress)){
         backend.log("[PLZA] platform wait: the opening plays; Plus held to skip it");
@@ -111,27 +96,23 @@ struct OpeningOutcome{
 //  arrival autosave badge appears, then hand the remaining budget to
 //  wait_for_platform() so Plus can never fire after autosave.
 OpeningOutcome skip_opening_to_autosave(PlzaBackend& backend, Milliseconds timeout){
-    const size_t max_looks = max_poll_looks(timeout);
-    std::optional<WallClock> start;
     OpeningProgress progress;
-    for (size_t looks = 0; looks < max_looks; looks++){
-        backend.scope().throw_if_cancelled();
-        const ScreenObservation look = backend.observe();
-        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
-            return {.failure = Pokemon::game_not_running_failure()};
-        }
-        start = start.value_or(look.when);
-        const Milliseconds elapsed = elapsed_since(*start, look.when);
-        if (look.readings.contains(AUTOSAVE_READING)){
-            backend.log("[PLZA] platform wait: the autosave badge is on screen");
+    const Pokemon::WaitOutcome outcome = Pokemon::poll_until(
+        backend,
+        AUTOSAVE_SHOWS,
+        Pokemon::WaitRule{.poll = PLATFORM_POLL, .timeout = timeout},
+        [&](const ScreenObservation& look){
+            advance_opening(backend, look, progress);
             backend.wait(PLATFORM_POLL);
-            return {.remaining = elapsed >= timeout ? 0ms : timeout - elapsed};
         }
-        if (elapsed >= timeout){
-            break;
-        }
-        advance_opening(backend, look, progress);
+    );
+    if (const auto* failure = std::get_if<StoryFailure>(&outcome)){
+        return {.failure = *failure};
+    }
+    if (const auto* matched = std::get_if<Pokemon::WaitMatched>(&outcome)){
+        backend.log("[PLZA] platform wait: the autosave badge is on screen");
         backend.wait(PLATFORM_POLL);
+        return {.remaining = matched->elapsed >= timeout ? 0ms : timeout - matched->elapsed};
     }
     return {.failure = StoryFailure{.code = "platform_not_seen", .detail = std::format(
         "No autosave badge seen within {} ms.", timeout.count()
@@ -142,28 +123,22 @@ OpeningOutcome skip_opening_to_autosave(PlzaBackend& backend, Milliseconds timeo
 
 
 std::optional<StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds timeout){
-    const size_t max_looks = max_poll_looks(timeout);
-    std::optional<WallClock> start;
-    size_t streak = 0;
     SignalProbe signals;
-    for (size_t looks = 0; looks < max_looks; looks++){
-        backend.scope().throw_if_cancelled();
-        const ScreenObservation look = backend.observe();
-        signals.look(look);
-        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
-            return Pokemon::game_not_running_failure();
+    const Pokemon::WaitOutcome outcome = Pokemon::wait_for(
+        backend,
+        PLATFORM_HINT,
+        Pokemon::WaitRule{.poll = PLATFORM_POLL, .timeout = timeout, .confirm_looks = PLATFORM_LOOKS},
+        [&](const ScreenObservation& look){
+            signals.look(look);
         }
-        start = start.value_or(look.when);
-        streak = controls_hint_free(look) ? streak + 1 : 0;
-        if (streak >= PLATFORM_LOOKS){
-            backend.log(std::format("[PLZA] platform wait: on the platform after {} looks", looks + 1));
-            backend.log_detail(signals.line("wait_for_platform", "platform", /*by=*/"hint"));
-            return std::nullopt;
-        }
-        if (elapsed_since(*start, look.when) >= timeout){
-            break;
-        }
-        backend.wait(PLATFORM_POLL);
+    );
+    if (const auto* failure = std::get_if<StoryFailure>(&outcome)){
+        return *failure;
+    }
+    if (const auto* matched = std::get_if<Pokemon::WaitMatched>(&outcome)){
+        backend.log(std::format("[PLZA] platform wait: on the platform after {} looks", matched->looks));
+        backend.log_detail(signals.line("wait_for_platform", "platform", /*by=*/"hint"));
+        return std::nullopt;
     }
     return StoryFailure{.code = "platform_not_seen", .detail = std::format(
         "No controls hint on {} looks in a row within {} ms.",

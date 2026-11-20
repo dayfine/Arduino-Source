@@ -9,9 +9,11 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <variant>
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 
@@ -39,7 +41,7 @@ Button map_talk_button(const ScreenObservation& look, MapTalkPart part){
     if (look.readings.contains(TUTORIAL_CARD_READING)){
         return BUTTON_A;
     }
-    return text_shows(look) && part == MapTalkPart::BEFORE_CARD ? BUTTON_A : BUTTON_B;
+    return TEXT_SHOWS.matches(look) && part == MapTalkPart::BEFORE_CARD ? BUTTON_A : BUTTON_B;
 }
 
 
@@ -48,23 +50,21 @@ constexpr Milliseconds CHOICE_POLL(250);
 
 //  (highlighted row, row count).
 std::optional<std::pair<int, int>> choice_rows(const ScreenObservation& look){
-    const auto selected = look.readings.find(CHOICE_SELECTED_READING);
-    const auto rows = look.readings.find(CHOICE_ROWS_READING);
-    if (!look.events.has(ScreenEvent::CHOICE_BOX) || selected == look.readings.end() || rows == look.readings.end()){
+    if (!CHOICE_WITH_ROWS.matches(look)){
         return std::nullopt;
     }
-    return std::make_pair(selected->second, rows->second);
+    return std::make_pair(
+        look.readings.find(CHOICE_SELECTED_READING)->second,
+        look.readings.find(CHOICE_ROWS_READING)->second
+    );
 }
 
-std::optional<std::pair<int, int>> wait_for_choice_rows(PlzaBackend& backend){
-    for (Milliseconds waited(0); ; waited += CHOICE_POLL){
-        backend.scope().throw_if_cancelled();
-        const std::optional<std::pair<int, int>> rows = choice_rows(backend.observe());
-        if (rows || waited >= CHOICE_WAIT){
-            return rows;
-        }
-        backend.wait(CHOICE_POLL);
-    }
+Pokemon::WaitOutcome wait_for_choice_rows(PlzaBackend& backend){
+    return Pokemon::wait_for(
+        backend,
+        CHOICE_WITH_ROWS,
+        Pokemon::WaitRule{.poll = CHOICE_POLL, .timeout = CHOICE_WAIT}
+    );
 }
 
 //  A presses through a question's text (e.g. "Which floor?") before its choices show.
@@ -74,32 +74,28 @@ constexpr int CHOICE_TEXT_PRESSES = 3;
 
 
 std::optional<Pokemon::StoryFailure> talk_through_map_screen(PlzaBackend& backend){
-    //  Bounds the looks too, for a script whose time stands still.
-    const size_t max_looks = (size_t)(MAP_TALK_TIMEOUT / MAP_TALK_POLL) + 1;
-    std::optional<WallClock> start;
-    std::optional<WallClock> control_since;
     MapTalkPart part = MapTalkPart::BEFORE_CARD;
-    for (size_t looks = 0; looks < max_looks; looks++){
-        backend.scope().throw_if_cancelled();
-        const ScreenObservation look = backend.observe();
-        start = start.value_or(look.when);
-        if (party_bar_free(look)){
-            control_since = control_since.value_or(look.when);
-            if (look.when - *control_since >= MAP_TALK_CONTROL_HOLD){
-                backend.log("[PLZA] talk_through_map_screen: the party bar held: back in the overworld");
-                return std::nullopt;
+    const Pokemon::WaitOutcome outcome = Pokemon::poll_until(
+        backend,
+        PARTY_BAR_FREE,
+        Pokemon::WaitRule{.poll = MAP_TALK_POLL, .timeout = MAP_TALK_TIMEOUT, .confirm_hold = MAP_TALK_CONTROL_HOLD},
+        [&](const ScreenObservation& look){
+            if (PARTY_BAR_FREE.matches(look)){
+                backend.wait(MAP_TALK_POLL);
+                return;
             }
-            backend.wait(MAP_TALK_POLL);
-            continue;
+            backend.press(map_talk_button(look, part), MAP_TALK_HOLD, MAP_TALK_RELEASE);
+            if (look.readings.contains(TUTORIAL_CARD_READING)){
+                part = MapTalkPart::AFTER_CARD;
+            }
         }
-        control_since.reset();
-        if (look.when - *start >= MAP_TALK_TIMEOUT){
-            break;
-        }
-        backend.press(map_talk_button(look, part), MAP_TALK_HOLD, MAP_TALK_RELEASE);
-        if (look.readings.contains(TUTORIAL_CARD_READING)){
-            part = MapTalkPart::AFTER_CARD;
-        }
+    );
+    if (const auto* failure = std::get_if<Pokemon::StoryFailure>(&outcome)){
+        return *failure;
+    }
+    if (std::holds_alternative<Pokemon::WaitMatched>(outcome)){
+        backend.log("[PLZA] talk_through_map_screen: the party bar held: back in the overworld");
+        return std::nullopt;
     }
     return Pokemon::StoryFailure{.code = "map_talk_timeout", .detail = std::format(
         "no party bar held {} ms within {} ms of A on the talk and the card, B on the map",
@@ -123,16 +119,20 @@ std::optional<Pokemon::StoryFailure> climb_ladder(PlzaBackend& backend){
 }
 
 std::optional<Pokemon::StoryFailure> choose_row(PlzaBackend& backend, int index){
-    std::optional<std::pair<int, int>> rows = wait_for_choice_rows(backend);
-    for (int press = 0; !rows && press < CHOICE_TEXT_PRESSES; press++){
+    Pokemon::WaitOutcome outcome = wait_for_choice_rows(backend);
+    for (int press = 0; std::holds_alternative<Pokemon::WaitTimeout>(outcome) && press < CHOICE_TEXT_PRESSES; press++){
         backend.log(std::format("[PLZA] choose_{}: no choice yet: A through the text", index));
         backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
-        rows = wait_for_choice_rows(backend);
+        outcome = wait_for_choice_rows(backend);
     }
-    if (!rows){
+    if (const auto* failure = std::get_if<Pokemon::StoryFailure>(&outcome)){
+        return *failure;
+    }
+    const auto* matched = std::get_if<Pokemon::WaitMatched>(&outcome);
+    if (matched == nullptr){
         return Pokemon::StoryFailure{.code = "no_choice", .detail = std::format("no choice box with rows that read after {} A presses", CHOICE_TEXT_PRESSES)};
     }
-    const auto [selected, count] = *rows;
+    const auto [selected, count] = *choice_rows(matched->look);
     if (index >= count){
         return Pokemon::StoryFailure{.code = "no_such_choice", .detail = std::format("row {} of a choice of {} rows", index, count)};
     }

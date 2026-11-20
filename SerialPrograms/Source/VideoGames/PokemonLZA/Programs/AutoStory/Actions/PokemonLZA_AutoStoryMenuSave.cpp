@@ -9,9 +9,13 @@
 #include <optional>
 #include <string_view>
 #include <utility>
+#include <variant>
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryMenuReadings.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryMenuSave.h"
 
@@ -60,29 +64,26 @@ std::string_view screen_name(MenuSaveScreen screen){
     }
 }
 
-bool has_reading(const ScreenObservation& look, std::string_view name){
-    return look.readings.find(std::string(name)) != look.readings.end();
-}
+struct MenuSaveRule{
+    MenuSaveScreen screen;
+    Pokemon::ScreenMatch match;
+};
+
+const MenuSaveRule MENU_SAVE_RULES[] = {
+    {MenuSaveScreen::TUTORIAL_CARD, {.all_readings = {TUTORIAL_CARD_READING}}},
+    {MenuSaveScreen::CHOICE, {.all_events = {ScreenEvent::CHOICE_BOX}}},
+    {MenuSaveScreen::TEXT, {.all_events = {ScreenEvent::DIALOG_BOX}}},
+    {MenuSaveScreen::SAVE_BUTTON, {.all_readings = {MENU_SAVE_BUTTON_READING}}},
+    {MenuSaveScreen::MAIN_MENU, {.all_readings = {MAIN_MENU_READING}}},
+    //  01.01's platform shows no party bar, only the controls hint.
+    {MenuSaveScreen::OVERWORLD, OVERWORLD_FREE},
+};
 
 MenuSaveScreen menu_save_screen(const ScreenObservation& look){
-    if (has_reading(look, TUTORIAL_CARD_READING)){
-        return MenuSaveScreen::TUTORIAL_CARD;
-    }
-    if (look.events.has(ScreenEvent::CHOICE_BOX)){
-        return MenuSaveScreen::CHOICE;
-    }
-    if (look.events.has(ScreenEvent::DIALOG_BOX)){
-        return MenuSaveScreen::TEXT;
-    }
-    if (has_reading(look, MENU_SAVE_BUTTON_READING)){
-        return MenuSaveScreen::SAVE_BUTTON;
-    }
-    if (has_reading(look, MAIN_MENU_READING)){
-        return MenuSaveScreen::MAIN_MENU;
-    }
-    //  01.01's platform shows no party bar, only the controls hint.
-    if (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || has_reading(look, CONTROLS_HINT_READING)){
-        return MenuSaveScreen::OVERWORLD;
+    for (const MenuSaveRule& rule : MENU_SAVE_RULES){
+        if (rule.match.matches(look)){
+            return rule.screen;
+        }
     }
     return MenuSaveScreen::UNKNOWN;
 }
@@ -178,39 +179,46 @@ void press_text_speed_rows(PlzaBackend& backend){
 
 //  B until the overworld holds; B on the overworld does nothing.
 std::optional<Pokemon::StoryFailure> back_to_overworld(PlzaBackend& backend){
-    //  The looks also bound the step: a script's time can stand still.
-    const size_t max_looks = MENU_SAVE_LIMIT / MENU_SAVE_POLL + 1;
-    std::optional<WallClock> start;
-    size_t overworld_looks = 0;
     SignalProbe signals;
-    for (size_t looks = 1; ; looks++){
-        backend.scope().throw_if_cancelled();
-        const ScreenObservation look = backend.observe();
-        signals.look(look);
-        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
-            return Pokemon::game_not_running_failure();
+    const Pokemon::WaitOutcome outcome = Pokemon::poll_until(
+        backend,
+        [](const ScreenObservation& look){
+            return menu_save_screen(look) == MenuSaveScreen::OVERWORLD;
+        },
+        Pokemon::WaitRule{.poll = MENU_SAVE_POLL, .timeout = MENU_SAVE_LIMIT, .confirm_looks = MENU_SAVE_HELD_LOOKS},
+        [&](const ScreenObservation& look){
+            if (menu_save_screen(look) == MenuSaveScreen::OVERWORLD){
+                backend.wait(MENU_SAVE_POLL);
+            }else{
+                backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
+            }
+        },
+        [&](const ScreenObservation& look){
+            signals.look(look);
         }
-        start = start.value_or(look.when);
-        const Milliseconds now = std::chrono::duration_cast<Milliseconds>(look.when - *start);
-        if (now > MENU_SAVE_LIMIT || looks > max_looks){
-            return Pokemon::StoryFailure{.code = "text_speed_timeout", .detail = std::format(
-                "not back on the overworld in {} ms of B after the text speed rows", MENU_SAVE_LIMIT.count()
-            )};
-        }
-        if (menu_save_screen(look) != MenuSaveScreen::OVERWORLD){
-            overworld_looks = 0;
-            backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
-            continue;
-        }
-        overworld_looks++;
-        if (overworld_looks >= MENU_SAVE_HELD_LOOKS){
-            backend.log(std::format("[PLZA set_text_speed_fast] text speed set, back on the overworld at {:.1f}s", now.count() / 1000.0));
-            const bool party_bar = look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
-            backend.log_detail(signals.line("set_text_speed_fast", "text_speed_exit", party_bar ? "party_bar" : "hint"));
-            return std::nullopt;
-        }
-        backend.wait(MENU_SAVE_POLL);
+    );
+    if (const auto* failure = std::get_if<Pokemon::StoryFailure>(&outcome)){
+        return *failure;
     }
+    if (const auto* matched = std::get_if<Pokemon::WaitMatched>(&outcome)){
+        backend.log(std::format("[PLZA set_text_speed_fast] text speed set, back on the overworld at {:.1f}s", matched->elapsed.count() / 1000.0));
+        const bool party_bar = matched->look.events.has(ScreenEvent::PLAYER_CAN_MOVE);
+        backend.log_detail(signals.line("set_text_speed_fast", "text_speed_exit", party_bar ? "party_bar" : "hint"));
+        return std::nullopt;
+    }
+    return Pokemon::StoryFailure{.code = "text_speed_timeout", .detail = std::format(
+        "not back on the overworld in {} ms of B after the text speed rows", MENU_SAVE_LIMIT.count()
+    )};
+}
+
+Pokemon::StoryFailure menu_save_timeout_failure(MenuSaveScreen screen, const MenuSaveProgress& progress){
+    return Pokemon::StoryFailure{
+        .code = "menu_save_timeout",
+        .detail = std::format(
+            "not saved and back on the overworld in {} ms: on {}, R pressed {}, confirmed {}, saved {}",
+            MENU_SAVE_LIMIT.count(), screen_name(screen), progress.save_requested, progress.save_confirmed, progress.saved
+        ),
+    };
 }
 
 } // namespace
@@ -226,7 +234,7 @@ std::optional<Pokemon::StoryFailure> set_text_speed_fast(PlzaBackend& backend){
         if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
             return Pokemon::game_not_running_failure();
         }
-        if (!has_reading(look, TUTORIAL_CARD_READING)){
+        if (!look.readings.contains(TUTORIAL_CARD_READING)){
             break;
         }
         backend.log("[PLZA set_text_speed_fast] tutorial card: A");
@@ -238,28 +246,23 @@ std::optional<Pokemon::StoryFailure> set_text_speed_fast(PlzaBackend& backend){
 
 
 std::optional<Pokemon::StoryFailure> save_from_menu(PlzaBackend& backend){
+    const size_t max_looks = static_cast<size_t>(MENU_SAVE_LIMIT / MENU_SAVE_POLL) + 1;
     MenuSaveProgress progress;
     std::optional<WallClock> start;
     std::optional<MenuSaveScreen> last_screen;
     size_t screens = 0;
-    size_t held = 0;
-    while (true){
+    Pokemon::ConfirmStreak held(MENU_SAVE_HELD_LOOKS);
+    for (size_t looks = 1; ; looks++){
+        backend.scope().throw_if_cancelled();
         const ScreenObservation look = backend.observe();
         if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
             return Pokemon::game_not_running_failure();
         }
-        if (!start){
-            start = look.when;
-        }
+        start = start.value_or(look.when);
         const Milliseconds now = std::chrono::duration_cast<Milliseconds>(look.when - *start);
         const MenuSaveScreen screen = menu_save_screen(look);
-        if (now > MENU_SAVE_LIMIT){
-            return Pokemon::StoryFailure{.code = "menu_save_timeout", .detail =
-                std::format(
-                    "not saved and back on the overworld in {} ms: on {}, R pressed {}, confirmed {}, saved {}",
-                    MENU_SAVE_LIMIT.count(), screen_name(screen), progress.save_requested, progress.save_confirmed, progress.saved
-                )
-            };
+        if (now > MENU_SAVE_LIMIT || looks > max_looks){
+            return menu_save_timeout_failure(screen, progress);
         }
         if (screen != last_screen){
             screens++;
@@ -267,23 +270,21 @@ std::optional<Pokemon::StoryFailure> save_from_menu(PlzaBackend& backend){
                 "[PLZA save_from_menu] screen {}: {} at {:.1f}s", screens, screen_name(screen), now.count() / 1000.0
             ));
             last_screen = screen;
-            held = 0;
+            held.reset();
         }
-        held++;
+        const bool ready = held.update(true);
         if (screen == MenuSaveScreen::OVERWORLD && progress.saved){
             backend.log(std::format("[PLZA save_from_menu] saved, back on the overworld at {:.1f}s", now.count() / 1000.0));
             return std::nullopt;
         }
-        const std::optional<Button> button = held < MENU_SAVE_HELD_LOOKS
-            ? std::nullopt
-            : menu_save_press(screen, progress, now);
+        const std::optional<Button> button = ready ? menu_save_press(screen, progress, now) : std::nullopt;
         if (!button){
             backend.wait(MENU_SAVE_POLL);
             continue;
         }
         press_menu_button(backend, screen, *button);
         note_press(screen, *button, now, progress);
-        held = 0;
+        held.reset();
     }
 }
 

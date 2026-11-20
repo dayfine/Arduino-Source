@@ -9,11 +9,14 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <variant>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenMatch.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryActionNames.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBattleOnScreen.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
@@ -278,26 +281,45 @@ constexpr Milliseconds PLUS_SKIP_POLL = 250ms;
 //  showed 2.2-2.8 s after the press started.
 constexpr Milliseconds PLUS_SKIP_AFTER_FADE = 2500ms;
 constexpr Milliseconds PLUS_SKIP_FADE_WITHIN = 5000ms;
-constexpr size_t PLUS_SKIP_FADE_LOOKS = 60;
+constexpr Milliseconds PLUS_SKIP_FADE_END_WAIT = 15s;
+
+const Pokemon::ScreenMatch NOT_BLACK_FADE{
+    .no_events = {ScreenEvent::FADE_BLACK},
+};
+const Pokemon::ScreenMatch BLACK_FADE{
+    .all_events = {ScreenEvent::FADE_BLACK},
+};
+const Pokemon::ScreenMatch BATTLE_SHOWS{
+    .all_events = {ScreenEvent::BATTLE_STARTED},
+};
 
 //  From a cutscene's opening black fade: once it ends, Plus, then the
 //  skip's black fade. Fails as "fade_not_ended" or "cutscene_not_skipped".
 std::optional<StoryFailure> plus_skip_step(PlzaBackend& backend){
-    for (size_t looks = 0; backend.observe().events.has(ScreenEvent::FADE_BLACK); looks++){
-        if (looks >= PLUS_SKIP_FADE_LOOKS){
-            return StoryFailure{.code = "fade_not_ended", .detail = "plus_skip: the black fade did not end within 15 s"};
-        }
-        backend.wait(PLUS_SKIP_POLL);
+    const Pokemon::WaitOutcome fade_end = Pokemon::wait_for(
+        backend,
+        NOT_BLACK_FADE,
+        Pokemon::WaitRule{.poll = PLUS_SKIP_POLL, .timeout = PLUS_SKIP_FADE_END_WAIT}
+    );
+    if (const auto* failure = std::get_if<StoryFailure>(&fade_end)){
+        return *failure;
+    }
+    if (!std::holds_alternative<Pokemon::WaitMatched>(fade_end)){
+        return StoryFailure{.code = "fade_not_ended", .detail = "plus_skip: the black fade did not end within 15 s"};
     }
     backend.wait(PLUS_SKIP_AFTER_FADE);
     backend.press(BUTTON_PLUS, CUTSCENE_SKIP_HOLD, /*release=*/0ms);
-    for (Milliseconds waited = 0ms; waited <= PLUS_SKIP_FADE_WITHIN; waited += PLUS_SKIP_POLL){
-        backend.scope().throw_if_cancelled();
-        if (backend.observe().events.has(ScreenEvent::FADE_BLACK)){
-            backend.log(std::format("[PLZA] plus_skip: a black fade {} ms after the hold.", waited.count()));
-            return std::nullopt;
-        }
-        backend.wait(PLUS_SKIP_POLL);
+    const Pokemon::WaitOutcome skipped = Pokemon::wait_for(
+        backend,
+        BLACK_FADE,
+        Pokemon::WaitRule{.poll = PLUS_SKIP_POLL, .timeout = PLUS_SKIP_FADE_WITHIN}
+    );
+    if (const auto* failure = std::get_if<StoryFailure>(&skipped)){
+        return *failure;
+    }
+    if (const auto* matched = std::get_if<Pokemon::WaitMatched>(&skipped)){
+        backend.log(std::format("[PLZA] plus_skip: a black fade {} ms after the hold.", matched->elapsed.count()));
+        return std::nullopt;
     }
     const std::string detail = std::format("plus_skip: no black fade within {} ms after the hold.", PLUS_SKIP_FADE_WITHIN.count());
     backend.log(std::format("[PLZA] {}", detail));
@@ -312,36 +334,51 @@ constexpr Seconds BATTLE_START_WAIT = 10s;
 
 //  A start that locked on and let go of ZL can leave the HUD down until ZL
 //  is held again, so `lock_on` also counts the move symbols under ZL.
-bool battle_on_within(PlzaBackend& backend, const std::optional<LockOnWatch>& lock_on, Milliseconds within){
-    for (Milliseconds waited = 0ms; ; ){
-        backend.scope().throw_if_cancelled();
-        if (backend.observe().events.has(ScreenEvent::BATTLE_STARTED)){
-            return true;
+std::optional<StoryFailure> wait_for_battle_start(PlzaBackend& backend, const std::optional<LockOnWatch>& lock_on, Milliseconds within){
+    if (!lock_on){
+        const Pokemon::WaitOutcome outcome = Pokemon::wait_for(
+            backend,
+            BATTLE_SHOWS,
+            Pokemon::WaitRule{.poll = BATTLE_START_POLL, .timeout = within}
+        );
+        if (const auto* failure = std::get_if<StoryFailure>(&outcome)){
+            return *failure;
         }
-        if (waited >= within){
-            return false;
+        if (std::holds_alternative<Pokemon::WaitMatched>(outcome)){
+            return std::nullopt;
         }
-        if (!lock_on){
-            backend.wait(BATTLE_START_POLL);
-            waited += BATTLE_START_POLL;
-            continue;
+    }else{
+        for (Milliseconds waited = 0ms; ; ){
+            backend.scope().throw_if_cancelled();
+            const ScreenObservation look = backend.observe();
+            if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
+                return Pokemon::game_not_running_failure();
+            }
+            if (BATTLE_SHOWS.matches(look)){
+                return std::nullopt;
+            }
+            if (waited >= within){
+                break;
+            }
+            if ((*lock_on)(BATTLE_LOCK_ON_HOLD)){
+                backend.log("[PLZA] story_battle: no battle HUD; ZL held: the move symbols showed.");
+                return std::nullopt;
+            }
+            waited += BATTLE_LOCK_ON_HOLD;
         }
-        if ((*lock_on)(BATTLE_LOCK_ON_HOLD)){
-            backend.log("[PLZA] story_battle: no battle HUD; ZL held: the move symbols showed.");
-            return true;
-        }
-        waited += BATTLE_LOCK_ON_HOLD;
     }
+    return StoryFailure{
+        .code = "battle_never_started",
+        .detail = std::format(
+            "no battle HUD{} within {} s", lock_on ? " and no move symbols under ZL" : "",
+            std::chrono::duration_cast<Seconds>(within).count()
+        ),
+    };
 }
 
 std::optional<StoryFailure> battle_step(PlzaConsoleHooks& hooks, PlzaBackend& backend){
-    if (!battle_on_within(backend, hooks.lock_on, BATTLE_START_WAIT)){
-        return StoryFailure{
-            .code = "battle_never_started",
-            .detail = std::format(
-                "no battle HUD{} within {} s", hooks.lock_on ? " and no move symbols under ZL" : "", BATTLE_START_WAIT.count()
-            ),
-        };
+    if (std::optional<StoryFailure> failure = wait_for_battle_start(backend, hooks.lock_on, BATTLE_START_WAIT)){
+        return failure;
     }
     if (!hooks.battle){
         return StoryFailure{.code = std::string(CONSOLE_ONLY), .detail = "no battle code off a console", .repeats = true};
