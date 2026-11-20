@@ -163,15 +163,26 @@ constexpr std::string_view LOAD_SAVE_FIRST_LABEL =
 constexpr std::string_view RUN_FROM_LABEL =
     "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk. Running is checked on console from after Taunie's battle in 03.02b.";
 
+//  Captures the failure screenshot while the game is still on screen, then
+//  immediately suspends to Switch HOME so PLZA cannot be attacked or overwrite
+//  the save while stopped.
+[[noreturn]] void stop_with_error(
+    ConsoleHandle& console, ProControllerContext& context,
+    ErrorReportMode mode, std::string message
+){
+    const VideoSnapshot frame = console.video().snapshot();
+    go_home(console, context);
+    OperationFailedExceptionWithScreenshot::fire(mode, std::move(message), console, frame.frame);
+}
+
 //  A run after the new game starts from the latest save, not from wherever
 //  the game is. Throws OperationFailedException if it does not load.
-void load_first_save(ConsoleHandle& console, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& checkpoint){
+void load_first_save(ConsoleHandle& console, ProControllerContext& context, StoryGame& game, PlzaBackend& backend, const StoryCheckpoint& checkpoint){
     const std::optional<Pokemon::StoryFailure> loaded = load_checkpoint_start(game, backend, checkpoint);
     if (loaded){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("AutoStory: could not load the save for {}: {}", checkpoint.id, *loaded),
-            console
+        stop_with_error(
+            console, context, ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("AutoStory: could not load the save for {}: {}", checkpoint.id, *loaded)
         );
     }
     console.log(std::format("AutoStory: loaded the latest save for {}.", checkpoint.id));
@@ -227,13 +238,12 @@ size_t checked_first_checkpoint(
         : read_start_signature(console, story.context);
     const std::optional<size_t> from = checkpoint_at(checkpoints, starts, first, read);
     if (!from){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::NO_ERROR_REPORT,
+        stop_with_error(
+            console, story.context, ErrorReportMode::NO_ERROR_REPORT,
             std::format(
                 "AutoStory: start_position_unknown: the screen ({}) matches no checkpoint start up to {}; nothing was run",
                 to_string(read), checkpoints[first].id
-            ),
-            console
+            )
         );
     }
     if (*from != first){
@@ -319,7 +329,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     };
     if (!checkpoint_starts_without_save(checkpoints[first])){
         if (LOAD_SAVE_FIRST){
-            load_first_save(env.console, game, backend, checkpoints[first]);
+            load_first_save(env.console, context, game, backend, checkpoints[first]);
         }
         first = checked_first_checkpoint(story, backend, checkpoints, first, run_options.starts);
     }
@@ -328,10 +338,9 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
         game, std::span<StoryCheckpoint>(checkpoints).subspan(first, last - first + 1), run_options, backend, state, sightings
     );
     if (failure){
-        OperationFailedExceptionWithScreenshot::fire(
-            ErrorReportMode::SEND_ERROR_REPORT,
-            std::format("AutoStory stopped at {}: {}", failure->checkpoint_id, failure->failure),
-            env.console
+        stop_with_error(
+            env.console, context, ErrorReportMode::SEND_ERROR_REPORT,
+            std::format("AutoStory stopped at {}: {}", failure->checkpoint_id, failure->failure)
         );
     }
     env.console.log(std::format("AutoStory: done through {}.", checkpoints[last].id));
