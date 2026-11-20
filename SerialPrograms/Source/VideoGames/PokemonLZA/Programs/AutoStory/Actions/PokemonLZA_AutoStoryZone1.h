@@ -51,7 +51,7 @@ bool pin_in_zone_1(MapPoint pin);
 std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, MoveOnlyFunction<std::optional<MapPoint>()> pin);
 
 //  Objective-marker distances of Wild Zone 1's alternating catch patrol spots.
-inline constexpr int CATCH_SPOTS[] = {100, 60};
+inline constexpr int CATCH_SPOTS[] = {100, 80, 60};
 
 //  Tolerance in marker units for considering a road stop reached.
 inline constexpr int ROAD_STOP_SLACK = 3;

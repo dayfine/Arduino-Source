@@ -72,12 +72,12 @@ bool plays_to_control(const LeadIn& step){
 
 //  Throws ParseException naming `where` for an unknown field or a wrong value.
 void read_signature_field(const std::string& field, const JsonValue& value, std::string_view where, StartSignature& signature){
-    if (field == "party"){
+    if (field == "party" || field == "party_max"){
         int64_t slots = 0;
         if (!value.read_integer(slots) || slots < 1 || slots > 6){
-            throw ParseException(std::format("{}: start_signature's party is the party bar's filled slots, 1 to 6", where));
+            throw ParseException(std::format("{}: start_signature's {} is the party bar's filled slots, 1 to 6", where, field));
         }
-        signature.party = (size_t)slots;
+        (field == "party" ? signature.party : signature.party_max) = (size_t)slots;
         return;
     }
     if (field == "minimap"){
@@ -91,7 +91,7 @@ void read_signature_field(const std::string& field, const JsonValue& value, std:
     bool flag = false;
     if (field != "talk_prompt" && field != "wild_zone"){
         throw ParseException(std::format(
-            "{}: start_signature has \"{}\"; its fields are talk_prompt, wild_zone, party and minimap", where, field
+            "{}: start_signature has \"{}\"; its fields are talk_prompt, wild_zone, party, party_max and minimap", where, field
         ));
     }
     if (!value.read_boolean(flag)){

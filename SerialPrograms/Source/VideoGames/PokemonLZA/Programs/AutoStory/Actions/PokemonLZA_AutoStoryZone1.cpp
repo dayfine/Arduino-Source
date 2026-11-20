@@ -18,9 +18,13 @@ namespace PokemonLZA{
 
 namespace{
 
-//  Mareep's grass right of the road (marker 60): targets show on the right
-//  from (386, 252), none from (370, 256); 6 north of that, toward the grass.
-constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 246}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
+//  Sidewalk by the blue kiosk between 100 and 60 (Weedle / Pichu lawn);
+//  inside the Wild Zone 1 pentagon, clear of its red reticle ring (509 px).
+constexpr MapWaypoint ZONE1_SPOT_80{.name = "the 80 spot", .pin = {.x = 406, .y = 231}, .provisional = false, .stop_radius = CATCH_STOP_RADIUS};
+
+//  Mareep's grass right of the road (marker 60); nudged south onto the road
+//  clear of the Wild Zone 1 badge's red reticle ring at (386, 246).
+constexpr MapWaypoint ZONE1_SPOT_60{.name = "the 60 spot", .pin = {.x = 386, .y = 251}, .provisional = true, .stop_radius = CATCH_STOP_RADIUS};
 
 } // namespace
 
@@ -28,6 +32,8 @@ std::optional<MapWaypoint> catch_spot_waypoint(int spot){
     switch (spot){
     case 100:
         return ZONE1_SPOT_100;
+    case 80:
+        return ZONE1_SPOT_80;
     case 60:
         return ZONE1_SPOT_60;
     default:
