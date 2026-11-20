@@ -48,6 +48,9 @@ constexpr std::string_view WALK_UNTIL_SCENE = "scene";
 //  once the talk starts (walk_into_talk()).
 constexpr std::string_view WALK_INTO_TALK = "talk";
 
+//  A walk's failure when it met no end, which "search_sides" searches on from.
+constexpr std::string_view WALK_NO_END = "walk_no_end";
+
 //  The other walk "end"s: held until this event.
 constexpr std::pair<std::string_view, ScreenEvent> WALK_ENDS[] = {
     {"fade_white", ScreenEvent::FADE_WHITE},
@@ -115,6 +118,9 @@ struct WalkArgs{
     std::optional<double> heading = std::nullopt;
     //  "end": "talk": the walk starts the talk at the prompt it reaches.
     bool into_talk = false;
+    //  "search_sides", with "end": "talk": a walk that met no prompt steps to
+    //  the sides until one shows (search_sides_into_talk()).
+    bool search_sides = false;
     //  The chosen starter's walk replaces the legs, if it has one.
     bool to_starter = false;
 };
@@ -133,7 +139,7 @@ std::vector<StoryWalkLeg> read_legs(const JsonArray& rows){
 }
 
 WalkArgs read_walk_args(const JsonObject& args){
-    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading", "to_starter"});
+    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading", "to_starter", "search_sides"});
     WalkArgs walk;
     walk.move.legs = read_legs(args.get_array_throw("legs"));
     walk.to_starter = flag(args, "to_starter");
@@ -160,6 +166,10 @@ WalkArgs read_walk_args(const JsonObject& args){
             throw ParseException("\"end_after_ms\" needs an \"end\" other than \"talk\"");
         }
         walk.end_after = *end_after;
+    }
+    walk.search_sides = flag(args, "search_sides");
+    if (walk.search_sides && !walk.into_talk){
+        throw ParseException("\"search_sides\" needs \"end\": \"talk\"");
     }
     if (const JsonValue* heading = args.get_value("heading")){
         walk.heading = (double)heading->to_integer_throw();
@@ -194,7 +204,11 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
         }
     }
     if (walk.into_talk){
-        return walk_into_talk(backend, name, walk.move, /*after_legs=*/walk.to_starter);
+        std::optional<StoryFailure> talked = walk_into_talk(backend, name, walk.move, /*after_legs=*/walk.to_starter);
+        if (talked && talked->code == WALK_NO_END && walk.search_sides){
+            return search_sides_into_talk(backend, name);
+        }
+        return talked;
     }
     if (walk.end){
         return walk_until(backend, name, walk.move, *walk.end, walk.end_after);
