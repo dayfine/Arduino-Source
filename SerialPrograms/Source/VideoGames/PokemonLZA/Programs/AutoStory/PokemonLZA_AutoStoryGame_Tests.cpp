@@ -387,11 +387,11 @@ const RunCase RUN_CASES[] = {
         //  01.03 on console B 2026-11-19 17:10: Taunie's A prompt shows at the
         //  start and on the way; an A on it mid-walk took her line, not the
         //  starter's. The starter walk presses A only once its legs are done.
-        //  The first look is the checkpoint's.
+        //  The turn looks twice, then each 250 ms slice of the legs once.
         .name = "01.03's walk to the starter: no A on a prompt during its legs, A on the prompt after them, done when the talk starts",
         .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = concat(
-            std::vector<ScreenObservation>(6, PROMPT_ONLY),
-            concat(std::vector<ScreenObservation>(6, A_PROMPT), {A_PROMPT, DIALOG})
+            std::vector<ScreenObservation>(5, PROMPT_ONLY),
+            concat(std::vector<ScreenObservation>(8, A_PROMPT), {A_PROMPT, DIALOG})
         )},
         .expectation = {
             .verdict = "done",
