@@ -97,15 +97,15 @@ const EnumDropdownDatabase<StarterChoice>& starter_database(){
     return database;
 }
 
-//  The walk from 01.03's start to each starter (console B, 2026-11-19);
-//  Chikorita: none, the plan's legs. The talk goes to what the player faces,
-//  so Tepig's is a turn with the camera recentered behind, then straight on.
+//  The walk from 01.03's start to each starter (console B, 2026-11-20);
+//  Chikorita: none, the plan's legs ([-66, 600] held). All three hold the
+//  stick directly for 600 ms with no L recenter.
 std::optional<StoryMove> starter_move(StarterChoice starter){
     switch (starter){
     case StarterChoice::TOTODILE:
-        return StoryMove{.legs = {{.turn = -56, .walk = 700ms}}, .style = StoryWalkStyle::HELD};
+        return StoryMove{.legs = {{.turn = -50, .walk = 600ms}}, .style = StoryWalkStyle::HELD};
     case StarterChoice::TEPIG:
-        return StoryMove{.legs = {{.turn = -42, .walk = 700ms}}};
+        return StoryMove{.legs = {{.turn = -34, .walk = 600ms}}, .style = StoryWalkStyle::HELD};
     case StarterChoice::CHIKORITA:
         break;
     }
