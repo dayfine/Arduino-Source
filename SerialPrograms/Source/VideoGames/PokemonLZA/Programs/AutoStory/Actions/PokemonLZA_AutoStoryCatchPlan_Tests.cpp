@@ -15,7 +15,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryCatchPlan_Tests.h"
-#include "PokemonLZA_AutoStorySpeciesCheck.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -35,7 +34,6 @@ LockTarget lock_target(const Plate& plate){
     LockTarget target;
     target.x = plate.x;
     target.y = plate.y;
-    target.width = 0.05;
     target.caught = plate.caught;
     return target;
 }

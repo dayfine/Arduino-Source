@@ -25,16 +25,9 @@ std::optional<Pokemon::StoryFailure> catch_tutorial(StoryEnv& env, PlzaBackend& 
 //  Fails as "still_a_target" after `max_rounds` rounds.
 std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBackend& backend, int max_rounds);
 
-//  Target counts and throw budget for catch_in_zone().
-struct ZoneCatchGoal{
-    int new_species = 0;
-    int party_species = 0;
-    int max_throws = 0;
-};
-
-//  Patrols Wild Zone 1 to catch uncaught species until `goal` is met.
+//  Walks to the active Wild Zone 1 catch spot and catches one uncaught species.
 //  Fails as "rocks_not_left", "leg_off_target", "map_pin_not_read", or "short_of_species".
-std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal);
+std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& backend, int max_throws);
 
 
 

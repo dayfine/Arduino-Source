@@ -180,8 +180,7 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
             return battle_then_catch(env, backend, /*max_rounds=*/6);
         }},
         {action_name(PlzaAction::CATCH_IN_ZONE), [](StoryEnv& env, PlzaBackend& backend){
-            //  5 registered species, 3 after the tutorial: 2 new; 12 throws.
-            return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
+            return catch_in_zone(env, backend, /*max_throws=*/12);
         }},
         {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), [](StoryEnv& env, PlzaBackend& backend){
             return check_out_of_zone_1(backend, [&env, &backend]{
