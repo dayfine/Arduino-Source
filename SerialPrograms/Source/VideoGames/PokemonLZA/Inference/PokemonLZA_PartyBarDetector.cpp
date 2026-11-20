@@ -176,9 +176,11 @@ bool PartyBarDetector::detect(const ImageViewRGB32& screen){
         return false;
     }
     const uint8_t sent_out = m_selection.dpad_down_idx();
+    //  Party slots fill left-to-right; a fainted lead has no green bar
+    //  and a darkened card, so the rightmost lit slot gives the party count.
     for (size_t i = 0; i < 6; i++){
         if (i == sent_out || slot_has_hp_bar(screen, i)){
-            m_filled_slots++;
+            m_filled_slots = static_cast<int>(i) + 1;
         }
     }
     return true;
