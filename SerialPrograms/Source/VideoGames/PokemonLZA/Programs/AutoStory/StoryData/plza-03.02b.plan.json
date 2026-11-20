@@ -32,12 +32,11 @@
       },
       {
         "id": "to_taunie",
-        "why": "on to Taunie's \"A Talk\", A on it. She stands in a different place after the scene: her prompt showed 2.5-2.75 s on when she stood on the path; once she stood left of it and 8000 ran past her into the arch (console B 2026-11-19 18:04). The walk stops 3000 on (a guess), short of the arch, and steps to the sides, left first, until her prompt. not planned: no tile grid in Lumiose",
+        "why": "on through the arch to Taunie's \"A Talk\", A on it. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
-          "legs": [[0, 3000]],
-          "end": "talk",
-          "search_sides": true
+          "legs": [[0, 8000]],
+          "end": "talk"
         }
       },
       {

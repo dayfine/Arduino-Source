@@ -64,12 +64,6 @@ std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::s
 //  steps taken; none when no prompt showed.
 std::optional<size_t> step_along_until_prompt(PlzaBackend& backend, double facing_degrees);
 
-//  After a walk into a talk that met no prompt: its target can stand off
-//  the path (Taunie after 03.02b's scene, console B 2026-11-19 18:04).
-//  step_along_until_prompt() facing the walk's way, then talk_at_prompt().
-//  Fails as "walk_no_end" with no A pressed when no prompt shows.
-std::optional<Pokemon::StoryFailure> search_sides_into_talk(PlzaBackend& backend, std::string_view walk);
-
 //  "talk": A on the prompt of what the player faces, A again while it stays
 //  up with nothing open (the game can drop an A). Fails as "talk_no_prompt"
 //  with nothing pressed when no prompt settles within 3 s, "talk_no_scene"

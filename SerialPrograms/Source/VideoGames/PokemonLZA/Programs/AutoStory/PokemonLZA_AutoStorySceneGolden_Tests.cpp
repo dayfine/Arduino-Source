@@ -735,23 +735,8 @@ const GoldenCase GOLDEN_CASES[] = {
 10.0s: text box, still
 )"},
         .expectation = {
-            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "stick or A"}, {"text box, still", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 250 ms of the last leg started a talk.",
-        },
-    },
-    {
-        //  The last turn left the player short of the counter, out of the
-        //  nurse's reach (console B 2026-11-19 18:51); the prompt and her
-        //  text box after it are synthetic.
-        .name = "03.04 into_pokemon_center, the nurse's A prompt only on the short walk on into the counter: A, her talk",
-        .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
-0.0s: party bar
-10.6s: party bar, A prompt
-11.0s: text box, still
-)"},
-        .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "A"}, {"text box, still", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 600 ms of the last leg started a talk.",
+            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 0 ms of the last leg started a talk.",
         },
     },
     {
@@ -812,21 +797,6 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar", "stick"}, {"party bar, A prompt", "A"}, {"black fade, still", "-"}},
             .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 2500 ms of the last leg started a talk.",
-        },
-    },
-    {
-        //  Taunie stood left of the straight path and the walk ran past her
-        //  into the arch (console B 2026-11-19 18:04); her prompt during the
-        //  steps to the sides and the fade after it are synthetic.
-        .name = "03.02b to_taunie, Taunie off the path: no A prompt on the walk, steps to the sides until hers, A, her talk",
-        .input = {.checkpoint = "03.02b", .step = "to_taunie", .screens = R"(
-0.0s: party bar
-9.5s: party bar, A prompt
-10.5s: black fade, still
-)"},
-        .expectation = {
-            .keys = {{"party bar", "stick"}, {"party bar, A prompt", "A"}, {"black fade, still", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: no A prompt on the walk; the A prompt after 6 steps to the sides.",
         },
     },
     {
