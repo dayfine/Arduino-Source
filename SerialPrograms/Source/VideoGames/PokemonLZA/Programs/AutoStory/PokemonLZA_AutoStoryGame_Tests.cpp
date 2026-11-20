@@ -367,22 +367,19 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  01.03 on console B 2026-11-19 16:24: the starter's prompt showed for
-        //  one look at a time, 250, 750 and 1500 ms into the walk; the walk
-        //  waited for a steady prompt and failed as walk_no_end. A on each
-        //  glimpse; one the game drops leaves the screen still and the walk on.
-        .name = "01.03's walk to the starter: A on each glimpse of its flickering A prompt, on after a dropped A, done when the scene starts",
+        //  01.03 on console B 2026-11-19 17:10: Taunie's A prompt shows at the
+        //  start and on the way; an A on it mid-walk took her line, not the
+        //  starter's. The starter walk presses A only once its legs are done.
+        .name = "01.03's walk to the starter: no A on a prompt during its legs, A on the prompt after them, done when the talk starts",
         .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = concat(
             std::vector<ScreenObservation>(5, PROMPT_ONLY),
-            concat({CUTSCENE, CUTSCENE, PROMPT_ONLY, STILL, STILL, STILL, STILL, CUTSCENE, PROMPT_ONLY, STILL, STILL, STILL, STILL},
-            {CUTSCENE, CUTSCENE, PROMPT_ONLY, BLACK_FADE})
+            concat(std::vector<ScreenObservation>(6, A_PROMPT), {A_PROMPT, DIALOG})
         )},
         .expectation = {
             .verdict = "done",
             .inputs = std::format(
-                "{}, press L, stick -70deg 150ms walk, release 100ms, press L, stick 0deg 250ms run, press A, {}, {}, press A, {}, {}, press A, wait 250ms",
-                repeated("wait 250ms", 4), repeated("wait 250ms", 4), repeated("stick 0deg 250ms run", 2), repeated("wait 250ms", 4),
-                repeated("stick 0deg 250ms run", 3)
+                "{}, press L, stick -70deg 150ms walk, release 100ms, press L, {}, press A, wait 250ms",
+                repeated("wait 250ms", 4), repeated("stick 0deg 250ms run", 6)
             ),
             .line = "[PLZA] walk: A on the A prompt after 1500 ms of the last leg started a talk.",
         },
