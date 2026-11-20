@@ -928,6 +928,49 @@ const GoldenCase GOLDEN_CASES[] = {
             .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
+    {
+        //  Console B, 2026-11-19 16:20:42: the talk's last lines, then the
+        //  black fade that opens the president's ad.
+        .name = "01.01 arrival_to_ad, English, A through the talk, done on the black fade",
+        .input = {.checkpoint = "01.01", .step = "arrival_to_ad", .screens = R"(
+0.0s: text box, advance arrow
+0.4s: nothing
+5.7s: text box, advance arrow
+6.1s: nothing
+6.9s: black fade
+)"},
+        .expectation = {
+            .keys = {{"text box, advance arrow", "A"}, {"nothing", "A"}, {"black fade", "-"}},
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on black_fade.",
+        },
+    },
+    {
+        //  Console B, 2026-11-19 06:19, its times moved to this step's Plus:
+        //  Plus 3.4 s after the opening fade skipped the cutscene, the black
+        //  fade 2.7 s after the press (unskipped, it played 76 s).
+        .name = "02.02 skip_street_cutscene, Plus 2.5 s after the opening fade ends, done on its black fade",
+        .input = {.checkpoint = "02.02", .step = "skip_street_cutscene", .screens = R"(
+0.0s: black fade, still
+5.6s: still
+10.8s: black fade
+15.6s: still
+)"},
+        .expectation = {
+            .keys = {{"black fade, still", "-"}, {"still", "+"}, {"black fade", "-"}},
+            .verdict = "done", .end = "[PLZA] plus_skip: a black fade 750 ms after the hold.",
+        },
+    },
+    {
+        .name = "02.02 skip_street_cutscene, no black fade within 5 s after Plus: cutscene_not_skipped",
+        .input = {.checkpoint = "02.02", .step = "skip_street_cutscene", .screens = R"(
+0.0s: black fade, still
+5.6s: still
+)"},
+        .expectation = {
+            .keys = {{"black fade, still", "-"}, {"still", "+"}},
+            .verdict = "failed: cutscene_not_skipped", .end = "[PLZA] plus_skip: no black fade within 5000 ms after the hold.",
+        },
+    },
 };
 
 //  All of checkpoint `id` with an empty `step`, bound to `tools`.

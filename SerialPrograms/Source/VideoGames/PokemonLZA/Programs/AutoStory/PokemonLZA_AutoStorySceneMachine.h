@@ -52,6 +52,8 @@ struct SceneMachineConfig{
     //  Fails ("scene_never_started") when the HUD shows this long with no
     //  scene: the player is not at the trigger.
     std::optional<Milliseconds> start_window = std::nullopt;
+    //  Ends at a black fade (01.01's, that opens the president's ad).
+    bool end_on_black_fade = false;
 };
 
 //  Text, a choice, a battle, a tutorial card, or with no HUD up a fade or a

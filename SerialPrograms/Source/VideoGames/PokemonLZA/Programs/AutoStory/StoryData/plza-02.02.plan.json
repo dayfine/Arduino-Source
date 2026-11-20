@@ -18,6 +18,11 @@
         }
       },
       {
+        "id": "skip_street_cutscene",
+        "why": "Plus skips the cutscene the walk's black fade opens",
+        "action": "plus_skip"
+      },
+      {
         "id": "street_scene",
         "why": "a Pokemon drives the trainers off (no battle)",
         "action": "a"

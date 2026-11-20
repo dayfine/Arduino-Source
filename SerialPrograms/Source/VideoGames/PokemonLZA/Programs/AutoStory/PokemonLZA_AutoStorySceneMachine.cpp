@@ -59,6 +59,7 @@ enum class SceneScreen{
     BATTLE,         //  terminal, with stop_at_battle
     LOCKED_ON,      //  terminal: the move symbols showed under ZL
     FADE,           //  waits: a fade decides nothing
+    BLACK_FADE_END, //  terminal, with end_on_black_fade
     CHOICE_END,     //  terminal, with stop_at_choice
     CHOICE,         //  A on its top row
     CHOICE_AGAIN,   //  B once: the choice A took shows again (the nurse's menu after her heal)
@@ -85,6 +86,7 @@ constexpr SceneScreenName SCREEN_NAMES[] = {
     {SceneScreen::BATTLE, "battle", false},
     {SceneScreen::LOCKED_ON, "locked_on", false},
     {SceneScreen::FADE, "fade", true},
+    {SceneScreen::BLACK_FADE_END, "black_fade", false},
     {SceneScreen::CHOICE_END, "choice", false},
     {SceneScreen::CHOICE, "choice_top_row", true},
     {SceneScreen::CHOICE_AGAIN, "choice_again", true},
@@ -108,6 +110,7 @@ bool terminal(SceneScreen screen){
     switch (screen){
     case SceneScreen::BATTLE:
     case SceneScreen::LOCKED_ON:
+    case SceneScreen::BLACK_FADE_END:
     case SceneScreen::CHOICE_END:
     case SceneScreen::NEVER_STARTED:
     case SceneScreen::ENDED_IN_CONTROL:
@@ -255,7 +258,7 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
         return SceneScreen::LOCKED_ON;
     }
     if (fade_shows(look)){
-        return SceneScreen::FADE;
+        return m_config.end_on_black_fade && look.events.has(ScreenEvent::FADE_BLACK) ? SceneScreen::BLACK_FADE_END : SceneScreen::FADE;
     }
     if (look.events.has(ScreenEvent::CHOICE_BOX)){
         if (m_config.stop_at_choice){
