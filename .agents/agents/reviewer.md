@@ -57,7 +57,9 @@ being restated.
   to test internals: test through the public function, or keep the helper in the .cpp's anonymous
   namespace. Flag literal arguments without a parameter comment in calls of 3+ arguments
   (`/*hold=*/160ms`). Code health reports the last two as `test_only_api` and `param_comment`
-  advisories; read them, they don't fail CI.
+  advisories; read them, they don't fail CI. Check the diff against themes 13-26 of
+  `skills/cpp-style-review/references/user-review-themes.md` (`git show origin/agents:<path>`) and
+  cite the theme number on each style finding (`[T15] string literal compared; use an enum`).
 - **Time limit.** At the wall-clock limit, post the findings so far with verdict `NEEDS_REWORK`,
   say the review is partial, and report.
 - **Review delivery.** Line 1 is `Reviewed SHA: <full sha>`; `## Verdict` sits on its own line,
