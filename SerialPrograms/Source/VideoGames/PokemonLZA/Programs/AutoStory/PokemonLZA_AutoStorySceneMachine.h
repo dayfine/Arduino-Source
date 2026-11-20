@@ -32,9 +32,11 @@ constexpr Milliseconds CUTSCENE_SKIP_HOLD = Milliseconds(2000);
 //  What ends a scene machine besides control, and its exceptions to A.
 struct SceneMachineConfig{
     //  Ends at a choice box, for the step after to pick its row. Text gets B
-    //  then: an A in flight as the choice opens would take its top row...
+    //  then, and other screens nothing: an A in flight as the choice opens
+    //  would take its top row...
     bool stop_at_choice = false;
-    //  ...unless B closes the talk and the step takes the top row anyway (the elevators).
+    //  ...unless B closes the talk and the step takes the top row anyway (the
+    //  elevators): one A per text page.
     bool text_a_to_choice = false;
     //  Ends at the battle HUD or a lock-on. The HUD shows only while locked
     //  on, so after a black fade a still screen (3 s) or the party bar (1 s)

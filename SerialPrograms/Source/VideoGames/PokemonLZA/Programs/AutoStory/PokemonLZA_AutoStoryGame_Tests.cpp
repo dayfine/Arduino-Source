@@ -131,6 +131,8 @@ const ScreenObservation DIALOG = look({ScreenEvent::DIALOG_BOX});
 const ScreenObservation A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
 //  01.03 shows no party bar.
 const ScreenObservation PROMPT_ONLY = look({ScreenEvent::INTERACT_PROMPT});
+//  A text page typed out: the text box and its advance arrow.
+const ScreenObservation TEXT_PAGE = look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING});
 
 ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
@@ -364,6 +366,21 @@ const RunCase RUN_CASES[] = {
             .verdict = "done",
             .inputs = "wait 250ms, stick 0deg 250ms run, press A, wait 250ms",
             .line = "[PLZA] walk: A on the A prompt after 250 ms of the last leg started a talk.",
+        },
+    },
+    {
+        //  02.05 on console B 2026-11-19 17:37: A on "nothing" after the fade
+        //  and a second A on the same text page 90 ms after the first; one
+        //  landed on the floor choice's top row and the elevator closed.
+        .name = "02.05's floor question: nothing pressed on a screen with no text, one A per text page, done at the choice",
+        .input = {.checkpoint = "02.05", .first_step = 2, .steps = 1, .looks = concat(
+            std::vector<ScreenObservation>(4, BLACK_FADE),
+            {CUTSCENE, CUTSCENE, TEXT_PAGE, TEXT_PAGE, TEXT_PAGE, choice(0)}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = std::format("{}, press A, wait 250ms, wait 250ms", repeated("wait 250ms", 6)),
+            .line = "[PLZA text_to_choice] done on choice.",
         },
     },
     {
