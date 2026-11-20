@@ -50,6 +50,9 @@ constexpr Milliseconds PRESS_HOLD = 160ms;
 constexpr Milliseconds PRESS_RELEASE = 240ms;
 //  The log sums up repeated looks this often.
 constexpr Milliseconds SUMMARY_EVERY = 30s;
+//  text_a_to_choice: one A per text page; the same page this long after
+//  its A takes another (a dropped press).
+constexpr Milliseconds TEXT_A_AGAIN = 2s;
 
 
 enum class SceneScreen{
@@ -184,10 +187,12 @@ public:
     void record(SceneScreen screen, const ScreenObservation& look);
 
     //  B, not A: on a look with a sign of control and once one has shown
-    //  in the scene, A starts a talk.
-    Button text_button(const ScreenObservation& look) const;
+    //  in the scene, A starts a talk. None: the page's A is pressed.
+    std::optional<Button> text_button(const ScreenObservation& look) const;
     //  None after a battle's fade: its effects play with no HUD while the
     //  camera looks away (03.02b's Tepig battle), and A there is a move.
+    //  None with stop_at_choice: an A in flight as the choice opens takes
+    //  its top row (02.05's elevator closed, console B 2026-11-19 17:37).
     std::optional<Button> other_button() const;
 
     size_t lock_ons() const{
@@ -202,6 +207,9 @@ public:
 
 private:
     SceneScreen classify_rest(const ScreenObservation& look) const;
+    //  text_a_to_choice: a new page (its advance arrow came or went, or
+    //  other screens since), or the last A's page TEXT_A_AGAIN on.
+    bool text_a_due(const ScreenObservation& look) const;
     SceneScreen classify_control(const ScreenObservation& look) const;
     bool lock_on_due(const ScreenObservation& look) const;
     void record_battle(SceneScreen screen, const ScreenObservation& look);
@@ -215,6 +223,12 @@ private:
     std::optional<WallClock> m_control_instead_since;
     size_t m_black_fades = 0;
     LockOnState m_lock_on;
+    //  text_a_to_choice: the last A on text, and whether its page showed the arrow.
+    struct TextA{
+        WallClock at;
+        bool arrow;
+    };
+    std::optional<TextA> m_text_a;
 };
 
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
@@ -273,15 +287,23 @@ bool SceneTimeline::lock_on_due(const ScreenObservation& look) const{
         (look.events.has(ScreenEvent::PLAYER_CAN_MOVE) && held_for(m_control_instead_since, look.when, CONTROL_HOLD));
 }
 
-Button SceneTimeline::text_button(const ScreenObservation& look) const{
+std::optional<Button> SceneTimeline::text_button(const ScreenObservation& look) const{
+    if (m_config.stop_at_choice && !m_config.text_a_to_choice){
+        return BUTTON_B;
+    }
     if (m_config.stop_at_choice){
-        return m_config.text_a_to_choice ? BUTTON_A : BUTTON_B;
+        return text_a_due(look) ? std::optional<Button>(BUTTON_A) : std::nullopt;
     }
     return hud_shows(look) || m_overworld_seen ? BUTTON_B : m_config.button;
 }
 
+bool SceneTimeline::text_a_due(const ScreenObservation& look) const{
+    return !m_text_a || m_text_a->arrow != look.readings.contains(ADVANCE_ARROW_READING) ||
+        look.when - m_text_a->at >= TEXT_A_AGAIN;
+}
+
 std::optional<Button> SceneTimeline::other_button() const{
-    if (m_config.stop_at_battle && m_lock_on.after_fade){
+    if (m_config.stop_at_choice || (m_config.stop_at_battle && m_lock_on.after_fade)){
         return std::nullopt;
     }
     return m_overworld_seen ? BUTTON_B : m_config.button;
@@ -289,6 +311,11 @@ std::optional<Button> SceneTimeline::other_button() const{
 
 void SceneTimeline::record(SceneScreen screen, const ScreenObservation& look){
     record_battle(screen, look);
+    if (screen != SceneScreen::TEXT){
+        m_text_a.reset();
+    }else if (m_config.text_a_to_choice && text_a_due(look)){
+        m_text_a = TextA{look.when, look.readings.contains(ADVANCE_ARROW_READING)};
+    }
     m_black_fades += look.events.has(ScreenEvent::FADE_BLACK) ? 1 : 0;
     m_overworld_seen = m_overworld_seen || (m_scene_seen && control_shows(look));
     m_scene_seen = m_scene_seen || scene_under_way(look);

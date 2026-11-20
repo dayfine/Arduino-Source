@@ -131,6 +131,8 @@ const ScreenObservation DIALOG = look({ScreenEvent::DIALOG_BOX});
 const ScreenObservation A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
 //  01.03 shows no party bar.
 const ScreenObservation PROMPT_ONLY = look({ScreenEvent::INTERACT_PROMPT});
+//  A text page typed out: the text box and its advance arrow.
+const ScreenObservation TEXT_PAGE = look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING});
 
 ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
@@ -367,22 +369,35 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        //  01.03 on console B 2026-11-19 16:24: the starter's prompt showed for
-        //  one look at a time, 250, 750 and 1500 ms into the walk; the walk
-        //  waited for a steady prompt and failed as walk_no_end. A on each
-        //  glimpse; one the game drops leaves the screen still and the walk on.
-        .name = "01.03's walk to the starter: A on each glimpse of its flickering A prompt, on after a dropped A, done when the scene starts",
+        //  02.05 on console B 2026-11-19 17:37: A on "nothing" after the fade
+        //  and a second A on the same text page 90 ms after the first; one
+        //  landed on the floor choice's top row and the elevator closed.
+        .name = "02.05's floor question: nothing pressed on a screen with no text, one A per text page, done at the choice",
+        .input = {.checkpoint = "02.05", .first_step = 2, .steps = 1, .looks = concat(
+            std::vector<ScreenObservation>(4, BLACK_FADE),
+            {CUTSCENE, CUTSCENE, TEXT_PAGE, TEXT_PAGE, TEXT_PAGE, choice(0)}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = std::format("{}, press A, wait 250ms, wait 250ms", repeated("wait 250ms", 6)),
+            .line = "[PLZA text_to_choice] done on choice.",
+        },
+    },
+    {
+        //  01.03 on console B 2026-11-19 17:10: Taunie's A prompt shows at the
+        //  start and on the way; an A on it mid-walk took her line, not the
+        //  starter's. The starter walk presses A only once its legs are done.
+        //  The turn looks twice, then each 250 ms slice of the legs once.
+        .name = "01.03's walk to the starter: no A on a prompt during its legs, A on the prompt after them, done when the talk starts",
         .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = concat(
             std::vector<ScreenObservation>(5, PROMPT_ONLY),
-            concat({CUTSCENE, CUTSCENE, PROMPT_ONLY, STILL, STILL, STILL, STILL, CUTSCENE, PROMPT_ONLY, STILL, STILL, STILL, STILL},
-            {CUTSCENE, CUTSCENE, PROMPT_ONLY, BLACK_FADE})
+            concat(std::vector<ScreenObservation>(8, A_PROMPT), {A_PROMPT, DIALOG})
         )},
         .expectation = {
             .verdict = "done",
             .inputs = std::format(
-                "{}, press L, stick -70deg 150ms walk, release 100ms, press L, stick 0deg 250ms run, press A, {}, {}, press A, {}, {}, press A, wait 250ms",
-                repeated("wait 250ms", 4), repeated("wait 250ms", 4), repeated("stick 0deg 250ms run", 2), repeated("wait 250ms", 4),
-                repeated("stick 0deg 250ms run", 3)
+                "{}, press L, stick -70deg 150ms walk, release 100ms, press L, {}, press A, wait 250ms",
+                repeated("wait 250ms", 4), repeated("stick 0deg 250ms run", 6)
             ),
             .line = "[PLZA] walk: A on the A prompt after 1500 ms of the last leg started a talk.",
         },

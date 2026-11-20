@@ -514,7 +514,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {
                 {"text box, still, advance arrow", "A"}, {"text box, advance arrow", "A"}, {"black fade, still", "-"},
-                {"still", "A"}, {"nothing", "A"}, {"text box, choice box", "-"}
+                {"still", "-"}, {"nothing", "-"}, {"text box, choice box", "-"}
             },
             .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",
         },
@@ -524,7 +524,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .input = {.checkpoint = "01.02", .step = "pancham_cornered", .screens = PANCHAM_FR},
         .expectation = {
             .keys = {
-                {"text box", "B"}, {"text box, advance arrow", "B"}, {"still", "A"}, {"nothing", "A"},
+                {"text box", "B"}, {"text box, advance arrow", "B"}, {"still", "-"}, {"nothing", "-"},
                 {"text box, choice box", "-"}
             },
             .verdict = "done", .end = "[PLZA text_to_choice] done on choice.",

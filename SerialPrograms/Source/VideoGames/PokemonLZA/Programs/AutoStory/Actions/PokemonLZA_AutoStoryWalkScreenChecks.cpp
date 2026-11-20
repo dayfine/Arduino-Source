@@ -430,7 +430,7 @@ std::optional<Pokemon::StoryFailure> walk_until(
     return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event within {} ms of the last leg", walk, leg.elapsed().count())};
 }
 
-std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::string_view walk, const StoryMove& move){
+std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::string_view walk, const StoryMove& move, bool after_legs){
     const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
     bool prompt_first = ends_before_walking(backend, walk, move, ScreenEvent::INTERACT_PROMPT, /*end_after=*/0ms);
     if (!prompt_first){
@@ -456,10 +456,7 @@ std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::s
             }
         }
         prompt_first = false;
-        //  A only once the legs are done and the player stands: a prompt
-        //  passed mid-walk is someone else's, and A on it in 01.03 took
-        //  Taunie's line instead of Tepig's (console B, 2026-11-19 17:10).
-        if (!prompt || walking){
+        if (!prompt || (walking && after_legs)){
             if (!walking){
                 backend.wait(TALK_POLL);
                 tail += TALK_POLL;
