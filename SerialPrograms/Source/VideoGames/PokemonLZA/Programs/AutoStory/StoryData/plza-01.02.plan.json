@@ -19,7 +19,8 @@
       {
         "id": "pancham_cornered",
         "why": "the scene up to its choice",
-        "action": "text_to_choice"
+        "action": "scene",
+        "args": {"button": "B", "stop_at_choice": true}
       },
       {
         "id": "battle_with_pokemon",
@@ -29,7 +30,7 @@
       {
         "id": "battle_area",
         "why": "until free control in the battle area: Ryon's A Talk prompt held (no hint or party bar yet)",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {

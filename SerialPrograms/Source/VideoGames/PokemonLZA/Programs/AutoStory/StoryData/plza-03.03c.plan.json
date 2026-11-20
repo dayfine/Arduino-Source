@@ -20,7 +20,7 @@
       {
         "id": "south_boulevard",
         "why": "Taunie walks to the Pokemon Center, until Station Front",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {

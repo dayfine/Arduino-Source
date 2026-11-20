@@ -40,8 +40,8 @@ using PlzaBattleRunner = MoveOnlyFunction<std::optional<Pokemon::StoryFailure>(P
 
 //  The console's own code that plza_story_actions() composes into the
 //  actions: each console-only action name forwards to `console`, a walk
-//  with a "heading" reads `arrow`, "story_battle_start" holds ZL with
-//  `lock_on` and "story_battle" runs `battle`. Off a console (the sim, the
+//  with a "heading" reads `arrow`, a scene with "battle_start" holds ZL
+//  with `lock_on`, and "story_battle" runs `battle`. Off a console (the sim, the
 //  logic tests) all are empty, so the same plan files load and run there
 //  and a step that needs the console fails as "console_only".
 struct PlzaConsoleHooks{

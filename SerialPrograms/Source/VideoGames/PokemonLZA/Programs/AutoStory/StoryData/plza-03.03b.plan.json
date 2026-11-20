@@ -24,7 +24,7 @@
       {
         "id": "rooftop_scene",
         "why": "Taunie on the roof",
-        "action": "mash_to_move_hints"
+        "action": "scene"
       }
     ],
     "metadata": {
