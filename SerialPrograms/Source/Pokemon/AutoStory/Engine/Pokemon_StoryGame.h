@@ -22,8 +22,6 @@ namespace Pokemon{
 
 
 struct StoryGame{
-    //  "frlg", "bdsp", "plza".
-    std::string id = {};
     //  Called after each passed checkpoint; a failure is logged. None: nothing saves.
     MoveOnlyFunction<std::optional<StoryFailure>(StoryBackend& backend, const StoryCheckpoint& passed)> save = {};
     //  Reloads after `failed` failed; returns the id of the checkpoint whose

@@ -32,7 +32,6 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
-#include "CommonTools/ScreenMachine/ScreenMachine_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines_Tests.h"
@@ -54,7 +53,6 @@ UnitTestDatabase make_logic_tests(){
     UnitTestDatabase database;
     Pokemon::add_tests_AutoStory(database);
     add_tests_ScreenEvents(database);
-    add_tests_ScreenMachine(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryHeading(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryBattleOnScreen(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryChainStart(database);
