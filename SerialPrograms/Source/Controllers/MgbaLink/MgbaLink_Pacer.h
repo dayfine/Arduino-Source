@@ -35,6 +35,7 @@ namespace MgbaLink{
 class Pacer{
 public:
     static constexpr std::chrono::milliseconds DEFAULT_PERIOD{8};
+    static std::chrono::milliseconds default_period(double speed);
 
     //  Starts granting at once. "clock" is the anchor the controller
     //  schedules its KEYS against. The pacer does not keep "connection"

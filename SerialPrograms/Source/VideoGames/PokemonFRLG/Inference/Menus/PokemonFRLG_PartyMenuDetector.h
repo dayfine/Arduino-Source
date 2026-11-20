@@ -39,7 +39,7 @@ private:
 class PartyMenuWatcher : public DetectorToFinder<PartyMenuDetector>{
 public:
     PartyMenuWatcher(Color color)
-        : DetectorToFinder("PartyMenuWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("PartyMenuWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -72,7 +72,7 @@ public:
         PartySlot position,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("PartySlotWatcher", hold_duration, color, party_slot_boxes(position))
+        : DetectorToFinder("PartySlotWatcher", scale_emulator_duration(hold_duration), color, party_slot_boxes(position))
     {
     }
 };

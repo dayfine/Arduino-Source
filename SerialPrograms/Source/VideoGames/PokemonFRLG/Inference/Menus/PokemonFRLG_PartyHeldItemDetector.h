@@ -13,6 +13,7 @@
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
 #include "PokemonFRLG_PartySlot.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -59,7 +60,7 @@ public:
         const ImageFloatBox& box,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("PartyHeldItemWatcher", hold_duration, color, overlay, box)
+        : DetectorToFinder("PartyHeldItemWatcher", scale_emulator_duration(hold_duration), color, overlay, box)
     {}
     PartyHeldItemWatcher(
         Color color,
@@ -68,7 +69,7 @@ public:
         Language language,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("PartyHeldItemWatcher", hold_duration, color, overlay, slot, language)
+        : DetectorToFinder("PartyHeldItemWatcher", scale_emulator_duration(hold_duration), color, overlay, slot, language)
     {}
 };
 

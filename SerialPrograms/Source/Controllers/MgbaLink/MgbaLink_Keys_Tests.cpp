@@ -62,6 +62,7 @@ private:
 //  App time to the frame it lands on (KEYS) and the frame to grant (GRANT).
 struct FrameAtInput{
     milliseconds after_anchor{};
+    double speed = 1.0;
 };
 struct FrameAtExpectation{
     uint64_t frame = 0;
@@ -80,10 +81,10 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        FrameClock clock(CLOCK_T0, CLOCK_F0);
+        FrameClock clock(CLOCK_T0, CLOCK_F0, m_case.input.speed);
         WallClock time = CLOCK_T0 + m_case.input.after_anchor;
         uint64_t frame = frame_at(clock, time);
-        uint64_t grant = grant_frame(clock, time, KeySchedule::LEAD_FRAMES);
+        uint64_t grant = grant_frame(clock, time, KeySchedule::lead_frames(m_case.input.speed));
         if (frame != m_case.expectation.frame || grant != m_case.expectation.grant){
             return std::format(
                 "frame {}, grant {}; expected frame {}, grant {}",
@@ -111,6 +112,7 @@ StatePush hold_at(milliseconds now_after_anchor, uint16_t mask, milliseconds dur
 }
 struct KeyScheduleInput{
     std::vector<StatePush> pushes;
+    double speed = 1.0;
 };
 struct KeyScheduleExpectation{
     std::string commands;
@@ -129,7 +131,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        KeySchedule schedule(FrameClock(CLOCK_T0, CLOCK_F0));
+        KeySchedule schedule(FrameClock(CLOCK_T0, CLOCK_F0, m_case.input.speed));
         std::string commands;
         for (const StatePush& push : m_case.input.pushes){
             std::optional<KeysCommand> command = schedule.push(CLOCK_T0 + push.now_after_anchor, push.mask, push.duration);
@@ -214,6 +216,8 @@ void add_frame_math_tests(UnitTestDatabase& database){
         {.name = "at the anchor", .input = {milliseconds(0)}, .expectation = {1000, 1002}},
         {.name = "100 ms", .input = {milliseconds(100)}, .expectation = {1006, 1007}},
         {.name = "1000 ms", .input = {milliseconds(1000)}, .expectation = {1060, 1061}},
+        {.name = "1000 ms at 2x", .input = {milliseconds(1000), 2.0}, .expectation = {1119, 1123}},
+        {.name = "1000 ms at 4x", .input = {milliseconds(1000), 4.0}, .expectation = {1239, 1246}},
         {.name = "before the anchor", .input = {milliseconds(-100)}, .expectation = {994, 996}},
     };
     for (const FrameAtCase& test_case : FRAME_AT_CASES){
@@ -265,6 +269,16 @@ void add_key_schedule_tests(UnitTestDatabase& database){
             .name = "first state with no keys is still sent",
             .input = {{hold_at(T0, 0, MS50)}},
             .expectation = {"KEYS 1002 0", 1005},
+        },
+        {
+            .name = "80 ms press at 2x still holds 5 frames with scaled lead",
+            .input = {{hold_at(T0, A, milliseconds(80)), hold_at(T0, 0, milliseconds(80))}, 2.0},
+            .expectation = {"KEYS 1004 1, KEYS 1009 0", 1014},
+        },
+        {
+            .name = "80 ms press at 4x still holds 5 frames with scaled lead",
+            .input = {{hold_at(T0, A, milliseconds(80)), hold_at(T0, 0, milliseconds(80))}, 4.0},
+            .expectation = {"KEYS 1008 1, KEYS 1013 0", 1018},
         },
     };
     for (const KeyScheduleCase& test_case : KEY_SCHEDULE_CASES){
