@@ -53,17 +53,18 @@ constexpr Milliseconds SUMMARY_EVERY = 30s;
 //  text_a_to_choice: one A per text page; the same page this long after
 //  its A takes another (a dropped press).
 constexpr Milliseconds TEXT_A_AGAIN = 2s;
-//  skip_with_plus (console B, 2026-11-19): with no text, 01.01's ad runs
-//  13 s and 02.02's street cutscene 76 s; 01.01's talk before the ad
-//  pauses up to 4.5 s between lines, where Plus does nothing.
-constexpr Milliseconds SKIP_AFTER = 5s;
-//  The skip's black fade showed 2.2-5.1 s after the Plus press started.
-constexpr Milliseconds SKIP_FADE_WITHIN = 7s;
+//  skip_after_fade (console B, 2026-11-19): Plus 3.0-3.4 s after the
+//  opening fade ended skipped 01.01's ad and 02.02's street cutscene, the
+//  skip's black fade 2.2-2.8 s after the press started.
+constexpr Milliseconds SKIP_AFTER_FADE = 2500ms;
+constexpr Milliseconds SKIP_FADE_WITHIN = 5s;
 
 
 enum class SceneScreen{
     BATTLE,         //  terminal, with stop_at_battle
     LOCKED_ON,      //  terminal: the move symbols showed under ZL
+    PLUS_SKIP,      //  skip_after_fade: Plus held CUTSCENE_SKIP_HOLD
+    NOT_SKIPPED,    //  failing: skip_after_fade, but no skip fade or control first
     FADE,           //  waits: a fade decides nothing
     CHOICE_END,     //  terminal, with stop_at_choice
     CHOICE,         //  A on its top row
@@ -75,10 +76,8 @@ enum class SceneScreen{
     NEVER_STARTED,  //  failing: the HUD for start_window and no scene
     AWAITING_SCENE,
     ENDED_IN_CONTROL,   //  failing: stop_at_battle/choice, but control held CONTROL_INSTEAD_HOLD
-    NOT_SKIPPED,    //  failing: skip_with_plus, but control held CONTROL_HOLD before the skip
     CONTROL,        //  terminal: a sign of control held CONTROL_HOLD
     CONTROL_SHOWING,
-    PLUS_SKIP,      //  skip_with_plus: Plus held CUTSCENE_SKIP_HOLD
     OTHER,          //  a cutscene, a banner, a screen no detector reads: A, or B
 };
 
@@ -92,6 +91,8 @@ struct SceneScreenName{
 constexpr SceneScreenName SCREEN_NAMES[] = {
     {SceneScreen::BATTLE, "battle", false},
     {SceneScreen::LOCKED_ON, "locked_on", false},
+    {SceneScreen::PLUS_SKIP, "plus_skip", true},
+    {SceneScreen::NOT_SKIPPED, "not_skipped", false},
     {SceneScreen::FADE, "fade", true},
     {SceneScreen::CHOICE_END, "choice", false},
     {SceneScreen::CHOICE, "choice_top_row", true},
@@ -103,10 +104,8 @@ constexpr SceneScreenName SCREEN_NAMES[] = {
     {SceneScreen::NEVER_STARTED, "never_started", false},
     {SceneScreen::AWAITING_SCENE, "awaiting_scene", false},
     {SceneScreen::ENDED_IN_CONTROL, "ended_in_control", false},
-    {SceneScreen::NOT_SKIPPED, "not_skipped", false},
     {SceneScreen::CONTROL, "control", false},
     {SceneScreen::CONTROL_SHOWING, "control_showing", true},
-    {SceneScreen::PLUS_SKIP, "plus_skip", true},
     {SceneScreen::OTHER, "other", false},
 };
 
@@ -187,16 +186,14 @@ struct LockOnState{
     bool locked_on = false;
 };
 
-//  skip_with_plus's Plus presses.
+//  skip_after_fade's Plus.
 struct PlusSkipState{
-    //  The run of OTHER looks under way, and whether Plus was pressed in it.
-    std::optional<WallClock> textless_since = std::nullopt;
-    bool pressed_in_stretch = false;
-    //  The press awaiting its black fade.
+    //  The black fades begun in the step, and whether one shows.
+    size_t black_fades = 0;
+    bool in_black_fade = false;
+    std::optional<WallClock> opening_ended = std::nullopt;
     std::optional<WallClock> pressed_at = std::nullopt;
-    size_t misses = 0;
-    //  The presses a black fade followed.
-    size_t skips = 0;
+    bool skipped = false;
 };
 
 //  The time-dependent part of the machine; a look's time is its `when`.
@@ -209,7 +206,7 @@ public:
     {}
 
     SceneScreen classify(const ScreenObservation& look) const;
-    //  A line for the log when a Plus press got its black fade or none.
+    //  A line for the log when the Plus skip worked or failed.
     std::optional<std::string> record(SceneScreen screen, const ScreenObservation& look);
 
     //  B, not A: on a look with a sign of control and once one has shown
@@ -245,7 +242,7 @@ private:
     SceneScreen classify_control(const ScreenObservation& look) const;
     bool lock_on_due(const ScreenObservation& look) const;
     void record_battle(SceneScreen screen, const ScreenObservation& look);
-    bool plus_skip_due(const ScreenObservation& look) const;
+    std::optional<SceneScreen> classify_plus_skip(const ScreenObservation& look) const;
     std::optional<std::string> record_plus_skip(SceneScreen screen, const ScreenObservation& look);
 
     SceneMachineConfig m_config;
@@ -281,6 +278,9 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
     if (m_lock_on.locked_on){
         return SceneScreen::LOCKED_ON;
     }
+    if (const std::optional<SceneScreen> skip = classify_plus_skip(look)){
+        return *skip;
+    }
     if (fade_shows(look)){
         return SceneScreen::FADE;
     }
@@ -309,7 +309,7 @@ SceneScreen SceneTimeline::classify_rest(const ScreenObservation& look) const{
     if (control_shows(look)){
         return classify_control(look);
     }
-    return plus_skip_due(look) ? SceneScreen::PLUS_SKIP : SceneScreen::OTHER;
+    return SceneScreen::OTHER;
 }
 
 SceneScreen SceneTimeline::classify_control(const ScreenObservation& look) const{
@@ -317,7 +317,7 @@ SceneScreen SceneTimeline::classify_control(const ScreenObservation& look) const
         return look.when - m_start >= *m_config.start_window ? SceneScreen::NEVER_STARTED : SceneScreen::AWAITING_SCENE;
     }
     if (held_for(m_control_since, look.when, CONTROL_HOLD)){
-        return m_config.skip_with_plus && m_skip.skips == 0 ? SceneScreen::NOT_SKIPPED : SceneScreen::CONTROL;
+        return m_config.skip_after_fade && !m_skip.skipped ? SceneScreen::NOT_SKIPPED : SceneScreen::CONTROL;
     }
     if (held_for(m_control_instead_since, look.when, CONTROL_INSTEAD_HOLD)){
         return SceneScreen::ENDED_IN_CONTROL;
@@ -361,40 +361,43 @@ std::optional<Button> SceneTimeline::other_button() const{
     return m_overworld_seen ? BUTTON_B : m_config.button;
 }
 
-bool SceneTimeline::plus_skip_due(const ScreenObservation& look) const{
-    return m_config.skip_with_plus && !m_skip.pressed_at && !m_skip.pressed_in_stretch &&
-        held_for(m_skip.textless_since, look.when, SKIP_AFTER);
+std::optional<SceneScreen> SceneTimeline::classify_plus_skip(const ScreenObservation& look) const{
+    if (!m_config.skip_after_fade || m_skip.skipped){
+        return std::nullopt;
+    }
+    if (!m_skip.pressed_at){
+        return held_for(m_skip.opening_ended, look.when, SKIP_AFTER_FADE) ? std::optional(SceneScreen::PLUS_SKIP) : std::nullopt;
+    }
+    const bool late = look.when - *m_skip.pressed_at > CUTSCENE_SKIP_HOLD + SKIP_FADE_WITHIN;
+    return late && !look.events.has(ScreenEvent::FADE_BLACK) ? std::optional(SceneScreen::NOT_SKIPPED) : std::nullopt;
 }
 
 std::optional<std::string> SceneTimeline::record_plus_skip(SceneScreen screen, const ScreenObservation& look){
-    if (!m_config.skip_with_plus){
+    if (!m_config.skip_after_fade || m_skip.skipped){
         return std::nullopt;
     }
-    const bool textless = screen == SceneScreen::OTHER || screen == SceneScreen::PLUS_SKIP;
-    track_since(textless, look.when, m_skip.textless_since);
-    m_skip.pressed_in_stretch = textless && (m_skip.pressed_in_stretch || screen == SceneScreen::PLUS_SKIP);
+    const std::string plus = std::format("Plus 2.5 s after black fade {}", *m_config.skip_after_fade);
+    const bool black = look.events.has(ScreenEvent::FADE_BLACK);
+    if (screen == SceneScreen::NOT_SKIPPED){
+        return m_skip.pressed_at
+            ? std::format("{}: no black fade within 5 s after the hold.", plus)
+            : std::format("Control before the {}.", plus);
+    }
     if (screen == SceneScreen::PLUS_SKIP){
         m_skip.pressed_at = look.when;
         return std::nullopt;
     }
-    if (!m_skip.pressed_at){
-        return std::nullopt;
+    if (m_skip.pressed_at){
+        m_skip.skipped = black;
+        const double seconds = std::chrono::duration<double>(look.when - *m_skip.pressed_at).count();
+        return black ? std::optional(std::format("{} skipped the cutscene: a black fade {} s after the press.", plus, tostr_fixed(seconds, 1))) : std::nullopt;
     }
-    const Milliseconds after = std::chrono::duration_cast<Milliseconds>(look.when - *m_skip.pressed_at);
-    if (after > SKIP_FADE_WITHIN){
-        m_skip.pressed_at.reset();
-        m_skip.misses++;
-        return std::format(
-            "Plus {}: no black fade within {} s; Plus again once a new stretch with no text lasts {} s.",
-            m_skip.misses, std::chrono::duration_cast<Seconds>(SKIP_FADE_WITHIN).count(), std::chrono::duration_cast<Seconds>(SKIP_AFTER).count()
-        );
+    m_skip.black_fades += black && !m_skip.in_black_fade ? 1 : 0;
+    if (!black && m_skip.in_black_fade && m_skip.black_fades == *m_config.skip_after_fade){
+        m_skip.opening_ended = look.when;
     }
-    if (!look.events.has(ScreenEvent::FADE_BLACK)){
-        return std::nullopt;
-    }
-    m_skip.pressed_at.reset();
-    m_skip.skips++;
-    return std::format("Plus skip {}: a black fade {} s after the press.", m_skip.skips, tostr_fixed(std::chrono::duration<double>(after).count(), 1));
+    m_skip.in_black_fade = black;
+    return std::nullopt;
 }
 
 std::optional<std::string> SceneTimeline::record(SceneScreen screen, const ScreenObservation& look){
@@ -712,8 +715,8 @@ std::optional<Pokemon::StoryFailure> scene_outcome(
     }
     if (screen == SceneScreen::NOT_SKIPPED){
         return Pokemon::StoryFailure{.code = "cutscene_not_skipped", .detail = std::format(
-            "{}: the scene ended in control with its cutscene not skipped: no black fade within {} s of a Plus.",
-            label, std::chrono::duration_cast<Seconds>(SKIP_FADE_WITHIN).count()
+            "{}: the cutscene after black fade {} was not skipped: no black fade within {} s after Plus, or control first.",
+            label, config.skip_after_fade.value_or(0), std::chrono::duration_cast<Seconds>(SKIP_FADE_WITHIN).count()
         )};
     }
     if (screen == SceneScreen::ENDED_IN_CONTROL){

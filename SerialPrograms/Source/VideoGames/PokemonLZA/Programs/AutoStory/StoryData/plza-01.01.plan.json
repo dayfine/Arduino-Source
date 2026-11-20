@@ -32,10 +32,10 @@
       },
       {
         "id": "arrival_scenes",
-        "why": "arrival scenes to the MAIN MISSION 01 banner; ends on the controls hint. Plus skips the president's ad",
+        "why": "arrival scenes to the MAIN MISSION 01 banner; ends on the controls hint. Plus 2.5 s after the step's first black fade skips the president's ad",
         "action": "mash_to_move_hints",
         "args": {
-          "skip_with_plus": true
+          "skip_after_fade": 1
         }
       }
     ],

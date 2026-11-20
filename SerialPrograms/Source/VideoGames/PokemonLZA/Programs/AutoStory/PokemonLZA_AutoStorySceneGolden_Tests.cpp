@@ -857,8 +857,8 @@ const GoldenCase GOLDEN_CASES[] = {
     },
     {
         //  From the black fade on; the controls hint at the end is synthetic.
-        //  Recorded with no Plus: the step's Plus gets no black fade, so the
-        //  scene ends with its cutscene not skipped.
+        //  The ad after the fade, recorded with no Plus: the step's Plus
+        //  gets no black fade, so the step fails.
         .name = "01.01 arrival_scenes, Italian, Jacinthe's subtitles each after a quiet spell, then the controls hint (stopped as a loop 2026-11-15 22:27)",
         .input = {.checkpoint = "01.01", .step = "arrival_scenes", .screens = R"(
 0.0s: black fade
@@ -878,11 +878,10 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {
-                {"text box", "A"}, {"advance arrow", "A"}, {"nothing", "A or +"}, {"still", "A or +"}, {"black fade", "-"},
+                {"text box", "- or A"}, {"advance arrow", "- or A"}, {"nothing", "A or +"}, {"still", "A or +"}, {"black fade", "-"},
                 {"controls hint", "-"}
             },
-            .verdict = "failed: cutscene_not_skipped",
-            .end = "[PLZA mash_to_move_hints] Plus 1: no black fade within 7 s; Plus again once a new stretch with no text lasts 5 s.",
+            .verdict = "failed: cutscene_not_skipped", .end = "[PLZA mash_to_move_hints] Plus 2.5 s after black fade 1: no black fade within 5 s after the hold.",
         },
     },
     {
@@ -917,8 +916,7 @@ const GoldenCase GOLDEN_CASES[] = {
     },
     {
         //  The controls hint after the cutscene is synthetic. Recorded with
-        //  no Plus: the step's Plus gets no black fade, so the scene ends
-        //  with its cutscene not skipped, not as never started.
+        //  no Plus: the step's Plus gets no black fade, so the step fails.
         .name = "02.02 street_scene, English, a textless cutscene past the start window, then the controls hint (failed as scene_never_started 2026-11-15 23:23)",
         .input = {.checkpoint = "02.02", .step = "street_scene", .screens = R"(
 0.0s: black fade, still
@@ -930,36 +928,32 @@ const GoldenCase GOLDEN_CASES[] = {
             .keys = {
                 {"black fade, still", "-"}, {"still", "A"}, {"nothing", "A or +"}, {"controls hint", "-"}
             },
-            .verdict = "failed: cutscene_not_skipped",
-            .end = "[PLZA scene] Plus 1: no black fade within 7 s; Plus again once a new stretch with no text lasts 5 s.",
+            .verdict = "failed: cutscene_not_skipped", .end = "[PLZA scene] Plus 2.5 s after black fade 1: no black fade within 5 s after the hold.",
         },
     },
     {
         //  Console B, 2026-11-19 06:19, its times moved to this step's Plus:
-        //  Plus held 3.7 s into the textless cutscene skipped it, the black
-        //  fade 2.7 s after the press (unskipped, it played 76 s); after the
-        //  talk a second stretch with no text took Plus and faded too.
-        .name = "02.02 street_scene, English, Plus 5 s into each textless cutscene, each skipped by a black fade, A through the talk between",
+        //  Plus 3.4 s after the opening fade skipped the cutscene, the black
+        //  fade 2.7 s after the press (unskipped, it played 76 s).
+        .name = "02.02 street_scene, English, Plus 2.5 s after the opening fade, its black fade, then A through the talk to the party bar",
         .input = {.checkpoint = "02.02", .step = "street_scene", .screens = R"(
 0.0s: black fade, still
 5.6s: still
 7.4s: nothing
-14.5s: black fade
-19.3s: still
-20.4s: nothing
-21.4s: text box, advance arrow
-21.8s: nothing
-22.3s: text box
-24.0s: nothing
-31.0s: black fade
-33.0s: party bar
+10.8s: black fade
+15.6s: still
+16.7s: nothing
+17.7s: text box, advance arrow
+18.1s: nothing
+18.6s: text box
+22.0s: party bar
 )"},
         .expectation = {
             .keys = {
-                {"black fade, still", "-"}, {"still", "A"}, {"nothing", "A or +"}, {"black fade", "-"},
+                {"black fade, still", "-"}, {"still", "A or +"}, {"nothing", "A or +"}, {"black fade", "-"},
                 {"text box, advance arrow", "A"}, {"text box", "A"}, {"party bar", "-"}
             },
-            .verdict = "done", .end = "[PLZA scene] Plus skip 2: a black fade 2.2 s after the press.",
+            .verdict = "done", .end = "[PLZA scene] Plus 2.5 s after black fade 1 skipped the cutscene: a black fade 2.6 s after the press.",
         },
     },
 };

@@ -19,10 +19,10 @@
       },
       {
         "id": "street_scene",
-        "why": "a Pokemon drives the trainers off (no battle); Plus skips the Floette cutscene",
+        "why": "a Pokemon drives the trainers off (no battle); Plus 2.5 s after the opening black fade skips the Floette cutscene",
         "action": "a",
         "args": {
-          "skip_with_plus": true
+          "skip_after_fade": 1
         }
       },
       {
