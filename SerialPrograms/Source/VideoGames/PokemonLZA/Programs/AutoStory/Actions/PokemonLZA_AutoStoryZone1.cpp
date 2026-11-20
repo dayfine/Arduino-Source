@@ -17,25 +17,6 @@ namespace PokemonLZA{
 
 namespace{
 
-//  Sidewalk by the blue kiosk (Weedle / Pichu lawn);
-//  inside the Wild Zone 1 pentagon, clear of both its red reticle ring and MAP_CENTRE.
-constexpr MapWaypoint ZONE1_SPOT_80{.name = "the 80 spot", .pin = {.x = 408, .y = 234}, .stop_radius = CATCH_STOP_RADIUS};
-
-} // namespace
-
-std::optional<MapWaypoint> catch_spot_waypoint(int spot){
-    switch (spot){
-    case 100:
-        return ZONE1_SPOT_100;
-    case 80:
-        return ZONE1_SPOT_80;
-    default:
-        return std::nullopt;
-    }
-}
-
-namespace{
-
 //  Wild Zone 1's green outline on the full map, clockwise from its north
 //  west corner, traced from map frames; every pin read in the zone so far
 //  is inside it.
@@ -132,27 +113,6 @@ std::optional<Pokemon::StoryFailure> check_out_of_zone_1(PlzaBackend& backend, M
     }
     backend.log(std::format("[PLZA] out of Wild Zone 1: the map pin reads {}", reads));
     return std::nullopt;
-}
-
-
-std::vector<int> alternating_stops(std::span<const int> spots, size_t visits){
-    std::vector<int> stops;
-    if (spots.empty()){
-        return stops;
-    }
-    for (size_t i = 0; i < visits; i++){
-        stops.push_back(spots[i % spots.size()]);
-    }
-    return stops;
-}
-
-
-bool at_zone_start(std::optional<MapPoint> pin, const ZoneStartRoute& route){
-    if (!pin){
-        return false;
-    }
-    const MapPoint start = route.start.pin;
-    return std::hypot(pin->x - start.x, pin->y - start.y) <= route.start_radius;
 }
 
 

@@ -9,6 +9,7 @@
 #include <format>
 #include <chrono>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -28,7 +29,6 @@
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryWorldWalks.h"
-#include "PokemonLZA_AutoStorySpeciesCheck.h"
 #include "PokemonLZA_AutoStoryZone1.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 
@@ -159,12 +159,16 @@ std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBacken
 
 namespace{
 
-constexpr Milliseconds PATROL_LIMIT(600000);
-constexpr size_t PATROL_VISITS = 10;
-
 //  The lock shows over 1.5 s after ZL at times.
 constexpr Milliseconds LOCK_ON_WAIT(3000);
 constexpr double TARGET_FLICK = 0.8;
+//  So a target that keeps dodging does not take all of the stop's throws.
+constexpr int THROWS_AT_ONE_TARGET = 3;
+
+struct CatchResult{
+    int throws = 0;
+    bool caught = false;
+};
 
 
 //  After a ZL lock-on the camera looks steeply down: down 1500 ms pins the
@@ -197,15 +201,10 @@ bool throw_ball_watched(StoryEnv& env, PlzaBackend& backend){
     return seen;
 }
 
-struct WeakenThrows{
-    bool caught = false;
-    int throws = 0;
-};
-
 //  Ends on the "Registered!" banner, a round after the first that finds
 //  nothing to lock on, or `max_throws` throws.
-WeakenThrows weaken_then_throw(StoryEnv& env, PlzaBackend& backend, int max_throws){
-    WeakenThrows out;
+CatchResult weaken_then_throw(StoryEnv& env, PlzaBackend& backend, int max_throws){
+    CatchResult out;
     while (out.throws < max_throws){
         const int landed = weaken_target(env, backend);
         if (landed == 0 && out.throws > 0){
@@ -262,7 +261,6 @@ public:
         LockTarget target;
         target.x = bar->x + bar->width / 2;
         target.y = bar->y + bar->height / 2;
-        target.width = bar->width;
         target.caught = lock_target_caught(frame);
         return target;
     }
@@ -289,16 +287,15 @@ private:
 
 void log_target(PlzaBackend& backend, std::string_view what, const LockTarget& target){
     backend.log(std::format(
-        "[PLZA] catch_in_zone: {}: plate at ({:.2f}, {:.2f}), {:.3f} wide, {}",
-        what, target.x, target.y, target.width, target.caught_text()
+        "[PLZA] catch_in_zone: {}: plate at ({:.2f}, {:.2f}), {}",
+        what, target.x, target.y, target.caught_text()
     ));
 }
 
 struct TargetChoice{
-    //  Nothing when no plate read.
+    //  Nothing when no uncaught target was chosen.
     std::optional<LockTarget> target;
-    //  Nearest first.
-    std::vector<LockTarget> plates;
+    bool saw_plates = false;
 };
 
 //  Reads up to 4 targets by flicking right, then flicks back to the nearest
@@ -316,9 +313,8 @@ TargetChoice choose_target(PlzaBackend& backend, HeldZl& held){
         }
         view = held.flick(TARGET_FLICK);
     }
-    TargetChoice choice;
-    choice.plates = cycle.targets();
-    const std::vector<LockTarget>& targets = choice.plates;
+    const std::vector<LockTarget>& targets = cycle.targets();
+    TargetChoice choice{.saw_plates = !targets.empty()};
     const std::optional<size_t> best = nearest_uncaught(targets);
     if (!best){
         backend.log(std::format("[PLZA] catch_in_zone: {} plates read, none of a species not caught", targets.size()));
@@ -363,7 +359,7 @@ TargetChoice aim_choose_approach(StoryEnv& env, PlzaBackend& backend){
 }
 
 struct TargetThrows{
-    GrassCatches catches;
+    CatchResult result;
     bool move_on = false;
 };
 
@@ -371,11 +367,10 @@ struct TargetThrows{
 //  calibrate step_toward_target().
 TargetThrows throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarget& target, int max_throws){
     TargetThrows out;
-    GrassCatches& catches = out.catches;
     LockTarget aimed = target;
-    while (catches.throws < max_throws){
+    while (out.result.throws < max_throws){
         const bool registered = throw_ball_watched(env, backend);
-        catches.throws++;
+        out.result.throws++;
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         const bool battle = !registered && wild_battle_on(env);
         std::optional<HeldZl> held;
@@ -384,30 +379,33 @@ TargetThrows throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarg
             held.emplace(env);
             relocked = held->wait_for_plate(LOCK_ON_WAIT);
         }
-        const ThrowSeen seen{registered, aimed.caught, !registered && !battle && !relocked};
-        const std::optional<NewSpeciesSign> sign = seen.new_species();
-        catches.found = sign ? 1 : 0;
-        catches.found_by_plate = sign == NewSpeciesSign::PLATE_NOT_CAUGHT ? 1 : 0;
+        const bool caught = registered || (aimed.caught == false && !battle && !relocked);
         backend.log(std::format(
-            "[PLZA] catch_in_zone: throw {} at plate y {:.2f}: {} ({})",
-            catches.throws, aimed.y, sign ? "hit" : "miss", seen.new_species_text()
+            "[PLZA] catch_in_zone: throw {} at plate y {:.2f}: {}",
+            out.result.throws, aimed.y, caught ? "caught" : "miss"
         ));
-        const AfterThrow next = after_throw(seen, battle, relocked, catches.throws);
-        if (next == AfterThrow::THROW_AGAIN){
-            log_target(backend, "missed, locked on again", *relocked);
-            aimed = approach_target(*relocked, catches.throws, backend, *held);
-            continue;
-        }
-        if (next == AfterThrow::MOVE_ON){
-            log_target(backend, std::format("{} misses at one lock: on to the next stop", catches.throws), *relocked);
-            out.move_on = true;
+        if (caught){
+            out.result.caught = true;
             return out;
         }
-        if (next == AfterThrow::WEAKEN && catches.throws < max_throws){
-            backend.log("[PLZA] catch_in_zone: the throw broke out: battle, weakening");
-            const WeakenThrows weakened = weaken_then_throw(env, backend, max_throws - catches.throws);
-            catches.throws += weakened.throws;
-            catches.found += weakened.caught ? 1 : 0;
+        if (battle){
+            if (out.result.throws < max_throws){
+                backend.log("[PLZA] catch_in_zone: the throw broke out: battle, weakening");
+                const CatchResult weakened = weaken_then_throw(env, backend, max_throws - out.result.throws);
+                out.result.throws += weakened.throws;
+                out.result.caught = weakened.caught;
+            }
+            return out;
+        }
+        if (relocked && relocked->caught != true){
+            if (out.result.throws >= THROWS_AT_ONE_TARGET){
+                log_target(backend, std::format("{} misses at one lock: stopping at this spot", out.result.throws), *relocked);
+                out.move_on = true;
+                return out;
+            }
+            log_target(backend, "missed, locked on again", *relocked);
+            aimed = approach_target(*relocked, out.result.throws, backend, *held);
+            continue;
         }
         return out;
     }
@@ -416,16 +414,16 @@ TargetThrows throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarg
 
 //  Returns whether ZL locked on (the move symbols showed); when not, the
 //  sweep's L put the camera back behind the player.
-bool sweep_for_lock_on(StoryEnv& env, PlzaBackend& backend, int at){
+bool sweep_for_lock_on(StoryEnv& env, PlzaBackend& backend, std::string_view spot_name){
     env.context.wait_for_all_requests();
     const WallClock start = current_time();
     const bool locked = lock_on_by_sweep(env.env.console, env.context, SWEEP_STICK_X, SWEEP_ROUNDS);
     const long long elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start).count();
     if (locked){
-        backend.log(std::format("[PLZA] catch_in_zone: at {}: the move symbols showed {} ms into the lock-on sweep: locked on", at, elapsed));
+        backend.log(std::format("[PLZA] catch_in_zone: at {}: the move symbols showed {} ms into the lock-on sweep: locked on", spot_name, elapsed));
         return true;
     }
-    backend.log(std::format("[PLZA] catch_in_zone: at {}: no move symbols in {} sweep rounds ({} ms): L", at, SWEEP_ROUNDS, elapsed));
+    backend.log(std::format("[PLZA] catch_in_zone: at {}: no move symbols in {} sweep rounds ({} ms): L", spot_name, SWEEP_ROUNDS, elapsed));
     return false;
 }
 
@@ -442,8 +440,7 @@ void fight_off(StoryEnv& env, PlzaBackend& backend){
     }
 }
 
-GrassCatches fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
-    GrassCatches out;
+CatchResult fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
     const std::optional<LockTarget> attacker = HeldZl(env).wait_for_plate(LOCK_ON_WAIT);
     if (attacker){
         log_target(backend, "a wild battle at the stop, locked on to", *attacker);
@@ -451,55 +448,54 @@ GrassCatches fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
     if (attacker && attacker->caught == true){
         backend.log("[PLZA] catch_in_zone: a species already caught: fighting it off, no throws");
         fight_off(env, backend);
-        return out;
+        return {};
     }
     backend.log("[PLZA] catch_in_zone: a wild battle at the stop: weakening and throwing");
-    const WeakenThrows weakened = weaken_then_throw(env, backend, max_throws);
-    out.throws = weakened.throws;
-    out.found = weakened.caught ? 1 : 0;
-    return out;
+    return weaken_then_throw(env, backend, max_throws);
 }
 
-GrassCatches catch_at_stop(StoryEnv& env, PlzaBackend& backend, int at, int max_throws){
-    GrassCatches out;
-    CameraPitch pitch;
-    for (int tries = 0; tries < 4 && out.found == 0 && out.throws < max_throws; tries++){
+CatchResult catch_at_stop(StoryEnv& env, PlzaBackend& backend, std::string_view spot_name, int max_throws){
+    CatchResult out;
+    bool pitch_tipped = false;
+    for (int tries = 0; tries < 4 && !out.caught && out.throws < max_throws; tries++){
         backend.scope().throw_if_cancelled();
-        if (pitch.level_now()){
+        if (pitch_tipped){
             level_camera(env);
+            pitch_tipped = false;
         }
         if (wild_battle_on(env)){
-            out += fight_back(env, backend, max_throws - out.throws);
-            pitch.zl_held();
+            const CatchResult fought = fight_back(env, backend, max_throws - out.throws);
+            out.throws += fought.throws;
+            out.caught = out.caught || fought.caught;
+            pitch_tipped = true;
             continue;
         }
-        const bool locked = sweep_for_lock_on(env, backend, at);
-        pitch.zl_held();
-        const TargetChoice choice = locked ? aim_choose_approach(env, backend) : TargetChoice{};
-        const StopAim aim = stop_aim(locked, choice.plates);
-        if (aim == StopAim::MOVE_ON){
-            backend.log(std::format("[PLZA] catch_in_zone: no lock-on at {} in the sweep", at));
+        const bool locked = sweep_for_lock_on(env, backend, spot_name);
+        pitch_tipped = true;
+        if (!locked){
+            backend.log(std::format("[PLZA] catch_in_zone: no lock-on at {} in the sweep", spot_name));
             break;
         }
-        if (aim == StopAim::LOOK_AGAIN){
+        const TargetChoice choice = aim_choose_approach(env, backend);
+        if (!choice.saw_plates){
             continue;
         }
-        if (aim == StopAim::LOOK_FURTHER){
+        if (!choice.target){
             backend.log("[PLZA] catch_in_zone: only species already caught lock on: looking further right");
-            out.caught_seen++;
             pbf_move_right_joystick(env.context, /*position=*/{0.5, 0}, /*hold=*/Milliseconds(400), /*release=*/Milliseconds(300));
             continue;
         }
         const TargetThrows thrown = throw_at_target(env, backend, *choice.target, max_throws - out.throws);
-        out += thrown.catches;
+        out.throws += thrown.result.throws;
+        out.caught = out.caught || thrown.result.caught;
         if (thrown.move_on){
             break;
         }
     }
-    if (out.found > 0){
-        backend.log(std::format("[PLZA] catch_in_zone: caught at {}: the stop ends, on to the next", at));
+    if (out.caught){
+        backend.log(std::format("[PLZA] catch_in_zone: caught at {}", spot_name));
     }
-    if (pitch.level_now()){
+    if (pitch_tipped){
         level_camera(env);
     }
     return out;
@@ -529,143 +525,77 @@ std::optional<int> read_party_slots(StoryEnv& env, PlzaBackend& backend){
 }
 
 //  The pin decides whether the player started at the rocks.
-std::optional<Pokemon::StoryFailure> go_to_zone_spot(StoryEnv& env, PlzaBackend& backend, const ZoneStartRoute& route){
+std::optional<Pokemon::StoryFailure> go_to_zone_spot(StoryEnv& env, PlzaBackend& backend){
+    constexpr double ROCKS_START_RADIUS = 8;
     backend.log(std::format(
         "[PLZA] catch_in_zone: at the start, {} is put at ({:.0f}, {:.0f}) on the map",
-        route.start.name, route.start.pin.x, route.start.pin.y
+        ZONE1_ROCKS.name, ZONE1_ROCKS.pin.x, ZONE1_ROCKS.pin.y
     ));
     const std::optional<MapPoint> start_pin = read_pin_on_map(env, backend);
     const std::string pin_text = start_pin ? std::format("({:.0f}, {:.0f})", start_pin->x, start_pin->y) : std::string("not read");
-    if (!at_zone_start(start_pin, route)){
+    const bool at_rocks = start_pin
+        && std::hypot(start_pin->x - ZONE1_ROCKS.pin.x, start_pin->y - ZONE1_ROCKS.pin.y) <= ROCKS_START_RADIUS;
+    if (!at_rocks){
         backend.log(std::format(
             "[PLZA] catch_in_zone: pin at the start {}, not within {:.0f} of ({:.0f}, {:.0f}): stop",
-            pin_text, route.start_radius, route.start.pin.x, route.start.pin.y
+            pin_text, ROCKS_START_RADIUS, ZONE1_ROCKS.pin.x, ZONE1_ROCKS.pin.y
         ));
         return Pokemon::StoryFailure{.code = "rocks_not_left", .detail = std::format(
             "the pin at the start was {}, not within {:.0f} of ({:.0f}, {:.0f})",
-            pin_text, route.start_radius, route.start.pin.x, route.start.pin.y
+            pin_text, ROCKS_START_RADIUS, ZONE1_ROCKS.pin.x, ZONE1_ROCKS.pin.y
         )};
     }
     backend.log(std::format("[PLZA] catch_in_zone: pin at the start {}: off the rocks to the spot", pin_text));
     backend.press(BUTTON_L, /*hold=*/Milliseconds(100), /*release=*/Milliseconds(150));
-    backend.observe();
-    backend.log(std::format("[PLZA] catch_in_zone: at Taunie's rocks, the arrow reads {:.0f} deg", minimap_arrow(env)()));
-    pbf_move_left_joystick(env.context, /*position=*/{route.leg_x, route.leg_y}, route.leg_hold, /*release=*/Milliseconds(300));
+    pbf_move_left_joystick(env.context, /*position=*/{-1, 0}, /*hold=*/Milliseconds(900), /*release=*/Milliseconds(300));
     return walk_map_legs(env, backend, ROCKS_TO_SPOT_100);
-}
-
-struct Patrol{
-    GrassCatches catches;
-    //  None: not read.
-    std::optional<int> party_slots;
-    std::optional<std::optional<Pokemon::StoryFailure>> walk_failed;
-};
-
-struct PatrolStart{
-    std::optional<int> slots;
-    size_t first_stop = 0;
-    bool already_at_first = false;
-};
-
-//  A leg that fails stops the patrol. A wild battle that starts on the way
-//  is fought at the next stop.
-Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal, PatrolStart start){
-    const std::vector<int> stops = alternating_stops(CATCH_SPOTS, PATROL_VISITS);
-    const WallClock deadline = current_time() + PATROL_LIMIT;
-    Patrol patrol{.party_slots = start.slots};
-    GrassCatches& result = patrol.catches;
-    std::vector<int> caught_at;
-    for (size_t i = start.first_stop; i < stops.size() && result.throws < goal.max_throws; i++){
-        if (patrol.party_slots ? party_has_species(patrol.party_slots, goal.party_species) : result.found >= goal.new_species){
-            break;
-        }
-        backend.scope().throw_if_cancelled();
-        if (current_time() > deadline){
-            backend.log("[PLZA] catch_in_zone: out of time for the patrol");
-            break;
-        }
-        const std::optional<MapWaypoint> waypoint = catch_spot_waypoint(stops[i]);
-        if (!waypoint){
-            backend.log(std::format("[PLZA] catch_in_zone: no map waypoint for the stop {}: the patrol ends", stops[i]));
-            break;
-        }
-        if (i > start.first_stop || !start.already_at_first){
-            if (std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&*waypoint, 1))){
-                patrol.walk_failed = std::move(walked);
-                break;
-            }
-        }
-        if (spot_visit(stops[i], caught_at) == SpotVisit::TURN_BACK && !wild_battle_on(env)){
-            backend.log(std::format("[PLZA] catch_in_zone: stop {} of {} at {}: a new species was caught here: turning back", i + 1, stops.size(), stops[i]));
-            continue;
-        }
-        const GrassCatches stop = catch_at_stop(env, backend, stops[i], goal.max_throws - result.throws);
-        backend.log(std::format(
-            "[PLZA] catch_in_zone: stop {} of {} at {}: {} throws, {} new species, {} locks on caught species only",
-            i + 1, stops.size(), stops[i], stop.throws, stop.found, stop.caught_seen
-        ));
-        result += stop;
-        if (stop.found > 0){
-            caught_at.push_back(stops[i]);
-        }
-        if (stop.throws > 0){
-            patrol.party_slots = read_party_slots(env, backend);
-            if (party_has_species(patrol.party_slots, goal.party_species)){
-                backend.log(std::format("[PLZA] catch_in_zone: the party holds {} species: the patrol is done", goal.party_species));
-                break;
-            }
-        }
-    }
-    return patrol;
 }
 
 } // namespace
 
 
-std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal){
-    const std::optional<int> slots = read_party_slots(env, backend);
-    if (party_has_species(slots, goal.party_species)){
-        backend.log("[PLZA] catch_in_zone: the party already holds the species: nothing to catch");
+std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& backend, int max_throws){
+    std::optional<int> party_slots = read_party_slots(env, backend);
+    if (party_slots && *party_slots >= 5){
+        backend.log("[PLZA] catch_in_zone: the party already holds 5 species: nothing to catch");
         return std::nullopt;
     }
-    ZoneCatchGoal target = goal;
-    PatrolStart start{.slots = slots};
-    if (slots && *slots >= 4){
-        //  03.08a: already caught the fourth species (e.g. Scatterbug near 100);
-        //  walk straight from the current pin to the 80 spot for the fifth.
-        backend.log(std::format("[PLZA] catch_in_zone: party holds {} species: patrolling straight to the 80 spot for {}", *slots, target.party_species));
-        target.new_species = 1;
-        start.first_stop = 1;
+    const bool for_fifth = party_slots && *party_slots >= 4;
+    const int target_party = for_fifth ? 5 : 4;
+    const std::string_view spot_name = for_fifth ? ZONE1_SPOT_80.name : ZONE1_SPOT_100.name;
+    std::optional<Pokemon::StoryFailure> walk_failed;
+    if (for_fifth){
+        //  03.08a: already caught the fourth species; walk straight to the 80 spot for the fifth.
+        backend.log(std::format("[PLZA] catch_in_zone: party holds {} species: walking to {} for 5", *party_slots, spot_name));
+        walk_failed = walk_map_legs(env, backend, std::span<const MapWaypoint>(&ZONE1_SPOT_80, 1));
     }else{
         //  03.08: catch the fourth species from Taunie's rocks so its autosave
         //  becomes 03.08a's clean retry boundary.
-        target.new_species = 1;
-        target.party_species = 4;
-        if (std::optional<Pokemon::StoryFailure> at_spot = go_to_zone_spot(env, backend, TAUNIE_ROCKS_ROUTE)){
-            return at_spot;
-        }
-        start.already_at_first = true;
+        walk_failed = go_to_zone_spot(env, backend);
     }
-    const Patrol patrol = patrol_and_catch(env, backend, target, start);
-    if (patrol.walk_failed){
-        return *patrol.walk_failed;
+    if (walk_failed){
+        return walk_failed;
     }
-    const GrassCatches& result = patrol.catches;
-    const SpeciesTally tally = species_tally(result, target.new_species);
+    const CatchResult result = catch_at_stop(env, backend, spot_name, max_throws);
+    if (result.throws > 0){
+        party_slots = read_party_slots(env, backend);
+    }
+    const bool done = party_slots ? (*party_slots >= target_party) : result.caught;
     backend.log(std::format(
-        "[PLZA] catch_in_zone: {}",
-        catch_summary_text(result, patrol.party_slots, target.new_species, target.party_species)
+        "[PLZA] catch_in_zone: {} throws at {}, caught={}, party_slots={}/{}: {}",
+        result.throws, spot_name, result.caught,
+        party_slots ? std::to_string(*party_slots) : std::string("unread"),
+        target_party, done ? "done" : "short"
     ));
-    if (party_has_species(patrol.party_slots, target.party_species)){
+    if (done){
         return std::nullopt;
     }
-    //  The party bar's count, when read, stands in for the Pokedex's.
-    if (!enough_species(tally, patrol.party_slots, target.party_species)){
-        return Pokemon::StoryFailure{.code = "short_of_species", .detail = patrol.party_slots
-            ? std::format("the party holds {} species of {} ({} new by the banners in {} throws)", *patrol.party_slots, target.party_species, result.found, result.throws)
-            : std::format("{} new species of {} in {} throws", result.found, target.new_species, result.throws)};
-    }
-    return std::nullopt;
+    return Pokemon::StoryFailure{
+        .code = "short_of_species",
+        .detail = party_slots
+            ? std::format("the party holds {} species of {} ({} throws at {})", *party_slots, target_party, result.throws, spot_name)
+            : std::format("no catch at {} in {} throws", spot_name, result.throws),
+    };
 }
 
 
