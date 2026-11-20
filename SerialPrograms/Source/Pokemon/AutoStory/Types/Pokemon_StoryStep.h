@@ -12,6 +12,7 @@
 #ifndef PokemonAutomation_Pokemon_StoryStep_H
 #define PokemonAutomation_Pokemon_StoryStep_H
 
+#include <functional>
 #include <optional>
 #include <set>
 #include <string>
@@ -28,6 +29,8 @@ struct RunState{
     std::set<std::string> flags = {};
     //  The step under way, "<checkpoint>/<step>", for its log lines.
     std::string step = {};
+    //  The actions of the checkpoint's steps after the one under way.
+    std::set<std::string, std::less<>> actions_ahead = {};
 };
 
 //  A step's action with its args bound.

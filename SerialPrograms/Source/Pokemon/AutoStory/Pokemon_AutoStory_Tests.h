@@ -13,6 +13,7 @@
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Data/Pokemon_StoryCheckpointJson_Tests.h"
+#include "Engine/Pokemon_ScreenMatch_Tests.h"
 #include "Engine/Pokemon_StoryBackend_Tests.h"
 #include "Engine/Pokemon_StoryEngine_Tests.h"
 #include "Options/Pokemon_StoryRangeOptions_Tests.h"
@@ -29,6 +30,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryRangeOptions(database);
     add_tests_StoryLog(database);
     add_tests_StoryCheckpointJson(database);
+    add_tests_ScreenMatch(database);
     add_tests_StoryBackend(database);
     add_tests_StoryEngine(database);
 }
