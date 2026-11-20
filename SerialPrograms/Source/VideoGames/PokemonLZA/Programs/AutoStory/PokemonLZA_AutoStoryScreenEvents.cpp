@@ -50,7 +50,9 @@ ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
     }
     const bool box = m_dialog.detect(screen);
     out.set(ScreenEvent::DIALOG_BOX, box);
-    out.set(ScreenEvent::CHOICE_BOX, m_choice_arrow.detect(screen));
+    //  The Pokemon Center nurse's menu has no selection arrow, only its
+    //  highlighted row (console B 2026-11-19, Traditional Chinese).
+    out.set(ScreenEvent::CHOICE_BOX, m_choice_arrow.detect(screen) || (box && read_dialog_choice_rows(screen).has_value()));
     out.set(ScreenEvent::INTERACT_PROMPT, !box && m_interact.detect(screen));
     out.set(ScreenEvent::BATTLE_STARTED, m_battle_hint.detect(screen) || (m_battle_panel.detect(screen) && m_battle_markers.detect(screen)));
     out.set(ScreenEvent::PLAYER_CAN_MOVE, !box && m_party.detect(screen));

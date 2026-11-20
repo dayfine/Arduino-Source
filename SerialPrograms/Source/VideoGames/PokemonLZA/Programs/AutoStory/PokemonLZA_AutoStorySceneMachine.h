@@ -72,9 +72,11 @@ std::string describe_scene_look(const ScreenObservation& look);
 
 //  Presses through scenes until the party bar, the controls hint or an A
 //  prompt (none under a text box) holds 1 s. Each look: a choice takes its
-//  top row, a map B, a tutorial card A; text and anything else A, but B on
-//  a look with a sign of control and on every look once one has shown in
-//  the scene: A there starts a talk (03.02b's Vinci loop). Fades only wait.
+//  top row, but B when it shows again (same row count) after A took it:
+//  A would loop the talk (03.05's nurse, healing again). A map gets B, a
+//  tutorial card A; text and anything else A, but B on a look with a sign
+//  of control and on every look once one has shown in the scene: A there
+//  starts a talk (03.02b's Vinci loop). Fades only wait.
 //  Fails as "scene_never_started", "scene_ended_in_control" or
 //  "scene_timeout" (by the looks' time); `step` is "<checkpoint>/<step>".
 std::optional<Pokemon::StoryFailure> run_scene_machine(
