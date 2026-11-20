@@ -225,11 +225,9 @@ std::optional<StoryFailure> walk_step(
     if (walk.end){
         return walk_until(backend, name, walk.move, {.end = *walk.end, .end_after = walk.end_after, .stop_on_battle = stop_on_battle});
     }
-    std::optional<StoryFailure> walked = run_story_move(backend, walk.move);
-    if (!walked){
-        finish_walk(backend, name);
-    }
-    return walked;
+    run_story_move(backend, walk.move);
+    finish_walk(backend, name);
+    return std::nullopt;
 }
 
 
@@ -255,10 +253,9 @@ Pokemon::StoryActionParser scene_action(PlzaConsoleHooks& hooks){
         const bool battle_start = flag(args, "battle_start");
         const SceneMachineConfig config{
             .stop_at_choice = stop_at_choice,
-            .text_a_to_choice = stop_at_choice && button == BUTTON_A,
             .stop_at_battle = battle_start,
             .lock_on = battle_start ? hooks.lock_on : std::nullopt,
-            .button = stop_at_choice ? BUTTON_A : button,
+            .button = button,
             .start_window = optional_ms(args, "start_window_ms"),
             .end_on_black_fade = flag(args, "end_on_black_fade"),
         };

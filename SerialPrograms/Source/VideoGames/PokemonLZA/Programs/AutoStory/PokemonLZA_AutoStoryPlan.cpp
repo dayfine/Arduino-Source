@@ -117,17 +117,6 @@ std::optional<StartSignature> read_start_signature(const JsonObject& execution, 
     return signature;
 }
 
-std::optional<CheckpointStart> read_checkpoint_start(std::string_view text, const std::string& source){
-    const JsonValue file = parse_json(std::string(text));
-    const JsonObject* root = file.to_object();
-    const JsonObject* execution = root == nullptr ? nullptr : root->get_object("execution");
-    const std::optional<StartSignature> signature = execution == nullptr ? std::nullopt : read_start_signature(*execution, source);
-    if (!signature){
-        return std::nullopt;
-    }
-    return CheckpointStart{.checkpoint = root->get_object_throw("checkpoint", source).get_string_throw("id", source), .signature = *signature};
-}
-
 //  Adds `id` to the sets of `marked` the "execution" block's "save" and
 //  "reload_when_chained" put it in; `previous`: the checkpoint before it.
 void mark_checkpoint(
@@ -137,9 +126,7 @@ void mark_checkpoint(
     if (const std::string* save = execution.get_string("save")){
         if (*save == "autosave"){
             marked.autosaves.emplace(id);
-        }else if (*save == "unverified"){
-            marked.unverified_autosaves.emplace(id);
-        }else{
+        }else if (*save != "unverified"){
             throw ParseException(std::format("{}: save is \"autosave\", \"unverified\" or left out", where));
         }
     }
@@ -161,26 +148,23 @@ void mark_checkpoint(
     marked.reload_when_chained.emplace(id);
 }
 
-//  Checks the "execution" block, marks `checkpoint` in `marked`, and
-//  checks that an autosave checkpoint names the step it autosaves in.
+//  Checks the "execution" block, records start signature and marks in `data`,
+//  and checks that an autosave checkpoint names the step it autosaves in.
 void read_execution(
-    const JsonObject& execution, const StoryCheckpoint& checkpoint, std::optional<std::string_view> previous, MarkedCheckpoints& marked
+    const JsonObject& execution, const StoryCheckpoint& checkpoint, std::optional<std::string_view> previous, StoryData& data
 ){
     const std::string where = "execution";
     Pokemon::reject_unknown_keys(execution, {"save", "reload_when_chained", "autosave_step", "start_signature"});
-    //  Read here only to fail the plan's load when malformed;
-    //  builtin_checkpoint_starts() reads the starts.
-    read_start_signature(execution, where);
-    mark_checkpoint(execution, checkpoint.id, checkpoint_starts_without_save(checkpoint), previous, marked);
+    if (std::optional<StartSignature> signature = read_start_signature(execution, where)){
+        data.starts.push_back(CheckpointStart{.checkpoint = checkpoint.id, .signature = std::move(*signature)});
+    }
+    mark_checkpoint(execution, checkpoint.id, checkpoint_starts_without_save(checkpoint), previous, data);
     const JsonValue* step = execution.get_value("autosave_step");
     const std::optional<std::string> autosave_step = step == nullptr ? std::nullopt : std::optional<std::string>(step->to_string_throw(where));
-    if (const std::optional<std::string> error = autosave_step_error(checkpoint, marked.autosaves.contains(checkpoint.id), autosave_step)){
+    if (const std::optional<std::string> error = autosave_step_error(checkpoint, data.autosaves.contains(checkpoint.id), autosave_step)){
         throw ParseException(*error);
     }
 }
-
-} // namespace
-
 
 std::vector<std::string> checkpoint_lead_in_errors(const JsonObject& checkpoint){
     std::vector<std::string> errors;
@@ -203,7 +187,7 @@ std::vector<std::string> checkpoint_lead_in_errors(const JsonObject& checkpoint)
 }
 
 StoryCheckpoint read_plza_checkpoint(
-    std::string_view text, std::string_view source, Pokemon::StoryActions& actions, MarkedCheckpoints& marked,
+    std::string_view text, std::string_view source, Pokemon::StoryActions& actions, StoryData& data,
     std::optional<std::string_view> previous
 ){
     const JsonValue file = parse_json(std::string(text));
@@ -213,12 +197,15 @@ StoryCheckpoint read_plza_checkpoint(
     }
     StoryCheckpoint checkpoint = Pokemon::read_story_checkpoint(file, "plza", source, actions);
     try{
-        read_execution(file.to_object_throw().get_object_throw("execution"), checkpoint, previous, marked);
+        read_execution(file.to_object_throw().get_object_throw("execution"), checkpoint, previous, data);
     }catch (const ParseException& error){
         throw ParseException(std::format("{}: {}", source, error.message()));
     }
     return checkpoint;
 }
+
+} // namespace
+
 
 StoryData load_plza_story(PlzaConsoleHooks& hooks){
     Pokemon::StoryActions actions = plza_story_actions(hooks);
@@ -238,23 +225,10 @@ const StoryData& builtin_story_data(){
     return data;
 }
 
-const std::vector<CheckpointStart>& builtin_checkpoint_starts(){
-    static const std::vector<CheckpointStart> starts = []{
-        std::vector<CheckpointStart> read;
-        for (const auto& [name, text] : autostory_checkpoint_json()){
-            const std::optional<CheckpointStart> start = read_checkpoint_start(text, name);
-            if (start){
-                read.push_back(*start);
-            }
-        }
-        return read;
-    }();
-    return starts;
-}
-
 bool builtin_start_reads_map(std::string_view asked){
-    for (const Pokemon::StoryCheckpoint& checkpoint : builtin_story_data().checkpoints){
-        const CheckpointStart* start = find_start(builtin_checkpoint_starts(), checkpoint.id);
+    const StoryData& data = builtin_story_data();
+    for (const Pokemon::StoryCheckpoint& checkpoint : data.checkpoints){
+        const CheckpointStart* start = find_start(data.starts, checkpoint.id);
         if (start != nullptr && start->signature.wild_zone){
             return true;
         }

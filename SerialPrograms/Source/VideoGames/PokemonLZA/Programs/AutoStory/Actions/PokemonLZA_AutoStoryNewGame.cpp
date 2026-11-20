@@ -8,14 +8,14 @@
 #include <cctype>
 #include <format>
 #include <map>
-#include <vector>
 #include <optional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Strings/Unicode.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
-#include "CommonFramework/Tools/DebugDumper.h"
+#include "CommonFramework/Language.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
@@ -48,6 +48,32 @@ constexpr size_t LANGUAGE_LIST_SIZE = 2 * LANGUAGE_LIST_ROWS;
 constexpr size_t LOOK_COLUMNS = 4;
 constexpr size_t LOOK_COUNT = 2 * LOOK_COLUMNS;
 
+struct NewGameLanguageInfo{
+    std::string_view tag;
+    size_t list_entry = 0;
+    size_t name_limit = 0;
+    Language ocr_language = Language::None;
+    std::string_view confirm_text;
+    bool keyboard_supported = true;
+};
+
+const NewGameLanguageInfo& new_game_language_info(NewGameLanguage language){
+    static const std::array<NewGameLanguageInfo, LANGUAGE_LIST_SIZE> table{{
+        {.tag = "en",      .list_entry = 0, .name_limit = 12, .ocr_language = Language::English,            .confirm_text = "English"},
+        {.tag = "es-ES",   .list_entry = 1, .name_limit = 12, .ocr_language = Language::Spanish,            .confirm_text = "Espa\xc3\xb1" "a)"},
+        {.tag = "es-419",  .list_entry = 2, .name_limit = 12, .ocr_language = Language::Spanish,            .confirm_text = "Latino"},
+        {.tag = "fr",      .list_entry = 3, .name_limit = 12, .ocr_language = Language::French,             .confirm_text = "Fran"},
+        {.tag = "de",      .list_entry = 4, .name_limit = 12, .ocr_language = Language::German,             .confirm_text = "Deutsch"},
+        {.tag = "it",      .list_entry = 5, .name_limit = 12, .ocr_language = Language::Italian,            .confirm_text = "Italiano"},
+        {.tag = "ja",      .list_entry = 6, .name_limit = 6,  .ocr_language = Language::Japanese,           .confirm_text = "\xe6\x97\xa5\xe6\x9c\xac"},
+        {.tag = "ko",      .list_entry = 7, .name_limit = 6,  .ocr_language = Language::Korean,             .confirm_text = "\xed\x95\x9c\xea\xb5\xad", .keyboard_supported = false},
+        {.tag = "zh-Hans", .list_entry = 8, .name_limit = 6,  .ocr_language = Language::ChineseSimplified,  .confirm_text = "\xe7\xae\x80\xe4\xbd\x93"},
+        {.tag = "zh-Hant", .list_entry = 9, .name_limit = 6,  .ocr_language = Language::ChineseTraditional, .confirm_text = "\xe7\xb9\x81\xe9\xab\x94"},
+    }};
+    const size_t index = (size_t)language;
+    return table[index < table.size() ? index : 0];
+}
+
 //  One press on an intro screen.
 enum class IntroKey{
     UP,
@@ -57,21 +83,15 @@ enum class IntroKey{
     A,
 };
 
-std::vector<IntroKey> grid_moves(size_t from_column, size_t from_row, size_t to_column, size_t to_row){
-    std::vector<IntroKey> moves;
-    for (size_t c = from_column; c < to_column; c++){
-        moves.push_back(IntroKey::RIGHT);
+//  One step toward (to_column, to_row), column first then row; nullopt when already there.
+std::optional<IntroKey> grid_step(size_t from_column, size_t from_row, size_t to_column, size_t to_row){
+    if (from_column != to_column){
+        return from_column < to_column ? IntroKey::RIGHT : IntroKey::LEFT;
     }
-    for (size_t c = to_column; c < from_column; c++){
-        moves.push_back(IntroKey::LEFT);
+    if (from_row != to_row){
+        return from_row < to_row ? IntroKey::DOWN : IntroKey::UP;
     }
-    for (size_t r = from_row; r < to_row; r++){
-        moves.push_back(IntroKey::DOWN);
-    }
-    for (size_t r = to_row; r < from_row; r++){
-        moves.push_back(IntroKey::UP);
-    }
-    return moves;
+    return std::nullopt;
 }
 
 //  Why `choices` cannot be played; nullopt when they can.
@@ -92,52 +112,6 @@ std::optional<std::string> choices_problem(const NewGameChoices& choices){
     }
     return std::nullopt;
 }
-
-//  Column first, then row; nullopt for an entry outside the list.
-std::optional<std::vector<IntroKey>> language_list_moves(size_t from, size_t to){
-    if (from >= LANGUAGE_LIST_SIZE || to >= LANGUAGE_LIST_SIZE){
-        return std::nullopt;
-    }
-    return grid_moves(
-        from / LANGUAGE_LIST_ROWS, from % LANGUAGE_LIST_ROWS,
-        to / LANGUAGE_LIST_ROWS, to % LANGUAGE_LIST_ROWS
-    );
-}
-
-//  Column first, then row; nullopt for a look outside 1 to 8.
-std::optional<std::vector<IntroKey>> look_picker_moves(size_t from, size_t to){
-    if (from < 1 || from > LOOK_COUNT || to < 1 || to > LOOK_COUNT){
-        return std::nullopt;
-    }
-    return grid_moves(
-        (from - 1) % LOOK_COLUMNS, (from - 1) / LOOK_COLUMNS,
-        (to - 1) % LOOK_COLUMNS, (to - 1) / LOOK_COLUMNS
-    );
-}
-
-} // namespace
-
-
-const NewGameLanguageInfo& new_game_language_info(NewGameLanguage language){
-    static const std::array<NewGameLanguageInfo, LANGUAGE_LIST_SIZE> table{{
-        {.tag = "en",      .list_entry = 0, .name_limit = 12, .ocr_language = Language::English,            .confirm_text = "English"},
-        {.tag = "es-ES",   .list_entry = 1, .name_limit = 12, .ocr_language = Language::Spanish,            .confirm_text = "Espa\xc3\xb1" "a)"},
-        {.tag = "es-419",  .list_entry = 2, .name_limit = 12, .ocr_language = Language::Spanish,            .confirm_text = "Latino"},
-        {.tag = "fr",      .list_entry = 3, .name_limit = 12, .ocr_language = Language::French,             .confirm_text = "Fran"},
-        {.tag = "de",      .list_entry = 4, .name_limit = 12, .ocr_language = Language::German,             .confirm_text = "Deutsch"},
-        {.tag = "it",      .list_entry = 5, .name_limit = 12, .ocr_language = Language::Italian,            .confirm_text = "Italiano"},
-        {.tag = "ja",      .list_entry = 6, .name_limit = 6,  .ocr_language = Language::Japanese,           .confirm_text = "\xe6\x97\xa5\xe6\x9c\xac"},
-        {.tag = "ko",      .list_entry = 7, .name_limit = 6,  .ocr_language = Language::Korean,             .confirm_text = "\xed\x95\x9c\xea\xb5\xad", .keyboard_supported = false},
-        {.tag = "zh-Hans", .list_entry = 8, .name_limit = 6,  .ocr_language = Language::ChineseSimplified,  .confirm_text = "\xe7\xae\x80\xe4\xbd\x93"},
-        {.tag = "zh-Hant", .list_entry = 9, .name_limit = 6,  .ocr_language = Language::ChineseTraditional, .confirm_text = "\xe7\xb9\x81\xe9\xab\x94"},
-    }};
-    const size_t index = (size_t)language;
-    return table[index < table.size() ? index : 0];
-}
-
-
-
-namespace{
 
 //  The Switch keyboard typer types the first page only (letters by their capital).
 bool on_keyboard(std::string_view name){
@@ -170,8 +144,6 @@ std::optional<std::string> name_typing_problem(const NewGameChoices& choices){
 
 
 using FrameCheck = MoveOnlyFunction<bool(const ImageViewRGB32& frame)>;
-
-constexpr std::string_view DUMP_FOLDER = "PokemonLZA/AutoStory/Intro";
 
 //  The logos before the language list take about 15 s, with no press needed.
 constexpr Milliseconds LAUNCH_LIMIT = 60s;
@@ -251,17 +223,13 @@ void tilt(ProControllerContext& context, IntroKey key){
 }
 
 void wait_for_language_list(ConsoleHandle& console, ProControllerContext& context){
-    const WallClock start = current_time();
-    while (current_time() - start < LAUNCH_LIMIT){
-        const VideoSnapshot frame = snapshot(console, context);
-        if (frame && read_language_list_cursor(frame)){
-            console.log("AutoStory intro: the language list shows.");
-            dump_debug_image(console, std::string(DUMP_FOLDER), "language-list", frame);
-            return;
-        }
-        context.wait_for(250ms);
+    FrameCheck shows = [](const ImageViewRGB32& frame){
+        return read_language_list_cursor(frame).has_value();
+    };
+    if (!wait_for_frame(console, context, shows, LAUNCH_LIMIT)){
+        fail(console, std::format("the language list did not show within {} s of the launch.", LAUNCH_LIMIT.count() / 1000));
     }
-    fail(console, std::format("the language list did not show within {} s of the launch.", LAUNCH_LIMIT.count() / 1000));
+    console.log("AutoStory intro: the language list shows.");
 }
 
 void pick_language(ConsoleHandle& console, ProControllerContext& context, NewGameLanguage language){
@@ -278,11 +246,17 @@ void pick_language(ConsoleHandle& console, ProControllerContext& context, NewGam
             press(context, IntroKey::A, 500ms);
             return;
         }
-        const std::optional<std::vector<IntroKey>> moves = language_list_moves(*cursor, info.list_entry);
-        if (!moves || moves->empty()){
+        if (*cursor >= LANGUAGE_LIST_SIZE){
             break;
         }
-        press(context, moves->front(), LANGUAGE_TAP_RELEASE);
+        const std::optional<IntroKey> step = grid_step(
+            *cursor / LANGUAGE_LIST_ROWS, *cursor % LANGUAGE_LIST_ROWS,
+            info.list_entry / LANGUAGE_LIST_ROWS, info.list_entry % LANGUAGE_LIST_ROWS
+        );
+        if (!step){
+            break;
+        }
+        press(context, *step, LANGUAGE_TAP_RELEASE);
     }
     fail(console, std::format("the language list's highlight did not reach {}.", info.tag));
 }
@@ -309,10 +283,6 @@ void pick_look(ConsoleHandle& console, ProControllerContext& context, size_t loo
     if (!wait_for_frame(console, context, check, 20000ms)){
         fail(console, "the look picker did not show within 20 s of the language's A.");
     }
-    const VideoSnapshot picker = snapshot(console, context);
-    if (picker){
-        dump_debug_image(console, std::string(DUMP_FOLDER), "look-picker", picker);
-    }
     size_t unread = 0;
     for (size_t attempt = 0; attempt < 24 && unread <= 6; attempt++){
         const std::optional<size_t> cursor = read_settled_look(console, context);
@@ -326,11 +296,17 @@ void pick_look(ConsoleHandle& console, ProControllerContext& context, size_t loo
             press(context, IntroKey::A, 500ms);
             return;
         }
-        const std::optional<std::vector<IntroKey>> moves = look_picker_moves(*cursor, look);
-        if (!moves || moves->empty()){
+        if (*cursor < 1 || *cursor > LOOK_COUNT || look < 1 || look > LOOK_COUNT){
             break;
         }
-        tilt(context, moves->front());
+        const std::optional<IntroKey> step = grid_step(
+            (*cursor - 1) % LOOK_COLUMNS, (*cursor - 1) / LOOK_COLUMNS,
+            (look - 1) % LOOK_COLUMNS, (look - 1) / LOOK_COLUMNS
+        );
+        if (!step){
+            break;
+        }
+        tilt(context, *step);
     }
     fail(console, std::format("the look picker's highlight was not read on look {}.", look));
 }
@@ -342,25 +318,6 @@ void wait_for_keyboard(ConsoleHandle& console, ProControllerContext& context){
         fail(console, "the name keyboard did not show within 20 s of the look's A.");
     }
     context.wait_for(1000ms);
-}
-
-//  Throws UserSetupError, nothing typed, if the "0/N" counter is below the name's length.
-void check_name_limit(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
-    const VideoSnapshot frame = snapshot(console, context);
-    if (frame){
-        dump_debug_image(console, std::string(DUMP_FOLDER), "keyboard", frame);
-    }
-    const std::optional<size_t> limit = frame ? read_name_keyboard_limit(frame) : std::nullopt;
-    if (!limit){
-        console.log("AutoStory intro: keyboard: the 0/N counter did not read; the language's limit holds.");
-    }else if (*limit < choices.name.size()){
-        throw UserSetupError(console, std::format(
-            "AutoStory: the name keyboard takes {} characters; the player name \"{}\" has {}. Nothing was typed.",
-            *limit, choices.name, choices.name.size()
-        ));
-    }else{
-        console.log(std::format("AutoStory intro: keyboard: takes {} characters.", *limit));
-    }
 }
 
 //  Simplified Chinese's keyboard opens in Pinyin; its English key switches to letters.
@@ -413,7 +370,6 @@ void submit_name(ConsoleHandle& console, ProControllerContext& context){
 
 void type_name(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
     wait_for_keyboard(console, context);
-    check_name_limit(console, context, choices);
     if (choices.language == NewGameLanguage::ChineseSimplified){
         switch_to_letters(console, context);
     }
@@ -456,16 +412,16 @@ void require_new_game_home(ConsoleHandle& console, ProControllerContext& context
         //  HomeMenuDetector misses a dimmed (idle) HOME; B wakes it and does nothing else there.
         console.log("AutoStory intro: HOME not detected; pressing B once to wake a dimmed screen.");
         pbf_press_button(context, BUTTON_B, /*hold=*/80ms, /*release=*/1000ms);
-    }
-    if (!wait_for_frame(console, context, on_home, 2000ms)){
-        throw UserSetupError(
-            console,
-            std::format(
-                "AutoStory: 01.00a starts a new game (no save) from the Switch HOME (PLZA's tile among the first {}). "
-                "It is not on screen; pressed B once to wake the screen, nothing else was pressed. {}",
-                HOME_TILES_SEARCHED, NEW_GAME_BY_HAND_HINT
-            )
-        );
+        if (!wait_for_frame(console, context, on_home, 2000ms)){
+            throw UserSetupError(
+                console,
+                std::format(
+                    "AutoStory: 01.00a starts a new game (no save) from the Switch HOME (PLZA's tile among the first {}). "
+                    "It is not on screen; pressed B once to wake the screen, nothing else was pressed. {}",
+                    HOME_TILES_SEARCHED, NEW_GAME_BY_HAND_HINT
+                )
+            );
+        }
     }
     console.log("AutoStory intro: starting on the Switch HOME.");
 }
@@ -498,28 +454,20 @@ void play_new_game_intro(ConsoleHandle& console, ProControllerContext& context, 
 
 namespace{
 
-//  `dump`: save the frame read to DebugDumps under that name.
 std::optional<size_t> read_confirm_choices_now(
-    ConsoleHandle& console, ProControllerContext& context, Milliseconds window, const std::string& dump
+    ConsoleHandle& console, ProControllerContext& context, Milliseconds window
 ){
-    const WallClock deadline = current_time() + window;
-    while (true){
-        context.wait_for_all_requests();
-        const VideoSnapshot frame = console.video().snapshot();
-        const std::optional<size_t> cursor = frame ? read_confirm_choices_cursor(frame) : std::nullopt;
-        if (cursor || current_time() >= deadline){
-            if (frame){
-                dump_debug_image(console, "PokemonLZA/AutoStory/Intro", dump, frame);
-            }
-            return cursor;
-        }
-        context.wait_for(250ms);
-    }
+    std::optional<size_t> cursor;
+    FrameCheck shows = [&cursor](const ImageViewRGB32& frame){
+        cursor = read_confirm_choices_cursor(frame);
+        return cursor.has_value();
+    };
+    wait_for_frame(console, context, shows, window);
+    return cursor;
 }
 
 void check_profile(ConsoleHandle& console, ProControllerContext& context, const NewGameChoices& choices){
-    context.wait_for_all_requests();
-    const VideoSnapshot frame = console.video().snapshot();
+    const VideoSnapshot frame = snapshot(console, context);
     if (!frame){
         return;
     }
@@ -551,7 +499,7 @@ void check_profile(ConsoleHandle& console, ProControllerContext& context, const 
 
 
 size_t require_confirm_choices(ConsoleHandle& console, ProControllerContext& context){
-    const std::optional<size_t> cursor = read_confirm_choices_now(console, context, /*window=*/2000ms, "confirm-choices");
+    const std::optional<size_t> cursor = read_confirm_choices_now(console, context, /*window=*/2000ms);
     if (!cursor){
         throw UserSetupError(
             console,
@@ -575,7 +523,7 @@ void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& cont
         }
         console.log("AutoStory intro: Confirm Choices: DOWN.");
         pbf_press_dpad(context, DPAD_DOWN, /*hold=*/160ms, /*release=*/500ms);
-        cursor = read_confirm_choices_now(console, context, /*window=*/1000ms, "confirm-choices-moved");
+        cursor = read_confirm_choices_now(console, context, /*window=*/1000ms);
         if (cursor){
             console.log(std::format("AutoStory intro: Confirm Choices: the highlight is on row {}.", *cursor));
         }
@@ -590,30 +538,11 @@ void confirm_new_game_choices(ConsoleHandle& console, ProControllerContext& cont
 
 namespace{
 
-
 constexpr Milliseconds HOME_TILE_RELEASE = 500ms;
 
 bool highlighted_tile_is_plza(ConsoleHandle& console, ProControllerContext& context){
-    context.wait_for_all_requests();
-    const VideoSnapshot frame = console.video().snapshot();
+    const VideoSnapshot frame = snapshot(console, context);
     return frame && is_home_tile_plza(frame);
-}
-
-} // namespace
-
-
-namespace{
-
-std::optional<size_t> find_plza_tile(MoveOnlyFunction<bool()> highlighted_is_plza, MoveOnlyFunction<void()> move_right){
-    for (size_t tile = 0; tile < HOME_TILES_SEARCHED; tile++){
-        if (tile > 0){
-            move_right();
-        }
-        if (highlighted_is_plza()){
-            return tile;
-        }
-    }
-    return std::nullopt;
 }
 
 } // namespace
@@ -628,10 +557,16 @@ void launch_plza_from_home(ConsoleHandle& console, ProControllerContext& context
     close_game_from_home(console, context);
 
     pbf_press_button(context, BUTTON_HOME, /*hold=*/160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
-    const std::optional<size_t> tile = find_plza_tile(
-        [&]{ return highlighted_tile_is_plza(console, context); },
-        [&]{ pbf_press_dpad(context, DPAD_RIGHT, /*hold=*/80ms, HOME_TILE_RELEASE); }
-    );
+    std::optional<size_t> tile;
+    for (size_t index = 0; index < HOME_TILES_SEARCHED; index++){
+        if (index > 0){
+            pbf_press_dpad(context, DPAD_RIGHT, /*hold=*/80ms, HOME_TILE_RELEASE);
+        }
+        if (highlighted_tile_is_plza(console, context)){
+            tile = index;
+            break;
+        }
+    }
     if (!tile){
         throw UserSetupError(
             console,

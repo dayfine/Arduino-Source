@@ -29,7 +29,6 @@ namespace PokemonLZA{
 //  Checkpoints marked by their plan's "execution" block, indexed by id.
 struct MarkedCheckpoints{
     std::set<std::string, std::less<>> autosaves = {};
-    std::set<std::string, std::less<>> unverified_autosaves = {};
     std::set<std::string, std::less<>> reload_when_chained = {};
 };
 

@@ -52,9 +52,6 @@ std::optional<Pokemon::StoryFailure> load_checkpoint_start(Pokemon::StoryGame& g
     if (!game.reload(backend, checkpoint)){
         return Pokemon::StoryFailure{.code = "reload_failed", .detail = "the reload is at no checkpoint's start"};
     }
-    if (!first_step_checks_start(checkpoint)){
-        backend.log(std::format("[Checkpoint] {}: START UNCHECKED: nothing reads this row's own start", checkpoint.id));
-    }
     return std::nullopt;
 }
 

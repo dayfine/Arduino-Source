@@ -308,9 +308,8 @@ const BuiltinCase BUILTIN_CASES[] = {
 };
 
 UnitTestResult check_builtin(const BuiltinCase& test){
-    const std::string from = run_start_id(
-        builtin_story_data().checkpoints, builtin_checkpoint_starts(), test.input.asked, test.input.read
-    );
+    const StoryData& data = builtin_story_data();
+    const std::string from = run_start_id(data.checkpoints, data.starts, test.input.asked, test.input.read);
     if (from != test.expectation.from){
         return std::format("expected {}, got {}", test.expectation.from, from);
     }
@@ -455,7 +454,8 @@ UnitTestResult check_start_frame(const StartFrameCase& test){
         return std::format("{}: read {}: the screen alone must not decide wild_zone", test.input.file, to_string(read));
     }
     read.wild_zone = wild_zone_from_map(test.input.map_pin);
-    const std::string from = run_start_id(builtin_story_data().checkpoints, builtin_checkpoint_starts(), test.input.asked, read);
+    const StoryData& data = builtin_story_data();
+    const std::string from = run_start_id(data.checkpoints, data.starts, test.input.asked, read);
     if (from != test.expectation.from){
         return std::format("{}: read {}: expected {}, got {}", test.input.file, to_string(read), test.expectation.from, from);
     }

@@ -24,9 +24,6 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Turns the player `degrees` clockwise (negative = left) relative to the camera.
-void story_turn(PlzaBackend& backend, double degrees);
-
 //  Reads the minimap arrow heading in degrees (0 = north/up, 90 = east/right).
 using MinimapArrowReader = std::function<double()>;
 
@@ -53,14 +50,8 @@ struct StoryMove{
     Milliseconds wait_first = Milliseconds(0);
 };
 
-//  Executes all legs of `move`. Returns "game_not_running" if HOME is detected.
-std::optional<Pokemon::StoryFailure> run_story_move(PlzaBackend& backend, const StoryMove& move);
-
-//  Executes all legs of `move` except the final leg's walk (played via hold_last_leg()).
-std::optional<Pokemon::StoryFailure> run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move);
-
-//  Holds one `slice` of `move`'s final leg walk.
-void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds slice);
+//  Executes all legs of `move`.
+void run_story_move(PlzaBackend& backend, const StoryMove& move);
 
 //  Waits until the player has sustained free control before starting a walk.
 //  Fails as "walk_not_free" on timeout or "game_not_running" on HOME.
