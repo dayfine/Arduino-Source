@@ -2,9 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Where a run is before it plays a checkpoint: a loaded save can be at an
- *  earlier checkpoint's start than the one asked for. Plans name what the
- *  screen shows at their start (execution "start_signature").
+ *  Start-signature matching used to identify or confirm which checkpoint
+ *  the live game is positioned at before execution.
  *
  */
 
@@ -16,57 +15,47 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  What the screen shows where a checkpoint starts, one cheap reading per
-//  field; none: not known (a plan) or not read (a reading).
+//  Observable screen fields identifying a checkpoint start; std::nullopt means unspecified or unread.
 struct StartSignature{
     std::optional<bool> talk_prompt = std::nullopt;
-    //  In Wild Zone 1, by the map pin: the lead Pokemon's panel also shows on
-    //  the street outside the zone.
     std::optional<bool> wild_zone = std::nullopt;
-    //  Party bar slots: every Main Mission 03 catch is a new species.
     std::optional<size_t> party = std::nullopt;
-    //  The matching_minimap() reference's name. An unmatched minimap reads as
-    //  not read, so a start naming one matches only that reading.
     std::optional<std::string> minimap = std::nullopt;
 
     bool operator==(const StartSignature&) const = default;
 };
 
-//  "talk prompt, not in a wild zone, minimap 03.04-start";
-//  "nothing read" when it has no field.
+//  Formats `signature` for logging, or "nothing read" if all fields are unset.
 std::string to_string(const StartSignature& signature);
 
-//  A plan's execution "start_signature".
+//  Associates a checkpoint id with its declared StartSignature.
 struct CheckpointStart{
     std::string checkpoint;
     StartSignature signature = {};
 };
 
-//  Null if `starts` names none for `id`.
+//  Returns the entry in `starts` for `id`, or nullptr if none exists.
 const CheckpointStart* find_start(std::span<const CheckpointStart> starts, std::string_view id);
 
-//  `asked` (an index of `checkpoints`) when its start matches `read`, else the one
-//  earlier checkpoint whose start matches. A match shares a field and agrees
-//  on all shared fields. None when
-//  no checkpoint, or more than one earlier one, matches.
+//  Returns `asked` if its signature matches `read`, else the unique earlier matching checkpoint index.
+//  Returns std::nullopt if no checkpoint or multiple earlier checkpoints match.
 std::optional<size_t> checkpoint_at(
     std::span<const Pokemon::StoryCheckpoint> checkpoints, std::span<const CheckpointStart> starts,
     size_t asked, const StartSignature& read
 );
 
-//  For a chained run: every field `known` names is read and agrees.
-//  Stricter than checkpoint_at(), which an unread field lets match.
+//  True when every field specified in `known` is present in `read` and equals it.
 bool start_confirmed(const StartSignature& known, const StartSignature& read);
 
-//  None when the pin was not read.
+//  Returns whether `pin` lies inside Wild Zone 1, or std::nullopt if `pin` is unset.
 std::optional<bool> wild_zone_from_map(const std::optional<MapPoint>& pin);
 
 

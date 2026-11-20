@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Where the player stands on the full map (PLUS opens it, B closes it). The map
- *  does not scroll, so the arrow's pixel is the player's position.
+ *  Reads the player's position arrow on the full map screen.
  *
  */
 
@@ -19,9 +18,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The centre of the largest blob of the arrow's saturated blue (at least a third of
-//  the arrow) in Wild Zone 1's window; the cone, lake and water are paler. None on an
-//  empty or tiny frame, or with no arrow.
+//  Returns the player arrow's position in 800 x 450 map coordinates, or std::nullopt if unread.
 std::optional<MapPoint> read_map_pin(const ImageViewRGB32& screen);
 
 

@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Readers of the new game's screens before "Confirm Choices": the language
- *  list, the look picker, the name keyboard, and the name and language shown.
+ *  Detectors and OCR readers for HOME tile selection and new-game setup screens.
  *
  */
 
@@ -21,37 +20,34 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  On HOME, whether the highlighted tile's title (OCR, English) ends in "Z-A".
+//  Returns true if the highlighted Switch HOME tile's title OCR ends with "Z-A".
 bool is_home_tile_plza(const ImageViewRGB32& frame);
 
-//  On the language list, the highlighted entry (numbered down the left column, then
-//  the right); nullopt for any other frame.
+//  Returns the highlighted language-list entry index (column-major), or std::nullopt.
 std::optional<size_t> read_language_list_cursor(const ImageViewRGB32& frame);
 
-//  On the look picker, the highlighted look (1-8); nullopt while none is (as it
-//  opens), while the card moves, and on any other frame.
+//  Returns the highlighted look-picker entry (1..8), or std::nullopt if none is highlighted.
 std::optional<size_t> read_look_picker_cursor(const ImageViewRGB32& frame);
 
-//  The look picker's 2 x 4 portraits on dark blue, highlighted or not.
+//  Returns true when the 2 x 4 look-picker screen is displayed.
 bool is_look_picker(const ImageViewRGB32& frame);
 
-//  The Switch's name keyboard, any layout (Latin, Hangul, Chinese).
+//  Returns true when the Switch system name-entry keyboard is displayed.
 bool is_name_keyboard(const ImageViewRGB32& frame);
 
-//  The limit N from the "0/N" counter under the text field (OCR); nullopt if none reads.
+//  Reads the maximum character limit N from the keyboard's "0/N" counter, or std::nullopt.
 std::optional<size_t> read_name_keyboard_limit(const ImageViewRGB32& frame);
 
-//  The player name "Confirm Choices" shows (OCR, English), spaces dropped; empty
-//  when nothing reads.
+//  Reads the player name shown on Confirm Choices (spaces stripped), or empty string if unread.
 std::string read_confirm_choices_name(const ImageViewRGB32& frame);
 
-//  The language "Confirm Choices" shows, read with OCR in `language`.
+//  Reads the language label shown on Confirm Choices using `language` OCR.
 std::string read_confirm_choices_language(const ImageViewRGB32& frame, Language language);
 
-//  Rows on "Confirm Choices": "Change hair color" (0), "Change look" (1), "Ready!" (2).
+//  Row index of "Ready!" on Confirm Choices (0 = Change hair color, 1 = Change look, 2 = Ready!).
 constexpr size_t CONFIRM_CHOICES_READY_ROW = 2;
 
-//  The highlighted row on "Confirm Choices"; nullopt for any other frame.
+//  Returns the highlighted row on Confirm Choices, or std::nullopt on any other frame.
 std::optional<size_t> read_confirm_choices_cursor(const ImageViewRGB32& frame);
 
 

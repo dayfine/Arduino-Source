@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  StoryPace::RUN holds B with the stick for the whole leg (a press
- *  inside a leg toggles dash) and plays a walk time at run pace.
+ *  Console-backed PlzaBackend, StoryEnv, hooks, and StoryGame factory.
  *
  */
 
@@ -15,20 +14,20 @@
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
+#include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Options/PokemonLZA_BattleAIOption.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetectors.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryAutosaveDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetectors.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionBannerDetectors.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryPlan.h"
@@ -41,26 +40,22 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The console a run plays on.
+//  Console handles and per-run options shared across PLZA AutoStory actions.
 struct StoryEnv{
     SingleSwitchProgramEnvironment& env;
     ProControllerContext& context;
     BattleAIOption& battle_ai;
-    //  The language, look and name 01.00a picks (01.00b checks them).
     NewGameChoices new_game = {};
-    //  Set while a checkpoint before the one where B first runs plays: run
-    //  legs walk at their walk times.
     bool walk_only = false;
 };
 
-//  The console's MinimapArrowReader.
+//  Returns a MinimapArrowReader backed by `env`.
 MinimapArrowReader minimap_arrow(StoryEnv& env);
 
-//  The console's LockOnWatch, as upstream TrainerBattle's attempt_one_attack().
+//  Returns a LockOnWatch backed by `env` that watches for move-effectiveness symbols under ZL.
 LockOnWatch move_symbols_lock_on(StoryEnv& env);
 
-
-//  PLZA on the console.
+//  PlzaBackend implementation driving a live Switch console.
 class PlzaConsoleBackend : public PlzaBackend{
 public:
     explicit PlzaConsoleBackend(StoryEnv& env);
@@ -69,21 +64,18 @@ public:
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
 
-    //  Once the inputs are done. On the Switch's HOME, SWITCH_HOME_MENU alone:
-    //  PLZA's detectors may read its plain screen as the game.
+    //  Waits for pending inputs, snapshots the video feed, and returns events and readings.
+    //  On Switch HOME, reports SWITCH_HOME_MENU only.
     virtual ScreenObservation observe() override;
 
-    //  Also to the stream's overlay log.
+    //  Logs to both console log and stream overlay.
     virtual void log(std::string_view line) override;
-    //  To the console's log only.
+    //  Logs to the console log only.
     virtual void log_detail(std::string_view line) override;
     virtual CancellableScope& scope() override;
 
 private:
-    //  Waits for the queued inputs, or during a run only until just before
-    //  it ends (m_run_end).
     void wait_for_inputs();
-    //  The main menu, its Save button and the map.
     void read_menus(const ImageViewRGB32& frame, ScreenObservation& look);
 
     StoryEnv& m_env;
@@ -98,9 +90,6 @@ private:
     MapDetector m_map;
     SelectionArrowDetector m_save_button;
     VideoSnapshot m_previous;
-    //  When the queued run (B held) ends. A look during a run waits only until
-    //  just before then, so the next slice queues behind it and B never lets go:
-    //  a new press of B inside a leg switches dash off.
     std::optional<WallClock> m_run_end;
 };
 

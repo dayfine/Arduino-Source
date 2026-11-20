@@ -2,6 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
+ *  Detects the main-mission objective marker and reads its distance label.
+ *
  */
 
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryObjectiveMarkerReader_H
@@ -16,15 +18,13 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The objective marker: an orange hexagon "!" with the distance above in white digits.
+//  Detected objective marker horizontal position (normalized 0..1) and optional positive distance.
 struct ObjectiveMarker{
-    //  The hexagon's middle, 0 (left edge) to 1 (right edge).
     double x = 0;
-    //  The digits above it; none when they did not read as a positive number.
     std::optional<int> distance = std::nullopt;
 };
 
-//  The marker on `screen`, if it shows (the minimap's own marker aside).
+//  Returns the on-screen main-mission objective marker (excluding the minimap), or std::nullopt.
 std::optional<ObjectiveMarker> read_objective_marker(Logger& logger, const ImageViewRGB32& screen);
 
 

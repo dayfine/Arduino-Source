@@ -11,7 +11,6 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryPlan_H
 
 #include <optional>
-#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -19,21 +18,14 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
+#include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-struct PlzaConsoleHooks;
-
-
-//  The checkpoints the plans' "execution" blocks mark, by id.
-struct MarkedCheckpoints{
-    std::set<std::string, std::less<>> autosaves = {};
-    std::set<std::string, std::less<>> unverified_autosaves = {};
-    std::set<std::string, std::less<>> reload_when_chained = {};
-};
 
 //  The story's checkpoints in order, and the checkpoints their plans mark.
 struct StoryData : MarkedCheckpoints{

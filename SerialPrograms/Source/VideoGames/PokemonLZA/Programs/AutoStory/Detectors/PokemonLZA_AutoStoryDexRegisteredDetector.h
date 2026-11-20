@@ -2,8 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The banner after catching a new species: a cyan ring around the Pokemon,
- *  "Registered!" over it and a "No.###" tag under it.
+ *  Detector for the Pokedex "Registered!" banner after catching a new species.
  *
  */
 
@@ -19,9 +18,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  The ring's cyan arcs (x 852-872 and 1100-1120, y 140-220 on 1080p) and the slate
-//  "No.###" tag (x 845-945, y 268-298) with white text. Matched Mareep's 2 frames and
-//  none of 553 others.
+//  Detects the new-species Pokedex registration banner.
 class DexRegisteredDetector : public StaticScreenDetector{
 public:
     explicit DexRegisteredDetector(Color color = COLOR_CYAN);

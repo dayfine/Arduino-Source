@@ -2,10 +2,7 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
-  *  Where a walk by the objective marker is, by the marker's distance reads
-  *  with misreads dropped (MarkerDistance), and whether a walk to its prompt
-  *  (walk_to_unread_marker()) is there: an A prompt or a dialog counts only
-  *  near the marker.
+ *  Pure distance filtering and arrival state machine for objective-marker walks.
  *
  */
 
@@ -21,17 +18,14 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Where a walk by the marker is: its last distance read taken.
+//  Filters noisy objective-marker distance readings against an optional lower `floor`.
 class MarkerDistance{
 public:
     explicit MarkerDistance(std::optional<int> floor)
         : m_floor(floor)
     {}
 
-    //  Returns whether `distance` (above 0) is taken: never below the floor;
-    //  else when within 12 of position(), or when two of the last three
-    //  untaken reads agree with it. So the first read needs three that agree,
-    //  and three that agree replace a wrong last one.
+    //  Considers `distance` (> 0); returns true if accepted as the updated position().
     bool read(int distance);
 
     std::optional<int> position() const{
@@ -41,36 +35,30 @@ public:
 private:
     const std::optional<int> m_floor;
     std::optional<int> m_last;
-    std::vector<int> m_untaken;     //  oldest first
+    std::vector<int> m_untaken;
 };
 
-//  What proves the walk is near the objective, so its prompt or dialog is
-//  the objective's.
+//  Evidence level required to treat an interact prompt or dialog as objective arrival.
 enum class MarkerProof{
-    //  A distance read taken at 20 or less.
     NEAR_READ,
-    //  For where the digits do not read: no read over 20 at all, or a read taken at 20 or less.
     NO_FAR_READ,
 };
 
-//  One look on a walk to the objective's prompt.
+//  Single frame observation fed to MarkerArrival::look().
 struct MarkerLook{
-    //  nullopt: no marker, or no digits.
     std::optional<int> distance;
     bool marker_shows = true;
     bool prompt_or_dialog = false;
     WallClock at = {};
 };
 
-//  What came of a look's distance read.
+//  Outcome of evaluating one MarkerLook's distance reading.
 struct MarkerRead{
     bool taken = false;
-    //  Set when a read of 20 or less was dropped as nearer than the walk can
-    //  have come since the last read taken: the time since that read.
     std::optional<Milliseconds> too_fast_after = std::nullopt;
 };
 
-//  Where a walk to the objective's prompt is, one look at a time.
+//  Tracks marker distance and determines when the player has arrived at the objective.
 class MarkerArrival{
 public:
     explicit MarkerArrival(MarkerProof proof)
@@ -78,19 +66,15 @@ public:
         , m_distance(std::nullopt)
     {}
 
-    //  A read below 10 is taken only after one of 10 or more, and one of 20 or
-    //  less only if the walk can have come that near since the last read
-    //  taken: junk OCR near a dialog can agree on a single digit.
+    //  Processes one observation and updates near() / arrived() state.
     MarkerRead look(const MarkerLook& look);
 
-    //  The last look showed a prompt or dialog while near(), and, with the
-    //  marker still up, the last read is below 10 or none: a scene at the
-    //  objective takes the marker away before its dialog.
+    //  True once a prompt or dialog was observed while near() under arrival rules.
     bool arrived() const{
         return m_arrived;
     }
 
-    //  Whether the MarkerProof holds.
+    //  True when the configured MarkerProof currently holds.
     bool near() const;
 
     std::optional<int> position() const{
@@ -101,8 +85,8 @@ private:
     const MarkerProof m_proof;
     MarkerDistance m_distance;
     WallClock m_taken_at = {};
-    bool m_far_digits = false;      //  digits over 20 read on some look
-    bool m_double_digits = false;   //  a read of 10 or more taken
+    bool m_far_digits = false;
+    bool m_double_digits = false;
     bool m_arrived = false;
 };
 
