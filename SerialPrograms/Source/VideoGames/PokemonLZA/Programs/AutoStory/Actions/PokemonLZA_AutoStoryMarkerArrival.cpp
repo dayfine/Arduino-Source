@@ -13,6 +13,43 @@ namespace PokemonLZA{
 
 namespace{
 
+bool reads_agree(int a, int b){
+    return a >= b - 12 && a <= b + 12;
+}
+
+constexpr size_t AGREEING_UNTAKEN = 2;
+constexpr size_t UNTAKEN_KEPT = 3;
+
+} // namespace
+
+
+bool MarkerDistance::read(int distance){
+    if (m_floor && distance < *m_floor){
+        return false;
+    }
+    if (!m_last || !reads_agree(distance, *m_last)){
+        size_t agreeing = 0;
+        for (int untaken : m_untaken){
+            if (reads_agree(distance, untaken)){
+                agreeing++;
+            }
+        }
+        if (agreeing < AGREEING_UNTAKEN){
+            if (m_untaken.size() == UNTAKEN_KEPT){
+                m_untaken.erase(m_untaken.begin());
+            }
+            m_untaken.push_back(distance);
+            return false;
+        }
+    }
+    m_untaken.clear();
+    m_last = distance;
+    return true;
+}
+
+
+namespace{
+
 //  The lab gate's scene takes the marker away at 13 or less; stray street
 //  prompts came at 44 or more.
 constexpr int MARKER_NEAR = 20;

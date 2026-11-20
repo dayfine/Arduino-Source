@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <string_view>
 #include "PokemonLZA_AutoStorySpeciesCheck.h"
 
 namespace PokemonAutomation{
@@ -12,16 +13,9 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-SpeciesTally species_tally(const GrassCatches& patrol, int wanted){
-    if (patrol.found >= wanted){
-        return patrol.found_by_plate > 0 ? SpeciesTally::INFERRED : SpeciesTally::BANNERS;
-    }
-    if (patrol.found == 0 && patrol.throws == 0 && patrol.caught_seen > 0){
-        return SpeciesTally::INFERRED;
-    }
-    return SpeciesTally::SHORT;
-}
+namespace{
 
+//  For the log.
 std::string_view species_tally_text(SpeciesTally tally){
     switch (tally){
     case SpeciesTally::BANNERS:
@@ -32,6 +26,19 @@ std::string_view species_tally_text(SpeciesTally tally){
         return "short";
     }
     return "?";
+}
+
+} // namespace
+
+
+SpeciesTally species_tally(const GrassCatches& patrol, int wanted){
+    if (patrol.found >= wanted){
+        return patrol.found_by_plate > 0 ? SpeciesTally::INFERRED : SpeciesTally::BANNERS;
+    }
+    if (patrol.found == 0 && patrol.throws == 0 && patrol.caught_seen > 0){
+        return SpeciesTally::INFERRED;
+    }
+    return SpeciesTally::SHORT;
 }
 
 bool enough_species(SpeciesTally tally, std::optional<int> dex_count, int dex_needed){

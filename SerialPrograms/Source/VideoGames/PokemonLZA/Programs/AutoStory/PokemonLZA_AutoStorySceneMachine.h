@@ -43,6 +43,10 @@ struct SceneMachineConfig{
     //  gets ZL held while `lock_on` watches for the move symbols, then up to
     //  4 quarter turns + L. A cutscene (moving, no party bar) gets no ZL.
     bool stop_at_battle = false;
+    //  Ends at the battle HUD (battle_filter()) as battle_on_screen_failure(),
+    //  for a step before the checkpoint's battle step: a trainer's battle can
+    //  start before the plan's walk to them (03.02b), and A there is a move.
+    bool end_at_battle = false;
     //  None: no lock-on (a backend that models none).
     std::optional<LockOnWatch> lock_on = std::nullopt;
     //  For text and screens no detector reads: B where A does something else
@@ -52,6 +56,8 @@ struct SceneMachineConfig{
     //  Fails ("scene_never_started") when the HUD shows this long with no
     //  scene: the player is not at the trigger.
     std::optional<Milliseconds> start_window = std::nullopt;
+    //  Ends at a black fade (01.01's, that opens the president's ad).
+    bool end_on_black_fade = false;
 };
 
 //  Text, a choice, a battle, a tutorial card, or with no HUD up a fade or a
@@ -72,12 +78,10 @@ std::string describe_scene_look(const ScreenObservation& look);
 
 //  Presses through scenes until the party bar, the controls hint or an A
 //  prompt (none under a text box) holds 1 s. Each look: a choice takes its
-//  top row, but B when it shows again (same row count) after A took it:
-//  A would loop the talk (03.05's nurse, healing again); A if it is still
-//  up after that B (03.11's Mable asks two questions). A map gets B, a
-//  tutorial card A; text and anything else A, but B on a look with a sign
-//  of control and on every look once one has shown in the scene: A there
-//  starts a talk (03.02b's Vinci loop). Fades only wait.
+//  top row (Up to it, then A). A map gets B, a tutorial card A; text and
+//  anything else A, but B on a look with a sign of control and on every
+//  look once one has shown in the scene: A there starts a talk (03.02b's
+//  Vinci loop). Fades only wait.
 //  Fails as "scene_never_started", "scene_ended_in_control" or
 //  "scene_timeout" (by the looks' time); `step` is "<checkpoint>/<step>".
 std::optional<Pokemon::StoryFailure> run_scene_machine(

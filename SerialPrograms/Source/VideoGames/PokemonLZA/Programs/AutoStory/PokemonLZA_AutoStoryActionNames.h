@@ -35,6 +35,8 @@ enum class PlzaAction{
     SCENE,
     MASH,
     MASH_TO_MOVE_HINTS,
+    //  Plus on a cutscene once its opening black fade ends.
+    PLUS_SKIP,
     TEXT_TO_CHOICE,
     STORY_BATTLE_START,
     STORY_BATTLE,

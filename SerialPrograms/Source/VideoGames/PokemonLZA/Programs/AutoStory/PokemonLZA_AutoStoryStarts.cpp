@@ -21,9 +21,6 @@ using Pokemon::StoryCheckpoint;
 
 std::string to_string(const StartSignature& signature){
     std::vector<std::string> parts;
-    if (signature.registered){
-        parts.push_back(std::format("registered {}", *signature.registered));
-    }
     if (signature.talk_prompt){
         parts.push_back(*signature.talk_prompt ? "talk prompt" : "no talk prompt");
     }
@@ -72,7 +69,6 @@ bool start_matches(const StartSignature& known, const StartSignature& read){
         return false;
     }
     const std::optional<bool> fields[] = {
-        field_agrees(known.registered, read.registered),
         field_agrees(known.talk_prompt, read.talk_prompt),
         field_agrees(known.wild_zone, read.wild_zone),
         field_agrees(known.party, read.party),

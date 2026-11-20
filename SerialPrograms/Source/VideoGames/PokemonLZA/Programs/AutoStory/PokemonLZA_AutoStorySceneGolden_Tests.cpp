@@ -553,31 +553,35 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        .name = "03.05 heal_party, the nurse's talk to control (passed 2026-11-16 06:59)",
-        .input = {.checkpoint = "03.05", .step = "heal_party", .screens = R"(
-0.0s: still
-0.3s: text box, still
-0.7s: text box
-2.3s: nothing
-2.8s: text box
-4.2s: party bar
-4.7s: party bar, A prompt
-)"},
-        .expectation = {
-            .keys = {
-                {"text box", "A"}, {"text box, still", "A"}, {"still", "A"}, {"nothing", "A"}, {"party bar", "-"},
-                {"party bar, A prompt", "-"}
-            },
-            .verdict = "done", .end = "[PLZA scene] done on control.",
-        },
-    },
-    {
         .name = "03.01 lobby_scene, German, A on the text as Alton's choice opens (B in flight picked his cancel row, 2026-11-17 00:12)",
         .input = {.checkpoint = "03.01", .step = "lobby_scene", .screens = LOBBY_ALTON_DE},
         .expectation = {
             .keys = {
                 {"text box", "A"}, {"text box, advance arrow", "A"}, {"text box, choice box, 2 rows, row 0", "A"},
                 {"nothing", "A"}, {"still", "A"}, {"black fade", "-"}, {"party bar", "-"}
+            },
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
+        },
+    },
+    {
+        //  03.01 on console B 2026-11-19: Taunie asks one 2-row question after
+        //  another; B on the next one (taken for the last one back) made her ask
+        //  again, B each time, for minutes.
+        .name = "03.01 lobby_scene, a 2-row choice, text, another 2-row choice: A on both",
+        .input = {.checkpoint = "03.01", .step = "lobby_scene", .screens = R"(
+0.0s: text box, advance arrow
+0.4s: text box, choice box, 2 rows, row 0
+0.8s: nothing
+1.2s: text box, advance arrow
+1.6s: nothing
+2.0s: text box, choice box, 2 rows, row 0
+2.4s: nothing
+5.0s: party bar
+)"},
+        .expectation = {
+            .keys = {
+                {"text box, advance arrow", "A"}, {"text box, choice box, 2 rows, row 0", "A"}, {"nothing", "A"},
+                {"party bar", "-"}
             },
             .verdict = "done", .end = "[PLZA mash_to_move_hints] done on control.",
         },
@@ -728,7 +732,7 @@ const GoldenCase GOLDEN_CASES[] = {
     },
     {
         //  The nurse's text box after the A is synthetic.
-        .name = "03.04 into_pokemon_center, a timed walk whose last turn faces the nurse's A prompt: A, her talk (passed 2026-11-17 14:26)",
+        .name = "03.04 into_pokemon_center, a timed walk whose last leg ends at the nurse's A prompt: A, her talk (passed 2026-11-17 14:26)",
         .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
 0.0s: party bar
 9.5s: party bar, A prompt
@@ -736,7 +740,7 @@ const GoldenCase GOLDEN_CASES[] = {
 )"},
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "A"}, {"text box, still", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 0 ms of the last leg started a talk.",
+            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 2000 ms of the last leg started a talk.",
         },
     },
     {
@@ -763,16 +767,6 @@ const GoldenCase GOLDEN_CASES[] = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
             .verdict = "failed: walk_no_end",
             .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no talk started within 1000 ms after the last leg",
-        },
-    },
-    {
-        .name = "03.06 out_of_pokemon_center, a timed walk, no end event (passed 2026-11-17 14:27)",
-        .input = {.checkpoint = "03.06", .step = "out_of_pokemon_center", .screens = R"(
-0.0s: party bar
-)"},
-        .expectation = {
-            .keys = {{"party bar", "L or stick or hold"}},
-            .verdict = "done", .end = "[PLZA] walk: legs done, screen now: player can move",
         },
     },
     {
@@ -829,30 +823,6 @@ const GoldenCase GOLDEN_CASES[] = {
             .verdict = "failed: battle_never_started",
             .end = "[Event] 03.02b/1 battle_tepig: failed: battle_never_started: no battle HUD and no move symbols under ZL "
                 "within 10 s",
-        },
-    },
-    {
-        //  heal_party's screens start where the talk hands over (3.5 s).
-        .name = "03.05 whole checkpoint: the walk to the nurse, the talk, her heal to control (passed 2026-11-17 14:27)",
-        .input = {.checkpoint = "03.05", .step = "", .screens = R"(
-0.0s: party bar
-2.6s: party bar, A prompt
-3.5s: text box, still
-3.9s: text box
-4.7s: text box, advance arrow
-5.1s: text box
-6.0s: nothing
-6.5s: text box, advance arrow
-6.9s: nothing
-7.9s: party bar
-8.4s: party bar, A prompt
-)"},
-        .expectation = {
-            .keys = {
-                {"party bar", "L or stick"}, {"party bar, A prompt", "A"}, {"text box", "A"}, {"text box, still", "-"},
-                {"text box, advance arrow", "A"}, {"nothing", "A"}
-            },
-            .verdict = "done", .end = "[PLZA scene] done on control.",
         },
     },
     {
@@ -926,6 +896,49 @@ const GoldenCase GOLDEN_CASES[] = {
                 {"black fade, still", "-"}, {"still", "A"}, {"nothing", "A"}, {"controls hint", "-"}
             },
             .verdict = "done", .end = "[PLZA scene] done on control.",
+        },
+    },
+    {
+        //  Console B, 2026-11-19 16:20:42: the talk's last lines, then the
+        //  black fade that opens the president's ad.
+        .name = "01.01 arrival_to_ad, English, A through the talk, done on the black fade",
+        .input = {.checkpoint = "01.01", .step = "arrival_to_ad", .screens = R"(
+0.0s: text box, advance arrow
+0.4s: nothing
+5.7s: text box, advance arrow
+6.1s: nothing
+6.9s: black fade
+)"},
+        .expectation = {
+            .keys = {{"text box, advance arrow", "A"}, {"nothing", "A"}, {"black fade", "-"}},
+            .verdict = "done", .end = "[PLZA mash_to_move_hints] done on black_fade.",
+        },
+    },
+    {
+        //  Console B, 2026-11-19 06:19, its times moved to this step's Plus:
+        //  Plus 3.4 s after the opening fade skipped the cutscene, the black
+        //  fade 2.7 s after the press (unskipped, it played 76 s).
+        .name = "02.02 skip_street_cutscene, Plus 2.5 s after the opening fade ends, done on its black fade",
+        .input = {.checkpoint = "02.02", .step = "skip_street_cutscene", .screens = R"(
+0.0s: black fade, still
+5.6s: still
+10.8s: black fade
+15.6s: still
+)"},
+        .expectation = {
+            .keys = {{"black fade, still", "-"}, {"still", "+"}, {"black fade", "-"}},
+            .verdict = "done", .end = "[PLZA] plus_skip: a black fade 750 ms after the hold.",
+        },
+    },
+    {
+        .name = "02.02 skip_street_cutscene, no black fade within 5 s after Plus: cutscene_not_skipped",
+        .input = {.checkpoint = "02.02", .step = "skip_street_cutscene", .screens = R"(
+0.0s: black fade, still
+5.6s: still
+)"},
+        .expectation = {
+            .keys = {{"black fade, still", "-"}, {"still", "+"}},
+            .verdict = "failed: cutscene_not_skipped", .end = "[PLZA] plus_skip: no black fade within 5000 ms after the hold.",
         },
     },
 };

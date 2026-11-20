@@ -10,10 +10,10 @@
     "events": [
       {
         "id": "into_pokemon_center",
-        "why": "into the Pokemon Center to the nurse's \"A Talk\": the -90 run ends against the back wall at the counter's end, the 90 faces the nurse; A on her \"A Talk\". The 20 leg turns in clear of the wall left of the Center's opening (2000 ran into it 4 of 6 times, console B 2026-11-19). not planned: no tile grid in Lumiose",
+        "why": "into the Pokemon Center to the nurse's \"A Talk\": the -90 run ends against the back wall at the counter's end; A on her \"A Talk\". The 20 leg turns in clear of the wall left of the Center's opening (2000 ran into it 4 of 6 times, console B 2026-11-19). not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
-          "legs": [[0, 3000], [20, 2200], [-90, 2000], [90, 0]],
+          "legs": [[0, 3000], [20, 2400], [-90, 2000]],
           "end": "talk"
         }
       },

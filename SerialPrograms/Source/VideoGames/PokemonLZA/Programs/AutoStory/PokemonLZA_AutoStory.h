@@ -52,7 +52,6 @@ private:
     SimpleIntegerOption<uint8_t> PLAYER_LOOK;
     StringOption PLAYER_NAME;
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
-    SimpleIntegerOption<uint8_t> REWINDS_TO_BACKUP;
     BooleanCheckBoxOption LOAD_SAVE_FIRST;
     BooleanCheckBoxOption RECORD_START_MINIMAPS;
     StringOption RELOAD_PROBE_AFTER;
