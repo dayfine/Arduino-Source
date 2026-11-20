@@ -61,7 +61,7 @@ enum class SceneScreen{
     FADE,           //  waits: a fade decides nothing
     CHOICE_END,     //  terminal, with stop_at_choice
     CHOICE,         //  A on its top row
-    CHOICE_AGAIN,   //  B: the choice A took shows again (the nurse's menu after her heal)
+    CHOICE_AGAIN,   //  B once: the choice A took shows again (the nurse's menu after her heal)
     TEXT,           //  A, or B (text_button())
     MAP,            //  B
     LOCK_ON,        //  ZL held while config.lock_on watches
@@ -209,8 +209,10 @@ public:
 
 private:
     SceneScreen classify_rest(const ScreenObservation& look) const;
-    //  The choice A took, by its row count, back after a look without it:
-    //  A again would loop the talk (the nurse heals again).
+    //  The choice A took, by its row count, back after a look without it
+    //  and no B on it yet: A again would loop the talk (the nurse heals
+    //  again). Still up after that B, B does nothing there (Mable's second
+    //  question in 03.11): A takes it.
     bool choice_came_back(const ScreenObservation& look) const;
     void record_choice(SceneScreen screen, const ScreenObservation& look);
     //  text_a_to_choice: a new page (its advance arrow came or went, or
@@ -222,11 +224,12 @@ private:
 
     SceneMachineConfig m_config;
     WallClock m_start;
-    //  The last choice A took in the scene, by its row count, and whether
-    //  a look without it came since.
+    //  The last choice A took in the scene, by its row count; whether a
+    //  look without it came since, and whether B was pressed on it since.
     struct TakenChoice{
         int rows = 0;
         bool gone = false;
+        bool b_pressed = false;
     };
     std::optional<TakenChoice> m_taken_choice;
     bool m_scene_seen = false;
@@ -297,7 +300,8 @@ SceneScreen SceneTimeline::classify_control(const ScreenObservation& look) const
 
 bool SceneTimeline::choice_came_back(const ScreenObservation& look) const{
     const auto rows = look.readings.find(CHOICE_ROWS_READING);
-    return m_taken_choice && m_taken_choice->gone && rows != look.readings.end() && rows->second == m_taken_choice->rows;
+    return m_taken_choice && m_taken_choice->gone && !m_taken_choice->b_pressed &&
+        rows != look.readings.end() && rows->second == m_taken_choice->rows;
 }
 
 bool SceneTimeline::lock_on_due(const ScreenObservation& look) const{
@@ -347,16 +351,22 @@ void SceneTimeline::record(SceneScreen screen, const ScreenObservation& look){
 }
 
 void SceneTimeline::record_choice(SceneScreen screen, const ScreenObservation& look){
+    if (screen == SceneScreen::CHOICE_AGAIN){
+        m_taken_choice->b_pressed = true;
+        return;
+    }
     if (screen != SceneScreen::CHOICE){
-        if (m_taken_choice && screen != SceneScreen::CHOICE_AGAIN){
+        //  B closed it: should it come back, B again.
+        if (m_taken_choice){
             m_taken_choice->gone = true;
+            m_taken_choice->b_pressed = false;
         }
         return;
     }
     const auto rows = look.readings.find(CHOICE_ROWS_READING);
     const auto selected = look.readings.find(CHOICE_SELECTED_READING);
     if (rows != look.readings.end() && selected != look.readings.end() && selected->second == 0){
-        m_taken_choice = TakenChoice{.rows = rows->second, .gone = false};
+        m_taken_choice = TakenChoice{.rows = rows->second, .gone = false, .b_pressed = false};
     }
 }
 
