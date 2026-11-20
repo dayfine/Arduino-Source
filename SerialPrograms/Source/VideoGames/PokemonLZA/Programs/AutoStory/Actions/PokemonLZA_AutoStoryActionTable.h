@@ -23,6 +23,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
 #include "PokemonLZA_AutoStoryHeading.h"
+#include "PokemonLZA_AutoStoryMoves.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -50,8 +51,8 @@ struct PlzaConsoleHooks{
     PlzaBattleRunner battle = {};
     //  Where a menu save counts as an autosave; none: nowhere.
     AutosaveSightings* sightings = nullptr;
-    //  The stick heading of a walk with "turn_to_starter" (01.03's starter pick).
-    double starter_turn = -70;
+    //  The walk with "to_starter" (01.03's starter pick); none: the plan's legs.
+    std::optional<StoryMove> starter_move = std::nullopt;
 };
 
 //  Every action a PLZA checkpoint may name, bound to `hooks`, which must

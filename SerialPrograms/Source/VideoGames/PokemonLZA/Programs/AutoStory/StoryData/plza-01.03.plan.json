@@ -10,12 +10,12 @@
     "events": [
       {
         "id": "approach_starter",
-        "why": "to the chosen starter's \"A Talk\" prompt and A on it; the turn is the Starter option's heading. not planned: no tile grid in Lumiose",
+        "why": "to the chosen starter's \"A Talk\" prompt and A on it; the legs are Chikorita's; the Starter option's own walk replaces them. not planned: no tile grid in Lumiose",
         "action": "walk",
         "args": {
           "legs": [[-70, 1500]],
           "end": "talk",
-          "turn_to_starter": true
+          "to_starter": true
         }
       },
       {

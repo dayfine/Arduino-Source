@@ -115,8 +115,8 @@ struct WalkArgs{
     std::optional<double> heading = std::nullopt;
     //  "end": "talk": the walk starts the talk at the prompt it reaches.
     bool into_talk = false;
-    //  The first leg turns toward the chosen starter.
-    bool turn_to_starter = false;
+    //  The chosen starter's walk replaces the legs, if it has one.
+    bool to_starter = false;
 };
 
 //  [[turn degrees, walk ms], ...]
@@ -133,12 +133,12 @@ std::vector<StoryWalkLeg> read_legs(const JsonArray& rows){
 }
 
 WalkArgs read_walk_args(const JsonObject& args){
-    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading", "turn_to_starter"});
+    reject_unknown_keys(args, {"legs", "end", "held", "wait_ms", "end_after_ms", "heading", "to_starter"});
     WalkArgs walk;
     walk.move.legs = read_legs(args.get_array_throw("legs"));
-    walk.turn_to_starter = flag(args, "turn_to_starter");
-    if (walk.turn_to_starter && walk.move.legs.empty()){
-        throw ParseException("\"turn_to_starter\" needs a leg to turn");
+    walk.to_starter = flag(args, "to_starter");
+    if (walk.to_starter && walk.move.legs.empty()){
+        throw ParseException("\"to_starter\" needs the legs of the starter with no walk of its own");
     }
     if (flag(args, "held")){
         walk.move.style = StoryWalkStyle::HELD;
@@ -167,10 +167,12 @@ WalkArgs read_walk_args(const JsonObject& args){
     return walk;
 }
 
-//  With "turn_to_starter", the first leg turns to hooks.starter_turn.
+//  With "to_starter", hooks.starter_move replaces the legs.
 WalkArgs aimed_at_starter(PlzaConsoleHooks& hooks, WalkArgs walk){
-    if (walk.turn_to_starter){
-        walk.move.legs.front().turn = hooks.starter_turn;
+    if (walk.to_starter && hooks.starter_move){
+        const Milliseconds wait_first = walk.move.wait_first;
+        walk.move = *hooks.starter_move;
+        walk.move.wait_first = wait_first;
     }
     return walk;
 }

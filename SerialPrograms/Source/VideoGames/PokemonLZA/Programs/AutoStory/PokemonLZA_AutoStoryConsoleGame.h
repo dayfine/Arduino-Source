@@ -22,8 +22,9 @@ namespace PokemonLZA{
 
 //  The console's hooks: its actions, the minimap arrow, lock-on and
 //  battle code. `env` and `sightings` must outlive them.
-//  `starter_turn`: the stick heading from 01.03's start to the starter picked.
-PlzaConsoleHooks plza_console_hooks(StoryEnv& env, AutosaveSightings& sightings, double starter_turn);
+//  `starter_move`: the walk from 01.03's start to the starter picked; none:
+//  the plan's legs.
+PlzaConsoleHooks plza_console_hooks(StoryEnv& env, AutosaveSightings& sightings, std::optional<StoryMove> starter_move);
 
 //  plza_story_game() with the console's reload of the latest save, which
 //  says the game is at the failed checkpoint's start. `env` and
