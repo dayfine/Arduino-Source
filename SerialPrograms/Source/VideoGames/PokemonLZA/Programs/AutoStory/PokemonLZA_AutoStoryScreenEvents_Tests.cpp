@@ -7,8 +7,10 @@
  */
 
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
+#include <utility>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
@@ -58,7 +60,10 @@ struct FrameCase{
     };
     Input input;
     struct Expectation{
-        PromptAndControl events;
+        std::optional<bool> interact_prompt = std::nullopt;
+        std::optional<bool> can_move = std::nullopt;
+        std::optional<bool> battle = std::nullopt;
+        std::optional<bool> dialog = std::nullopt;
     };
     Expectation expectation;
 };
@@ -68,39 +73,24 @@ const FrameCase FRAME_CASES[] = {
         //  No D-pad arrows; the empty slot frames show the bar is up.
         .name = "the elevator's A prompt over the party bar of one",
         .input = {.path = "AutoStoryScreenEvents/za2_m3v_s1.png"},
-        .expectation = {.events = {.interact_prompt = true, .can_move = true}},
+        .expectation = {.interact_prompt = true, .can_move = true},
     },
     {
         //  01.02: no Pokemon, no party bar.
         .name = "the A Talk prompt on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
-        .expectation = {.events = {.interact_prompt = true, .can_move = false}},
+        .expectation = {.interact_prompt = true, .can_move = false},
     },
     {
         .name = "the party bar of one Pokemon: five empty slot frames, no D-pad arrows",
         .input = {.path = "AutoStoryScreenEvents/de_0205_lobby_start_party1.png"},
-        .expectation = {.events = {.interact_prompt = false, .can_move = true}},
+        .expectation = {.interact_prompt = false, .can_move = true},
     },
     {
         .name = "the party bar of four over a sunlit road",
         .input = {.path = "AutoStoryScreenEvents/it_0308_zone1_road_no_battle.png"},
-        .expectation = {.events = {.interact_prompt = false, .can_move = true}},
+        .expectation = {.interact_prompt = false, .can_move = true},
     },
-};
-
-struct BattleFrameCase{
-    std::string name;
-    struct Input{
-        std::string_view path;  //  In CommandLineTests/PokemonLZA/.
-    };
-    Input input;
-    struct Expectation{
-        bool battle = false;
-    };
-    Expectation expectation;
-};
-
-const BattleFrameCase BATTLE_FRAME_CASES[] = {
     {
         .name = "a battle with the player not locked on: the panel, no move hints",
         .input = {.path = "AutoStoryScreenEvents/it_0302b_battle_no_lock_on.png"},
@@ -126,52 +116,35 @@ const BattleFrameCase BATTLE_FRAME_CASES[] = {
         .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_no_battle.png"},
         .expectation = {.battle = false},
     },
-};
-
-UnitTestResult check_battle_frame(const BattleFrameCase& test){
-    const std::string path = std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), test.input.path);
-    PlzaScreenObserver observer;
-    const bool battle = observer.read(ImageRGB32(path)).has(ScreenEvent::BATTLE_STARTED);
-    if (battle != test.expectation.battle){
-        return std::format("{}: expected battle {}, got {}", test.input.path, test.expectation.battle ? "yes" : "no", battle ? "yes" : "no");
-    }
-    return true;
-}
-
-struct DialogFrameCase{
-    std::string name;
-    struct Input{
-        std::string_view path;  //  In CommandLineTests/PokemonLZA/.
-    };
-    Input input;
-    struct Expectation{
-        bool dialog = false;
-        bool interact_prompt = false;
-    };
-    Expectation expectation;
-};
-
-const DialogFrameCase DIALOG_FRAME_CASES[] = {
     {
         //  Ends 03.09's walk (walk_to_unread_marker()).
         .name = "Ryon's five-species dialog at the lab gate on the Italian game",
         .input = {.path = "AutoStoryScreenEvents/it_0309_lab_gate_ryon_dialog.png"},
-        .expectation = {.dialog = true, .interact_prompt = false},
+        .expectation = {.interact_prompt = false, .dialog = true},
     },
 };
 
-UnitTestResult check_dialog_frame(const DialogFrameCase& test){
+UnitTestResult check_frame(const FrameCase& test){
     const std::string path = std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), test.input.path);
     PlzaScreenObserver observer;
     const ScreenEvents events = observer.read(ImageRGB32(path));
-    const bool dialog = events.has(ScreenEvent::DIALOG_BOX);
-    const bool prompt = events.has(ScreenEvent::INTERACT_PROMPT);
-    if (dialog != test.expectation.dialog || prompt != test.expectation.interact_prompt){
-        return std::format(
-            "{}: expected dialog {}, A prompt {}; got dialog {}, A prompt {}", test.input.path,
-            test.expectation.dialog ? "yes" : "no", test.expectation.interact_prompt ? "yes" : "no",
-            dialog ? "yes" : "no", prompt ? "yes" : "no"
-        );
+    const std::pair<std::string_view, std::pair<ScreenEvent, std::optional<bool>>> checks[] = {
+        {"A prompt", {ScreenEvent::INTERACT_PROMPT, test.expectation.interact_prompt}},
+        {"party bar", {ScreenEvent::PLAYER_CAN_MOVE, test.expectation.can_move}},
+        {"battle", {ScreenEvent::BATTLE_STARTED, test.expectation.battle}},
+        {"dialog", {ScreenEvent::DIALOG_BOX, test.expectation.dialog}},
+    };
+    for (const auto& [label, check] : checks){
+        if (!check.second){
+            continue;
+        }
+        const bool got = events.has(check.first);
+        if (got != *check.second){
+            return std::format(
+                "{}: expected {} {}, got {}", test.input.path, label,
+                *check.second ? "yes" : "no", got ? "yes" : "no"
+            );
+        }
     }
     return true;
 }
@@ -195,15 +168,6 @@ const FolderCase FOLDER_CASES[] = {
         .expectation = {.frames = 8},
     },
 };
-
-UnitTestResult check_frame(const FrameCase& test){
-    const std::string path = std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), test.input.path);
-    const PromptAndControl got = observed(path);
-    if (got != test.expectation.events){
-        return std::format("{}: expected {}, got {}", test.input.path, to_text(test.expectation.events), to_text(got));
-    }
-    return true;
-}
 
 UnitTestResult check_folder(const FolderCase& test){
     const Filesystem::Path folder(std::format("{}PokemonLZA/{}/", UNIT_TEST_RESOURCE_PATH(), test.input.folder));
@@ -232,20 +196,32 @@ UnitTestResult check_folder(const FolderCase& test){
     return true;
 }
 
-
-template <typename Case, UnitTestResult (*check)(const Case&)>
-class CaseTest : public UnitTest{
+class FrameTest : public UnitTest{
 public:
-    CaseTest(std::string_view kind, const Case& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - {}: {}", kind, test.name))
+    explicit FrameTest(const FrameCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - console frame: {}", test.name))
         , m_test(test)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check(m_test);
+        return check_frame(m_test);
     }
 
 private:
-    const Case& m_test;
+    const FrameCase& m_test;
+};
+
+class FolderTest : public UnitTest{
+public:
+    explicit FolderTest(const FolderCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - console frames: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        return check_folder(m_test);
+    }
+
+private:
+    const FolderCase& m_test;
 };
 
 } // namespace
@@ -253,16 +229,10 @@ private:
 
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database){
     for (const FrameCase& test : FRAME_CASES){
-        database.add<CaseTest<FrameCase, check_frame>>("console frame", test);
-    }
-    for (const BattleFrameCase& test : BATTLE_FRAME_CASES){
-        database.add<CaseTest<BattleFrameCase, check_battle_frame>>("battle frame", test);
-    }
-    for (const DialogFrameCase& test : DIALOG_FRAME_CASES){
-        database.add<CaseTest<DialogFrameCase, check_dialog_frame>>("dialog frame", test);
+        database.add<FrameTest>(test);
     }
     for (const FolderCase& test : FOLDER_CASES){
-        database.add<CaseTest<FolderCase, check_folder>>("console frames", test);
+        database.add<FolderTest>(test);
     }
 }
 

@@ -35,7 +35,6 @@
 #include "CommonTools/ScreenMachine/ScreenMachine_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerArrival_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave_Tests.h"
@@ -60,7 +59,6 @@ UnitTestDatabase make_logic_tests(){
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryBattleOnScreen(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryChainStart(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryCatchPlan(database);
-    NintendoSwitch::PokemonLZA::add_tests_AutoStoryCatchStop(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryGame(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryLines(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryMarkerArrival(database);

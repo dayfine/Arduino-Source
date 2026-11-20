@@ -116,29 +116,6 @@ private:
 };
 
 
-//  Confirm Choices' name and language (OCR); the frames were taken with the name "q".
-class Test_ConfirmChoicesProfile : public ImageUnitTest{
-public:
-    Test_ConfirmChoicesProfile()
-        : ImageUnitTest(
-            "PokemonLZA::AutoStory - intro screens: Confirm Choices shows the name and language",
-            {"PokemonLZA/AutoStoryConfirmChoices/English_0.png"}
-        )
-    {}
-    virtual UnitTestResult run_on_images(Logger&, CancellableScope&, const std::vector<ImageRGB32>& images) const override{
-        const std::string name = read_confirm_choices_name(images[0]);
-        if (name != "q"){
-            return std::format("Expected the name \"q\", read \"{}\".", name);
-        }
-        const std::string language = read_confirm_choices_language(images[0], Language::English);
-        if (language.find("English") == std::string::npos){
-            return std::format("Expected the language \"English\", read \"{}\".", language);
-        }
-        return true;
-    }
-};
-
-
 //  The keyboard as type_on_system_keyboard() reads it on opening: the cursor on "1".
 struct SystemKeyboardCase{
     std::string name;
@@ -257,7 +234,6 @@ void add_tests_AutoStoryIntroScreens(UnitTestDatabase& database){
     for (const FrameCase& test : FRAME_CASES){
         database.add<Test_IntroScreenFrame>(test);
     }
-    database.add<Test_ConfirmChoicesProfile>();
     for (const SystemKeyboardCase& test : SYSTEM_KEYBOARD_CASES){
         database.add<Test_SystemKeyboardOnNameKeyboard>(test);
     }

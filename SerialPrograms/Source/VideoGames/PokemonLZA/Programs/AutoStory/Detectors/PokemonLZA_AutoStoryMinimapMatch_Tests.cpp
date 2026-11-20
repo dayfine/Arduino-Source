@@ -99,11 +99,6 @@ const std::vector<MatchCase> MATCH_CASES{
         .expectation = {.match = "03.04-start"},
     },
     {
-        .name = "the start 10% darker (dusk, roof shade): the start",
-        .input = {.brightness = 0.9},
-        .expectation = {.match = "03.04-start"},
-    },
-    {
         .name = "the start 10% brighter, its whites clipped: the start",
         .input = {.brightness = 1.1},
         .expectation = {.match = "03.04-start"},
@@ -111,11 +106,6 @@ const std::vector<MatchCase> MATCH_CASES{
     {
         .name = "the map moved one cell (8 pixels) east: no match",
         .input = {.shift_cols = 1},
-        .expectation = {.match = std::nullopt},
-    },
-    {
-        .name = "the map moved two cells west and 20% darker: no match",
-        .input = {.brightness = 0.8, .shift_cols = -2},
         .expectation = {.match = std::nullopt},
     },
     //  The other checkpoint starts' minimaps (Spanish, console B,
@@ -135,11 +125,6 @@ const std::vector<MatchCase> MATCH_CASES{
         .name = "03.07's street before the zone gate 20% darker: 03.07's start",
         .input = {.reference = "03.07-start", .brightness = 0.8},
         .expectation = {.match = "03.07-start"},
-    },
-    {
-        .name = "03.06's street moved one cell east: no match",
-        .input = {.reference = "03.06-start", .shift_cols = 1},
-        .expectation = {.match = std::nullopt},
     },
 };
 

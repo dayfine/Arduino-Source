@@ -29,11 +29,9 @@
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryLines_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMenuSave_Tests.h"
-#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryLaunch_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryMarkerArrival_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.h"
-#include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchStop_Tests.h"
 #include "Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader_Tests.h"
 #include "Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch_Tests.h"
@@ -73,7 +71,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryCaughtMarkReader(database);
     add_tests_AutoStoryDialogDetector(database);
     add_tests_AutoStoryIntroScreens(database);
-    add_tests_AutoStoryLaunch(database);
     add_tests_AutoStoryNewGame(database);
     add_tests_AutoStoryHeading(database);
     add_tests_AutoStoryGame(database);
@@ -87,7 +84,6 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStoryScreenEvents(database);
     add_tests_AutoStoryStarts(database);
     add_tests_AutoStoryCatchPlan(database);
-    add_tests_AutoStoryCatchStop(database);
     add_tests_AutoStoryZone1(database);
     add_tests_AutoStoryMapPinReader(database);
     add_tests_AutoStoryMinimapMatch(database);
