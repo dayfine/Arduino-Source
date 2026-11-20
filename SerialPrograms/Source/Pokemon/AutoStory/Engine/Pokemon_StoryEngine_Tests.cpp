@@ -37,6 +37,32 @@ struct TestWorld{
     size_t fail_once_calls = 0;
 };
 
+//  Actions exercising jump-ahead and RunState::actions_ahead.
+void add_jump_actions(StoryActions& actions){
+    actions.emplace("jump_to_press_a", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend&, RunState&){
+            return std::optional<StoryFailure>(StoryFailure{
+                .code = "jumped",
+                .detail = "ahead on screen",
+                .resume_at_action = "press_a",
+            });
+        };
+    });
+    actions.emplace("log_ahead", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend& backend, RunState& state){
+            std::string text;
+            for (const std::string& action : state.actions_ahead){
+                if (!text.empty()){
+                    text += ", ";
+                }
+                text += action;
+            }
+            backend.log(std::format("ahead: {}", text));
+            return std::optional<StoryFailure>();
+        };
+    });
+}
+
 //  The test game's actions; none takes args.
 StoryActions test_actions(TestWorld& world){
     StoryActions actions;
@@ -78,6 +104,7 @@ StoryActions test_actions(TestWorld& world){
             return std::optional<StoryFailure>(StoryFailure{.code = "no_fade", .detail = "no white fade in 3 slices"});
         };
     });
+    add_jump_actions(actions);
     return actions;
 }
 
@@ -111,7 +138,7 @@ std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestCheckpoint>& t
     for (const TestCheckpoint& test : tests){
         StoryCheckpoint checkpoint{.id = test.id, .title = "Test", .steps = {}};
         for (const std::string& action : test.actions){
-            checkpoint.steps.push_back(StoryStep{.name = action, .why = "", .run = actions.find(action)->second(JsonObject())});
+            checkpoint.steps.push_back(StoryStep{.name = action, .why = "", .action = action, .run = actions.find(action)->second(JsonObject())});
         }
         checkpoints.push_back(std::move(checkpoint));
     }
@@ -229,6 +256,51 @@ const RangeCase RANGE_CASES[] = {
             .verdict = "failed at 01.01 walk_to_fade: no_fade",
             .inputs = "stick 0deg 500ms walk, stick 0deg 500ms walk, stick 0deg 500ms walk",
             .line = "[Event] 01.01/1 walk_to_fade: failed: no_fade: no white fade in 3 slices",
+        },
+    },
+    {
+        .name = "a jump skips intermediate steps to its target action",
+        .input = {.checkpoints = {{"01.00", {"jump_to_press_a", "fail", "ok", "press_a"}}}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A",
+            .line = "[Event] 01.00: ahead on screen during jump_to_press_a: jumping to press_a, skipping fail, ok",
+        },
+    },
+    {
+        .name = "a jump to the immediate next step skips nothing",
+        .input = {.checkpoints = {{"01.00", {"jump_to_press_a", "press_a"}}}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A",
+            .line = "[Event] 01.00: ahead on screen during jump_to_press_a: jumping to press_a",
+        },
+    },
+    {
+        .name = "a jump whose target action is not ahead fails normally",
+        .input = {.checkpoints = {{"01.00", {"press_a", "jump_to_press_a", "ok"}}}},
+        .expectation = {
+            .verdict = "failed at 01.00 jump_to_press_a: jumped",
+            .inputs = "press A",
+            .line = "[Checkpoint] 01.00: failed at 2 jump_to_press_a: jumped: ahead on screen",
+        },
+    },
+    {
+        .name = "actions_ahead lists only future step actions",
+        .input = {.checkpoints = {{"01.00", {"press_a", "log_ahead", "ok", "fail"}}}},
+        .expectation = {
+            .verdict = "failed at 01.00 fail: scripted_failure",
+            .inputs = "press A",
+            .line = "ahead: fail, ok",
+        },
+    },
+    {
+        .name = "actions_ahead is empty on the last step",
+        .input = {.checkpoints = {{"01.00", {"press_a", "log_ahead"}}}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A",
+            .line = "ahead: ",
         },
     },
 };

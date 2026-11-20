@@ -6,6 +6,9 @@
 
 #include <exception>
 #include <format>
+#include <functional>
+#include <set>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -56,6 +59,32 @@ std::optional<StoryFailure> run_step(
     return failure;
 }
 
+std::set<std::string, std::less<>> actions_after(const StoryCheckpoint& checkpoint, size_t index){
+    std::set<std::string, std::less<>> actions;
+    for (size_t c = index + 1; c < checkpoint.steps.size(); c++){
+        actions.insert(checkpoint.steps[c].action);
+    }
+    return actions;
+}
+
+//  The step after `index` that `failure` resumes at; none: the checkpoint fails.
+//  Logs the jump.
+std::optional<size_t> resume_step(StoryBackend& backend, const StoryCheckpoint& checkpoint, size_t index, const StoryFailure& failure){
+    if (!failure.resume_at_action){
+        return std::nullopt;
+    }
+    std::string skipped;
+    for (size_t c = index + 1; c < checkpoint.steps.size(); c++){
+        const StoryStep& step = checkpoint.steps[c];
+        if (step.action == *failure.resume_at_action){
+            backend.log(event_jump_line(checkpoint.id, failure.detail, checkpoint.steps[index].name, step.name, skipped));
+            return c;
+        }
+        skipped += (skipped.empty() ? "" : ", ") + step.name;
+    }
+    return std::nullopt;
+}
+
 //  One attempt: the steps in order until one fails, then the save when
 //  they passed.
 std::optional<CheckpointFailure> run_once(
@@ -64,8 +93,13 @@ std::optional<CheckpointFailure> run_once(
     const std::string& id = checkpoint.id;
     backend.log(checkpoint_start_line(id, checkpoint.steps.size()));
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
+        state.actions_ahead = actions_after(checkpoint, c);
         std::optional<StoryFailure> failure = run_step(id, c + 1, backend, checkpoint.steps[c], state);
         if (failure){
+            if (const std::optional<size_t> resume = resume_step(backend, checkpoint, c, *failure)){
+                c = *resume - 1;
+                continue;
+            }
             backend.log(checkpoint_failed_line(id, c + 1, checkpoint.steps[c].name, std::format("{}", *failure)));
             return CheckpointFailure{.checkpoint_id = id, .event_index = c, .failure = std::move(*failure)};
         }

@@ -10,6 +10,7 @@
 #define PokemonAutomation_Pokemon_StoryFailure_H
 
 #include <format>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -24,6 +25,10 @@ struct StoryFailure{
     std::string detail = {};
     //  Another attempt would fail the same way, so the engine does not reload.
     bool repeats = false;
+    //  The checkpoint goes on at its next step with this action, when it has
+    //  one, instead of failing (a trainer's battle on screen before the plan's
+    //  walk to them: on to the battle step).
+    std::optional<std::string> resume_at_action = std::nullopt;
 };
 
 //  The code of a step that found the Switch's HOME menu instead of the game.
