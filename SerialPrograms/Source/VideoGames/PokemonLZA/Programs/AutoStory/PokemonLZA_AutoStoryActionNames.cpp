@@ -26,6 +26,7 @@ std::string_view action_name(PlzaAction action){
         {PlzaAction::SCENE, "a"},
         {PlzaAction::MASH, "mash"},
         {PlzaAction::MASH_TO_MOVE_HINTS, "mash_to_move_hints"},
+        {PlzaAction::PLUS_SKIP, "plus_skip"},
         {PlzaAction::TEXT_TO_CHOICE, "text_to_choice"},
         {PlzaAction::STORY_BATTLE_START, "story_battle_start"},
         {PlzaAction::STORY_BATTLE, "story_battle"},
