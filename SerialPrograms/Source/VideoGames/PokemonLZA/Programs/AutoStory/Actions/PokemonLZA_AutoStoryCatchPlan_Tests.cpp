@@ -197,7 +197,7 @@ public:
         const SpeciesCheckCase::Expectation& want = m_case.expectation;
         const SpeciesTally tally = species_tally(in.patrol, 2);
         if (tally != want.tally){
-            return std::format("Expected the tally {}, got {}.", species_tally_text(want.tally), species_tally_text(tally));
+            return std::format("Expected the tally {}, got {}.", static_cast<int>(want.tally), static_cast<int>(tally));
         }
         const bool enough = enough_species(tally, in.dex_count, /*dex_needed=*/5);
         if (enough != want.enough){

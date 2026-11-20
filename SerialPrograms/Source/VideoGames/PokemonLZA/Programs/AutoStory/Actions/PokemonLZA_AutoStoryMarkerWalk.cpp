@@ -11,7 +11,6 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryObjectiveMarkerReader.h"
 #include "PokemonLZA_AutoStoryMarkerArrival.h"
-#include "PokemonLZA_AutoStoryMarkerDistance.h"
 #include "PokemonLZA_AutoStoryMarkerWalk.h"
 
 namespace PokemonAutomation{
