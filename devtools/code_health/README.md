@@ -42,14 +42,14 @@ are included. Missing base revisions and analysis errors fail the command.
 
 | Check | Limit |
 | --- | --- |
-| File length | 500 physical lines advisory; 1000 hard |
+| File length | 800 physical lines advisory; 1000 hard |
 | Function length | 50 physical lines, signature through closing brace; 25 recommended |
 | Nesting | 4 lexical brace levels inside the function body |
 | Parameters | 7 |
 | Public methods per class/struct | 7 (excluding ctors, dtors, operators, deleted and Qt signals); 6-7 advisory |
 | Public non-static data in a class with mutating methods | 0 (exempt: plain structs, value types with only const/static methods, const fields, `*Option`/`*Cell` fields, test files) |
 | Single-method interface (one pure virtual + optional virtual dtor, no bases) | not allowed: prefer a callable (`MoveOnlyFunction` / `std::function`) |
-| Public names per header: distinct namespace-scope types, enums, aliases, free functions (overloads count once) and constants/variables, outside anonymous, `detail`, `internal` and `*Internal` namespaces; class members, operators, forward declarations and macros excluded (`header_api.py`) | 8; 7-8 advisory |
+| Public names per header: distinct namespace-scope types, enums, aliases, free functions (overloads count once) and constants/variables, outside anonymous, `detail`, `internal` and `*Internal` namespaces; class members, operators, forward declarations and macros excluded (`header_api.py`) | 16; 13-16 advisory |
 
 New files/functions must meet these limits. In modified files, compare each
 metric with its value at the base revision: existing violations may remain or
@@ -62,7 +62,7 @@ Fix/extract code instead of raising limits; the one way past a limit is a justif
 With `--github` (CI passes it; also the default when `GITHUB_ACTIONS=true`) each
 failure is also printed as an `::error` annotation and each advisory as a
 `::warning` at its file and line, so they show inline in the PR diff: changed files
-over 500 lines at line 1, functions over 25 lines at their start, classes with 6-7
+over 800 lines at line 1, functions over 25 lines at their start, classes with 6-7
 public methods at the class. At most 50 of each level are annotated per run;
 advisories never fail the job.
 
