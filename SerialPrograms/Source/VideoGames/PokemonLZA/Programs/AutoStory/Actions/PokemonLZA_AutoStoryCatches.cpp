@@ -68,6 +68,10 @@ const BallThrowOptions STORY_THROW{
 constexpr Milliseconds LINES_QUIET(3000);
 constexpr Milliseconds LINES_LIMIT(30000);
 
+//  Right, toward the grass right of the road where the catches were.
+constexpr double SWEEP_STICK_X = 0.5;
+constexpr int SWEEP_ROUNDS = 8;
+
 //  The Run prompt, or the alert bar with the eye while a wild Pokemon
 //  attacks before the partner is out.
 bool wild_battle_on(StoryEnv& env){
@@ -137,8 +141,14 @@ std::optional<Pokemon::StoryFailure> battle_then_catch(StoryEnv& env, PlzaBacken
     for (int round = 0; round < max_rounds; round++){
         const int landed = weaken_target(env, backend);
         if (landed == 0 && round > 0){
-            backend.log(std::format("[PLZA] battle_then_catch: nothing to lock on in round {}: caught", round + 1));
-            return std::nullopt;
+            if (!wild_battle_on(env)){
+                backend.log(std::format("[PLZA] battle_then_catch: nothing to lock on in round {}: caught", round + 1));
+                return std::nullopt;
+            }
+            backend.log(std::format("[PLZA] battle_then_catch: nothing to lock on in round {}, still in battle: sweeping camera", round + 1));
+            if (!lock_on_by_sweep(env.env.console, env.context, SWEEP_STICK_X, SWEEP_ROUNDS)){
+                continue;
+            }
         }
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         throw_ball(env.context, STORY_THROW);
@@ -160,10 +170,6 @@ constexpr size_t PATROL_VISITS = 10;
 //  The lock shows over 1.5 s after ZL at times.
 constexpr Milliseconds LOCK_ON_WAIT(3000);
 constexpr double TARGET_FLICK = 0.8;
-
-//  Right, toward the grass right of the road where the catches were.
-constexpr double SWEEP_STICK_X = 0.5;
-constexpr int SWEEP_ROUNDS = 8;
 
 
 //  After a ZL lock-on the camera looks steeply down: down 1500 ms pins the
@@ -626,16 +632,21 @@ struct Patrol{
     std::optional<std::optional<Pokemon::StoryFailure>> walk_failed;
 };
 
+struct PatrolStart{
+    std::optional<int> slots;
+    size_t first_stop = 0;
+    bool already_at_first = false;
+};
+
 //  A leg that fails stops the patrol. A wild battle that starts on the way
 //  is fought at the next stop.
-Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal, std::optional<int> slots){
+Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal& goal, PatrolStart start){
     const std::vector<int> stops = alternating_stops(CATCH_SPOTS, PATROL_VISITS);
     const WallClock deadline = current_time() + PATROL_LIMIT;
-    Patrol patrol;
-    patrol.party_slots = slots;
+    Patrol patrol{.party_slots = start.slots};
     GrassCatches& result = patrol.catches;
     std::vector<int> caught_at;
-    for (size_t i = 0; i < stops.size() && result.found < goal.new_species && result.throws < goal.max_throws; i++){
+    for (size_t i = start.first_stop; i < stops.size() && result.found < goal.new_species && result.throws < goal.max_throws; i++){
         backend.scope().throw_if_cancelled();
         if (current_time() > deadline){
             backend.log("[PLZA] catch_in_zone: out of time for the patrol");
@@ -646,11 +657,9 @@ Patrol patrol_and_catch(StoryEnv& env, PlzaBackend& backend, const ZoneCatchGoal
             backend.log(std::format("[PLZA] catch_in_zone: no map waypoint for the stop {}: the patrol ends", stops[i]));
             break;
         }
-        //  The first stop is where go_to_zone_spot() ended.
-        if (i > 0){
-            const std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&*waypoint, 1));
-            if (walked){
-                patrol.walk_failed = walked;
+        if (i > start.first_stop || !start.already_at_first){
+            if (std::optional<Pokemon::StoryFailure> walked = walk_map_legs(env, backend, std::span<const MapWaypoint>(&*waypoint, 1))){
+                patrol.walk_failed = std::move(walked);
                 break;
             }
         }
@@ -688,11 +697,19 @@ std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& b
         backend.log("[PLZA] catch_in_zone: the party already holds the species: nothing to catch");
         return std::nullopt;
     }
-    const std::optional<Pokemon::StoryFailure> at_spot = go_to_zone_spot(env, backend, TAUNIE_ROCKS_ROUTE);
-    if (at_spot){
-        return at_spot;
+    PatrolStart start{.slots = slots};
+    if (slots && *slots > 3){
+        //  Already caught a zone species (e.g. reloaded after Scatterbug near 100):
+        //  walk straight from the current pin to the 80 spot without returning to Taunie's rocks.
+        backend.log(std::format("[PLZA] catch_in_zone: party already holds {} species: patrolling straight to the 80 spot", *slots));
+        start.first_stop = 1;
+    }else{
+        if (std::optional<Pokemon::StoryFailure> at_spot = go_to_zone_spot(env, backend, TAUNIE_ROCKS_ROUTE)){
+            return at_spot;
+        }
+        start.already_at_first = true;
     }
-    const Patrol patrol = patrol_and_catch(env, backend, goal, slots);
+    const Patrol patrol = patrol_and_catch(env, backend, goal, start);
     if (patrol.walk_failed){
         return *patrol.walk_failed;
     }

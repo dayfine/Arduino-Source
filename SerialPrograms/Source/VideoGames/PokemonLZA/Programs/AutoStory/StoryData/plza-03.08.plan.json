@@ -24,7 +24,8 @@
     "autosave_step": "catch_more_species",
     "start_signature": {
       "wild_zone": true,
-      "party": 3
+      "party": 3,
+      "party_max": 4
     }
   }
 }

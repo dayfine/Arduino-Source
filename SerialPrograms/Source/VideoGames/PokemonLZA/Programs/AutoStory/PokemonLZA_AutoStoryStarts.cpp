@@ -28,7 +28,11 @@ std::string to_string(const StartSignature& signature){
         parts.push_back(*signature.wild_zone ? "in a wild zone" : "not in a wild zone");
     }
     if (signature.party){
-        parts.push_back(std::format("party {}", *signature.party));
+        if (signature.party_max && *signature.party_max > *signature.party){
+            parts.push_back(std::format("party {}-{}", *signature.party, *signature.party_max));
+        }else{
+            parts.push_back(std::format("party {}", *signature.party));
+        }
     }
     if (signature.minimap){
         parts.push_back(std::format("minimap {}", *signature.minimap));
@@ -64,6 +68,15 @@ std::optional<bool> field_agrees(const std::optional<Type>& known, const std::op
     return *known == *read;
 }
 
+//  None when one of them is missing.
+std::optional<bool> party_agrees(const StartSignature& known, const StartSignature& read){
+    if (!known.party || !read.party){
+        return std::nullopt;
+    }
+    const size_t max_slots = known.party_max.value_or(*known.party);
+    return *read.party >= *known.party && *read.party <= max_slots;
+}
+
 bool start_matches(const StartSignature& known, const StartSignature& read){
     if (known.minimap && known.minimap != read.minimap){
         return false;
@@ -71,7 +84,7 @@ bool start_matches(const StartSignature& known, const StartSignature& read){
     const std::optional<bool> fields[] = {
         field_agrees(known.talk_prompt, read.talk_prompt),
         field_agrees(known.wild_zone, read.wild_zone),
-        field_agrees(known.party, read.party),
+        party_agrees(known, read),
         field_agrees(known.minimap, read.minimap),
     };
     bool shared = false;
@@ -119,8 +132,9 @@ bool start_confirmed(const StartSignature& known, const StartSignature& read){
     const auto agrees = [](const auto& known_field, const auto& read_field){
         return !known_field || known_field == read_field;
     };
+    const bool party_ok = !known.party || party_agrees(known, read).value_or(false);
     return agrees(known.talk_prompt, read.talk_prompt) && agrees(known.wild_zone, read.wild_zone)
-        && agrees(known.party, read.party) && agrees(known.minimap, read.minimap)
+        && party_ok && agrees(known.minimap, read.minimap)
         && (known.talk_prompt || known.wild_zone || known.party || known.minimap);
 }
 
