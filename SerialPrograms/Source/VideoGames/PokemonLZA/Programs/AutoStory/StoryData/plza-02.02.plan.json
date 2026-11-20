@@ -19,8 +19,11 @@
       },
       {
         "id": "street_scene",
-        "why": "a Pokemon drives the trainers off (no battle)",
-        "action": "a"
+        "why": "a Pokemon drives the trainers off (no battle); Plus skips the Floette cutscene",
+        "action": "a",
+        "args": {
+          "skip_with_plus": true
+        }
       },
       {
         "id": "to_battle_zone_gate",

@@ -32,8 +32,11 @@
       },
       {
         "id": "arrival_scenes",
-        "why": "arrival scenes to the MAIN MISSION 01 banner; ends on the controls hint",
-        "action": "mash_to_move_hints"
+        "why": "arrival scenes to the MAIN MISSION 01 banner; ends on the controls hint. Plus skips the president's ad",
+        "action": "mash_to_move_hints",
+        "args": {
+          "skip_with_plus": true
+        }
       }
     ],
     "metadata": {

@@ -208,15 +208,17 @@ std::optional<StoryFailure> walk_step(PlzaConsoleHooks& hooks, const WalkArgs& w
 
 
 //  01.01's arrival takes ~240 s, hence 360 s. "press_a_first": A on the
-//  prompt the walk ended at, to start the talk.
+//  prompt the walk ended at, to start the talk. "skip_with_plus": Plus
+//  skips its cutscene (SceneMachineConfig).
 Pokemon::StoryActionParser move_hints_action(){
     return [](const JsonObject& args) -> StoryStepRun{
-        reject_unknown_keys(args, {"press_a_first"});
-        return [press_a_first = flag(args, "press_a_first")](PlzaBackend& backend, RunState& state){
+        reject_unknown_keys(args, {"press_a_first", "skip_with_plus"});
+        const SceneMachineConfig config{.skip_with_plus = flag(args, "skip_with_plus")};
+        return [press_a_first = flag(args, "press_a_first"), config](PlzaBackend& backend, RunState& state){
             if (press_a_first){
                 press_through_prompt(backend);
             }
-            return run_scene_machine(backend, "mash_to_move_hints", SceneMachineConfig{}, /*timeout=*/360s, state.step);
+            return run_scene_machine(backend, "mash_to_move_hints", config, /*timeout=*/360s, state.step);
         };
     };
 }
@@ -235,10 +237,16 @@ Pokemon::StoryActionParser text_to_choice_action(){
 
 
 //  Fails as "scene_never_started" when the HUD shows 45 s with nothing
-//  else: the player is not at the scene's trigger.
-std::optional<StoryFailure> scene_step(PlzaBackend& backend, RunState& state){
-    const SceneMachineConfig config{.start_window = 45s};
-    return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
+//  else: the player is not at the scene's trigger. "skip_with_plus":
+//  Plus skips its cutscene (SceneMachineConfig).
+Pokemon::StoryActionParser scene_action(){
+    return [](const JsonObject& args) -> StoryStepRun{
+        reject_unknown_keys(args, {"skip_with_plus"});
+        const SceneMachineConfig config{.start_window = 45s, .skip_with_plus = flag(args, "skip_with_plus")};
+        return [config](PlzaBackend& backend, RunState& state){
+            return run_scene_machine(backend, "scene", config, /*timeout=*/120s, state.step);
+        };
+    };
 }
 
 //  B, not A: it closes the menus a talk opens (Mable's mission and reward screens).
@@ -351,7 +359,7 @@ void add_backend_actions(StoryActions& actions, PlzaConsoleHooks& hooks){
         {action_name(PlzaAction::CLIMB_LADDER), no_args([](PlzaBackend& backend, RunState&){ return climb_ladder(backend); })},
         {action_name(PlzaAction::CHOOSE_0), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 0); })},
         {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
-        {action_name(PlzaAction::SCENE), no_args(scene_step)},
+        {action_name(PlzaAction::SCENE), scene_action()},
         {action_name(PlzaAction::MASH), no_args(mash_scene_step)},
         {action_name(PlzaAction::MASH_TO_MOVE_HINTS), move_hints_action()},
         {action_name(PlzaAction::TEXT_TO_CHOICE), text_to_choice_action()},
