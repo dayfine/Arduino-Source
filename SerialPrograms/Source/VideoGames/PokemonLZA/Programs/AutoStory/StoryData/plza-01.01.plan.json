@@ -1,0 +1,48 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "01.01",
+    "title": "The platform to Main Mission 01",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "on_platform",
+        "kind": "game_action",
+        "why": "start check: on the station platform with free control, as 01.00b ends",
+        "action": "wait_for_platform",
+        "args": {
+          "timeout_ms": 10000
+        }
+      },
+      {
+        "id": "platform_to_plaza",
+        "kind": "game_action",
+        "why": "down the platform for 4.5 s, then right, holding the last leg until the white fade into the arrival scenes; 10 s bounds it",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4500], [90, 10000]],
+          "end": "fade_white"
+        }
+      },
+      {
+        "id": "arrival_scenes",
+        "kind": "game_action",
+        "why": "the white title card (~15 s), the text-free city flyover (~20 s), the starters and the girl, \"You're a tourist?\" (top choice), the ad, the loading screen and a fade from black, the rival's talk, a second black fade, Pancham steals the bag, the \"MAIN MISSION 01: get the bag back\" banner, a third black fade, then control (console B, 2026-11-15, English and Italian: fades at ~113 s, ~201 s and ~252 s into the step, the banner before the third). Ends once the third black fade has lifted and settled (the banner detector can miss the banner), or on the controls hint; the next walk waits for control",
+        "action": "mash_to_move_hints",
+        "args": {
+          "end_after_black_fades": 3
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "unverified"
+  }
+}

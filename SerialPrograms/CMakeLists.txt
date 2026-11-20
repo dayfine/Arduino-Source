@@ -117,6 +117,10 @@ if(PA_CORE_ONLY)
     include(cmake/CoreLib.cmake)
     if(PA_LOGIC_TESTS)
         include(cmake/LogicTests.cmake)
+        # PLZA AutoStory's checkpoint files, which its logic tests read.
+        include(cmake/EmbedTextFiles.cmake)
+        pa_embed_text_files(LogicLib Source/VideoGames/PokemonLZA/Programs/AutoStory/StoryData
+            VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
     endif()
     if(COMMAND_LINE_EXE)
         include(Source/CommandLine/CommandLineExecutable.cmake)
@@ -232,6 +236,13 @@ include(cmake/CoreLib.cmake)
 
 # Create the GUI library
 add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
+
+# Data files built into the program (see cmake/EmbedTextFiles.cmake).
+include(cmake/EmbedTextFiles.cmake)
+pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/StoryData
+    VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_checkpoint_json)
+pa_embed_text_files(SerialProgramsLib Source/VideoGames/PokemonLZA/Programs/AutoStory/ReferenceData
+    VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryReferenceCells.h PokemonAutomation::NintendoSwitch::PokemonLZA autostory_reference_json)
 
 
 # Create binary target
