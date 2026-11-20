@@ -727,14 +727,16 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        .name = "03.04 into_pokemon_center, a timed walk whose last turn faces the nurse's A prompt (passed 2026-11-17 14:26)",
+        //  The nurse's text box after the A is synthetic.
+        .name = "03.04 into_pokemon_center, a timed walk whose last turn faces the nurse's A prompt: A, her talk (passed 2026-11-17 14:26)",
         .input = {.checkpoint = "03.04", .step = "into_pokemon_center", .screens = R"(
 0.0s: party bar
 9.5s: party bar, A prompt
+10.0s: text box, still
 )"},
         .expectation = {
-            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: the end event after the last turn.",
+            .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "A"}, {"text box, still", "-"}},
+            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 0 ms of the last leg started a talk.",
         },
     },
     {
@@ -746,7 +748,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}},
             .verdict = "failed: walk_no_end",
-            .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no end event after the last turn",
+            .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no talk started within 1000 ms after the last leg",
         },
     },
     {
@@ -760,7 +762,7 @@ const GoldenCase GOLDEN_CASES[] = {
         .expectation = {
             .keys = {{"party bar", "L or stick or hold"}, {"party bar, A prompt", "-"}},
             .verdict = "failed: walk_no_end",
-            .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no end event after the last turn",
+            .end = "[Event] 03.04/1 into_pokemon_center: failed: walk_no_end: walk: no talk started within 1000 ms after the last leg",
         },
     },
     {
@@ -785,14 +787,16 @@ const GoldenCase GOLDEN_CASES[] = {
         },
     },
     {
-        .name = "03.02b to_taunie, straight on until her A prompt holds (passed 2026-11-16 03:47)",
+        //  The fade after the A is the talk's start in the 2026-11-19 10:04 run.
+        .name = "03.02b to_taunie, straight on to her A prompt, A, then her talk's fade (passed 2026-11-16 03:47)",
         .input = {.checkpoint = "03.02b", .step = "to_taunie", .screens = R"(
 0.0s: party bar
 2.6s: party bar, A prompt
+3.0s: black fade, still
 )"},
         .expectation = {
-            .keys = {{"party bar", "stick"}, {"party bar, A prompt", "-"}},
-            .verdict = "done", .end = "[PLZA] walk: the end event after 2500 ms of the last leg.",
+            .keys = {{"party bar", "stick"}, {"party bar, A prompt", "A"}, {"black fade, still", "-"}},
+            .verdict = "done", .end = "[PLZA] walk: A on the A prompt after 2500 ms of the last leg started a talk.",
         },
     },
     {

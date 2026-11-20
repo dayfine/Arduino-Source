@@ -10,14 +10,9 @@
     "events": [
       {
         "id": "to_front_counter",
-        "why": "along the counter to the clerk's \"A Talk\". not planned: no tile grid in Lumiose",
+        "why": "along the counter to the clerk's \"A Talk\", A on it. not planned: no tile grid in Lumiose",
         "action": "walk",
-        "args": {"legs": [[-5, 2500], [-85, 0]], "end": "prompt"}
-      },
-      {
-        "id": "talk_to_clerk",
-        "action": "talk",
-        "why": "A at the clerk"
+        "args": {"legs": [[-5, 2500], [-85, 0]], "end": "talk"}
       },
       {
         "id": "check_in",

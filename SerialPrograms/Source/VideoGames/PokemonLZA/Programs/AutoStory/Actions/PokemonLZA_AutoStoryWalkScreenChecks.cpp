@@ -236,6 +236,21 @@ const AtPrompt THROUGH_PROMPT{
     .name = "press_through_prompt",
 };
 
+//  A walk into a talk: no wait for the scene after the prompt goes, the walk
+//  goes on instead. Talks start within 250 ms of the A (2026-11-19 logs).
+const AtPrompt WALK_TALK{
+    .until = scene_under_way,
+    .until_looks = 2,
+    .retries = 3,
+    .retry_gap = 1000ms,
+    .wait = std::nullopt,
+    .release = 240ms,
+    .name = "walk",
+};
+
+//  How long a walk into a talk looks for the prompt after its last leg.
+constexpr Milliseconds TALK_TAIL = 1000ms;
+
 //  Sideways from the facing: 5 left, then 11 right, back past the start.
 //  03.03b's ladder showed after 9 (console B, 2026-11-19).
 constexpr double PROMPT_SIDESTEPS[] = {-90, -90, -90, -90, -90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90, 90};
@@ -291,6 +306,26 @@ std::optional<Pokemon::StoryFailure> end_after_turn(PlzaBackend& backend, std::s
         return std::nullopt;
     }
     return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event after the last turn", walk)};
+}
+
+//  A on the prompt a walk into a talk reached. Set: the walk ends, with its
+//  failure if any. None: the prompt went with nothing started.
+std::optional<std::optional<Pokemon::StoryFailure>> talk_at_walk_prompt(PlzaBackend& backend, std::string_view walk, Milliseconds held){
+    const AtPromptResult result = a_at_prompt(backend, WALK_TALK);
+    switch (result.end){
+    case AtPromptEnd::TAKEN:
+        backend.log(std::format("[PLZA] {}: A on the A prompt after {} ms of the last leg started a talk.", walk, held.count()));
+        backend.log_detail(std::format("[PLZA] {}: started on: {}", walk, describe_scene_look(result.look)));
+        return std::optional<Pokemon::StoryFailure>();
+    case AtPromptEnd::PROMPT_STAYS:
+        return std::optional<Pokemon::StoryFailure>(Pokemon::StoryFailure{.code = "talk_no_scene", .detail = std::format(
+            "{}: the A prompt still up with nothing open after {} As: the game took none", walk, result.presses
+        )});
+    case AtPromptEnd::NOTHING:
+        break;
+    }
+    backend.log(std::format("[PLZA] {}: the A prompt went with nothing started after A: on.", walk));
+    return std::nullopt;
 }
 
 } // namespace
@@ -393,6 +428,49 @@ std::optional<Pokemon::StoryFailure> walk_until(
         return Pokemon::StoryFailure{.code = "walk_no_scene", .detail = std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, leg.elapsed().count())};
     }
     return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event within {} ms of the last leg", walk, leg.elapsed().count())};
+}
+
+std::optional<Pokemon::StoryFailure> walk_into_talk(PlzaBackend& backend, std::string_view walk, const StoryMove& move){
+    const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
+    bool prompt_first = ends_before_walking(backend, walk, move, ScreenEvent::INTERACT_PROMPT, /*end_after=*/0ms);
+    if (!prompt_first){
+        if (std::optional<Pokemon::StoryFailure> walked = run_story_move_but_last_walk(backend, move)){
+            return walked;
+        }
+    }
+    LastLegHold leg(hold);
+    Milliseconds tail = 0ms;
+    while (tail < TALK_TAIL){
+        backend.scope().throw_if_cancelled();
+        const bool walking = !prompt_first && leg.holding();
+        const Milliseconds slice = leg.sliced() < hold ? std::min(HOLD_SLICE, hold - leg.sliced()) : HOLD_SLICE;
+        if (walking){
+            hold_last_leg(backend, move, slice);
+        }
+        bool prompt = prompt_first;
+        if (!prompt_first){
+            const ScreenObservation look = backend.observe();
+            prompt = look.events.has(ScreenEvent::INTERACT_PROMPT);
+            if (walking){
+                leg.held_slice(slice, look.when);
+            }
+        }
+        prompt_first = false;
+        if (!prompt){
+            if (!walking){
+                backend.wait(TALK_POLL);
+                tail += TALK_POLL;
+            }
+            continue;
+        }
+        if (const std::optional<std::optional<Pokemon::StoryFailure>> ended = talk_at_walk_prompt(backend, walk, leg.sliced())){
+            return *ended;
+        }
+        tail += leg.holding() ? 0ms : WALK_TALK.retry_gap;
+    }
+    return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format(
+        "{}: no talk started within {} ms after the last leg", walk, TALK_TAIL.count()
+    )};
 }
 
 std::optional<size_t> step_along_until_prompt(PlzaBackend& backend, double facing_degrees){

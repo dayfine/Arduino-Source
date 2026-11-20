@@ -99,19 +99,20 @@ const EnumDropdownDatabase<StarterChoice>& starter_database(){
     return database;
 }
 
-//  The stick heading from 01.03's start to each starter: Chikorita's -70 is
-//  from console B; the others keep #1933's stick angles relative to its
-//  Chikorita (-66, -50, -34).
-double starter_turn(StarterChoice starter){
+//  The walk from 01.03's start to each starter, held at the camera as it is
+//  (console B, 2026-11-19); Chikorita: none, the plan's legs. The talk goes
+//  to the starter ahead, so Tepig, nearest but beside Totodile, is walked
+//  under first and then up to.
+std::optional<StoryMove> starter_move(StarterChoice starter){
     switch (starter){
     case StarterChoice::TOTODILE:
-        return -54;
+        return StoryMove{.legs = {{.turn = -56, .walk = 700ms}}, .style = StoryWalkStyle::HELD};
     case StarterChoice::TEPIG:
-        return -38;
+        return StoryMove{.legs = {{.turn = -90, .walk = 400ms}, {.turn = 0, .walk = 300ms}}, .style = StoryWalkStyle::HELD};
     case StarterChoice::CHIKORITA:
         break;
     }
-    return -70;
+    return std::nullopt;
 }
 
 //  Before `run_from` (dash is not unlocked yet), each step's run legs walk.
@@ -402,7 +403,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     const NewGameChoices new_game{.language = GAME_LANGUAGE, .look = PLAYER_LOOK, .name = PLAYER_NAME};
     StoryEnv story{.env = env, .context = context, .battle_ai = BATTLE_AI, .new_game = new_game};
     AutosaveSightings sightings;
-    PlzaConsoleHooks hooks = plza_console_hooks(story, sightings, starter_turn(STARTER));
+    PlzaConsoleHooks hooks = plza_console_hooks(story, sightings, starter_move(STARTER));
     StoryData story_data = load_plza_story(hooks);
     note_autosaves(story_data.checkpoints, sightings);
     std::vector<StoryCheckpoint>& checkpoints = story_data.checkpoints;

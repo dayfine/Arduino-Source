@@ -129,6 +129,8 @@ const ScreenObservation WHITE_FADE = look({ScreenEvent::FADE_WHITE});
 const ScreenObservation BLACK_FADE = look({ScreenEvent::FADE_BLACK});
 const ScreenObservation DIALOG = look({ScreenEvent::DIALOG_BOX});
 const ScreenObservation A_PROMPT = look({ScreenEvent::INTERACT_PROMPT, ScreenEvent::PLAYER_CAN_MOVE});
+//  01.03 shows no party bar.
+const ScreenObservation PROMPT_ONLY = look({ScreenEvent::INTERACT_PROMPT});
 
 ScreenObservation party_bar(Milliseconds at){
     return look({ScreenEvent::PLAYER_CAN_MOVE}, /*readings=*/{}, at);
@@ -264,13 +266,13 @@ const RunCase RUN_CASES[] = {
         .expectation = {.verdict = "failed at battle_with_pokemon: choice_not_reached"},
     },
     {
-        .name = "01.03's talk fails when nothing starts after A: the prompt stays",
-        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT}},
-        .expectation = {.verdict = "failed at talk_to_starter: talk_no_scene"},
+        .name = "02.06's talk fails when nothing starts after A: the prompt stays",
+        .input = {.checkpoint = "02.06", .first_step = 1, .steps = 1, .looks = {A_PROMPT}},
+        .expectation = {.verdict = "failed at rest: talk_no_scene"},
     },
     {
         .name = "a talk presses A again while the A prompt stays with nothing open",
-        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = concat(
+        .input = {.checkpoint = "02.06", .first_step = 1, .steps = 1, .looks = concat(
             std::vector<ScreenObservation>(7, A_PROMPT), {DIALOG}
         )},
         .expectation = {
@@ -281,12 +283,12 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "a talk presses nothing on an A prompt seen on one look only",
-        .input = {.checkpoint = "01.03", .first_step = 1, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
-        .expectation = {.verdict = "failed at talk_to_starter: talk_no_prompt", .inputs = repeated("wait 250ms", 12)},
+        .input = {.checkpoint = "02.06", .first_step = 1, .steps = 1, .looks = {A_PROMPT, CUTSCENE}},
+        .expectation = {.verdict = "failed at rest: talk_no_prompt", .inputs = repeated("wait 250ms", 12)},
     },
     {
         .name = "a story battle with no battle HUD in 10 s fails as battle_never_started, the battle code not run",
-        .input = {.checkpoint = "01.03", .first_step = 3, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
+        .input = {.checkpoint = "01.03", .first_step = 2, .steps = 1, .looks = {party_bar(Milliseconds(0))}},
         .expectation = {.verdict = "failed at andi_battle: battle_never_started", .inputs = repeated("wait 250ms", 40)},
     },
     {
@@ -305,11 +307,11 @@ const RunCase RUN_CASES[] = {
     },
     {
         //  From the save the street scene ends at the gate, its prompt up.
-        .name = "02.02's walk to the gate ends at once on the A prompt it starts at",
-        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = {A_PROMPT}},
+        .name = "02.02's walk to the gate talks at once on the A prompt it starts at",
+        .input = {.checkpoint = "02.02", .first_step = 2, .steps = 1, .looks = concat(std::vector<ScreenObservation>(4, A_PROMPT), {DIALOG})},
         .expectation = {
             .verdict = "done",
-            .inputs = "wait 250ms, wait 300ms",
+            .inputs = "wait 250ms, wait 300ms, press A, wait 250ms",
             .line = "[PLZA] walk: the A prompt shows before the walk: no walk.",
         },
     },
@@ -354,16 +356,41 @@ const RunCase RUN_CASES[] = {
         },
     },
     {
-        .name = "03.02b's talk to Taunie starts on a subtitle: the advance chevron with no text box",
-        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {
-            A_PROMPT, A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {ADVANCE_ARROW_READING}),
-        }},
-        .expectation = {.verdict = "done", .inputs = "wait 250ms, press A, wait 250ms"},
+        .name = "03.02b's walk to Taunie: A on her A prompt, done when her subtitle starts (the advance chevron with no text box)",
+        .input = {.checkpoint = "03.02b", .first_step = 2, .steps = 1, .looks = concat(
+            std::vector<ScreenObservation>(4, party_bar(Milliseconds(0))), {A_PROMPT, look({ScreenEvent::SCREEN_STILL}, {ADVANCE_ARROW_READING})}
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "wait 250ms, stick 0deg 250ms run, press A, wait 250ms",
+            .line = "[PLZA] walk: A on the A prompt after 250 ms of the last leg started a talk.",
+        },
+    },
+    {
+        //  01.03 on console B 2026-11-19 16:24: the starter's prompt showed for
+        //  one look at a time, 250, 750 and 1500 ms into the walk; the walk
+        //  waited for a steady prompt and failed as walk_no_end. A on each
+        //  glimpse; one the game drops leaves the screen still and the walk on.
+        .name = "01.03's walk to the starter: A on each glimpse of its flickering A prompt, on after a dropped A, done when the scene starts",
+        .input = {.checkpoint = "01.03", .first_step = 0, .steps = 1, .looks = concat(
+            std::vector<ScreenObservation>(5, PROMPT_ONLY),
+            concat({CUTSCENE, CUTSCENE, PROMPT_ONLY, STILL, STILL, STILL, STILL, CUTSCENE, PROMPT_ONLY, STILL, STILL, STILL, STILL},
+            {CUTSCENE, CUTSCENE, PROMPT_ONLY, BLACK_FADE})
+        )},
+        .expectation = {
+            .verdict = "done",
+            .inputs = std::format(
+                "{}, press L, stick -70deg 150ms walk, release 100ms, press L, stick 0deg 250ms run, press A, {}, {}, press A, {}, {}, press A, wait 250ms",
+                repeated("wait 250ms", 4), repeated("wait 250ms", 4), repeated("stick 0deg 250ms run", 2), repeated("wait 250ms", 4),
+                repeated("stick 0deg 250ms run", 3)
+            ),
+            .line = "[PLZA] walk: A on the A prompt after 1500 ms of the last leg started a talk.",
+        },
     },
     {
         .name = "a battle start that ends in control, the party bar held 5 s and no lock-on watch, fails",
         //  The fade's wait takes the first look after it.
-        .input = {.checkpoint = "03.02b", .first_step = 4, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.02b", .first_step = 3, .steps = 1, .looks = {
             look({ScreenEvent::FADE_BLACK}, /*readings=*/{}, Milliseconds(0)),
             party_bar(Milliseconds(1000)), party_bar(Milliseconds(1000)), party_bar(Milliseconds(3000)), party_bar(Milliseconds(6100)),
         }},
@@ -371,7 +398,7 @@ const RunCase RUN_CASES[] = {
     },
     {
         .name = "03.02b's map talk fails with no party bar in 120 s",
-        .input = {.checkpoint = "03.02b", .first_step = 8, .steps = 1, .looks = {
+        .input = {.checkpoint = "03.02b", .first_step = 7, .steps = 1, .looks = {
             look(/*events=*/{}, /*readings=*/{}, Milliseconds(0)), look(/*events=*/{}, /*readings=*/{}, Milliseconds(121000)),
         }},
         .expectation = {.verdict = "failed at after_taunie_battle: map_talk_timeout", .inputs = "press B"},
