@@ -1,28 +1,208 @@
-/*  PokemonLZA AutoStory - Walk screen checks
+/*  PokemonLZA AutoStory - Walks
  *
  *  From: https://github.com/PokemonAutomation/
  *
  */
 
-#include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <format>
-#include <iterator>
-#include <optional>
 #include <string>
 #include <string_view>
+#include <algorithm>
+#include <iterator>
+#include <optional>
 #include <variant>
+#include "PokemonLZA_AutoStoryWalks.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
-#include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
+
+namespace{
+
+//  Turns land within 2; at 8 off, a 6.5 s leg misses a gate.
+constexpr double HEADING_TOLERANCE = 4;
+
+constexpr int HEADING_TURNS = 4;
+
+//  The lab feed has run 0.4 s behind the game: covers that lag.
+constexpr int TURN_READS = 10;
+constexpr Milliseconds TURN_READ_GAP = 100ms;
+
+//  In (-180, 180].
+double turn_to(double now, double heading){
+    double turn = std::fmod(heading - now, 360.0);
+    if (turn > 180){
+        turn -= 360;
+    }else if (turn <= -180){
+        turn += 360;
+    }
+    return turn;
+}
+
+//  The last read when the arrow never moves half the turn: the turn did not take.
+double read_after_turn(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double before, double turn){
+    backend.observe();
+    double now = read_arrow();
+    for (int reads = 1; reads < TURN_READS; reads++){
+        if (std::abs(turn_to(before, now)) >= std::abs(turn) / 2){
+            break;
+        }
+        backend.wait(TURN_READ_GAP);
+        backend.observe();
+        now = read_arrow();
+    }
+    return now;
+}
+
+} // namespace
+
+std::optional<Pokemon::StoryFailure> face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading){
+    backend.observe();
+    double now = read_arrow();
+    //  Small turns overshoot (5 asked, 10 turned): after each overshoot the
+    //  next turn asks for half as much.
+    double gain = 1;
+    double last_turn = 0;
+    for (int turns = 0; turns <= HEADING_TURNS; turns++){
+        const double turn = turn_to(now, heading);
+        backend.log_detail(std::format("[PLZA] face_heading: the arrow reads {:.1f} deg, {:.0f} wanted: {:.1f} off", now, heading, turn));
+        if (std::abs(turn) <= HEADING_TOLERANCE){
+            backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+            return std::nullopt;
+        }
+        if (turns < HEADING_TURNS){
+            if (last_turn * turn < 0){
+                gain /= 2;
+            }
+            last_turn = turn;
+            const double asked = turn * gain;
+            story_turn(backend, asked);
+            now = read_after_turn(backend, read_arrow, now, asked);
+        }
+    }
+    return Pokemon::StoryFailure{.code = "heading_missed", .detail = std::format("not facing {:.0f} deg after {} turns", heading, HEADING_TURNS)};
+}
+
+void story_turn(PlzaBackend& backend, double degrees){
+    //  The tap the story was recorded with; short releases run legs back to back.
+    backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+    backend.stick(degrees, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
+}
+
+
+namespace{
+
+//  A dropped turn or hold leaves the screen still. A walk into a wall reads
+//  still too, and plays its leg twice.
+bool screen_still(PlzaBackend& backend){
+    return backend.observe().events.has(ScreenEvent::SCREEN_STILL);
+}
+
+//  L since the walk goes where the camera looks.
+void turn_and_recenter(PlzaBackend& backend, double degrees){
+    story_turn(backend, degrees);
+    backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+}
+
+template <typename Input>
+void play_checked(PlzaBackend& backend, std::string_view what, Input&& input){
+    input();
+    if (screen_still(backend)){
+        backend.log(std::format("[PLZA] walk: the screen stayed still after {}; once more", what));
+        input();
+    }
+}
+
+void recenter_before_held_leg(PlzaBackend& backend, size_t index, const StoryWalkLeg& leg){
+    if (index > 0 && leg.turn != 0){
+        backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+    }
+}
+
+//  A turn-only leg is a 150 ms tap.
+void run_held_legs(PlzaBackend& backend, const std::vector<StoryWalkLeg>& legs){
+    for (size_t index = 0; index < legs.size(); index++){
+        const StoryWalkLeg& leg = legs[index];
+        recenter_before_held_leg(backend, index, leg);
+        if (leg.walk > 0ms){
+            backend.stick(leg.turn, leg.walk, /*release=*/0ms, Pokemon::StoryPace::RUN);
+        }else if (leg.turn != 0){
+            backend.stick(leg.turn, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
+        }
+    }
+}
+
+//  "leg 2/5 turn 90 walk 1200 ms"
+std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg& leg){
+    std::string label = std::format("leg {}/{} turn {:g}", index + 1, count, leg.turn);
+    if (leg.walk > Milliseconds(0)){
+        label += std::format(" walk {} ms", leg.walk.count());
+    }
+    return label;
+}
+
+} // namespace
+
+
+std::optional<Pokemon::StoryFailure> run_story_move(PlzaBackend& backend, const StoryMove& move){
+    if (move.style == StoryWalkStyle::HELD){
+        run_held_legs(backend, move.legs);
+        return std::nullopt;
+    }
+    //  The look the first input is checked against.
+    backend.observe();
+    for (size_t index = 0; index < move.legs.size(); index++){
+        const StoryWalkLeg& leg = move.legs[index];
+        const std::string label = story_walk_leg_label(index, move.legs.size(), leg);
+        if (leg.turn != 0){
+            play_checked(backend, std::format("the turn of {}", label), [&]{
+                turn_and_recenter(backend, leg.turn);
+            });
+        }
+        if (leg.walk > Milliseconds(0)){
+            play_checked(backend, std::format("the walk of {}", label), [&]{
+                backend.stick(/*degrees=*/0, leg.walk, /*release=*/0ms, Pokemon::StoryPace::RUN);
+            });
+        }
+    }
+    return std::nullopt;
+}
+
+std::optional<Pokemon::StoryFailure> run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move){
+    if (move.legs.empty()){
+        return std::nullopt;
+    }
+    StoryMove head = move;
+    if (move.style == StoryWalkStyle::HELD){
+        if (move.legs.back().walk == 0ms){
+            run_held_legs(backend, move.legs);
+            return std::nullopt;
+        }
+        head.legs.pop_back();
+        run_held_legs(backend, head.legs);
+        recenter_before_held_leg(backend, head.legs.size(), move.legs.back());
+        return std::nullopt;
+    }
+    head.legs.back().walk = 0ms;
+    return run_story_move(backend, head);
+}
+
+void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds slice){
+    if (move.style == StoryWalkStyle::HELD && !move.legs.empty()){
+        backend.stick(move.legs.back().turn, slice, /*release=*/0ms, Pokemon::StoryPace::RUN);
+    }else{
+        backend.stick(/*degrees=*/0, slice, /*release=*/0ms, Pokemon::StoryPace::RUN);
+    }
+}
 
 
 namespace{
@@ -475,7 +655,6 @@ void press_through_prompt(PlzaBackend& backend){
         ));
     }
 }
-
 
 
 } // namespace PokemonLZA

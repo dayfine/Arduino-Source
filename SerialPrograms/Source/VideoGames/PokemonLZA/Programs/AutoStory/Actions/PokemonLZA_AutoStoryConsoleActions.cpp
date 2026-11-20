@@ -16,22 +16,24 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryCatches.h"
-#include "PokemonLZA_AutoStoryConfirmChoices.h"
-#include "PokemonLZA_AutoStoryHeading.h"
-#include "PokemonLZA_AutoStoryLines.h"
-#include "PokemonLZA_AutoStoryMapLegs.h"
-#include "PokemonLZA_AutoStoryMapWalk.h"
-#include "PokemonLZA_AutoStoryMarkerWalk.h"
 #include "PokemonLZA_AutoStoryNewGame.h"
-#include "PokemonLZA_AutoStoryZone1Map.h"
+#include "PokemonLZA_AutoStoryWalks.h"
+#include "PokemonLZA_AutoStoryScenes.h"
+#include "PokemonLZA_AutoStoryMapLegs.h"
+#include "PokemonLZA_AutoStoryWorldWalks.h"
+#include "PokemonLZA_AutoStoryZone1.h"
 #include "PokemonLZA_AutoStoryConsoleActions.h"
+#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetectors.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
 using namespace std::chrono_literals;
-
 
 namespace{
 
@@ -224,6 +226,38 @@ PlzaConsoleActions plza_console_actions(StoryEnv& env){
     return actions;
 }
 
+
+void fight_story_battle(
+    ProgramEnvironment& env, ConsoleHandle& console, ProControllerContext& context,
+    BattleAIOption& battle_ai, std::chrono::seconds timeout
+){
+    TrainerBattleState battle_state(battle_ai);
+    StoryDialogDetector any_dialog;
+    const WallClock deadline = current_time() + timeout;
+    bool attacked = false;
+    while (true){
+        context.wait_for_all_requests();
+        const VideoSnapshot screen = console.video().snapshot();
+        const bool dialog = any_dialog.detect(screen);
+        if (dialog && attacked){
+            return;
+        }
+        if (current_time() > deadline){
+            OperationFailedExceptionWithScreenshot::fire(
+                ErrorReportMode::SEND_ERROR_REPORT,
+                "fight_story_battle(): no dialogue after the battle within the timeout.",
+                console
+            );
+        }
+        if (dialog || !battle_state.attempt_one_attack(env, console, context)){
+            if (!attacked){
+                pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
+            }
+            continue;
+        }
+        attacked = true;
+    }
+}
 
 
 } // namespace PokemonLZA

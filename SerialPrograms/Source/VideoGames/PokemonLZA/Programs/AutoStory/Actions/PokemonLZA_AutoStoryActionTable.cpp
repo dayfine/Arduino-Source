@@ -20,10 +20,8 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryMenuSave.h"
-#include "PokemonLZA_AutoStoryMoves.h"
-#include "PokemonLZA_AutoStoryPlatformWait.h"
+#include "PokemonLZA_AutoStoryWalks.h"
 #include "PokemonLZA_AutoStoryScenes.h"
-#include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 #include "PokemonLZA_AutoStoryActionTable.h"
 
 namespace PokemonAutomation{

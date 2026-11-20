@@ -12,7 +12,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
-#include "PokemonLZA_AutoStoryLines.h"
+#include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryLines_Tests.h"
 
 namespace PokemonAutomation{

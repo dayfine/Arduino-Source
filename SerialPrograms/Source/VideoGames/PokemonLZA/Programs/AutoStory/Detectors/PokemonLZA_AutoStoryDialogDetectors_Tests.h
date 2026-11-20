@@ -1,11 +1,11 @@
-/*  PokemonLZA AutoStory - Dialog Detector Tests
+/*  PokemonLZA AutoStory - Dialog Detectors Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryDialogDetector_Tests_H
-#define PokemonAutomation_PokemonLZA_AutoStoryDialogDetector_Tests_H
+#ifndef PokemonAutomation_PokemonLZA_AutoStoryDialogDetectors_Tests_H
+#define PokemonAutomation_PokemonLZA_AutoStoryDialogDetectors_Tests_H
 
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 
@@ -14,9 +14,7 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
-//  Registers StoryDialogDetector's tests.
-void add_tests_AutoStoryDialogDetector(UnitTestDatabase& database);
-
+void add_tests_AutoStoryDialogDetectors(UnitTestDatabase& database);
 
 
 } // namespace PokemonLZA

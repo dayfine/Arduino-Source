@@ -21,7 +21,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonLZA_AutoStoryMapLegs.h"
-#include "PokemonLZA_AutoStoryZone1Map.h"
+#include "PokemonLZA_AutoStoryZone1.h"
 #include "PokemonLZA_AutoStoryZone1_Tests.h"
 
 namespace PokemonAutomation{

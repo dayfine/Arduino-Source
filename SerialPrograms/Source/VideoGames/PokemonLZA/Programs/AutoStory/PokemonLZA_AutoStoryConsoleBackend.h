@@ -28,7 +28,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionBannerDetectors.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryHeading.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryPlan.h"

@@ -23,8 +23,7 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
-#include "PokemonLZA_AutoStoryHeading.h"
-#include "PokemonLZA_AutoStoryMoves.h"
+#include "PokemonLZA_AutoStoryWalks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

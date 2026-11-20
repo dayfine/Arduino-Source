@@ -11,7 +11,7 @@
 #include <string_view>
 #include <utility>
 #include <variant>
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.h"
 #include "PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 #include "PokemonLZA_AutoStoryPlan.h"

@@ -1,30 +1,142 @@
-/*  PokemonLZA AutoStory - Dialog choice box Tests
+/*  PokemonLZA AutoStory - Dialog Detectors Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The choice rows reader on synthetic menus drawn as the console shows
- *  them, and on console frames (1920x1080) from CommandLineTests/PokemonLZA/.
- *
  */
 
-#include <cstdint>
 #include <format>
 #include <functional>
-#include <initializer_list>
-#include <optional>
 #include <string>
 #include <string_view>
-#include "Common/Cpp/Filesystem/Filesystem.h"
+#include <cstdint>
+#include <initializer_list>
+#include <optional>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "PokemonLZA_AutoStoryDialogDetectors.h"
+#include "PokemonLZA_AutoStoryDialogDetectors_Tests.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryDialogChoiceBox.h"
-#include "PokemonLZA_AutoStoryDialogChoiceBox_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
+
+namespace{
+
+constexpr size_t WIDTH = 1920;
+constexpr size_t HEIGHT = 1080;
+constexpr uint32_t WHITE = 0xffffffff;
+
+void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
+    for (size_t y = min_y; y < max_y; y++){
+        for (size_t x = min_x; x < max_x; x++){
+            image.pixel(x, y) = color;
+        }
+    }
+}
+
+ImageRGB32 solid_frame(uint32_t color){
+    ImageRGB32 image(WIDTH, HEIGHT);
+    image.fill(color);
+    return image;
+}
+
+ImageRGB32 console_frame(std::string_view path){
+    return ImageRGB32(std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), path));
+}
+
+//  `path` with the arrow's area (x 1395-1470, y 935-1030) painted white: text not done.
+ImageRGB32 console_frame_without_arrow(std::string_view path){
+    ImageRGB32 image = console_frame(path);
+    fill_box(/*min_x=*/1395, /*min_y=*/935, /*max_x=*/1470, /*max_y=*/1030, WHITE, image);
+    return image;
+}
+
+
+struct DialogCase{
+    std::string name;
+    struct Input{
+        std::function<ImageRGB32()> frame;
+        WhiteDialogPart white;
+    };
+    Input input;
+    struct Expectation{
+        bool dialog;
+    };
+    Expectation expectation;
+};
+
+const DialogCase DIALOG_CASES[] = {
+    {
+        .name = "a black frame, box and arrow",
+        .input = {.frame = []{ return solid_frame(0xff000000); }, .white = WhiteDialogPart::BOX_AND_ARROW},
+        .expectation = {.dialog = false},
+    },
+    {
+        .name = "a white box on the console, box and arrow",
+        .input = {
+            .frame = []{ return console_frame("FlatWhiteDialogDetector/mac_restaurant_True.png"); },
+            .white = WhiteDialogPart::BOX_AND_ARROW,
+        },
+        .expectation = {.dialog = true},
+    },
+    {
+        .name = "a white box on the console in French, box and arrow",
+        .input = {
+            .frame = []{ return console_frame("FlatWhiteDialogDetector/french_fossil_1_True.png"); },
+            .white = WhiteDialogPart::BOX_AND_ARROW,
+        },
+        .expectation = {.dialog = true},
+    },
+    {
+        .name = "a white box on the console with its arrow painted out, box and arrow",
+        .input = {
+            .frame = []{ return console_frame_without_arrow("FlatWhiteDialogDetector/mac_restaurant_True.png"); },
+            .white = WhiteDialogPart::BOX_AND_ARROW,
+        },
+        .expectation = {.dialog = false},
+    },
+    {
+        .name = "a white box on the console with its arrow painted out, box only",
+        .input = {
+            .frame = []{ return console_frame_without_arrow("FlatWhiteDialogDetector/mac_restaurant_True.png"); },
+            .white = WhiteDialogPart::BOX_ONLY,
+        },
+        .expectation = {.dialog = true},
+    },
+    {
+        .name = "a blue box on the console",
+        .input = {
+            .frame = []{ return console_frame("BlueDialogDetector/mac_cannotFastTravel_True.png"); },
+            .white = WhiteDialogPart::BOX_AND_ARROW,
+        },
+        .expectation = {.dialog = true},
+    },
+};
+
+class Test_StoryDialog : public UnitTest{
+public:
+    explicit Test_StoryDialog(const DialogCase& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - StoryDialogDetector: {}", test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        StoryDialogDetector detector({.white = m_test.input.white});
+        const bool dialog = detector.detect(m_test.input.frame());
+        if (dialog != m_test.expectation.dialog){
+            return std::format("Expected {}, read {}.", m_test.expectation.dialog ? "a dialogue box" : "none", dialog ? "a dialogue box" : "none");
+        }
+        return true;
+    }
+
+private:
+    const DialogCase& m_test;
+};
+
+} // namespace
 
 
 namespace{
@@ -32,10 +144,10 @@ namespace{
 constexpr uint32_t PAVEMENT = 0xffc8c3be;
 constexpr uint32_t BLUE_WALL = 0xff18375c;
 constexpr uint32_t PANEL = 0xff243c6c;
-constexpr uint32_t WHITE = 0xffffffff;
+constexpr uint32_t CHOICE_WHITE = 0xffffffff;
 constexpr uint32_t DARK_TEXT = 0xff1e1e28;
 
-void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
+void fill_choice_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
     for (size_t y = min_y; y < max_y; y++){
         for (size_t x = min_x; x < max_x; x++){
             image.pixel(x, y) = color;
@@ -62,7 +174,7 @@ ImageRGB32 choice_menu_frame(
 ){
     ImageRGB32 image(1920, 1080);
     image.fill(background);
-    fill_box(width.panel_left, 808 - 80 * rows - 4, /*max_x=*/1728, /*max_y=*/808, PANEL, image);
+    fill_choice_box(width.panel_left, 808 - 80 * rows - 4, /*max_x=*/1728, /*max_y=*/808, PANEL, image);
     for (size_t row = 0; row < rows; row++){
         const size_t from_bottom = rows - 1 - row;
         const size_t top = 732 - 80 * from_bottom;
@@ -71,10 +183,10 @@ ImageRGB32 choice_menu_frame(
             lit = lit || pick == row;
         }
         if (lit){
-            fill_box(width.panel_left + 10, top, /*max_x=*/1715, top + 68, WHITE, image);
+            fill_choice_box(width.panel_left + 10, top, /*max_x=*/1715, top + 68, CHOICE_WHITE, image);
         }
         for (size_t x = width.panel_left + 35; x < width.text_end; x += 3){
-            fill_box(x, top + 16, x + 1, top + 52, lit ? DARK_TEXT : WHITE, image);
+            fill_choice_box(x, top + 16, x + 1, top + 52, lit ? DARK_TEXT : CHOICE_WHITE, image);
         }
     }
     return image;
@@ -236,7 +348,10 @@ private:
 } // namespace
 
 
-void add_tests_AutoStoryDialogChoiceBox(UnitTestDatabase& database){
+void add_tests_AutoStoryDialogDetectors(UnitTestDatabase& database){
+    for (const DialogCase& test : DIALOG_CASES){
+        database.add<Test_StoryDialog>(test);
+    }
     for (const SyntheticCase& test : SYNTHETIC_CASES){
         database.add<ChoiceBoxTest<SyntheticCase>>("synthetic", test, check_synthetic);
     }
@@ -244,7 +359,6 @@ void add_tests_AutoStoryDialogChoiceBox(UnitTestDatabase& database){
         database.add<ChoiceBoxTest<FrameCase>>("console frame", test, check_frame);
     }
 }
-
 
 
 } // namespace PokemonLZA
