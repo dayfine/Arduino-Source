@@ -11,7 +11,6 @@
 #ifndef PokemonAutomation_PokemonLZA_AutoStoryTutorialCardDetector_H
 #define PokemonAutomation_PokemonLZA_AutoStoryTutorialCardDetector_H
 
-#include <string_view>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 
 namespace PokemonAutomation{
@@ -22,9 +21,6 @@ namespace PokemonLZA{
 //  A tutorial card on screen: a bright panel in the middle over dark, even
 //  edges.
 bool tutorial_card_shows(const ImageViewRGB32& frame);
-
-//  The backend's reading set to 1 while a tutorial card shows; only A turns its pages.
-constexpr std::string_view TUTORIAL_CARD_READING = "scene.tutorial_card";
 
 
 

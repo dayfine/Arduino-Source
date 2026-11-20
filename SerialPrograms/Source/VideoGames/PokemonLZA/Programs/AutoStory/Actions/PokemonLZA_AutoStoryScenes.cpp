@@ -11,8 +11,7 @@
 #include <utility>
 #include <variant>
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryWalkScreenChecks.h"

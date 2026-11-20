@@ -13,7 +13,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

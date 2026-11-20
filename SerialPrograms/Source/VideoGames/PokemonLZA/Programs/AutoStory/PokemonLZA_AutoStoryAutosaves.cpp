@@ -8,8 +8,7 @@
 #include <format>
 #include <string>
 #include <utility>
-#include "PokemonLZA_AutoStoryReadings.h"
-#include "PokemonLZA_AutoStoryActionNames.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
 
 namespace PokemonAutomation{

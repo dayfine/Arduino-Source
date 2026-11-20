@@ -21,12 +21,11 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
-#include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
-#include "PokemonLZA_AutoStoryBackend.h"
+#include "Actions/PokemonLZA_AutoStoryActionTable.h"
 #include "PokemonLZA_AutoStoryGame.h"
-#include "PokemonLZA_AutoStoryReadings.h"
-#include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryPlan.h"
 #include "PokemonLZA_AutoStorySceneGolden_Tests.h"
 
 namespace PokemonAutomation{

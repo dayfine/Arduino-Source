@@ -23,12 +23,11 @@
 #include "Actions/PokemonLZA_AutoStoryConfirmChoices.h"
 #include "Actions/PokemonLZA_AutoStoryMapWalk.h"
 #include "Actions/PokemonLZA_AutoStoryNewGame.h"
-#include "Detectors/PokemonLZA_AutoStoryStartScreenReader.h"
+#include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryConsoleBackend.h"
-#include "PokemonLZA_AutoStoryConsoleGame.h"
 #include "PokemonLZA_AutoStoryGame.h"
 #include "PokemonLZA_AutoStoryStarts.h"
-#include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryPlan.h"
 #include "PokemonLZA_AutoStory.h"
 
 namespace PokemonAutomation{

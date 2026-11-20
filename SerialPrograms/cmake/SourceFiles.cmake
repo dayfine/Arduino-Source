@@ -2402,33 +2402,24 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryPixelShares.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryReferenceCells.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryReferenceCells.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryStartScreenReader.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryStartScreenReader.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryActionNames.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryActionNames.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBattleOnScreen.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBattleOnScreen.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBattleOnScreen_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBattleOnScreen_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryChainStart_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryChainStart_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleGame.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleGame.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryMenuReadings.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneGolden_Tests.cpp
@@ -2436,18 +2427,14 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStarts.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStarts.h
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStarts_Tests.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStarts_Tests.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.h
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTable.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTable.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.h
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_DonutMaker.cpp
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_DonutMaker.h
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_FriendshipFarmer.cpp
@@ -3511,15 +3498,12 @@ list(APPEND LOGIC_LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1Road.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryReferenceCells.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryActionNames.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBattleOnScreen.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.cpp
     Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStarts.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStoryFiles.cpp
-    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTable.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.cpp
 )
 list(APPEND LOGIC_TEST_SOURCES
     Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan_Tests.cpp

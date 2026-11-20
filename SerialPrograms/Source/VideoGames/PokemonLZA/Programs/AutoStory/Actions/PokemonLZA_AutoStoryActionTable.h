@@ -21,7 +21,8 @@
 #include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryHeading.h"
 #include "PokemonLZA_AutoStoryMoves.h"
 

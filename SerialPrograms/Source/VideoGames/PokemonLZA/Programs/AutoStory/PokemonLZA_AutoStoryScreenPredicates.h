@@ -12,8 +12,7 @@
 
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenMatch.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

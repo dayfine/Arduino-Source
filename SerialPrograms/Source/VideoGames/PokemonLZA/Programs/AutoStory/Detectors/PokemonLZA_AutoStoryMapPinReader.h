@@ -12,18 +12,12 @@
 
 #include <optional>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonLZA{
 
-
-//  In the frame's pixels scaled to 800 x 450. Wild Zone 1's outline spans about
-//  x 280-515, y 190-260; its far gate's "!" is at about (313, 255).
-struct MapPoint{
-    double x = 0;
-    double y = 0;
-};
 
 //  The centre of the largest blob of the arrow's saturated blue (at least a third of
 //  the arrow) in Wild Zone 1's window; the cone, lake and water are paler. None on an

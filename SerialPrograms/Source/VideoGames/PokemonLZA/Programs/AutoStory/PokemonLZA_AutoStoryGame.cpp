@@ -12,9 +12,9 @@
 #include <utility>
 #include <variant>
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalkScreenChecks.h"
-#include "PokemonLZA_AutoStoryActionNames.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryStarts.h"
-#include "PokemonLZA_AutoStoryTable.h"
+#include "PokemonLZA_AutoStoryPlan.h"
 #include "PokemonLZA_AutoStoryGame.h"
 
 namespace PokemonAutomation{

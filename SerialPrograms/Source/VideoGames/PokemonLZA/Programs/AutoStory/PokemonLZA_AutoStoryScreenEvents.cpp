@@ -4,9 +4,12 @@
  *
  */
 
+#include <optional>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/ScreenEvents/ScreenFades.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
@@ -67,6 +70,26 @@ void PlzaScreenObserver::make_overlays(VideoOverlaySet& items) const{
     m_battle_panel.make_overlays(items);
     m_battle_markers.make_overlays(items);
     m_party.make_overlays(items);
+}
+
+StartSignature read_start_screen(const ImageViewRGB32& screen){
+    PlzaScreenObserver observer;
+    const ScreenEvents events = observer.read(screen);
+    const bool unreadable = events.has(ScreenEvent::FADE_BLACK) || events.has(ScreenEvent::FADE_WHITE)
+        || events.has(ScreenEvent::DIALOG_BOX);
+    if (unreadable){
+        return StartSignature{};
+    }
+    PartyBarDetector party_bar;
+    std::optional<size_t> party;
+    if (party_bar.detect(screen) && party_bar.filled_slots() > 0){
+        party = (size_t)party_bar.filled_slots();
+    }
+    return StartSignature{
+        .talk_prompt = events.has(ScreenEvent::INTERACT_PROMPT),
+        .party = party,
+        .minimap = matching_minimap(screen),
+    };
 }
 
 

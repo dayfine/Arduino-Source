@@ -14,7 +14,7 @@
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryActionNames.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryCatches.h"
 #include "PokemonLZA_AutoStoryConfirmChoices.h"
 #include "PokemonLZA_AutoStoryHeading.h"

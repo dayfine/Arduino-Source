@@ -27,9 +27,15 @@
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryControlsHintDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMainMissionBannerDetector.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMissionCompleteDetector.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryHeading.h"
-#include "PokemonLZA_AutoStoryBackend.h"
+#include "PokemonLZA_AutoStoryAutosaves.h"
+#include "PokemonLZA_AutoStoryGame.h"
+#include "PokemonLZA_AutoStoryPlan.h"
+#include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -98,6 +104,14 @@ private:
     //  a new press of B inside a leg switches dash off.
     std::optional<WallClock> m_run_end;
 };
+
+//  Builds console hooks for actions, minimap arrow, lock-on, and story battles.
+//  `env` and `sightings` must outlive the returned hooks.
+PlzaConsoleHooks plza_console_hooks(StoryEnv& env, AutosaveSightings& sightings, std::optional<StoryMove> starter_move);
+
+//  Builds the console StoryGame with save-reload recovery.
+//  `env` and `sightings` must outlive the returned game.
+Pokemon::StoryGame make_plza_story_game(StoryEnv& env, const MarkedCheckpoints& marked, AutosaveSightings& sightings);
 
 
 

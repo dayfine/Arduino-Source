@@ -13,10 +13,9 @@
 #include <variant>
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenWait.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryReadings.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySignalProbe.h"
 #include "PokemonLZA_AutoStoryWalkScreenChecks.h"
 
 namespace PokemonAutomation{

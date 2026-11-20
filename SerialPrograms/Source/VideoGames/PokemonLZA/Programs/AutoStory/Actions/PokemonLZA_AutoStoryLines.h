@@ -11,7 +11,7 @@
 #define PokemonAutomation_PokemonLZA_AutoStoryLines_H
 
 #include "Common/Cpp/Time.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

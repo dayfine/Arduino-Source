@@ -20,8 +20,9 @@
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h"
 #include "PokemonLZA_AutoStoryAutosaves.h"
+#include "Actions/PokemonLZA_AutoStoryActionTable.h"
 #include "PokemonLZA_AutoStoryGame.h"
-#include "PokemonLZA_AutoStoryStoryFiles.h"
+#include "PokemonLZA_AutoStoryPlan.h"
 #include "PokemonLZA_AutoStoryBattleOnScreen_Tests.h"
 
 namespace PokemonAutomation{

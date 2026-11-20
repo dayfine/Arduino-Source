@@ -1,11 +1,11 @@
-/*  PokemonLZA AutoStory - Action names
+/*  PokemonLZA AutoStory - Types
  *
  *  From: https://github.com/PokemonAutomation/
  *
  */
 
 #include "Common/Cpp/EnumStringMap.h"
-#include "PokemonLZA_AutoStoryActionNames.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

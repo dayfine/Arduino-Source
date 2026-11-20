@@ -16,7 +16,7 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 
 namespace PokemonAutomation{

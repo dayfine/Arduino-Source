@@ -20,8 +20,8 @@
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
-#include "PokemonLZA_AutoStoryBackend.h"
-#include "PokemonLZA_AutoStoryTable.h"
+#include "PokemonLZA_AutoStoryTypes.h"
+#include "PokemonLZA_AutoStoryPlan.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

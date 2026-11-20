@@ -15,7 +15,7 @@
 #include <optional>
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -28,9 +28,6 @@ void story_turn(PlzaBackend& backend, double degrees);
 
 //  The minimap arrow's heading: 0 up, 90 right.
 using MinimapArrowReader = std::function<double()>;
-
-//  Holds ZL up to `hold`; true once the move-effectiveness symbols show (locked on).
-using LockOnWatch = std::function<bool(Milliseconds hold)>;
 
 //  4 turns at most, then L puts the camera behind the player. The arrow is
 //  read only after the queued turns are done, and re-read until it moved

@@ -17,14 +17,11 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/PrettyPrint.h"
+#include "CommonTools/ScreenEvents/ScreenEventTypes.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_ScreenTimers.h"
-#include "Detectors/PokemonLZA_AutoStoryTutorialCardDetector.h"
-#include "PokemonLZA_AutoStoryBattleOnScreen.h"
-#include "PokemonLZA_AutoStoryMenuReadings.h"
-#include "PokemonLZA_AutoStoryReadings.h"
 #include "PokemonLZA_AutoStorySceneMachine.h"
 #include "PokemonLZA_AutoStoryScreenPredicates.h"
-#include "PokemonLZA_AutoStorySignalProbe.h"
+#include "PokemonLZA_AutoStoryTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -56,6 +53,38 @@ constexpr Milliseconds SUMMARY_EVERY = 30s;
 //  text_a_to_choice: one A per text page; the same page this long after
 //  its A takes another (a dropped press).
 constexpr Milliseconds TEXT_A_AGAIN = 2s;
+
+Pokemon::FlickerFilter battle_filter(){
+    return Pokemon::FlickerFilter(/*hits=*/2, /*window=*/2s, /*off_after=*/3s);
+}
+
+struct ProbedSignal{
+    std::string_view name;
+    bool (*shows)(const ScreenObservation& look);
+};
+
+bool has_reading(const ScreenObservation& look, std::string_view reading){
+    return look.readings.contains(reading);
+}
+
+constexpr std::array<ProbedSignal, 9> PROBED_SIGNAL_TABLE{{
+    {"party_bar", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::PLAYER_CAN_MOVE); }},
+    {"hint", [](const ScreenObservation& look){ return has_reading(look, CONTROLS_HINT_READING); }},
+    {"prompt", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::INTERACT_PROMPT); }},
+    {"arrow", [](const ScreenObservation& look){ return has_reading(look, ADVANCE_ARROW_READING); }},
+    {"dialog_box", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::DIALOG_BOX); }},
+    {"autosave", [](const ScreenObservation& look){ return has_reading(look, AUTOSAVE_READING); }},
+    {"banner", [](const ScreenObservation& look){ return has_reading(look, MISSION_BANNER_READING); }},
+    {"choice", [](const ScreenObservation& look){ return look.events.has(ScreenEvent::CHOICE_BOX); }},
+    {"fade", [](const ScreenObservation& look){ return fade_shows(look); }},
+}};
+
+std::string probe_since(const std::optional<WallClock>& when, WallClock start){
+    if (!when){
+        return "-";
+    }
+    return std::to_string(std::chrono::duration_cast<Milliseconds>(*when - start).count());
+}
 
 
 enum class SceneScreen{
@@ -660,6 +689,61 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
         }
         look = backend.observe();
     }
+}
+
+Pokemon::StoryFailure battle_on_screen_failure(){
+    return Pokemon::StoryFailure{
+        .code = "battle_on_screen",
+        .detail = "battle on screen",
+        .resume_at_action = std::string(action_name(PlzaAction::STORY_BATTLE)),
+    };
+}
+
+bool battle_showing(PlzaBackend& backend){
+    Pokemon::FlickerFilter battle = battle_filter();
+    for (size_t looks = 0; looks < 8; looks++){
+        backend.scope().throw_if_cancelled();
+        const ScreenObservation look = backend.observe();
+        const bool seen = look.events.has(ScreenEvent::BATTLE_STARTED);
+        if (battle.on_with(seen, look.when)){
+            return true;
+        }
+        if (looks == 0 && !seen){
+            return false;
+        }
+        battle.record(seen, look.when);
+        backend.wait(250ms);
+    }
+    return false;
+}
+
+void SignalProbe::look(const ScreenObservation& look){
+    m_start = m_start.value_or(look.when);
+    m_last = look.when;
+    for (size_t index = 0; index < PROBED_SIGNALS; index++){
+        if (!m_first[index] && PROBED_SIGNAL_TABLE[index].shows(look)){
+            m_first[index] = look.when;
+        }
+    }
+    if (text_shows(look) || fade_shows(look) || look.events.has(ScreenEvent::CHOICE_BOX)){
+        m_last_busy = look.when;
+    }
+}
+
+void SignalProbe::restart(){
+    *this = SignalProbe{};
+}
+
+std::string SignalProbe::line(std::string_view where, std::string_view decision, std::string_view by) const{
+    const WallClock start = m_start.value_or(m_last);
+    std::string first;
+    for (size_t index = 0; index < PROBED_SIGNALS; index++){
+        first += std::format(" {}@{}", PROBED_SIGNAL_TABLE[index].name, probe_since(m_first[index], start));
+    }
+    return std::format(
+        "[Signals] {} {} by={} after={} first:{} last_busy@{}",
+        where, decision, by, probe_since(m_last, start), first, probe_since(m_last_busy, start)
+    );
 }
 
 

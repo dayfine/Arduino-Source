@@ -18,7 +18,7 @@
 #include <string_view>
 #include "CommonTools/ScreenEvents/ScreenEventTypes.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryBackend.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
 #include "PokemonLZA_AutoStoryMoves.h"
 
 namespace PokemonAutomation{
