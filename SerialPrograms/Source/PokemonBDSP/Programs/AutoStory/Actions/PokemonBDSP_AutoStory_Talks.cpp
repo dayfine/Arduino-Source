@@ -8,6 +8,7 @@
  */
 
 #include <chrono>
+#include <format>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
@@ -217,6 +218,36 @@ void finish_talk(VideoStream& stream, ProControllerContext& context, DialogueRea
     stream.log("[Talk] " + label + (read.closed ? ": closed." : ": still open."));
 }
 
+//  Dismisses an open sign box with B and checks whether SIGN_BOX returned
+//  closer to the pre-A overworld than to the open sign. Comparing against
+//  both tolerates moving cloud shadows and NPCs that shift the overworld
+//  past SIGN_BOX_OPENED (35-56 RMSD on Route 201) while still rejecting
+//  an open sign (same or next page).
+bool close_sign_box(
+    VideoStream& stream, ProControllerContext& context,
+    const ImageViewRGB32& before_box, const ImageViewRGB32& shown_box,
+    const std::string& label
+){
+    bool closed = false;
+    double vs_before = 0;
+    double vs_shown = 0;
+    for (size_t presses = 0; presses < 3 && !closed; presses++){
+        pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
+        context.wait_for_all_requests();
+        VideoSnapshot after = stream.video().snapshot();
+        if (!after){
+            continue;
+        }
+        const ImageViewRGB32 after_box = extract_box_reference(*after.frame, SIGN_BOX);
+        vs_before = walk_screen_change(before_box, after_box);
+        vs_shown = walk_screen_change(shown_box, after_box);
+        closed = vs_shown > SIGN_BOX_OPENED && vs_before < vs_shown;
+    }
+    stream.log(std::format("[Sign] {}: {} (vs before {:.1f}, vs shown {:.1f}).",
+        label, closed ? "closed" : "still open", vs_before, vs_shown));
+    return closed;
+}
+
 } // namespace
 
 DialogueRead talk_facing(VideoStream& stream, ProControllerContext& context, Direction direction, Button next, const std::string& label){
@@ -269,10 +300,12 @@ DialogueRead read_sign(VideoStream& stream, ProControllerContext& context, Direc
     if (!before || !shown){
         return read;
     }
-    const double opened = walk_screen_change(extract_box_reference(*before.frame, SIGN_BOX), extract_box_reference(*shown.frame, SIGN_BOX));
+    const ImageViewRGB32 before_box = extract_box_reference(*before.frame, SIGN_BOX);
+    const ImageViewRGB32 shown_box = extract_box_reference(*shown.frame, SIGN_BOX);
+    const double opened = walk_screen_change(before_box, shown_box);
     read.opened = opened > SIGN_BOX_OPENED;
     if (!read.opened){
-        stream.log("[Sign] " + label + ": no box opened (change " + std::to_string(opened) + ").");
+        stream.log(std::format("[Sign] {}: no box opened (change {:.1f}).", label, opened));
         return read;
     }
     //  Tesseract read the Lab's white-on-grey text as "e R O e IO" (r131a).
@@ -281,14 +314,8 @@ DialogueRead read_sign(VideoStream& stream, ProControllerContext& context, Direc
     if (story_reads_text()){
         read.text = OCR::ocr_read(story_language(), extract_box_reference(*shown.frame, SIGN_TEXT), OCR::PageSegMode::SINGLE_BLOCK);
     }
-    stream.log("[Sign] " + label + ": reads \"" + read.text + "\" (change " + std::to_string(opened) + ").");
-    for (size_t presses = 0; presses < 3 && !read.closed; presses++){
-        pbf_press_button(context, BUTTON_B, 80ms, 1000ms);
-        context.wait_for_all_requests();
-        VideoSnapshot after = stream.video().snapshot();
-        read.closed = after && walk_screen_change(extract_box_reference(*before.frame, SIGN_BOX), extract_box_reference(*after.frame, SIGN_BOX)) < SIGN_BOX_OPENED;
-    }
-    stream.log("[Sign] " + label + (read.closed ? ": closed." : ": still open."));
+    stream.log(std::format("[Sign] {}: reads \"{}\" (change {:.1f}).", label, read.text, opened));
+    read.closed = close_sign_box(stream, context, before_box, shown_box, label);
     return read;
 }
 
