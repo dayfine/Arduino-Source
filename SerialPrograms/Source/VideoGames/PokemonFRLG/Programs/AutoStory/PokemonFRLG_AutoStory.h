@@ -17,6 +17,7 @@
 #include <vector>
 #include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
+#include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "Common/Cpp/Options/StringOption.h"
 #include "CommonFramework/Notifications/EventNotificationsTable.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
@@ -105,6 +106,8 @@ private:
     //  Takes the Master Ball from Silph Co.'s president (16.05b), unless the
     //  run is a SPEEDRUN.
     BooleanCheckBoxOption TAKE_MASTER_BALL;
+    //  How many Nuggets to farm at Nugget Bridge (05.04); 0 skips the farm.
+    SimpleIntegerOption<uint16_t> NUGGET_FARM_COUNT;
     StarterRngPlanOptions RNG_PLAN;
     //  Who uses each field move as the last save holds it (FieldMoveUsers'
     //  text), kept as the SID is, so a restart skips the party scan.
