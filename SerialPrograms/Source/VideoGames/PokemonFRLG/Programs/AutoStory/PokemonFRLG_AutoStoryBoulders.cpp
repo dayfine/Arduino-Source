@@ -49,7 +49,7 @@ namespace{
 //  that stopped it was cleared.
 BoulderPressRead press_for(Direction direction, bool (*wanted)(const BoulderPressRead&), BoulderPresses& presses){
     const BoulderPressRead read = presses.press(direction);
-    if (wanted(read) || !presses.clear_interrupt()){
+    if (wanted(read) || read.scrolled || !presses.clear_interrupt()){
         return read;
     }
     return presses.press(direction);
