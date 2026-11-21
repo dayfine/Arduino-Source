@@ -462,10 +462,15 @@ class ControlPlane:
                     self._end_run(conn, console, row, 'run_ended', instance)
             if new:
                 if transition['action'] == 'stop':
-                    self._append(conn, 'stopped', console, {'source': transition['source'],
-                                                            'run_id': app['program']['run_id']},
-                                 instance_id=instance, request_id=transition['request_id'], at=transition['at'])
                     failure = start_check_failure(app)
+                    payload = {'source': transition['source'], 'run_id': app['program']['run_id']}
+                    start_request_id = row['run_request_id'] if row['run_instance_id'] == instance else None
+                    if failure is not None and failure['request_id'] is not None:
+                        start_request_id = failure['request_id']
+                    if start_request_id is not None:
+                        payload['start_request_id'] = start_request_id
+                    self._append(conn, 'stopped', console, payload,
+                                 instance_id=instance, request_id=transition['request_id'], at=transition['at'])
                     if failure is not None:
                         self._append(conn, 'program_failed', console, failure['payload'], instance_id=instance,
                                      request_id=failure['request_id'], at=failure['at'])
