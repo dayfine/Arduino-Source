@@ -7,6 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "Pokemon/Navigation/Pokemon_WallRecovery.h"
+#include "Pokemon/Navigation/Pokemon_WanderRules.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldResume.h"
 
@@ -133,10 +134,14 @@ struct Hypothesis{
 
 //  Whether a person stands, or may wander, on a tile `wall` passes after
 //  `from`. The step rules don't have people, but one there stops the player
-//  short of the wall.
+//  short of the wall. When `allow_wanderers` is true (used only as a fallback
+//  to avoid walking into trainer sight lines), wandering NPCs on intermediate
+//  tiles are permitted (since wall-hold wanderer recovery can wait for them),
+//  while stationary NPCs and a wander box on the wall's end tile remain blocked.
 bool person_on_the_way(
     const std::vector<MapData>& world, const MapPosition& from,
-    bool surfing, Direction direction, const WallHold& wall
+    bool surfing, Direction direction, const WallHold& wall,
+    bool allow_wanderers = false
 ){
     RouteStep hold;
     hold.direction = direction;
@@ -145,8 +150,20 @@ bool person_on_the_way(
     const std::vector<MapPosition> tiles = leg_tiles(world, from, hold);
     for (size_t c = 1; c < tiles.size(); c++){
         const MapData* map = map_named(world, tiles[c].map);
-        if (map != nullptr && object_at(*map, tiles[c].point) != nullptr){
-            return true;
+        if (map == nullptr){
+            continue;
+        }
+        if (!allow_wanderers){
+            if (object_at(*map, tiles[c].point) != nullptr){
+                return true;
+            }
+        }else{
+            if (stationary_object_at(*map, tiles[c].point) != nullptr){
+                return true;
+            }
+            if (c + 1 == tiles.size() && Pokemon::wander_object_at(*map, tiles[c].point) != nullptr){
+                return true;
+            }
         }
     }
     return false;
@@ -157,7 +174,7 @@ bool person_on_the_way(
 //  by a wall, or may be stopped short by a person.
 std::optional<std::pair<std::vector<Hypothesis>, RouteStep>> hold_all(
     const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions,
-    bool surfing, Direction direction
+    bool surfing, Direction direction, bool allow_wanderers
 ){
     std::vector<Hypothesis> ends;
     RouteStep hold;
@@ -167,7 +184,7 @@ std::optional<std::pair<std::vector<Hypothesis>, RouteStep>> hold_all(
     hold.facing_after = direction;
     for (const Hypothesis& position : positions){
         const std::optional<WallHold> wall = hold_to_wall(worlds[position.world], position.at, surfing, direction);
-        if (!wall || person_on_the_way(worlds[position.world], position.at, surfing, direction, *wall)){
+        if (!wall || person_on_the_way(worlds[position.world], position.at, surfing, direction, *wall, allow_wanderers)){
             return std::nullopt;
         }
         add_unique(ends, Hypothesis{position.world, wall->end});
@@ -185,6 +202,7 @@ using Found = Pokemon::WallAnchor<MapPosition, RouteStep>;
 struct ReanchorContext{
     const std::vector<std::vector<MapData>>& worlds;
     bool surfing = false;
+    bool allow_wanderers = false;
 };
 
 class ReanchorPolicy{
@@ -198,7 +216,7 @@ public:
     static std::optional<Pokemon::WallRecoveryStep<Hypothesis, Hold>> hold(
         const ReanchorContext& context, const std::vector<Hypothesis>& positions, Direction direction
     ){
-        auto next = hold_all(context.worlds, positions, context.surfing, direction);
+        auto next = hold_all(context.worlds, positions, context.surfing, direction, context.allow_wanderers);
         if (!next){
             return std::nullopt;
         }
@@ -256,9 +274,10 @@ int held_tiles(const std::vector<RouteStep>& holds){
 //  behind the leg's start, while a hold south and one west, ahead, were
 //  found too (console B, 2026-11-09).
 std::vector<Found> find_player(
-    const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions, bool surfing
+    const std::vector<std::vector<MapData>>& worlds, const std::vector<Hypothesis>& positions, bool surfing,
+    bool allow_wanderers = false
 ){
-    const ReanchorContext context{.worlds = worlds, .surfing = surfing};
+    const ReanchorContext context{.worlds = worlds, .surfing = surfing, .allow_wanderers = allow_wanderers};
     std::vector<Found> found = Pokemon::find_wall_anchors<ReanchorPolicy>(positions, context, {.max_holds = 0});
     if (!found.empty()){
         return found;
@@ -473,24 +492,34 @@ std::optional<Reanchor> plan_reanchor(
     //  every try of a leg whose way back started behind it (console B,
     //  2026-11-09, Rock Tunnel B1F row 37).
     const std::vector<MapData> clear_of_trainers = with_trainers(maps, trainers);
-    std::optional<Reanchor> best;
-    int best_cost = 0;
-    for (const Found& at : find_player(worlds, positions, step.surfing)){
-        const Direction facing = at.holds.empty() ? step.direction : at.holds.back().direction;
-        //  The way back keeps clear of every trainer who may stand in it if
-        //  it can, and must walk the same whether they do or not.
-        std::optional<std::vector<RouteStep>> back = plan_overworld_route(clear_of_trainers, at.at, RouteGoal{step.end, end_facing}, costs, facing);
-        if (!back && !trainers.empty()){
-            back = plan_overworld_route(maps, at.at, RouteGoal{step.end, end_facing}, costs, facing);
+    const auto best_anchor = [&](bool allow_wanderers){
+        std::optional<Reanchor> best;
+        int best_cost = 0;
+        for (const Found& at : find_player(worlds, positions, step.surfing, allow_wanderers)){
+            const Direction facing = at.holds.empty() ? step.direction : at.holds.back().direction;
+            //  The way back keeps clear of every trainer who may stand in it if
+            //  it can, and must walk the same whether they do or not.
+            std::optional<std::vector<RouteStep>> back = plan_overworld_route(clear_of_trainers, at.at, RouteGoal{step.end, end_facing}, costs, facing);
+            if (!back && !trainers.empty()){
+                back = plan_overworld_route(maps, at.at, RouteGoal{step.end, end_facing}, costs, facing);
+            }
+            if (!back || (!trainers.empty() && !walks_same_everywhere(worlds, positions, at.at, *back))){
+                continue;
+            }
+            Reanchor anchor{.holds = at.holds, .found = at.at, .back = std::move(*back), .in_sight = holds_in_sight(worlds, positions, at.holds)};
+            const int cost = reanchor_cost(anchor) + (anchor.in_sight ? IN_SIGHT_COST : 0);
+            if (!best || cost < best_cost){
+                best = std::move(anchor);
+                best_cost = cost;
+            }
         }
-        if (!back || (!trainers.empty() && !walks_same_everywhere(worlds, positions, at.at, *back))){
-            continue;
-        }
-        Reanchor anchor{.holds = at.holds, .found = at.at, .back = std::move(*back), .in_sight = holds_in_sight(worlds, positions, at.holds)};
-        const int cost = reanchor_cost(anchor) + (anchor.in_sight ? IN_SIGHT_COST : 0);
-        if (!best || cost < best_cost){
-            best = std::move(anchor);
-            best_cost = cost;
+        return best;
+    };
+    std::optional<Reanchor> best = best_anchor(false);
+    if (!best || best->in_sight){
+        std::optional<Reanchor> fallback = best_anchor(true);
+        if (fallback && (!best || !fallback->in_sight)){
+            return fallback;
         }
     }
     return best;

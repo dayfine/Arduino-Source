@@ -13,6 +13,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 #include "PokemonFRLG_OverworldMaps.h"
+#include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldRouteCosts.h"
@@ -188,6 +189,50 @@ UnitTestResult test_open_leg_wanderer_mid_hold_block(){
     return true;
 }
 
+UnitTestResult test_reanchor_avoids_sight_via_wanderer(){
+    const std::string json = R"({
+        "name": "ReanchorWander", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-21"},
+        "tiles": [
+            "#######",
+            "#.....#",
+            "#.....#",
+            "#.....#",
+            "#.....#",
+            "#######"
+        ],
+        "elevation": [
+            "3333333",
+            "3333333",
+            "3333333",
+            "3333333",
+            "3333333",
+            "3333333"
+        ],
+        "objects": [
+            {"name": "trainer", "kind": "npc", "x": 5, "y": 1, "facing": "west", "trainer": {"sight": 3, "looks": ["west"]}},
+            {"name": "wanderer", "kind": "npc", "x": 3, "y": 3, "wander": {"x0": 2, "y0": 3, "x1": 4, "y1": 3}}
+        ]
+    })";
+    const std::vector<MapData> maps{parse_map(json, "ReanchorWander")};
+    RouteStep step;
+    step.direction = Direction::SOUTH;
+    step.tiles = 2;
+    step.facing_after = Direction::SOUTH;
+    step.end = {"ReanchorWander", {3, 4}};
+    const std::vector<StopCandidate> candidates{
+        StopCandidate{.player = {"ReanchorWander", {3, 2}}},
+        StopCandidate{.player = {"ReanchorWander", {3, 3}}},
+    };
+    const std::optional<Reanchor> anchor = plan_reanchor(maps, candidates, step, default_route_costs());
+    if (!anchor || anchor->in_sight){
+        return "Expected reanchor fallback across wanderer to avoid trainer sight line";
+    }
+    if (anchor->holds.empty() || anchor->holds[0].direction == Direction::NORTH){
+        return "Expected non-NORTH reanchor hold avoiding trainer sight line";
+    }
+    return true;
+}
+
 struct WanderRecoveryTestCase{
     std::string name = {};
     struct Input{
@@ -215,6 +260,11 @@ const WanderRecoveryTestCase WANDER_CASES[] = {
         .name = "open leg wanderer mid-hold block",
         .input = {.body = test_open_leg_wanderer_mid_hold_block},
         .expectation = {.description = "taps open legs crossing a wander box and waits/resumes when blocked mid-leg by a wandering NPC"},
+    },
+    {
+        .name = "reanchor avoids sight via wanderer",
+        .input = {.body = test_reanchor_avoids_sight_via_wanderer},
+        .expectation = {.description = "falls back to crossing a wander box when the only non-wanderer reanchor crosses trainer sight"},
     },
 };
 
