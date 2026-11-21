@@ -352,18 +352,23 @@ DpadPosition dpad_toward(JoystickPosition stick){
     return stick.x < 0 ? DPAD_LEFT : stick.x > 0 ? DPAD_RIGHT : stick.y > 0 ? DPAD_UP : DPAD_DOWN;
 }
 
-//  After a black screen: a wild battle if a battle screen shows up, else a transition.
+//  After a white or black flash: an encounter's, if its battle shows; else a
+//  door or cave exit's fade (#268 slice 3; cave wild battle intro after black
+//  flash took ~6 s before BattleDialogWatcher on lab-B, 2026-11-21 04:11).
+constexpr Milliseconds FLASH_BATTLE_WAIT = 8000ms;
+
+//  After a black screen: a battle if a battle screen shows up, else a transition.
 bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context){
-    BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
+    BattleMenuWatcher battle_menu(BattleType::STARTER, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
     BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8}, Pokemon::BDSP_FADE_PROFILE.dark_max_sum, Pokemon::BDSP_FADE_PROFILE.uniform_max_stddev_sum,
         BlackScreenWatcher::FinderType::GONE, 500ms);
     const int ret = wait_until(stream, context, 10s, {{battle_menu}, {battle_dialog}, {gone}});
     if (ret == 2){
-        //  The battle intro also starts from black; give its first screen a moment.
-        BattleMenuWatcher late_menu(BattleType::STANDARD, COLOR_YELLOW);
+        //  The battle intro also starts from black; give its first screen time.
+        BattleMenuWatcher late_menu(BattleType::STARTER, COLOR_YELLOW);
         BattleDialogWatcher late_dialog(COLOR_YELLOW);
-        return wait_until(stream, context, 2s, {{late_menu}, {late_dialog}}) >= 0;
+        return wait_until(stream, context, FLASH_BATTLE_WAIT, {{late_menu}, {late_dialog}}) >= 0;
     }
     return ret >= 0;
 }
@@ -372,14 +377,10 @@ bool black_screen_was_battle(VideoStream& stream, ProControllerContext& context)
 //  shows the battle's text box a few seconds later. After a change of the
 //  whole screen that walking cannot make, wait for the battle to show.
 bool battle_follows(VideoStream& stream, ProControllerContext& context, Milliseconds wait = 5000ms){
-    BattleMenuWatcher battle_menu(BattleType::STANDARD, COLOR_YELLOW);
+    BattleMenuWatcher battle_menu(BattleType::STARTER, COLOR_YELLOW);
     BattleDialogWatcher battle_dialog(COLOR_YELLOW);
     return wait_until(stream, context, wait, {{battle_menu}, {battle_dialog}}) >= 0;
 }
-
-//  After a white flash: an encounter's, if its battle shows; else a cave
-//  exit's white fade (#268 slice 3), which the walk once fled as a battle.
-constexpr Milliseconds WHITE_FLASH_BATTLE_WAIT = 8000ms;
 
 //  Records that the screen shows `events` now, in `log` if there is one.
 void record_now(ScreenEventLog* log, const ScreenEvents& events){
@@ -612,7 +613,7 @@ private:
         bool battle = ret == 2 || ret == 4;
         if (ret == 0 || ret == 1){
             battle = ret == 0
-                ? battle_follows(m_stream, m_context, WHITE_FLASH_BATTLE_WAIT)
+                ? battle_follows(m_stream, m_context, FLASH_BATTLE_WAIT)
                 : black_screen_was_battle(m_stream, m_context);
             if (!battle){
                 m_result.warp.fade = ret == 0 ? WarpFade::WHITE : WarpFade::BLACK;
