@@ -674,6 +674,108 @@ UnitTestResult test_leg_battle_place(Logger& logger){
     return true;
 }
 
+//  Textured 384x216 synthetic screen centered at `base` brightness with +/-20
+//  checkerboard contrast so stddev_sum (~60) is above uniform fade thresholds.
+ImageRGB32 textured_overworld_frame(uint8_t base){
+    const uint8_t lo = base > 20 ? (uint8_t)(base - 20) : 0;
+    const uint8_t hi = base < 235 ? (uint8_t)(base + 20) : 255;
+    const uint32_t dark = 0xff000000 | ((uint32_t)lo << 16) | ((uint32_t)lo << 8) | lo;
+    const uint32_t light = 0xff000000 | ((uint32_t)hi << 16) | ((uint32_t)hi << 8) | hi;
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = (((x >> 3) + (y >> 3)) & 1) == 0 ? dark : light;
+        }
+    }
+    return screen;
+}
+
+ImageRGB32 solid_frame(uint32_t color){
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = color;
+        }
+    }
+    return screen;
+}
+
+//  Feeds `frames` to a fresh StillAfterFadeWatcher and returns the timestamp
+//  (in ms from t0) it first fired at, or nullopt if it never fired.
+std::optional<int> still_watcher_fires_at(const std::vector<std::pair<int, ImageRGB32>>& frames){
+    const WallClock t0 = WallClock();
+    StillAfterFadeWatcher watcher;
+    for (const auto& [ms, frame] : frames){
+        if (watcher.process_frame(frame, t0 + Milliseconds(ms))){
+            return ms;
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<std::pair<int, ImageRGB32>> still_frames_every_200ms(const ImageRGB32& frame, int max_ms){
+    std::vector<std::pair<int, ImageRGB32>> out;
+    for (int ms = 0; ms <= max_ms; ms += 200){
+        out.emplace_back(ms, frame.copy());
+    }
+    return out;
+}
+
+std::string check_still_watcher_edge_cases(const ImageRGB32& bright){
+    std::vector<std::pair<int, ImageRGB32>> fade_in;
+    fade_in.emplace_back(0, solid_frame(0xff070707));
+    fade_in.emplace_back(200, solid_frame(0xff070707));
+    fade_in.emplace_back(400, textured_overworld_frame(25));
+    fade_in.emplace_back(600, textured_overworld_frame(50));
+    for (int ms = 800; ms <= 1800; ms += 200){
+        fade_in.emplace_back(ms, textured_overworld_frame(80));
+    }
+    if (still_watcher_fires_at(fade_in) != 1800){
+        return "dark fade-in did not fire 1000 ms after brightness settled.";
+    }
+    std::vector<std::pair<int, ImageRGB32>> two_frame_stall;
+    two_frame_stall.emplace_back(0, bright.copy());
+    two_frame_stall.emplace_back(1200, bright.copy());
+    two_frame_stall.emplace_back(1400, bright.copy());
+    if (still_watcher_fires_at(two_frame_stall) != 1400){
+        return "2-frame stall did not wait for MIN_STILL_FRAMES.";
+    }
+    return "";
+}
+
+//  StillAfterFadeWatcher: early-exit after a real warp clears its black fade,
+//  while never cutting short a cave wild battle's animated 3D intro.
+UnitTestResult test_still_after_fade_watcher(Logger&){
+    const ImageRGB32 bright = textured_overworld_frame(140);
+    if (still_watcher_fires_at(still_frames_every_200ms(bright, 1200)) != 1000){
+        return "bright still overworld did not fire at 1000 ms.";
+    }
+    if (still_watcher_fires_at(still_frames_every_200ms(textured_overworld_frame(46), 1200)) != 1000){
+        return "dark cave floor did not fire at 1000 ms.";
+    }
+    const std::string edge_err = check_still_watcher_edge_cases(bright);
+    if (!edge_err.empty()){
+        return edge_err;
+    }
+    std::vector<std::pair<int, ImageRGB32>> battle_intro;
+    for (int i = 0; i <= 30; i++){
+        battle_intro.emplace_back(i * 200, scenery(i * 16, i * 6));
+    }
+    if (still_watcher_fires_at(battle_intro).has_value()){
+        return "animated battle intro false-triggered stillness watcher.";
+    }
+    std::vector<std::pair<int, ImageRGB32>> with_banner;
+    for (int i = 0; i <= 6; i++){
+        ImageRGB32 frame = scenery(0, 0);
+        paint(frame, /*x0=*/0, /*y0=*/0, /*x1=*/384, /*y1=*/36, /*scale=*/0, i % 2 == 0 ? 0xffffffff : 0xff202020);
+        with_banner.emplace_back(i * 200, std::move(frame));
+    }
+    if (still_watcher_fires_at(with_banner) != 1000){
+        return "top banner animation blocked early exit at 1000 ms.";
+    }
+    return true;
+}
+
 class Test_AutoStoryWalk : public UnitTest{
 public:
     explicit Test_AutoStoryWalk(AutoStoryWalkCase test_case)
@@ -750,6 +852,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a row's trainers leave out those an earlier row beat", test_row_trainers},
+        .expectation = {},
+    },
+    {
+        .input = {"StillAfterFadeWatcher early-exits still overworld and ignores battle intro animation", test_still_after_fade_watcher},
         .expectation = {},
     },
 };

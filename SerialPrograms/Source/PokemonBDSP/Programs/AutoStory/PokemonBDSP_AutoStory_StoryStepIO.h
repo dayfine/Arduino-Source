@@ -12,10 +12,14 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryStepIO_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryStepIO_H
 
+#include <cstddef>
 #include <optional>
 #include <string>
 #include "Common/Cpp/Time.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
+#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/AutoStory/Pokemon_Settle.h"
@@ -43,6 +47,31 @@ constexpr WarpFadeRule TAP_FADE_RULE{};
 
 //  How a settle (StoryStepIO::settle()) ends: the shared table's kinds.
 using Pokemon::SettleKind;
+
+//  Early-exit watcher after a black fade clears in door_fade_was_battle():
+//  fires once the central overworld box stays non-fade and within MAX_RMSD
+//  of its anchor frame for REQUIRED_STILL across at least MIN_STILL_FRAMES.
+//  Real warp arrivals settle within ~1 s; cave wild battle 3D intros keep
+//  sweeping/animating until BattleDialogDetector or BattleMenuWatcher fires.
+class StillAfterFadeWatcher : public VisualInferenceCallback{
+public:
+    static constexpr Milliseconds REQUIRED_STILL = Milliseconds(1000);
+    static constexpr size_t MIN_STILL_FRAMES = 3;
+    static constexpr double MAX_RMSD = 12.0;
+    static constexpr double MIN_BRIGHTNESS_SUM = 30.0;
+    static const ImageFloatBox WATCH_BOX;
+
+    StillAfterFadeWatcher();
+
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+    virtual bool process_frame(const ImageViewRGB32& frame, WallClock timestamp) override;
+    void reset();
+
+private:
+    ImageRGB32 m_anchor;
+    std::optional<WallClock> m_still_since;
+    size_t m_still_frames = 0;
+};
 
 
 //  Abstract interface for story step input/output operations.

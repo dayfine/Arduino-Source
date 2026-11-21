@@ -131,6 +131,7 @@ private:
     Pokemon::Outcome one_step(const Pokemon::RunState& state, const Pokemon::StoryStep& step);
     Pokemon::Outcome tap_to_banner(const Pokemon::Pose& from, const Pokemon::StoryStep& step);
     bool through_already(const Pokemon::StoryStep& step);
+    SettleKind door_settle_kind(const Pokemon::StoryStep& step) const;
     WarpSeen door_from_beside(const Pokemon::StoryStep& step, const WarpSeen& seen, Milliseconds timeout, const std::string& banner);
     void turn(Pokemon::Direction direction);
     void log(const std::string& text);
@@ -151,6 +152,8 @@ private:
     WarpSeen m_warp;
     //  The row's steps followed by a scene (begin_attempt()).
     std::set<std::string> m_scene_next;
+    //  Map-changing door steps followed by a MASH scene step (begin_attempt()).
+    std::set<std::string> m_door_scene_steps;
     //  The last route ended in the scene of the step after it, or after the
     //  plain step onto its trigger (RouteEnd::scene); that step is not taken.
     bool m_scene_open = false;
