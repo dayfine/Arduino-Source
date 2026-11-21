@@ -73,7 +73,7 @@ UnitTestResult test_success(Logger& logger){
     int calls = 0;
     const Outcome outcome = run_rng_handoff(logger, "Test RNG", [&]{
         calls++;
-        return RngHandoffResult{.summary = "2 resets", .failure = {}, .user_turn = {}};
+        return RngHandoffResult{.failure = {}, .summary = "2 resets", .user_turn = {}};
     });
     if (!outcome.succeeded()){
         return "Expected an ok outcome";
@@ -90,7 +90,7 @@ UnitTestResult test_failure(Logger& logger){
     try{
         run_rng_handoff(logger, "Test RNG", [&]{
             calls++;
-            return RngHandoffResult{.summary = {}, .failure = "out of resets", .user_turn = {}};
+            return RngHandoffResult{.failure = "out of resets", .summary = {}, .user_turn = {}};
         });
     }catch (OperationFailedException&){
         if (calls != 1){
@@ -107,7 +107,7 @@ UnitTestResult test_user_turn(Logger& logger){
     int calls = 0;
     const std::optional<std::string> turn = run_rng_handoff_or_user_turn(logger, "Test RNG", [&]{
         calls++;
-        return RngHandoffResult{.summary = {}, .failure = {}, .user_turn = "save by hand"};
+        return RngHandoffResult{.failure = {}, .summary = {}, .user_turn = "save by hand"};
     });
     if (!turn || *turn != "save by hand"){
         return "Expected the user's turn";
@@ -116,14 +116,14 @@ UnitTestResult test_user_turn(Logger& logger){
         return std::format("Expected 1 call, got {}", calls);
     }
     const std::optional<std::string> none = run_rng_handoff_or_user_turn(logger, "Test RNG", []{
-        return RngHandoffResult{.summary = "shiny", .failure = {}, .user_turn = {}};
+        return RngHandoffResult{.failure = {}, .summary = "shiny", .user_turn = {}};
     });
     if (none){
         return "A success has no user's turn";
     }
     try{
         run_rng_handoff_or_user_turn(logger, "Test RNG", []{
-            return RngHandoffResult{.summary = {}, .failure = "out of resets", .user_turn = "ignored"};
+            return RngHandoffResult{.failure = "out of resets", .summary = {}, .user_turn = "ignored"};
         });
     }catch (OperationFailedException&){
         return true;
