@@ -11,6 +11,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "Pokemon/Navigation/Pokemon_WanderRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP_AutoStory_LegBattle.h"
@@ -187,6 +188,13 @@ enum class LegNext{
 //  How far past a leg's end a walk that ran on may have gone.
 constexpr size_t WARP_SLIDE_TILES = 2;
 
+//  What stopped a walk when we tried to talk to it: a person answers A; a
+//  wall or object does not.
+enum class Blocker{
+    THING,
+    PERSON,
+};
+
 //  One planned leg as it is walked: where it goes, and the location
 //  banners read on the way.
 struct LegWalk{
@@ -246,6 +254,9 @@ private:
     //  Legs to a wall.
     LegNext wall_leg(LegWalk& walk);
     bool finish_interrupted_wall(LegWalk& walk, Milliseconds limit);
+    std::vector<TilePos> wanderers_by_the_way(Direction direction) const;
+    std::optional<LegNext> wall_or_wanderer(LegWalk& walk, size_t walked_tiles, size_t nearest);
+    std::optional<LegNext> wait_for_wanderer(LegWalk& walk, const std::vector<TilePos>& zone);
     size_t unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t nearest);
     LegNext stopped_short_of_wall(LegWalk& walk, size_t walked_tiles);
     void check_at_wall(LegWalk& walk, size_t walked_tiles = SIZE_MAX, size_t expected_tiles = SIZE_MAX);
@@ -264,7 +275,7 @@ private:
     LegNext unknown_trainer(LegWalk& walk, const std::vector<std::vector<TilePos>>& paths);
     LegNext known_trainer(LegWalk& walk, const std::vector<std::vector<TilePos>>& paths, const std::vector<size_t>& watching);
 
-    void talk_to_blocker(const std::string& leg_label);
+    Blocker talk_to_blocker(const std::string& leg_label);
     LegNext replan_from(const LegWalk& walk, std::vector<TilePos> stopped, const std::string& why);
     void mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped);
     void mark_tiles_past(const LegWalk& walk, const std::vector<TilePos>& stopped);
@@ -416,6 +427,9 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
             direction_name(leg.direction) + ": " + std::to_string(nearest) + " tiles in " +
             std::to_string(walk.result.walked.count()) + " ms to the wall.", RouteNote::LOG);
     }
+    if (const std::optional<LegNext> next = wall_or_wanderer(walk, walked_tiles, nearest)){
+        return *next;
+    }
     walked_tiles = unstick_wall_leg(walk, walked_tiles, nearest);
     //  Any stop short of the wall's distance: someone who stays put is
     //  talked to, and the leg is planned again from where we are. Within the
@@ -495,6 +509,71 @@ size_t RouteWalker::unstick_wall_leg(LegWalk& walk, size_t walked_tiles, size_t 
         walked_tiles += tiles_moved(walk.result, per_tile);
     }
     return walked_tiles;
+}
+
+//  The tiles where someone wanders on the way from any tile we may be on to
+//  the wall, or a row or column beside it: the belief may be a row off.
+std::vector<TilePos> RouteWalker::wanderers_by_the_way(Direction direction) const{
+    const Direction left = Direction(((int)direction + 1) % 4);
+    const Direction right = Direction(((int)direction + 3) % 4);
+    std::vector<TilePos> zone;
+    for (const TilePos& pos : m_from){
+        for (const TilePos& tile : leg_path(m_grid, pos, direction, SIZE_MAX)){
+            for (const TilePos& near : {tile, tile.next(left), tile.next(right)}){
+                if (wandering_hazard(m_grid, near)){
+                    zone.push_back(near);
+                }
+            }
+        }
+    }
+    return sorted_unique(std::move(zone));
+}
+
+//  A stop the time counts as the wall, `walked_tiles` of `nearest`, on a
+//  leg by ground where someone wanders, may be them: wait_for_wanderer().
+std::optional<LegNext> RouteWalker::wall_or_wanderer(LegWalk& walk, size_t walked_tiles, size_t nearest){
+    if (walk.result.stop != WalkStop::BLOCKED || nearest == SIZE_MAX || walked_tiles < nearest){
+        return std::nullopt;
+    }
+    const std::vector<TilePos> zone = wanderers_by_the_way(walk.planned.leg.direction);
+    return zone.empty() ? std::nullopt : wait_for_wanderer(walk, zone);
+}
+
+//  At a wall stop on a wanderer's zone, probe with A and delegate wait/replan
+//  decisions to Pokemon::decide_wall_wander(). Returns nullopt if it is a wall.
+std::optional<LegNext> RouteWalker::wait_for_wanderer(LegWalk& walk, const std::vector<TilePos>& zone){
+    constexpr Pokemon::WanderWaitPolicy policy{.max_waits = 2, .wait_duration = WAIT_FOR_THE_WAY.hold, .probe_with_a = true};
+    const Direction ahead = walk.planned.leg.direction;
+    Pokemon::WanderWaitState wait_state;
+    while (true){
+        const Pokemon::WallWanderInput input{!zone.empty(), talk_to_blocker(walk.label) == Blocker::PERSON};
+        const Pokemon::WallWanderDecision decision = Pokemon::decide_wall_wander(policy, wait_state, input);
+        if (decision == Pokemon::WallWanderDecision::NONE){
+            return std::nullopt;
+        }
+        if (decision == Pokemon::WallWanderDecision::REPLAN_BEFORE_ZONE){
+            std::vector<TilePos> before;
+            for (const TilePos& tile : zone){
+                if (const std::optional<TilePos> pos = step(m_grid, tile, Direction(((int)ahead + 2) % 4))){
+                    before.push_back(*pos);
+                }
+            }
+            if (before.empty()){
+                fail(m_io, walk.label + ": someone who wanders stays in the way, and no tile before their zone fits.");
+            }
+            return replan_from(walk, sorted_unique(std::move(before)), "someone who wanders by the way stands in it");
+        }
+        m_io.note("[Route] " + walk.label + ": stopped against someone who wanders by the way, not the wall; waiting for the way to clear.", RouteNote::WARNING);
+        m_io.press(WAIT_FOR_THE_WAY);
+        walk.result = m_io.walk_to_wall({.direction = ahead, .limit = wall_limit(walk.planned.leg), .label = walk.label, .options = run_watching(walk)});
+        if (finish_interrupted_wall(walk, wall_limit(walk.planned.leg))){
+            return LegNext::NEXT_LEG;
+        }
+        if (walk.result.stop != WalkStop::BLOCKED){
+            check_at_wall(walk);
+            return LegNext::NEXT_LEG;
+        }
+    }
 }
 
 LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){
@@ -831,13 +910,15 @@ LegNext RouteWalker::known_trainer(LegWalk& walk, const std::vector<std::vector<
 
 
 //  Presses A at whoever stopped the walk; a trainer we walked up to from
-//  the side starts the battle this way.
-void RouteWalker::talk_to_blocker(const std::string& leg_label){
+//  the side starts the battle this way. Whoever talks is a person.
+Blocker RouteWalker::talk_to_blocker(const std::string& leg_label){
     m_io.press(press_a(RouteInputEnd::QUEUED));
     if (m_io.dialog_within(2000ms, COLOR_YELLOW)){
         m_io.note(leg_label + ": someone is in the way; talking to them.", RouteNote::STATUS);
         m_trainers.fight("someone in the way");
+        return Blocker::PERSON;
     }
+    return Blocker::THING;
 }
 
 //  One tile we may stand on: what stopped us is on the next tile, and goes
