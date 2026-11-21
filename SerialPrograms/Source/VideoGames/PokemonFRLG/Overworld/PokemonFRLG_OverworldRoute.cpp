@@ -656,8 +656,11 @@ RobustRouteOps make_robust_ops(const std::vector<MapData>& maps, const StepModel
             const auto s = model.press(at, dir);
             return (!s || (s->action == 0 && !s->warped)) && model.held_at(at, dir);
         },
-        .build_step = [&, only_map](const PlayerState& s, const PlayerState& e, Direction dir, int tiles, bool to_wall, bool wild){
-            return to_route_step(maps, {Pokemon::LegKind::WALK, 0, dir, tiles, false, to_wall, wild, dir, {only_map, s}, {only_map, e}});
+        .build_step = [&, only_map](const RobustLegSpec& spec){
+            return to_route_step(maps, {
+                Pokemon::LegKind::WALK, 0, spec.direction, spec.tiles, false, spec.to_wall, spec.wild, spec.direction,
+                {only_map, spec.start}, {only_map, spec.end}
+            });
         },
     };
 }

@@ -22,18 +22,21 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Walk leg summary passed to RobustRouteOps::build_step.
+struct RobustLegSpec{
+    PlayerState start;
+    PlayerState end;
+    Direction direction = Direction::NORTH;
+    int tiles = 0;
+    bool to_wall = false;
+    bool wild = false;
+};
+
 //  Single-map step and leg conversion callbacks supplied by OverworldRoute.cpp.
 struct RobustRouteOps{
     std::function<std::optional<PlayerState>(const PlayerState&, Direction)> walk_step;
     std::function<bool(const PlayerState&, Direction)> held_at;
-    std::function<RouteStep(
-        const PlayerState& start,
-        const PlayerState& end,
-        Direction direction,
-        int tiles,
-        bool to_wall,
-        bool wild
-    )> build_step;
+    std::function<RouteStep(const RobustLegSpec&)> build_step;
 };
 
 //  Taps the open legs before each tapped leg in `route`, back to the start

@@ -101,7 +101,7 @@ std::optional<RouteStep> walk_robust_leg(
         wild |= is_tall_grass(map, current.position) || current.surfing;
         tiles++;
     }
-    return ops.build_step(start, current, rleg.direction, tiles, rleg.to_wall, wild);
+    return ops.build_step({start, current, rleg.direction, tiles, rleg.to_wall, wild});
 }
 
 void append_goal_facing(
