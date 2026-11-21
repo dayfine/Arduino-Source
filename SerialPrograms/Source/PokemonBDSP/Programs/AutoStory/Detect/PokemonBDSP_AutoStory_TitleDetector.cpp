@@ -29,10 +29,11 @@ const ImageFloatBox BOTTOM_RIGHT(0.90, 0.88, 0.10, 0.12);
 constexpr double DARK_CORNER = 40;
 
 //  The line's red (about 200, 40, 45), and its share of the band: about
-//  0.09 in Japanese and French; a solid red button fills most of it.
+//  0.09 in Japanese and French, lower in English ("Press A Button") while
+//  fading/pulsing in; a solid red button fills most of it.
 constexpr uint32_t PROMPT_RED_MIN = combine_rgb(150, 0, 0);
 constexpr uint32_t PROMPT_RED_MAX = combine_rgb(255, 90, 90);
-constexpr double MIN_RED_SHARE = 0.04;
+constexpr double MIN_RED_SHARE = 0.015;
 constexpr double MAX_RED_SHARE = 0.50;
 
 bool dark(const ImageViewRGB32& screen, const ImageFloatBox& box){
