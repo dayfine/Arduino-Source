@@ -42,6 +42,9 @@ class ShotTests(unittest.TestCase):
         self.assertEqual(result['captured_at'], '2026-11-14T06:10:12.500Z')
         self.assertTrue(result['path'].endswith('_frame.png'))
         self.assertEqual(result['call_started_at'], START)
+        self.assertEqual(result['timing_ms']['request_to_capture'], 100)
+        self.assertGreaterEqual(result['timing_ms']['capture_to_journal'], 0)
+        self.assertGreaterEqual(result['timing_ms']['png_read'], 0)
 
     def test_the_request_is_one_snapshot_line(self):
         self.take(timeout_ms=1500)
