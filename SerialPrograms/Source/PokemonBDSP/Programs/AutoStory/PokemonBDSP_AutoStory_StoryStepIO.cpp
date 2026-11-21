@@ -121,6 +121,29 @@ DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, D
 //  Wild battles a run into a door flees and runs on after.
 constexpr size_t DOOR_RUN_BATTLES = 3;
 
+//  Distinguish a cave wild encounter's black flash from a real door warp on
+//  multi-tile hall runs (01.03/5 into_the_coal_room, lab-B 2026-11-21 06:00).
+bool door_fade_was_battle(VideoStream& stream, ProControllerContext& context){
+    BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8},
+        Pokemon::BDSP_FADE_PROFILE.dark_max_sum, Pokemon::BDSP_FADE_PROFILE.uniform_max_stddev_sum,
+        BlackScreenWatcher::FinderType::GONE, 500ms);
+    BattleMenuWatcher battle_menu(BattleType::STARTER, COLOR_YELLOW);
+    DetectorToFinder<BattleDialogDetector> battle_dialog("BattleDialogWatcher", 250ms, COLOR_YELLOW);
+    const int first = wait_until(stream, context, 10s, {{battle_menu}, {battle_dialog}, {gone}});
+    if (first == 0 || first == 1){
+        return true;
+    }
+    if (first != 2){
+        return false;
+    }
+    OverworldWatcher overworld(COLOR_GREEN);
+    ShortDialogWatcher dialog(COLOR_YELLOW);
+    BattleMenuWatcher late_menu(BattleType::STARTER, COLOR_YELLOW);
+    DetectorToFinder<BattleDialogDetector> late_dialog("BattleDialogWatcher", 250ms, COLOR_YELLOW);
+    const int after = wait_until(stream, context, 8s, {{overworld}, {dialog}, {late_menu}, {late_dialog}});
+    return after == 2 || after == 3;
+}
+
 //  Holds the D-pad toward a door (with B after the shoes) for `timeout`
 //  until its fade (DOOR_FADE_RULE) or a line shows. Returns what it saw.
 //  A fade whose hold fell between two frames shows at the scene after it,
@@ -137,7 +160,9 @@ WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direc
     for (size_t battles = 0;; battles++){
         const WallClock start = current_time();
         const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, left, dark_from, banner);
-        if (end.ret == 2){
+        const bool battle_fade = end.ret == 0 && end.fade == WarpFade::BLACK && dark_from > 0ms &&
+            door_fade_was_battle(stream, context);
+        if (end.ret == 2 || battle_fade){
             const WallClock stopped = std::min(end.went_dark, current_time());
             const Milliseconds ran = std::chrono::duration_cast<Milliseconds>(stopped - start) - ROUTE_START_DELAY;
             const Milliseconds counted = std::clamp(ran, 0ms, left);
