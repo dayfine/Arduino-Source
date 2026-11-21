@@ -19,6 +19,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageDiff.h"
+#include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -482,23 +483,10 @@ private:
     bool m_has_last = false;
 };
 
-} // namespace
-
-
-namespace{
-
 //  What a walk presses.
-enum class WalkInput{
-    STICK,
-    DPAD,
-    DPAD_RUN,   //  the D-pad with B held
-    TAPS,       //  a D-pad tap a tile, 800 ms each
-};
+enum class WalkInput{ STICK, DPAD, DPAD_RUN, TAPS };
 //  What a battle that starts on the way is.
-enum class WildPolicy{
-    RUN_FROM,   //  a wild battle: run, and walk on
-    STOP_AT,    //  no wild Pokemon here: a trainer's, so the walk stops with DIALOG
-};
+enum class WildPolicy{ RUN_FROM, STOP_AT };
 
 struct WalkSpec{
     JoystickPosition stick;
@@ -509,13 +497,17 @@ struct WalkSpec{
     WildPolicy wild = WildPolicy::RUN_FROM;
 };
 
-//  What a chunk of the walk decided: stop with `stop`, walk the next chunk,
-//  or (after the watchers) look at how the screen changed.
-enum class ChunkNext{
-    STOP,
-    NEXT_CHUNK,
-    LOOK,
-};
+WarpFade uniform_fade(const ImageViewRGB32& frame){
+    const ImageStats middle = image_stats(extract_box_reference(frame, ImageFloatBox(0.1, 0.1, 0.8, 0.8)));
+    const Pokemon::FadeProfile& profile = Pokemon::BDSP_FADE_PROFILE;
+    if (middle.stddev.sum() > profile.uniform_max_stddev_sum){
+        return WarpFade::NONE;
+    }
+    return middle.average.sum() >= profile.white_min_sum ? WarpFade::WHITE
+        : middle.average.sum() <= profile.dark_max_sum ? WarpFade::BLACK : WarpFade::NONE;
+}
+
+enum class ChunkNext{ STOP, NEXT_CHUNK, LOOK };
 struct ChunkVerdict{
     ChunkNext next = ChunkNext::LOOK;
     WalkStop stop = WalkStop::LIMIT;
@@ -647,6 +639,13 @@ private:
         if (change > WALK_SCENE_CHANGE && battle_follows(m_stream, m_context)){
             escape_battle("wild battle (leaf opening); running.", BattleMovement::STEP_MOVED);
             return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
+        }
+        if (change > WALK_SCENE_CHANGE){
+            const WarpFade fade = uniform_fade(*after.frame);
+            if (fade != WarpFade::NONE){
+                m_result.warp.fade = fade;
+                return {ChunkNext::STOP, WalkStop::TRANSITION};
+            }
         }
         //  Two still chunks in a row, so one dropped frame does not stop us. A
         //  frame exactly the same is a stalled video or a game hitch, not a wall:

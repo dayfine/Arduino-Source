@@ -87,7 +87,6 @@ std::string map_of(const StoryWorld& maps, const std::vector<TilePos>& tiles){
 
 } // namespace
 
-
 namespace{
 
 //  Sorted by row, then column, without repeats.
@@ -297,6 +296,7 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
         }
     }
     m_from = std::move(from);
+    m_facing = m_plan.start_facing;
     m_map_start = map_of(m_maps, m_from);
     for (size_t plans = 0; plans < 8; plans++){
         const std::vector<PlannedLeg> legs = plan_legs(plans == 0);
@@ -577,7 +577,7 @@ LegNext RouteWalker::on_to_wall(LegWalk& walk){
 //  belief drifted four rows.
 LegNext RouteWalker::open_leg(LegWalk& walk){
     const TileLeg& leg = walk.planned.leg;
-    if (m_facing != leg.direction){
+    if (m_facing && *m_facing != leg.direction){
         turn_tap(walk);
     }
     if (leg.tiles > walk.turn_moved){
@@ -665,7 +665,6 @@ LegNext RouteWalker::blocked_open_leg(LegWalk& walk, size_t moved){
     return replan_from(walk, std::move(stopped),
         "blocked after " + std::to_string(moved) + " of " + std::to_string(walk.planned.leg.tiles) + " tiles");
 }
-
 
 //  Entering another map shows its name; a missing or wrong name means the
 //  walk did not end where the plan says. From tiles on several maps (a leg
@@ -778,6 +777,7 @@ LegNext RouteWalker::unknown_trainer(LegWalk& walk, const std::vector<std::vecto
         return on_to_wall(walk);
     }
     m_from = std::move(anywhere);
+    m_facing.reset();
     return LegNext::REPLAN;
 }
 
@@ -825,9 +825,10 @@ LegNext RouteWalker::known_trainer(LegWalk& walk, const std::vector<std::vector<
     //  along the wrong row). Plan from both: where the taps say and where his
     //  sight line crosses the leg.
     by_taps.insert(by_taps.end(), stopped.begin(), stopped.end());
-    return replan_from(walk, sorted_unique(std::move(by_taps)), std::to_string(taps) + " taps before the battle, or where they saw us");
+    const LegNext next = replan_from(walk, sorted_unique(std::move(by_taps)), std::to_string(taps) + " taps before the battle, or where they saw us");
+    m_facing.reset();
+    return next;
 }
-
 
 //  Presses A at whoever stopped the walk; a trainer we walked up to from
 //  the side starts the battle this way.
@@ -912,7 +913,6 @@ RouteEnd walk_route_to_warp(
 ){
     return RouteWalker(io, maps, trainers, plan).run(std::move(from));
 }
-
 
 void talk_to_npc(
     VideoStream& stream, ProControllerContext& context, const WildBattleEscape& escape,

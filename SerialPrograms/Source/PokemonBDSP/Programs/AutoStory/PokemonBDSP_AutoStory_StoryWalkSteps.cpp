@@ -236,7 +236,7 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
         label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name),
-        step.action == ROUTE_ONTO_TRIGGER,
+        step.action == ROUTE_ONTO_TRIGGER, Pokemon::facing_of(from),
     };
     RouteEnd end = walk_route_to_warp(m_route, *maps, start, trainers, plan);
     sights = std::move(trainers.sights);
@@ -512,9 +512,13 @@ Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
     const CountedEndPolicy policy = step.action == "one_short_ok" ? CountedEndPolicy::ONE_SHORT : CountedEndPolicy::EXACT;
     const bool one_short_ok = policy == CountedEndPolicy::ONE_SHORT;
     std::vector<TilePos> at = Pokemon::tiles_of(from);
+    std::optional<Direction> facing = Pokemon::facing_of(from);
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
     for (auto leg = legs_list.begin(); leg != legs_list.end(); ++leg){
-        turn(leg->direction);
+        if (facing && *facing != leg->direction){
+            turn(leg->direction);
+        }
+        facing = leg->direction;
         const size_t tiles = (size_t)leg->tiles;
         const auto next = counted_ends(at, *leg, policy);
         m_legs.begin_leg({.direction = leg->direction, .tiles = tiles, .end_kind = Pokemon::LegEndKind::TILE,
@@ -555,8 +559,12 @@ Outcome StoryWalkSteps::measured_legs(const Pose& from, const StoryStep& step){
         return Pokemon::outcome_failed("measured", "no map or tiles: " + Pokemon::to_string(from));
     }
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
+    std::optional<Direction> facing = Pokemon::facing_of(from);
     for (const Pokemon::StoryLeg& leg : legs_list){
-        turn(leg.direction);
+        if (facing && *facing != leg.direction){
+            turn(leg.direction);
+        }
+        facing = leg.direction;
         const size_t tiles = (size_t)leg.tiles;
         m_legs.begin_leg({.direction = leg.direction, .tiles = tiles, .end_kind = Pokemon::LegEndKind::TILE});
         const WalkResult walk = m_route.walk_taps(leg.direction, tiles, step.name);
@@ -696,7 +704,10 @@ Outcome StoryWalkSteps::one_step(const RunState& state, const StoryStep& step){
         return Pokemon::outcome_ok(state.pose);
     }
     const Direction direction = story_arg<Direction>(step.args, "direction");
-    turn(direction);
+    const std::optional<Direction> facing = Pokemon::facing_of(state.pose);
+    if (facing && *facing != direction){
+        turn(direction);
+    }
     const WalkResult walk = m_route.walk_taps(direction, 1, step.name);
     if (walk.wild_battles > 0){
         return Pokemon::outcome_failed("interrupted_step", step.name);

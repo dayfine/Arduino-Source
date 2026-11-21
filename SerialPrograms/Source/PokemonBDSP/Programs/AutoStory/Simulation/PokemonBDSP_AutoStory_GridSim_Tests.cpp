@@ -241,6 +241,7 @@ SimWalk walk_on_sim(const SimRoute& route, bool stick_turns){
             .avoid = std::move(avoid),
             .costs = route.costs,
             .speed = route.can_run ? MoveSpeed::RUN : MoveSpeed::WALK,
+            .start_facing = Direction::NORTH,
         });
     }catch (const GridSimFailure& e){
         out.failure = e.message;
@@ -266,7 +267,6 @@ std::string walk_error(const SimRoute& route, const SimWalk& walk){
     }
     return "";
 }
-
 
 std::vector<TilePos> world_tiles(const StoryWorld& world, const Pose& pose){
     std::vector<TilePos> tiles;
