@@ -2,16 +2,18 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Synthetic frames, and console frames (1920x1080 JPEG or PNG) from
- *  CommandLineTests/PokemonLZA/AutoStoryDetectors/, one folder per scene
- *  sequence.
+ *  Synthetic frames and console frames (1920x1080 JPEG or PNG) from
+ *  CommandLineTests/PokemonLZA/AutoStoryDetectors/: scene sequences,
+ *  tutorial cards, caught-mark name plates, and Zone 1 map pins.
  *
  */
 
-
 #include <charconv>
+#include <cmath>
+#include <cstdint>
 #include <format>
 #include <functional>
+#include <initializer_list>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,12 +21,15 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
-#include "PokemonLZA_AutoStoryDialogDetectors.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
 #include "PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "PokemonLZA_AutoStoryCaughtMarkReader.h"
 #include "PokemonLZA_AutoStoryControlsHintDetector.h"
-#include "PokemonLZA_AutoStoryDetectors_Tests.h"
+#include "PokemonLZA_AutoStoryDialogDetectors.h"
+#include "PokemonLZA_AutoStoryMapPinReader.h"
 #include "PokemonLZA_AutoStoryMissionBannerDetectors.h"
 #include "PokemonLZA_AutoStoryTutorialCardDetector.h"
 
@@ -37,9 +42,44 @@ namespace{
 
 constexpr size_t WIDTH = 1920;
 constexpr size_t HEIGHT = 1080;
+constexpr uint32_t WHITE = 0xffffffff;
+
+void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
+    for (size_t y = min_y; y < max_y; y++){
+        for (size_t x = min_x; x < max_x; x++){
+            image.pixel(x, y) = color;
+        }
+    }
+}
+
+void fill_box(const ImagePixelBox& box, uint32_t color, ImageRGB32& image){
+    fill_box(box.min_x, box.min_y, box.max_x, box.max_y, color, image);
+}
+
+ImageRGB32 solid_frame(uint32_t color){
+    ImageRGB32 image(WIDTH, HEIGHT);
+    image.fill(color);
+    return image;
+}
+
+template <typename Case, UnitTestResult (*check)(const Case&, Logger&)>
+class DetectorCaseTest : public UnitTest{
+public:
+    DetectorCaseTest(std::string_view prefix, const Case& test)
+        : UnitTest(std::format("{}{}", prefix, test.name))
+        , m_test(test)
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        return check(m_test, logger);
+    }
+
+private:
+    const Case& m_test;
+};
 
 
-//  Per detector: the expected read, or none when not checked.
+//  --- Story detectors (autosave, controls hint, advance arrow, mission complete, party bar) ---
+
 struct DetectorReads{
     std::optional<bool> autosave = {};
     std::optional<bool> controls_hint = {};
@@ -52,6 +92,7 @@ struct DetectorField{
     std::string_view name;
     std::optional<bool> DetectorReads::* read;
 };
+
 const DetectorField DETECTOR_FIELDS[] = {
     {"autosave", &DetectorReads::autosave},
     {"controls hint", &DetectorReads::controls_hint},
@@ -60,7 +101,6 @@ const DetectorField DETECTOR_FIELDS[] = {
     {"party bar", &DetectorReads::party_bar},
 };
 
-//  `reads` with every detector checked: one it leaves unset must not fire.
 DetectorReads every_detector(DetectorReads reads){
     for (const DetectorField& field : DETECTOR_FIELDS){
         reads.*field.read = (reads.*field.read).value_or(false);
@@ -106,27 +146,13 @@ struct StoryDetectors{
     }
 };
 
-
-void fill_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
-    for (size_t y = min_y; y < max_y; y++){
-        for (size_t x = min_x; x < max_x; x++){
-            image.pixel(x, y) = color;
-        }
-    }
-}
-
-//  The pencil 48 px right of the Chinese badge's (the shorter Japanese text):
-//  a white 4 px stroke in a `glow` band 12 px wide.
 ImageRGB32 autosave_badge_frame(uint32_t background, uint32_t glow){
-    ImageRGB32 image(WIDTH, HEIGHT);
-    image.fill(background);
+    ImageRGB32 image = solid_frame(background);
     fill_box(/*min_x=*/1655, /*min_y=*/73, /*max_x=*/1667, /*max_y=*/104, glow, image);
-    fill_box(/*min_x=*/1659, /*min_y=*/73, /*max_x=*/1663, /*max_y=*/104, /*color=*/0xffffffff, image);
+    fill_box(/*min_x=*/1659, /*min_y=*/73, /*max_x=*/1663, /*max_y=*/104, WHITE, image);
     return image;
 }
 
-//  A bright glow over a dark scene, with 4 px bands of banner mint green
-//  (about 96, 203, 147) above and below the icon, as on 01.01 in English.
 ImageRGB32 autosave_badge_by_mint_banner_frame(){
     ImageRGB32 image = autosave_badge_frame(/*background=*/0xff101418, /*glow=*/0xff28c8e6);
     fill_box(/*min_x=*/1600, /*min_y=*/60, /*max_x=*/1720, /*max_y=*/64, /*color=*/0xff60cb93, image);
@@ -152,7 +178,6 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .input = {.frame = []{ return ImageRGB32(); }},
         .expectation = {.reads = every_detector({})},
     },
-    //  The badge's glow is dim over a lamp-lit wall (about 28, 70, 85: 02.04, frame 0075).
     {
         .name = "the autosave badge with a dim glow over a dark wall",
         .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff1c4655); }},
@@ -163,7 +188,6 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff252722); }},
         .expectation = {.reads = {.autosave = false}},
     },
-    //  Mint and sign green have green over blue; the badge's glow does not.
     {
         .name = "the autosave badge with mint banner bands above and below",
         .input = {.frame = autosave_badge_by_mint_banner_frame},
@@ -187,7 +211,6 @@ UnitTestResult check_synthetic_frame(const SyntheticFrameCase& test, Logger& log
     return true;
 }
 
-
 std::optional<int> frame_number(std::string_view name, size_t offset, size_t digits){
     if (name.size() < offset + digits){
         return std::nullopt;
@@ -201,8 +224,6 @@ std::optional<int> frame_number(std::string_view name, size_t offset, size_t dig
     return number;
 }
 
-//  Reads from the file name ("0001-nothing+platform+controls_hint.jpg");
-//  detectors not in this module are ignored.
 DetectorReads as_named(std::string_view name){
     const auto has = [name](std::string_view reading){
         return name.find(reading) != std::string_view::npos;
@@ -214,23 +235,18 @@ DetectorReads as_named(std::string_view name){
     };
 }
 
-//  The opening cutscene up to the platform: no detector fires.
 std::optional<DetectorReads> opening(std::string_view){
     return DetectorReads{};
 }
 
-//  As named, but no autosave badge and the advance chevron only on 0040.
 std::optional<DetectorReads> arrival_to_ad(std::string_view name){
     const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
         return std::nullopt;
     }
-    return DetectorReads{
-        .controls_hint = *index <= 6, .advance_arrow = *index == 40,
-    };
+    return DetectorReads{.controls_hint = *index <= 6, .advance_arrow = *index == 40};
 }
 
-//  As arrival_to_ad(), plus the chevron on 0044, 0049, 0053, 0078 and 0093-0115.
 std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
     const std::optional<int> index = frame_number(name, /*offset=*/0, /*digits=*/4);
     if (!index){
@@ -243,7 +259,6 @@ std::optional<DetectorReads> arrival_to_ad_subtitles(std::string_view name){
     };
 }
 
-//  As named for controls_hint and advance_arrow.
 std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     if (!frame_number(name, /*offset=*/0, /*digits=*/4)){
         return std::nullopt;
@@ -254,7 +269,6 @@ std::optional<DetectorReads> arrival_to_mission_banner(std::string_view name){
     };
 }
 
-//  As named, plus the autosave badge on 0197 (named "nothing").
 std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
     DetectorReads want = as_named(name);
     if (name.starts_with("0197-")){
@@ -263,7 +277,6 @@ std::optional<DetectorReads> arrival_past_mission_banner(std::string_view name){
     return want;
 }
 
-//  As named, plus the complete card on 0045-0046 (named "nothing").
 std::optional<DetectorReads> mission_complete_to_next_banner(std::string_view name){
     DetectorReads want = as_named(name);
     want.mission_complete = name.starts_with("0045-") || name.starts_with("0046-");
@@ -273,56 +286,24 @@ std::optional<DetectorReads> mission_complete_to_next_banner(std::string_view na
 struct FrameFolderCase{
     std::string name;
     struct Input{
-        std::string_view folder;    //  In CommandLineTests/PokemonLZA/AutoStoryDetectors/.
+        std::string_view folder;
     };
     Input input;
     struct Expectation{
         size_t frames = 0;
-        //  Reads by file name; none for a file not in the set.
         std::function<std::optional<DetectorReads>(std::string_view name)> reads = {};
     };
     Expectation expectation;
 };
 
 const FrameFolderCase FRAME_FOLDER_CASES[] = {
-    {
-        .name = "the opening cutscene",
-        .input = {.folder = "Opening"},
-        .expectation = {.frames = 56, .reads = opening},
-    },
-    {
-        .name = "the arrival to the ad",
-        .input = {.folder = "ArrivalToAd"},
-        .expectation = {.frames = 89, .reads = arrival_to_ad},
-    },
-    {
-        .name = "the arrival to the ad's subtitles",
-        .input = {.folder = "ArrivalToAdSubtitles"},
-        .expectation = {.frames = 115, .reads = arrival_to_ad_subtitles},
-    },
-    {
-        .name = "the arrival to the mission banner",
-        .input = {.folder = "ArrivalToMissionBanner"},
-        .expectation = {.frames = 181, .reads = arrival_to_mission_banner},
-    },
-    {
-        .name = "the arrival past the mission banner",
-        .input = {.folder = "ArrivalPastMissionBanner"},
-        .expectation = {.frames = 221, .reads = arrival_past_mission_banner},
-    },
-    {
-        .name = "the mission complete card to the next mission's banner",
-        .input = {.folder = "MissionCompleteToNextBanner"},
-        .expectation = {.frames = 139, .reads = mission_complete_to_next_banner},
-    },
-    {
-        //  console B, 2026-11-15, 1280x720: Italian's longer header moves
-        //  the banner's icon 96 px left; the three-row controls hint puts
-        //  its card ~20 px higher.
-        .name = "01.01's banner and controls hint in English and Italian",
-        .input = {.folder = "Arrival0101Languages"},
-        .expectation = {.frames = 7, .reads = as_named},
-    },
+    {.name = "the opening cutscene", .input = {.folder = "Opening"}, .expectation = {.frames = 56, .reads = opening}},
+    {.name = "the arrival to the ad", .input = {.folder = "ArrivalToAd"}, .expectation = {.frames = 89, .reads = arrival_to_ad}},
+    {.name = "the arrival to the ad's subtitles", .input = {.folder = "ArrivalToAdSubtitles"}, .expectation = {.frames = 115, .reads = arrival_to_ad_subtitles}},
+    {.name = "the arrival to the mission banner", .input = {.folder = "ArrivalToMissionBanner"}, .expectation = {.frames = 181, .reads = arrival_to_mission_banner}},
+    {.name = "the arrival past the mission banner", .input = {.folder = "ArrivalPastMissionBanner"}, .expectation = {.frames = 221, .reads = arrival_past_mission_banner}},
+    {.name = "the mission complete card to the next mission's banner", .input = {.folder = "MissionCompleteToNextBanner"}, .expectation = {.frames = 139, .reads = mission_complete_to_next_banner}},
+    {.name = "01.01's banner and controls hint in English and Italian", .input = {.folder = "Arrival0101Languages"}, .expectation = {.frames = 7, .reads = as_named}},
 };
 
 UnitTestResult check_frame_folder(const FrameFolderCase& test, Logger& logger){
@@ -360,10 +341,12 @@ UnitTestResult check_frame_folder(const FrameFolderCase& test, Logger& logger){
 }
 
 
+//  --- Tutorial card detector ---
+
 struct TutorialCardFrameCase{
     std::string name;
     struct Input{
-        std::string_view path;  //  In CommandLineTests/PokemonLZA/.
+        std::string_view path;
     };
     Input input;
     struct Expectation{
@@ -374,16 +357,11 @@ struct TutorialCardFrameCase{
 
 const TutorialCardFrameCase TUTORIAL_CARD_FRAME_CASES[] = {
     {
-        //  console B, 2026-11-16 (03.02b run 5): the "Map & Missions" card,
-        //  page 1 of 2, over the map app's blue screen, not a dark one.
         .name = "the Map & Missions card over the map app (Italian)",
         .input = {.path = "AutoStoryScreenEvents/it_0302b_map_missions_card.png"},
         .expectation = {.card = true},
     },
     {
-        //  console B, 2026-11-16: a save file's first X opens the menu under
-        //  the "Salvare il gioco" card (save by R in the main menu); A
-        //  closes it.
         .name = "the Save card over the main menu (Italian)",
         .input = {.path = "AutoStoryScreenEvents/it_menu_save_tutorial_card.png"},
         .expectation = {.card = true},
@@ -395,7 +373,7 @@ const TutorialCardFrameCase TUTORIAL_CARD_FRAME_CASES[] = {
     },
 };
 
-UnitTestResult check_tutorial_card_frame(const TutorialCardFrameCase& test){
+UnitTestResult check_tutorial_card_frame(const TutorialCardFrameCase& test, Logger&){
     const std::string path = std::format("{}PokemonLZA/{}", UNIT_TEST_RESOURCE_PATH(), test.input.path);
     const bool card = tutorial_card_shows(ImageRGB32(path));
     if (card != test.expectation.card){
@@ -405,63 +383,214 @@ UnitTestResult check_tutorial_card_frame(const TutorialCardFrameCase& test){
 }
 
 
-class Test_SyntheticFrame : public UnitTest{
-public:
-    explicit Test_SyntheticFrame(const SyntheticFrameCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryDetectors - synthetic frame: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return check_synthetic_frame(m_test, logger);
-    }
+//  --- Caught mark reader ---
 
-private:
-    const SyntheticFrameCase& m_test;
+const ImagePixelBox PLATE_BAR_BOX(950, 515, 1058, 533);
+const ImagePixelBox PLAYER_BAR_BOX(990, 560, 1053, 572);
+const ImagePixelBox GENDER_MARK_BOX(1020, 430, 1044, 454);
+const ImagePixelBox GENDER_MARK_HOLE_BOX(1028, 438, 1036, 446);
+const ImagePixelBox BALL_MARK_TOP_BOX(1056, 430, 1080, 442);
+const ImagePixelBox BALL_MARK_BOTTOM_BOX(1056, 442, 1080, 454);
+
+constexpr uint32_t PLATE_BAR_GREEN = 0xff2dc673;
+constexpr uint32_t GENDER_ORANGE = 0xffff7644;
+constexpr uint32_t BALL_RED = 0xffff6b6e;
+constexpr uint32_t BRIGHT_GRASS = 0xff44a050;
+constexpr uint32_t DARK_GROUND = 0xff303030;
+
+struct PlateDrawing{
+    bool plate_bar = false;
+    bool player_bar = false;
+    bool gender_mark = false;
+    bool ball_mark = false;
 };
 
-class Test_TutorialCardFrame : public UnitTest{
-public:
-    explicit Test_TutorialCardFrame(const TutorialCardFrameCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryDetectors - tutorial card frame: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_tutorial_card_frame(m_test);
+ImageRGB32 plate_frame(uint32_t ground, PlateDrawing drawing){
+    ImageRGB32 image = solid_frame(ground);
+    if (drawing.plate_bar){
+        fill_box(PLATE_BAR_BOX, PLATE_BAR_GREEN, image);
     }
+    if (drawing.player_bar){
+        fill_box(PLAYER_BAR_BOX, PLATE_BAR_GREEN, image);
+    }
+    if (drawing.gender_mark){
+        fill_box(GENDER_MARK_BOX, GENDER_ORANGE, image);
+        fill_box(GENDER_MARK_HOLE_BOX, WHITE, image);
+    }
+    if (drawing.ball_mark){
+        fill_box(BALL_MARK_TOP_BOX, BALL_RED, image);
+        fill_box(BALL_MARK_BOTTOM_BOX, WHITE, image);
+    }
+    return image;
+}
 
-private:
-    const TutorialCardFrameCase& m_test;
+struct PlateFrameCase{
+    std::string name;
+    struct Input{
+        std::function<ImageRGB32()> frame;
+    };
+    Input input;
+    struct Expectation{
+        std::optional<bool> caught;
+    };
+    Expectation expectation;
 };
 
-class Test_FrameFolder : public UnitTest{
-public:
-    explicit Test_FrameFolder(const FrameFolderCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryDetectors - console frames: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
-        return check_frame_folder(m_test, logger);
-    }
-
-private:
-    const FrameFolderCase& m_test;
+const PlateFrameCase PLATE_FRAME_CASES[] = {
+    {
+        .name = "the plate's bar and the player's HP bar on bright grass",
+        .input = {.frame = []{ return plate_frame(BRIGHT_GRASS, {.plate_bar = true, .player_bar = true}); }},
+        .expectation = {.caught = false},
+    },
+    {
+        .name = "a plate with the gender mark only (Scatterbug, not caught)",
+        .input = {.frame = []{ return plate_frame(DARK_GROUND, {.plate_bar = true, .gender_mark = true}); }},
+        .expectation = {.caught = false},
+    },
+    {
+        .name = "a plate with the gender mark and the Poke Ball (Bunnelby, caught)",
+        .input = {.frame = []{ return plate_frame(DARK_GROUND, {.plate_bar = true, .gender_mark = true, .ball_mark = true}); }},
+        .expectation = {.caught = true},
+    },
+    {
+        .name = "the player's HP bar alone",
+        .input = {.frame = []{ return plate_frame(DARK_GROUND, {.player_bar = true}); }},
+        .expectation = {.caught = std::nullopt},
+    },
+    {
+        .name = "bright grass alone",
+        .input = {.frame = []{ return plate_frame(BRIGHT_GRASS, {}); }},
+        .expectation = {.caught = std::nullopt},
+    },
 };
+
+std::string describe_caught(const std::optional<bool>& caught){
+    if (!caught){
+        return "no plate";
+    }
+    return *caught ? "a plate with the caught mark" : "a plate with no caught mark";
+}
+
+UnitTestResult check_plate_frame(const PlateFrameCase& test, Logger&){
+    const std::optional<bool> caught = lock_target_caught(test.input.frame());
+    if (caught != test.expectation.caught){
+        return std::format("Expected {}, read {}.", describe_caught(test.expectation.caught), describe_caught(caught));
+    }
+    return true;
+}
+
+
+//  --- Map pin reader ---
+
+constexpr uint32_t ZONE_GREEN = 0xff98efad;
+constexpr uint32_t ARROW_BLUE = 0xff00a0ff;
+constexpr uint32_t CONE_BLUE = 0xff5ec9ea;
+
+struct Square{
+    double x;
+    double y;
+    size_t side;
+    uint32_t colour;
+};
+
+ImageRGB32 map_with(std::initializer_list<Square> squares){
+    ImageRGB32 image = solid_frame(ZONE_GREEN);
+    for (const Square& square : squares){
+        const size_t cx = (size_t)(square.x * 2.4);
+        const size_t cy = (size_t)(square.y * 2.4);
+        fill_box(cx - square.side / 2, cy - square.side / 2, cx + square.side / 2, cy + square.side / 2, square.colour, image);
+    }
+    return image;
+}
+
+ImageRGB32 zone1_map_frame(std::string_view name){
+    return ImageRGB32(std::format("{}PokemonLZA/AutoStoryDetectors/Zone1Map/{}", UNIT_TEST_RESOURCE_PATH(), name));
+}
+
+std::string describe_pin(const std::optional<MapPoint>& pin){
+    return pin ? std::format("a pin at ({:.1f}, {:.1f})", pin->x, pin->y) : std::string("no pin");
+}
+
+struct MapPinCase{
+    std::string name;
+    struct Input{
+        std::function<ImageRGB32()> frame;
+    };
+    Input input;
+    struct Expectation{
+        std::optional<MapPoint> pin;
+    };
+    Expectation expectation;
+};
+
+const MapPinCase MAP_PIN_CASES[] = {
+    {
+        .name = "the arrow with the camera's cone beside it",
+        .input = {.frame = []{ return map_with({
+            {.x = 350, .y = 215, .side = 40, .colour = CONE_BLUE},
+            {.x = 370, .y = 230, .side = 24, .colour = ARROW_BLUE},
+        }); }},
+        .expectation = {.pin = MapPoint{.x = 370, .y = 230}},
+    },
+    {
+        .name = "the cone only",
+        .input = {.frame = []{ return map_with({{.x = 350, .y = 215, .side = 40, .colour = CONE_BLUE}}); }},
+        .expectation = {.pin = std::nullopt},
+    },
+    {
+        .name = "the arrow's blue outside the zone's window",
+        .input = {.frame = []{ return map_with({{.x = 100, .y = 100, .side = 24, .colour = ARROW_BLUE}}); }},
+        .expectation = {.pin = std::nullopt},
+    },
+    {
+        .name = "a speck of the arrow's blue",
+        .input = {.frame = []{ return map_with({{.x = 400, .y = 230, .side = 6, .colour = ARROW_BLUE}}); }},
+        .expectation = {.pin = std::nullopt},
+    },
+    {
+        .name = "console: stuck at the zone's north fence",
+        .input = {.frame = []{ return zone1_map_frame("at_north_fence.png"); }},
+        .expectation = {.pin = MapPoint{.x = 358.9, .y = 227.3}},
+    },
+    {
+        .name = "console: the patrol's stop 10, the arrow partly under the zone's badge",
+        .input = {.frame = []{ return zone1_map_frame("after_try6.png"); }},
+        .expectation = {.pin = MapPoint{.x = 415.4, .y = 230.4}},
+    },
+};
+
+UnitTestResult check_map_pin(const MapPinCase& test, Logger& logger){
+    const std::optional<MapPoint> pin = read_map_pin(test.input.frame());
+    logger.log(describe_pin(pin));
+    const std::optional<MapPoint>& want = test.expectation.pin;
+    const bool same = pin.has_value() == want.has_value()
+        && (!pin || (std::abs(pin->x - want->x) <= 2 && std::abs(pin->y - want->y) <= 2));
+    if (!same){
+        return std::format("Expected {}, read {}.", describe_pin(want), describe_pin(pin));
+    }
+    return true;
+}
 
 } // namespace
 
 
 void add_tests_AutoStoryDetectors(UnitTestDatabase& database){
     for (const SyntheticFrameCase& test : SYNTHETIC_FRAME_CASES){
-        database.add<Test_SyntheticFrame>(test);
+        database.add<DetectorCaseTest<SyntheticFrameCase, check_synthetic_frame>>("PokemonLZA::AutoStoryDetectors - synthetic frame: ", test);
     }
     for (const FrameFolderCase& test : FRAME_FOLDER_CASES){
-        database.add<Test_FrameFolder>(test);
+        database.add<DetectorCaseTest<FrameFolderCase, check_frame_folder>>("PokemonLZA::AutoStoryDetectors - console frames: ", test);
     }
     for (const TutorialCardFrameCase& test : TUTORIAL_CARD_FRAME_CASES){
-        database.add<Test_TutorialCardFrame>(test);
+        database.add<DetectorCaseTest<TutorialCardFrameCase, check_tutorial_card_frame>>("PokemonLZA::AutoStoryDetectors - tutorial card frame: ", test);
+    }
+    for (const PlateFrameCase& test : PLATE_FRAME_CASES){
+        database.add<DetectorCaseTest<PlateFrameCase, check_plate_frame>>("PokemonLZA::AutoStory - Caught mark reader: ", test);
+    }
+    for (const MapPinCase& test : MAP_PIN_CASES){
+        database.add<DetectorCaseTest<MapPinCase, check_map_pin>>("PokemonLZA::AutoStory - Map pin reader: ", test);
     }
 }
-
 
 
 } // namespace PokemonLZA

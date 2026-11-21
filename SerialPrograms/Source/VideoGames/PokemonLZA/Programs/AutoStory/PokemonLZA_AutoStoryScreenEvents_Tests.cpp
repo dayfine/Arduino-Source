@@ -14,10 +14,10 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "PokemonLZA_AutoStoryScreenEvents.h"
-#include "PokemonLZA_AutoStoryScreenEvents_Tests.h"
 #include "PokemonLZA_AutoStoryPlan.h"
+#include "PokemonLZA_AutoStoryScreenEvents.h"
 #include "PokemonLZA_AutoStoryStarts.h"
+#include "PokemonLZA_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -195,39 +195,6 @@ UnitTestResult check_folder(const FolderCase& test){
     }
     return true;
 }
-
-class FrameTest : public UnitTest{
-public:
-    explicit FrameTest(const FrameCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - console frame: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_frame(m_test);
-    }
-
-private:
-    const FrameCase& m_test;
-};
-
-class FolderTest : public UnitTest{
-public:
-    explicit FolderTest(const FolderCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStoryScreenEvents - console frames: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return check_folder(m_test);
-    }
-
-private:
-    const FolderCase& m_test;
-};
-
-} // namespace
-
-
-namespace{
 
 using Pokemon::StoryCheckpoint;
 
@@ -466,15 +433,15 @@ UnitTestResult check_start_frame(const StartFrameCase& test){
 template <typename Case, UnitTestResult (*check)(const Case&)>
 class CaseTest : public UnitTest{
 public:
-    CaseTest(std::string_view kind, Case test_case)
-        : UnitTest(std::format("PokemonLZA::AutoStoryStarts {} - {}", kind, test_case.name))
-        , m_case(std::move(test_case))
+    CaseTest(std::string_view prefix, const Case& test_case)
+        : UnitTest(std::format("{}{}", prefix, test_case.name))
+        , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         return check(m_case);
     }
 private:
-    Case m_case;
+    const Case& m_case;
 };
 
 } // namespace
@@ -482,19 +449,19 @@ private:
 
 void add_tests_AutoStoryScreenEvents(UnitTestDatabase& database){
     for (const FrameCase& test : FRAME_CASES){
-        database.add<FrameTest>(test);
+        database.add<CaseTest<FrameCase, check_frame>>("PokemonLZA::AutoStoryScreenEvents - console frame: ", test);
     }
     for (const FolderCase& test : FOLDER_CASES){
-        database.add<FolderTest>(test);
+        database.add<CaseTest<FolderCase, check_folder>>("PokemonLZA::AutoStoryScreenEvents - console frames: ", test);
     }
     for (const BuiltinCase& test : BUILTIN_CASES){
-        database.add<CaseTest<BuiltinCase, check_builtin>>("built-in", test);
+        database.add<CaseTest<BuiltinCase, check_builtin>>("PokemonLZA::AutoStoryStarts built-in - ", test);
     }
     for (const TableCase& test : TABLE_CASES){
-        database.add<CaseTest<TableCase, check_table>>("table", test);
+        database.add<CaseTest<TableCase, check_table>>("PokemonLZA::AutoStoryStarts table - ", test);
     }
     for (const StartFrameCase& test : START_FRAME_CASES){
-        database.add<CaseTest<StartFrameCase, check_start_frame>>("frame", test);
+        database.add<CaseTest<StartFrameCase, check_start_frame>>("PokemonLZA::AutoStoryStarts frame - ", test);
     }
 }
 
