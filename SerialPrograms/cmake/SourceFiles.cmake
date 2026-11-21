@@ -1380,6 +1380,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h
     Source/NintendoSwitch/NintendoSwitch_ConsoleHandle.cpp
@@ -1431,6 +1433,8 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardCodeEntry.h
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_NumberCodeEntry.cpp
     Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_NumberCodeEntry.h
+    Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.cpp
+    Source/NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendCodeAdder.cpp
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendCodeAdder.h
     Source/NintendoSwitch/Programs/NintendoSwitch_FriendDelete.cpp
@@ -2204,6 +2208,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLGPE/Programs/ShinyHunting/PokemonLGPE_LegendaryReset.h
     Source/VideoGames/PokemonLGPE/Programs/TestPrograms/PokemonLGPE_SoundListener.cpp
     Source/VideoGames/PokemonLGPE/Programs/TestPrograms/PokemonLGPE_SoundListener.h
+    Source/VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_BattleHudDetectors.cpp
+    Source/VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_BattleHudDetectors.h
     Source/VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.cpp
     Source/VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_MoveEffectivenessSymbol.h
     Source/VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_RunFromBattleDetector.cpp
@@ -2228,26 +2234,56 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapDetector.h
     Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapIconDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapIconDetector.h
+    Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapPinReader.cpp
+    Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapPinReader.h
+    Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapPoint.h
+    Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MinimapMatch.cpp
+    Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MinimapMatch.h
+    Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MinimapMatch_Tests.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_AutosaveDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_AutosaveDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_CaughtMarkReader.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_CaughtMarkReader.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_ControlsHintDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_ControlsHintDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DayNightChangeDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DayNightChangeDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DayNightStateDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DayNightStateDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_Detectors_Tests.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogChoiceBox.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogChoiceBox.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetectors_Tests.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceCalorieDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceCalorieDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceRewardNameReader.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceRewardNameReader.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_Inference_Tests.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_IntroScreens.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_IntroScreens.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_IntroScreens_Tests.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MissionCompleteDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MissionCompleteDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_PixelShares.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_PixelShares.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_StoryDialogDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_StoryDialogDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_TutorialCardDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_TutorialCardDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_WeatherDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_WeatherDetector.h
     Source/VideoGames/PokemonLZA/InferenceTraining/PokemonLZA_GenerateLocationNameOCR.cpp
@@ -2268,6 +2304,50 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/PokemonLZA_Settings.h
     Source/VideoGames/PokemonLZA/PokemonLZA_Tests.cpp
     Source/VideoGames/PokemonLZA/PokemonLZA_Tests.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatches.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConsoleActions.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryConsoleActions.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryNewGame_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWorldWalks.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWorldWalks.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryConsoleBackend.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenPredicates.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStarts.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStarts.h
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_DonutMaker.cpp
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_DonutMaker.h
     Source/VideoGames/PokemonLZA/Programs/Farming/PokemonLZA_FriendshipFarmer.cpp
@@ -2288,6 +2368,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/NonShinyHunting/PokemonLZA_StatsReset.h
     Source/VideoGames/PokemonLZA/Programs/NonShinyHunting/PokemonLZA_WeatherFinder.cpp
     Source/VideoGames/PokemonLZA/Programs/NonShinyHunting/PokemonLZA_WeatherFinder.h
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.cpp
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BallThrow.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BasicNavigation.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_BoxSorter.cpp
@@ -2302,6 +2384,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_GameEntry.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_HyperspaceNavigation.h
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.cpp
+    Source/VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.cpp
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MegaShardFarmer.h
     Source/VideoGames/PokemonLZA/Programs/PokemonLZA_MenuNavigation.cpp
@@ -3303,4 +3387,26 @@ set(LOGIC_TEST_SOURCES
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
     Source/Tests/LogicTests/LogicTests_Main.cpp
+)
+
+# PLZA AutoStory's logic tests.
+list(APPEND LOGIC_LIBRARY_SOURCES
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActionTable.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryCatchPlan.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryWalks.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryMapLegs.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryScenes.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryZone1.cpp
+    Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MinimapMatch.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryAutosaves.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStorySceneMachine.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryStarts.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryPlan.cpp
+)
+list(APPEND LOGIC_TEST_SOURCES
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/Actions/PokemonLZA_AutoStoryActions_Tests.cpp
+    Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MinimapMatch_Tests.cpp
+    Source/VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryGame_Tests.cpp
 )
