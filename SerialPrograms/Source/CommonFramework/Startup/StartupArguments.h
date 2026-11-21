@@ -17,13 +17,15 @@
 
 namespace PokemonAutomation{
 
-// Rejected launches must not enter either application entry point.
-enum class StartupMode{REJECTED, GUI, TESTS};
+// Rejected launches must not enter any application entry point.
+enum class StartupMode{REJECTED, GUI, HEADLESS, TESTS};
 
 // Validated startup intent; error describes a rejected launch.
 struct StartupPlan{
     StartupMode mode = StartupMode::REJECTED;
     std::optional<std::string> profile = std::nullopt;
+    std::optional<std::string> run_program = std::nullopt;
+    std::optional<std::string> options_path = std::nullopt;
     bool augment_color_distortions = false;
     std::string test_substring = {};
     std::string error = {};
@@ -37,9 +39,10 @@ bool valid_startup_profile(std::string_view profile);
 // Unknown or malformed application/Qt arguments fail before settings or devices.
 StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments);
 
-// Application entry points: the GUI callback owns all settings and hardware startup.
+// Application entry points: the GUI and headless callbacks own all settings and hardware startup.
 struct StartupHandlers{
     std::function<int(const StartupPlan&)> gui;
+    std::function<int(const StartupPlan&)> headless;
     std::function<int(const StartupPlan&)> tests;
 };
 

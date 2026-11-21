@@ -7,6 +7,7 @@
 #ifndef PokemonAutomation_PanelList_H
 #define PokemonAutomation_PanelList_H
 
+#include <memory>
 #include <vector>
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Panels/PanelTools.h"
@@ -46,6 +47,16 @@ protected:
     ImageRGB32 m_icon;
     bool m_enabled;
 };
+
+
+//  Instantiate `descriptor` (non-null), load `panel_json` into it, and install
+//  it in `holder`. Returns false, loading nothing, if
+//  `holder.report_new_panel_intent()` declines.
+bool load_panel_session(
+    const std::shared_ptr<const PanelDescriptor>& descriptor,
+    const JsonValue& panel_json,
+    PanelHolder& holder
+);
 
 
 

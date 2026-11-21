@@ -51,6 +51,28 @@ QtArgument consume_qt_argument(std::span<const std::string_view> arguments, size
     return QtArgument::UNKNOWN;
 }
 
+StartupPlan validate_startup_plan(StartupPlan plan){
+    if (plan.run_program && plan.mode != StartupMode::HEADLESS){
+        return {.error = "--run requires --headless."};
+    }
+    if (plan.options_path && !plan.run_program){
+        return {.error = "--options requires --run."};
+    }
+    if (plan.mode == StartupMode::HEADLESS && !plan.run_program){
+        return {.error = "--headless requires --run <identifier>."};
+    }
+    if (plan.augment_color_distortions && plan.mode != StartupMode::TESTS){
+        return {.error = "--augment-color-distortions requires --command-line-test-mode."};
+    }
+    if (!plan.test_substring.empty() && plan.mode != StartupMode::TESTS){
+        return {.error = "--test-substring requires --command-line-test-mode."};
+    }
+    if (plan.mode == StartupMode::TESTS && plan.profile){
+        return {.error = "Test launches cannot select a console profile."};
+    }
+    return plan;
+}
+
 } // namespace
 
 StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments){
@@ -62,7 +84,27 @@ StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments)
                 return {.error = "--profile requires one unique name containing only ASCII letters, digits, '_' or '-' (not starting with '-')."};
             }
             plan.profile = arguments[++i];
+        }else if (arg == "--headless"){
+            if (plan.mode == StartupMode::TESTS){
+                return {.error = "--headless and --command-line-test-mode cannot be combined."};
+            }
+            plan.mode = StartupMode::HEADLESS;
+        }else if (arg == "--run"){
+            if (plan.run_program || i + 1 == arguments.size() || arguments[i + 1].empty() ||
+                arguments[i + 1].starts_with('-')){
+                return {.error = "--run requires one unique program identifier."};
+            }
+            plan.run_program = arguments[++i];
+        }else if (arg == "--options"){
+            if (plan.options_path || i + 1 == arguments.size() || arguments[i + 1].empty() ||
+                arguments[i + 1].starts_with('-')){
+                return {.error = "--options requires one unique file path."};
+            }
+            plan.options_path = arguments[++i];
         }else if (arg == "--command-line-test-mode"){
+            if (plan.mode == StartupMode::HEADLESS){
+                return {.error = "--headless and --command-line-test-mode cannot be combined."};
+            }
             plan.mode = StartupMode::TESTS;
         }else if (arg == "--augment-color-distortions"){
             plan.augment_color_distortions = true;
@@ -78,22 +120,15 @@ StartupPlan parse_startup_arguments(std::span<const std::string_view> arguments)
             }
         }
     }
-    if (plan.augment_color_distortions && plan.mode != StartupMode::TESTS){
-        return {.error = "--augment-color-distortions requires --command-line-test-mode."};
-    }
-    if (!plan.test_substring.empty() && plan.mode != StartupMode::TESTS){
-        return {.error = "--test-substring requires --command-line-test-mode."};
-    }
-    if (plan.mode == StartupMode::TESTS && plan.profile){
-        return {.error = "Test launches cannot select a console profile."};
-    }
-    return plan;
+    return validate_startup_plan(std::move(plan));
 }
 
 int dispatch_startup(const StartupPlan& plan, const StartupHandlers& handlers){
     switch (plan.mode){
     case StartupMode::GUI:
         return handlers.gui(plan);
+    case StartupMode::HEADLESS:
+        return handlers.headless(plan);
     case StartupMode::TESTS:
         return handlers.tests(plan);
     case StartupMode::REJECTED:

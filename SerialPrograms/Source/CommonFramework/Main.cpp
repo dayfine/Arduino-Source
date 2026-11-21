@@ -23,6 +23,7 @@
 #include "StaticRegistration.h"
 #include "CommonFramework/Devices/LabDeviceRuntime.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/Headless/HeadlessHost.h"
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "CommonFramework/Panels/OptionsPanel.h"
 #include "CommonFramework/VideoPipeline/Backends/CameraImplementations.h"
@@ -53,6 +54,7 @@
 #include "GlobalSettingsPanel.h"
 #include "GlobalServices.h"
 #include "PersistentSettings.h"
+#include "PanelCatalog.h"
 #include "NintendoSwitch/NintendoSwitch_SettingsPanel.h"
 
 Q_DECLARE_METATYPE(std::string)
@@ -85,6 +87,41 @@ FileLogger& global_file_logger(){
 }
 
 
+
+bool init_common_runtime(Logger& logger, StartupDialogs dialogs, bool fail_on_settings_error){
+    qRegisterMetaType<size_t>("size_t");
+    qRegisterMetaType<uint8_t>("uint8_t");
+    qRegisterMetaType<std::string>("std::string");
+    qRegisterMetaType<Resolution>("Resolution");
+
+    Filesystem::create_directories(Filesystem::Path(SETTINGS_PATH()));
+    Filesystem::create_directories(Filesystem::Path(SCREENSHOTS_PATH()));
+
+    //  Several novice developers struggled to build and run the program due to missing Resources folder.
+    //  Add this check to pop a message box when Resources folder is missing.
+    if (!check_resource_folder(logger, dialogs)){
+        return false;
+    }
+
+    //  Read program settings from json file: SerialPrograms-Settings.json.
+    try{
+        PERSISTENT_SETTINGS().read();
+    }catch (const FileException& error){
+        logger.log(error.message(), COLOR_RED);
+        if (fail_on_settings_error){
+            return false;
+        }
+    }catch (const ParseException& error){
+        logger.log(error.message(), COLOR_RED);
+        if (fail_on_settings_error){
+            return false;
+        }
+    }
+
+    GlobalThreadPools::qt_worker_threadpool();
+    GlobalThreadPools::qt_event_threadpool();
+    return true;
+}
 
 int run_program(int argc, char *argv[]){
 //    qputenv("QT_RHI_BACKEND", "opengl");
@@ -161,26 +198,18 @@ int run_program(int argc, char *argv[]){
     logger.log(dpp_cert_message, dpp_cert_error ? COLOR_RED : Color());
 #endif
 
-    qRegisterMetaType<size_t>("size_t");
-    qRegisterMetaType<uint8_t>("uint8_t");
-    qRegisterMetaType<std::string>("std::string");
-    qRegisterMetaType<Resolution>("Resolution");
-
 #if defined(__linux) || defined(__APPLE__)
     // By default Qt uses native menubar but this only works on Windows.
     // We use menubar in our ButtonDiagram window to choose which controller's button mapping image to show.
     // So we fix it by don't using native menubar on non-Windows OS.
     QCoreApplication::setAttribute(Qt::AA_DontUseNativeMenuBar);
 #endif
-
-//#if QT_VERSION_MAJOR == 5 // AA_EnableHighDpiScaling is deprecated in Qt6
-//    QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
-//#endif
-
-    Filesystem::create_directories(Filesystem::Path(SETTINGS_PATH()));
-    Filesystem::create_directories(Filesystem::Path(SCREENSHOTS_PATH()));
-
-
+    if (!init_common_runtime(logger, StartupDialogs::SHOW, /*fail_on_settings_error=*/false)){
+        return 1;
+    }
+    if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
+        return run_command_line_tests(false, "");
+    }
 
     ScopeExit cleanup([]{
 #ifdef PA_SDL
@@ -189,28 +218,6 @@ int run_program(int argc, char *argv[]){
         SerialPortPoller::instance().stop();
         GlobalMediaServices::instance().stop();
     });
-
-    //  Several novice developers struggled to build and run the program due to missing Resources folder.
-    //  Add this check to pop a message box when Resources folder is missing.
-    if (!check_resource_folder(logger)){
-        return 1;
-    }
-
-    //  Read program settings from json file: SerialPrograms-Settings.json.
-    try{
-        PERSISTENT_SETTINGS().read();
-    }catch (const FileException& error){
-        logger.log(error.message(), COLOR_RED);
-    }catch (const ParseException& error){
-        logger.log(error.message(), COLOR_RED);
-    }
-
-    // Persisted test mode also exits before console options, devices or a window.
-    GlobalThreadPools::qt_worker_threadpool();
-    GlobalThreadPools::qt_event_threadpool();
-    if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
-        return run_command_line_tests(false, "");
-    }
 
     OptionsPanelWrapper<NintendoSwitch::ConsoleSettingsPanel>().make_panel()->load_json_from_global();
     SerialPortPoller::instance().ports();
@@ -347,6 +354,67 @@ int run_gui_application(int argc, char *argv[]){
     return ret;
 }
 
+bool load_headless_options(const StartupPlan& plan, Logger& logger, std::optional<JsonValue>& out){
+    if (!plan.options_path){
+        return true;
+    }
+    try{
+        out = load_json_file(*plan.options_path);
+        return true;
+    }catch (const Exception& e){
+        logger.log("Failed to read --options \"" + *plan.options_path + "\": " + e.to_str(), COLOR_RED);
+        return false;
+    }
+}
+
+int run_headless_application(QApplication& application, const StartupPlan& plan){
+    ScopeExit service_cleanup([]{
+        stop_application_services();
+        stop_thread_pools();
+    });
+
+    GlobalOutputRedirector redirect_stdout(std::cout, "stdout", Color());
+    GlobalOutputRedirector redirect_stderr(std::cerr, "stderr", COLOR_RED);
+    {
+        MultiOutputLogger& logger = global_multi_logger();
+        logger.add_listener(global_last_log_history());
+        logger.add_listener(global_file_logger());
+    }
+
+    Logger& logger = global_logger_tagged();
+    logger.log("================================================================================");
+    logger.log("Starting Headless Program: " + *plan.run_program);
+
+    std::optional<JsonValue> options_override;
+    if (!load_headless_options(plan, logger, options_override)){
+        return static_cast<int>(HeadlessExit::BAD_REQUEST);
+    }
+
+    if (!init_common_runtime(logger, StartupDialogs::LOG_ONLY, /*fail_on_settings_error=*/true)){
+        return static_cast<int>(HeadlessExit::STARTUP);
+    }
+
+    ScopeExit device_cleanup([]{
+        SerialPortPoller::instance().stop();
+        GlobalMediaServices::instance().stop();
+    });
+    OptionsPanelWrapper<NintendoSwitch::ConsoleSettingsPanel>().make_panel()->load_json_from_global();
+    if (!check_hardware(StartupDialogs::LOG_ONLY)){
+        return static_cast<int>(HeadlessExit::STARTUP);
+    }
+
+    set_working_directory();
+    set_permissions(application);
+    return static_cast<int>(run_headless_program(
+        make_all_panel_lists(),
+        HeadlessRunOptions{
+            .program_id = *plan.run_program,
+            .options_override = std::move(options_override),
+            .handle_signals = true,
+        }
+    ));
+}
+
 // Explicit tests use QCoreApplication and never enter GUI/settings/device startup.
 int run_test_application(int argc, char* argv[], const StartupPlan& plan){
 #if defined(__APPLE__)
@@ -365,6 +433,26 @@ int run_test_application(int argc, char* argv[], const StartupPlan& plan){
 #endif
     stop_thread_pools();
     return ret;
+}
+
+int run_with_profile_lease(
+    const PokemonAutomation::StartupPlan& selected,
+    int lease_error_exit,
+    const std::function<int()>& launch
+){
+#if defined(__APPLE__)
+    PokemonAutomation::Filesystem::set_startup_profile(*selected.profile);
+#else
+    (void)selected;
+#endif
+    std::unique_ptr<PokemonAutomation::LabDeviceLease> profile_lease;
+    try{
+        profile_lease = PokemonAutomation::reserve_lab_profile();
+    }catch (const std::runtime_error& error){
+        std::cerr << error.what() << std::endl;
+        return lease_error_exit;
+    }
+    return launch();
 }
 
 } // namespace
@@ -398,19 +486,20 @@ int main(int argc, char* argv[]){
     qt_argv.push_back(nullptr);
     return PokemonAutomation::dispatch_startup(plan, {
         .gui = [&](const PokemonAutomation::StartupPlan& selected){
-#if defined(__APPLE__)
-            PokemonAutomation::Filesystem::set_startup_profile(*selected.profile);
-#else
-            (void)selected;
-#endif
-            std::unique_ptr<PokemonAutomation::LabDeviceLease> profile_lease;
-            try{
-                profile_lease = PokemonAutomation::reserve_lab_profile();
-            }catch (const std::runtime_error& error){
-                std::cerr << error.what() << std::endl;
-                return 2;
-            }
-            return PokemonAutomation::run_gui_application(qt_argc, qt_argv.data());
+            return PokemonAutomation::run_with_profile_lease(selected, 2, [&]{
+                return PokemonAutomation::run_gui_application(qt_argc, qt_argv.data());
+            });
+        },
+        .headless = [&](const PokemonAutomation::StartupPlan& selected){
+            return PokemonAutomation::run_with_profile_lease(
+                selected, static_cast<int>(PokemonAutomation::HeadlessExit::STARTUP),
+                [&]{
+                    PokemonAutomation::register_all_statics();
+                    PokemonAutomation::setup_crash_handler();
+                    QApplication application(qt_argc, qt_argv.data());
+                    return PokemonAutomation::run_headless_application(application, selected);
+                }
+            );
         },
         .tests = [&](const PokemonAutomation::StartupPlan& selected){
             return PokemonAutomation::run_test_application(qt_argc, qt_argv.data(), selected);
