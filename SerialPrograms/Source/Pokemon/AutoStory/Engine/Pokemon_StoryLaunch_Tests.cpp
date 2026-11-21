@@ -268,6 +268,14 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
      .input = {.screens = then_settled({}), .request = {.running = Running::KEEP},
                .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
      .expectation = {.inputs = "wait wait"}},
+    //  Console B, 2026-11-21 05:47 (BDSP): after Close Software A, a mid-close
+    //  frame read as overworld before HOME returned and sent the title press
+    //  before the game had even launched.
+    {.name = "mid-close frame before launch waits instead of pressing title",
+     .input = {.screens = then_settled({Screen::OVERWORLD, Screen::HOME_ON_GAME, Screen::CLOSE_DIALOG,
+                                        Screen::OVERWORLD, Screen::HOME_ON_GAME, Screen::BLACK, Screen::TITLE, Screen::BLACK}),
+               .game_screens = GameScreens::AFTER_LAUNCH, .overworld_check = OverworldCheck::AFTER_LOAD},
+     .expectation = {.inputs = "HOME X A wait A wait A wait wait wait"}},
 };
 
 //  The fake backend's record of `input` ("A" -> "press A").
