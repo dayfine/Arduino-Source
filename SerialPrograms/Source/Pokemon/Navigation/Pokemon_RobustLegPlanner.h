@@ -45,6 +45,7 @@
 #include <map>
 #include <optional>
 #include <queue>
+#include <type_traits>
 #include <utility>
 #include <vector>
 #include "Pokemon_Grid.h"
@@ -96,6 +97,10 @@ struct RobustLegCosts{
     //  wild battle loses an open leg's count, while a leg to a wall just
     //  walks to the wall again.
     int per_open_wild_tile = 0;
+    //  Reject legs that run along where someone wanders (two such places in a
+    //  row, the leg's start among them). When false, wander tiles only pay
+    //  per_wander_tile.
+    bool forbid_along_wander = true;
     int max_open_tiles = 12;    //  longest open leg to consider
     size_t max_spread = 5;      //  most places the player may be on after a leg
     //  Most sets of places to search before giving up. The search is over
@@ -128,6 +133,106 @@ long long robust_legs_cost(
     const RobustLegCosts& costs
 );
 
+
+
+namespace RobustLegPlannerInternal{
+
+template <typename LegModel, typename Enable = void>
+struct DefaultRobustStateLess{
+    using type = std::less<typename LegModel::State>;
+};
+template <typename LegModel>
+struct DefaultRobustStateLess<LegModel, std::void_t<typename LegModel::StateLess>>{
+    using type = typename LegModel::StateLess;
+};
+
+} // namespace RobustLegPlannerInternal
+
+
+//  Adapts a Pokemon_LegPlanner.h step model (`press()` / `Step<State>`) to
+//  the Pokemon_RobustLegPlanner.h model interface so a game can share one
+//  step model between both planners.
+//
+//  Warps and non-zero actions are treated as unheld stops so robust plans
+//  remain single-stretch walks without crossing warps or actions.
+//
+//  Optional LegModel members used when present:
+//    - `using StateLess = ...;` (defaults to `std::less<State>`)
+//    - `size_t step_tiles(const State& from, const State& to) const;` (defaults to 1)
+//    - `bool wild(const State& state) const;` (defaults to `wild_fn(state)` if given, else false)
+//    - `bool wander(const State& state) const;` (defaults to `wander_fn(state)` if given, else false)
+template <
+    typename LegModel,
+    typename StateLessType = typename RobustLegPlannerInternal::DefaultRobustStateLess<LegModel>::type
+>
+class RobustModelFromLegModel{
+public:
+    using State = typename LegModel::State;
+    using StateLess = StateLessType;
+
+    explicit RobustModelFromLegModel(
+        const LegModel& model,
+        std::function<bool(const State&)> wander_fn = {},
+        std::function<bool(const State&)> wild_fn = {},
+        std::function<size_t(const State&, const State&)> step_tiles_fn = {}
+    )
+        : m_model(model)
+        , m_wander_fn(std::move(wander_fn))
+        , m_wild_fn(std::move(wild_fn))
+        , m_step_tiles_fn(std::move(step_tiles_fn))
+    {}
+
+    std::optional<State> step(const State& state, Direction direction) const{
+        const auto s = m_model.press(state, direction);
+        if (!s || s->action != 0 || s->warped){
+            return std::nullopt;
+        }
+        return s->next;
+    }
+    size_t step_tiles(const State& from, const State& to) const{
+        if (m_step_tiles_fn){
+            return m_step_tiles_fn(from, to);
+        }
+        if constexpr (requires { m_model.step_tiles(from, to); }){
+            return m_model.step_tiles(from, to);
+        }else{
+            return 1;
+        }
+    }
+    bool held_at(const State& state, Direction direction) const{
+        const auto s = m_model.press(state, direction);
+        if (s && (s->action != 0 || s->warped)){
+            return false;
+        }
+        return m_model.held_at(state, direction);
+    }
+    bool wild(const State& state) const{
+        if (m_wild_fn){
+            return m_wild_fn(state);
+        }
+        if constexpr (requires { m_model.wild(state); }){
+            return m_model.wild(state);
+        }else{
+            return false;
+        }
+    }
+    bool wander(const State& state) const{
+        if (m_wander_fn){
+            return m_wander_fn(state);
+        }
+        if constexpr (requires { m_model.wander(state); }){
+            return m_model.wander(state);
+        }else{
+            return false;
+        }
+    }
+
+private:
+    const LegModel& m_model;
+    std::function<bool(const State&)> m_wander_fn;
+    std::function<bool(const State&)> m_wild_fn;
+    std::function<size_t(const State&, const State&)> m_step_tiles_fn;
+};
 
 
 namespace RobustLegPlannerInternal{
@@ -302,7 +407,7 @@ std::optional<Expansion<typename Model::State>> to_wall_leg(
             return std::nullopt;
         }
         if (const auto stepped = step_tiles(model, place, direction, (int)hit.tiles)){
-            if (stepped->along_wander){
+            if (costs.forbid_along_wander && stepped->along_wander){
                 return std::nullopt;
             }
             wild = std::max(wild, stepped->wild);
@@ -340,7 +445,7 @@ std::optional<Expansion<typename Model::State>> open_leg(
         const auto prefixes = step_prefixes(model, place, direction, tiles + error);
         for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
             const auto& stepped = prefixes[(size_t)n - 1];
-            if (!stepped || stepped->along_wander){
+            if (!stepped || (costs.forbid_along_wander && stepped->along_wander)){
                 return std::nullopt;
             }
             wild = std::max(wild, stepped->wild);
