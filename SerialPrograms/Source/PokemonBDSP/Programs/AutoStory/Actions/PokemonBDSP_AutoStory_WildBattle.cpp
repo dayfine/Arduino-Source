@@ -221,7 +221,11 @@ public:
 
     virtual WildRunOutcome run() override;
     virtual void fight() override{
-        fight_wild_battle(m_stream, m_context, "Mine escape");
+        //  Use BattleType::TRAINER (matches all 4 menu buttons without
+        //  requiring wild-only Poké Ball icons) so this handles both trapped
+        //  wild battles (Onix Bind) and trainer battles whose pre-battle
+        //  dialogue was skipped while holding B on a run leg.
+        fight_trainer(m_stream, m_context, "Mine escape");
     }
     virtual void note(const std::string& text) override{
         m_stream.log("[Mine escape] " + text);
