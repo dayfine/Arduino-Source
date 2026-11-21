@@ -233,7 +233,14 @@ bool BandShift::lines_up() const{
 }
 
 bool ViewShift::scrolled() const{
-    constexpr size_t LEAST_BANDS = 3;
+    constexpr double ACTIVE_DIFFERENCE = 3;
+    const size_t active = (size_t)std::count_if(bands.begin(), bands.end(), [](const BandShift& band){
+        return band.unshifted >= ACTIVE_DIFFERENCE;
+    });
+    //  Usually at least 3 bands must agree. At a cave's edge (01.03 Oreburgh
+    //  Mine B1F, 2026-11-21 05:03), half the view is solid black void, leaving
+    //  only 2 active bands; accept 2 only when every active band agrees.
+    const size_t needed = active == 2 ? 2 : 3;
     for (const BandShift& band : bands){
         if (!band.lines_up()){
             continue;
@@ -241,7 +248,7 @@ bool ViewShift::scrolled() const{
         const size_t agreeing = (size_t)std::count_if(bands.begin(), bands.end(), [&](const BandShift& other){
             return other.lines_up() && scroll_way(other) == scroll_way(band);
         });
-        if (agreeing >= LEAST_BANDS){
+        if (agreeing >= needed){
             return true;
         }
     }
