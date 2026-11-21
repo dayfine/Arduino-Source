@@ -9,6 +9,7 @@
 #include <functional>
 #include <ranges>
 #include <string>
+#include <tuple>
 #include <unordered_map>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -16,6 +17,7 @@
 #include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
+#include "Pokemon/Navigation/Pokemon_RobustLegPlanner.h"
 #include "Pokemon/Navigation/Pokemon_WanderRules.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldMaps.h"
@@ -56,6 +58,12 @@ struct LocatedHash{
     size_t operator()(const Located& player) const{
         return (((std::hash<TilePos>()(player.state.position) * 31 + player.map) * 16
             + player.state.elevation) * 2) + (player.state.surfing ? 1 : 0);
+    }
+};
+struct LocatedLess{
+    bool operator()(const Located& a, const Located& b) const{
+        return std::tie(a.map, a.state.position.x, a.state.position.y, a.state.elevation, a.state.surfing)
+            < std::tie(b.map, b.state.position.x, b.state.position.y, b.state.elevation, b.state.surfing);
     }
 };
 
@@ -254,6 +262,7 @@ class StepModel{
 public:
     using State = Located;
     using StateHash = LocatedHash;
+    using StateLess = LocatedLess;
 
     //  With `only_map`, no step leaves that map; the other maps still tell
     //  where a hold stops (an edge onto a wall, a door's warp).
@@ -294,24 +303,27 @@ public:
         }
         if (is_tall_grass(m_maps[step.next.map], step.next.state.position)){
             step.extra_cost += route_cost(m_costs, RouteCost::GRASS_TILE);
-            step.wild = true;
         }
-        if (step.next.state.surfing){
-            step.wild = true;
-        }
+        step.wild = wild(step.next);
         if (seen_by_trainer(step.next)){
             step.extra_cost += route_cost(m_costs, RouteCost::SIGHT_TILE);
         }
         if (in_trainer_line(step.next)){
             step.extra_cost += route_cost(m_costs, RouteCost::LINE_TILE);
         }
-        if (wander_object_at(m_maps[step.next.map], step.next.state.position) != nullptr){
+        if (wander(step.next)){
             step.extra_cost += route_cost(m_costs, RouteCost::WANDER_TILE);
         }
         return step;
     }
     bool held_at(const State& state, Direction direction) const{
         return stops_at(m_maps, state, direction);
+    }
+    bool wild(const State& state) const{
+        return is_tall_grass(m_maps[state.map], state.state.position) || state.state.surfing;
+    }
+    bool wander(const State& state) const{
+        return wander_object_at(m_maps[state.map], state.state.position) != nullptr;
     }
     int open_stop_risk(const State& state, Direction direction) const{
         if (state.state.surfing){
@@ -471,6 +483,20 @@ Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     leg_costs.per_open_wild_stop = route_cost(costs, RouteCost::OPEN_WILD_STOP);
     leg_costs.per_open_connection_stop = route_cost(costs, RouteCost::OPEN_CONNECTION_STOP);
     return leg_costs;
+}
+
+Pokemon::RobustLegCosts to_robust_leg_costs(const RouteCosts& costs, bool forbid_along_wander){
+    Pokemon::RobustLegCosts robust;
+    robust.per_tile = route_cost(costs, RouteCost::TILE);
+    robust.per_wild_tile = route_cost(costs, RouteCost::GRASS_TILE);
+    robust.per_wander_tile = route_cost(costs, RouteCost::WANDER_TILE);
+    robust.per_leg = route_cost(costs, RouteCost::TURN);
+    robust.leg_not_at_wall = route_cost(costs, RouteCost::OPEN_STOP);
+    robust.per_open_wild_tile = route_cost(costs, RouteCost::OPEN_WILD_STOP);
+    robust.open_error = 1;
+    robust.open_error_per = 5;
+    robust.forbid_along_wander = forbid_along_wander;
+    return robust;
 }
 
 //  The tiles the slide at the end of WALK `leg` takes, if it ends on a
@@ -660,6 +686,87 @@ std::optional<OverworldPress> predict_overworld_press(
 
 namespace{
 
+std::optional<std::vector<RouteStep>> robust_legs_to_route(
+    const std::vector<MapData>& maps,
+    const StepModel& model,
+    const Located& first,
+    const std::vector<Pokemon::RobustLeg<Located>>& legs,
+    const RouteGoal& goal,
+    std::optional<Direction> start_facing
+){
+    std::vector<RouteStep> route;
+    Located current = first;
+    for (const Pokemon::RobustLeg<Located>& rleg : legs){
+        Pokemon::Leg<Located> leg;
+        leg.kind = Pokemon::LegKind::WALK;
+        leg.direction = rleg.direction;
+        leg.to_wall = rleg.to_wall;
+        leg.facing_after = rleg.direction;
+        leg.start = current;
+        int tiles = 0;
+        for (size_t i = 0; i < rleg.tiles; i++){
+            const std::optional<Transition> transition = press(maps, current, rleg.direction);
+            if (!transition){
+                if (rleg.to_wall){
+                    break;
+                }
+                return std::nullopt;
+            }
+            if (transition->warped || transition->action != RouteAction::WALK || transition->spin){
+                return std::nullopt;
+            }
+            current = transition->next;
+            leg.wild |= model.wild(current);
+            tiles++;
+        }
+        leg.tiles = tiles;
+        leg.end = current;
+        route.push_back(to_route_step(maps, leg));
+    }
+    if (goal.facing){
+        const std::optional<Direction> facing = route.empty()
+            ? start_facing
+            : std::optional<Direction>(route.back().facing_after);
+        if (!facing || *facing != *goal.facing){
+            RouteStep face;
+            face.action = RouteAction::FACE;
+            face.direction = *goal.facing;
+            face.walk_only = !maps[current.map].allow_running;
+            face.facing_after = *goal.facing;
+            face.end = MapPosition{maps[current.map].name, current.state.position};
+            route.push_back(std::move(face));
+        }
+    }
+    tap_from_known_tile(route);
+    return route;
+}
+
+std::optional<std::vector<RouteStep>> plan_robust_route_on(
+    const std::vector<MapData>& maps,
+    const StepModel& model,
+    const Located& first,
+    int goal_map,
+    const RouteGoal& goal,
+    const RouteCosts& costs,
+    std::optional<Direction> start_facing
+){
+    const Pokemon::RobustModelFromLegModel<StepModel> robust_model(model);
+    const std::function<bool(const Located&)> at_goal = [&](const Located& player){
+        return player.map == goal_map && player.state.position == goal.position.point;
+    };
+    for (bool forbid_along_wander : {true, false}){
+        const auto legs = Pokemon::plan_robust_legs(
+            robust_model, {first}, at_goal, to_robust_leg_costs(costs, forbid_along_wander)
+        );
+        if (legs){
+            if (auto route = robust_legs_to_route(maps, model, first, *legs, goal, start_facing)){
+                return route;
+            }
+        }
+    }
+    return std::nullopt;
+}
+
 //  plan_overworld_route(), with no step off `only_map` if given.
 std::optional<std::vector<RouteStep>> plan_route_on(
     const std::vector<MapData>& maps,
@@ -681,6 +788,16 @@ std::optional<std::vector<RouteStep>> plan_route_on(
     first.state.surfing = is_water(maps[start_map], start.point);
 
     const StepModel model(maps, costs, only_map);
+    const bool use_robust = only_map.has_value()
+        && !first.state.surfing
+        && route_cost(costs, RouteCost::SIGHT_TILE) == 0
+        && route_cost(costs, RouteCost::LINE_TILE) == 0
+        && route_cost(costs, RouteCost::SIGHT_OVERSHOOT) == 0;
+    if (use_robust){
+        if (auto route = plan_robust_route_on(maps, model, first, goal_map, goal, costs, start_facing)){
+            return route;
+        }
+    }
     const auto legs = Pokemon::plan_legs(
         model, first, start_facing,
         std::function<bool(const Located&)>([&](const Located& player){

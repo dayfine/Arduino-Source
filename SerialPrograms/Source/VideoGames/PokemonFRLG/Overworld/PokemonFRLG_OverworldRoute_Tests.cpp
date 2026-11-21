@@ -594,6 +594,52 @@ UnitTestResult test_wander_box_routing(){
     return true;
 }
 
+UnitTestResult test_robust_open_gather_and_connection_cost(){
+    const std::string gather_json = R"({
+        "name": "Gather", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-21"},
+        "tiles": ["#######", "#.....#", "##...##", "#######"],
+        "elevation": ["3333333", "3333333", "3333333", "3333333"]
+    })";
+    const std::vector<MapData> gather_maps{parse_map(gather_json, "Gather")};
+    std::vector<RouteStep> gather_route;
+    UnitTestResult result = check_route(gather_maps, {"Gather", {1, 1}}, {{"Gather", {4, 2}}, std::nullopt}, gather_route);
+    if (result.result != UnitTestResult::PASSED){
+        return result;
+    }
+    if (gather_route.size() != 3 || !gather_route.back().to_wall){
+        return "Expected open-spread + wall-gather route in Gather:" + describe(gather_route);
+    }
+
+    const std::string north_json = R"({
+        "name": "NorthMap", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-21"},
+        "tiles": ["#####", "#...#", "#...#", "#...#"],
+        "elevation": ["33333", "33333", "33333", "33333"],
+        "connections": [{"side": "south", "to_map": "SouthMap", "offset": 0}]
+    })";
+    const std::string south_json = R"({
+        "name": "SouthMap", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-21"},
+        "tiles": ["#...#", "#...#", "#...#", "#####"],
+        "elevation": ["33333", "33333", "33333", "33333"],
+        "connections": [{"side": "north", "to_map": "NorthMap", "offset": 0}]
+    })";
+    const std::vector<MapData> connected_maps{
+        parse_map(north_json, "NorthMap"),
+        parse_map(south_json, "SouthMap"),
+    };
+    RouteCosts conn_costs = default_route_costs();
+    conn_costs[RouteCost::OPEN_CONNECTION_STOP] = 500;
+    const std::optional<std::vector<RouteStep>> conn_route = plan_overworld_route(
+        connected_maps, {"NorthMap", {1, 2}}, {{"SouthMap", {2, 1}}, std::nullopt}, conn_costs
+    );
+    if (!conn_route){
+        return "Expected route across map connection.";
+    }
+    if (follow_overworld_route(connected_maps, {"NorthMap", {1, 2}}, *conn_route) != MapPosition{"SouthMap", {2, 1}}){
+        return "Connected route did not reach goal.";
+    }
+    return true;
+}
+
 const RouteTestCase ROUTE_CASES[] = {
     {
         .input = {.name = "tiles a route crosses twice", .body = test_revisited_tiles},
@@ -658,6 +704,10 @@ const RouteTestCase ROUTE_CASES[] = {
     {
         .input = {.name = "wander box routing", .body = test_wander_box_routing},
         .expectation = {.description = "detours around short wander boxes and crosses when no detour exists"},
+    },
+    {
+        .input = {.name = "robust open gather and connection cost", .body = test_robust_open_gather_and_connection_cost},
+        .expectation = {.description = "plans robust open-spread wall-gather routes and preserves open-connection stop costs"},
     },
 };
 
