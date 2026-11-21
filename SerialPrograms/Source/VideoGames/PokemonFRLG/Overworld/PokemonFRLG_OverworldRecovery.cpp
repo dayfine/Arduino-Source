@@ -7,12 +7,12 @@
 #include <algorithm>
 #include <format>
 #include <utility>
-#include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "Pokemon/Navigation/Pokemon_WanderRecovery.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldHeldInPlace.h"
-#include "PokemonFRLG_OverworldLegTrace.h"
 #include "PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_OverworldReanchor.h"
+#include "PokemonFRLG_OverworldRecoverySupport.h"
 #include "PokemonFRLG_OverworldResume.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 
@@ -24,32 +24,6 @@ namespace PokemonFRLG{
 namespace{
 
 using Pokemon::EndBasis;
-using Pokemon::ROUTE_LOG_TAG;
-
-std::vector<Pokemon::RouteTile> route_tiles(const std::optional<MapPosition>& position){
-    if (!position){
-        return {};
-    }
-    return {{position->map, position->point}};
-}
-
-Pokemon::RouteLogLeg route_log_leg(const RouteStep& step){
-    Pokemon::RouteLogLeg leg{.action = Pokemon::RouteLegAction::WALK, .direction = step.direction, .tiles = (size_t)step.tiles, .end = Pokemon::RouteLegEnd::OPEN};
-    if (step.action == RouteAction::SURF){
-        leg.action = Pokemon::RouteLegAction::SURF;
-    }else if (step.action == RouteAction::FACE){
-        leg.action = Pokemon::RouteLegAction::FACE;
-    }else if (step.action == RouteAction::OPEN_GATE){
-        leg.action = Pokemon::RouteLegAction::OPEN_GATE;
-    }else if (step.action == RouteAction::PRESS_SWITCH){
-        leg.action = Pokemon::RouteLegAction::PRESS_SWITCH;
-    }else if (step.warps){
-        leg.end = Pokemon::RouteLegEnd::WARP;
-    }else if (step.to_wall){
-        leg.end = Pokemon::RouteLegEnd::WALL;
-    }
-    return leg;
-}
 
 //  How far the holds that find the player after an open leg, and the way
 //  back, may walk, per tile of the leg. 2 left Rocket Hideout B3F's "west
@@ -116,85 +90,6 @@ std::optional<std::vector<StopCandidate>> hold_finds(
     return unmoved;
 }
 
-//  The route's lines in the route log the games share, as BDSP's walker
-//  writes them, under the caller's label; and one [Leg] record per leg
-//  (PokemonFRLG_OverworldLegTrace.h), written to the same log.
-class RouteLogLines{
-public:
-    RouteLogLines(const RouteCalls& calls, const RoutePlanning* planning)
-        : m_calls(calls)
-        , m_label(planning != nullptr ? planning->label : "Route")
-        , m_trace(
-            planning != nullptr ? planning->checkpoint : "", m_label,
-            [&calls](const std::string& line){ calls.log(line); }
-        )
-    {}
-    void plan(const std::optional<MapPosition>& from, const std::vector<RouteStep>& steps) const{
-        std::vector<Pokemon::PlannedRouteLeg> legs;
-        for (const RouteStep& step : steps){
-            legs.push_back({.leg = route_log_leg(step), .after = route_tiles(step.end)});
-        }
-        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_plan_line(m_label, route_tiles(from), legs));
-    }
-    void leg(size_t index, const std::vector<RouteStep>& steps){
-        const RouteStep& step = steps[index];
-        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_line(index + 1, steps.size(), {.leg = route_log_leg(step), .after = route_tiles(step.end)}));
-        m_trace.begin(step);
-    }
-    //  The leg ended other than as planned and walked: its hold went on to
-    //  the warp (ASSUMED), or its end is not known (UNKNOWN).
-    void end(const RouteStep& step, const std::optional<MapPosition>& at, EndBasis basis, const std::string& why){
-        log_end(step, at, basis, why);
-        if (basis == EndBasis::ASSUMED){
-            m_trace.held_to_warp(step);
-        }else{
-            m_trace.unknown(why == "stopped part-way" ? "replan" : "again");
-        }
-    }
-    void trainer_stopped(const RouteStep& step, const MapPosition& at){
-        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_replan_line(m_label, route_log_leg(step), "stopped by a trainer who saw the player", route_tiles(at)));
-        m_trace.trainer_stopped(at);
-    }
-    //  A wild battle set off before the leg that just started.
-    void battle_before(){
-        m_trace.battle_before();
-    }
-    void found(const MapPosition& at, size_t holds) const{
-        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_found_line(m_label, route_tiles(at), holds));
-    }
-    //  Step `number` (from 1) of a plan whose first `holds` steps are holds
-    //  to walls, walked to its end.
-    void done(const RouteStep& step, size_t number, size_t holds){
-        if (number < holds){
-            //  Where a hold but the last ends depends on where it started.
-            log_end(step, std::nullopt, EndBasis::UNKNOWN, "a hold from an unknown tile");
-            m_trace.unknown("hold");
-            return;
-        }
-        log_end(step, step.end, EndBasis::WALKED, "");
-        m_trace.done(step);
-        if (number == holds){
-            found(step.end, holds);
-        }
-    }
-
-private:
-    void log_end(const RouteStep& step, const std::optional<MapPosition>& at, EndBasis basis, const std::string& why) const{
-        const auto leg = route_log_leg(step);
-        m_calls.log(std::string(ROUTE_LOG_TAG) + Pokemon::route_leg_end_line(m_label, leg, route_tiles(at), basis, why));
-        if (m_calls.leg_ended){
-            const std::string path = m_calls.leg_ended(to_string(leg));
-            if (!path.empty()){
-                m_calls.log(std::string(ROUTE_LOG_TAG) + m_label + ": leg screenshot " + path);
-            }
-        }
-    }
-
-    const RouteCalls& m_calls;
-    std::string m_label;
-    OverworldLegTrace m_trace;
-};
-
 //  Walks each step through `calls`; watches a leg that crosses a trainer's
 //  sight for the trainer, and logs whether a leg to a wall that ended did
 //  end at its wall.
@@ -216,28 +111,21 @@ public:
         }
         m_last = leg;
         m_last_late = outcome.end == StepEnd::LATE;
-        if (outcome.end == StepEnd::DONE){
-            check_wall(step);
-        }
         return outcome;
     }
 
-private:
-    //  TODO(forest drift, 2026-11-01): diagnostic; remove or turn into a recovery once the cause is known.
-    //  Four runs ended the walk to Viridian Forest's north gate off its
-    //  column, which 52 legs walked by hand didn't reproduce: one more tap
-    //  toward a leg's wall moves nobody who stands at it. Only logged: the
-    //  screen check can't tell a bump from a step yet, and failing on it
-    //  stopped good runs.
-    void check_wall(const RouteStep& step) const{
+    //  Returns true if `step` is a walk to a wall and moved_past_wall() reports
+    //  movement after DONE.
+    bool check_wall(const RouteStep& step) const{
         if (!step.to_wall || step.warps || step.action != RouteAction::WALK
             || m_wall_check == WallCheck::SKIP || !m_calls.moved_past_wall
         ){
-            return;
+            return false;
         }
-        if (!m_calls.moved_past_wall(step)){
-            return;
-        }
+        return m_calls.moved_past_wall(step);
+    }
+
+    void log_moved_past_wall(const RouteStep& step) const{
         m_calls.log(std::format(
             "Position check (logged only): a tap after {} moved the screen as a step would; believed at {}, after {} re-hold(s) "
             "for something seen late (the leg's interrupts are the \"Leg:\" lines above).",
@@ -245,6 +133,7 @@ private:
         ));
     }
 
+private:
     const RouteCalls& m_calls;
     WallCheck m_wall_check = WallCheck::TAP;
     std::string m_last;
@@ -304,6 +193,9 @@ public:
                 continue;
             }
             if (outcome.end == StepEnd::DONE){
+                if (retry_wall_wanderer(step, m_next >= m_holds ? m_at : std::nullopt)){
+                    continue;
+                }
                 if (!after_done(step, outcome.movement)){
                     return;
                 }
@@ -322,13 +214,10 @@ public:
                 continue;
             }
             m_walked.reset();
-            if (outcome.end == StepEnd::WARPED){
-                if (!after_warped(step)){
-                    return;
-                }
-                continue;
-            }
-            if (!after_stop(step, outcome, start, crossing)){
+            const bool keep_going = outcome.end == StepEnd::WARPED
+                ? after_warped(step)
+                : after_stop(step, outcome, start, crossing);
+            if (!keep_going){
                 return;
             }
         }
@@ -351,6 +240,7 @@ private:
         m_drift.walked(step);
         m_at = step.end;
         m_facing = step.facing_after;
+        m_wander_state = Pokemon::WanderWaitState{};
         m_lines.done(step, ++m_next, m_holds);
         check_open_leg(step, start, movement);
         return true;
@@ -371,6 +261,7 @@ private:
         Pokemon::apply_gate_change(m_gates, step.gate_change);
         read_gates();
         m_facing = step.facing_after;
+        m_wander_state = Pokemon::WanderWaitState{};
         m_lines.done(step, ++m_next, m_holds);
         return true;
     }
@@ -523,13 +414,55 @@ private:
         return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
     }
 
+    bool retry_wall_wanderer(const RouteStep& step, const std::optional<MapPosition>& start){
+        if (!m_steps.check_wall(step)){
+            return false;
+        }
+        const bool touches = step_touches_wander_box(maps(), step, start, m_hold_from);
+        const Pokemon::WallWanderDecision decision = Pokemon::decide_wall_wander(
+            m_wander_policy, m_wander_state, Pokemon::WallWanderInput{.touches_wander_zone = touches}
+        );
+        if (decision == Pokemon::WallWanderDecision::WAIT_AND_REHOLD){
+            m_held_again = true;
+            m_calls.log(std::format(
+                "Route: {} moved past wall (touches wander box); waiting ({}/{}) and re-holding.",
+                to_string(step), m_wander_state.waits_used, m_wander_policy.max_waits
+            ));
+            if (m_calls.wait){
+                m_calls.wait(m_wander_policy.wait_duration);
+            }
+            return true;
+        }
+        m_steps.log_moved_past_wall(step);
+        return false;
+    }
+
     //  After `step` moved nothing, from `start` if known: walked again
     //  from where it started, once. False once the route has failed.
     bool after_unmoved(const RouteStep& step, const std::optional<MapPosition>& start){
         const std::string leg = to_string(step);
+        m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "stopped part-way");
+        const int across = m_drift.unsure_across(step.direction) ? OPEN_LEG_SHORTFALL : 0;
+        const bool blocked = step_blocked_by_wanderer(
+            maps(), step, start, m_unmoved_starts, m_hold_from, m_next == 0, across
+        );
+        const Pokemon::UnmovedWanderDecision decision = Pokemon::decide_unmoved_wander(
+            m_wander_policy, m_wander_state, blocked
+        );
+        if (decision == Pokemon::UnmovedWanderDecision::WAIT_AND_RETRY){
+            m_stops--;
+            m_unmoved.clear();
+            m_calls.log(std::format(
+                "Route: {} blocked by a wandering NPC; waiting ({}/{}) and retrying.",
+                leg, m_wander_state.waits_used, m_wander_policy.max_waits
+            ));
+            if (m_calls.wait){
+                m_calls.wait(m_wander_policy.wait_duration);
+            }
+            return true;
+        }
         const bool again = m_unmoved == leg;
         m_unmoved = leg;
-        m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "stopped part-way");
         if (again){
             m_calls.fail("walk_overworld_route(): " + leg + " moved nothing twice in a row: the player is not walking.");
             return false;
@@ -564,6 +497,56 @@ private:
         return rejoin(step, blocked, WalkedTiles{.min = 0, .max = 0});
     }
 
+    bool mid_leg_wanderer_wait(
+        const RouteStep& step, const StepOutcome& outcome, const std::optional<MapPosition>& start
+    ){
+        if (!step.tapped || !start || maps() == nullptr || !outcome.walked){
+            return false;
+        }
+        const int moved = outcome.walked->min;
+        if (moved < 0 || moved >= step.tiles){
+            return false;
+        }
+        RouteStep prefix = step;
+        prefix.tiles = moved;
+        const std::vector<MapPosition> walked_tiles = leg_tiles(*maps(), *start, prefix);
+        if ((int)walked_tiles.size() != moved + 1){
+            return false;
+        }
+        const MapPosition& stopped_at = walked_tiles.back();
+        const bool exact = outcome.blocked || outcome.walked->min == outcome.walked->max;
+        const Pokemon::MidLegWanderDecision decision = Pokemon::decide_mid_leg_wander(
+            m_wander_policy, m_wander_state,
+            Pokemon::MidLegWanderInput{
+                .has_wanderer_ahead = ahead_has_wanderer(maps(), stopped_at, step.direction),
+                .can_resume_remaining = exact,
+            }
+        );
+        if (decision == Pokemon::MidLegWanderDecision::NONE){
+            return false;
+        }
+        m_stops--;
+        m_unmoved.clear();
+        const bool resume = decision == Pokemon::MidLegWanderDecision::WAIT_AND_RESUME_REMAINING;
+        m_calls.log(std::format(
+            "Route: {} blocked after {} tile(s) by a wandering NPC; waiting ({}/{}) and {}.",
+            to_string(step), moved, m_wander_state.waits_used, m_wander_policy.max_waits,
+            resume ? std::format("tapping remaining {} tile(s)", step.tiles - moved) : "re-anchoring"
+        ));
+        if (m_calls.wait){
+            m_calls.wait(m_wander_policy.wait_duration);
+        }
+        if (!resume){
+            return false;
+        }
+        if (moved > 0){
+            m_at = stopped_at;
+            m_facing = step.direction;
+            m_plan[m_next].tiles = step.tiles - moved;
+        }
+        return true;
+    }
+
     //  After a stop on `step`, from `start` if known. False once the route
     //  has failed.
     bool after_stop(
@@ -575,6 +558,9 @@ private:
         }
         if (step.to_wall){
             return after_wall_stop(step, outcome, start, crossing);
+        }
+        if (mid_leg_wanderer_wait(step, outcome, start)){
+            return true;
         }
         //  A hold on that took no warp left the player anywhere on the leg:
         //  found again there, as after any stop (console B, 2026-11-16
@@ -969,6 +955,8 @@ private:
     bool m_leg_from_caller_start = false;   //  the leg walked last started on the caller's start
     size_t m_next = 0;
     size_t m_stops = 0;
+    const Pokemon::WanderWaitPolicy m_wander_policy{MAX_WANDER_WAITS, WANDER_WAIT_DURATION, false};
+    Pokemon::WanderWaitState m_wander_state;
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player
     size_t m_unchecked = 0; //  of the plan, the holds and the way back after them
     std::optional<Walked> m_walked;     //  the step walked last, if it may have stopped part-way

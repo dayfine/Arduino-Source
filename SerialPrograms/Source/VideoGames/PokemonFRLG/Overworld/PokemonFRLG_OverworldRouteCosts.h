@@ -80,13 +80,17 @@ enum class RouteCost{
     //  3 (to wall)" was followed by "west 4 (to wall)" and "east 2" back
     //  (console B, 2026-11-15 21:39).
     OPEN_CHECK,
+    //  Extra for a step onto a tile inside a wandering NPC's wander box:
+    //  the NPC may block or bump the player, so routes detour around short
+    //  wander boxes while still crossing when no short detour exists.
+    WANDER_TILE,
 };
 //  Cost mapping table for path planning.
 using RouteCosts = std::map<RouteCost, int>;
 
 //  TILE 1, TURN 2, WARP 30, SURF 40, GRASS_TILE 20, OPEN_STOP 8,
 //  OPEN_WILD_STOP 300, SIGHT_TILE 0, LINE_TILE 0, SIGHT_OVERSHOOT 0,
-//  SIGN_OVERSHOOT 3, OPEN_WATER_STOP 1000, OPEN_CHECK 10.
+//  SIGN_OVERSHOOT 3, OPEN_WATER_STOP 1000, OPEN_CHECK 10, WANDER_TILE 8.
 //  The sight costs are
 //  off by default until beaten trainers and battles a story step wants are
 //  told apart: at 100 and 10 they moved Pewter City's and Pewter Gym's
