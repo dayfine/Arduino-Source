@@ -9,7 +9,6 @@
 #include <functional>
 #include <ranges>
 #include <string>
-#include <tuple>
 #include <unordered_map>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
@@ -17,11 +16,11 @@
 #include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
-#include "Pokemon/Navigation/Pokemon_RobustLegPlanner.h"
 #include "Pokemon/Navigation/Pokemon_WanderRules.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldObjects.h"
+#include "PokemonFRLG_OverworldRobustRoute.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSpin.h"
 #include "PokemonFRLG_OverworldStepChecks.h"
@@ -58,12 +57,6 @@ struct LocatedHash{
     size_t operator()(const Located& player) const{
         return (((std::hash<TilePos>()(player.state.position) * 31 + player.map) * 16
             + player.state.elevation) * 2) + (player.state.surfing ? 1 : 0);
-    }
-};
-struct LocatedLess{
-    bool operator()(const Located& a, const Located& b) const{
-        return std::tie(a.map, a.state.position.x, a.state.position.y, a.state.elevation, a.state.surfing)
-            < std::tie(b.map, b.state.position.x, b.state.position.y, b.state.elevation, b.state.surfing);
     }
 };
 
@@ -262,7 +255,6 @@ class StepModel{
 public:
     using State = Located;
     using StateHash = LocatedHash;
-    using StateLess = LocatedLess;
 
     //  With `only_map`, no step leaves that map; the other maps still tell
     //  where a hold stops (an edge onto a wall, a door's warp).
@@ -485,20 +477,6 @@ Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     return leg_costs;
 }
 
-Pokemon::RobustLegCosts to_robust_leg_costs(const RouteCosts& costs, bool forbid_along_wander){
-    Pokemon::RobustLegCosts robust;
-    robust.per_tile = route_cost(costs, RouteCost::TILE);
-    robust.per_wild_tile = route_cost(costs, RouteCost::GRASS_TILE);
-    robust.per_wander_tile = route_cost(costs, RouteCost::WANDER_TILE);
-    robust.per_leg = route_cost(costs, RouteCost::TURN);
-    robust.leg_not_at_wall = route_cost(costs, RouteCost::OPEN_STOP);
-    robust.per_open_wild_tile = route_cost(costs, RouteCost::OPEN_WILD_STOP);
-    robust.open_error = 1;
-    robust.open_error_per = 5;
-    robust.forbid_along_wander = forbid_along_wander;
-    return robust;
-}
-
 //  The tiles the slide at the end of WALK `leg` takes, if it ends on a
 //  spinner: only a leg's last step can slide (StepModel ends the leg).
 std::optional<int> last_spin_tiles(const std::vector<MapData>& maps, const Pokemon::Leg<Located>& leg){
@@ -564,28 +542,6 @@ void tap_onto_switches(std::vector<RouteStep>& route){
         }
         RouteStep& step = route[before];
         if (step.action == RouteAction::WALK && !step.surfing && !step.warps && !step.to_wall && !step.spin_tiles){
-            step.tapped = true;
-        }
-    }
-}
-
-//  Taps the open legs before each tapped leg in `route`, back to the start
-//  or a leg that ends where the walk knows the player is (a wall, a warp),
-//  so a leg onto stairs from the side starts from a known tile (Pokemon
-//  Tower 2F's "west 12" before "south 4" onto the stairs (4, 10)).
-void tap_from_known_tile(std::vector<RouteStep>& route){
-    for (size_t c = route.size(); c-- > 1;){
-        if (!route[c].tapped){
-            continue;
-        }
-        for (size_t before = c; before-- > 0;){
-            RouteStep& step = route[before];
-            if (step.action == RouteAction::FACE){
-                continue;
-            }
-            if (step.action != RouteAction::WALK || step.surfing || step.warps || step.to_wall || step.spin_tiles || step.tapped){
-                break;
-            }
             step.tapped = true;
         }
     }
@@ -686,85 +642,24 @@ std::optional<OverworldPress> predict_overworld_press(
 
 namespace{
 
-std::optional<std::vector<RouteStep>> robust_legs_to_route(
-    const std::vector<MapData>& maps,
-    const StepModel& model,
-    const Located& first,
-    const std::vector<Pokemon::RobustLeg<Located>>& legs,
-    const RouteGoal& goal,
-    std::optional<Direction> start_facing
-){
-    std::vector<RouteStep> route;
-    Located current = first;
-    for (const Pokemon::RobustLeg<Located>& rleg : legs){
-        Pokemon::Leg<Located> leg;
-        leg.kind = Pokemon::LegKind::WALK;
-        leg.direction = rleg.direction;
-        leg.to_wall = rleg.to_wall;
-        leg.facing_after = rleg.direction;
-        leg.start = current;
-        int tiles = 0;
-        for (size_t i = 0; i < rleg.tiles; i++){
-            const std::optional<Transition> transition = press(maps, current, rleg.direction);
-            if (!transition){
-                if (rleg.to_wall){
-                    break;
-                }
+RobustRouteOps make_robust_ops(const std::vector<MapData>& maps, const StepModel& model, int only_map){
+    return {
+        .walk_step = [&, only_map](const PlayerState& state, Direction dir) -> std::optional<PlayerState>{
+            const auto t = press(maps, Located{only_map, state}, dir);
+            if (!t || t->next.map != only_map || t->warped || t->action != RouteAction::WALK || t->spin){
                 return std::nullopt;
             }
-            if (transition->warped || transition->action != RouteAction::WALK || transition->spin){
-                return std::nullopt;
-            }
-            current = transition->next;
-            leg.wild |= model.wild(current);
-            tiles++;
-        }
-        leg.tiles = tiles;
-        leg.end = current;
-        route.push_back(to_route_step(maps, leg));
-    }
-    if (goal.facing){
-        const std::optional<Direction> facing = route.empty()
-            ? start_facing
-            : std::optional<Direction>(route.back().facing_after);
-        if (!facing || *facing != *goal.facing){
-            RouteStep face;
-            face.action = RouteAction::FACE;
-            face.direction = *goal.facing;
-            face.walk_only = !maps[current.map].allow_running;
-            face.facing_after = *goal.facing;
-            face.end = MapPosition{maps[current.map].name, current.state.position};
-            route.push_back(std::move(face));
-        }
-    }
-    tap_from_known_tile(route);
-    return route;
-}
-
-std::optional<std::vector<RouteStep>> plan_robust_route_on(
-    const std::vector<MapData>& maps,
-    const StepModel& model,
-    const Located& first,
-    int goal_map,
-    const RouteGoal& goal,
-    const RouteCosts& costs,
-    std::optional<Direction> start_facing
-){
-    const Pokemon::RobustModelFromLegModel<StepModel> robust_model(model);
-    const std::function<bool(const Located&)> at_goal = [&](const Located& player){
-        return player.map == goal_map && player.state.position == goal.position.point;
+            return t->next.state;
+        },
+        .held_at = [&, only_map](const PlayerState& state, Direction dir){
+            const Located at{only_map, state};
+            const auto s = model.press(at, dir);
+            return (!s || (s->action == 0 && !s->warped)) && model.held_at(at, dir);
+        },
+        .build_step = [&, only_map](const PlayerState& s, const PlayerState& e, Direction dir, int tiles, bool to_wall, bool wild){
+            return to_route_step(maps, {Pokemon::LegKind::WALK, 0, dir, tiles, false, to_wall, wild, dir, {only_map, s}, {only_map, e}});
+        },
     };
-    for (bool forbid_along_wander : {true, false}){
-        const auto legs = Pokemon::plan_robust_legs(
-            robust_model, {first}, at_goal, to_robust_leg_costs(costs, forbid_along_wander)
-        );
-        if (legs){
-            if (auto route = robust_legs_to_route(maps, model, first, *legs, goal, start_facing)){
-                return route;
-            }
-        }
-    }
-    return std::nullopt;
 }
 
 //  plan_overworld_route(), with no step off `only_map` if given.
@@ -788,13 +683,8 @@ std::optional<std::vector<RouteStep>> plan_route_on(
     first.state.surfing = is_water(maps[start_map], start.point);
 
     const StepModel model(maps, costs, only_map);
-    const bool use_robust = only_map.has_value()
-        && !first.state.surfing
-        && route_cost(costs, RouteCost::SIGHT_TILE) == 0
-        && route_cost(costs, RouteCost::LINE_TILE) == 0
-        && route_cost(costs, RouteCost::SIGHT_OVERSHOOT) == 0;
-    if (use_robust){
-        if (auto route = plan_robust_route_on(maps, model, first, goal_map, goal, costs, start_facing)){
+    if (only_map){
+        if (auto route = plan_robust_route_on(maps[*only_map], first.state, goal, costs, start_facing, make_robust_ops(maps, model, *only_map))){
             return route;
         }
     }

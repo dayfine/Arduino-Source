@@ -2128,6 +2128,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWanderRecovery_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWanderRecovery_Tests.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldPress.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRobustRoute.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRobustRoute.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteStrings.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h
