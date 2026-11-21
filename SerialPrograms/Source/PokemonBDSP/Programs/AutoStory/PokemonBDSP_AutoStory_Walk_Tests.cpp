@@ -365,6 +365,21 @@ void paint(ImageRGB32& screen, int x0, int y0, int x1, int y1, double scale, uin
     }
 }
 
+//  01.03 Oreburgh Mine B1F (2026-11-21 05:03): bottom half of the view is
+//  black cave void, leaving only the top 2 bands active.
+std::string check_cave_edge_scroll(){
+    ImageRGB32 cave_before = scenery(0, 0);
+    ImageRGB32 cave_after = scenery(24, 0);
+    paint(cave_before, 0, 108, 384, 216, 0, 0xff000000);
+    paint(cave_after, 0, 108, 384, 216, 0, 0xff000000);
+    const ViewShift cave_shift = walk_view_shift(cave_before, cave_after);
+    if (!cave_shift.scrolled()){
+        return std::format("a step east along a cave's south black edge: did not read as a scroll ({}).",
+            describe_view_shift(cave_shift));
+    }
+    return "";
+}
+
 UnitTestResult test_view_shift(Logger&){
         const ImageRGB32 before = scenery(0, 0);
         struct Case{
@@ -409,7 +424,8 @@ UnitTestResult test_view_shift(Logger&){
                 return std::format("A 16-pixel scroll west read as {} on the half-size copy, expected (-8, 0) in every band.", describe_view_shift(east));
             }
         }
-        return true;
+        const std::string cave_err = check_cave_edge_scroll();
+        return cave_err.empty() ? UnitTestResult(true) : UnitTestResult(cave_err);
 }
 
 //  walk_view_shift() on the console's frames around D-pad taps.
