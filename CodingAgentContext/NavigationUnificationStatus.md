@@ -21,8 +21,9 @@ Tracking the stacked PRs and local integration branches unifying grid navigation
 | [#704](https://github.com/dayfine/Arduino-Source/pull/704) | `frlg/pc-box-grid-switch` | `frlg/lean` | Open | PokemonFRLG AutoStory: switch box via `BOX_GRID` header on multi-box withdraw |
 | [#702](https://github.com/dayfine/Arduino-Source/pull/702) | `frlg/cerulean-nugget-bridge-10x` | `frlg/lean` | Open | FRLG AutoStory: Cerulean / Nugget Bridge 10x and `05.01`–`05.10` plan updates |
 | [#712](https://github.com/dayfine/Arduino-Source/pull/712) | `frlg/stage6-7-non-mgba-fixes` | `frlg/lean` | Open | FRLG: Stage 6-7 non-mGBA warp, supply, and story plan fixes |
-| `1242837542` | `subagent-FRLG-Ledge---Safe-Open-Leg-Implementer-self-edcc27e7` | local | Local commit | FRLG: use Cerulean `(25, 18)` ledge in `05.08`/`05.09` and trust safe open legs |
-| `d1a3e904bb` | `subagent-Nugget-Bridge-Option-Implementer-self-1a140c7b` | local | Local commit | FRLG AutoStory: add `NUGGET_FARM_COUNT` option and `nugget_farm_skipped` condition |
+| [#743](https://github.com/dayfine/Arduino-Source/pull/743) | `frlg/04-05-poison-survival` | `frlg/lean` | Open | PokemonFRLG AutoStory: add `04.05` `poison_survival` postcondition |
+| [#744](https://github.com/dayfine/Arduino-Source/pull/744) | `frlg/nugget-farm-option` | `frlg/lean` | Draft | FRLG AutoStory: add `NUGGET_FARM_COUNT` option and `nugget_farm_skipped` condition |
+| [#745](https://github.com/dayfine/Arduino-Source/pull/745) | `frlg/cerulean-ledge-safe-open-leg` | `frlg/lean` | Open | FRLG: use Cerulean `(25, 18)` ledge in `05.08`/`05.09` and trust safe open legs |
 
 ## 3. BDSP Chain (`PokemonBDSP`)
 
