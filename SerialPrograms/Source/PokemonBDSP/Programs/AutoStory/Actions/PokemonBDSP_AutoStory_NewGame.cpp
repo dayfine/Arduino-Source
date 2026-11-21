@@ -304,10 +304,10 @@ void enter_player_name(VideoStream& stream, ProControllerContext& context, StepT
     pbf_wait(context, 800ms);
     context.wait_for_all_requests();
     //  B deletes a character, and closes the keyboard on an empty field, so delete only
-    //  while there is text (e.g. after a retry).
+    //  while there is text (e.g. after a retry). An empty field has no white text pixels.
     for (size_t c = 0; c < 14; c++){
         VideoSnapshot screen = stream.video().snapshot();
-        if (!screen || !system_keyboard_field_has_text(screen)){
+        if (!screen || system_keyboard_text_pixels(screen) < 20){
             break;
         }
         trace.action("Name field holds text; deleting a character.");
