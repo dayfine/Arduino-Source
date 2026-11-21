@@ -40,6 +40,10 @@ add_custom_target(build-time-make-directory ALL
 # Internal repo or not, we're always building from the SerialPrograms folder
 set(REPO_ROOT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../")
 
+# Optional development targets; do not build or link the application.
+include(cmake/Formatting.cmake)
+pa_add_format_targets("${REPO_ROOT_DIR}")
+
 # Determine environment
 if(DEFINED ENV{GITHUB_ACTIONS})
     message(STATUS "Detected CI environment, skipping qt deployment")
