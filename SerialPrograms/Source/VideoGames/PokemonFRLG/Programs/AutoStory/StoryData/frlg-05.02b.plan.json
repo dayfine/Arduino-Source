@@ -91,6 +91,15 @@
           "keep": ["withdraw", "water-gun", "bubble", "bite", "mega-kick", "dig", "surf"]
         },
         "why": "TM03 Water Pulse in place of Tackle"
+      },
+      {
+        "id": "below_rival",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[23, 7]], "facing": "north"}
+        },
+        "why": "north to below the Cerulean rival trigger"
       }
     ]
   },

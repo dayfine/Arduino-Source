@@ -4,17 +4,8 @@
   "checkpoint": {
     "id": "05.02c",
     "title": "Cerulean: Beat Rival, return to Center",
-    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {"map": "CeruleanCity", "tiles": [[23, 7]], "facing": "north"},
     "events": [
-      {
-        "id": "below_rival",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[23, 7]], "facing": "north"}
-        },
-        "why": "north to below the Cerulean rival trigger"
-      },
       {
         "id": "rival_trigger",
         "kind": "step",
