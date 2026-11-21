@@ -1,0 +1,71 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.03",
+    "title": "Over the rooftops to Station Front",
+    "start": {
+      "place": "LumioseCity"
+    },
+    "events": [
+      {
+        "id": "through_hotel_gate",
+        "kind": "game_action",
+        "why": "step 46: through the Hotel Z gate passage into the scene. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 7000]]
+        }
+      },
+      {
+        "id": "rock_pile_scene",
+        "kind": "game_action",
+        "why": "step 46: Taunie at the rocks blocking the street",
+        "action": "mash_to_move_hints"
+      },
+      {
+        "id": "side_street_to_wall",
+        "kind": "game_action",
+        "why": "step 47: down the side street to the wall across it. 6 s down the side street, 2 s across. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 8000]]
+        }
+      },
+      {
+        "id": "climb_ladder",
+        "kind": "game_action",
+        "why": "steps 48-49: sidestep right 0.6 s, face up (150 ms), A Climb Up, hold up ~4-6 s",
+        "action": "climb_ladder"
+      },
+      {
+        "id": "rooftop_scene",
+        "kind": "game_action",
+        "why": "step 50: Taunie on the roof",
+        "action": "mash_to_move_hints"
+      },
+      {
+        "id": "off_the_roof",
+        "kind": "game_action",
+        "why": "step 51: off the roof's edge, down to South Boulevard. Walks off the edge and drops. Measured 2026-11-08 on console B, walk not run.",
+        "action": "walk",
+        "args": {
+          "legs": [[0, 4000]]
+        }
+      },
+      {
+        "id": "south_boulevard",
+        "kind": "game_action",
+        "why": "step 52: Taunie walks to the Pokemon Center, until Station Front",
+        "action": "mash_to_move_hints"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game"
+    }
+  },
+  "execution": {
+    "save": "autosave"
+  }
+}

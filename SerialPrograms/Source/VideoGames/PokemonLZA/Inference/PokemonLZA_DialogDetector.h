@@ -31,6 +31,10 @@ public:
     //  This is not const so that detectors can save/cache state.
     virtual bool detect(const ImageViewRGB32& screen) override;
 
+    //  Only the box's white bottom edge, without the advance arrow: the box
+    //  shows while its text is still being typed.
+    bool detect_box(const ImageViewRGB32& screen) const;
+
 private:
     friend class FlatWhiteDialogWatcher;
 

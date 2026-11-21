@@ -885,3 +885,66 @@ among the agents is recorded outside this doc.
    trade-back, or a levelled Pokémon brought in from another save. Optional
    trades the game itself offers (e.g. the Vermilion Farfetch'd) are
    allowed only behind an option.
+
+## 10. Step arguments (user, 2026-11-09)
+
+A story step's `variant` used to carry its action's arguments as free text,
+for example `"mart CeruleanCity_Mart budget=1500 floor=1500 potion=3
+awakening=2"`. Each action parsed its own words, so a typo or a missing
+argument showed up only when the step ran, and the Python reader in
+PokemonSimulation had to copy every action's parser to read a plan.
+
+Now `variant` is only the action's name, the key it is registered under in a
+game's action table. Its arguments move to `args`, a JSON object on the step
+whose values are flags, whole numbers or words (`StoryStep::args`,
+`Types/Pokemon_StoryArgs.h`). Each action declares the arguments it takes,
+with a type and whether each one is required (`StoryArgSpec`). A game checks
+every step's `args` against those specs when it loads the plan, so an
+unknown key, a word where a number belongs or a missing budget fails at
+load. Items to buy stay in the step's `items` list and are not repeated in
+`args`. The shared JSON codec reads and writes `args` without knowing any
+action, and omits it when it is empty.
+
+During the migration, a plan may still carry an old variant string.
+`split_legacy_variant()` turns it into a name and args: the leading plain
+words take the action's positional keys (a Mart's `map`), `key=value`
+words become numbers when they are all digits and words otherwise, and any
+remaining plain word becomes a flag (`if_present`). The word helpers in
+`Pokemon_StoryVariant.h` are deprecated and will be removed once no action
+reads them.
+
+The actions that take arguments today, all FRLG (BDSP's are listed for a
+later change):
+
+| Action | Arguments | Notes |
+|---|---|---|
+| `mart` | `map` word, required; `budget` number, required; `floor` number | What to buy goes in `items`. |
+| `teach` | `item` word (`tm03`, `hm01`, `tutor`), `move` word, `slot` number, all required; `forget` word | |
+| `pc` | `op` word (`deposit`), `slot` number, `box` number, all required; `if_present` flag | |
+| `grind`, `grind_check` | `slot`, `level`, `encounters` numbers and `pace` word, required; `heal_every`, `chance` numbers; `beat` word | `grind_check` takes the same arguments. |
+| `capture` | `species` word, `catches`, `encounters`, `balls` numbers, all required; `pace` word | |
+| `level` | `slot`, `min` numbers, required | Built in C++, not in a plan. |
+| `fossil` | `fossil` word (`helix`, `dome`), required | |
+| `use_item` | `item` word, required; `slot` number | 00.30 onwards. |
+| `lift_floor` | `from`, `to` words, required | 00.30 onwards. |
+
+Plain names such as `run`, `trainer_line`, `cut_tree` and `bike` take no
+arguments and stay as they are.
+
+## 11. Declared poses by game kind (user, 2026-11-10)
+
+A checkpoint's `start` and a step's `declared_after` are a `DeclaredPose`
+(`Types/Pokemon_DeclaredPose.h`): either a `TileDeclared` for the tile games
+(FRLG, BDSP), `{"map": "PalletTown", "tiles": [[3, 4]], "facing": "north"}`
+as before, or a `ZoneDeclared` for a game with no tile grid (PLZA),
+`{"place": "LumioseCity", "spot": "HotelZ", "heading": 90}` with `spot` and
+`heading` optional. A pose with both `map` and `place` fails to load. Each
+pose type names the kind it declares (`StoryPoseTraits<Pose>::Declared`) and
+reads it with `from_declared()`; the engine's lint fails a checkpoint that
+declares the other kind (`check_declared<Pose>()`).
+
+Step arguments stay one closed variant. Games with no tiles walk by
+`TIMED_LEGS` (`[[turn degrees, ms], ...]`), and the lint fails a step or a
+game action of such a game that uses a tile argument (`DIRECTION`, `LEGS`,
+`GRID_POSE`). PLZA's walk legs, today `INTEGER_ROWS`, move to `TIMED_LEGS`
+in its own chain.

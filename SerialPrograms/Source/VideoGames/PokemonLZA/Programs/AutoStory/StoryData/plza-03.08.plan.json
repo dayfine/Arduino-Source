@@ -1,0 +1,46 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "plza",
+  "checkpoint": {
+    "id": "03.08",
+    "title": "Five species, out of Wild Zone 1",
+    "start": {
+      "place": "WildZone1"
+    },
+    "events": [
+      {
+        "id": "catch_more_species",
+        "kind": "game_action",
+        "why": "step 64: the lab gate asks for five registered species, 3/5 after the tutorial: two new ones here in Wild Zone 1 before leaving, Scatterbug (on the road at 100 from the far gate) and Mareep (in the grass right of the road at 60), so the gate's scene finds 5/5 (user, 2026-11-13; console B 2026-11-13 caught only Scatterbug with one wanted). Patrol 100, 60, 100, 60, ...: walking to 100 and back brings Pokemon back at 60; 10 visits, 10 minutes, 12 throws at most. The party bar's filled slots decide, read before the first stop and after each stop that threw: 5 means done, since every catch is a new species (the plate keeps the throws off species caught) and the \"Registered!\" banner is missed at times (console B 2026-11-14 19:36: Mareep in the party, no banner seen). The banner tally is kept for the log and the failure message; the mission panel's counter is not read (catch_in_zone). Unread, the tally decides as before, and the Pokedex's count when the tally is not sure (no reader for its screen yet).",
+        "action": "catch_in_zone"
+      },
+      {
+        "id": "zone_1_back_to_road",
+        "kind": "game_action",
+        "why": "step 62: back onto the road at the catch spots (60, and 100 first when further), facing the objective marker. The marker is not on the far gate but past it to its left, behind the zone's fence: a walk at it from 60 was held up at 36 and wandered to 49 inside the zone (console B, 2026-11-13 and 2026-11-14).",
+        "action": "walk_back_to_zone_road"
+      },
+      {
+        "id": "zone_1_to_far_gate",
+        "kind": "game_action",
+        "why": "step 62: from 60 the far gate's green pillars are straight down the road; walked by hand to its \"A Leave\" prompt in about 4.7 s, the marker reading 41 there (console B, 2026-11-14). Steered by the pillars on screen, after facing 265: the camera read 259 at the prompt with the gate right of centre (x 0.68), and after the catches the gate was off screen once in 3 (console B, 2026-11-14).",
+        "action": "walk_to_zone_gate_entrance",
+        "args": {"heading": 265, "timeout_ms": 15000}
+      },
+      {
+        "id": "leave_zone_1",
+        "kind": "game_action",
+        "why": "step 62: A Leave, out on the street (a plain scene step ends at once on the gate's prompt with the party bar up; console B, 2026-11-10)",
+        "action": "mash_to_move_hints",
+        "args": {"press_a_first": true}
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "source": "console B recording, 2026-11-08/09: played step by step from a new game. Ends out on the street just through the far gate (user, 2026-11-14); the walk on into the lab is 03.09. Short on species, it fails inside the zone (catch_more_species)"
+    }
+  },
+  "execution": {
+    "save": "menu"
+  }
+}
