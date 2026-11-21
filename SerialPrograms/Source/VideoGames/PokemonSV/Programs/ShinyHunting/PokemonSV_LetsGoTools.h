@@ -165,11 +165,14 @@ private:
 //  chain has ended.
 //  The function tracks kill chain by sound detection from `tracker`. The function
 //  does not handle any pokemon battle encounters (turn-based battles).
+//  If `stop_early` is set, it is checked after the command and while waiting
+//  for the kill chain to end, and the function returns once it is true.
 bool use_lets_go_to_clear_in_front(
     VideoStream& stream, ProControllerContext& context,
     LetsGoEncounterBotTracker& tracker,
     bool throw_ball_if_bubble,
-    std::function<void(ProControllerContext& context)>&& command
+    std::function<void(ProControllerContext& context)>&& command,
+    std::function<bool()> stop_early = nullptr
 );
 
 
