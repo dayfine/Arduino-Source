@@ -186,7 +186,13 @@ private:
 
     std::optional<Outcome> on_overworld(){
         if (needs_load()){
-            return press("overworld", {.button = BUTTON_HOME}, m_policy.presses_per_screen, "HOME, to load the save");
+            return press("overworld", {.button = BUTTON_HOME, .release = Milliseconds(1000)}, m_policy.presses_per_screen, "HOME, to load the save");
+        }
+        if (m_loading && !m_launched){
+            //  Closing the game on HOME: a mid-fade frame before HOME returns
+            //  is not the title's attract movie yet.
+            m_backend.wait(m_policy.poll);
+            return std::nullopt;
         }
         if (m_policy.overworld_after_load && m_loading && !m_load_seen){
             //  Not the load's press: on the movie, it goes back to the
@@ -213,7 +219,7 @@ private:
             return std::nullopt;
         }
         if (needs_load()){
-            return press("unknown screen", {.button = BUTTON_HOME}, m_policy.presses_per_screen, "HOME, to load the save");
+            return press("unknown screen", {.button = BUTTON_HOME, .release = Milliseconds(1000)}, m_policy.presses_per_screen, "HOME, to load the save");
         }
         return press("unknown screen", {.button = BUTTON_B}, m_policy.presses_per_screen, "B, toward the overworld");
     }
