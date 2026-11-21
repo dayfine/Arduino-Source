@@ -24,6 +24,7 @@ Tracking the stacked PRs and local integration branches unifying grid navigation
 | [#743](https://github.com/dayfine/Arduino-Source/pull/743) | `frlg/04-05-poison-survival` | `frlg/lean` | Open | PokemonFRLG AutoStory: add `04.05` `poison_survival` postcondition |
 | [#744](https://github.com/dayfine/Arduino-Source/pull/744) | `frlg/nugget-farm-option` | `frlg/lean` | Draft | FRLG AutoStory: add `NUGGET_FARM_COUNT` option and `nugget_farm_skipped` condition |
 | [#745](https://github.com/dayfine/Arduino-Source/pull/745) | `frlg/cerulean-ledge-safe-open-leg` | `frlg/lean` | Open | FRLG: use Cerulean `(25, 18)` ledge in `05.08`/`05.09` and trust safe open legs |
+| [#747](https://github.com/dayfine/Arduino-Source/pull/747) | `frlg/navigation-seam-rebase` | `autostory/navigation-seam` | Draft (`5991f13d3`) | FRLG: seam rebase onto `autostory/navigation-seam` (`d6d4ca2af`) |
 
 ## 3. BDSP Chain (`PokemonBDSP`)
 
@@ -35,3 +36,4 @@ Tracking the stacked PRs and local integration branches unifying grid navigation
 | [#461](https://github.com/dayfine/Arduino-Source/pull/461) | `bdsp/rebuild-seg00` | `bdsp/rebuild-sim` | Open | BDSP AutoStory rebuild 5/6: segment-00 tests |
 | [#462](https://github.com/dayfine/Arduino-Source/pull/462) | `bdsp/rebuild-seg01` | `bdsp/rebuild-seg00` | Open | BDSP AutoStory rebuild 6/6: segment 01 plans and tests |
 | [#432](https://github.com/dayfine/Arduino-Source/pull/432) | `bdsp/wanderer-zone-stand` | `bdsp/0005c-plaza` | Open | BDSP AutoStory: wait for wandering clowns inside their zone; `00.05b` checks its coupons, `00.05c` re-talks none |
+| [#746](https://github.com/dayfine/Arduino-Source/pull/746) | `bdsp/navigation-seam-rebase` | `autostory/navigation-seam` | Draft (`fcc891f99`) | BDSP: seam rebase synced with `autostory/navigation-seam` (`d6d4ca2af`) |
