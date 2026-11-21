@@ -20,6 +20,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryEvents_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryEvents_H
 
+#include <cstdint>
 #include <functional>
 #include <map>
 #include <optional>
@@ -112,6 +113,9 @@ struct StoryEnv{
     //  The program's "Take the Master Ball" option: 16.05b's talk with Silph
     //  Co.'s president (skip_if master_ball_skipped).
     bool take_master_ball = true;
+    //  The program's "Nugget Bridge farm count" option: how many Nuggets
+    //  05.04's nugget_farm step farms (0 skips it via skip_if nugget_farm_skipped).
+    uint16_t nugget_farm_count = 10;
     //  The run's breakpoints (the BREAKPOINTS option): StoryExecutor pauses
     //  before each step, the walks before each leg.
     Pokemon::StoryPausePoints pause = {};
@@ -164,7 +168,11 @@ public:
     //  The step condition master_ball_skipped: the program's option is off, or
     //  the run is a SPEEDRUN, where the Master Ball's few seconds are not spent.
     static bool master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks);
-    //  master_ball_skipped(); any other condition as the run's flags say.
+    //  The step condition nugget_farm_skipped: the farm count option is 0.
+    static bool nugget_farm_skipped(uint16_t nugget_farm_count);
+    //  Effective Nugget Bridge farm count from the program option (0 skips).
+    static int64_t effective_nugget_farm_count(uint16_t nugget_farm_count, int64_t step_count);
+    //  master_ball_skipped(), nugget_farm_skipped(); any other condition as the run's flags say.
     virtual bool holds(std::string_view condition, Pokemon::RunState& state) override;
 
 private:
