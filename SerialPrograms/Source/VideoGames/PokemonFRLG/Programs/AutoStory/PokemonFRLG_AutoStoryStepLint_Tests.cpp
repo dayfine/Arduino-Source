@@ -176,7 +176,7 @@ UnitTestResult test_legs_need_a_reason(){
 //  they are split.
 const std::set<std::string, std::less<>>& bosses_sharing_before_2026_11_16(){
     static const std::set<std::string, std::less<>> BOSSES{
-        "01.06/rival_battle", "03.02/brock", "05.02/misty", "06.01/rival_ss_anne", "09.02/giovanni",
+        "01.06/rival_battle", "03.02/brock", "05.02b/misty", "06.01/rival_ss_anne", "09.02/giovanni",
         "16.03/rival", "16.05/giovanni", "20.01/lorelei", "20.02/bruno", "20.03/agatha", "20.04/lance",
     };
     return BOSSES;
