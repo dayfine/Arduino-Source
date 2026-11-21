@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - New game intro screens
+/*  PokemonLZA - New game intro screens
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -13,7 +13,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/OCR/OCR_Routines.h"
-#include "PokemonLZA_AutoStoryIntroScreens.h"
+#include "PokemonLZA_IntroScreens.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

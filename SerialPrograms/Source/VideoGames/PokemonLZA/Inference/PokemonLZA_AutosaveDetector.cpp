@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Autosave detector
+/*  PokemonLZA - Autosave detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -7,8 +7,8 @@
 #include <initializer_list>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "PokemonLZA_AutoStoryPixelShares.h"
-#include "PokemonLZA_AutoStoryAutosaveDetector.h"
+#include "PokemonLZA_PixelShares.h"
+#include "PokemonLZA_AutosaveDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

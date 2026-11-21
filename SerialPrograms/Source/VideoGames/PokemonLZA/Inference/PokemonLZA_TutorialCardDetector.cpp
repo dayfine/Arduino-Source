@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Tutorial card detector
+/*  PokemonLZA - Tutorial card detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,7 +6,7 @@
 
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
-#include "PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "PokemonLZA_TutorialCardDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

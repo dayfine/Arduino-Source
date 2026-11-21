@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Controls hint detector
+/*  PokemonLZA - Controls hint detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryControlsHintDetector_H
-#define PokemonAutomation_PokemonLZA_AutoStoryControlsHintDetector_H
+#ifndef PokemonAutomation_PokemonLZA_ControlsHintDetector_H
+#define PokemonAutomation_PokemonLZA_ControlsHintDetector_H
 
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"

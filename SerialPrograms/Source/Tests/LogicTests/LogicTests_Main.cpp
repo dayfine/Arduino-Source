@@ -33,6 +33,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonTools/ScreenEvents/ScreenEvents_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStory_Tests.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_Inference_Tests.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
 
 namespace PokemonAutomation{
@@ -43,6 +44,7 @@ UnitTestDatabase make_logic_tests(){
     UnitTestDatabase database;
     Pokemon::add_tests_AutoStory(database);
     add_tests_ScreenEvents(database);
+    NintendoSwitch::PokemonLZA::add_tests_InferenceLogic(database);
     NintendoSwitch::PokemonLZA::add_tests_AutoStoryLogic(database);
     return database;
 }

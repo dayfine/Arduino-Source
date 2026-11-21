@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Dialog choice box
+/*  PokemonLZA - Dialog choice box
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryDialogChoiceBox_H
-#define PokemonAutomation_PokemonLZA_AutoStoryDialogChoiceBox_H
+#ifndef PokemonAutomation_PokemonLZA_DialogChoiceBox_H
+#define PokemonAutomation_PokemonLZA_DialogChoiceBox_H
 
 #include <cstddef>
 #include <optional>

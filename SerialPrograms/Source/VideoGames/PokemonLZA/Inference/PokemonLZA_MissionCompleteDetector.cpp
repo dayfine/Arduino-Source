@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Mission banner detectors
+/*  PokemonLZA - Mission complete detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
 
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "PokemonLZA_AutoStoryMissionBannerDetectors.h"
-#include "PokemonLZA_AutoStoryPixelShares.h"
+#include "PokemonLZA_MissionCompleteDetector.h"
+#include "PokemonLZA_PixelShares.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

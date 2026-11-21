@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Dialog detectors
+/*  PokemonLZA - Story dialog detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -13,7 +13,7 @@
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/Images/BinaryImage_FilterRgb32.h"
 #include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
-#include "PokemonLZA_AutoStoryDialogDetectors.h"
+#include "PokemonLZA_StoryDialogDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

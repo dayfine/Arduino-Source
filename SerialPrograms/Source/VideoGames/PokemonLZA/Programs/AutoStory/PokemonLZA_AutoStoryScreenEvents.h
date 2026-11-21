@@ -12,11 +12,11 @@
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_BattleHudDetectors.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryBattleHudDetectors.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogDetectors.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_StoryDialogDetector.h"
 #include "PokemonLZA_AutoStoryStarts.h"
 
 namespace PokemonAutomation{
@@ -43,6 +43,7 @@ private:
     ButtonDetector m_battle_hint;
     BattlePanelDetector m_battle_panel;
     BattleMarkersDetector m_battle_markers;
+    TrainerPokeballsDetector m_trainer_pokeballs;
     PartyBarDetector m_party;
 };
 

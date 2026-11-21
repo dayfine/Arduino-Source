@@ -12,6 +12,7 @@
 
 #include <string_view>
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapPoint.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -40,12 +41,6 @@ constexpr std::string_view CHOICE_SELECTED_READING = "choice.selected";
 
 //  1 while a tutorial card shows; only A turns its pages.
 constexpr std::string_view TUTORIAL_CARD_READING = "scene.tutorial_card";
-
-//  Full-map coordinates scaled to 800 x 450.
-struct MapPoint{
-    double x = 0;
-    double y = 0;
-};
 
 enum class PlzaAction{
     WAIT_FOR_PLATFORM,

@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Map pin reader
+/*  PokemonLZA - Map pin reader
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,12 +6,12 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryMapPinReader_H
-#define PokemonAutomation_PokemonLZA_AutoStoryMapPinReader_H
+#ifndef PokemonAutomation_PokemonLZA_MapPinReader_H
+#define PokemonAutomation_PokemonLZA_MapPinReader_H
 
 #include <optional>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryTypes.h"
+#include "PokemonLZA_MapPoint.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

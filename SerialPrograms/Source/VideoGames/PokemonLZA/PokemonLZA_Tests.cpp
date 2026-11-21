@@ -17,6 +17,7 @@
 #include "Inference/PokemonLZA_MainMenuDetector.h"
 #include "Inference/Map/PokemonLZA_MapDetector.h"
 #include "Inference/Map/PokemonLZA_MapIconDetector.h"
+#include "Inference/PokemonLZA_Inference_Tests.h"
 #include "Inference/PokemonLZA_OverworldPartySelectionDetector.h"
 #include "Inference/PokemonLZA_PartyBarDetector.h"
 #include "Inference/PokemonLZA_SelectionArrowDetector.h"
@@ -44,6 +45,8 @@ void add_tests(UnitTestDatabase& database){
     add_tests_OverworldPartySelectionDetector(database);
     add_tests_PartyBarDetector(database);
     add_tests_SelectionArrowDetector(database);
+    add_tests_InferenceLogic(database);
+    add_tests_InferenceImage(database);
     add_tests_AutoStoryLogic(database);
     add_tests_AutoStoryImage(database);
 

@@ -1,10 +1,10 @@
-/*  PokemonLZA AutoStory - Pixel shares
+/*  PokemonLZA - Pixel shares
  *
  *  From: https://github.com/PokemonAutomation/
  *
  */
 
-#include "PokemonLZA_AutoStoryPixelShares.h"
+#include "PokemonLZA_PixelShares.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

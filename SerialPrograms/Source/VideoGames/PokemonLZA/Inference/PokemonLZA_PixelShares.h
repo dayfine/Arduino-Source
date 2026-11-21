@@ -1,13 +1,13 @@
-/*  PokemonLZA AutoStory - Pixel shares
+/*  PokemonLZA - Pixel shares
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Shared pixel-fraction helpers and 1080p-relative box shifting for AutoStory detectors.
+ *  Shared pixel-fraction helpers and 1080p-relative box shifting for PokemonLZA detectors.
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryPixelShares_H
-#define PokemonAutomation_PokemonLZA_AutoStoryPixelShares_H
+#ifndef PokemonAutomation_PokemonLZA_PixelShares_H
+#define PokemonAutomation_PokemonLZA_PixelShares_H
 
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"

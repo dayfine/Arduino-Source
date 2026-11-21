@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Battle HUD detectors
+/*  PokemonLZA - Battle HUD detectors
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "PokemonLZA_AutoStoryBattleHudDetectors.h"
-#include "PokemonLZA_AutoStoryPixelShares.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_PixelShares.h"
+#include "PokemonLZA_BattleHudDetectors.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -66,6 +66,34 @@ double dot_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
     });
 }
 
+//  TrainerPokeballsDetector: 6 Pokeball slots centered around x = 960 on 1080p
+//  (centers 857.5..1062.5, spacing 41). A live ball has a coral-red top half
+//  (y 60-66, measured 0.94-0.96) and a bright-white bottom half (y 72-80, measured 1.00).
+constexpr size_t TRAINER_BALL_COUNT = 6;
+constexpr double TRAINER_BALL_FIRST_X = 857.5;
+constexpr double TRAINER_BALL_SPACING = 41.0;
+constexpr double TRAINER_BALL_WIDTH = 14.0;
+constexpr double TRAINER_BALL_TOP_Y = 60.0;
+constexpr double TRAINER_BALL_TOP_H = 6.0;
+constexpr double TRAINER_BALL_BOTTOM_Y = 72.0;
+constexpr double TRAINER_BALL_BOTTOM_H = 8.0;
+constexpr double TRAINER_BALL_SHARE = 0.4;
+constexpr int TRAINER_BALL_WHITE_SPREAD_MAX = 40;
+
+double trainer_ball_red_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
+    return share_of(screen, box, [](Color pixel){
+        return pixel.red() > 190 && pixel.red() > pixel.green() + 70 && pixel.red() > pixel.blue() + 60;
+    });
+}
+
+double trainer_ball_white_share(const ImageViewRGB32& screen, const ImageFloatBox& box){
+    return share_of(screen, box, [](Color pixel){
+        const int low = std::min({pixel.red(), pixel.green(), pixel.blue()});
+        const int high = std::max({pixel.red(), pixel.green(), pixel.blue()});
+        return low > 200 && high - low <= TRAINER_BALL_WHITE_SPREAD_MAX;
+    });
+}
+
 } // namespace
 
 
@@ -116,6 +144,38 @@ bool BattleMarkersDetector::detect(const ImageViewRGB32& screen){
         }
     }
     return triangles == 1 && dots >= DOTS_MIN;
+}
+
+
+TrainerPokeballsDetector::TrainerPokeballsDetector(Color color)
+    : m_color(color)
+{
+    for (size_t i = 0; i < TRAINER_BALL_COUNT; i++){
+        const double x = (TRAINER_BALL_FIRST_X + TRAINER_BALL_SPACING * i - TRAINER_BALL_WIDTH / 2) / 1920;
+        const double w = TRAINER_BALL_WIDTH / 1920;
+        m_slots.push_back(BallSlot{
+            .top = ImageFloatBox(x, TRAINER_BALL_TOP_Y / 1080, w, TRAINER_BALL_TOP_H / 1080),
+            .bottom = ImageFloatBox(x, TRAINER_BALL_BOTTOM_Y / 1080, w, TRAINER_BALL_BOTTOM_H / 1080),
+        });
+    }
+}
+
+void TrainerPokeballsDetector::make_overlays(VideoOverlaySet& items) const{
+    for (const BallSlot& slot : m_slots){
+        items.add(m_color, slot.top);
+        items.add(m_color, slot.bottom);
+    }
+}
+
+bool TrainerPokeballsDetector::detect(const ImageViewRGB32& screen){
+    for (const BallSlot& slot : m_slots){
+        if (trainer_ball_red_share(screen, slot.top) >= TRAINER_BALL_SHARE &&
+            trainer_ball_white_share(screen, slot.bottom) >= TRAINER_BALL_SHARE
+        ){
+            return true;
+        }
+    }
+    return false;
 }
 
 
