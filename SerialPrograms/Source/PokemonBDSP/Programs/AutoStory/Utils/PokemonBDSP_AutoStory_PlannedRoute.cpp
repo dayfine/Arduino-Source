@@ -408,13 +408,15 @@ LegNext RouteWalker::wall_leg(LegWalk& walk){
     const TileLeg& leg = walk.planned.leg;
     const Milliseconds limit = wall_limit(leg);
     walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit, .label = walk.label, .options = run_watching(walk)});
-    if (finish_interrupted_wall(walk, limit)){
-        return LegNext::NEXT_LEG;
-    }
-    //  A wall well before the nearest one the map has: something unmapped is
-    //  in the way. Mark it and plan again from where we stopped.
     const size_t nearest = nearest_wall_tiles(leg.direction);
-    size_t walked_tiles = tiles_moved(walk.result, route_ms_per_tile(leg.direction, m_plan.speed));
+    const Milliseconds per_tile = route_ms_per_tile(leg.direction, m_plan.speed);
+    const size_t before_tiles = walk.result.moved_chunks == 0 ? 0 : tiles_moved(walk.result, per_tile);
+    if (finish_interrupted_wall(walk, limit)){
+        const size_t after = walk.result.moved_chunks == 0 ? 0 : tiles_moved(walk.result, per_tile);
+        return never_moved(walk.result, after) && nearest != SIZE_MAX && before_tiles < min_tiles_at_wall(nearest)
+            ? stopped_short_of_wall(walk, before_tiles) : LegNext::NEXT_LEG;
+    }
+    size_t walked_tiles = tiles_moved(walk.result, per_tile);
     if (walk.result.stop == WalkStop::BLOCKED && nearest != SIZE_MAX && walked_tiles >= nearest){
         m_io.note(std::format("[Speed] {} {}: {} tiles in {} ms to the wall.",
             m_plan.speed == MoveSpeed::RUN ? "run" : "walk", direction_name(leg.direction), nearest, walk.result.walked.count()), RouteNote::LOG);
@@ -436,13 +438,11 @@ bool RouteWalker::finish_interrupted_wall(LegWalk& walk, Milliseconds limit){
     if (walk.result.wild_battles == 0){
         return false;
     }
-    //  A battle that may have begun before the hold changes nothing here:
-    //  from where the leg began, it ends at its wall however far it got.
     for (size_t again = 0; again < 3 && walk.result.wild_battles > 0; again++){
         if (walk.result.stop != WalkStop::LIMIT && walk.result.stop != WalkStop::BLOCKED){
             fail(m_io, "unconfirmed transition/dialogue during wall recovery: " + walk.label);
         }
-        m_io.note("[Route] " + walk.label + ": a wild battle on the way; walking to the wall again.", RouteNote::LOG);
+        m_io.note(std::format("[Route] {}: a wild battle on the way; walking to the wall again.", walk.label), RouteNote::LOG);
         walk.result = m_io.walk_to_wall({.direction = walk.planned.leg.direction, .limit = limit,
             .label = walk.label, .options = run_watching(walk)});
     }
