@@ -570,10 +570,12 @@ UnitTestResult test_oddish_walks(){
         {"mart_clerk", {"CeruleanCity_Mart", {4, 3}}},
         {"oddish_patch", {"Route24", {3, 19}}},
         {"oddish_patch_cliff", {"Route24", {3, 19}}},
+        {"above_center_ledge", {"CeruleanCity", {25, 17}}},
+        {"center_ledge_hop", {"CeruleanCity", {25, 19}}},
         {"cerulean_nurse", {"CeruleanCity_PokemonCenter_1F", {7, 4}}},
     };
     for (const StoryStep& step : row->steps){
-        if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){
+        if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP){
             continue;
         }
         const std::string failure = row_step_on_sim(sim, at, step, "05.09");

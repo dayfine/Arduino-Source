@@ -146,17 +146,17 @@ private:
         const bool right = failed.empty() && sim.state().position == route->back().end;
         //  The walker may stop itself instead: it did not take the move as seen.
         const bool noticed = !failed.empty();
+        const std::string fix = json.to_object_throw().get_string_default("known_failing", "");
+        if (!fix.empty()){
+            if (right || (noticed && !m_case.expectation.arrives)){
+                return std::format("{} now passes: take its \"known_failing\" off the file", name);
+            }
+            return true;
+        }
         if (m_case.expectation.arrives && !right){
             return missed_arrival(name, failed, route->back().end, sim, walker);
         }
-        const std::string fix = json.to_object_throw().get_string_default("known_failing", "");
-        if (fix.empty()){
-            return right || noticed ? UnitTestResult(true) : UnitTestResult(wrong_end(name, route->back().end, sim, walker));
-        }
-        if (right || noticed){
-            return std::format("{} now passes: take its \"known_failing\" off the file", name);
-        }
-        return true;
+        return right || noticed ? UnitTestResult(true) : UnitTestResult(wrong_end(name, route->back().end, sim, walker));
     }
 
     static std::string wrong_end(const std::string& name, const MapPosition& planned, const OverworldSim& sim, const OverworldSimWalker& walker){
