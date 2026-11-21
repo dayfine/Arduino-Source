@@ -65,7 +65,6 @@ const Pokemon::KnownFailing& known_failing(){
         {"01.05 through_the_gate is one run west", "planner: goal kinds and ms costs (PLANNER_DESIGN.md)"},
         {"any one missed fade or banner from 00.00 to 01.11: every row still passes",
             "a third signal where a warp gives one (ONE_SIGNAL_STEPS): position (PLANNER_DESIGN.md 2, 4)"},
-        {"01.08 with Route 204's youngster wandering (12..14, 2)", "planner: one recovery rule, a sidestep round a wanderer (PLANNER_DESIGN.md 4, 7)"},
     });
     return list;
 }
@@ -731,6 +730,16 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     //  grass on legs to a wall (replan_costs(), 2026-11-09).
     {.name = "00.04 the old walk to the ledge column, west to row 5's wall through the grass, now passes", .input = {[](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {"to_the_signs_row"}));
+    }}, .expectation = {}},
+    //  00.05b below_the_mart_clown: school_kid_m_5 wanders across row 34;
+    //  tapping back to the wall behind resolves the stop without failing replan.
+    {.name = "00.05b with Jubilife's people wandering (school_kid_m_5 on 51, 33..35)", .input = {[](Logger& logger){
+        return wanderers_move(logger, "00.05b");
+    }}, .expectation = {}},
+    //  01.02 by_the_gate: wild battle + trainer sightline on the same wall leg
+    //  must hand off to after_leg() rather than aborting wall recovery.
+    {.name = "00.00 to 01.02 chained with wild battles every 8 grass tiles (wild battle + trainer on the same wall leg)", .input = {[](Logger& logger){
+        return passes(run_case(logger, "00.00", "01.02", {.fade = {}, .banner = {}}, route_201_grass()));
     }}, .expectation = {}},
 };
 
