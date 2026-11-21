@@ -210,11 +210,14 @@ StartSignature read_start_signature(ConsoleHandle& console, ProControllerContext
     return StartSignature{};
 }
 
-//  On the overworld, also opens the full map for wild_zone.
+//  On the overworld, also opens the full map for wild_zone and caches the pin
+//  so the checkpoint's first map action does not immediately reopen the map.
 StartSignature read_start_position(StoryEnv& story, PlzaBackend& backend){
     StartSignature read = read_start_signature(story.env.console, story.context);
     if (read != StartSignature{}){
-        read.wild_zone = wild_zone_from_map(read_pin_on_map(story, backend));
+        const std::optional<MapPoint> pin = read_pin_on_map(story, backend);
+        story.cached_map_pin = pin;
+        read.wild_zone = wild_zone_from_map(pin);
     }
     return read;
 }

@@ -25,7 +25,6 @@
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_LockOnSweep.h"
 #include "VideoGames/PokemonLZA/Programs/PokemonLZA_TrainerBattle.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryCaughtMarkReader.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDexRegisteredDetector.h"
 #include "PokemonLZA_AutoStoryCatchPlan.h"
 #include "PokemonLZA_AutoStoryScenes.h"
 #include "PokemonLZA_AutoStoryWorldWalks.h"
@@ -49,14 +48,10 @@ constexpr MapWaypoint ZONE1_ROAD_ENTRY{.name = "the road entry", .pin = {.x = 45
 //  Via the road, past the rock on its right.
 constexpr MapWaypoint ROCKS_TO_SPOT_100[] = {ZONE1_ROAD_ENTRY, ZONE1_SPOT_100};
 
-//  How long the watcher must see the "Registered!" banner before it fires.
-constexpr Milliseconds REGISTERED_BANNER_HOLD(100);
+//  How long the party bar must show the new member before declaring caught.
+constexpr Milliseconds PARTY_CAUGHT_HOLD(250);
 
-//  Watched past the throw's own 8 s: the banner showed 6.9 s in, with
-//  frames a second apart.
-constexpr Milliseconds REGISTERED_BANNER_TAIL(2000);
-
-//  The banner shows ~7 s after the throw.
+//  The new member joins the party bar ~6-7 s after a successful throw.
 const BallThrowOptions STORY_THROW{
     .lock_on = Milliseconds(500),
     .aim = Milliseconds(1500),
@@ -168,6 +163,24 @@ constexpr int THROWS_AT_ONE_TARGET = 3;
 struct CatchResult{
     int throws = 0;
     bool caught = false;
+    bool party_reached = false;
+};
+
+class PartyCountDetector : public StaticScreenDetector{
+public:
+    explicit PartyCountDetector(int target_slots)
+        : m_target_slots(target_slots)
+    {}
+    virtual void make_overlays(VideoOverlaySet& items) const override{
+        m_bar.make_overlays(items);
+    }
+    virtual bool detect(const ImageViewRGB32& screen) override{
+        return m_bar.detect(screen) && m_bar.filled_slots() >= m_target_slots;
+    }
+
+private:
+    int m_target_slots;
+    PartyBarDetector m_bar;
 };
 
 
@@ -178,32 +191,26 @@ void level_camera(StoryEnv& env){
     pbf_move_right_joystick(env.context, /*position=*/{0, 1}, /*hold=*/Milliseconds(600), /*release=*/Milliseconds(300));
 }
 
-//  Returns whether the "Registered!" banner (a new species) showed.
-bool throw_ball_watched(StoryEnv& env, PlzaBackend& backend){
+//  Throws a ball and returns immediately once the party bar reaches `target_party`.
+bool throw_ball_watched(StoryEnv& env, PlzaBackend& backend, int target_party){
     ConsoleHandle& console = env.env.console;
-    DetectorToFinder<DexRegisteredDetector> registered("DexRegisteredWatcher", REGISTERED_BANNER_HOLD);
-    int fired = run_until<ProControllerContext>(
+    DetectorToFinder<PartyCountDetector> party_reached("PartyCountWatcher", PARTY_CAUGHT_HOLD, target_party);
+    const int fired = run_until<ProControllerContext>(
         console, env.context,
         [](ProControllerContext& context){
             throw_ball(context, STORY_THROW);
         },
-        {registered}
+        {party_reached}
     );
-    if (fired < 0){
-        fired = wait_until(console, env.context, REGISTERED_BANNER_TAIL, {registered});
-    }
     const bool seen = fired >= 0;
-    backend.log(std::format("[PLZA] catch_in_zone: the Registered! banner: {}", seen ? "seen" : "not seen"));
-    if (seen){
-        env.context.wait_for(Milliseconds(3000));
-    }
+    backend.log(std::format("[PLZA] catch_in_zone: party bar reached {}: {}", target_party, seen ? "yes" : "no"));
     env.context.wait_for_all_requests();
     return seen;
 }
 
-//  Ends on the "Registered!" banner, a round after the first that finds
-//  nothing to lock on, or `max_throws` throws.
-CatchResult weaken_then_throw(StoryEnv& env, PlzaBackend& backend, int max_throws){
+//  Ends once the party bar reaches `target_party`, a round after the first
+//  finds nothing to lock on, or `max_throws` throws.
+CatchResult weaken_then_throw(StoryEnv& env, PlzaBackend& backend, int max_throws, int target_party){
     CatchResult out;
     while (out.throws < max_throws){
         const int landed = weaken_target(env, backend);
@@ -212,14 +219,15 @@ CatchResult weaken_then_throw(StoryEnv& env, PlzaBackend& backend, int max_throw
             return out;
         }
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
-        const bool registered = throw_ball_watched(env, backend);
+        const bool reached = throw_ball_watched(env, backend, target_party);
         out.throws++;
-        press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
         backend.log(std::format("[PLZA] catch_in_zone: round {}: {} attacks landed, then a throw", out.throws, landed));
-        if (registered){
+        if (reached){
             out.caught = true;
+            out.party_reached = true;
             return out;
         }
+        press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
     }
     return out;
 }
@@ -363,38 +371,47 @@ struct TargetThrows{
     bool move_on = false;
 };
 
+void record_breakout_weaken(StoryEnv& env, PlzaBackend& backend, CatchResult& result, int max_throws, int target_party){
+    if (result.throws >= max_throws){
+        return;
+    }
+    backend.log("[PLZA] catch_in_zone: the throw broke out: battle, weakening");
+    const CatchResult weakened = weaken_then_throw(env, backend, max_throws - result.throws, target_party);
+    result.throws += weakened.throws;
+    result.caught = weakened.caught;
+    result.party_reached = weakened.party_reached;
+}
+
 //  Each throw is logged with its plate's height, the distance signal, to
 //  calibrate step_toward_target().
-TargetThrows throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarget& target, int max_throws){
+TargetThrows throw_at_target(StoryEnv& env, PlzaBackend& backend, const LockTarget& target, int max_throws, int target_party){
     TargetThrows out;
     LockTarget aimed = target;
     while (out.result.throws < max_throws){
-        const bool registered = throw_ball_watched(env, backend);
+        const bool reached = throw_ball_watched(env, backend, target_party);
         out.result.throws++;
+        if (reached){
+            backend.log(std::format("[PLZA] catch_in_zone: throw {} at plate y {:.2f}: caught (party {})", out.result.throws, aimed.y, target_party));
+            out.result.caught = true;
+            out.result.party_reached = true;
+            return out;
+        }
         press_a_through_lines(backend, LINES_QUIET, LINES_LIMIT);
-        const bool battle = !registered && wild_battle_on(env);
+        const bool battle = wild_battle_on(env);
         std::optional<HeldZl> held;
         std::optional<LockTarget> relocked;
-        if (!registered && !battle){
+        if (!battle){
             held.emplace(env);
             relocked = held->wait_for_plate(LOCK_ON_WAIT);
         }
-        const bool caught = registered || (aimed.caught == false && !battle && !relocked);
-        backend.log(std::format(
-            "[PLZA] catch_in_zone: throw {} at plate y {:.2f}: {}",
-            out.result.throws, aimed.y, caught ? "caught" : "miss"
-        ));
+        const bool caught = aimed.caught == false && !battle && !relocked;
+        backend.log(std::format("[PLZA] catch_in_zone: throw {} at plate y {:.2f}: {}", out.result.throws, aimed.y, caught ? "caught" : "miss"));
         if (caught){
             out.result.caught = true;
             return out;
         }
         if (battle){
-            if (out.result.throws < max_throws){
-                backend.log("[PLZA] catch_in_zone: the throw broke out: battle, weakening");
-                const CatchResult weakened = weaken_then_throw(env, backend, max_throws - out.result.throws);
-                out.result.throws += weakened.throws;
-                out.result.caught = weakened.caught;
-            }
+            record_breakout_weaken(env, backend, out.result, max_throws, target_party);
             return out;
         }
         if (relocked && relocked->caught != true){
@@ -440,7 +457,7 @@ void fight_off(StoryEnv& env, PlzaBackend& backend){
     }
 }
 
-CatchResult fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
+CatchResult fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws, int target_party){
     const std::optional<LockTarget> attacker = HeldZl(env).wait_for_plate(LOCK_ON_WAIT);
     if (attacker){
         log_target(backend, "a wild battle at the stop, locked on to", *attacker);
@@ -451,10 +468,10 @@ CatchResult fight_back(StoryEnv& env, PlzaBackend& backend, int max_throws){
         return {};
     }
     backend.log("[PLZA] catch_in_zone: a wild battle at the stop: weakening and throwing");
-    return weaken_then_throw(env, backend, max_throws);
+    return weaken_then_throw(env, backend, max_throws, target_party);
 }
 
-CatchResult catch_at_stop(StoryEnv& env, PlzaBackend& backend, std::string_view spot_name, int max_throws){
+CatchResult catch_at_stop(StoryEnv& env, PlzaBackend& backend, std::string_view spot_name, int max_throws, int target_party){
     CatchResult out;
     bool pitch_tipped = false;
     for (int tries = 0; tries < 4 && !out.caught && out.throws < max_throws; tries++){
@@ -464,9 +481,10 @@ CatchResult catch_at_stop(StoryEnv& env, PlzaBackend& backend, std::string_view 
             pitch_tipped = false;
         }
         if (wild_battle_on(env)){
-            const CatchResult fought = fight_back(env, backend, max_throws - out.throws);
+            const CatchResult fought = fight_back(env, backend, max_throws - out.throws, target_party);
             out.throws += fought.throws;
             out.caught = out.caught || fought.caught;
+            out.party_reached = out.party_reached || fought.party_reached;
             pitch_tipped = true;
             continue;
         }
@@ -485,17 +503,17 @@ CatchResult catch_at_stop(StoryEnv& env, PlzaBackend& backend, std::string_view 
             pbf_move_right_joystick(env.context, /*position=*/{0.5, 0}, /*hold=*/Milliseconds(400), /*release=*/Milliseconds(300));
             continue;
         }
-        const TargetThrows thrown = throw_at_target(env, backend, *choice.target, max_throws - out.throws);
+        const TargetThrows thrown = throw_at_target(env, backend, *choice.target, max_throws - out.throws, target_party);
         out.throws += thrown.result.throws;
         out.caught = out.caught || thrown.result.caught;
+        out.party_reached = out.party_reached || thrown.result.party_reached;
         if (thrown.move_on){
             break;
         }
     }
     if (out.caught){
         backend.log(std::format("[PLZA] catch_in_zone: caught at {}", spot_name));
-    }
-    if (pitch_tipped){
+    }else if (pitch_tipped){
         level_camera(env);
     }
     return out;
@@ -576,8 +594,10 @@ std::optional<Pokemon::StoryFailure> catch_in_zone(StoryEnv& env, PlzaBackend& b
     if (walk_failed){
         return walk_failed;
     }
-    const CatchResult result = catch_at_stop(env, backend, spot_name, max_throws);
-    if (result.throws > 0){
+    const CatchResult result = catch_at_stop(env, backend, spot_name, max_throws, target_party);
+    if (result.party_reached){
+        party_slots = target_party;
+    }else if (result.throws > 0){
         party_slots = read_party_slots(env, backend);
     }
     const bool done = party_slots ? (*party_slots >= target_party) : result.caught;
