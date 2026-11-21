@@ -12,6 +12,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "Pokemon/Navigation/Pokemon_WanderRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
 #include "PokemonBDSP_AutoStory_LegBattle.h"
@@ -690,24 +691,22 @@ std::optional<LegNext> RouteWalker::wall_or_wanderer(LegWalk& walk, size_t walke
     return zone.empty() ? std::nullopt : wait_for_wanderer(walk, zone);
 }
 
-//  A walk to the wall by someone's wander zone that stopped where its time
-//  counts the wall: A tells the wall from them. On lab-B (2026-11-13 02:35,
-//  01.10) "west 10 (to wall)" ran Route 204's row 28, a row off the plan's,
-//  into the youngster who wanders x 14..16 there, 5 tiles in; the push read
-//  as stopped late, the time counted 13 tiles, and the stop passed as the
-//  wall. Someone who answers is waited for, as on an open leg, and the walk
-//  goes on to the wall. Someone still there after that stands on a zone
-//  tile ahead of us: the walk plans again from the tiles before the zone,
-//  and marks nothing, since they move on. Nothing if it is the wall.
+//  At a wall stop on a wanderer's zone, probe with A and delegate wait/replan
+//  decisions to Pokemon::decide_wall_wander(). Returns nullopt if it is a wall.
 std::optional<LegNext> RouteWalker::wait_for_wanderer(LegWalk& walk, const std::vector<TilePos>& zone){
-    constexpr size_t WAITS = 2;
+    constexpr Pokemon::WanderWaitPolicy policy{.max_waits = 2, .wait_duration = WAIT_FOR_THE_WAY.hold, .probe_with_a = true};
     const Direction ahead = walk.planned.leg.direction;
-    for (size_t waits = 0; talk_to_blocker(walk.label) == Blocker::PERSON; waits++){
-        if (waits == WAITS){
+    Pokemon::WanderWaitState wait_state;
+    while (true){
+        const Pokemon::WallWanderInput input{!zone.empty(), talk_to_blocker(walk.label) == Blocker::PERSON};
+        const Pokemon::WallWanderDecision decision = Pokemon::decide_wall_wander(policy, wait_state, input);
+        if (decision == Pokemon::WallWanderDecision::NONE){
+            return std::nullopt;
+        }
+        if (decision == Pokemon::WallWanderDecision::REPLAN_BEFORE_ZONE){
             std::vector<TilePos> before;
             for (const TilePos& tile : zone){
-                const std::optional<TilePos> pos = step(m_grid, tile, Direction(((int)ahead + 2) % 4));
-                if (pos){
+                if (const std::optional<TilePos> pos = step(m_grid, tile, Direction(((int)ahead + 2) % 4))){
                     before.push_back(*pos);
                 }
             }
@@ -726,7 +725,6 @@ std::optional<LegNext> RouteWalker::wait_for_wanderer(LegWalk& walk, const std::
             return check_at_wall(walk);
         }
     }
-    return std::nullopt;
 }
 
 LegNext RouteWalker::stopped_short_of_wall(LegWalk& walk, size_t walked_tiles){

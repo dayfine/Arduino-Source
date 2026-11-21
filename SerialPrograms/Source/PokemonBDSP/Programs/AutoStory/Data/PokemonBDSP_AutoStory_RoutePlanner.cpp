@@ -260,7 +260,7 @@ constexpr bool robust_leg_costs_fields_copied(){
     [[maybe_unused]] const auto& [
         per_tile, per_wild_tile, per_wander_tile, per_leg, leg_not_at_wall,
         open_error, open_error_per, exact_open_tiles, per_open_tile,
-        hold_open_legs, per_open_wild_tile,
+        hold_open_legs, per_open_wild_tile, forbid_along_wander,
         max_open_tiles, max_spread, max_searched
     ] = Pokemon::RobustLegCosts{};
     return true;
@@ -283,6 +283,7 @@ Pokemon::RobustLegCosts robust_leg_costs(const RobustPlanCosts& costs){
     ret.per_open_tile = costs.per_open_tile;
     ret.hold_open_legs = costs.hold_open_legs;
     ret.per_open_wild_tile = costs.per_open_grass_tile;
+    ret.forbid_along_wander = true;
     ret.max_open_tiles = costs.max_open_tiles;
     ret.max_spread = costs.max_spread;
     ret.max_searched = costs.max_searched;
