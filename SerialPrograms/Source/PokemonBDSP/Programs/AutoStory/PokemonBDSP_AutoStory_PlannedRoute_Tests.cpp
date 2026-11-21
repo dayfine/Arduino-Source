@@ -335,7 +335,6 @@ UnitTestResult test_open_leg_known_trainer(Logger&){
         //  West along row 5 from (30, 5) to (24, 5): his line is the 4th tap,
         //  and his dialogue comes after 3 taps that moved.
         Script script{.steps = {
-            press_step("D-pad west 50 ms x1"),
             walk_step("6 taps: T: west 6 (open)", WalkStop::DIALOG, 1500ms, 3),
             walk_step("wall: T: east 4 (to wall)", WalkStop::BLOCKED, 2000ms, 0),
             answer_step("dialog within 500 ms", false),
@@ -559,6 +558,47 @@ UnitTestResult test_wall_leg_blocked_by_beaten_trainer(Logger&){
     return replanned ? UnitTestResult(true) : UnitTestResult("on_to_wall assumed wall after 0-chunk block by beaten trainer.");
 }
 
+std::string run_open_leg_facing(const StoryWorld& hall, std::optional<Direction> start_facing, Script& script){
+    RouteTrainers trainers{{}, [](const std::string&){}};
+    ScriptedRouteIO io(script);
+    try{
+        walk_route(io, hall, {{1, 1}}, trainers, {
+            .goal = [](const TilePos& pos){ return pos == TilePos{4, 1}; },
+            .label = "T", .avoid = {}, .costs = route_plan_costs(),
+            .speed = MoveSpeed::WALK, .start_facing = start_facing,
+        });
+    }catch (const ScriptMismatch& e){
+        return e.message;
+    }catch (const RouteFailed& e){
+        return e.message;
+    }
+    return script_left(script);
+}
+
+//  Oreburgh Gate (lab-B, 2026-11-21 04:24-04:28, 01.02 past_curtis /
+//  by_the_east_mouth): a 50 ms D-pad turn tap in the direction the player
+//  already faces steps a full tile on BDSP. Open legs must skip the turn tap
+//  when start_facing matches (or is unknown) and only turn when facing away.
+UnitTestResult test_open_leg_turn_tap_facing_guard(Logger&){
+    const StoryWorld hall = make_world({"########", "#......#", "########"});
+    Script same{.steps = {
+        walk_step("3 taps: T: east 3 (open)", WalkStop::LIMIT, 2400ms, 3),
+        answer_step("dialog within 500 ms", false),
+    }};
+    if (const std::string err = run_open_leg_facing(hall, Direction::EAST, same); !err.empty()){
+        return "already facing east: " + err;
+    }
+    Script away{.steps = {
+        press_step("D-pad east 50 ms x1"),
+        walk_step("3 taps: T: east 3 (open)", WalkStop::LIMIT, 2400ms, 3),
+        answer_step("dialog within 500 ms", false),
+    }};
+    if (const std::string err = run_open_leg_facing(hall, Direction::NORTH, away); !err.empty()){
+        return "facing north: " + err;
+    }
+    return true;
+}
+
 
 struct PlannedRouteInput{
     std::string name;
@@ -621,6 +661,10 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"a beaten trainer blocking on_to_wall replans around them", test_wall_leg_blocked_by_beaten_trainer},
+        .expectation = {},
+    },
+    {
+        .input = {"open leg skips turn tap when already facing or facing unknown", test_open_leg_turn_tap_facing_guard},
         .expectation = {},
     },
 };

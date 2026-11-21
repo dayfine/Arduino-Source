@@ -12,6 +12,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_PlannedRoute_H
 
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 #include "CommonFramework/Tools/VideoStream.h"
@@ -61,6 +62,10 @@ struct RouteWalkPlan{
     //  `goal` is that scene's trigger (ROUTE_ONTO_TRIGGER): a walk stops on
     //  it when the scene starts, as at a wall.
     bool goal_is_trigger = false;
+    //  Known facing before the first leg, if any. On BDSP a short D-pad turn
+    //  tap steps a full tile when already facing that way, so open legs only
+    //  send a turn tap when the player is known to face another direction.
+    std::optional<Pokemon::Direction> start_facing = std::nullopt;
 };
 
 //  Walks from any of the world tiles `from` of `maps` until every tile the
