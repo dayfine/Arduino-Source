@@ -480,14 +480,25 @@ void talk_to_nurse(
         }
     }
 
-    //  A through her lines; the cursor starts on "Yes". Stop once no dialogue
-    //  has shown for a while, so A does not start the talk over.
+    //  A through her opening lines (cursor starts on "Yes"), then wait out the
+    //  healing-machine animation (4.6 s for 2 Pokemon on lab-B 2026-11-21
+    //  00.04b heal_sandgem, longer for larger parties; quiet < 2 = 3 s exited
+    //  early before her post-heal lines). Once dialog returns after the pause,
+    //  press B so we never restart her talk, and stop after 2 quiet ticks.
     size_t quiet = 0;
-    for (size_t presses = 0; presses < 30 && quiet < 2; presses++){
+    bool saw_heal_pause = false;
+    for (size_t presses = 0; presses < 30; presses++){
+        const size_t quiet_limit = saw_heal_pause ? 2 : 6;
+        if (quiet >= quiet_limit){
+            break;
+        }
         ShortDialogWatcher dialog(COLOR_YELLOW);
         if (wait_until(stream, context, 1500ms, {{dialog}}) == 0){
+            if (quiet > 0){
+                saw_heal_pause = true;
+            }
             quiet = 0;
-            pbf_press_button(context, BUTTON_A, 80ms, 700ms);
+            pbf_press_button(context, saw_heal_pause ? BUTTON_B : BUTTON_A, 80ms, 700ms);
         }else{
             quiet++;
         }
