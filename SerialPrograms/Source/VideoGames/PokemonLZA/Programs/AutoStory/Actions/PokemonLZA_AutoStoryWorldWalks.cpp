@@ -42,6 +42,12 @@ std::string waypoint_text(const MapWaypoint& waypoint){
 
 
 std::optional<MapPoint> read_pin_on_map(StoryEnv& env, PlzaBackend& backend){
+    if (env.cached_map_pin){
+        const MapPoint pin = *env.cached_map_pin;
+        env.cached_map_pin.reset();
+        backend.log(std::format("[PLZA] map pin (cached): {}", pin_text(pin)));
+        return pin;
+    }
     //  No minimap arrow read here: indoors there is none.
     backend.observe();
     backend.press(BUTTON_PLUS, /*hold=*/100ms, /*release=*/MAP_OPEN_WAIT);

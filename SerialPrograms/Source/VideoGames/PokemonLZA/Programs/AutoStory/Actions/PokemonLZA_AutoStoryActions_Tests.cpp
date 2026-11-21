@@ -213,14 +213,14 @@ const ExitCase EXIT_CASES[] = {
         .expectation = {.waypoint = std::nullopt},
     },
     {
-        .name = "north of the gate's line: straight south onto the line",
-        .input = {.start = {.x = 375, .y = 245}},
+        .name = "north-east of the gate: diagonal straight to the gate run-up",
+        .input = {.start = {.x = 399, .y = 231}},
         .expectation = {.waypoint = MapPoint{.x = 375, .y = 252}},
     },
     {
         .name = "west of the gate: onto the line east of the gate",
         .input = {.start = {.x = 340, .y = 240}},
-        .expectation = {.waypoint = MapPoint{.x = 386, .y = 252}},
+        .expectation = {.waypoint = MapPoint{.x = 375, .y = 252}},
     },
 };
 

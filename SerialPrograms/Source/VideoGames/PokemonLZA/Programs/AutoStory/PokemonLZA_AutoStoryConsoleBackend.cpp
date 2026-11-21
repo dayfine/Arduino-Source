@@ -41,6 +41,7 @@ PlzaConsoleBackend::PlzaConsoleBackend(StoryEnv& env)
 {}
 
 void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds release){
+    m_env.cached_map_pin.reset();
     m_run_end.reset();
     pbf_press_button(m_env.context, button, hold, release);
 }
@@ -50,6 +51,7 @@ void PlzaConsoleBackend::press(Button button, Milliseconds hold, Milliseconds re
 constexpr double RUN_SPEEDUP = 1.65;
 
 void PlzaConsoleBackend::stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace){
+    m_env.cached_map_pin.reset();
     const double radians = degrees * std::numbers::pi / 180.0;
     const JoystickPosition position{std::sin(radians), std::cos(radians)};
     if (pace != Pokemon::StoryPace::RUN || m_env.walk_only){
@@ -171,6 +173,7 @@ constexpr Milliseconds RELOAD_SETTLE = 1s;
 
 //  Launches PLZA's own tile, whichever game ran. Fails as "launch_failed".
 std::optional<Pokemon::StoryFailure> reload_latest_save(StoryEnv& env){
+    env.cached_map_pin.reset();
     ConsoleHandle& console = env.env.console;
     launch_plza_from_home(console, env.context);
     const bool loaded =
