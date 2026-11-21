@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "CommonFramework/ProgramSession.h"
 #include "CommonFramework/Notifications/ProgramInfo.h"
 #include "CommonFramework/ProgramStats/StatsTracking.h"
@@ -31,6 +32,16 @@ ProgramEnvironment::ProgramEnvironment(
 
 const ProgramInfo& ProgramEnvironment::program_info() const{
     return m_program_info;
+}
+
+
+void report_start_check_failure(ProgramEnvironment& env, std::string check, std::string message){
+    env.log(std::format("[StartCheck] {}: {}", check, message), COLOR_RED);
+    env.m_session.m_transitions.error_reported(ProgramStartFailure{
+        .check = std::move(check),
+        .message = std::move(message),
+        .at = current_time(),
+    });
 }
 
 

@@ -203,11 +203,25 @@ void write_transition(const std::optional<ProgramTransition>& transition, Ordere
     json.close();
 }
 
+void write_start_failure(const ProgramStartFailure& failure, OrderedJsonWriter& json){
+    json.open("last_outcome");
+    json.value("run_id", "null");
+    json.value("request_id", json_nullable(failure.request_id));
+    json.value("outcome", json_string("start_check_failed"));
+    json.value("check", json_string(failure.check));
+    json.value("message", json_string(failure.message));
+    json.value("at", json_timestamp(failure.at));
+    json.close();
+}
+
 void write_program(const LabAppState& state, OrderedJsonWriter& json){
     json.open("program");
     json.value("state", json_string(lower_case(state.legacy.state)));
     json.value("run_id", "null");
     write_transition(state.last_transition, json);
+    if (state.last_transition && state.last_transition->start_failure){
+        write_start_failure(*state.last_transition->start_failure, json);
+    }
     if (state.paused){
         json.value("paused", json_string(*state.paused));
     }
