@@ -392,9 +392,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          # The fork's fixtures: upstream's, the SystemKeyboardDetector and HomeTileReader screenshots and pending FRLG image submissions (Fly landing, party menu, Route 21 battle, Pokemon Mansion 1F and B1F hold frames, and the Pidgey known-moves frame, the PC's box-screen fade, Bruno's Onix Roar battle menus).
+          # The fork's fixtures: upstream's, the SystemKeyboardDetector and HomeTileReader screenshots and pending FRLG image submissions (Fly landing, party menu, Route 21 battle, Pokemon Mansion 1F and B1F hold frames, and the Pidgey known-moves frame, the PC's box-screen fade, Bruno's Onix Roar battle menus), merged with upstream main b79ca7f (branch frlg/upstream-sync-b79ca7f) for the PokemonHome BoxView fixtures and 7-value FRLG StatsReader goldens.
           repository: 'dayfine/CommandLineTests'
-          ref: 'ab6b437ceae2f346c60f891c5bd282f6b8dd1fac'
+          ref: 'd69428e7be8ad01475367f6495a9117c4b0a4e57'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
