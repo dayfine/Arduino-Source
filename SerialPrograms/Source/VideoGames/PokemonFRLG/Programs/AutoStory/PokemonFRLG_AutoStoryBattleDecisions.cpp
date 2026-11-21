@@ -256,7 +256,7 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     //  A wild Pokemon is fought for EXP only at full strength: fighting
     //  every one in Viridian Forest used up all 4 Potions and then the
     //  starter (console B, 2026-11-01). With a status, it is run from too.
-    const bool weak = hurt || status.status != StatusCondition::NONE || m_supplies.potions < MIN_POTIONS_TO_FIGHT;
+    const bool weak = hurt || status.status != StatusCondition::NONE || (m_supplies.potions + m_supplies.super_potions) < MIN_POTIONS_TO_FIGHT;
     const bool run = m_kind == BattleKind::WILD_RUN || (m_kind == BattleKind::WILD_FIGHT && weak);
     if (run && m_run_tries < RUN_TRIES){
         m_run_tries++;
