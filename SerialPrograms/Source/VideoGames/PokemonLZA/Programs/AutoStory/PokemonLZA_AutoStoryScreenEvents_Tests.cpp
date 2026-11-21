@@ -112,6 +112,16 @@ const FrameCase FRAME_CASES[] = {
         .expectation = {.battle = true},
     },
     {
+        .name = "Taunie's 03.02b battle frame 1 in German, before move hints or stat markers",
+        .input = {.path = "AutoStoryScreenEvents/de_0302b_battle_frame1_no_hint.png"},
+        .expectation = {.battle = true},
+    },
+    {
+        .name = "Taunie's 03.02b battle facing archway in German, no move hints or stat markers",
+        .input = {.path = "AutoStoryScreenEvents/de_0302b_battle_archway_no_hint.png"},
+        .expectation = {.battle = true},
+    },
+    {
         .name = "no battle at the zone's pillar with the lead's panel up",
         .input = {.path = "AutoStoryScreenEvents/it_0308b_zone_pillar_no_battle.png"},
         .expectation = {.battle = false},
