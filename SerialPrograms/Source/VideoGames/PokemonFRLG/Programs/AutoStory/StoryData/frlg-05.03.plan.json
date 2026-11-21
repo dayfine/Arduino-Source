@@ -36,10 +36,10 @@
       },
       {
         "id": "below_ali_line",
-        "kind": "legs",
+        "kind": "route",
         "action": "run",
         "args": {
-          "legs": [{"direction": "north", "tiles": 2}]
+          "target": {"map": "Route24", "tiles": [[11, 29]], "facing": "north"}
         },
         "why": "up to (11, 29)"
       },
@@ -64,10 +64,10 @@
       },
       {
         "id": "below_timmy_line",
-        "kind": "legs",
+        "kind": "route",
         "action": "run",
         "args": {
-          "legs": [{"direction": "north", "tiles": 2}]
+          "target": {"map": "Route24", "tiles": [[11, 26]], "facing": "north"}
         },
         "why": "up to (11, 26)"
       },
@@ -92,10 +92,10 @@
       },
       {
         "id": "below_reli_line",
-        "kind": "legs",
+        "kind": "route",
         "action": "run",
         "args": {
-          "legs": [{"direction": "north", "tiles": 2}]
+          "target": {"map": "Route24", "tiles": [[11, 23]], "facing": "north"}
         },
         "why": "up to (11, 23)"
       },
@@ -120,10 +120,10 @@
       },
       {
         "id": "below_ethan_line",
-        "kind": "legs",
+        "kind": "route",
         "action": "run",
         "args": {
-          "legs": [{"direction": "north", "tiles": 2}]
+          "target": {"map": "Route24", "tiles": [[11, 20]], "facing": "north"}
         },
         "why": "up to (11, 20)"
       },

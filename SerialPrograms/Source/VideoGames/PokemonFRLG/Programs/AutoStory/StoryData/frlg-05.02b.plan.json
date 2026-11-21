@@ -17,19 +17,19 @@
       },
       {
         "id": "gym_west_walkway",
-        "kind": "legs",
+        "kind": "route",
         "action": "run",
         "args": {
-          "legs": [{"direction": "west", "tiles": 5}]
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[4, 13]], "facing": "west"}
         },
         "why": "west to the wall (4, 13)"
       },
       {
         "id": "below_misty_platform",
-        "kind": "legs",
+        "kind": "route",
         "action": "run",
         "args": {
-          "legs": [{"direction": "north", "tiles": 3}, {"direction": "east", "tiles": 8}, {"direction": "north", "tiles": 3}, {"direction": "west", "tiles": 3}]
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[9, 7]], "facing": "west"}
         },
         "why": "to (9, 7) below Misty's platform"
       },
@@ -59,12 +59,12 @@
       },
       {
         "id": "gym_way_out",
-        "kind": "legs",
+        "kind": "route",
         "action": "run",
         "args": {
-          "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "south", "tiles": 3}, {"direction": "west", "tiles": 8}, {"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 5}]
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[9, 13]], "facing": "east"}
         },
-        "why": "walls (12, 7), (12, 10), (4, 10), (4, 13), (9, 13), round Luis"
+        "why": "back round the pool to (9, 13)"
       },
       {
         "id": "cerulean_nurse_2",

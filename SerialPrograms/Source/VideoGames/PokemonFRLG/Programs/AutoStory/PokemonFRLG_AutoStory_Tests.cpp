@@ -454,8 +454,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `plans`.
 UnitTestResult chain_story_routes(StoryPlans& plans){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 98 || checkpoints[0].start){
-        return "Expected 98 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 100 || checkpoints[0].start){
+        return "Expected 100 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     walk_state() = WalkGates{};
