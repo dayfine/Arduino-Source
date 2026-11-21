@@ -454,6 +454,21 @@ UnitTestResult test_whole_table(Logger& logger){
     return true;
 }
 
+UnitTestResult test_resume_to_floaroma(Logger&){
+    Simulation sim;
+    sim.saved.insert("00.03");
+    const Pokemon::SegmentReport report = sim.run({.from = "00.03", .to = "01.11"}, Language::English);
+    std::vector<std::string> expected = all_ids();
+    expected.erase(expected.begin(), std::find(expected.begin(), expected.end(), "00.03"));
+    if (!report.completed || sim.begun() != expected ||
+        sim.count("save in 00.03") != 0 ||
+        sim.count("card for 01.11: Floaroma Town") != 1 || sim.count("save in 01.11") != 2
+    ){
+        return "Expected to resume from the 00.03 save and finish with a save in Floaroma:" + joined(sim.trace);
+    }
+    return true;
+}
+
 //  The legs planned for every ROUTE of the whole story, against the stored
 //  copy in PokemonBDSP_AutoStory_PlanGolden.h. A change that should not
 //  alter any plan must leave this byte-identical. To regenerate after an
@@ -757,6 +772,10 @@ const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
     {.input = {.name = "01.03 unconfirmed mine exit stops before healing", .body = test_authored_mine_stops}, .expectation = {}},
     {
         .input = {"00.00 to Floaroma, in order, each row saved first, English and Japanese", test_whole_table},
+        .expectation = {},
+    },
+    {
+        .input = {"Resume 00.03 from its save and finish in Floaroma", test_resume_to_floaroma},
         .expectation = {},
     },
     {
