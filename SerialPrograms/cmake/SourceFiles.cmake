@@ -1548,6 +1548,13 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_GateState.h
     Source/Pokemon/Navigation/Pokemon_Grid.cpp
     Source/Pokemon/Navigation/Pokemon_Grid.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery.cpp
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery.h
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
