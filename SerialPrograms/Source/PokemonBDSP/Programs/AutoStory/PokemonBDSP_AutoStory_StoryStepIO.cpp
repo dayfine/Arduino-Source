@@ -11,6 +11,7 @@
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
@@ -123,22 +124,36 @@ constexpr size_t DOOR_RUN_BATTLES = 3;
 
 //  Distinguish a cave wild encounter's black flash from a real door warp on
 //  multi-tile hall runs (01.03/5 into_the_coal_room, lab-B 2026-11-21 06:00).
-bool door_fade_was_battle(VideoStream& stream, ProControllerContext& context){
+//  Once the black screen clears, a real warp settles into a still overworld
+//  (or shows the far map's banner) within ~1 s, whereas a cave wild battle's
+//  3D intro animates continuously until BattleDialogDetector / BattleMenuWatcher
+//  fires (~5-6 s).
+constexpr Milliseconds DOOR_FADE_BATTLE_WAIT = 8s;
+bool door_fade_was_battle(VideoStream& stream, ProControllerContext& context, const std::string& banner){
     BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8},
         Pokemon::BDSP_FADE_PROFILE.dark_max_sum, Pokemon::BDSP_FADE_PROFILE.uniform_max_stddev_sum,
         BlackScreenWatcher::FinderType::GONE, 500ms);
     BattleMenuWatcher battle_menu(BattleType::STARTER, COLOR_YELLOW);
     DetectorToFinder<BattleDialogDetector> battle_dialog("BattleDialogWatcher", 250ms, COLOR_YELLOW);
     const int first = wait_until(stream, context, 10s, {{battle_menu}, {battle_dialog}, {gone}});
-    if (first == 0 || first == 1){
-        return true;
-    }
     if (first != 2){
-        return false;
+        return first == 0 || first == 1;
     }
     BattleMenuWatcher late_menu(BattleType::STARTER, COLOR_YELLOW);
     DetectorToFinder<BattleDialogDetector> late_dialog("BattleDialogWatcher", 250ms, COLOR_YELLOW);
-    return wait_until(stream, context, 8s, {{late_menu}, {late_dialog}}) >= 0;
+    StillAfterFadeWatcher still_overworld;
+    LocationBannerWatcher far_banner(banner);
+    std::vector<PeriodicInferenceCallback> watchers{{late_menu}, {late_dialog}, {still_overworld}};
+    if (!banner.empty()){
+        watchers.emplace_back(far_banner);
+    }
+    const int after = wait_until(stream, context, DOOR_FADE_BATTLE_WAIT, watchers);
+    if (after == 2){
+        stream.log("[Story] door_fade_was_battle: overworld still after fade; not a battle.");
+    }else if (after == 3){
+        stream.log(std::format("[Story] door_fade_was_battle: arrival banner \"{}\" read; not a battle.", far_banner.seen()));
+    }
+    return after == 0 || after == 1;
 }
 
 //  Holds the D-pad toward a door (with B after the shoes) for `timeout`
@@ -158,7 +173,7 @@ WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direc
         const WallClock start = current_time();
         const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, left, dark_from, banner);
         const bool battle_fade = end.ret == 0 && end.fade == WarpFade::BLACK && dark_from > 0ms &&
-            door_fade_was_battle(stream, context);
+            door_fade_was_battle(stream, context, banner);
         if (end.ret == 2 || battle_fade){
             const WallClock stopped = std::min(end.went_dark, current_time());
             const Milliseconds ran = std::chrono::duration_cast<Milliseconds>(stopped - start) - ROUTE_START_DELAY;
@@ -256,6 +271,44 @@ TapLook look_after_tap(VideoStream& stream, ProControllerContext& context, const
 }
 
 } // namespace
+
+
+const ImageFloatBox StillAfterFadeWatcher::WATCH_BOX{0.15, 0.20, 0.70, 0.65};
+
+StillAfterFadeWatcher::StillAfterFadeWatcher()
+    : VisualInferenceCallback("StillAfterFadeWatcher")
+{}
+
+void StillAfterFadeWatcher::make_overlays(VideoOverlaySet& items) const{
+    items.add(COLOR_CYAN, WATCH_BOX);
+}
+
+void StillAfterFadeWatcher::reset(){
+    m_anchor = ImageRGB32();
+    m_still_since.reset();
+    m_still_frames = 0;
+}
+
+bool StillAfterFadeWatcher::process_frame(const ImageViewRGB32& frame, WallClock timestamp){
+    if (!frame){
+        reset();
+        return false;
+    }
+    const ImageStats middle = image_stats(extract_box_reference(frame, ImageFloatBox(0.1, 0.1, 0.8, 0.8)));
+    if (fade_of(middle) != WarpFade::NONE || middle.average.sum() <= MIN_BRIGHTNESS_SUM){
+        reset();
+        return false;
+    }
+    ImageRGB32 current = extract_box_reference(frame, WATCH_BOX).scale_to(192, 108);
+    if (!m_still_since || timestamp < *m_still_since || ImageMatch::pixel_RMSD(m_anchor, current) >= MAX_RMSD){
+        m_anchor = std::move(current);
+        m_still_since = timestamp;
+        m_still_frames = 1;
+        return false;
+    }
+    m_still_frames++;
+    return m_still_frames >= MIN_STILL_FRAMES && timestamp - *m_still_since >= REQUIRED_STILL;
+}
 
 
 ConsoleStoryStepIO::ConsoleStoryStepIO(VideoStream& stream, ProControllerContext& context)

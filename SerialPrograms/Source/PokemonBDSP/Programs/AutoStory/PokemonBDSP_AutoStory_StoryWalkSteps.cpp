@@ -111,6 +111,18 @@ const FoughtTrainer FOUGHT_TRAINERS[] = {
     {"01.02", "Youngster (above row 18)"},
 };
 
+//  A map-changing STEP that triggers an arrival cutscene on its own without a
+//  following MASH step: its settle must wait out the scene (SettleKind::TALK),
+//  not a plain door's short stillness (SettleKind::DOOR).
+struct ArrivalSceneDoor{
+    std::string_view row;
+    std::string_view step;
+};
+const ArrivalSceneDoor ARRIVAL_SCENE_DOORS[] = {
+    //  Dawn's tour of Sandgem Town starts immediately on exiting Rowan's Lab.
+    {"00.04", "out_of_the_lab"},
+};
+
 } // namespace
 
 
@@ -179,6 +191,7 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
     m_trainers.clear();
     m_warp = {};
     m_scene_next.clear();
+    m_door_scene_steps.clear();
     m_scene_open = false;
     //  A route right before a scene, or before a plain step onto the scene's
     //  trigger (the decomp's tile, which the console may have elsewhere).
@@ -194,6 +207,9 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
         }
         if (route(steps[c - 1])){
             m_scene_next.insert(steps[c - 1].name);
+        }
+        if (steps[c - 1].kind == Pokemon::StoryStepKind::STEP && steps[c - 1].pose_after){
+            m_door_scene_steps.insert(steps[c - 1].name);
         }
         if (c >= 2 && onto_trigger(steps[c - 1]) && route(steps[c - 2])){
             m_scene_next.insert(steps[c - 2].name);
@@ -412,6 +428,18 @@ bool StoryWalkSteps::through_already(const StoryStep& step){
     }
     log(std::format("[{}] {}: through already; the walk before saw {}.", m_row, step.name, describe(through)));
     return true;
+}
+
+SettleKind StoryWalkSteps::door_settle_kind(const StoryStep& step) const{
+    if (m_door_scene_steps.contains(step.name)){
+        return SettleKind::TALK;
+    }
+    for (const ArrivalSceneDoor& door : ARRIVAL_SCENE_DOORS){
+        if (m_row == door.row && step.name == door.step){
+            return SettleKind::TALK;
+        }
+    }
+    return SettleKind::DOOR;
 }
 
 namespace{
@@ -672,15 +700,17 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     }
     //  A step through a door: walk (or run) on until the screen goes dark,
     //  from next to the door or from anywhere in its line (r43: tapping 8 tiles
-    //  down the lab took 7 s), then settle for any scene on arrival (Mom's,
-    //  00.01; Dawn's tour, 00.04). Without the fade, settle must see it itself
-    //  (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
+    //  down the lab took 7 s), then settle. Plain doors with no arrival scene
+    //  use SettleKind::DOOR (1 s player-still / 2.5 s calm) once the warp is
+    //  seen; arrival-scene doors (Mom's, 00.01; Barry's stairs, 00.01; Dawn's
+    //  tour, 00.04) keep SettleKind::TALK. Without the fade, settle must see it
+    //  itself (r33 was outside, "no fade"). No separate turn tap first: at 1 tile
     //  from the door, a 50 ms turn tap can step in before run_into_door() watches.
     //  A fade or the far map's banner is the way through, either one (#268
     //  slice 1); with neither yet, settle() waits for one.
     if (step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map){
         if (through_already(step)){
-            m_io.settle(BUTTON_B, label_of(step), SettleKind::TALK, "");
+            m_io.settle(BUTTON_B, label_of(step), door_settle_kind(step), "");
             return Pokemon::outcome_ok();
         }
         const std::string banner = story_arrival_banner(state.pose.map, Pokemon::grid_pose_of(*step.pose_after).map);
@@ -689,7 +719,8 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
             direction_name(direction), door.timeout.count(), door.dark_from.count(), seen.any() ? describe(seen) : "nothing yet"));
         seen = door_from_beside(step, seen, door.timeout, banner);
-        m_io.settle(BUTTON_B, label_of(step), seen.any() ? SettleKind::TALK : SettleKind::AFTER_WARP, banner);
+        const SettleKind settle_kind = seen.any() ? door_settle_kind(step) : SettleKind::AFTER_WARP;
+        m_io.settle(BUTTON_B, label_of(step), settle_kind, banner);
         return Pokemon::outcome_ok();
     }
     return one_step(state, step);

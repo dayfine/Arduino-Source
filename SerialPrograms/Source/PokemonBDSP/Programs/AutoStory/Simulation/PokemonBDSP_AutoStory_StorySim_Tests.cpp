@@ -289,6 +289,123 @@ UnitTestResult test_sim_fade_frames(Logger&){
     return true;
 }
 
+class StubDoorRouteIO : public RouteIO{
+public:
+    virtual WalkResult walk_to_wall(const RouteWallWalk&) override{
+        return {};
+    }
+    virtual WalkResult walk_taps(Direction, size_t, const std::string&) override{
+        return {};
+    }
+    virtual void press(const RouteInput&) override{}
+    virtual bool dialog_within(Milliseconds, Color) override{
+        return false;
+    }
+    virtual bool holding_against_wall(Direction, const std::string&) override{
+        return false;
+    }
+    virtual void look(const std::function<void(const ImageViewRGB32&)>&) override{}
+    virtual void note(const std::string&, RouteNote) override{}
+};
+
+class RecordingDoorStepIO : public StoryStepIO{
+public:
+    RecordingDoorStepIO(WarpSeen seen, std::optional<SettleKind>& recorded)
+        : m_seen(std::move(seen))
+        , m_recorded(recorded)
+    {}
+    virtual RouteIO& route() override{
+        return m_route;
+    }
+    virtual void fight(const std::string&) override{}
+    virtual void walk_until_stopped(Direction, size_t, const std::string&) override{}
+    virtual bool run_until_map(Direction, Milliseconds, const std::string&, const std::string&) override{
+        return false;
+    }
+    virtual WarpSeen run_into_door(Direction, bool, Milliseconds, Milliseconds, const std::string&) override{
+        return m_seen;
+    }
+    virtual std::optional<size_t> tap_to_banner(Direction, const std::string&, size_t) override{
+        return std::nullopt;
+    }
+    virtual void settle(Button, const std::string&, SettleKind kind, const std::string&) override{
+        m_recorded = kind;
+    }
+
+private:
+    StubDoorRouteIO m_route;
+    WarpSeen m_seen;
+    std::optional<SettleKind>& m_recorded;
+};
+
+struct DoorSettleCase{
+    std::string row;
+    std::string step;
+    std::string from_map;
+    WarpSeen seen;
+    SettleKind expected;
+};
+
+std::string check_door_settle_case(const DoorSettleCase& item){
+    for (const StoryCheckpoint& cp : story_checkpoints()){
+        if (cp.id != item.row){
+            continue;
+        }
+        for (const StoryStep& step : cp.steps){
+            if (step.name != item.step){
+                continue;
+            }
+            std::optional<SettleKind> got;
+            RecordingDoorStepIO io(item.seen, got);
+            StoryWalkSteps walks(io);
+            walks.begin_attempt(cp.id, cp.steps);
+            RunState state;
+            state.pose = Pokemon::tile_pose(item.from_map, {{0, 0}});
+            walks.step(state, step);
+            if (got != item.expected){
+                return std::format("{} {}: expected SettleKind {}, got {}.",
+                    item.row, item.step, (int)item.expected, got ? (int)*got : -1);
+            }
+            return "";
+        }
+    }
+    return std::format("missing step {} in {}", item.step, item.row);
+}
+
+//  Map-changing door STEP settle kinds: plain doors settle with SettleKind::DOOR
+//  once a warp is seen (and AFTER_WARP when unseen), while doors with arrival
+//  cutscenes keep SettleKind::TALK.
+UnitTestResult test_door_step_settle_kind(Logger&){
+    const WarpSeen faded{.fade = WarpFade::BLACK};
+    const std::vector<DoorSettleCase> cases = {
+        {"00.01", "down_the_stairs", "PlayerHouse2F", faded, SettleKind::TALK},
+        {"00.01", "out_of_the_house", "PlayerHouse1F", faded, SettleKind::DOOR},
+        {"00.01", "into_barrys_house", "TwinleafTown", faded, SettleKind::DOOR},
+        {"00.01", "up_barrys_stairs", "RivalHouse1F", faded, SettleKind::TALK},
+        {"00.01", "down_barrys_stairs", "RivalHouse2F", faded, SettleKind::DOOR},
+        {"00.01", "out_of_barrys_house", "RivalHouse1F", faded, SettleKind::DOOR},
+        {"00.03", "out_of_the_house_again", "PlayerHouse1F", faded, SettleKind::DOOR},
+        {"00.04", "out_of_the_lab", "RowansLab", faded, SettleKind::TALK},
+        {"00.04", "into_the_house", "TwinleafTown", faded, SettleKind::DOOR},
+        {"00.05", "into_the_school", "JubilifeCity", faded, SettleKind::DOOR},
+        {"00.05", "out_of_the_school", "TrainersSchool", faded, SettleKind::DOOR},
+        {"01.03", "into_the_mine", "OreburghCity", faded, SettleKind::DOOR},
+        {"01.03", "into_the_coal_room", "OreburghMineB1F", faded, SettleKind::DOOR},
+        {"01.03", "into_the_coal_room", "OreburghMineB1F", {}, SettleKind::AFTER_WARP},
+        {"01.03", "up_to_the_hall", "OreburghMine", faded, SettleKind::DOOR},
+        {"01.03", "out_of_the_mine", "OreburghMineB1F", faded, SettleKind::DOOR},
+        {"01.03", "out_of_the_mine", "OreburghMineB1F", {}, SettleKind::AFTER_WARP},
+        {"01.05", "into_oreburgh_gate", "OreburghCity", faded, SettleKind::DOOR},
+    };
+    for (const DoorSettleCase& item : cases){
+        const std::string err = check_door_settle_case(item);
+        if (!err.empty()){
+            return err;
+        }
+    }
+    return true;
+}
+
 struct AutoStoryStorySimInput{
     std::string name;
     std::function<UnitTestResult(Logger&)> body;
@@ -376,6 +493,10 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
         .input = {"01.03, cut corner through coal room crate at col 29", [](Logger& logger){
             return test_story_sim_step_failure(logger, "01.03", old_coal_room_crate_cut(), "01.03 to_roarks_corner", "short_leg: south 2 moved 1");
         }},
+        .expectation = {},
+    },
+    {
+        .input = {"plain door steps settle with DOOR while arrival-scene doors keep TALK", test_door_step_settle_kind},
         .expectation = {},
     },
 };
