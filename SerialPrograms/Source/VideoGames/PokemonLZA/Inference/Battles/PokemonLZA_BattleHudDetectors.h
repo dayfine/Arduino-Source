@@ -47,6 +47,25 @@ private:
     std::vector<ImageFloatBox> m_slots;
 };
 
+//  Detects the opponent trainer's top-center Pokeball strip during trainer battles.
+//  Shown from frame 1 of battle even before move hints or stat-stage markers appear.
+class TrainerPokeballsDetector : public StaticScreenDetector{
+public:
+    explicit TrainerPokeballsDetector(Color color = COLOR_MAGENTA);
+
+    virtual void make_overlays(VideoOverlaySet& items) const override;
+    virtual bool detect(const ImageViewRGB32& screen) override;
+
+private:
+    struct BallSlot{
+        ImageFloatBox top;
+        ImageFloatBox bottom;
+    };
+
+    Color m_color;
+    std::vector<BallSlot> m_slots;
+};
+
 
 
 } // namespace PokemonLZA

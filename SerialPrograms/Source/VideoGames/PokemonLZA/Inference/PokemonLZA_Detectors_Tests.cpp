@@ -23,6 +23,7 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "VideoGames/PokemonLZA/Inference/Battles/PokemonLZA_BattleHudDetectors.h"
 #include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapPinReader.h"
 #include "PokemonLZA_AutosaveDetector.h"
 #include "PokemonLZA_CaughtMarkReader.h"
@@ -86,6 +87,7 @@ struct DetectorReads{
     std::optional<bool> advance_arrow = {};
     std::optional<bool> mission_complete = {};
     std::optional<bool> party_bar = {};
+    std::optional<bool> trainer_pokeballs = {};
 };
 
 struct DetectorField{
@@ -99,6 +101,7 @@ const DetectorField DETECTOR_FIELDS[] = {
     {"advance arrow", &DetectorReads::advance_arrow},
     {"mission complete", &DetectorReads::mission_complete},
     {"party bar", &DetectorReads::party_bar},
+    {"trainer pokeballs", &DetectorReads::trainer_pokeballs},
 };
 
 DetectorReads every_detector(DetectorReads reads){
@@ -135,6 +138,7 @@ struct StoryDetectors{
     AdvanceArrowDetector arrow;
     MissionCompleteDetector complete;
     PartyBarDetector party_bar;
+    TrainerPokeballsDetector trainer_pokeballs;
 
     DetectorReads read(const ImageViewRGB32& frame){
         return DetectorReads{
@@ -142,6 +146,7 @@ struct StoryDetectors{
             .controls_hint = hint.detect(frame), .advance_arrow = arrow.detect(frame),
             .mission_complete = complete.detect(frame),
             .party_bar = party_bar.detect(frame),
+            .trainer_pokeballs = trainer_pokeballs.detect(frame),
         };
     }
 };
@@ -157,6 +162,14 @@ ImageRGB32 autosave_badge_by_mint_banner_frame(){
     ImageRGB32 image = autosave_badge_frame(/*background=*/0xff101418, /*glow=*/0xff28c8e6);
     fill_box(/*min_x=*/1600, /*min_y=*/60, /*max_x=*/1720, /*max_y=*/64, /*color=*/0xff60cb93, image);
     fill_box(/*min_x=*/1600, /*min_y=*/112, /*max_x=*/1720, /*max_y=*/116, /*color=*/0xff60cb93, image);
+    return image;
+}
+
+ImageRGB32 trainer_pokeball_frame(size_t slot, uint32_t top_color, uint32_t bottom_color){
+    ImageRGB32 image = solid_frame(/*color=*/0xff4a4846);
+    const size_t cx = 858 + 41 * slot;
+    fill_box(cx - 7, /*min_y=*/60, cx + 7, /*max_y=*/66, top_color, image);
+    fill_box(cx - 7, /*min_y=*/72, cx + 7, /*max_y=*/80, bottom_color, image);
     return image;
 }
 
@@ -197,6 +210,21 @@ const SyntheticFrameCase SYNTHETIC_FRAME_CASES[] = {
         .name = "a white stroke with a green sign's glow",
         .input = {.frame = []{ return autosave_badge_frame(0xff252722, 0xff3cf06e); }},
         .expectation = {.reads = {.autosave = false}},
+    },
+    {
+        .name = "trainer pokeball strip with live ball in slot 0",
+        .input = {.frame = []{ return trainer_pokeball_frame(0, 0xfff86268, 0xfff5f0ee); }},
+        .expectation = {.reads = {.trainer_pokeballs = true}},
+    },
+    {
+        .name = "trainer pokeball strip with live ball in slot 1",
+        .input = {.frame = []{ return trainer_pokeball_frame(1, 0xfff86268, 0xfff5f0ee); }},
+        .expectation = {.reads = {.trainer_pokeballs = true}},
+    },
+    {
+        .name = "trainer pokeball strip with grey fainted ball only",
+        .input = {.frame = []{ return trainer_pokeball_frame(0, 0xff706868, 0xff807878); }},
+        .expectation = {.reads = {.trainer_pokeballs = false}},
     },
 };
 
