@@ -530,6 +530,35 @@ UnitTestResult test_short_leg_a_tile_short_is_not_arrived(Logger&){
     return replanned ? UnitTestResult(true) : UnitTestResult("no replan after the stop a tile short.");
 }
 
+//  Route 203 (lab-B, 2026-11-21 03:38, 01.02 by_the_gate): a trainer on a
+//  wall leg walked down to stand directly in front of the player (0 moved
+//  chunks). After the battle, "on to the wall" was immediately blocked at
+//  0 moved chunks by the beaten trainer; the walker must mark the blocker
+//  and replan around them instead of assuming it reached the far wall.
+UnitTestResult test_wall_leg_blocked_by_beaten_trainer(Logger&){
+    const StoryWorld corridor = make_world({"####", "#..#", "#..#", "#..#", "#..#", "#..#", "####"});
+    Script script{.steps = {
+        walk_step("wall: T: north 4 (to wall)", WalkStop::DIALOG, 400ms, 0),
+        walk_step("wall: T: north 4 (to wall): on to the wall", WalkStop::BLOCKED, 800ms, 0),
+        press_step("A 80 ms x1"),
+        answer_step("dialog within 2000 ms", false),
+    }};
+    ScriptedWalk walk;
+    try{
+        walk = walk_script(corridor, /*start=*/{2, 5}, /*goal=*/{2, 1}, /*sights=*/{}, script);
+    }catch (const ScriptMismatch&){
+        //  The replan walk around the blocker is not scripted.
+    }
+    if (!walk.failure.empty()){
+        return std::format("failed: {}", walk.failure);
+    }
+    const bool replanned = std::any_of(script.notes.begin(), script.notes.end(), [](const std::string& note){
+        return note.find("stopped early after about 0 tiles") != std::string::npos
+            && note.find("planning again") != std::string::npos;
+    });
+    return replanned ? UnitTestResult(true) : UnitTestResult("on_to_wall assumed wall after 0-chunk block by beaten trainer.");
+}
+
 
 struct PlannedRouteInput{
     std::string name;
@@ -588,6 +617,10 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"a wall leg that never moved plans from its start", test_never_moved_plans_from_the_start},
+        .expectation = {},
+    },
+    {
+        .input = {"a beaten trainer blocking on_to_wall replans around them", test_wall_leg_blocked_by_beaten_trainer},
         .expectation = {},
     },
 };
