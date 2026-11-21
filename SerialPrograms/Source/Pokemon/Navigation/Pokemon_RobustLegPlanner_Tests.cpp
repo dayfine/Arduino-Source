@@ -298,6 +298,19 @@ const PlanCase PLAN_CASES[] = {
         },
         .expectation = {.legs = "south 1 to wall: (0, 1); east 3 to wall: (3, 1); north 1 to wall: (3, 0)"},
     },
+    {
+        //  South 1 (open) followed by east 5 (to wall) then west 2 (open) is
+        //  an orthogonal turn into a walled row and back off the wall, not a
+        //  redundant overshoot along the tapped axis.
+        .name = "wall bounce after perpendicular tapped leg is allowed",
+        .input = {
+            .rows = {".......", "......#", "......."},
+            .from = {{0, 0}},
+            .goal = {3, 1},
+            .costs = {.exact_open_tiles = 2},
+        },
+        .expectation = {.legs = "south 1 open: (0, 1); east 5 to wall: (5, 1); west 2 open: (3, 1)"},
+    },
 };
 
 

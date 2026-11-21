@@ -581,12 +581,14 @@ private:
         if (spread != m_start){
             const Node& arrived = m_nodes.at(spread);
             const RobustLeg<State>& prev = arrived.leg;
-            //  A run to a wall and back after a tapped leg: the taps left the
-            //  player on a known tile, so the run past it and back adds a
-            //  turn for nothing. From the start or after a leg to a wall it
-            //  is how a long leg is made fast and exact.
+            //  A run to a wall and back after a tapped leg along the same axis:
+            //  the taps left the player on a known tile, so running past it
+            //  and back adds a turn for nothing. From the start, after a leg
+            //  to a wall, or after a perpendicular tapped leg it is how a long
+            //  leg is made fast and exact.
             if (prev.to_wall && arrived.parent != m_start && expansion.leg.direction == opposite(prev.direction)){
-                if (!m_nodes.at(arrived.parent).leg.to_wall){
+                const RobustLeg<State>& parent_leg = m_nodes.at(arrived.parent).leg;
+                if (!parent_leg.to_wall && (parent_leg.direction == prev.direction || parent_leg.direction == expansion.leg.direction)){
                     return;
                 }
             }
