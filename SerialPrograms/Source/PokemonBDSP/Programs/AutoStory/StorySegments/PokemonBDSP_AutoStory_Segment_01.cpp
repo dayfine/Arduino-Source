@@ -34,6 +34,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_OverworldMatchers.h"
 
 #include "PokemonBDSP_AutoStory_Segment_01.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 using namespace std::chrono_literals;
 
@@ -323,16 +324,16 @@ void oreburgh_gate_nav(SingleSwitchProgramEnvironment& env, VideoStream& stream,
 void oreburgh_gate_to_mine(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
     pbf_wait(context, 2000ms);
     context.wait_for_all_requests();
-    const auto tour_deadline = std::chrono::steady_clock::now() + 30s;
+    const auto tour_deadline = sim1717_steady_now() + 30s;
     bool tour_dialogue = false;
     for (size_t attempt = 0; attempt < 10 && !tour_dialogue; attempt++){
-        auto remaining = std::chrono::duration_cast<Milliseconds>(tour_deadline - std::chrono::steady_clock::now());
+        auto remaining = std::chrono::duration_cast<Milliseconds>(tour_deadline - sim1717_steady_now());
         if (remaining <= 0ms){
             break;
         }
         pbf_move_left_joystick(context, {1.000000, -0.000000}, std::min(1056ms, remaining), 0ms);
         context.wait_for_all_requests();
-        remaining = std::chrono::duration_cast<Milliseconds>(tour_deadline - std::chrono::steady_clock::now());
+        remaining = std::chrono::duration_cast<Milliseconds>(tour_deadline - sim1717_steady_now());
         if (remaining <= 0ms){
             break;
         }
@@ -476,7 +477,10 @@ static MineCenterOffset measure_mine_center_offset(const ImageViewRGB32& referen
 }
 // Align with the entrance center before following the mine route.
 static bool oreburgh_mine_alignment_test(VideoStream& stream, ProControllerContext& context){
-    const ImageRGB32 reference(mine_navigation_resource_path() + "mine_start_center.png");
+    ImageRGB32 reference;
+    if (!get_sim1717_hooks()){
+        reference = ImageRGB32(mine_navigation_resource_path() + "mine_start_center.png");
+    }
 
     constexpr size_t MAX_MOVEMENTS = 12;
     constexpr double CENTER_TOLERANCE = 0.008;
@@ -492,7 +496,14 @@ static bool oreburgh_mine_alignment_test(VideoStream& stream, ProControllerConte
     while (true){
         const VideoSnapshot frame = stream.video().snapshot();
 
-        const MineCenterOffset measurement = measure_mine_center_offset(reference, frame);
+        MineCenterOffset measurement;
+        if (auto* sim = get_sim1717_hooks()){
+            if (auto r = sim->mine_center_offset()){
+                measurement = {r->valid, r->offset, r->score};
+            }
+        }else{
+            measurement = measure_mine_center_offset(reference, frame);
+        }
 
         stream.log("[Mine align] Offset=" + std::to_string(measurement.offset) +
             ", score=" + std::to_string(measurement.score) + (measurement.valid ? ", trusted" : ", unsure"));
@@ -596,11 +607,11 @@ static bool mine_escape_and_settle(VideoStream& stream, ProControllerContext& co
 static bool mine_force_encounter_test(VideoStream& stream, ProControllerContext& context){
     stream.log("[Mine encounter] Starting forced encounter wiggle.");
 
-    const auto deadline = std::chrono::steady_clock::now() + 60s;
+    const auto deadline = sim1717_steady_now() + 60s;
 
     size_t pulses = 0;
 
-    while (std::chrono::steady_clock::now() < deadline){
+    while (sim1717_steady_now() < deadline){
         // Alternate down and up. Do not move sideways.
         const double y = pulses % 2 == 0 ? -1.0 : 1.0;
 
@@ -736,7 +747,7 @@ static MinePictureScore mine_score_picture(const ImageRGB32& reference,
             double total = 0.0;
             double worst = 0.0;
             for (const auto& correlation : correlations){
-                const double value = correlation.at<float>(y + radius_y, x + radius_x);
+                const double value = correlation.template at<float>(y + radius_y, x + radius_x);
                 const double score = std::isfinite(value) ? 100.0 * (1.0 - std::clamp(value, -1.0, 1.0)) : 1000.0;
                 total += score;
                 worst = std::max(worst, score);
@@ -763,8 +774,11 @@ static bool mine_check_picture(VideoStream& stream,
     size_t max_attempts = 8,
     double max_average = 20.0,
     double max_patch = 30.0){
-    const ImageRGB32 reference(mine_navigation_resource_path() + filename);
-    const ImageRGB32 reference_scaled = reference.scale_to(960, 540);
+    ImageRGB32 reference_scaled;
+    if (!get_sim1717_hooks()){
+        const ImageRGB32 reference(mine_navigation_resource_path() + filename);
+        reference_scaled = reference.scale_to(960, 540);
+    }
 
     const bool confirmed = mine_run_with_encounters(stream, context, [&](ProControllerContext& ctx){
         // The watcher stays active throughout settling and sampling.
@@ -783,8 +797,15 @@ static bool mine_check_picture(VideoStream& stream,
                 return false;
             }
 
-            const ImageRGB32 live = frame->scale_to(960, 540);
-            const MinePictureScore score = mine_score_picture(reference_scaled, live, boxes);
+            MinePictureScore score;
+            if (auto* sim = get_sim1717_hooks()){
+                if (auto r = sim->mine_picture_score(filename)){
+                    score = {r->average, r->worst, r->horizontal, r->vertical};
+                }
+            }else{
+                const ImageRGB32 live = frame->scale_to(960, 540);
+                score = mine_score_picture(reference_scaled, live, boxes);
+            }
 
             stream.log(
                 label + ": average=" + std::to_string(score.average) + ", worst patch=" + std::to_string(score.worst));
@@ -830,9 +851,11 @@ static bool mine_walk_to_endpoints(VideoStream& stream,
     const std::string& label,
     bool force_encounter = false){
     std::array<std::unique_ptr<ImageRGB32>, Endpoints> references;
-    for (size_t index = 0; index < Endpoints; index++){
-        const ImageRGB32 image(mine_navigation_resource_path() + files[index]);
-        references[index] = std::make_unique<ImageRGB32>(image.scale_to(960, 540));
+    if (!get_sim1717_hooks()){
+        for (size_t index = 0; index < Endpoints; index++){
+            const ImageRGB32 image(mine_navigation_resource_path() + files[index]);
+            references[index] = std::make_unique<ImageRGB32>(image.scale_to(960, 540));
+        }
     }
 
     size_t movements = 0;
@@ -857,16 +880,26 @@ static bool mine_walk_to_endpoints(VideoStream& stream,
                     return false;
                 }
 
-                const ImageRGB32 live = frame->scale_to(960, 540);
+                ImageRGB32 live;
+                if (!get_sim1717_hooks()){
+                    live = frame->scale_to(960, 540);
+                }
                 int accepted = -1;
                 double accepted_average = 1000.0;
 
                 for (size_t endpoint = 0; endpoint < Endpoints; endpoint++){
-                    const MinePictureScore score = mine_score_picture(*references[endpoint],
-                        live,
-                        boxes[endpoint],
-                        options.horizontal_range,
-                        options.vertical_range);
+                    MinePictureScore score;
+                    if (auto* sim = get_sim1717_hooks()){
+                        if (auto r = sim->mine_picture_score(files[endpoint])){
+                            score = {r->average, r->worst, r->horizontal, r->vertical};
+                        }
+                    }else{
+                        score = mine_score_picture(*references[endpoint],
+                            live,
+                            boxes[endpoint],
+                            options.horizontal_range,
+                            options.vertical_range);
+                    }
                     stream.log(label + " Endpoint " + std::to_string(endpoint + 1) +
                         ": average=" + std::to_string(score.average) + ", worst patch=" + std::to_string(score.worst) +
                         ", screen-relative offset=(" + std::to_string(score.horizontal) + "," +
@@ -1150,14 +1183,14 @@ static bool mine_finish_item_dialogue(VideoStream& stream, ProControllerContext&
     ShortDialogDetector dialogue(COLOR_YELLOW);
 
     bool saw_dialogue = false;
-    auto absent_since = std::chrono::steady_clock::now();
+    auto absent_since = sim1717_steady_now();
 
-    const auto start = std::chrono::steady_clock::now();
+    const auto start = sim1717_steady_now();
     const auto deadline = start + 30s;
 
     stream.log("[Mine item] Starting interaction.");
 
-    while (std::chrono::steady_clock::now() < deadline){
+    while (sim1717_steady_now() < deadline){
         context.wait_for_all_requests();
         const VideoSnapshot frame = stream.video().snapshot();
 
@@ -1166,7 +1199,7 @@ static bool mine_finish_item_dialogue(VideoStream& stream, ProControllerContext&
             return false;
         }
 
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = sim1717_steady_now();
         const bool visible = dialogue.detect(frame);
 
         if (visible){
@@ -1334,8 +1367,11 @@ static MineRoarkOffsetScore mine_score_roark_offsets(const ImageRGB32& reference
 }
 
 static bool oreburgh_mine_align_to_18(VideoStream& stream, ProControllerContext& context){
-    const ImageRGB32 reference(mine_navigation_resource_path() + "Mine_path_18.png");
-    const ImageRGB32 reference_scaled = reference.scale_to(960, 540);
+    ImageRGB32 reference_scaled;
+    if (!get_sim1717_hooks()){
+        const ImageRGB32 reference(mine_navigation_resource_path() + "Mine_path_18.png");
+        reference_scaled = reference.scale_to(960, 540);
+    }
     const double max_error = 30.0; // Every patch must have correlation >= 0.70.
     size_t movements = 0;
 
@@ -1352,8 +1388,15 @@ static bool oreburgh_mine_align_to_18(VideoStream& stream, ProControllerContext&
                 return false;
             }
 
-            const ImageRGB32 live = frame->scale_to(960, 540);
-            const MineRoarkOffsetScore score = mine_score_roark_offsets(reference_scaled, live);
+            MineRoarkOffsetScore score;
+            if (auto* sim = get_sim1717_hooks()){
+                if (auto r = sim->mine_roark_score()){
+                    score = {r->left, r->right, r->helmet, r->horizontal, r->vertical, r->helmet_horizontal, r->helmet_vertical};
+                }
+            }else{
+                const ImageRGB32 live = frame->scale_to(960, 540);
+                score = mine_score_roark_offsets(reference_scaled, live);
+            }
 
             stream.log("[Mine endpoint 18] Left rock=" + std::to_string(score.left) +
                 ", Right rock=" + std::to_string(score.right) + ", Helmet=" + std::to_string(score.helmet) +
@@ -1514,16 +1557,16 @@ static bool mine_talk_to_roark(VideoStream& stream, ProControllerContext& contex
     wait_for_dialog(stream, context, "[Mine Roark] First box", 30s);
 
     ShortDialogDetector dialogue(COLOR_YELLOW);
-    const auto deadline = std::chrono::steady_clock::now() + 60s;
+    const auto deadline = sim1717_steady_now() + 60s;
     bool timing_absence = false;
-    auto absent_since = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() < deadline){
+    auto absent_since = sim1717_steady_now();
+    while (sim1717_steady_now() < deadline){
         const VideoSnapshot frame = stream.video().snapshot();
         if (!frame){
             stream.log("[Mine Roark] No video frame.", COLOR_ORANGE);
             return false;
         }
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = sim1717_steady_now();
         if (dialogue.detect(frame)){
             timing_absence = false;
         }else{
@@ -1725,7 +1768,7 @@ void gym_Puzzle_01(SingleSwitchProgramEnvironment& env, VideoStream& stream, Pro
     // Allow 7.5 seconds for the gym entry camera sequence, plus a 500ms buffer, before sending
     // puzzle inputs.
     context.wait_for_all_requests();
-    env.log("[Gym puzzle] Waiting for the entry cutscene to finish.");
+    stream.log("[Gym puzzle] Waiting for the entry cutscene to finish.");
     pbf_wait(context, 8000ms);
     context.wait_for_all_requests();
 

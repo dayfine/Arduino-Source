@@ -19,6 +19,7 @@
 
 #include "PokemonBDSP_AutoStory_Dialog.h"
 #include "PokemonBDSP_AutoStory_Shopping.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 namespace PokemonAutomation {
 namespace NintendoSwitch {
@@ -176,6 +177,9 @@ bool buy_items(VideoStream& stream,
     const std::vector<ItemToBuy>& items,
     Language language,
     DpadPosition search_direction){
+    if (auto* sim = get_sim1717_hooks()){
+        return sim->on_buy_items();
+    }
     if (items.empty()){
         return true;
     }

@@ -41,6 +41,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_OverworldMatchers.h"
 
 #include "PokemonBDSP_AutoStory_Segment_02.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 using namespace std::chrono_literals;
 
@@ -150,10 +151,10 @@ static void wait_for_trainer_battle_menu(VideoStream& stream, ProControllerConte
     VideoOverlaySet overlays(stream.overlay());
     dialogue.make_overlays(overlays);
     menu.make_overlays(overlays);
-    const auto deadline = std::chrono::steady_clock::now() + 120s;
+    const auto deadline = sim1717_steady_now() + 120s;
     size_t confirmed = 0;
     bool previous_dialogue = false;
-    while (std::chrono::steady_clock::now() < deadline){
+    while (sim1717_steady_now() < deadline){
         const auto frame = stream.video().snapshot();
         if (!frame){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
@@ -470,7 +471,7 @@ static void enter_ravaged_path_from_route204(SingleSwitchProgramEnvironment& env
     };
     Route204ArrivalTracker arrival;
     size_t position_confirmations = 0;
-    auto missing_since = std::chrono::steady_clock::now();
+    auto missing_since = sim1717_steady_now();
     bool initial_approach = true;
     size_t blocked_north = 0;
     double previous_north_dy = 1;
@@ -498,7 +499,7 @@ static void enter_ravaged_path_from_route204(SingleSwitchProgramEnvironment& env
             clear_dialog(stream, context);
             arrival.reset();
             position_confirmations = 0;
-            missing_since = std::chrono::steady_clock::now();
+            missing_since = sim1717_steady_now();
             continue;
         }
         double x = 0, y = 0;
@@ -524,7 +525,7 @@ static void enter_ravaged_path_from_route204(SingleSwitchProgramEnvironment& env
                     ", margin=" + std::to_string(landmark.margin) + ", accepted=" + std::to_string(landmark.accepted) +
                     ", offset=(" + std::to_string(landmark.dx) + "," + std::to_string(landmark.dy) + ")");
             }
-            const auto now = std::chrono::steady_clock::now();
+            const auto now = sim1717_steady_now();
             auto fixed = result;
             fixed.landmarks.resize(2);
             // Cave entry needs tighter horizontal alignment than the
@@ -618,7 +619,7 @@ static void enter_ravaged_path_from_route204(SingleSwitchProgramEnvironment& env
         if (x != 0 || y != 0){
             arrival.reset();
             position_confirmations = 0;
-            missing_since = std::chrono::steady_clock::now();
+            missing_since = sim1717_steady_now();
         }
         const int ret = run_until<ProControllerContext>(stream,
             context,
@@ -638,7 +639,7 @@ static void enter_ravaged_path_from_route204(SingleSwitchProgramEnvironment& env
             clear_dialog(stream, context);
             arrival.reset();
             position_confirmations = 0;
-            missing_since = std::chrono::steady_clock::now();
+            missing_since = sim1717_steady_now();
             continue;
         }
         if (ret != 0){
@@ -646,10 +647,10 @@ static void enter_ravaged_path_from_route204(SingleSwitchProgramEnvironment& env
         }
         // A trainer transition can also go black. Require a stable
         // cave scene, or route the detected battle through combat.
-        const auto deadline = std::chrono::steady_clock::now() + 16s;
+        const auto deadline = sim1717_steady_now() + 16s;
         size_t confirmed = 0;
         bool trainer_seen = false;
-        while (std::chrono::steady_clock::now() < deadline){
+        while (sim1717_steady_now() < deadline){
             const auto frame = stream.video().snapshot();
             if (!frame){
                 OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
@@ -681,7 +682,7 @@ static void enter_ravaged_path_from_route204(SingleSwitchProgramEnvironment& env
         }
         arrival.reset();
         position_confirmations = 0;
-        missing_since = std::chrono::steady_clock::now();
+        missing_since = sim1717_steady_now();
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
         "Ravaged Path entrance: Could not confirm entry after bounded approach.",
@@ -753,7 +754,7 @@ void roark_to_floaroma(SingleSwitchProgramEnvironment& env, VideoStream& stream,
     context.wait_for_all_requests();
 
     ShortDialogDetector dialogue(COLOR_YELLOW);
-    const auto started = std::chrono::steady_clock::now();
+    const auto started = sim1717_steady_now();
     auto absent_since = started;
 
     while (true){
@@ -764,7 +765,7 @@ void roark_to_floaroma(SingleSwitchProgramEnvironment& env, VideoStream& stream,
                 stream);
         }
 
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = sim1717_steady_now();
         if (now - started >= 180s){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Barry conversation: Dialogue did not finish.",
@@ -1008,7 +1009,7 @@ void roark_to_floaroma(SingleSwitchProgramEnvironment& env, VideoStream& stream,
         TownBannerWatcher banner(COLOR_CYAN);
         ShortDialogWatcher expired(COLOR_YELLOW);
         BattleMenuWatcher unexpected_battle(BattleType::TRAINER, COLOR_RED);
-        const auto approach_started = std::chrono::steady_clock::now();
+        const auto approach_started = sim1717_steady_now();
         const int event = run_until<ProControllerContext>(stream, context,
             [remaining](ProControllerContext& ctx){
                 pbf_move_left_joystick(ctx, {0, 1}, remaining, 1500ms);
@@ -1019,7 +1020,7 @@ void roark_to_floaroma(SingleSwitchProgramEnvironment& env, VideoStream& stream,
             town_entered = true;
             break;
         }
-        const auto elapsed = std::chrono::duration_cast<Milliseconds>(std::chrono::steady_clock::now() - approach_started);
+        const auto elapsed = std::chrono::duration_cast<Milliseconds>(sim1717_steady_now() - approach_started);
         remaining -= std::min(remaining, elapsed);
         if (event != 1 || repel_declined){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,

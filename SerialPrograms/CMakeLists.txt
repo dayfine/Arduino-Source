@@ -948,3 +948,9 @@ if(PA_PYTHON_BINDINGS)
     # Python bindings (GUI-free) from subdirectory
     include(Source/PythonBindings/PythonBindings.cmake)
 endif()
+
+add_executable(Pr1717SimRunner
+    Source/PokemonBDSP/Programs/AutoStory/Sim1717/Pr1717Sim_Main.cpp
+)
+target_link_libraries(Pr1717SimRunner PRIVATE SerialProgramsLib)
+apply_common_target_properties(Pr1717SimRunner)

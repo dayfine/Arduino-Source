@@ -10,6 +10,7 @@
 #include "CommonFramework/Globals.h"
 
 #include "PokemonBDSP_OverworldMatchers.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 namespace PokemonAutomation {
 namespace NintendoSwitch {
@@ -208,6 +209,11 @@ static OverworldMatchResult match_landmarks(const ImageRGB32& frame,
     return result;
 }
 OverworldMatchResult match_jubilife_trainers_school_sign(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_jubilife_trainers_school_sign")){
+            return *r;
+        }
+    }
     // Grayscale sign structure at the school approach, with a uniqueness gate.
     // Center the sign over the player. The entry corridor includes the
     // recorded approach and the stationary position used by the lighting test.
@@ -229,6 +235,11 @@ OverworldMatchResult match_jubilife_trainers_school_sign(const ImageRGB32& frame
     return result;
 }
 OverworldMatchResult match_poketch_landmarks(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_poketch_landmarks")){
+            return *r;
+        }
+    }
     // Same cropped reference emblems and local search windows as production.
     OverworldMatchResult fine = match_landmarks(frame,
         {{"Mart",
@@ -313,6 +324,11 @@ OverworldMatchResult match_poketch_landmarks(const ImageRGB32& frame){
     return coarse;
 }
 OverworldMatchResult match_oreburgh_mart(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_oreburgh_mart")){
+            return *r;
+        }
+    }
     const ImageFloatBox target{0.502083333333, 0.235185185185, 0.056250000000, 0.079629629630};
     auto original = match_landmarks(frame,
         {{"Mart emblem",
@@ -349,6 +365,11 @@ OverworldMatchResult match_oreburgh_mart(const ImageRGB32& frame){
     return original;
 }
 OverworldMatchResult match_jubilife_center_entrance(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_jubilife_center_entrance")){
+            return *r;
+        }
+    }
     // Use native-resolution references to avoid resizing artifacts. The emblem is about 5.73% of
     // screen width left of the player during approach; shift its target right to center the door,
     // preserving approach height.
@@ -2105,6 +2126,11 @@ OverworldMatchResult match_eterna_underground_man(const ImageRGB32& frame){
     return result;
 }
 OverworldMatchResult match_jubilife_street_approach(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_jubilife_street_approach")){
+            return *r;
+        }
+    }
     // The lighting-reference pose is 1/108 screen height south of the destination. Preserve the
     // destination height. Lighting variants cover lamps, daylight and moving tree shadows.
     return match_lighting_pair(frame,
@@ -2150,6 +2176,11 @@ OverworldMatchResult match_jubilife_street_approach(const ImageRGB32& frame){
         true);
 }
 OverworldMatchResult match_jubilife_plaza_approach(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_jubilife_plaza_approach")){
+            return *r;
+        }
+    }
     // Capture-derived references cover lamp, daylight, and moving tree shadows.
     auto result = match_lighting_pair(frame,
         {
@@ -2683,6 +2714,11 @@ OverworldMatchResult match_floaroma_house_entrance(const ImageRGB32& frame){
         true);
 }
 OverworldMatchResult match_floaroma_center_entrance(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_floaroma_center_entrance")){
+            return *r;
+        }
+    }
     OverworldMatchResult best;
     // Perspective changes the emblem size as we approach the doorway gap.
     for (double scale : {.90, .95, 1.0, 1.05, 1.10}){
@@ -2818,6 +2854,11 @@ OverworldMatchResult match_teighler_alcove_corner(const ImageRGB32& frame){
     return result;
 }
 OverworldMatchResult match_ravaged_path_south_entrance(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_ravaged_path_south_entrance")){
+            return *r;
+        }
+    }
     const ImageFloatBox mouth{860.0 / 1920, 220.0 / 1080, 200.0 / 1920, 155.0 / 1080};
     const ImageFloatBox sign{810.0 / 1920, 380.0 / 1080, 100.0 / 1920, 110.0 / 1080};
     std::vector<LandmarkConfig> variants;
@@ -3715,6 +3756,11 @@ OverworldMatchResult match_route215_jogger_corner(const ImageRGB32& frame){
     return best;
 }
 OverworldMatchResult match_oreburgh_gym_entrance(const ImageRGB32& frame){
+    if (auto* sim = get_sim1717_hooks()){
+        if (auto r = sim->match_overworld("match_oreburgh_gym_entrance")){
+            return *r;
+        }
+    }
     // References cover the centered approach and west-pillar stops in sun, cloud shadow, evening
     // and night. The darker 02:00-03:59 sign uses a separate reference. All use the centered
     // pose. Only the fixed sign symbol and doorway emblem vote, excluding the player and

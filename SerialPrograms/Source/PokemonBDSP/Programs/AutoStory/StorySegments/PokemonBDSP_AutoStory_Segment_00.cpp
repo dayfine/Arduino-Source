@@ -37,6 +37,7 @@
 #include "PokemonBDSP/Programs/ShinyHunting/PokemonBDSP_StarterReset.h"
 
 #include "PokemonBDSP_AutoStory_Segment_00.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 using namespace std::chrono_literals;
 
@@ -89,6 +90,10 @@ static void select_starter(VideoStream& stream,
     ProControllerContext& context,
     const std::string& name,
     size_t right_presses){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_select_starter(right_presses);
+        return;
+    }
     stream.log("[DEBUG] " + name + " Selection: Starting starter selection");
 
     DpadState dpad;
@@ -1236,6 +1241,29 @@ void checkpoint_0006(SingleSwitchProgramEnvironment& env,
             tutorial_part_4_navigation(env, env.console, context);
         },
         true);
+}
+
+//  Sim1717 entrypoints exposing Segment 00's exact checkpoint routines directly.
+void sim1717_seg00_0001(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
+    tutorial_part_1_navigation(env, stream, context);
+}
+void sim1717_seg00_0002(VideoStream& stream, ProControllerContext& context){
+    starter_nav(stream, context);
+    select_starter(stream, context, "Chimchar", 1);
+    fight_starly(stream, context);
+    post_starly_clenaup(stream, context);
+}
+void sim1717_seg00_0003(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
+    tutorial_part_2_navigation(env, stream, context);
+}
+void sim1717_seg00_0004(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context, const AutoStoryOptions& options){
+    tutorial_part_3_navigation(env, stream, context, options);
+}
+void sim1717_seg00_0005(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context, const AutoStoryOptions& options){
+    tutorial_part_3_after_catch_navigation(env, stream, context, options);
+}
+void sim1717_seg00_0006(SingleSwitchProgramEnvironment& env, VideoStream& stream, ProControllerContext& context){
+    tutorial_part_4_navigation(env, stream, context);
 }
 
 }

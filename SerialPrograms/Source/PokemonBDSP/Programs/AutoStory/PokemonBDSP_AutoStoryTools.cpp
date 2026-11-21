@@ -50,6 +50,7 @@
 #include "Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 
 #include "PokemonBDSP_AutoStoryTools.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 namespace PokemonAutomation {
 namespace NintendoSwitch {
@@ -185,6 +186,10 @@ void checkpoint_save(SingleSwitchProgramEnvironment& env,
     EventNotificationOption& notif_status_update,
     AutoStoryStats& stats,
     CheckpointSaveMode save_mode){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_checkpoint_save();
+        return;
+    }
     const bool fake = save_mode == CheckpointSaveMode::FAKE;
     env.console.log(
         fake ? "[Checkpoint save] DIAGNOSTIC FAKE mode: save is not verified." : "[Checkpoint save] REAL mode.");
@@ -221,6 +226,10 @@ void checkpoint_reattempt_loop(SingleSwitchProgramEnvironment& env,
     bool save,
     CheckpointSaveMode save_mode,
     CheckpointRetryScope retry_scope){
+    if (get_sim1717_hooks()){
+        action(0);
+        return;
+    }
     const auto pp_at_checkpoint = stats.move_pp_remaining;
     static constexpr size_t MAX_ATTEMPTS = 20;
 
@@ -351,15 +360,15 @@ void wait_for_transition_to_finish(VideoStream& stream,
     Milliseconds settle){
     BlackScreenDetector black_frame;
     WhiteScreenDetector white_frame;
-    const auto deadline = std::chrono::steady_clock::now() + timeout;
-    auto clear_since = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() < deadline){
+    const auto deadline = sim1717_steady_now() + timeout;
+    auto clear_since = sim1717_steady_now();
+    while (sim1717_steady_now() < deadline){
         const auto frame = stream.video().snapshot();
         if (!frame){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 label + ": No video frame during transition.", stream);
         }
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = sim1717_steady_now();
         if (black_frame.detect(*frame.frame) || white_frame.detect(*frame.frame)){
             clear_since = now;
         }else if (now - clear_since >= 500ms){
@@ -368,7 +377,12 @@ void wait_for_transition_to_finish(VideoStream& stream,
             context.wait_for_all_requests();
             return;
         }
-        context.wait_for(100ms);
+        if (get_sim1717_hooks()){
+            pbf_wait(context, 100ms);
+            context.wait_for_all_requests();
+        }else{
+            context.wait_for(100ms);
+        }
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
         label + ": Doorway fade did not finish.", stream);
@@ -401,6 +415,9 @@ bool heal_pokemon(VideoStream& stream,
     const std::string& label,
     AutoStoryStats* stats,
     bool exit_center){
+    if (auto* sim = get_sim1717_hooks()){
+        return sim->on_heal_pokemon(label, exit_center);
+    }
     context.wait_for_all_requests();
     pbf_wait(context, 2000ms);
 
@@ -810,6 +827,10 @@ static double confirmed_potion_hp(VideoStream& stream, ProControllerContext& con
 }
 
 void use_potion_first_pokemon(VideoStream& stream, ProControllerContext& context, Language language, uint8_t* level){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_use_potion(level);
+        return;
+    }
     OverlayBoxScope hp_overlay(stream.overlay(), COLOR_GREEN, {0.137, 0.160, 0.202, 0.016}, "");
     BagItemTemplate potion;
     potion.reference_path = "PokemonBDSP/Autostory/Bag_Potion.png";
@@ -1857,6 +1878,9 @@ bool find_bag_item(VideoStream& stream,
 }
 
 bool use_escape_rope(VideoStream& stream, ProControllerContext& context, Language language, int num_icons){
+    if (auto* sim = get_sim1717_hooks()){
+        return sim->on_use_escape_rope();
+    }
     const BagItemTemplate rope{// "PokemonBDSP/AutoStory/Bag_EscapeRope.png", "escape-rope"
         "PokemonBDSP/Autostory/Bag_EscapeRope.png",
         "escape-rope"};
@@ -1921,6 +1945,9 @@ bool use_escape_rope(VideoStream& stream, ProControllerContext& context, Languag
 
 
 bool activate_repel(VideoStream& stream, ProControllerContext& context, Language language, int num_icons, int repel_type){
+    if (auto* sim = get_sim1717_hooks()){
+        return sim->on_activate_repel();
+    }
     static const char* const slugs[] = {"repel", "super-repel", "max-repel"};
     if (repel_type < 0 || repel_type > 2){
         stream.log("activate_repel: type must be 0 (Repel), 1 (Super Repel), or 2 (Max Repel).", COLOR_RED);
@@ -1977,11 +2004,11 @@ void force_repel_expiry(VideoStream& stream,
     BattleMenuWatcher battle(BattleType::TRAINER);
     // Repel expiry allowance is the mean 41.244682s plus sample SD 3.668059s, rounded up to the
     // next millisecond. Use 500ms movement / 100ms rest pulses.
-    const auto movement_deadline = std::chrono::steady_clock::now() + 44913ms;
+    const auto movement_deadline = sim1717_steady_now() + 44913ms;
     const int result = run_until<ProControllerContext>(stream,
         context,
         [north_south, movement_deadline](ProControllerContext& ctx){
-            while (std::chrono::steady_clock::now() + 1200ms <= movement_deadline){
+            while (sim1717_steady_now() + 1200ms <= movement_deadline){
                 // Complete steps before reversing so the Repel counter advances.
                 if (north_south){
                     pbf_move_left_joystick(ctx, {0.0, 1.0}, 500ms, 100ms);
@@ -1994,7 +2021,7 @@ void force_repel_expiry(VideoStream& stream,
             }
             // Finish the observation window without an unpaired move.
             const auto remaining =
-                std::chrono::duration_cast<Milliseconds>(movement_deadline - std::chrono::steady_clock::now());
+                std::chrono::duration_cast<Milliseconds>(movement_deadline - sim1717_steady_now());
             if (remaining > 0ms){
                 pbf_wait(ctx, remaining);
             }
@@ -2048,17 +2075,17 @@ void force_repel_expiry(VideoStream& stream,
     battle_menu.make_overlays(overlays);
     black.make_overlays(overlays);
     overworld.make_overlays(overlays);
-    const auto deadline = std::chrono::steady_clock::now() + 30s;
-    auto quiet_since = std::chrono::steady_clock::now();
+    const auto deadline = sim1717_steady_now() + 30s;
+    auto quiet_since = sim1717_steady_now();
     bool quiet = false;
-    while (std::chrono::steady_clock::now() < deadline){
+    while (sim1717_steady_now() < deadline){
         const auto frame = stream.video().snapshot();
         if (!frame){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Repel renewal: No video frame during cleanup.",
                 stream);
         }
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = sim1717_steady_now();
         if (battle_dialogue.detect(*frame.frame) || battle_menu.detect(*frame.frame)){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Repel renewal: Battle detected during cleanup; renewal not confirmed.",
@@ -2100,6 +2127,10 @@ void force_repel_expiry(VideoStream& stream,
 void use_HM(VideoStream& stream, ProControllerContext& context, const std::string& label
 
 ){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_use_hm(label);
+        return;
+    }
     stream.log("Using " + label);
     const ImageFloatBox box{0.670000, 0.600000, 0.100000, 0.150000};
     SelectionArrowFinder arrow(stream.overlay(), box, COLOR_GREEN);

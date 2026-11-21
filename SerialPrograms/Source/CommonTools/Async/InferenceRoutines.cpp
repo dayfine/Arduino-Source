@@ -11,6 +11,7 @@
 #include "CommonFramework/Tools/GlobalThreadPools.h"
 #include "InferenceSession.h"
 #include "InferenceRoutines.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 //#include <iostream>
 //using std::cout;
@@ -120,6 +121,10 @@ int wait_until(
     std::chrono::milliseconds default_video_period,
     std::chrono::milliseconds default_audio_period
 ){
+    if (auto* sim = NintendoSwitch::PokemonBDSP::get_sim1717_hooks()){
+        const auto timeout = std::chrono::duration_cast<Milliseconds>(deadline - current_time());
+        return sim->wait_until(stream, scope, timeout, callbacks, default_video_period);
+    }
     CancellableHolder<CancellableScope> subscope(scope);
     InferenceSession session(
         subscope, stream,
@@ -143,6 +148,9 @@ int run_until(
     std::chrono::milliseconds default_video_period,
     std::chrono::milliseconds default_audio_period
 ){
+    if (auto* sim = NintendoSwitch::PokemonBDSP::get_sim1717_hooks()){
+        return sim->run_until(stream, scope, std::move(command), callbacks, default_video_period);
+    }
     CancellableHolder<CancellableScope> subscope(scope);
     InferenceSession session(
         subscope, stream,

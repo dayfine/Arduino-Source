@@ -33,6 +33,7 @@
 #include "PokemonBDSP_AutoStory_Segment_00_tools.h"
 
 #include "PokemonBDSP_Autostory_Segment_01_tools.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 using namespace std::chrono_literals;
 
@@ -161,8 +162,8 @@ void escape_wild_battle(VideoStream& stream,
     std::chrono::seconds timeout){
     EndBattleWatcher battle_end;
     bool exit_transition = false;
-    const auto deadline = std::chrono::steady_clock::now() + timeout + 1s;
-    while (std::chrono::steady_clock::now() < deadline){
+    const auto deadline = sim1717_steady_now() + timeout + 1s;
+    while (sim1717_steady_now() < deadline){
         pbf_press_button(context, BUTTON_B, 40ms, 200ms);
         context.wait_for_all_requests();
         BattleMenuWatcher menu_ready(battle_type, COLOR_YELLOW);

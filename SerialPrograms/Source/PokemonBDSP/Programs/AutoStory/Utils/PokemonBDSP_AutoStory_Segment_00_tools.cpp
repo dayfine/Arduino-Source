@@ -53,6 +53,7 @@
 #include "PokemonBDSP_AutoStory_Battle.h"
 #include "PokemonBDSP_AutoStory_Dialog.h"
 #include "PokemonBDSP_AutoStory_Segment_00_tools.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 using namespace std::chrono_literals;
 
@@ -75,7 +76,7 @@ BattleDialogWatcher::BattleDialogWatcher(Color color)
 void clown_dialog_helper(VideoStream& stream, ProControllerContext& context, DpadPosition direction){
     stream.log("[AutoStory] Starting clown dialog helper...", COLOR_BLUE);
 
-    const auto overall_deadline = std::chrono::steady_clock::now() + 30s;
+    const auto overall_deadline = sim1717_steady_now() + 30s;
 
     // -------------------------------------------------
     // Phase 1: Move + interact until dialog is detected.
@@ -85,7 +86,7 @@ void clown_dialog_helper(VideoStream& stream, ProControllerContext& context, Dpa
 
     while (!dialog_started){
 
-        if (std::chrono::steady_clock::now() > overall_deadline){
+        if (sim1717_steady_now() > overall_deadline){
             stream.log("[AutoStory] Clown helper timed out finding dialog.", COLOR_RED);
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "[AutoStory] Clown helper timed out finding dialog.",
@@ -444,6 +445,10 @@ static void verify_tutorial_settings_once(VideoStream& stream, ProControllerCont
 
 
 void verify_tutorial_settings(VideoStream& stream, ProControllerContext& context, Language language, bool set_battle_style){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_verify_settings();
+        return;
+    }
     // Settings-only recovery: initial attempt plus three retries.
     // Never permit route movement unless the complete check succeeds.
     constexpr size_t MAX_RETRIES = 3;
@@ -507,6 +512,10 @@ void set_time_fast(SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     const DateTime& target,
     bool preserve_date){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_set_time();
+        return;
+    }
     env.log("[AutoStory] Fast date set starting...", COLOR_ORANGE);
 
     // 1) Home
@@ -752,6 +761,10 @@ static size_t select_battle_move_slot(VideoStream& stream,
 void fight_tutorial_trainer(VideoStream& stream,
     ProControllerContext& context,
     const std::string& trainer){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_fight_trainer(trainer);
+        return;
+    }
     stream.log("[AutoStory] Starting " + trainer + " battle...", COLOR_BLUE);
 
     // Allow battle transition to finish.
@@ -849,6 +862,10 @@ void fight_tutorial_trainer(VideoStream& stream,
 // ---------------------------------------------------------------------------
 
 void fight_starly(VideoStream& stream, ProControllerContext& context){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_fight_starly();
+        return;
+    }
     stream.log("[AutoStory] Starting Starly battle...", COLOR_BLUE);
 
     // Declare OUTSIDE the loop so accumulated detector state
@@ -1474,6 +1491,13 @@ static void fight_using_move_slot(VideoStream& stream,
     const std::string& label,
     const AutoStoryOptions* training_options = nullptr,
     bool battle_menu_confirmed = false){
+    if (auto* sim = get_sim1717_hooks()){
+        if (sim->on_fight_trainer(label)){
+            pbf_wait(context, 700ms);
+            context.wait_for_all_requests();
+            return;
+        }
+    }
     // Tackle remains the simple neutral choice for Turtwig against the early
     // bird/bug encounters. Chimchar/Piplup prefer their learned slot 3 attack.
     const bool prefer_third = training_options && training_options->starter_choice != StarterChoice::TURTWIG;
@@ -1826,6 +1850,10 @@ void fight_trainer_using_moves(VideoStream& stream,
     const std::vector<size_t>& moves,
     const std::string& label,
     bool post_battle_dialogue_cleanup){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_fight_trainer(label);
+        return;
+    }
     fight_using_move_list(stream, context, BattleType::TRAINER, moves, label, true, post_battle_dialogue_cleanup);
 }
 
@@ -1844,6 +1872,10 @@ void fight_trainer_using_moves(VideoStream& stream,
     bool post_battle_dialogue_cleanup,
     bool control_second_pokemon,
     Language language){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_fight_trainer(label);
+        return;
+    }
     // Preserve the list-based selection/target/exit handling. These priorities
     // refer to the wiki's standardized slot roles, not move-name OCR.
     std::vector<size_t> priorities{1, 2, 4, 3};
@@ -2367,10 +2399,18 @@ void fight_trainer_using_move_slot(VideoStream& stream,
     ProControllerContext& context,
     size_t move_slot,
     const std::string& label){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_fight_trainer(label);
+        return;
+    }
     fight_using_move_slot(stream, context, BattleType::TRAINER, move_slot, label);
 }
 
 void battle_1_pokemon(VideoStream& stream, ProControllerContext& context, const AutoStoryOptions& options){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_battle_1_pokemon();
+        return;
+    }
     // Level 7 retains the demonstrated pre-Tristan level; route encounters may
     // already have supplied that experience. Never skip the full-HP check.
     uint8_t previous_level = 0;
@@ -2405,6 +2445,10 @@ void battle_1_pokemon(VideoStream& stream, ProControllerContext& context, const 
 // ---------------------------------------------------------------------------
 
 void catch_1_pokemon(VideoStream& stream, ProControllerContext& context){
+    if (auto* sim = get_sim1717_hooks()){
+        sim->on_catch_1_pokemon();
+        return;
+    }
     stream.log("[AutoStory] Starting catch_1_pokemon helper...", COLOR_BLUE);
 
     encounter_one_wild_pokemon(stream, context);

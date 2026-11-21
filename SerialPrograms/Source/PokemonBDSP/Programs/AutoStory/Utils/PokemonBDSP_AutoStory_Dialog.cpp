@@ -26,6 +26,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
 
 #include "PokemonBDSP_AutoStory_Dialog.h"
+#include "PokemonBDSP/Programs/AutoStory/Sim1717/Sim1717_Hooks.h"
 
 using namespace std::chrono_literals;
 
@@ -76,17 +77,17 @@ void clear_dialog(VideoStream& stream,
             "Dialog: Unknown stop mode.",
             stream);
     }
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(timeout_sec);
-    auto absent_since = std::chrono::steady_clock::now();
+    const auto deadline = sim1717_steady_now() + std::chrono::seconds(timeout_sec);
+    auto absent_since = sim1717_steady_now();
     bool dialogue_seen = false;
-    while (std::chrono::steady_clock::now() < deadline){
+    while (sim1717_steady_now() < deadline){
         const auto frame = stream.video().snapshot();
         if (!frame){
             OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
                 "Dialog: No video frame.",
                 stream);
         }
-        const auto now = std::chrono::steady_clock::now();
+        const auto now = sim1717_steady_now();
         const bool dialogue_visible = dialogue.detect(*frame.frame);
         const bool card_visible = card && card->detect(*frame.frame);
         dialogue_seen = dialogue_seen || dialogue_visible || card_visible;
