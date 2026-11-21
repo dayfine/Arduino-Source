@@ -126,8 +126,12 @@ namespace{
 
 constexpr int VIEW_WIDTH = 192;
 constexpr int VIEW_HEIGHT = 108;
-//  A step scrolls 2 to 10 pixels of the copy in 300 ms.
-constexpr int VIEW_REACH = 12;
+//  A horizontal step scrolls 12 to 17 pixels of the 192x108 copy across
+//  perspective bands (lab-B 2026-11-21, 00.03 into_dawns_scene west 7 open:
+//  12-14 top, 15-17 bottom; reach 12 clamped near bands and read steps as
+//  still). Vertical steps scroll 2 to 10 pixels.
+constexpr int VIEW_REACH_X = 18;
+constexpr int VIEW_REACH_Y = 12;
 
 //  The mean of the pixel at (x, y) and its neighbours, each colour channel.
 uint32_t neighbourhood_mean(const ImageRGB32& image, int x, int y){
@@ -172,7 +176,7 @@ double band_difference(const ImageRGB32& before, const ImageRGB32& after, int to
     uint64_t sum = 0;
     size_t count = 0;
     for (int y = top; y < bottom; y++){
-        for (int x = VIEW_REACH; x < VIEW_WIDTH - VIEW_REACH; x++){
+        for (int x = VIEW_REACH_X; x < VIEW_WIDTH - VIEW_REACH_X; x++){
             if (in_player_box(x, y)){
                 continue;
             }
@@ -192,8 +196,8 @@ BandShift band_shift(const ImageRGB32& before, const ImageRGB32& after, int top,
     BandShift best;
     best.unshifted = band_difference(before, after, top, bottom, 0, 0);
     best.shifted = best.unshifted;
-    for (int dy = -VIEW_REACH; dy <= VIEW_REACH; dy++){
-        for (int dx = -VIEW_REACH; dx <= VIEW_REACH; dx++){
+    for (int dy = -VIEW_REACH_Y; dy <= VIEW_REACH_Y; dy++){
+        for (int dx = -VIEW_REACH_X; dx <= VIEW_REACH_X; dx++){
             if (dx == 0 && dy == 0){
                 continue;
             }
@@ -246,11 +250,11 @@ bool ViewShift::scrolled() const{
 ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& after){
     const ImageRGB32 a = smoothed(before.scale_to(VIEW_WIDTH, VIEW_HEIGHT));
     const ImageRGB32 b = smoothed(after.scale_to(VIEW_WIDTH, VIEW_HEIGHT));
-    constexpr int ROWS = VIEW_HEIGHT - 2 * VIEW_REACH;
+    constexpr int ROWS = VIEW_HEIGHT - 2 * VIEW_REACH_Y;
     constexpr int BANDS = (int)ViewShift::BANDS;
     ViewShift shift;
     for (int i = 0; i < BANDS; i++){
-        shift.bands[i] = band_shift(a, b, VIEW_REACH + ROWS * i / BANDS, VIEW_REACH + ROWS * (i + 1) / BANDS);
+        shift.bands[i] = band_shift(a, b, VIEW_REACH_Y + ROWS * i / BANDS, VIEW_REACH_Y + ROWS * (i + 1) / BANDS);
     }
     return shift;
 }

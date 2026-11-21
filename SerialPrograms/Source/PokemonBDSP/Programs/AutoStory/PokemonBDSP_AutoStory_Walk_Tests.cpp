@@ -334,6 +334,19 @@ ImageRGB32 scenery_after_a_step_north(){
     }
     return screen;
 }
+//  A step west as the console's camera shows it (lab-B 2026-11-21, 00.03
+//  into_dawns_scene west 7 open): 13-17 pixels on the 192x108 copy (26-34
+//  on the 384x216 synthetic screen), wider than 12 in the near bands.
+ImageRGB32 scenery_after_a_step_west(){
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        const int scroll = 26 + 8 * y / 216;
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = scenery_at(x - scroll + 1000, y + 1000);
+        }
+    }
+    return screen;
+}
 //  Each colour channel of the pixels in [x0, x1) x [y0, y1) times `scale`,
 //  or set to `fill` if given.
 void paint(ImageRGB32& screen, int x0, int y0, int x1, int y1, double scale, uint32_t fill = 0){
@@ -365,6 +378,7 @@ UnitTestResult test_view_shift(Logger&){
         cases.push_back({"a step east: the view scrolls 16 pixels west", scenery(16, 0), true});
         cases.push_back({"a step south", scenery(0, 12), true});
         cases.push_back({"a step north, the near rows scrolling further", scenery_after_a_step_north(), true});
+        cases.push_back({"a step west, near rows scrolling 13-17 px on 192x108", scenery_after_a_step_west(), true});
         {
             //  r83, r84: a cloud's shadow over the top of the view.
             ImageRGB32 shadow = scenery(0, 0);
