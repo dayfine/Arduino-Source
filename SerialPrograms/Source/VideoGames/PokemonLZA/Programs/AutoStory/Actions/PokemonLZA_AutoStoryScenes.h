@@ -19,6 +19,10 @@ namespace NintendoSwitch{
 namespace PokemonLZA{
 
 
+//  Moves the choice cursor to 0-based `index` and presses A.
+//  Fails as "no_choice", "no_such_choice", "choice_not_reached", or "game_not_running".
+std::optional<Pokemon::StoryFailure> choose_row(PlzaBackend& backend, int index);
+
 //  Passively waits (no button presses) until the station platform is live with free control.
 //  Fails as "platform_not_seen" after `timeout`, or "game_not_running" on HOME.
 std::optional<Pokemon::StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds timeout);

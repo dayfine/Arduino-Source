@@ -30,9 +30,9 @@ inline const Pokemon::ScreenMatch TEXT_SHOWS{
     .any_readings = {ADVANCE_ARROW_READING},
 };
 
-//  The party bar or the controls hint, neither under a text box.
+//  The party bar, the controls hint, or an A prompt, none under a text box.
 inline const Pokemon::ScreenMatch CONTROL_SHOWS{
-    .any_events = {ScreenEvent::PLAYER_CAN_MOVE},
+    .any_events = {ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::INTERACT_PROMPT},
     .no_events = {ScreenEvent::DIALOG_BOX},
     .any_readings = {CONTROLS_HINT_READING},
 };
@@ -55,6 +55,18 @@ inline const Pokemon::ScreenMatch PLATFORM_HINT{
 //  A tutorial card.
 inline const Pokemon::ScreenMatch CARD_SHOWS{
     .any_readings = {TUTORIAL_CARD_READING},
+};
+
+//  Text, a fade, or a card: the screen is busy.
+inline const Pokemon::ScreenMatch SCENE_BUSY{
+    .any_events = {ScreenEvent::DIALOG_BOX, ScreenEvent::FADE_BLACK, ScreenEvent::FADE_WHITE},
+    .any_readings = {ADVANCE_ARROW_READING, TUTORIAL_CARD_READING},
+};
+
+//  A choice box whose highlighted row and row count both read.
+inline const Pokemon::ScreenMatch CHOICE_WITH_ROWS{
+    .all_events = {ScreenEvent::CHOICE_BOX},
+    .all_readings = {CHOICE_SELECTED_READING, CHOICE_ROWS_READING},
 };
 
 

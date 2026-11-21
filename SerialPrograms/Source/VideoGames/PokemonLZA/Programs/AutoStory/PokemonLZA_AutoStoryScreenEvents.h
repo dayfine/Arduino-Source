@@ -12,6 +12,7 @@
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_StoryDialogDetector.h"
 
@@ -35,6 +36,7 @@ public:
 private:
     StoryDialogDetector m_dialog;
     SelectionArrowDetector m_choice_arrow;
+    ButtonDetector m_interact;
 };
 
 

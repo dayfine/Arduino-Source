@@ -159,7 +159,7 @@ struct BuiltinStoryCase{
 };
 
 const BuiltinStoryCase BUILTIN_STORY_CASES[] = {
-    {.name = "1 StoryData plan parses and binds cleanly", .input = {}, .expectation = {.plan_count = 1}},
+    {.name = "2 StoryData plans parse and bind cleanly", .input = {}, .expectation = {.plan_count = 2}},
 };
 
 UnitTestResult check_builtin_story(const BuiltinStoryCase& test, CancellableScope&){
@@ -352,6 +352,35 @@ const RunCase RUN_CASES[] = {
         }},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
     },
+    {
+        .name = "01.02's chase_pancham runs its timed legs after free control",
+        .input = {.checkpoint = "01.02", .step = "chase_pancham", .looks = {PLATFORM, PLATFORM, CUTSCENE}},
+        .expectation = {.verdict = "done"},
+    },
+    {
+        .name = "01.02's pancham_cornered mashes B and stops at the choice box",
+        .input = {.checkpoint = "01.02", .step = "pancham_cornered", .looks = {
+            DIALOG, quiet_look(400ms), choice(/*selected=*/0, /*rows=*/2, /*at=*/800ms),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press B, wait 250ms"},
+    },
+    {
+        .name = "01.02's battle_with_pokemon moves Down to row 1 and confirms with A",
+        .input = {.checkpoint = "01.02", .step = "battle_with_pokemon", .looks = {choice(0), choice(1)}},
+        .expectation = {.verdict = "done", .inputs = "press Down, press A"},
+    },
+    {
+        .name = "01.02's battle_with_pokemon fails when the highlight does not move",
+        .input = {.checkpoint = "01.02", .step = "battle_with_pokemon", .looks = {choice(0)}},
+        .expectation = {.verdict = "failed at battle_with_pokemon: choice_not_reached"},
+    },
+    {
+        .name = "01.02's battle_area finishes when Ryon's A prompt holds",
+        .input = {.checkpoint = "01.02", .step = "battle_area", .looks = {
+            DIALOG, event_look(ScreenEvent::INTERACT_PROMPT, 400ms), event_look(ScreenEvent::INTERACT_PROMPT, 1500ms),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms"},
+    },
 };
 
 UnitTestResult check_run(const RunCase& test, CancellableScope& scope){
@@ -375,6 +404,8 @@ struct SceneBehaviorCase{
     std::string name;
     struct Input{
         std::string action = "scene";
+        std::string button = "A";
+        bool stop_at_choice = false;
         bool end_on_black_fade = false;
         std::vector<ScreenObservation> looks;
     };
@@ -388,13 +419,35 @@ struct SceneBehaviorCase{
 
 const SceneBehaviorCase SCENE_CASES[] = {
     {
-        .name = "A on text, passive on fades, A on tutorial card, done on held control",
-        .input = {.looks = {
+        .name = "B on text, passive on fades, A on tutorial card, done on held control",
+        .input = {.button = "B", .looks = {
             event_look(ScreenEvent::DIALOG_BOX, 0ms), event_look(ScreenEvent::FADE_WHITE, 400ms),
             reading_look(TUTORIAL_CARD_READING, 800ms), event_look(ScreenEvent::FADE_BLACK, 1200ms),
             party_bar(1600ms), party_bar(2700ms),
         }},
-        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A, wait 250ms, wait 250ms"},
+        .expectation = {.verdict = "done", .inputs = "press B, wait 250ms, press A, wait 250ms, wait 250ms"},
+    },
+    {
+        .name = "stop_at_choice advances text, waits through quiet frames, and stops at choice",
+        .input = {.button = "B", .stop_at_choice = true, .looks = {
+            event_look(ScreenEvent::DIALOG_BOX, 0ms), quiet_look(400ms), choice(/*selected=*/0, /*rows=*/2, /*at=*/800ms),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press B, wait 250ms"},
+    },
+    {
+        .name = "stop_at_choice with BUTTON_A presses once per text page until TEXT_A_AGAIN",
+        .input = {.button = "A", .stop_at_choice = true, .looks = {
+            event_look(ScreenEvent::DIALOG_BOX, 0ms), event_look(ScreenEvent::DIALOG_BOX, 400ms),
+            look({ScreenEvent::DIALOG_BOX}, {ADVANCE_ARROW_READING}, 800ms), choice(/*selected=*/0, /*rows=*/2, /*at=*/1200ms),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press A"},
+    },
+    {
+        .name = "stop_at_choice ending in control for 5 s with no choice fails",
+        .input = {.button = "B", .stop_at_choice = true, .looks = {
+            event_look(ScreenEvent::FADE_BLACK, 0ms), party_bar(1000ms), party_bar(3000ms), party_bar(6100ms),
+        }},
+        .expectation = {.verdict = "failed at scene: scene_ended_in_control"},
     },
     {
         .name = "end_on_black_fade stops on the black fade without pressing during fades",
@@ -405,8 +458,8 @@ const SceneBehaviorCase SCENE_CASES[] = {
         .expectation = {.verdict = "done", .inputs = "wait 250ms, press A"},
     },
     {
-        .name = "2-row choice moves Up to row 0 and confirms with A",
-        .input = {.looks = {
+        .name = "2-row choice moves Up to row 0 and confirms with A, never B",
+        .input = {.button = "B", .looks = {
             choice(/*selected=*/1, /*rows=*/2, /*at=*/0ms), choice(/*selected=*/0, /*rows=*/2, /*at=*/400ms),
             party_bar(800ms), party_bar(1900ms),
         }},
@@ -418,6 +471,15 @@ const SceneBehaviorCase SCENE_CASES[] = {
             event_look(ScreenEvent::DIALOG_BOX, 0ms), reading_look(CONTROLS_HINT_READING, 400ms),
             event_look(ScreenEvent::DIALOG_BOX, 800ms), reading_look(CONTROLS_HINT_READING, 1200ms),
             reading_look(CONTROLS_HINT_READING, 2300ms),
+        }},
+        .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press B, wait 250ms"},
+    },
+    {
+        .name = "A prompt held ends without pressing A, and later text switches to B",
+        .input = {.looks = {
+            event_look(ScreenEvent::DIALOG_BOX, 0ms), event_look(ScreenEvent::INTERACT_PROMPT, 400ms),
+            event_look(ScreenEvent::DIALOG_BOX, 800ms), event_look(ScreenEvent::INTERACT_PROMPT, 1200ms),
+            event_look(ScreenEvent::INTERACT_PROMPT, 2300ms),
         }},
         .expectation = {.verdict = "done", .inputs = "press A, wait 250ms, press B, wait 250ms"},
     },
@@ -440,6 +502,12 @@ JsonObject scene_case_args(const SceneBehaviorCase::Input& input){
     JsonObject args;
     if (input.action != "scene"){
         return args;
+    }
+    if (input.button != "A"){
+        args["button"] = input.button;
+    }
+    if (input.stop_at_choice){
+        args["stop_at_choice"] = true;
     }
     if (input.end_on_black_fade){
         args["end_on_black_fade"] = true;
@@ -469,12 +537,22 @@ Pokemon::StoryGame game_with_reload(const MarkedCheckpoints& rows, AutosaveSight
     return game;
 }
 
+JsonObject choice_scene_args(bool stop_at_choice){
+    JsonObject args;
+    if (stop_at_choice){
+        args["button"] = "B";
+        args["stop_at_choice"] = true;
+    }
+    return args;
+}
+
 struct ChainCase{
     std::string name;
     struct Input{
         std::vector<ScreenObservation> looks;
         std::vector<std::string> first_actions = {"wait_for_platform"};
         std::string second_action = "scene";
+        bool second_stops_at_choice = true;
         size_t attempts = 1;
         bool reload_when_chained = false;
         StartSignature landed = {};
@@ -497,7 +575,7 @@ const StartSignature STATION_FRONT{.talk_prompt = false, .party = 1};
 const ChainCase CHAIN_CASES[] = {
     {
         .name = "autosave seen: on from the live screen without a reload",
-        .input = {.looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, PLATFORM, reading_look(CONTROLS_HINT_READING, 2000ms)}},
+        .input = {.looks = {CUTSCENE, PLATFORM_SAVING, PLATFORM, PLATFORM, CUTSCENE, CUTSCENE, CUTSCENE, CUTSCENE, choice(0)}},
         .expectation = {.verdict = "done", .reloads = 0},
     },
     {
@@ -512,22 +590,22 @@ const ChainCase CHAIN_CASES[] = {
     },
     {
         .name = "reload when chained: waits for control after the row before's last scene, reloads, lands at the start and runs",
-        .input = {.looks = concat(ROOF_SAVED, concat({BLACK_FADE, BLACK_FADE, IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)), .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT},
+        .input = {.looks = concat(ROOF_SAVED, concat({BLACK_FADE, BLACK_FADE, IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)), .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .second_stops_at_choice = false, .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT},
         .expectation = {.verdict = "done", .reloads = 1, .line = "[Checkpoint] 01.02: control is back after 01.01's last scene; reloading the latest save"},
     },
     {
         .name = "reload when chained: control never comes back, no reload",
-        .input = {.looks = concat(ROOF_SAVED, {BLACK_FADE}), .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT},
+        .input = {.looks = concat(ROOF_SAVED, {BLACK_FADE}), .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .second_stops_at_choice = false, .reload_when_chained = true, .landed = STATION_FRONT, .start = STATION_FRONT},
         .expectation = {.verdict = "failed at 01.02 chain: walk_not_free", .reloads = 0},
     },
     {
         .name = "reload when chained: the reload lands elsewhere, stops with nothing pressed",
-        .input = {.looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)), .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .reload_when_chained = true, .landed = {.talk_prompt = true, .party = 1}, .start = STATION_FRONT},
+        .input = {.looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)), .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .second_stops_at_choice = false, .reload_when_chained = true, .landed = {.talk_prompt = true, .party = 1}, .start = STATION_FRONT},
         .expectation = {.verdict = "failed at 01.02 chain: reload_off_start", .reloads = 1, .line = "[Checkpoint] 01.02: the reload landed somewhere other than its start: the screen reads (talk prompt, party 1), the start is (no talk prompt, party 1); nothing pressed after the reload", .nothing_pressed_after_reload = true},
     },
     {
         .name = "reload when chained: no start signature to check the landing against, stops with nothing pressed",
-        .input = {.looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)), .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .reload_when_chained = true, .landed = STATION_FRONT},
+        .input = {.looks = concat(ROOF_SAVED, concat({IN_CONTROL, IN_CONTROL}, AFTER_RELOAD)), .first_actions = {"wait_for_platform", "wait_for_platform"}, .second_action = "scene", .second_stops_at_choice = false, .reload_when_chained = true, .landed = STATION_FRONT},
         .expectation = {.verdict = "failed at 01.02 chain: reload_unchecked", .reloads = 1, .nothing_pressed_after_reload = true},
     },
 };
@@ -542,7 +620,8 @@ UnitTestResult check_chain(const ChainCase& test, CancellableScope& scope){
     for (size_t i = 1; i < test.input.first_actions.size(); i++){
         rows[0].steps.push_back(plan_step(std::format("{}_again", test.input.first_actions[i]), test.input.first_actions[i], JsonObject()));
     }
-    rows.push_back(one_step_row("01.02", test.input.second_action, JsonObject()));
+    const bool stop_at_choice = test.input.second_action == "scene" && test.input.second_stops_at_choice;
+    rows.push_back(one_step_row("01.02", test.input.second_action, choice_scene_args(stop_at_choice)));
     note_autosaves(rows, sightings);
     std::vector<CheckpointStart> starts;
     if (test.input.start){

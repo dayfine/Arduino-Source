@@ -34,17 +34,25 @@ namespace{
 //  A sign of control held this long ends the machine (two looks or more):
 //  the party bar also shows between a scene's lines.
 constexpr Milliseconds CONTROL_HOLD = 1s;
+//  With stop_at_choice, control held this long with nothing busy is the
+//  scene over with no choice.
+constexpr Milliseconds CONTROL_INSTEAD_HOLD = 5s;
 constexpr Milliseconds POLL = 250ms;
 constexpr Milliseconds PRESS_HOLD = 160ms;
 constexpr Milliseconds PRESS_RELEASE = 240ms;
+//  stop_at_choice with BUTTON_A: one A per text page; the same page this long
+//  after its A takes another (a dropped press).
+constexpr Milliseconds TEXT_A_AGAIN = 2s;
 
 
 enum class SceneScreen{
     FADE,           //  waits: a fade decides nothing
     BLACK_FADE_END, //  terminal, with end_on_black_fade
+    CHOICE_END,     //  terminal, with stop_at_choice
     CHOICE,         //  A on its top row
     TEXT,           //  A, or B (text_button())
     CARD,           //  a tutorial card: A
+    ENDED_IN_CONTROL,   //  failing: stop_at_choice, but control held CONTROL_INSTEAD_HOLD
     CONTROL,        //  terminal: a sign of control held CONTROL_HOLD
     CONTROL_SHOWING,
     OTHER,          //  a cutscene, a banner, a screen no detector reads: A, or B
@@ -60,9 +68,11 @@ struct SceneScreenName{
 constexpr SceneScreenName SCREEN_NAMES[] = {
     {SceneScreen::FADE, "fade", true},
     {SceneScreen::BLACK_FADE_END, "black_fade", false},
+    {SceneScreen::CHOICE_END, "choice", false},
     {SceneScreen::CHOICE, "choice_top_row", true},
     {SceneScreen::TEXT, "text", false},
     {SceneScreen::CARD, "card", false},
+    {SceneScreen::ENDED_IN_CONTROL, "ended_in_control", false},
     {SceneScreen::CONTROL, "control", false},
     {SceneScreen::CONTROL_SHOWING, "control_showing", true},
     {SceneScreen::OTHER, "other", false},
@@ -73,11 +83,36 @@ const SceneScreenName& name_of(SceneScreen screen){
 }
 
 bool terminal(SceneScreen screen){
-    return screen == SceneScreen::BLACK_FADE_END || screen == SceneScreen::CONTROL;
+    switch (screen){
+    case SceneScreen::BLACK_FADE_END:
+    case SceneScreen::CHOICE_END:
+    case SceneScreen::ENDED_IN_CONTROL:
+    case SceneScreen::CONTROL:
+        return true;
+    default:
+        return false;
+    }
 }
 
 bool hud_shows(const ScreenObservation& look){
-    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(CONTROLS_HINT_READING);
+    return look.events.has(ScreenEvent::PLAYER_CAN_MOVE) || look.readings.contains(CONTROLS_HINT_READING) ||
+        look.events.has(ScreenEvent::INTERACT_PROMPT);
+}
+
+//  Not when stopping at a choice: the talk can show control markers between lines.
+bool party_bar_is_control(const SceneMachineConfig& config){
+    return !config.stop_at_choice;
+}
+
+bool ends_machine(const SceneMachineConfig& config, const ScreenObservation& look){
+    return party_bar_is_control(config)
+        ? CONTROL_SHOWS.matches(look)
+        : look.readings.contains(CONTROLS_HINT_READING) && !look.events.has(ScreenEvent::DIALOG_BOX);
+}
+
+std::string expected_end(const SceneMachineConfig& config){
+    std::string ends = config.stop_at_choice ? "the choice box, " : "";
+    return ends + (party_bar_is_control(config) ? "the controls hint, the party bar or the A prompt" : "the controls hint");
 }
 
 bool scene_under_way(const ScreenObservation& look){
@@ -90,8 +125,6 @@ bool scene_under_way(const ScreenObservation& look){
     return FADE_SHOWS.matches(look) || !look.events.has(ScreenEvent::SCREEN_STILL);
 }
 
-constexpr std::string_view EXPECTED_END = "the controls hint or the party bar";
-
 
 //  The time-dependent part of the machine; a look's time is its `when`.
 //  classify() reads the state; record() then adds the look to it.
@@ -102,24 +135,36 @@ public:
     {}
 
     SceneScreen classify(const ScreenObservation& look) const;
-    void record(const ScreenObservation& look);
+    void record(SceneScreen screen, const ScreenObservation& look);
 
     //  B, not A: on a look with a sign of control and once one has shown
-    //  in the scene, A starts a talk.
-    Button text_button(const ScreenObservation& look) const;
-    Button other_button() const;
+    //  in the scene, A starts a talk. None: the page's A is pressed.
+    std::optional<Button> text_button(const ScreenObservation& look) const;
+    //  None with stop_at_choice: an A in flight as the choice opens could take
+    //  its top row.
+    std::optional<Button> other_button() const;
 
     size_t black_fades() const{
         return m_black_fades;
     }
 
 private:
+    //  stop_at_choice with BUTTON_A: a new page (its advance arrow came or went,
+    //  or other screens since), or the last A's page TEXT_A_AGAIN on.
+    bool text_a_due(const ScreenObservation& look) const;
+
     SceneMachineConfig m_config;
     bool m_scene_seen = false;
     //  A sign of control after the scene started.
     bool m_overworld_seen = false;
     Pokemon::HoldTimer m_control_hold{CONTROL_HOLD};
+    Pokemon::HoldTimer m_control_instead_hold{CONTROL_INSTEAD_HOLD};
     size_t m_black_fades = 0;
+    struct TextA{
+        WallClock at;
+        bool arrow;
+    };
+    std::optional<TextA> m_text_a;
 };
 
 SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
@@ -127,7 +172,7 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
         return m_config.end_on_black_fade && look.events.has(ScreenEvent::FADE_BLACK) ? SceneScreen::BLACK_FADE_END : SceneScreen::FADE;
     }
     if (look.events.has(ScreenEvent::CHOICE_BOX)){
-        return SceneScreen::CHOICE;
+        return m_config.stop_at_choice ? SceneScreen::CHOICE_END : SceneScreen::CHOICE;
     }
     if (TEXT_SHOWS.matches(look)){
         return SceneScreen::TEXT;
@@ -136,24 +181,51 @@ SceneScreen SceneTimeline::classify(const ScreenObservation& look) const{
         return SceneScreen::CARD;
     }
     if (CONTROL_SHOWS.matches(look)){
-        return m_control_hold.held(look.when) ? SceneScreen::CONTROL : SceneScreen::CONTROL_SHOWING;
+        if (m_control_hold.held(look.when)){
+            return SceneScreen::CONTROL;
+        }
+        if (m_control_instead_hold.held(look.when)){
+            return SceneScreen::ENDED_IN_CONTROL;
+        }
+        return SceneScreen::CONTROL_SHOWING;
     }
     return SceneScreen::OTHER;
 }
 
-Button SceneTimeline::text_button(const ScreenObservation& look) const{
-    return hud_shows(look) || m_overworld_seen ? BUTTON_B : BUTTON_A;
+std::optional<Button> SceneTimeline::text_button(const ScreenObservation& look) const{
+    if (m_config.stop_at_choice){
+        if (m_config.button != BUTTON_A){
+            return m_config.button;
+        }
+        return text_a_due(look) ? std::optional<Button>(BUTTON_A) : std::nullopt;
+    }
+    return hud_shows(look) || m_overworld_seen ? BUTTON_B : m_config.button;
 }
 
-Button SceneTimeline::other_button() const{
-    return m_overworld_seen ? BUTTON_B : BUTTON_A;
+bool SceneTimeline::text_a_due(const ScreenObservation& look) const{
+    return !m_text_a || m_text_a->arrow != look.readings.contains(ADVANCE_ARROW_READING) ||
+        look.when - m_text_a->at >= TEXT_A_AGAIN;
 }
 
-void SceneTimeline::record(const ScreenObservation& look){
+std::optional<Button> SceneTimeline::other_button() const{
+    if (m_config.stop_at_choice){
+        return std::nullopt;
+    }
+    return m_overworld_seen ? BUTTON_B : m_config.button;
+}
+
+void SceneTimeline::record(SceneScreen screen, const ScreenObservation& look){
+    if (screen != SceneScreen::TEXT){
+        m_text_a.reset();
+    }else if (m_config.stop_at_choice && m_config.button == BUTTON_A && text_a_due(look)){
+        m_text_a = TextA{look.when, look.readings.contains(ADVANCE_ARROW_READING)};
+    }
     m_black_fades += look.events.has(ScreenEvent::FADE_BLACK) ? 1 : 0;
     m_overworld_seen = m_overworld_seen || (m_scene_seen && CONTROL_SHOWS.matches(look));
     m_scene_seen = m_scene_seen || scene_under_way(look);
-    m_control_hold.update(CONTROL_SHOWS.matches(look), look.when);
+    m_control_hold.update(ends_machine(m_config, look), look.when);
+    const bool control_instead = !party_bar_is_control(m_config) && CONTROL_SHOWS.matches(look) && !SCENE_BUSY.matches(look);
+    m_control_instead_hold.update(control_instead, look.when);
 }
 
 
@@ -161,7 +233,8 @@ std::string describe_look(const ScreenObservation& look){
     const std::pair<ScreenEvent, std::string_view> events[] = {
         {ScreenEvent::FADE_BLACK, "black fade"}, {ScreenEvent::FADE_WHITE, "white fade"},
         {ScreenEvent::DIALOG_BOX, "text box"}, {ScreenEvent::CHOICE_BOX, "choice box"},
-        {ScreenEvent::PLAYER_CAN_MOVE, "party bar"}, {ScreenEvent::SCREEN_STILL, "still"},
+        {ScreenEvent::PLAYER_CAN_MOVE, "party bar"}, {ScreenEvent::INTERACT_PROMPT, "A prompt"},
+        {ScreenEvent::SCREEN_STILL, "still"},
     };
     const std::pair<std::string_view, std::string_view> readings[] = {
         {CONTROLS_HINT_READING, "controls hint"}, {ADVANCE_ARROW_READING, "advance arrow"},
@@ -261,6 +334,19 @@ std::optional<Button> button_for(SceneScreen screen, const ScreenObservation& lo
     }
 }
 
+std::optional<Pokemon::StoryFailure> scene_outcome(
+    PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, SceneScreen screen
+){
+    if (screen == SceneScreen::ENDED_IN_CONTROL){
+        return Pokemon::StoryFailure{.code = "scene_ended_in_control", .detail = std::format(
+            "{}: the scene ended in control for {} ms with nothing busy (expecting {}).",
+            label, CONTROL_INSTEAD_HOLD.count(), expected_end(config)
+        )};
+    }
+    backend.log(std::format("[PLZA {}] done on {}.", label, name_of(screen).name));
+    return std::nullopt;
+}
+
 } // namespace
 
 
@@ -271,7 +357,8 @@ std::string describe_scene_look(const ScreenObservation& look){
 std::optional<Pokemon::StoryFailure> run_scene_machine(
     PlzaBackend& backend, std::string_view label, const SceneMachineConfig& config, Milliseconds timeout
 ){
-    backend.log(std::format("[PLZA {}] start, expecting {}.", label, EXPECTED_END));
+    const std::string expected = expected_end(config);
+    backend.log(std::format("[PLZA {}] start, expecting {}.", label, expected));
     ScreenObservation look = backend.observe();
     const WallClock start = look.when;
     SceneTimeline timeline(config);
@@ -285,7 +372,7 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
         }
         const SceneScreen screen = timeline.classify(look);
         const std::optional<Button> button = button_for(screen, look, timeline, log);
-        timeline.record(look);
+        timeline.record(screen, look);
         std::string readings = describe_look(look);
         if (look.events.has(ScreenEvent::FADE_BLACK)){
             readings = std::format("{}, black fade {}", readings, timeline.black_fades());
@@ -297,12 +384,11 @@ std::optional<Pokemon::StoryFailure> run_scene_machine(
             backend.wait(POLL);
         }
         if (terminal(screen)){
-            backend.log(std::format("[PLZA {}] done on {}.", label, name_of(screen).name));
-            return std::nullopt;
+            return scene_outcome(backend, label, config, screen);
         }
         if (look.when - start >= timeout || looks >= max_looks){
             return Pokemon::StoryFailure{.code = "scene_timeout", .detail = std::format(
-                "{}: Did not finish within {} s (expecting {}).", label, std::chrono::duration_cast<Seconds>(timeout).count(), EXPECTED_END
+                "{}: Did not finish within {} s (expecting {}).", label, std::chrono::duration_cast<Seconds>(timeout).count(), expected
             )};
         }
         look = backend.observe();

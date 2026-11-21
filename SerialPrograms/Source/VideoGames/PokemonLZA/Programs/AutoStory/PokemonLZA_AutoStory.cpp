@@ -36,7 +36,7 @@ AutoStory_Descriptor::AutoStory_Descriptor()
         "PokemonLZA:AutoStory",
         std::format("{} LZA", STRING_POKEMON), "Auto Story",
         "Programs/PokemonLZA/AutoStory.html",
-        "Play the main story of Pokemon Legends: Z-A through Main Mission 01 (checkpoint 01.01, from the station platform arrival). "
+        "Play the main story of Pokemon Legends: Z-A through Main Mission 01 (checkpoints 01.01 through 01.02, from the station platform arrival to the battle area). "
         "Load the latest save first unless that is turned off.",
         PanelQualityStanding::DEVELOPER,
         ProgramControllerClass::StandardController_NoRestrictions,

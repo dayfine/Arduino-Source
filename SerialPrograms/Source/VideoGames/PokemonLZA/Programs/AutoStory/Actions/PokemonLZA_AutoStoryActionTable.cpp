@@ -76,6 +76,17 @@ bool flag(const JsonObject& args, const std::string& key){
     return value != nullptr && value->to_boolean_throw();
 }
 
+Button scene_button(const JsonObject& args){
+    const JsonValue* value = args.get_value("button");
+    if (value == nullptr || value->to_string_throw() == "A"){
+        return BUTTON_A;
+    }
+    if (value->to_string_throw() == "B"){
+        return BUTTON_B;
+    }
+    throw ParseException("\"button\" must be \"A\" or \"B\"");
+}
+
 //  An action with no args: `run` as the step's run.
 template <typename Run>
 Pokemon::StoryActionParser no_args(Run run){
@@ -162,16 +173,23 @@ std::optional<StoryFailure> walk_step(const WalkArgs& walk, PlzaBackend& backend
 }
 
 
-constexpr Milliseconds SCENE_TIMEOUT = 360s;
+Milliseconds scene_timeout(const SceneMachineConfig& config){
+    if (config.stop_at_choice || config.button == BUTTON_B){
+        return 120s;
+    }
+    return 360s;
+}
 
 Pokemon::StoryActionParser scene_action(){
     return [](const JsonObject& args) -> StoryStepRun{
-        reject_unknown_keys(args, {"end_on_black_fade"});
+        reject_unknown_keys(args, {"button", "stop_at_choice", "end_on_black_fade"});
         const SceneMachineConfig config{
+            .stop_at_choice = flag(args, "stop_at_choice"),
+            .button = scene_button(args),
             .end_on_black_fade = flag(args, "end_on_black_fade"),
         };
         return [config](PlzaBackend& backend, RunState&){
-            return run_scene_machine(backend, "scene", config, SCENE_TIMEOUT);
+            return run_scene_machine(backend, "scene", config, scene_timeout(config));
         };
     };
 }
@@ -240,6 +258,7 @@ StoryActions plza_story_actions(){
     std::pair<std::string_view, StoryActionParser> table[] = {
         {action_name(PlzaAction::WAIT_FOR_PLATFORM), platform_action(wait_for_platform, /*fallback=*/180s)},
         {action_name(PlzaAction::WALK), walk_action()},
+        {action_name(PlzaAction::CHOOSE_1), no_args([](PlzaBackend& backend, RunState&){ return choose_row(backend, 1); })},
         {action_name(PlzaAction::SCENE), scene_action()},
         {action_name(PlzaAction::PLUS_SKIP), no_args([](PlzaBackend& backend, RunState&){ return plus_skip_step(backend); })},
         {action_name(PlzaAction::SET_TEXT_SPEED_FAST), no_args([](PlzaBackend& backend, RunState&){ return set_text_speed_fast(backend); })},

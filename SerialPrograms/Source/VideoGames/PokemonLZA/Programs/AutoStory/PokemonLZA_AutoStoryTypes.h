@@ -41,6 +41,7 @@ constexpr std::string_view TUTORIAL_CARD_READING = "scene.tutorial_card";
 enum class PlzaAction{
     WAIT_FOR_PLATFORM,
     WALK,
+    CHOOSE_1,
     SCENE,
     PLUS_SKIP,
     SET_TEXT_SPEED_FAST,

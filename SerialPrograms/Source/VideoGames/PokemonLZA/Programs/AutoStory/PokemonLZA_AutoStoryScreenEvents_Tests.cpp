@@ -31,6 +31,7 @@ struct FrameCase{
     };
     Input input;
     struct Expectation{
+        std::optional<bool> interact_prompt = std::nullopt;
         std::optional<bool> dialog = std::nullopt;
         std::optional<bool> choice = std::nullopt;
         std::optional<bool> fade_white = std::nullopt;
@@ -40,6 +41,12 @@ struct FrameCase{
 
 const FrameCase FRAME_CASES[] = {
     {
+        //  01.02: no Pokemon, no party bar.
+        .name = "the A Talk prompt on the Italian game during 01.02",
+        .input = {.path = "AutoStoryScreenEvents/it_0102_parla_talk_prompt.png"},
+        .expectation = {.interact_prompt = true, .dialog = false, .choice = false},
+    },
+    {
         .name = "the tourist's yes or yes dialog and choice box during 01.01 arrival",
         .input = {.path = "AutoStoryDetectors/ArrivalToAd/0065-text_box+choice_box.jpg"},
         .expectation = {.dialog = true, .choice = true, .fade_white = false},
@@ -47,7 +54,7 @@ const FrameCase FRAME_CASES[] = {
     {
         .name = "the bag's choice box during 01.01 arrival",
         .input = {.path = "AutoStoryDetectors/ArrivalToMissionBanner/0173-text_box.jpg"},
-        .expectation = {.dialog = true, .choice = true, .fade_white = false},
+        .expectation = {.interact_prompt = false, .dialog = true, .choice = true, .fade_white = false},
     },
     {
         .name = "the white fade during 01.01 arrival",
@@ -57,12 +64,12 @@ const FrameCase FRAME_CASES[] = {
     {
         .name = "light pavement with autosave during 01.01 arrival",
         .input = {.path = "AutoStoryDetectors/ArrivalToAd/0038-nothing+autosave.jpg"},
-        .expectation = {.dialog = false, .choice = false, .fade_white = false},
+        .expectation = {.interact_prompt = false, .dialog = false, .choice = false, .fade_white = false},
     },
     {
         .name = "a plain dialog box without choices during 01.01 arrival",
         .input = {.path = "AutoStoryDetectors/ArrivalPastMissionBanner/0015-text_box.jpg"},
-        .expectation = {.dialog = true, .choice = false, .fade_white = false},
+        .expectation = {.interact_prompt = false, .dialog = true, .choice = false, .fade_white = false},
     },
 };
 
@@ -74,6 +81,7 @@ UnitTestResult check_frame(const FrameCase& test){
     PlzaScreenObserver observer;
     const ScreenEvents events = observer.read(ImageRGB32(path));
     const std::pair<std::string_view, std::pair<ScreenEvent, std::optional<bool>>> checks[] = {
+        {"A prompt", {ScreenEvent::INTERACT_PROMPT, test.expectation.interact_prompt}},
         {"dialog", {ScreenEvent::DIALOG_BOX, test.expectation.dialog}},
         {"choice", {ScreenEvent::CHOICE_BOX, test.expectation.choice}},
         {"white fade", {ScreenEvent::FADE_WHITE, test.expectation.fade_white}},

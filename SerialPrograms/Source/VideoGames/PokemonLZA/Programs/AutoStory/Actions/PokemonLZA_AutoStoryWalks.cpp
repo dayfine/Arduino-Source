@@ -158,6 +158,11 @@ constexpr Milliseconds FREE_CONTROL_LOOK = 250ms;
 //  sign shows. Longer than the ~7 s from the end of 01.01's scenes to control.
 constexpr Milliseconds QUIET_IS_CONTROL = 10000ms;
 
+//  An A prompt shows only in the overworld, so it is control where no
+//  party bar or hint shows (01.02). Held a second, so a prompt left up
+//  under a late fade after A is not taken.
+constexpr Milliseconds PROMPT_IS_CONTROL = 1000ms;
+
 //  What keeps control from being free; none when it is.
 std::optional<std::string_view> not_free_control(const ScreenObservation& look){
     if (look.readings.contains(ADVANCE_ARROW_READING)){
@@ -200,6 +205,7 @@ struct FreeControlWatch{
     std::string_view last_busy = "nothing";
     Pokemon::ConfirmStreak control_streak{2};
     Pokemon::HoldTimer quiet_hold{QUIET_IS_CONTROL};
+    Pokemon::HoldTimer prompt_hold{PROMPT_IS_CONTROL};
     size_t poll_looks = 0;
 };
 
@@ -212,6 +218,10 @@ bool check_free_control(PlzaBackend& backend, std::string_view walk, const Scree
     }
     const bool quiet_ready = watch.quiet_hold.update(!busy.has_value(), poll_time);
     if (watch.control_streak.update(OVERWORLD_FREE.matches(look))){
+        return true;
+    }
+    if (watch.prompt_hold.update(!busy && look.events.has(ScreenEvent::INTERACT_PROMPT), poll_time)){
+        backend.log(std::format("[PLZA] {}: the A prompt held {} ms with nothing busy: control.", walk, PROMPT_IS_CONTROL.count()));
         return true;
     }
     if (quiet_ready){
