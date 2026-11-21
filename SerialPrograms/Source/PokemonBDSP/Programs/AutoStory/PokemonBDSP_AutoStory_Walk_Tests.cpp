@@ -365,17 +365,28 @@ void paint(ImageRGB32& screen, int x0, int y0, int x1, int y1, double scale, uin
     }
 }
 
-//  01.03 Oreburgh Mine B1F (2026-11-21 05:03): bottom half of the view is
-//  black cave void, leaving only the top 2 bands active.
+//  01.03 Oreburgh Mine B1F (2026-11-21 05:03 / 05:14): cave south edge leaves
+//  only 2 active bands, and a narrow vertical corridor drops the far 2 bands
+//  to ~1.8x while all 4 bands still agree on the scroll direction.
 std::string check_cave_edge_scroll(){
     ImageRGB32 cave_before = scenery(0, 0);
     ImageRGB32 cave_after = scenery(24, 0);
-    paint(cave_before, 0, 108, 384, 216, 0, 0xff000000);
-    paint(cave_after, 0, 108, 384, 216, 0, 0xff000000);
+    paint(cave_before, /*x0=*/0, /*y0=*/108, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
+    paint(cave_after, /*x0=*/0, /*y0=*/108, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
     const ViewShift cave_shift = walk_view_shift(cave_before, cave_after);
     if (!cave_shift.scrolled()){
         return std::format("a step east along a cave's south black edge: did not read as a scroll ({}).",
             describe_view_shift(cave_shift));
+    }
+    const ViewShift corridor{.bands = {{
+        {.dx = 0, .dy = 7, .unshifted = 8.1, .shifted = 4.2},
+        {.dx = 1, .dy = 8, .unshifted = 9.3, .shifted = 5.2},
+        {.dx = 1, .dy = 10, .unshifted = 19.7, .shifted = 6.6},
+        {.dx = 1, .dy = 10, .unshifted = 17.8, .shifted = 5.5},
+    }}};
+    if (!corridor.scrolled()){
+        return std::format("a step north up a narrow cave corridor: did not read as a scroll ({}).",
+            describe_view_shift(corridor));
     }
     return "";
 }

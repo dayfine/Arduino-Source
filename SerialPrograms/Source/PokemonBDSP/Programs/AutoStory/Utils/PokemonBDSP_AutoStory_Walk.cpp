@@ -237,18 +237,27 @@ bool ViewShift::scrolled() const{
     const size_t active = (size_t)std::count_if(bands.begin(), bands.end(), [](const BandShift& band){
         return band.unshifted >= ACTIVE_DIFFERENCE;
     });
-    //  Usually at least 3 bands must agree. At a cave's edge (01.03 Oreburgh
-    //  Mine B1F, 2026-11-21 05:03), half the view is solid black void, leaving
-    //  only 2 active bands; accept 2 only when every active band agrees.
+    //  Usually >= 3 bands must line up (>= 2x). At a cave's edge (01.03 Oreburgh
+    //  Mine B1F), half the view is black void -> accept 2 of 2 active bands. In
+    //  a narrow vertical cave corridor, perspective drops the far 2 bands to
+    //  ~1.8x -> accept >= 2 strong bands when all 4 bands agree at >= 1.5x.
     const size_t needed = active == 2 ? 2 : 3;
     for (const BandShift& band : bands){
         if (!band.lines_up()){
             continue;
         }
+        const auto way = scroll_way(band);
         const size_t agreeing = (size_t)std::count_if(bands.begin(), bands.end(), [&](const BandShift& other){
-            return other.lines_up() && scroll_way(other) == scroll_way(band);
+            return other.lines_up() && scroll_way(other) == way;
         });
         if (agreeing >= needed){
+            return true;
+        }
+        const size_t leaning = (size_t)std::count_if(bands.begin(), bands.end(), [&](const BandShift& other){
+            return (other.dx != 0 || other.dy != 0) && other.unshifted >= ACTIVE_DIFFERENCE &&
+                other.unshifted >= 1.5 * other.shifted && scroll_way(other) == way;
+        });
+        if (agreeing >= 2 && leaning == BANDS){
             return true;
         }
     }
