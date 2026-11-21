@@ -8,7 +8,7 @@
 #include <optional>
 #include <string>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMapPinReader.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapPinReader.h"
 #include "PokemonLZA_AutoStoryWalks.h"
 #include "PokemonLZA_AutoStoryMapLegs.h"
 #include "PokemonLZA_AutoStoryWorldWalks.h"

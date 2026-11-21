@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Dialog choice box
+/*  PokemonLZA - Dialog choice box
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -7,7 +7,7 @@
 #include <cstdint>
 #include <vector>
 #include "CommonFramework/ImageTools/ImageStats.h"
-#include "PokemonLZA_AutoStoryDialogChoiceBox.h"
+#include "PokemonLZA_DialogChoiceBox.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

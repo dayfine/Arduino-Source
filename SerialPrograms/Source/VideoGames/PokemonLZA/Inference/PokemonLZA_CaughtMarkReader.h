@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Caught mark reader
+/*  PokemonLZA - Caught mark reader
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryCaughtMarkReader_H
-#define PokemonAutomation_PokemonLZA_AutoStoryCaughtMarkReader_H
+#ifndef PokemonAutomation_PokemonLZA_CaughtMarkReader_H
+#define PokemonAutomation_PokemonLZA_CaughtMarkReader_H
 
 #include <optional>
 #include "CommonFramework/ImageTools/ImageBoxes.h"

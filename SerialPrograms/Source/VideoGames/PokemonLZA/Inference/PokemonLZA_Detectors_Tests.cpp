@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Detectors Tests
+/*  PokemonLZA - Detectors Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -23,15 +23,15 @@
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
-#include "PokemonLZA_AutoStoryAutosaveDetector.h"
-#include "PokemonLZA_AutoStoryCaughtMarkReader.h"
-#include "PokemonLZA_AutoStoryControlsHintDetector.h"
-#include "PokemonLZA_AutoStoryDialogDetectors.h"
-#include "PokemonLZA_AutoStoryMapPinReader.h"
-#include "PokemonLZA_AutoStoryMissionBannerDetectors.h"
-#include "PokemonLZA_AutoStoryTutorialCardDetector.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapPinReader.h"
+#include "PokemonLZA_AutosaveDetector.h"
+#include "PokemonLZA_CaughtMarkReader.h"
+#include "PokemonLZA_ControlsHintDetector.h"
+#include "PokemonLZA_Inference_Tests.h"
+#include "PokemonLZA_MissionCompleteDetector.h"
+#include "PokemonLZA_PartyBarDetector.h"
+#include "PokemonLZA_StoryDialogDetector.h"
+#include "PokemonLZA_TutorialCardDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -574,7 +574,7 @@ UnitTestResult check_map_pin(const MapPinCase& test, Logger& logger){
 } // namespace
 
 
-void add_tests_AutoStoryDetectors(UnitTestDatabase& database){
+void add_tests_Detectors(UnitTestDatabase& database){
     for (const SyntheticFrameCase& test : SYNTHETIC_FRAME_CASES){
         database.add<DetectorCaseTest<SyntheticFrameCase, check_synthetic_frame>>("PokemonLZA::AutoStoryDetectors - synthetic frame: ", test);
     }

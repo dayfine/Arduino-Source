@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Minimap match
+/*  PokemonLZA - Minimap match
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -18,7 +18,7 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
-#include "PokemonLZA_AutoStoryMinimapMatch.h"
+#include "PokemonLZA_MinimapMatch.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Dialog detectors
+/*  PokemonLZA - Story dialog detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryDialogDetectors_H
-#define PokemonAutomation_PokemonLZA_AutoStoryDialogDetectors_H
+#ifndef PokemonAutomation_PokemonLZA_StoryDialogDetector_H
+#define PokemonAutomation_PokemonLZA_StoryDialogDetector_H
 
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"

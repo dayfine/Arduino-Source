@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Tutorial card detector
+/*  PokemonLZA - Tutorial card detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryTutorialCardDetector_H
-#define PokemonAutomation_PokemonLZA_AutoStoryTutorialCardDetector_H
+#ifndef PokemonAutomation_PokemonLZA_TutorialCardDetector_H
+#define PokemonAutomation_PokemonLZA_TutorialCardDetector_H
 
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 

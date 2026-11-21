@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Minimap match
+/*  PokemonLZA - Minimap match
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryMinimapMatch_H
-#define PokemonAutomation_PokemonLZA_AutoStoryMinimapMatch_H
+#ifndef PokemonAutomation_PokemonLZA_MinimapMatch_H
+#define PokemonAutomation_PokemonLZA_MinimapMatch_H
 
 #include <cstddef>
 #include <optional>

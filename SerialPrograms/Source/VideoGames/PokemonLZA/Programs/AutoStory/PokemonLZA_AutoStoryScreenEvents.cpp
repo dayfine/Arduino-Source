@@ -7,9 +7,9 @@
 #include <optional>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/ScreenEvents/ScreenFades.h"
+#include "VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MinimapMatch.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_DialogChoiceBox.h"
 #include "VideoGames/PokemonLZA/Inference/PokemonLZA_PartyBarDetector.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryDialogChoiceBox.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/Detectors/PokemonLZA_AutoStoryMinimapMatch.h"
 #include "PokemonLZA_AutoStoryScreenEvents.h"
 
 namespace PokemonAutomation{
