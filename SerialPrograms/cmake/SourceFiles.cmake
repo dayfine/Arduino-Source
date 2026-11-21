@@ -3250,3 +3250,57 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/ZeldaTotK/ZeldaTotK_Settings.cpp
     Source/VideoGames/ZeldaTotK/ZeldaTotK_Settings.h
 )
+
+# Logic tests (-DPA_CORE_ONLY=ON -DPA_LOGIC_TESTS=ON, see cmake/LogicTests.cmake):
+# unit tests that build and run with no Qt, OpenCV, ONNX Runtime or Tesseract.
+# A file joins these lists only when everything it includes is pure as well.
+# These files stay in LIBRARY_SOURCES above too; the lists below only add a
+# second, smaller target.
+
+# Pure sources the logic tests need beyond CORE_LIBRARY_SOURCES.
+# The kernels are the portable *_Default versions: the logic target turns on no
+# run-time ISA dispatch, so the SIMD versions are never called.
+set(LOGIC_LIBRARY_SOURCES
+    ../Common/Cpp/Rectangle.tpp
+    Source/CommonFramework/ImageTools/FloatPixel.cpp
+    Source/CommonFramework/ImageTools/ImageBoxes.cpp
+    Source/CommonFramework/ImageTools/ImageDiff.cpp
+    Source/CommonFramework/ImageTools/ImageStats.cpp
+    Source/CommonFramework/ImageTypes/ImageHSV32.cpp
+    Source/CommonFramework/ImageTypes/ImageViewHSV32.cpp
+    Source/CommonFramework/VideoPipeline/VideoOverlay.cpp
+    Source/CommonFramework/VideoPipeline/VideoOverlayTypes.cpp
+    Source/CommonTools/Images/SolidColorTest.cpp
+    Source/CommonTools/ScreenEvents/ScreenEvents.cpp
+    Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix.cpp
+    Source/Kernels/BinaryMatrix/Kernels_BinaryMatrix_Core_64xH_Default.cpp
+    Source/Kernels/BinaryMatrix/Kernels_PackedBinaryMatrixCore.tpp
+    Source/Kernels/BinaryMatrix/Kernels_SparseBinaryMatrixCore.tpp
+    Source/Kernels/ImageScaleBrightness/Kernels_ImageScaleBrightness.cpp
+    Source/Kernels/ImageScaleBrightness/Kernels_ImageScaleBrightness_Default.cpp
+    Source/Kernels/ImageStats/Kernels_ImagePixelSumSqr.cpp
+    Source/Kernels/ImageStats/Kernels_ImagePixelSumSqr_Default.cpp
+    Source/Kernels/ImageStats/Kernels_ImagePixelSumSqr_TestInfra.cpp
+    Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev.cpp
+    Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_Default.cpp
+    Source/Kernels/ImageStats/Kernels_ImagePixelSumSqrDev_TestInfra.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine.cpp
+    Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
+    Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.cpp
+)
+
+# The logic test suites and their runner. Each suite here is also registered in
+# make_logic_tests() (Source/Tests/LogicTests/LogicTests_Main.cpp).
+set(LOGIC_TEST_SOURCES
+    Source/CommonTools/ScreenEvents/ScreenEvents_Tests.cpp
+    Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_ScreenMatch_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryBackend_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
+    Source/Pokemon/AutoStory/Options/Pokemon_StoryRangeOptions_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.cpp
+    Source/Tests/LogicTests/LogicTests_Main.cpp
+)
