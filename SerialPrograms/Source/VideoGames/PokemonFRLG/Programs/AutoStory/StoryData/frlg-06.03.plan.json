@@ -12,7 +12,7 @@
         "action": "grind_check",
         "args": {
           "slot": 1,
-          "level": 31,
+          "level": 29,
           "encounters": 150,
           "pace": "east",
           "heal_every": 0
@@ -45,7 +45,7 @@
         "action": "grind",
         "args": {
           "slot": 1,
-          "level": 32,
+          "level": 29,
           "encounters": 150,
           "pace": "east",
           "heal_every": 0,
