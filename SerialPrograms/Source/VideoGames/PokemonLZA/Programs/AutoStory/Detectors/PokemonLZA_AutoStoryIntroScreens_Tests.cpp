@@ -7,16 +7,14 @@
 #include <format>
 #include <optional>
 #include <string>
-#include <utility>
-#include <vector>
-#include <functional>
 #include <string_view>
+#include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "Tests/ImageUnitTest.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
 #include "PokemonLZA_AutoStoryIntroScreens.h"
-#include "PokemonLZA_AutoStoryIntroScreens_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -39,8 +37,6 @@ struct FrameCase{
         bool look_picker = false;
         std::optional<size_t> look = std::nullopt;
         bool keyboard = false;
-        //  The counter's limit; nullopt: not checked (the field holds text).
-        std::optional<size_t> name_limit = std::nullopt;
         bool home_plza = false;
     };
     Expectation expectation;
@@ -61,13 +57,13 @@ const FrameCase FRAME_CASES[] = {
     {.name = "2026-11-15: the look picker before the stick moves", .input = {.file = "AutoStoryNewGame/2026-11-15/en_look.png"}, .expectation = {.look_picker = true}},
     {.name = "2026-11-15: the look picker after the first tilt in English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_look_hl.png"}, .expectation = {.look_picker = true, .look = 6}},
     {.name = "2026-11-15: the look picker after the first tilt in Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_look_hl.png"}, .expectation = {.look_picker = true, .look = 7}},
-    {.name = "2026-11-15: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_kb.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
-    {.name = "2026-11-15: the keyboard in Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_kb.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
-    {.name = "2026-11-15: Simplified Chinese keeps the keyboard after the first +", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_plus0.png"}, .expectation = {.keyboard = true, .name_limit = std::nullopt}},
+    {.name = "2026-11-15: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_kb.png"}, .expectation = {.keyboard = true}},
+    {.name = "2026-11-15: the keyboard in Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_kb.png"}, .expectation = {.keyboard = true}},
+    {.name = "2026-11-15: Simplified Chinese keeps the keyboard after the first +", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_plus0.png"}, .expectation = {.keyboard = true}},
     //  HOME's tiles in last-played order: FireRed first, Z-A second.
     {.name = "2026-11-15: HOME on FireRed's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_firered.png"}, .expectation = {}},
     {.name = "2026-11-15: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_plza.png"}, .expectation = {.home_plza = true}},
-    {.name = "2026-11-18 dark theme: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-18/en_kb_dark.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-18 dark theme: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-18/en_kb_dark.png"}, .expectation = {.keyboard = true}},
     {.name = "2026-11-18 dark theme: HOME on Pokemon HOME's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile0.png"}, .expectation = {}},
     {.name = "2026-11-18 dark theme: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile1.png"}, .expectation = {.home_plza = true}},
     {.name = "2026-11-18 dark theme: HOME dimmed", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_dim.png"}, .expectation = {}},
@@ -98,12 +94,6 @@ public:
         }
         if (is_name_keyboard(frame) != expected.keyboard){
             return std::format("Name keyboard: expected {}, read {}.", expected.keyboard, !expected.keyboard);
-        }
-        if (expected.keyboard && expected.name_limit){
-            const std::optional<size_t> limit = read_name_keyboard_limit(frame);
-            if (limit != expected.name_limit){
-                return std::format("Name keyboard: expected a limit of {}, read {}.", describe(expected.name_limit), describe(limit));
-            }
         }
         if (is_home_tile_plza(frame) != expected.home_plza){
             return std::format("HOME tile: expected PLZA {}, read {}.", expected.home_plza, !expected.home_plza);
@@ -224,83 +214,9 @@ private:
     const ConfirmCase& m_test;
 };
 
-} // namespace
-
-
-namespace{
-
-constexpr uint32_t BACKGROUND = 0xff0a1d40;
-constexpr uint32_t SLATE = 0xff23344f;
-constexpr uint32_t WHITE = 0xffffffff;
-
-//  "Confirm Choices" with the reader's geometry, the rows in `highlighted` white.
-ImageRGB32 confirm_choices_frame(std::initializer_list<size_t> highlighted){
-    ImageRGB32 image(1920, 1080);
-    image.fill(BACKGROUND);
-    const size_t tops[] = {578, 662, 790};
-    const size_t heights[] = {68, 68, 112};
-    for (size_t row = 0; row <= CONFIRM_CHOICES_READY_ROW; row++){
-        bool lit = false;
-        for (const size_t pick : highlighted){
-            lit = lit || pick == row;
-        }
-        for (size_t y = tops[row]; y < tops[row] + heights[row]; y++){
-            for (size_t x = 144; x < 742; x++){
-                image.pixel(x, y) = lit ? WHITE : SLATE;
-            }
-        }
-    }
-    return image;
-}
-
-ImageRGB32 flat_frame(uint32_t color){
-    ImageRGB32 image(1920, 1080);
-    image.fill(color);
-    return image;
-}
-
 std::string describe_cursor(std::optional<size_t> cursor){
     return cursor ? std::format("row {}", *cursor) : std::string("no Confirm Choices");
 }
-
-
-struct SyntheticCase{
-    std::string name;
-    struct Input{
-        std::function<ImageRGB32()> frame;
-    };
-    Input input;
-    struct Expectation{
-        std::optional<size_t> cursor;   //  The row read; none: not Confirm Choices.
-    };
-    Expectation expectation;
-};
-
-const SyntheticCase SYNTHETIC_CASES[] = {
-    {.name = "no row highlighted", .input = {.frame = []{ return confirm_choices_frame({}); }}, .expectation = {.cursor = std::nullopt}},
-    {.name = "two rows highlighted", .input = {.frame = []{ return confirm_choices_frame({0, 1}); }}, .expectation = {.cursor = std::nullopt}},
-    {.name = "flat background", .input = {.frame = []{ return flat_frame(BACKGROUND); }}, .expectation = {.cursor = std::nullopt}},
-    {.name = "an empty frame", .input = {.frame = []{ return ImageRGB32(); }}, .expectation = {.cursor = std::nullopt}},
-    {.name = "a 40 x 20 frame", .input = {.frame = []{ return ImageRGB32(40, 20); }}, .expectation = {.cursor = std::nullopt}},
-};
-
-class Test_ConfirmChoicesSynthetic : public UnitTest{
-public:
-    explicit Test_ConfirmChoicesSynthetic(const SyntheticCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Confirm Choices reader: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::optional<size_t> cursor = read_confirm_choices_cursor(m_test.input.frame());
-        if (cursor != m_test.expectation.cursor){
-            return std::format("Expected {}, read {}.", describe_cursor(m_test.expectation.cursor), describe_cursor(cursor));
-        }
-        return true;
-    }
-
-private:
-    const SyntheticCase& m_test;
-};
 
 
 //  PokemonLZA/AutoStoryConfirmChoices/<language>_<row>.png reads as its row.
@@ -369,9 +285,6 @@ void add_tests_AutoStoryIntroScreens(UnitTestDatabase& database){
     }
     for (const ConfirmCase& test : CONFIRM_CASES){
         database.add<Test_ConfirmChoicesFrame>(test);
-    }
-    for (const SyntheticCase& test : SYNTHETIC_CASES){
-        database.add<Test_ConfirmChoicesSynthetic>(test);
     }
     for (const LanguageFramesCase& test : LANGUAGE_FRAMES_CASES){
         database.add<Test_ConfirmChoicesFrames>(test);

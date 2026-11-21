@@ -54,7 +54,6 @@ private:
     SimpleIntegerOption<uint8_t> ATTEMPTS_PER_CHECKPOINT;
     BooleanCheckBoxOption LOAD_SAVE_FIRST;
     EnumDropdownOption<StarterChoice> STARTER;
-    StringOption RUN_FROM;
     BattleAIOption BATTLE_AI;
     GoHomeWhenDoneOption GO_HOME_WHEN_DONE;
     EventNotificationsOption NOTIFICATIONS;

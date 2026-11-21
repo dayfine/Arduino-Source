@@ -172,85 +172,52 @@ const Pokemon::ScreenMatch AUTOSAVE_SHOWS{
     .all_readings = {AUTOSAVE_READING},
 };
 
-Milliseconds elapsed_since(WallClock start, WallClock now){
-    if (now <= start){
-        return 0ms;
-    }
-    return std::chrono::duration_cast<Milliseconds>(now - start);
-}
+constexpr Milliseconds TEXT_SPEED_POLL = 250ms;
+constexpr Milliseconds MENU_OPEN_WAIT = 2000ms;
+constexpr Milliseconds TEXT_SPEED_LIMIT = 30000ms;
+constexpr size_t TEXT_SPEED_HELD_LOOKS = 2;
 
-struct OpeningProgress{
-    //  On the last look.
-    Pokemon::EdgeTrigger text_waiting;
-    Pokemon::EdgeTrigger fade_shown;
-    //  When the picture came back after a fade, until Plus is held for it.
-    std::optional<WallClock> faded_in = std::nullopt;
+//  From the main menu to the options' text speed, set to Fast; each with
+//  its release.
+constexpr std::pair<Button, Milliseconds> TEXT_SPEED_PRESSES[] = {
+    {BUTTON_L, 600ms},
+    {BUTTON_UP, 300ms},
+    {BUTTON_A, 1100ms},
+    {BUTTON_DOWN, 300ms},
+    {BUTTON_RIGHT, 300ms},
 };
 
-void track_fade_in(const ScreenObservation& look, OpeningProgress& progress){
-    const bool fade = FADE_SHOWS.matches(look);
-    if (fade){
-        progress.faded_in.reset();
-    }
-    if (progress.fade_shown.falling(fade)){
-        progress.faded_in = look.when;
-    }
-}
+//  The save file's first menu opens under a tutorial card. A closes it; the
+//  card fades out over ~1 s and reads as a card meanwhile, so a second A
+//  too soon lands on the main menu and opens the bag (console B,
+//  2026-11-19: 01.01 failed 3/3 that way).
+constexpr Milliseconds CARD_CLOSE_WAIT = 1500ms;
+constexpr size_t CARD_PAGES_MAX = 3;
 
-//  Once per fade-in, while the opening plays. Plus on the platform opens the
-//  map, so none once its controls hint shows (and this phase ends on autosave).
-bool opening_skip_due(const ScreenObservation& look, const OpeningProgress& progress){
-    if (!progress.faded_in){
-        return false;
-    }
-    return elapsed_since(*progress.faded_in, look.when) >= OPENING_SKIP_AFTER_FADE_IN &&
-        !TEXT_SHOWS.matches(look) &&
-        !look.readings.contains(CONTROLS_HINT_READING);
-}
-
-void advance_opening(PlzaBackend& backend, const ScreenObservation& look, OpeningProgress& progress){
-    if (progress.text_waiting.rising(TEXT_WAITING_FOR_A.matches(look))){
-        backend.log("[PLZA] platform wait: text waiting for A; A");
-        backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
-    }
-    track_fade_in(look, progress);
-    if (opening_skip_due(look, progress)){
-        backend.log("[PLZA] platform wait: the opening plays; Plus held to skip it");
-        backend.press(BUTTON_PLUS, CUTSCENE_SKIP_HOLD, /*release=*/400ms);
-        progress.faded_in.reset();
-    }
-}
-
-struct OpeningOutcome{
-    std::optional<StoryFailure> failure;
-    Milliseconds remaining = 0ms;
-};
-
-//  Phase 1 of opening_to_platform: advance text and skip cutscenes until the
-//  arrival autosave badge appears, then hand the remaining budget to
-//  wait_for_platform() so Plus can never fire after autosave.
-OpeningOutcome skip_opening_to_autosave(PlzaBackend& backend, Milliseconds timeout){
-    OpeningProgress progress;
+//  B until the overworld holds; B on the overworld does nothing.
+std::optional<StoryFailure> back_to_overworld(PlzaBackend& backend){
     const Pokemon::WaitOutcome outcome = Pokemon::poll_until(
         backend,
-        AUTOSAVE_SHOWS,
-        Pokemon::WaitRule{.poll = PLATFORM_POLL, .timeout = timeout},
+        OVERWORLD_FREE,
+        Pokemon::WaitRule{.poll = TEXT_SPEED_POLL, .timeout = TEXT_SPEED_LIMIT, .confirm_looks = TEXT_SPEED_HELD_LOOKS},
         [&](const ScreenObservation& look){
-            advance_opening(backend, look, progress);
-            backend.wait(PLATFORM_POLL);
+            if (OVERWORLD_FREE.matches(look)){
+                backend.wait(TEXT_SPEED_POLL);
+            }else{
+                backend.press(BUTTON_B, /*hold=*/160ms, /*release=*/840ms);
+            }
         }
     );
     if (const auto* failure = std::get_if<StoryFailure>(&outcome)){
-        return {.failure = *failure};
+        return *failure;
     }
     if (const auto* matched = std::get_if<Pokemon::WaitMatched>(&outcome)){
-        backend.log("[PLZA] platform wait: the autosave badge is on screen");
-        backend.wait(PLATFORM_POLL);
-        return {.remaining = matched->elapsed >= timeout ? 0ms : timeout - matched->elapsed};
+        backend.log(std::format("[PLZA set_text_speed_fast] text speed set, back on the overworld at {:.1f}s", matched->elapsed.count() / 1000.0));
+        return std::nullopt;
     }
-    return {.failure = StoryFailure{.code = "platform_not_seen", .detail = std::format(
-        "No autosave badge seen within {} ms.", timeout.count()
-    )}};
+    return StoryFailure{.code = "text_speed_timeout", .detail = std::format(
+        "not back on the overworld in {} ms of B after the text speed rows", TEXT_SPEED_LIMIT.count()
+    )};
 }
 
 } // namespace
@@ -276,11 +243,50 @@ std::optional<StoryFailure> wait_for_platform(PlzaBackend& backend, Milliseconds
 }
 
 std::optional<StoryFailure> opening_to_platform(PlzaBackend& backend, Milliseconds timeout){
-    const OpeningOutcome opening = skip_opening_to_autosave(backend, timeout);
-    if (opening.failure){
-        return opening.failure;
+    Pokemon::EdgeTrigger text_waiting;
+    Pokemon::EdgeTrigger fade_shown;
+    std::optional<WallClock> faded_in;
+    const Pokemon::WaitOutcome outcome = Pokemon::poll_until(
+        backend,
+        AUTOSAVE_SHOWS,
+        Pokemon::WaitRule{.poll = PLATFORM_POLL, .timeout = timeout},
+        [&](const ScreenObservation& look){
+            if (text_waiting.rising(TEXT_WAITING_FOR_A.matches(look))){
+                backend.log("[PLZA] platform wait: text waiting for A; A");
+                backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/400ms);
+            }
+            const bool fade = FADE_SHOWS.matches(look);
+            if (fade){
+                faded_in.reset();
+            }
+            if (fade_shown.falling(fade)){
+                faded_in = look.when;
+            }
+            if (faded_in &&
+                look.when > *faded_in &&
+                look.when - *faded_in >= OPENING_SKIP_AFTER_FADE_IN &&
+                !TEXT_SHOWS.matches(look) &&
+                !look.readings.contains(CONTROLS_HINT_READING)
+            ){
+                backend.log("[PLZA] platform wait: the opening plays; Plus held to skip it");
+                backend.press(BUTTON_PLUS, CUTSCENE_SKIP_HOLD, /*release=*/400ms);
+                faded_in.reset();
+            }
+            backend.wait(PLATFORM_POLL);
+        }
+    );
+    if (const auto* failure = std::get_if<StoryFailure>(&outcome)){
+        return *failure;
     }
-    return wait_for_platform(backend, opening.remaining);
+    if (const auto* matched = std::get_if<Pokemon::WaitMatched>(&outcome)){
+        backend.log("[PLZA] platform wait: the autosave badge is on screen");
+        backend.wait(PLATFORM_POLL);
+        const Milliseconds remaining = matched->elapsed >= timeout ? 0ms : timeout - matched->elapsed;
+        return wait_for_platform(backend, remaining);
+    }
+    return StoryFailure{.code = "platform_not_seen", .detail = std::format(
+        "No autosave badge seen within {} ms.", timeout.count()
+    )};
 }
 
 
@@ -347,6 +353,29 @@ bool press_b_out_of_menu(PlzaBackend& backend, size_t presses){
         return false;
     }
     return out_of_menu(look);
+}
+
+//  Blind but for the first menu's tutorial card and the way back.
+std::optional<StoryFailure> set_text_speed_fast(PlzaBackend& backend){
+    backend.press(BUTTON_X, /*hold=*/160ms, /*release=*/240ms);
+    backend.wait(MENU_OPEN_WAIT);
+    for (size_t pages = 0; pages < CARD_PAGES_MAX; pages++){
+        backend.scope().throw_if_cancelled();
+        const ScreenObservation look = backend.observe();
+        if (look.events.has(ScreenEvent::SWITCH_HOME_MENU)){
+            return Pokemon::game_not_running_failure();
+        }
+        if (!look.readings.contains(TUTORIAL_CARD_READING)){
+            break;
+        }
+        backend.log("[PLZA set_text_speed_fast] tutorial card: A");
+        backend.press(BUTTON_A, /*hold=*/160ms, /*release=*/240ms);
+        backend.wait(CARD_CLOSE_WAIT);
+    }
+    for (const auto& [button, release] : TEXT_SPEED_PRESSES){
+        backend.press(button, /*hold=*/100ms, release);
+    }
+    return back_to_overworld(backend);
 }
 
 

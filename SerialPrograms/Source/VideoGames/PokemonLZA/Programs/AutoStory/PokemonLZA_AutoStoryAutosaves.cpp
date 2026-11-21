@@ -171,9 +171,8 @@ decltype(Pokemon::StoryGame::save) autosave_policy(MarkedCheckpoints marked, Aut
     return [marked = std::move(marked), &sightings](PlzaBackend& backend, const Pokemon::StoryCheckpoint& checkpoint) -> std::optional<Pokemon::StoryFailure>{
         const std::string_view last_step = checkpoint.steps.empty() ? std::string_view() : std::string_view(checkpoint.steps.back().name);
         const std::optional<std::string> first_step = sightings.finish(last_step);
-        const bool menu_save = !checkpoint.steps.empty() && checkpoint.steps.back().action == action_name(PlzaAction::SAVE_FROM_MENU);
         backend.log(std::format(
-            "[Boundary] {} end: {}", checkpoint.id, !sightings.last_end_seen() ? "not seen" : menu_save ? "menu save" : "badge seen"
+            "[Boundary] {} end: {}", checkpoint.id, sightings.last_end_seen() ? "badge seen" : "not seen"
         ));
         if (sightings.last_end_seen()){
             backend.log(std::format("[Save] {}: the game autosaved (seen)", checkpoint.id));
@@ -183,8 +182,6 @@ decltype(Pokemon::StoryGame::save) autosave_policy(MarkedCheckpoints marked, Aut
         if (first_step){
             const std::string_view next = step_after(checkpoint, *first_step).value_or(last_step);
             why = std::format("the game autosaved in {}, before {}: a reload would skip {}", *first_step, next, next);
-        }else if (marked.unverified_autosaves.contains(checkpoint.id)){
-            why = "save unverified";
         }else if (marked.autosaves.contains(checkpoint.id)){
             why = "the plan's autosave was not seen";
         }

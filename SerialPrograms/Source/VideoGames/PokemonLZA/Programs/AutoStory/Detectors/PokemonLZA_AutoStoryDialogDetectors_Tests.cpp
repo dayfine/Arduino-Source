@@ -11,14 +11,14 @@
 #include <cstdint>
 #include <initializer_list>
 #include <optional>
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "PokemonLZA_AutoStoryDialogDetectors.h"
-#include "PokemonLZA_AutoStoryDialogDetectors_Tests.h"
-#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
 #include "PokemonLZA_AutoStoryDialogChoiceBox.h"
+#include "PokemonLZA_AutoStoryDialogDetectors.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -117,43 +117,19 @@ const DialogCase DIALOG_CASES[] = {
     },
 };
 
-class Test_StoryDialog : public UnitTest{
-public:
-    explicit Test_StoryDialog(const DialogCase& test)
-        : UnitTest(std::format("PokemonLZA::AutoStory - StoryDialogDetector: {}", test.name))
-        , m_test(test)
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        StoryDialogDetector detector({.white = m_test.input.white});
-        const bool dialog = detector.detect(m_test.input.frame());
-        if (dialog != m_test.expectation.dialog){
-            return std::format("Expected {}, read {}.", m_test.expectation.dialog ? "a dialogue box" : "none", dialog ? "a dialogue box" : "none");
-        }
-        return true;
+UnitTestResult check_dialog(const DialogCase& test){
+    StoryDialogDetector detector({.white = test.input.white});
+    const bool dialog = detector.detect(test.input.frame());
+    if (dialog != test.expectation.dialog){
+        return std::format("Expected {}, read {}.", test.expectation.dialog ? "a dialogue box" : "none", dialog ? "a dialogue box" : "none");
     }
-
-private:
-    const DialogCase& m_test;
-};
-
-} // namespace
-
-
-namespace{
+    return true;
+}
 
 constexpr uint32_t PAVEMENT = 0xffc8c3be;
 constexpr uint32_t BLUE_WALL = 0xff18375c;
 constexpr uint32_t PANEL = 0xff243c6c;
-constexpr uint32_t CHOICE_WHITE = 0xffffffff;
 constexpr uint32_t DARK_TEXT = 0xff1e1e28;
-
-void fill_choice_box(size_t min_x, size_t min_y, size_t max_x, size_t max_y, uint32_t color, ImageRGB32& image){
-    for (size_t y = min_y; y < max_y; y++){
-        for (size_t x = min_x; x < max_x; x++){
-            image.pixel(x, y) = color;
-        }
-    }
-}
 
 //  The panel grows left to fit its longest row.
 struct MenuWidth{
@@ -172,9 +148,9 @@ ImageRGB32 choice_menu_frame(
     uint32_t background, size_t rows, std::initializer_list<size_t> highlighted,
     MenuWidth width = NARROW_MENU
 ){
-    ImageRGB32 image(1920, 1080);
+    ImageRGB32 image(WIDTH, HEIGHT);
     image.fill(background);
-    fill_choice_box(width.panel_left, 808 - 80 * rows - 4, /*max_x=*/1728, /*max_y=*/808, PANEL, image);
+    fill_box(width.panel_left, 808 - 80 * rows - 4, /*max_x=*/1728, /*max_y=*/808, PANEL, image);
     for (size_t row = 0; row < rows; row++){
         const size_t from_bottom = rows - 1 - row;
         const size_t top = 732 - 80 * from_bottom;
@@ -183,10 +159,10 @@ ImageRGB32 choice_menu_frame(
             lit = lit || pick == row;
         }
         if (lit){
-            fill_choice_box(width.panel_left + 10, top, /*max_x=*/1715, top + 68, CHOICE_WHITE, image);
+            fill_box(width.panel_left + 10, top, /*max_x=*/1715, top + 68, WHITE, image);
         }
         for (size_t x = width.panel_left + 35; x < width.text_end; x += 3){
-            fill_choice_box(x, top + 16, x + 1, top + 52, lit ? DARK_TEXT : CHOICE_WHITE, image);
+            fill_box(x, top + 16, x + 1, top + 52, lit ? DARK_TEXT : WHITE, image);
         }
     }
     return image;
@@ -326,23 +302,19 @@ UnitTestResult check_frame(const FrameCase& test){
 }
 
 
-template <typename Case>
-class ChoiceBoxTest : public UnitTest{
+template <typename Case, UnitTestResult (*check)(const Case&)>
+class DialogCaseTest : public UnitTest{
 public:
-    using Check = UnitTestResult (*)(const Case&);
-
-    ChoiceBoxTest(std::string_view suite, const Case& test, Check check)
-        : UnitTest(std::format("PokemonLZA::AutoStory - Dialog choice rows, {}: {}", suite, test.name))
+    DialogCaseTest(std::string_view prefix, const Case& test)
+        : UnitTest(std::format("PokemonLZA::AutoStory - {}: {}", prefix, test.name))
         , m_test(test)
-        , m_check(check)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        return m_check(m_test);
+        return check(m_test);
     }
 
 private:
     const Case& m_test;
-    Check m_check;
 };
 
 } // namespace
@@ -350,13 +322,13 @@ private:
 
 void add_tests_AutoStoryDialogDetectors(UnitTestDatabase& database){
     for (const DialogCase& test : DIALOG_CASES){
-        database.add<Test_StoryDialog>(test);
+        database.add<DialogCaseTest<DialogCase, check_dialog>>("StoryDialogDetector", test);
     }
     for (const SyntheticCase& test : SYNTHETIC_CASES){
-        database.add<ChoiceBoxTest<SyntheticCase>>("synthetic", test, check_synthetic);
+        database.add<DialogCaseTest<SyntheticCase, check_synthetic>>("Dialog choice rows, synthetic", test);
     }
     for (const FrameCase& test : FRAME_CASES){
-        database.add<ChoiceBoxTest<FrameCase>>("console frame", test, check_frame);
+        database.add<DialogCaseTest<FrameCase, check_frame>>("Dialog choice rows, console frame", test);
     }
 }
 

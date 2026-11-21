@@ -14,8 +14,6 @@
 #include <optional>
 #include <span>
 #include <string>
-#include <string_view>
-#include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
@@ -38,19 +36,6 @@ enum class NewGameLanguage{
     ChineseSimplified,
     ChineseTraditional,
 };
-
-//  Metadata for one new-game language entry.
-struct NewGameLanguageInfo{
-    std::string_view tag;
-    size_t list_entry = 0;
-    size_t name_limit = 0;
-    Language ocr_language = Language::None;
-    std::string_view confirm_text;
-    bool keyboard_supported = true;
-};
-
-//  Returns the metadata row for `language`.
-const NewGameLanguageInfo& new_game_language_info(NewGameLanguage language);
 
 //  User-selected new-game intro choices.
 struct NewGameChoices{

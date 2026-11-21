@@ -18,8 +18,8 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
 #include "PokemonLZA_AutoStoryMinimapMatch.h"
-#include "PokemonLZA_AutoStoryMinimapMatch_Tests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

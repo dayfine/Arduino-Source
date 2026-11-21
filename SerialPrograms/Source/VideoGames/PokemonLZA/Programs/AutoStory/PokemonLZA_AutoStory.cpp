@@ -104,7 +104,7 @@ std::optional<StoryMove> starter_move(StarterChoice starter){
 }
 
 //  Before `run_from` (dash is not unlocked yet), each step's run legs walk.
-void walk_before(std::vector<StoryCheckpoint>& checkpoints, const std::string& run_from, StoryEnv& story){
+void walk_before(std::vector<StoryCheckpoint>& checkpoints, std::string_view run_from, StoryEnv& story){
     for (StoryCheckpoint& checkpoint : checkpoints){
         const bool walk_only = checkpoint.id < run_from;
         for (StoryStep& step : checkpoint.steps){
@@ -160,8 +160,8 @@ constexpr std::string_view LOAD_SAVE_FIRST_LABEL =
     "Load the save first: a run from a checkpoint after 01.00b loads the latest save before it starts. "
     "Off: it starts from wherever the game is, which must be that checkpoint's start.";
 
-constexpr std::string_view RUN_FROM_LABEL =
-    "<b>Run From:</b><br>The first checkpoint whose walks hold B to run; earlier ones walk. Running is checked on console from after Taunie's battle in 03.02b.";
+//  First checkpoint whose walks hold B to run; dash unlocks after Taunie's battle in 03.02b.
+constexpr std::string_view RUN_FROM = "03.03";
 
 //  Captures the failure screenshot while the game is still on screen, then
 //  immediately suspends to Switch HOME so PLZA cannot be attacked or overwrite
@@ -281,7 +281,6 @@ AutoStory::AutoStory()
     , ATTEMPTS_PER_CHECKPOINT(std::string(ATTEMPTS_PER_CHECKPOINT_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/3, /*min_value=*/1, /*max_value=*/5)
     , LOAD_SAVE_FIRST(std::string(LOAD_SAVE_FIRST_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/true)
     , STARTER("<b>Starter:</b><br>The starter 01.03 picks.", starter_database(), LockMode::LOCK_WHILE_RUNNING, StarterChoice::CHIKORITA)
-    , RUN_FROM(/*is_password=*/false, std::string(RUN_FROM_LABEL), LockMode::LOCK_WHILE_RUNNING, /*default_value=*/"03.03", /*placeholder_text=*/"03.03")
     , GO_HOME_WHEN_DONE(false)
     , NOTIFICATIONS({
         &NOTIFICATION_PROGRAM_FINISH,
@@ -296,7 +295,6 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(ATTEMPTS_PER_CHECKPOINT);
     PA_ADD_OPTION(LOAD_SAVE_FIRST);
     PA_ADD_OPTION(STARTER);
-    PA_ADD_OPTION(RUN_FROM);
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(GO_HOME_WHEN_DONE);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -322,7 +320,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     RunState state;
     CheckpointRunOptions run_options{
         .attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT, .reload_when_chained = story_data.reload_when_chained,
-        .starts = builtin_checkpoint_starts(),
+        .starts = story_data.starts,
         .read_start = [&story, &backend](const StartSignature& start){
             return start.wild_zone ? read_start_position(story, backend) : read_start_signature(story.env.console, story.context);
         },

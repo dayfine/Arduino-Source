@@ -41,17 +41,19 @@ namespace{
 constexpr int GATE_RUNS = 3;
 
 
-//  An OperationFailedException becomes a failed std::optional<Pokemon::StoryFailure>.
-PlzaConsoleAction new_game_handler(StoryEnv& env, std::string_view name, void (*step)(StoryEnv&)){
-    return [&env, name = std::string(name), step](PlzaBackend& backend, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
+//  Wraps `run(backend, timeout)` so an OperationFailedException becomes a StoryFailure with `error_code`.
+template <typename Run>
+PlzaConsoleAction catch_operation_failed(std::string_view name, std::string error_code, Run run){
+    return [name = std::string(name), error_code = std::move(error_code), run = std::move(run)](
+        PlzaBackend& backend, Milliseconds timeout
+    ) -> std::optional<Pokemon::StoryFailure>{
         try{
-            step(env);
+            return run(backend, timeout);
         }catch (OperationFailedException& e){
             const std::string message = e.message();
             backend.log(std::format("[PLZA] {} failed: {}", name, message));
-            return Pokemon::StoryFailure{.code = std::format("{}_failed", name), .detail = message};
+            return Pokemon::StoryFailure{.code = error_code, .detail = message};
         }
-        return std::nullopt;
     };
 }
 
@@ -70,8 +72,6 @@ std::optional<Pokemon::StoryFailure> run_to_gate(StoryEnv& env, Milliseconds tim
     }
     return std::nullopt;
 }
-
-using GateStep = std::optional<Pokemon::StoryFailure> (*)(StoryEnv& env, PlzaBackend& backend, Milliseconds timeout);
 
 //  From `from` to `to` by dead reckoning, B held: no map read until the
 //  gate's run has missed.
@@ -136,17 +136,6 @@ std::optional<Pokemon::StoryFailure> run_out_of_zone_1(StoryEnv& env, PlzaBacken
     return run.failure;
 }
 
-PlzaConsoleAction gate_handler(StoryEnv& env, std::string_view name, GateStep step){
-    return [&env, name = std::string(name), step](PlzaBackend& backend, Milliseconds timeout) -> std::optional<Pokemon::StoryFailure>{
-        try{
-            return step(env, backend, timeout);
-        }catch (OperationFailedException& e){
-            backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
-            return Pokemon::StoryFailure{.code = "gate_not_reached", .detail = e.message()};
-        }
-    };
-}
-
 
 //  Mable's Research is three rows down the main menu; it opens on Rewards
 //  under her lines. No line at all: not in her office.
@@ -180,8 +169,7 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
             return battle_then_catch(env, backend, /*max_rounds=*/6);
         }},
         {action_name(PlzaAction::CATCH_IN_ZONE), [](StoryEnv& env, PlzaBackend& backend){
-            //  5 registered species, 3 after the tutorial: 2 new; 12 throws.
-            return catch_in_zone(env, backend, ZoneCatchGoal{.new_species = 2, .party_species = 5, .max_throws = 12});
+            return catch_in_zone(env, backend, /*max_throws=*/12);
         }},
         {action_name(PlzaAction::CHECK_OUT_OF_ZONE_1), [](StoryEnv& env, PlzaBackend& backend){
             return check_out_of_zone_1(backend, [&env, &backend]{
@@ -193,34 +181,33 @@ const std::map<std::string_view, ConsoleStep>& console_steps(){
     return steps;
 }
 
-PlzaConsoleAction console_handler(StoryEnv& env, std::string_view name, ConsoleStep step){
-    return [&env, name = std::string(name), step](PlzaBackend& backend, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
-        try{
-            return step(env, backend);
-        }catch (OperationFailedException& e){
-            backend.log(std::format("[PLZA] {} failed: {}", name, e.message()));
-            return Pokemon::StoryFailure{.code = "operation_failed", .detail = e.message()};
-        }
-    };
-}
-
 } // namespace
 
 
 PlzaConsoleActions plza_console_actions(StoryEnv& env){
     PlzaConsoleActions actions;
-    actions.emplace(action_name(PlzaAction::NEW_GAME_INTRO), new_game_handler(env, action_name(PlzaAction::NEW_GAME_INTRO), [](StoryEnv& story){
-        play_new_game_intro(story.env.console, story.context, story.new_game);
-    }));
-    actions.emplace(action_name(PlzaAction::CONFIRM_NEW_GAME), new_game_handler(env, action_name(PlzaAction::CONFIRM_NEW_GAME), [](StoryEnv& story){
-        confirm_new_game_choices(story.env.console, story.context, story.new_game);
-    }));
-    actions.emplace(action_name(PlzaAction::RUN_TO_GATE), gate_handler(env, action_name(PlzaAction::RUN_TO_GATE), [](StoryEnv& story, PlzaBackend&, Milliseconds timeout){
-        return run_to_gate(story, timeout);
-    }));
-    actions.emplace(action_name(PlzaAction::RUN_OUT_OF_ZONE_1), gate_handler(env, action_name(PlzaAction::RUN_OUT_OF_ZONE_1), run_out_of_zone_1));
+    const auto add_new_game = [&](PlzaAction action, void (*step)(ConsoleHandle&, ProControllerContext&, const NewGameChoices&)){
+        const std::string_view name = action_name(action);
+        actions.emplace(name, catch_operation_failed(name, std::format("{}_failed", name), [&env, step](PlzaBackend&, Milliseconds) -> std::optional<Pokemon::StoryFailure>{
+            step(env.env.console, env.context, env.new_game);
+            return std::nullopt;
+        }));
+    };
+    add_new_game(PlzaAction::NEW_GAME_INTRO, play_new_game_intro);
+    add_new_game(PlzaAction::CONFIRM_NEW_GAME, confirm_new_game_choices);
+    actions.emplace(action_name(PlzaAction::RUN_TO_GATE), catch_operation_failed(
+        action_name(PlzaAction::RUN_TO_GATE), "gate_not_reached",
+        [&env](PlzaBackend&, Milliseconds timeout){ return run_to_gate(env, timeout); }
+    ));
+    actions.emplace(action_name(PlzaAction::RUN_OUT_OF_ZONE_1), catch_operation_failed(
+        action_name(PlzaAction::RUN_OUT_OF_ZONE_1), "gate_not_reached",
+        [&env](PlzaBackend& backend, Milliseconds timeout){ return run_out_of_zone_1(env, backend, timeout); }
+    ));
     for (const auto& [name, step] : console_steps()){
-        actions.emplace(name, console_handler(env, name, step));
+        actions.emplace(name, catch_operation_failed(
+            name, "operation_failed",
+            [&env, step](PlzaBackend& backend, Milliseconds){ return step(env, backend); }
+        ));
     }
     return actions;
 }
