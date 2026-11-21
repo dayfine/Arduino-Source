@@ -702,9 +702,21 @@ Outcome StoryWalkSteps::one_step(const RunState& state, const StoryStep& step){
     if (facing && *facing != direction){
         turn(direction);
     }
-    const WalkResult walk = m_route.walk_taps(direction, 1, step.name);
+    WalkResult walk = m_route.walk_taps(direction, 1, step.name);
     if (walk.wild_battles > 0){
         return Pokemon::outcome_failed("interrupted_step", step.name);
+    }
+    if (walk.moved_chunks == 0 && walk.stop == WalkStop::LIMIT){
+        //  A single tap when real facing differed from state.pose (e.g. 01.07/3
+        //  rowans_trigger after 01.06/4 ended facing east while 01.07 declares
+        //  north) can turn in place without stepping. Now facing `direction`,
+        //  take the actual step.
+        log(std::format("[{}] {}: first tap {} did not move (turned in place); stepping again.",
+            m_row, step.name, direction_name(direction)));
+        walk = m_route.walk_taps(direction, 1, step.name);
+        if (walk.wild_battles > 0){
+            return Pokemon::outcome_failed("interrupted_step", step.name);
+        }
     }
     log(std::format("[{}] {}: a step {}, {}.", m_row, step.name, direction_name(direction), walk_stop_name(walk.stop)));
     std::vector<TilePos> at;
