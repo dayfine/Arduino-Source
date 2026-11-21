@@ -43,6 +43,7 @@ private:
     ButtonDetector m_battle_hint;
     BattlePanelDetector m_battle_panel;
     BattleMarkersDetector m_battle_markers;
+    TrainerPokeballsDetector m_trainer_pokeballs;
     PartyBarDetector m_party;
 };
 

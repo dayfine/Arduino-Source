@@ -36,6 +36,7 @@ PlzaScreenObserver::PlzaScreenObserver()
     , m_battle_hint(COLOR_CYAN, ButtonType::ButtonA, BATTLE_HINT_BOX)
     , m_battle_panel(COLOR_GREEN)
     , m_battle_markers(COLOR_BLUE)
+    , m_trainer_pokeballs(COLOR_MAGENTA)
     , m_party(COLOR_WHITE)
 {}
 
@@ -57,7 +58,9 @@ ScreenEvents PlzaScreenObserver::read(const ImageViewRGB32& screen){
     //  highlighted row (console B 2026-11-19, Traditional Chinese).
     out.set(ScreenEvent::CHOICE_BOX, m_choice_arrow.detect(screen) || (box && read_dialog_choice_rows(screen).has_value()));
     out.set(ScreenEvent::INTERACT_PROMPT, !box && m_interact.detect(screen));
-    out.set(ScreenEvent::BATTLE_STARTED, m_battle_hint.detect(screen) || (m_battle_panel.detect(screen) && m_battle_markers.detect(screen)));
+    const bool battle = m_battle_hint.detect(screen) ||
+        (m_battle_panel.detect(screen) && (m_battle_markers.detect(screen) || m_trainer_pokeballs.detect(screen)));
+    out.set(ScreenEvent::BATTLE_STARTED, battle);
     out.set(ScreenEvent::PLAYER_CAN_MOVE, !box && m_party.detect(screen));
     return out;
 }
@@ -69,6 +72,7 @@ void PlzaScreenObserver::make_overlays(VideoOverlaySet& items) const{
     m_battle_hint.make_overlays(items);
     m_battle_panel.make_overlays(items);
     m_battle_markers.make_overlays(items);
+    m_trainer_pokeballs.make_overlays(items);
     m_party.make_overlays(items);
 }
 
