@@ -8,7 +8,6 @@
 #include <cctype>
 #include <cstdint>
 #include <span>
-#include <string_view>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/ImageTools/ImageStats.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
@@ -82,7 +81,7 @@ RowBox classify_row(const ImageStats& stats, const SlateRows& slate){
 std::optional<size_t> highlighted_row(const ImageViewRGB32& frame, std::span<const ImageFloatBox> strips, const SlateRows& slate){
     std::optional<size_t> highlighted;
     for (size_t row = 0; row < strips.size(); row++){
-        switch (classify_row(image_stats(extract_box_reference(frame, strips[row])), slate)){
+        switch (classify_row(box_stats(frame, strips[row]), slate)){
         case RowBox::HIGHLIGHTED:
             if (highlighted){
                 return std::nullopt;
@@ -130,7 +129,7 @@ bool confirm_background_dark(const ImageViewRGB32& frame){
         ImageFloatBox(770.0 / 1920, 580.0 / 1080, 30.0 / 1920, 320.0 / 1080),
     };
     for (const ImageFloatBox& box : boxes){
-        const ImageStats stats = image_stats(extract_box_reference(frame, box));
+        const ImageStats stats = box_stats(frame, box);
         if (stats.count == 0 || brightness(stats) >= 90 || stats.stddev.sum() > 80){
             return false;
         }
@@ -261,46 +260,6 @@ LookPickerReading read_look_picker(const ImageViewRGB32& frame){
     return reading;
 }
 
-std::optional<size_t> read_digits(std::string_view text, size_t& pos){
-    const size_t start = pos;
-    size_t value = 0;
-    while (pos < text.size() && text[pos] >= '0' && text[pos] <= '9' && pos - start < 4){
-        value = value * 10 + (size_t)(text[pos] - '0');
-        pos++;
-    }
-    if (pos == start){
-        return std::nullopt;
-    }
-    return value;
-}
-
-void skip_spaces(std::string_view text, size_t& pos){
-    while (pos < text.size() && (text[pos] == ' ' || text[pos] == '\n' || text[pos] == '\r')){
-        pos++;
-    }
-}
-
-//  The limit N in a counter's text "0/N"; nullopt for any other text.
-std::optional<size_t> parse_counter(std::string_view text){
-    size_t pos = 0;
-    skip_spaces(text, pos);
-    if (!read_digits(text, pos)){
-        return std::nullopt;
-    }
-    skip_spaces(text, pos);
-    if (pos >= text.size() || text[pos] != '/'){
-        return std::nullopt;
-    }
-    pos++;
-    skip_spaces(text, pos);
-    const std::optional<size_t> limit = read_digits(text, pos);
-    skip_spaces(text, pos);
-    if (!limit || *limit == 0 || pos != text.size()){
-        return std::nullopt;
-    }
-    return limit;
-}
-
 //  Pixels with every channel >= `min_channel` are the text.
 std::string read_light_text(const ImageViewRGB32& frame, const ImageFloatBox& box, Language language, uint8_t min_channel){
     const uint32_t mins = 0xff000000 | ((uint32_t)min_channel << 16) | ((uint32_t)min_channel << 8) | min_channel;
@@ -369,27 +328,6 @@ bool is_name_keyboard(const ImageViewRGB32& frame){
     }
     const ImageStats bar = box_stats(frame, ImageFloatBox(0.10, 0.935, 0.35, 0.03));
     return bar.count > 0 && brightness(bar) >= 65 && brightness(bar) <= 90 && bar.stddev.sum() < 10;
-}
-
-//  Grey counter (about 128): "0/12" at x 1645-1725, y 325-355; "0/6" at x 1275-1335,
-//  y 355-385 (Japanese) or 340-370 (Korean, Chinese). The field's underline sits just
-//  above each, so each layout gets its own box.
-std::optional<size_t> read_name_keyboard_limit(const ImageViewRGB32& frame){
-    if (!usable(frame)){
-        return std::nullopt;
-    }
-    const ImageFloatBox boxes[] = {
-        ImageFloatBox(1625.0 / 1920, 312.0 / 1080, 120.0 / 1920, 53.0 / 1080),
-        ImageFloatBox(1258.0 / 1920, 345.0 / 1080, 115.0 / 1920, 50.0 / 1080),
-        ImageFloatBox(1258.0 / 1920, 328.0 / 1080, 115.0 / 1920, 50.0 / 1080),
-    };
-    for (const ImageFloatBox& box : boxes){
-        const std::optional<size_t> limit = parse_counter(read_light_text(frame, box, Language::English, /*min_channel=*/90));
-        if (limit){
-            return limit;
-        }
-    }
-    return std::nullopt;
 }
 
 //  White text from x 345: language row y 400-450, name row y 468-522.

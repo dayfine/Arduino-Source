@@ -33,7 +33,6 @@ using LockOnWatch = std::function<bool(Milliseconds hold)>;
 //  Configuration for run_scene_machine(): terminal conditions and input overrides.
 struct SceneMachineConfig{
     bool stop_at_choice = false;
-    bool text_a_to_choice = false;
     bool stop_at_battle = false;
     bool end_at_battle = false;
     std::optional<LockOnWatch> lock_on = std::nullopt;
@@ -44,15 +43,6 @@ struct SceneMachineConfig{
 
 //  True when a scene is active (text, choice, battle, tutorial card, or non-HUD fade/motion).
 bool scene_under_way(const ScreenObservation& look);
-
-//  True when a dialogue box or advance chevron is visible.
-bool text_shows(const ScreenObservation& look);
-
-//  True when a black or white fade is visible.
-bool fade_shows(const ScreenObservation& look);
-
-//  True when the party bar is visible without an overlapping text box.
-bool party_bar_free(const ScreenObservation& look);
 
 //  Formats `look`'s active events and readings as a comma-separated string, or "nothing".
 std::string describe_scene_look(const ScreenObservation& look);

@@ -39,8 +39,6 @@ struct FrameCase{
         bool look_picker = false;
         std::optional<size_t> look = std::nullopt;
         bool keyboard = false;
-        //  The counter's limit; nullopt: not checked (the field holds text).
-        std::optional<size_t> name_limit = std::nullopt;
         bool home_plza = false;
     };
     Expectation expectation;
@@ -61,13 +59,13 @@ const FrameCase FRAME_CASES[] = {
     {.name = "2026-11-15: the look picker before the stick moves", .input = {.file = "AutoStoryNewGame/2026-11-15/en_look.png"}, .expectation = {.look_picker = true}},
     {.name = "2026-11-15: the look picker after the first tilt in English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_look_hl.png"}, .expectation = {.look_picker = true, .look = 6}},
     {.name = "2026-11-15: the look picker after the first tilt in Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_look_hl.png"}, .expectation = {.look_picker = true, .look = 7}},
-    {.name = "2026-11-15: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_kb.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
-    {.name = "2026-11-15: the keyboard in Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_kb.png"}, .expectation = {.keyboard = true, .name_limit = 6}},
-    {.name = "2026-11-15: Simplified Chinese keeps the keyboard after the first +", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_plus0.png"}, .expectation = {.keyboard = true, .name_limit = std::nullopt}},
+    {.name = "2026-11-15: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-15/en_kb.png"}, .expectation = {.keyboard = true}},
+    {.name = "2026-11-15: the keyboard in Japanese", .input = {.file = "AutoStoryNewGame/2026-11-15/ja_kb.png"}, .expectation = {.keyboard = true}},
+    {.name = "2026-11-15: Simplified Chinese keeps the keyboard after the first +", .input = {.file = "AutoStoryNewGame/2026-11-15/zhHans_plus0.png"}, .expectation = {.keyboard = true}},
     //  HOME's tiles in last-played order: FireRed first, Z-A second.
     {.name = "2026-11-15: HOME on FireRed's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_firered.png"}, .expectation = {}},
     {.name = "2026-11-15: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-15/home_plza.png"}, .expectation = {.home_plza = true}},
-    {.name = "2026-11-18 dark theme: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-18/en_kb_dark.png"}, .expectation = {.keyboard = true, .name_limit = 12}},
+    {.name = "2026-11-18 dark theme: the keyboard in English", .input = {.file = "AutoStoryNewGame/2026-11-18/en_kb_dark.png"}, .expectation = {.keyboard = true}},
     {.name = "2026-11-18 dark theme: HOME on Pokemon HOME's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile0.png"}, .expectation = {}},
     {.name = "2026-11-18 dark theme: HOME on Z-A's tile", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_tile1.png"}, .expectation = {.home_plza = true}},
     {.name = "2026-11-18 dark theme: HOME dimmed", .input = {.file = "AutoStoryNewGame/2026-11-18/home_dark_dim.png"}, .expectation = {}},
@@ -98,12 +96,6 @@ public:
         }
         if (is_name_keyboard(frame) != expected.keyboard){
             return std::format("Name keyboard: expected {}, read {}.", expected.keyboard, !expected.keyboard);
-        }
-        if (expected.keyboard && expected.name_limit){
-            const std::optional<size_t> limit = read_name_keyboard_limit(frame);
-            if (limit != expected.name_limit){
-                return std::format("Name keyboard: expected a limit of {}, read {}.", describe(expected.name_limit), describe(limit));
-            }
         }
         if (is_home_tile_plza(frame) != expected.home_plza){
             return std::format("HOME tile: expected PLZA {}, read {}.", expected.home_plza, !expected.home_plza);

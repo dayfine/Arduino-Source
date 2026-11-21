@@ -35,9 +35,6 @@ bool is_look_picker(const ImageViewRGB32& frame);
 //  Returns true when the Switch system name-entry keyboard is displayed.
 bool is_name_keyboard(const ImageViewRGB32& frame);
 
-//  Reads the maximum character limit N from the keyboard's "0/N" counter, or std::nullopt.
-std::optional<size_t> read_name_keyboard_limit(const ImageViewRGB32& frame);
-
 //  Reads the player name shown on Confirm Choices (spaces stripped), or empty string if unread.
 std::string read_confirm_choices_name(const ImageViewRGB32& frame);
 

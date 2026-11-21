@@ -63,6 +63,12 @@ double read_after_turn(PlzaBackend& backend, const MinimapArrowReader& read_arro
     return now;
 }
 
+void story_turn(PlzaBackend& backend, double degrees){
+    //  The tap the story was recorded with; short releases run legs back to back.
+    backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
+    backend.stick(degrees, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
+}
+
 } // namespace
 
 std::optional<Pokemon::StoryFailure> face_heading(PlzaBackend& backend, const MinimapArrowReader& read_arrow, double heading){
@@ -90,12 +96,6 @@ std::optional<Pokemon::StoryFailure> face_heading(PlzaBackend& backend, const Mi
         }
     }
     return Pokemon::StoryFailure{.code = "heading_missed", .detail = std::format("not facing {:.0f} deg after {} turns", heading, HEADING_TURNS)};
-}
-
-void story_turn(PlzaBackend& backend, double degrees){
-    //  The tap the story was recorded with; short releases run legs back to back.
-    backend.press(BUTTON_L, /*hold=*/100ms, /*release=*/150ms);
-    backend.stick(degrees, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
 }
 
 
@@ -128,15 +128,12 @@ void recenter_before_held_leg(PlzaBackend& backend, size_t index, const StoryWal
     }
 }
 
-//  A turn-only leg is a 150 ms tap.
 void run_held_legs(PlzaBackend& backend, const std::vector<StoryWalkLeg>& legs){
     for (size_t index = 0; index < legs.size(); index++){
         const StoryWalkLeg& leg = legs[index];
         recenter_before_held_leg(backend, index, leg);
         if (leg.walk > 0ms){
             backend.stick(leg.turn, leg.walk, /*release=*/0ms, Pokemon::StoryPace::RUN);
-        }else if (leg.turn != 0){
-            backend.stick(leg.turn, /*duration=*/150ms, /*release=*/100ms, Pokemon::StoryPace::WALK);
         }
     }
 }
@@ -153,10 +150,10 @@ std::string story_walk_leg_label(size_t index, size_t count, const StoryWalkLeg&
 } // namespace
 
 
-std::optional<Pokemon::StoryFailure> run_story_move(PlzaBackend& backend, const StoryMove& move){
+void run_story_move(PlzaBackend& backend, const StoryMove& move){
     if (move.style == StoryWalkStyle::HELD){
         run_held_legs(backend, move.legs);
-        return std::nullopt;
+        return;
     }
     //  The look the first input is checked against.
     backend.observe();
@@ -174,26 +171,24 @@ std::optional<Pokemon::StoryFailure> run_story_move(PlzaBackend& backend, const 
             });
         }
     }
-    return std::nullopt;
 }
 
-std::optional<Pokemon::StoryFailure> run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move){
+
+namespace{
+
+void run_story_move_but_last_walk(PlzaBackend& backend, const StoryMove& move){
     if (move.legs.empty()){
-        return std::nullopt;
+        return;
     }
     StoryMove head = move;
     if (move.style == StoryWalkStyle::HELD){
-        if (move.legs.back().walk == 0ms){
-            run_held_legs(backend, move.legs);
-            return std::nullopt;
-        }
         head.legs.pop_back();
         run_held_legs(backend, head.legs);
         recenter_before_held_leg(backend, head.legs.size(), move.legs.back());
-        return std::nullopt;
+        return;
     }
     head.legs.back().walk = 0ms;
-    return run_story_move(backend, head);
+    run_story_move(backend, head);
 }
 
 void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds slice){
@@ -203,9 +198,6 @@ void hold_last_leg(PlzaBackend& backend, const StoryMove& move, Milliseconds sli
         backend.stick(/*degrees=*/0, slice, /*release=*/0ms, Pokemon::StoryPace::RUN);
     }
 }
-
-
-namespace{
 
 //  How long each slice of the held last leg is, between looks for its end.
 constexpr Milliseconds HOLD_SLICE = 250ms;
@@ -480,6 +472,45 @@ bool check_free_control(PlzaBackend& backend, std::string_view walk, const Scree
     return false;
 }
 
+struct LastLegOutcome{
+    std::optional<std::optional<Pokemon::StoryFailure>> ended;
+    Milliseconds sliced = 0ms;
+    Milliseconds elapsed = 0ms;
+    Pokemon::ConfirmStreak battle_streak{2};
+};
+
+//  Runs all legs but the last walk, then slices the last leg until `on_look` ends it,
+//  a battle HUD holds (if `stop_on_battle`), or the hold budget elapses.
+template <typename OnLook>
+LastLegOutcome walk_last_leg(
+    PlzaBackend& backend, std::string_view walk, const StoryMove& move, bool stop_on_battle, OnLook&& on_look
+){
+    const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
+    run_story_move_but_last_walk(backend, move);
+    LastLegHold leg(hold);
+    LastLegOutcome outcome;
+    //  The slices stop the stick only as long as a look takes.
+    while (leg.holding()){
+        backend.scope().throw_if_cancelled();
+        const Milliseconds slice = leg.sliced() < hold ? std::min(HOLD_SLICE, hold - leg.sliced()) : HOLD_SLICE;
+        hold_last_leg(backend, move, slice);
+        const ScreenObservation look = backend.observe();
+        leg.held_slice(slice, look.when);
+        if (stop_on_battle && outcome.battle_streak.update(look.events.has(ScreenEvent::BATTLE_STARTED))){
+            backend.log(std::format("[PLZA] {}: battle HUD showed after {} ms of the last leg: stopping walk.", walk, leg.sliced().count()));
+            outcome.ended = std::optional<Pokemon::StoryFailure>(battle_on_screen_failure());
+            return outcome;
+        }
+        if (std::optional<std::optional<Pokemon::StoryFailure>> ended = on_look(look, leg.sliced())){
+            outcome.ended = std::move(ended);
+            return outcome;
+        }
+    }
+    outcome.sliced = leg.sliced();
+    outcome.elapsed = leg.elapsed();
+    return outcome;
+}
+
 } // namespace
 
 
@@ -514,90 +545,69 @@ std::optional<Pokemon::StoryFailure> walk_until(
     if (options.end && ends_before_walking(backend, walk, move, *options.end, options.end_after)){
         return std::nullopt;
     }
-    const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
-    if (std::optional<Pokemon::StoryFailure> walked = run_story_move_but_last_walk(backend, move)){
-        return walked;
-    }
     size_t scene_looks = 0;
-    Pokemon::ConfirmStreak battle_streak{2};
-    LastLegHold leg(hold);
-    //  The slices stop the stick only as long as a look takes.
-    while (leg.holding()){
-        backend.scope().throw_if_cancelled();
-        const Milliseconds slice = leg.sliced() < hold ? std::min(HOLD_SLICE, hold - leg.sliced()) : HOLD_SLICE;
-        hold_last_leg(backend, move, slice);
-        const ScreenObservation look = backend.observe();
-        leg.held_slice(slice, look.when);
-        const Milliseconds held = leg.sliced();
-        if (options.stop_on_battle && battle_streak.update(look.events.has(ScreenEvent::BATTLE_STARTED))){
-            backend.log(std::format("[PLZA] {}: battle HUD showed after {} ms of the last leg: stopping walk.", walk, held.count()));
-            return battle_on_screen_failure();
-        }
-        if (!options.end){
-            const std::optional<std::string_view> busy = not_free_control(look);
-            scene_looks = busy ? scene_looks + 1 : 0;
-            if (busy && scene_looks >= 2){
-                backend.log(std::format(
-                    "[PLZA] {}: a scene ({}) took control after {} ms of the last leg: the walk stops.", walk, *busy, held.count()
-                ));
+    const LastLegOutcome walked = walk_last_leg(
+        backend, walk, move, options.stop_on_battle,
+        [&](const ScreenObservation& look, Milliseconds held) -> std::optional<std::optional<Pokemon::StoryFailure>>{
+            if (!options.end){
+                const std::optional<std::string_view> busy = not_free_control(look);
+                scene_looks = busy ? scene_looks + 1 : 0;
+                if (busy && scene_looks >= 2){
+                    backend.log(std::format(
+                        "[PLZA] {}: a scene ({}) took control after {} ms of the last leg: the walk stops.", walk, *busy, held.count()
+                    ));
+                    return std::optional<Pokemon::StoryFailure>();
+                }
                 return std::nullopt;
             }
-            continue;
+            return end_event_look(backend, walk, look, *options.end, held, options.end_after);
         }
-        if (const std::optional<std::optional<Pokemon::StoryFailure>> ended = end_event_look(backend, walk, look, *options.end, held, options.end_after)){
-            return *ended;
-        }
+    );
+    if (walked.ended){
+        return *walked.ended;
     }
     if (!options.end){
-        return Pokemon::StoryFailure{.code = "walk_no_scene", .detail = std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, leg.elapsed().count())};
+        return Pokemon::StoryFailure{.code = "walk_no_scene", .detail = std::format("{}: control still free after {} ms of the last leg: no scene took it", walk, walked.elapsed.count())};
     }
-    return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event within {} ms of the last leg", walk, leg.elapsed().count())};
+    return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format("{}: no end event within {} ms of the last leg", walk, walked.elapsed.count())};
 }
 
 std::optional<Pokemon::StoryFailure> walk_into_talk(
     PlzaBackend& backend, std::string_view walk, const StoryMove& move, const WalkStopOptions& options
 ){
-    const Milliseconds hold = move.legs.empty() ? 0ms : move.legs.back().walk;
-    bool prompt_first = ends_before_walking(backend, walk, move, ScreenEvent::INTERACT_PROMPT, /*end_after=*/0ms);
-    if (!prompt_first){
-        if (std::optional<Pokemon::StoryFailure> walked = run_story_move_but_last_walk(backend, move)){
-            return walked;
-        }
-    }
-    Pokemon::ConfirmStreak battle_streak{2};
-    LastLegHold leg(hold);
-    Milliseconds tail = 0ms;
-    while (tail < TALK_TAIL){
-        backend.scope().throw_if_cancelled();
-        const bool walking = !prompt_first && leg.holding();
-        const Milliseconds slice = leg.sliced() < hold ? std::min(HOLD_SLICE, hold - leg.sliced()) : HOLD_SLICE;
-        if (walking){
-            hold_last_leg(backend, move, slice);
-        }
-        bool prompt = prompt_first;
-        if (!prompt_first){
-            const ScreenObservation look = backend.observe();
-            prompt = look.events.has(ScreenEvent::INTERACT_PROMPT);
-            if (walking){
-                leg.held_slice(slice, look.when);
-            }
-            if (options.stop_on_battle && battle_streak.update(look.events.has(ScreenEvent::BATTLE_STARTED))){
-                backend.log(std::format("[PLZA] {}: battle HUD showed after {} ms of the last leg: stopping walk.", walk, leg.sliced().count()));
-                return battle_on_screen_failure();
-            }
-        }
-        prompt_first = false;
-        if (!prompt || (walking && options.after_legs)){
-            if (!walking){
-                backend.wait(TALK_POLL);
-                tail += TALK_POLL;
-            }
-            continue;
-        }
-        if (const std::optional<std::optional<Pokemon::StoryFailure>> ended = talk_at_walk_prompt(backend, walk, leg.sliced())){
+    if (ends_before_walking(backend, walk, move, ScreenEvent::INTERACT_PROMPT, /*end_after=*/0ms)){
+        if (const std::optional<std::optional<Pokemon::StoryFailure>> ended = talk_at_walk_prompt(backend, walk, 0ms)){
             return *ended;
         }
-        tail += leg.holding() ? 0ms : WALK_TALK.retry_gap;
+    }
+    LastLegOutcome walked = walk_last_leg(
+        backend, walk, move, options.stop_on_battle,
+        [&](const ScreenObservation& look, Milliseconds held) -> std::optional<std::optional<Pokemon::StoryFailure>>{
+            if (options.after_legs || !look.events.has(ScreenEvent::INTERACT_PROMPT)){
+                return std::nullopt;
+            }
+            return talk_at_walk_prompt(backend, walk, held);
+        }
+    );
+    if (walked.ended){
+        return *walked.ended;
+    }
+    for (Milliseconds tail = 0ms; tail < TALK_TAIL; ){
+        backend.scope().throw_if_cancelled();
+        const ScreenObservation look = backend.observe();
+        if (options.stop_on_battle && walked.battle_streak.update(look.events.has(ScreenEvent::BATTLE_STARTED))){
+            backend.log(std::format("[PLZA] {}: battle HUD showed after {} ms of the last leg: stopping walk.", walk, walked.sliced.count()));
+            return battle_on_screen_failure();
+        }
+        if (!look.events.has(ScreenEvent::INTERACT_PROMPT)){
+            backend.wait(TALK_POLL);
+            tail += TALK_POLL;
+            continue;
+        }
+        if (const std::optional<std::optional<Pokemon::StoryFailure>> ended = talk_at_walk_prompt(backend, walk, walked.sliced)){
+            return *ended;
+        }
+        tail += WALK_TALK.retry_gap;
     }
     return Pokemon::StoryFailure{.code = "walk_no_end", .detail = std::format(
         "{}: no talk started within {} ms after the last leg", walk, TALK_TAIL.count()

@@ -182,8 +182,6 @@ decltype(Pokemon::StoryGame::save) autosave_policy(MarkedCheckpoints marked, Aut
         if (first_step){
             const std::string_view next = step_after(checkpoint, *first_step).value_or(last_step);
             why = std::format("the game autosaved in {}, before {}: a reload would skip {}", *first_step, next, next);
-        }else if (marked.unverified_autosaves.contains(checkpoint.id)){
-            why = "save unverified";
         }else if (marked.autosaves.contains(checkpoint.id)){
             why = "the plan's autosave was not seen";
         }
