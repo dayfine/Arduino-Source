@@ -252,7 +252,11 @@ void add_tests_SystemKeyboardDetector(UnitTestDatabase& database){
     //  The OK button is blue with text in the field and grey without.
     database.add<Test_SystemKeyboardDetector>(test_image_path("BDSP-PlayerName-Empty.png"), key_1, false);
     database.add<Test_SystemKeyboardDetector>(test_image_path("BDSP-FriendName-Typed.png"), key_1, true);
-    for (std::string_view language : {"English", "French", "German", "Italian", "Japanese", "Spanish"}){
+    const std::string_view languages[] = {
+        "ChineseSimplified", "ChineseTraditional", "English", "French", "German",
+        "Italian", "Japanese", "Korean", "Spanish", "SpanishLATAM",
+    };
+    for (std::string_view language : languages){
         database.add<Test_SystemKeyboardDetector>(test_image_path(std::format("PLZA-{}-Empty.png", language)), key_1, false);
     }
     //  The console's dark theme (Basic Black): the cyan ABC label must not
