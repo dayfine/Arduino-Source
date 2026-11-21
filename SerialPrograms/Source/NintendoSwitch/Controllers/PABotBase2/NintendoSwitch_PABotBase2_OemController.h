@@ -8,6 +8,7 @@
 #define PokemonAutomation_NintendoSwitch_PABotBase2_OemController_H
 
 #include "Common/ControllerStates/NintendoSwitch_OemController_State.h"
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Controllers/ControllerStatusThread.h"
 #include "Controllers/JoystickTools.h"
 //#include "NintendoSwitch/NintendoSwitch_Settings.h"
@@ -36,7 +37,7 @@ public:
         RecursiveThrottler& logging_throttler,
         PABotBase2::Connection& connection,
         ControllerType controller_type,
-        std::function<void(double magnitude)> on_rumble
+        MoveOnlyFunction<void(double magnitude)> on_rumble
     );
     ~PABotBase2_OemController();
     void stop();
@@ -166,7 +167,7 @@ protected:
     Milliseconds m_cooldown;
     Milliseconds m_timing_variation;
 
-    std::function<void(double magnitude)> m_on_rumble;
+    MoveOnlyFunction<void(double magnitude)> m_on_rumble;
 
     std::unique_ptr<ControllerStatusThread> m_status_thread;
 

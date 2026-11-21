@@ -17,6 +17,7 @@
 #define PokemonAutomation_ThreadPool_H
 
 #include <functional>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Time.h"
 
 namespace PokemonAutomation{
@@ -40,17 +41,17 @@ public:
 
     //  Dispatch the function and return immediately.
     //  The function is not guaranteed to begin running immediately.
-    [[nodiscard]] virtual AsyncTask dispatch(std::function<void()>&& func) = 0;
+    [[nodiscard]] virtual AsyncTask dispatch(MoveOnlyFunction<void()>&& func) = 0;
 
     //  Dispatch the function and begin running now.
     //  If there are no threads available, it waits until there are.
     //  This function will not return until the function has begin running.
-    [[nodiscard]] virtual AsyncTask dispatch_now_blocking(std::function<void()>&& func) = 0;
+    [[nodiscard]] virtual AsyncTask dispatch_now_blocking(MoveOnlyFunction<void()>&& func) = 0;
 
     //  Try to dispatch the function and begin running now.
     //  Returns null if no threads are available. "func" will be moved-from only on success.
     //  This function returns immediately.
-    [[nodiscard]] virtual AsyncTask try_dispatch_now(std::function<void()>& func) = 0;
+    [[nodiscard]] virtual AsyncTask try_dispatch_now(MoveOnlyFunction<void()>& func) = 0;
 
     //  Run function for all the indices [start, end).
     //  Lower indices are not allowed to block on higher indices.

@@ -79,7 +79,7 @@ DeviceHandle::~DeviceHandle(){
 
 void DeviceHandle::add_message_handler(
     uint8_t opcode,
-    std::function<void(const MessageHeader*)> handler
+    MoveOnlyFunction<void(const MessageHeader*)> handler
 ){
     auto ret = m_message_handlers.emplace(opcode, std::move(handler));
     if (!ret.second){

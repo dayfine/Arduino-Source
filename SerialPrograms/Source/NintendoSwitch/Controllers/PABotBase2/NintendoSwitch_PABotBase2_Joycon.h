@@ -30,7 +30,7 @@ public:
         PABotBase2::Connection& connection,
         ControllerClass controller_class,
         ControllerType controller_type,
-        std::function<void(double magnitude)> on_rumble
+        MoveOnlyFunction<void(double magnitude)> on_rumble
     )
         : JoyconType(logger, controller_class)
         , PABotBase2_OemController(

@@ -8,7 +8,7 @@
 #define PokemonAutomation_FireForgetDispatcher_H
 
 #include <deque>
-#include <functional>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Mutex.h"
 #include "ConditionVariable.h"
 #include "Thread.h"
@@ -23,7 +23,7 @@ public:
 
     //  Dispatch the specified task and return a handle to it.
     //  Call "handle->wait()" to wait for the task to finish.
-    void dispatch(std::function<void()>&& func);
+    void dispatch(MoveOnlyFunction<void()>&& func);
 
     void stop();
 
@@ -32,7 +32,7 @@ private:
     void thread_loop();
 
 private:
-    std::deque<std::function<void()>> m_queue;
+    std::deque<MoveOnlyFunction<void()>> m_queue;
     Thread m_thread;
     bool m_stopping;
     Mutex m_lock;

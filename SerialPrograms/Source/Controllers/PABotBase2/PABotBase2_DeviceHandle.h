@@ -11,6 +11,7 @@
 #include <deque>
 #include <map>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
@@ -38,7 +39,7 @@ public:
     virtual ~DeviceHandle();
     void add_message_handler(
         uint8_t opcode,
-        std::function<void(const MessageHeader*)> handler
+        MoveOnlyFunction<void(const MessageHeader*)> handler
     );
 
     virtual bool cancel(std::exception_ptr exception) noexcept override;
@@ -196,7 +197,7 @@ private:
     std::deque<char> m_buffer;
 
     MessageLogger m_message_loggers;
-    std::map<uint8_t, std::function<void(const MessageHeader*)>> m_message_handlers;
+    std::map<uint8_t, MoveOnlyFunction<void(const MessageHeader*)>> m_message_handlers;
 };
 
 

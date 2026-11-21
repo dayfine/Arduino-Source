@@ -7,8 +7,8 @@
 #ifndef PokemonAutomation_CommonTools_DetectionDebouncer_H
 #define PokemonAutomation_CommonTools_DetectionDebouncer_H
 
-#include <functional>
 #include <atomic>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Time.h"
 
 namespace PokemonAutomation{
@@ -20,7 +20,7 @@ public:
     DetectionDebouncer(
         Type initial_state,
         std::chrono::milliseconds min_streak,
-        std::function<void(Type)>&& state_reporter
+        MoveOnlyFunction<void(Type)>&& state_reporter
     )
         : m_min_streak(min_streak)
         , m_state_reporter(std::move(state_reporter))
@@ -57,7 +57,7 @@ public:
 
 private:
     std::chrono::milliseconds m_min_streak;
-    std::function<void(Type)> m_state_reporter;
+    MoveOnlyFunction<void(Type)> m_state_reporter;
 
     std::atomic<Type> m_current_reported;
     WallClock m_last_match;

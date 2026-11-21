@@ -7,9 +7,9 @@
 #ifndef PokemonAutomation_PokemonSV_LetsGoKillDetector_H
 #define PokemonAutomation_PokemonSV_LetsGoKillDetector_H
 
-#include <functional>
 #include <atomic>
 #include "Common/Cpp/Color.h"
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/Audio/AudioPerSpectrumDetectorBase.h"
@@ -39,7 +39,7 @@ public:
         Logger& logger,
         Color color, bool trigger_if_detected = true,
         const ImageFloatBox& box = {0.71, 0.15, 0.04, 0.08},
-        std::function<void()> on_kill_callback = nullptr,
+        MoveOnlyFunction<void()> on_kill_callback = nullptr,
         std::chrono::milliseconds duration = std::chrono::milliseconds(250)
     );
 
@@ -52,7 +52,7 @@ public:
 private:
     Logger& m_logger;
     bool m_trigger_if_detected;
-    std::function<void()> m_on_kill_callback;
+    MoveOnlyFunction<void()> m_on_kill_callback;
 
     bool m_last_detection;
     std::atomic<WallClock> m_last_detected;

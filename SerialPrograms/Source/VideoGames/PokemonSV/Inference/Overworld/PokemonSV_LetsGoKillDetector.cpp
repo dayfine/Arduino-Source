@@ -181,13 +181,13 @@ LetsGoKillWatcher::LetsGoKillWatcher(
     Logger& logger,
     Color color, bool trigger_if_detected,
     const ImageFloatBox& box,
-    std::function<void()> on_kill_callback,
+    MoveOnlyFunction<void()> on_kill_callback,
     std::chrono::milliseconds duration
 )
      : DetectorToFinder("LetsGoKillWatcher", duration, color, box)
      , m_logger(logger)
      , m_trigger_if_detected(trigger_if_detected)
-     , m_on_kill_callback(on_kill_callback)
+     , m_on_kill_callback(std::move(on_kill_callback))
      , m_last_detection(false)
      , m_last_detected(WallClock::min())
 {}

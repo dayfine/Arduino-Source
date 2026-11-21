@@ -21,7 +21,7 @@
 #ifndef PokemonAutomation_Concurrency_Thread_H
 #define PokemonAutomation_Concurrency_Thread_H
 
-#include <functional>
+#include "Common/Cpp/MoveOnlyFunction.h"
 #include "Common/Cpp/Containers/Pimpl.h"
 
 namespace PokemonAutomation{
@@ -42,7 +42,7 @@ public:
 
     // Constructor - starts thread immediately with given function like std::thread
     // Function is moved (not copied) for efficiency
-    Thread(std::function<void()>&& function);
+    Thread(MoveOnlyFunction<void()>&& function);
 
     // Returns true if Thread has valid data (not default-constructed or moved-from)
     // and not joined.
