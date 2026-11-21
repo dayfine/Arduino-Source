@@ -44,10 +44,9 @@ constexpr double GATE_HEADING_TOLERANCE = 8;
 //  left pillar.
 constexpr MapPoint ZONE1_FAR_GATE{.x = 361, .y = 252};
 
-//  On the gate's line ~25 pixels east of the gate: the way onto the line
-//  when the point straight north or south of the player is not in the zone
-//  east of the gate.
-constexpr MapPoint ZONE1_GATE_RUN_UP{.x = 386, .y = 252};
+//  Just east of the far gate on its center line so any point in Wild Zone 1
+//  runs diagonally straight toward the opening, then straight west between the pillars.
+constexpr MapPoint ZONE1_GATE_RUN_UP{.x = 375, .y = 252};
 
 bool at_map_centre(MapPoint pin){
     return std::hypot(pin.x - MAP_CENTRE.x, pin.y - MAP_CENTRE.y) <= MAP_CENTRE_RADIUS;
@@ -83,10 +82,6 @@ bool pin_in_zone_1(MapPoint pin){
 std::vector<MapPoint> zone_1_exit_legs(MapPoint start){
     if (start.x > ZONE1_FAR_GATE.x && std::abs(bearing(start, ZONE1_FAR_GATE) - GATE_HEADING) <= GATE_HEADING_TOLERANCE){
         return {ZONE1_FAR_GATE};
-    }
-    const MapPoint onto_line{.x = start.x, .y = ZONE1_FAR_GATE.y};
-    if (start.x > ZONE1_FAR_GATE.x && inside(ZONE1_OUTLINE, onto_line)){
-        return {onto_line, ZONE1_FAR_GATE};
     }
     return {ZONE1_GATE_RUN_UP, ZONE1_FAR_GATE};
 }
