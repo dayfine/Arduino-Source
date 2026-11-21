@@ -82,6 +82,21 @@ static void add_tests_NavigationSimulation(UnitTestDatabase& ret){
     Pokemon::add_tests_KnownFailing(ret);
 }
 
+static void add_tests_Navigation(UnitTestDatabase& ret){
+    Pokemon::add_tests_LegPlanner(ret);
+    Pokemon::add_tests_RobustLegPlanner(ret);
+    Pokemon::add_tests_LegWalker(ret);
+    Pokemon::add_tests_WallRecovery(ret);
+    Pokemon::add_tests_WanderRecovery(ret);
+    Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_ConnectedMaps(ret);
+    Pokemon::add_tests_MoveMechanics(ret);
+    Pokemon::add_tests_RuntimeMap(ret);
+    Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_RouteScorer(ret);
+    add_tests_NavigationSimulation(ret);
+}
+
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
@@ -105,18 +120,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     OCR::add_tests(ret);
     add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
-    Pokemon::add_tests_LegPlanner(ret);
-    Pokemon::add_tests_RobustLegPlanner(ret);
-    Pokemon::add_tests_LegWalker(ret);
-    Pokemon::add_tests_WallRecovery(ret);
-    Pokemon::add_tests_WanderRecovery(ret);
-    Pokemon::add_tests_MapData(ret);
-    Pokemon::add_tests_ConnectedMaps(ret);
-    Pokemon::add_tests_MoveMechanics(ret);
-    Pokemon::add_tests_RuntimeMap(ret);
-    Pokemon::add_tests_RouteLog(ret);
-    Pokemon::add_tests_RouteScorer(ret);
-    add_tests_NavigationSimulation(ret);
+    add_tests_Navigation(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);

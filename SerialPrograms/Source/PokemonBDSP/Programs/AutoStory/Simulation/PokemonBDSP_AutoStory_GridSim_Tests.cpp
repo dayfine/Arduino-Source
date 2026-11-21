@@ -994,8 +994,6 @@ void add_tests_AutoStory_GridSim(UnitTestDatabase& database){
     }
 }
 
-
-
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch
 } // namespace PokemonAutomation

@@ -1974,12 +1974,14 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StoryActions_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim.h
+    Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySimScene.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySim_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySimulation_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_StorySimulation_Tests.h
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WallBattleSim_Tests.cpp
     Source/PokemonBDSP/Programs/AutoStory/Simulation/PokemonBDSP_AutoStory_WallBattleSim_Tests.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_CountedWallLeg.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_CountedWallLeg.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h
@@ -1996,6 +1998,7 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_OverlayLog.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedTalk.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedTalk.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteChoice.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteChoice.h
@@ -2003,6 +2006,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteInput.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteIO.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteIO.h
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteSteps.cpp
+    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteSteps.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTalk.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteTiming.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.cpp
