@@ -197,13 +197,15 @@ anchor); 0 from one start tile.
   totals: 12 legs, 11 turns, 4 open, 0 localization
 
 == 00.05 to_the_center (costs: town)
-  from: JubilifeCity (48, 62) (tile)
+  from: JubilifeCity (45, 59) (46, 59) (47, 59) (45, 60) (46, 60) (47, 60) (set)
   target: JubilifeCity (52, 41) facing north (tile)
-  start candidates: Jubilife City (48, 62)
-  1. west 1 (open) -> Jubilife City (47, 62)
-  2. north 21 (open) -> Jubilife City (47, 41)
-  3. east 5 (open) -> Jubilife City (52, 41)
-  totals: 3 legs, 2 turns, 3 open, 0 localization
+  start candidates: Jubilife City (45, 59), Jubilife City (46, 59), Jubilife City (47, 59), Jubilife City (45, 60), Jubilife City (46, 60), Jubilife City (47, 60)
+  1. east 4 (to wall) -> Jubilife City (49, 59), Jubilife City (49, 60)
+  2. north 6 (to wall) -> Jubilife City (49, 54)
+  3. east 1 (open) -> Jubilife City (50, 54)
+  4. north 13 (to wall) -> Jubilife City (50, 41)
+  5. east 2 (open) -> Jubilife City (52, 41)
+  totals: 5 legs, 4 turns, 2 open, 2 localization
 
 == 00.05 to_the_school (costs: town)
   from: JubilifeCity (52, 41) facing north (tile)
