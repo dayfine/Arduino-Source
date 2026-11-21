@@ -26,6 +26,8 @@
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
 #include "VideoGames/PokemonSV/Programs/Battles/PokemonSV_BasicCatcher.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryQuests.h"
+#include "PokemonSV_BBQTargetDiagnostics.h"
 #include "PokemonSV_BlueberryCatchPhoto.h"
 
 namespace PokemonAutomation{
@@ -289,6 +291,8 @@ void quest_photo(
     CameraAngle move_camera = CameraAngle::none;
 
     while(!took_photo){
+        TargetAttemptRecorder recorder(console, current_quest, BBQ_OPTIONS.SAVE_TARGET_DIAGNOSTICS);
+        bool photo_prompt_seen = false;
         EncounterWatcher encounter_watcher(console, COLOR_RED);
         int ret = run_until<ProControllerContext>(
             console, context,
@@ -311,6 +315,7 @@ void quest_photo(
                     pbf_move_right_joystick(context, {0, -1}, 400ms, 160ms);
                 }
                 context.wait_for_all_requests();
+                recorder.checkpoint("before-shutter");
 
                 pbf_press_button(context, BUTTON_A, 160ms, 400ms);
 
@@ -319,9 +324,11 @@ void quest_photo(
                     std::chrono::seconds(10),
                     { photo_prompt }
                 );
+                photo_prompt_seen = ret == 0;
                 if (ret != 0){
                     console.log("Photo not taken.");
                 }
+                recorder.checkpoint(photo_prompt_seen ? "photo-prompt" : "photo-prompt-timeout");
 
                 //Mash B until overworld
                 int exit = run_until<ProControllerContext>(
@@ -342,6 +349,11 @@ void quest_photo(
                 static_cast<AudioInferenceCallback&>(encounter_watcher),
             }
         );
+        recorder.finish({
+            .kind = TargetAttemptKind::photo,
+            .encounter_detected = ret >= 0,
+            .photo_prompt_seen = photo_prompt_seen,
+        });
         encounter_watcher.throw_if_no_sound();
 
         if (ret >= 0){
@@ -893,13 +905,19 @@ void quest_catch_handle_battle(
     }
 }
 
+bool catch_quest_catches_on_return(BBQuests current_quest, bool battled_this_attempt){
+    return current_quest == BBQuests::catch_any && !battled_this_attempt;
+}
+
 void quest_catch(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS,
     BBQuests current_quest
 ){
+    TargetAttemptRecorder recorder(console, current_quest, BBQ_OPTIONS.SAVE_TARGET_DIAGNOSTICS);
     EncounterWatcher encounter_watcher(console, COLOR_RED);
+    bool battle_menu_seen = false;
 
     //Navigate to target and start battle
     int ret = run_until<ProControllerContext>(
@@ -908,6 +926,7 @@ void quest_catch(
             
             quest_catch_navi(info, console, context, BBQ_OPTIONS, current_quest);
             context.wait_for_all_requests();
+            recorder.checkpoint("after-lock-on");
 
             NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
             int ret2 = wait_until(
@@ -915,8 +934,12 @@ void quest_catch(
                 std::chrono::seconds(25),
                 { battle_menu }
             );
+            battle_menu_seen = ret2 == 0;
             if (ret2 != 0){
                 console.log("Did not enter battle. Did target spawn?");
+                recorder.checkpoint("battle-entry-timeout");
+                console.log("BBQ quest=" + BBQuests_enum_to_string(current_quest) + " event=battle_entry outcome=timeout");
+                log_bbq_snapshot(console, BBQuests_enum_to_string(current_quest) + "-battle-entry-timeout");
             }
         },
         {
@@ -924,9 +947,15 @@ void quest_catch(
             static_cast<AudioInferenceCallback&>(encounter_watcher),
         }
     );
+    recorder.finish({
+        .kind = TargetAttemptKind::battle,
+        .encounter_detected = ret >= 0,
+        .battle_menu_seen = battle_menu_seen,
+    });
     encounter_watcher.throw_if_no_sound();
 
-    if (ret >= 0){
+    bool battled = false;
+    if (ret >= 0 || battle_menu_seen){
         console.log("Battle menu detected.");
 
         bool is_shiny = (bool)encounter_watcher.shiny_screenshot();
@@ -936,10 +965,22 @@ void quest_catch(
             throw ProgramFinishedException();
         }else{
             quest_catch_handle_battle(info, console, context, BBQ_OPTIONS, current_quest);
+            battled = true;
         }
     }
 
-    return_to_plaza(info, console, context);
+    while (true){
+        if (!catch_quest_catches_on_return(current_quest, battled)){
+            return_to_plaza(info, console, context);
+            break;
+        }
+        if (!return_to_plaza_unless_battle(info, console, context)){
+            break;
+        }
+        console.log("Battle on the way back to Central Plaza. Any wild Pokemon counts: catching it.");
+        quest_catch_handle_battle(info, console, context, BBQ_OPTIONS, current_quest);
+        battled = true;
+    }
 
     //Day skip and attempt to respawn fixed encounters
     pbf_press_button(context, BUTTON_HOME, 160ms, GameSettings::instance().GAME_TO_HOME_DELAY1);
@@ -947,6 +988,15 @@ void quest_catch(
     roll_date_forward_1(console, context, true);
     pbf_press_button(context, BUTTON_HOME, 160ms, ConsoleSettings::instance().SETTINGS_TO_HOME_DELAY0);
     resume_game_from_home(console, context);
+
+    //Nothing to heal without a battle (return_to_plaza() flees with a Smoke Ball).
+    //The player is still on the Central Plaza fly point, where return_to_plaza()
+    //landed, so the central_to_* routes need no re-fly either.
+    if (!battled){
+        console.log("No battle this attempt. Skipping the Pokecenter heal.");
+        context.wait_for_all_requests();
+        return;
+    }
 
     //Heal up and then reset position again.
     OverworldWatcher done_healing(console.logger(), COLOR_BLUE);

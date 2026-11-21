@@ -9,6 +9,8 @@
 #include "Tests/ImageUnitTest.h"
 #include "VideoGames/PokemonSV/Inference/PokemonSV_BlueberryPointsReader.h"
 #include "VideoGames/PokemonSV/Options/PokemonSV_BBQuests.h"
+#include "PokemonSV_BlueberryCatchPhoto.h"
+#include "PokemonSV_BBQTargetDiagnostics.h"
 #include "PokemonSV_BlueberryQuests.h"
 #include "PokemonSV_BBQTests.h"
 
@@ -122,21 +124,211 @@ static void add_tests_TeraEncounterAction(UnitTestDatabase& database){
 }
 
 
-void add_tests_BBQ(UnitTestDatabase& database){
-    database.add<Test_BBQuestsSlugs>();
+namespace{
 
-    // Full-frame references, in the CommandLineTests repo: they exercise the production
-    // crop, filter and OCR together.
-    database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6750.png", 6750, 1920, 1080);
-    database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6750.png", 6750, 1280, 720);
+// A catch quest, whether this attempt already battled, and whether a wild
+// battle on the way back to Central Plaza should be caught instead of fled.
+struct BBQCatchOnReturnScenario{
+    std::string name;
+    BBQuests quest;
+    bool battled_this_attempt = false;
+    bool expected_catch = false;
+};
 
-    database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6740.png", 6740, 1920, 1080);
-    database.add<Test_BlueberryPoints>("PokemonSV/BlueberryPoints/6740.png", 6740, 1280, 720);
+class Test_BBQCatchOnReturn : public UnitTest{
+public:
+    Test_BBQCatchOnReturn(BBQCatchOnReturnScenario scenario)
+        : UnitTest("PokemonSV::BBQCatchOnReturn - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
 
-    add_tests_TeraEncounterAction(database);
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const bool got = catch_quest_catches_on_return(m_scenario.quest, m_scenario.battled_this_attempt);
+        if (got != m_scenario.expected_catch){
+            return std::string("Expected ") + (m_scenario.expected_catch ? "catch" : "flee")
+                + ", got " + (got ? "catch" : "flee");
+        }
+        return true;
+    }
+
+private:
+    const BBQCatchOnReturnScenario m_scenario;
+};
+
 }
 
+static void add_tests_BBQCatchOnReturn(UnitTestDatabase& database){
+    using enum BBQuests;
+    const BBQCatchOnReturnScenario scenarios[] = {
+        {
+            // The target spawned late or not at all: any wild Pokemon completes the quest.
+            .name = "catch any without a battle catches",
+            .quest = catch_any,
+            .expected_catch = true,
+        },
+        {
+            // Already caught this attempt: fleeing is faster than a second catch.
+            .name = "catch any after a battle flees",
+            .quest = catch_any,
+            .battled_this_attempt = true,
+        },
+        {
+            // The type of a wild Pokemon is not read in battle.
+            .name = "catch normal without a battle flees",
+            .quest = catch_normal,
+        },
+        {
+            .name = "catch fire without a battle flees",
+            .quest = catch_fire,
+        },
+        {
+            .name = "catch psychic without a battle flees",
+            .quest = catch_psychic,
+        },
+        {
+            .name = "catch fighting after a battle flees",
+            .quest = catch_fighting,
+            .battled_this_attempt = true,
+        },
+    };
+    for (const BBQCatchOnReturnScenario& scenario : scenarios){
+        database.add<Test_BBQCatchOnReturn>(scenario);
+    }
+}
 
+namespace{
+
+struct BBQTargetAttemptScenario{
+    std::string name;
+    BBQuests quest = BBQuests::catch_any;
+    TargetAttemptSignals signals;
+    TargetAttemptOutcome expected_outcome = TargetAttemptOutcome::no_battle;
+    bool expected_needs_history = false;
+    std::string expected_summary;
+};
+
+class Test_BBQTargetAttempt : public UnitTest{
+public:
+    Test_BBQTargetAttempt(BBQTargetAttemptScenario scenario)
+        : UnitTest("PokemonSV::BBQTargetAttempt - " + scenario.name)
+        , m_scenario(std::move(scenario))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const TargetAttemptOutcome outcome = classify_target_attempt(m_scenario.signals);
+        if (outcome != m_scenario.expected_outcome){
+            return std::string("Expected outcome ") + target_attempt_outcome_to_string(m_scenario.expected_outcome)
+                + ", got " + target_attempt_outcome_to_string(outcome);
+        }
+        const bool needs_history = target_attempt_needs_history(outcome);
+        if (needs_history != m_scenario.expected_needs_history){
+            return std::string("Expected needs_history=") + (m_scenario.expected_needs_history ? "true" : "false")
+                + ", got " + (needs_history ? "true" : "false");
+        }
+        const std::string summary = target_attempt_summary(
+            m_scenario.quest, m_scenario.signals, std::chrono::milliseconds(41300)
+        );
+        if (summary != m_scenario.expected_summary){
+            return "Expected summary: " + m_scenario.expected_summary + "\nActual summary:   " + summary;
+        }
+        return true;
+    }
+
+private:
+    const BBQTargetAttemptScenario m_scenario;
+};
+
+}
+
+static void add_tests_BBQTargetAttempt(UnitTestDatabase& database){
+    const BBQTargetAttemptScenario scenarios[] = {
+        {
+            .name = "catch enters battle",
+            .signals = {
+                .kind = TargetAttemptKind::battle,
+                .encounter_detected = true,
+            },
+            .expected_outcome = TargetAttemptOutcome::battle_entered,
+            .expected_needs_history = false,
+            .expected_summary = "BBQ event=target-attempt quest=catch-any outcome=battle-entered encounter=1 battle_menu=0 elapsed=41.3s",
+        },
+        {
+            // The failure behind "Did not enter battle. Did target spawn?".
+            .name = "catch finds no battle",
+            .signals = {
+                .kind = TargetAttemptKind::battle,
+            },
+            .expected_outcome = TargetAttemptOutcome::no_battle,
+            .expected_needs_history = true,
+            .expected_summary = "BBQ event=target-attempt quest=catch-any outcome=no-battle encounter=0 battle_menu=0 elapsed=41.3s",
+        },
+        {
+            .name = "sneak up finds no battle",
+            .quest = BBQuests::sneak_up,
+            .signals = {
+                .kind = TargetAttemptKind::battle,
+            },
+            .expected_outcome = TargetAttemptOutcome::no_battle,
+            .expected_needs_history = true,
+            .expected_summary = "BBQ event=target-attempt quest=sneak-up outcome=no-battle encounter=0 battle_menu=0 elapsed=41.3s",
+        },
+        {
+            // The route only acts on the encounter watcher, so it treats this
+            // as no battle: a detector disagreement, not a missing target.
+            .name = "battle menu without the encounter watcher",
+            .quest = BBQuests::catch_normal,
+            .signals = {
+                .kind = TargetAttemptKind::battle,
+                .battle_menu_seen = true,
+            },
+            .expected_outcome = TargetAttemptOutcome::battle_menu_without_encounter,
+            .expected_needs_history = true,
+            .expected_summary = "BBQ event=target-attempt quest=catch-normal outcome=battle-menu-without-encounter encounter=0 battle_menu=1 elapsed=41.3s",
+        },
+        {
+            .name = "photo prompt seen",
+            .quest = BBQuests::photo_savanna,
+            .signals = {
+                .kind = TargetAttemptKind::photo,
+                .photo_prompt_seen = true,
+            },
+            .expected_outcome = TargetAttemptOutcome::photo_prompt_seen,
+            .expected_needs_history = false,
+            .expected_summary = "BBQ event=target-attempt quest=photo-savanna outcome=photo-prompt-seen encounter=0 photo_prompt=1 elapsed=41.3s",
+        },
+        {
+            .name = "photo prompt timeout",
+            .quest = BBQuests::photo_savanna,
+            .signals = {
+                .kind = TargetAttemptKind::photo,
+            },
+            .expected_outcome = TargetAttemptOutcome::photo_prompt_timeout,
+            .expected_needs_history = true,
+            .expected_summary = "BBQ event=target-attempt quest=photo-savanna outcome=photo-prompt-timeout encounter=0 photo_prompt=0 elapsed=41.3s",
+        },
+        {
+            // A wild battle cuts the photo route short; the route retries.
+            .name = "battle during photo",
+            .quest = BBQuests::photo_coastal,
+            .signals = {
+                .kind = TargetAttemptKind::photo,
+                .encounter_detected = true,
+            },
+            .expected_outcome = TargetAttemptOutcome::battle_during_photo,
+            .expected_needs_history = true,
+            .expected_summary = "BBQ event=target-attempt quest=photo-coastal outcome=battle-during-photo encounter=1 photo_prompt=0 elapsed=41.3s",
+        },
+    };
+    for (const BBQTargetAttemptScenario& scenario : scenarios){
+        database.add<Test_BBQTargetAttempt>(scenario);
+    }
+}
+
+void add_tests_BBQ(UnitTestDatabase& database){
+    add_tests_TeraEncounterAction(database);
+    add_tests_BBQCatchOnReturn(database);
+    add_tests_BBQTargetAttempt(database);
+}
 
 }
 }

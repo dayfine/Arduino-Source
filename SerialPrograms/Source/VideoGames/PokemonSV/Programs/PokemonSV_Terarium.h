@@ -18,6 +18,10 @@ namespace PokemonSV{
 // Return to Central Plaza from anywhere in the terarium
 void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
 
+// Same as return_to_plaza(), but stops at the first wild battle instead of fleeing it.
+// Returns true with the battle menu open, or false once at Central Plaza.
+bool return_to_plaza_unless_battle(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context);
+
 // Open map from overworld, move cursor to fly location, and fly to location
 void map_move_cursor_fly(
     const ProgramInfo& info,

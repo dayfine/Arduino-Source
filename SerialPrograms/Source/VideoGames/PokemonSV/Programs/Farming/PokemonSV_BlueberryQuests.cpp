@@ -5,6 +5,9 @@
  */
 
 #include<vector>
+#include <chrono>
+#include "Common/Cpp/PrettyPrint.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
@@ -42,12 +45,19 @@
 #include "VideoGames/PokemonSV/Programs/TeraRaids/PokemonSV_TeraBattler.h"
 #include "VideoGames/PokemonSV/Programs/Farming/PokemonSV_BlueberryCatchPhoto.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_Terarium.h"
+#include "PokemonSV_BBQTargetDiagnostics.h"
 
 #include "PokemonSV_BlueberryQuests.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
+
+void log_bbq_snapshot(VideoStream& stream, const std::string& label){
+    const std::string path = DEBUG_PATH() + "BBQ/" + now_to_filestring() + "-" + label + ".png";
+    const bool saved = stream.video().snapshot()->save(path);
+    stream.log("BBQ event=snapshot saved=" + std::to_string(saved) + " path=" + path);
+}
 
 int read_BP(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     WhiteButtonWatcher right_panel(COLOR_BLUE, WhiteButton::ButtonB, {0.484, 0.117, 0.022, 0.037});
@@ -117,6 +127,22 @@ std::vector<BBQuests> read_quests(
     if (fourth_quest != ""){
         quest_list.push_back(BBQuests_string_to_enum(fourth_quest));
     }
+
+    // Reuse the board snapshot: no extra menu navigation or capture.
+    // Stop before the BP suffix: its left edge can be misread as an extra 1.
+    ImageRGB32 BP_value = to_blackwhite_rgb32_range(
+        extract_box_reference(screen, ImageFloatBox(0.866, 0.019, 0.088, 0.041)),
+        true, combine_rgb(198, 198, 198), combine_rgb(255, 255, 255)
+    );
+    int bp = result == 0 ? OCR::read_number(stream.logger(), BP_value) : -1;
+    std::string board;
+    for (BBQuests quest : quest_list){
+        if (!board.empty()) board += ",";
+        board += BBQuests_enum_to_string(quest);
+    }
+    stream.log("BBQ event=board panel_detected=" + std::to_string(result == 0)
+        + " bp=" + (bp < 0 ? std::string("unknown") : std::to_string(bp))
+        + " quests=" + board);
 
     //Close quest list
     pbf_mash_button(context, BUTTON_B, 800ms);
@@ -316,7 +342,12 @@ bool process_and_do_quest(
     bool quest_completed = false;
     int quest_attempts = 0;
 
+    const std::string slug = BBQuests_enum_to_string(current_quest);
     while (!quest_completed){
+        const auto attempt_start = std::chrono::steady_clock::now();
+        const std::string attempt = "BBQ quest=" + slug + " attempt=" + std::to_string(quest_attempts + 1)
+            + " limit=" + std::to_string((unsigned)BBQ_OPTIONS.NUM_RETRIES + 1);
+        console.log(attempt + " event=start");
         switch (current_quest){
         case BBQuests::make_tm:
             quest_make_tm(env.program_info(), console, context);
@@ -415,10 +446,14 @@ bool process_and_do_quest(
             break;
         }
 
+        const auto route_end = std::chrono::steady_clock::now();
+        console.log(attempt + " event=route_return elapsed_ms=" + std::to_string(
+            std::chrono::duration_cast<std::chrono::milliseconds>(route_end - attempt_start).count()));
         //Validate quest was completed by checking list
         std::vector<BBQuests> quest_list = read_quests(env.program_info(), console, context, BBQ_OPTIONS);
         if (std::find(quest_list.begin(), quest_list.end(), current_quest) != quest_list.end()){
             console.log("Current quest exists on list. Quest did not complete.");
+            log_bbq_snapshot(console, slug + "-verification-failed");
             quest_attempts++;
         }else{
             console.log("Current quest was not found. Quest completed!");
@@ -430,7 +465,13 @@ bool process_and_do_quest(
             quest_completed = true;
         }
 
+        console.log(attempt + " event=result outcome=" + (quest_completed ? "absent_from_board" : "still_on_board")
+            + " verification_ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - route_end).count())
+            + " total_ms=" + std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - attempt_start).count()));
         if (quest_attempts > BBQ_OPTIONS.NUM_RETRIES){
+            console.log("BBQ quest=" + slug + " event=retry_exhausted recovery=skip_current_batch");
             console.log("Failed to complete a quest multiple times. Skipping it for now.", COLOR_RED);
             break;
         }
@@ -440,6 +481,16 @@ bool process_and_do_quest(
 
 void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
     stream.log("Quest: Make TM");
+
+    //The index of the last craftable TM in this program run. The machine opens on the first
+    //TM, and the craftable one moves only a few places between quests as materials run out,
+    //so starting there saves walking past the same uncraftable TMs (~2.5 s each) every time.
+    static WallClock last_tm_run = WallClock::min();
+    static int last_tm_index = 0;
+    if (last_tm_run != info.start_time){
+        last_tm_run = info.start_time;
+        last_tm_index = 0;
+    }
 
     //Mount and then dismount in case you're crouched
     pbf_press_button(context, BUTTON_PLUS, 160ms, 840ms);
@@ -469,28 +520,62 @@ void quest_make_tm(const ProgramInfo& info, VideoStream& stream, ProControllerCo
     if (enter_machine == 0){
         stream.log("TM machine entered. Finding TM to make.");
 
-        int make_tm = run_until<ProControllerContext>(
-            stream, context,
-            [&](ProControllerContext& context){
-                for (int i = 0; i < 229; i++){ //229 is max number of TMs
-                    //click on tm
+        int make_tm = -1;
+        if (last_tm_index > 0){
+            stream.log("Trying TM " + std::to_string(last_tm_index + 1) + " first, the last one made.");
+            make_tm = run_until<ProControllerContext>(
+                stream, context,
+                [&](ProControllerContext& context){
+                    for (int i = 0; i < last_tm_index; i++){
+                        pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
+                    }
                     pbf_press_button(context, BUTTON_A, 160ms, 400ms);
                     pbf_wait(context, 800ms);
                     context.wait_for_all_requests();
-
-                    //not craftable, close and move on to next
-                    pbf_press_button(context, BUTTON_A, 160ms, 400ms);
-                    pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
-                    pbf_wait(context, 800ms);
-                    context.wait_for_all_requests();
+                },
+                {{ makeTM }}
+            );
+            context.wait_for_all_requests();
+            if (make_tm != 0){
+                stream.log("Not craftable. Scanning from the first TM.");
+                pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+                for (int i = 0; i < last_tm_index; i++){
+                    pbf_press_dpad(context, DPAD_LEFT, 160ms, 160ms);
                 }
-            },
-            {{ makeTM }}
-        );
-        context.wait_for_all_requests();
+                pbf_wait(context, 800ms);
+                context.wait_for_all_requests();
+            }
+        }
+
+        if (make_tm != 0){
+            int tm_index = 0;
+            make_tm = run_until<ProControllerContext>(
+                stream, context,
+                [&](ProControllerContext& context){
+                    for (int i = 0; i < 229; i++){ //229 is max number of TMs
+                        //click on tm
+                        tm_index = i;
+                        pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+                        pbf_wait(context, 800ms);
+                        context.wait_for_all_requests();
+
+                        //not craftable, close and move on to next
+                        pbf_press_button(context, BUTTON_A, 160ms, 400ms);
+                        pbf_press_dpad(context, DPAD_RIGHT, 160ms, 160ms);
+                        pbf_wait(context, 800ms);
+                        context.wait_for_all_requests();
+                    }
+                },
+                {{ makeTM }}
+            );
+            context.wait_for_all_requests();
+            if (make_tm == 0){
+                last_tm_index = tm_index;
+            }
+        }
 
         if (make_tm == 0){
-            stream.log("Craftable TM found. Making TM");
+            stream.log("Craftable TM found. Making TM " + std::to_string(last_tm_index + 1) + ".");
 
             pbf_mash_button(context, BUTTON_A, 1760ms);
             context.wait_for_all_requests();
@@ -560,6 +645,36 @@ TeraEncounterAction tera_encounter_action(
     return TeraEncounterAction::Recover;
 }
 
+bool send_out_and_look_around(
+    ConsoleHandle& console, ProControllerContext& context,
+    std::chrono::seconds first_wait, const std::string& target
+){
+    auto try_battle = [&](std::chrono::seconds timeout){
+        ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
+        ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
+        ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
+
+        pbf_wait(context, 2400ms);
+        context.wait_for_all_requests();
+
+        NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
+        return wait_until(console, context, timeout, { battle_menu }) == 0;
+    };
+
+    if (try_battle(first_wait)){
+        return true;
+    }
+    for (int turn = 1; turn <= 3; turn++){
+        console.log("Did not enter battle. Did " + target + " spawn? Looking around (" + std::to_string(turn) + "/3).");
+        pbf_move_right_joystick(context, {+1, 0}, 480ms, 320ms);
+        if (try_battle(std::chrono::seconds(6))){
+            return true;
+        }
+    }
+    console.log("Did not enter battle after looking around.");
+    return false;
+}
+
 void quest_tera_self_defeat(
     const ProgramInfo& info,
     ConsoleHandle& console, ProControllerContext& context,
@@ -584,23 +699,9 @@ void quest_tera_self_defeat(
                 jump_glide_fly(console, context, BBQ_OPTIONS.INVERTED_FLIGHT, 8000ms, 12800ms, 2400ms);
             }
 
-            ssf_press_button(context, BUTTON_ZR, 0ms, 1600ms);
-            ssf_press_button(context, BUTTON_ZL, 800ms, 400ms);
-            ssf_press_button(context, BUTTON_ZL, 1200ms, 400ms);
-
-            pbf_wait(context, 2400ms);
-            context.wait_for_all_requests();
-
-            NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
-            int ret2 = wait_until(
-                console, context,
-                std::chrono::seconds(15),
-                { battle_menu }
-            );
-            battle_menu_detected = ret2 == 0;
-            if (!battle_menu_detected){
-                console.log("Did not enter battle. Did Kleavor spawn?");
-            }
+            //The glide lands in the right place, but Kleavor is absent ~40% of the time.
+            //Any wild Pokemon counts, and Scyther roam the area.
+            battle_menu_detected = send_out_and_look_around(console, context, std::chrono::seconds(15), "Kleavor");
         },
         {
             static_cast<VisualInferenceCallback&>(encounter_watcher),
@@ -661,6 +762,8 @@ void quest_sneak_up(
     ConsoleHandle& console, ProControllerContext& context,
     const BBQOption& BBQ_OPTIONS
 ){
+    TargetAttemptRecorder recorder(console, BBQuests::sneak_up, BBQ_OPTIONS.SAVE_TARGET_DIAGNOSTICS);
+    bool battle_menu_seen = false;
     EncounterWatcher encounter_watcher(console, COLOR_RED);
     console.log("Quest: Sneak up.");
     //Navigate to target and start battle
@@ -693,6 +796,7 @@ void quest_sneak_up(
 
             pbf_wait(context, 2400ms);
             context.wait_for_all_requests();
+            recorder.checkpoint("after-lock-on");
 
             NormalBattleMenuWatcher battle_menu(COLOR_YELLOW);
             int ret2 = wait_until(
@@ -700,8 +804,10 @@ void quest_sneak_up(
                 std::chrono::seconds(15),
                 { battle_menu }
             );
+            battle_menu_seen = ret2 == 0;
             if (ret2 != 0){
                 console.log("Did not enter battle. Did target spawn?");
+                recorder.checkpoint("battle-entry-timeout");
             }
         },
         {
@@ -709,6 +815,11 @@ void quest_sneak_up(
             static_cast<AudioInferenceCallback&>(encounter_watcher),
         }
         );
+    recorder.finish({
+        .kind = TargetAttemptKind::battle,
+        .encounter_detected = ret >= 0,
+        .battle_menu_seen = battle_menu_seen,
+    });
     encounter_watcher.throw_if_no_sound();
 
     if (ret >= 0){
@@ -981,6 +1092,20 @@ void quest_wash_pokemon(const ProgramInfo& info, VideoStream& stream, ProControl
     context.wait_for_all_requests();
 }
 
+namespace{
+
+// True if the slot shows the egg icon. Like Egg Hatcher, this reads the slot's
+// sprite rather than the summary panel, which only tells eggs apart in the stats
+// view. The cursor lifts the sprite under it, so keep it off the slot.
+bool box_slot_is_egg(VideoStream& stream, ProControllerContext& context, BoxCursorLocation side, uint8_t row, uint8_t col){
+    context.wait_for_all_requests();
+    context.wait_for(std::chrono::milliseconds(300));
+    BoxEggDetector egg_detector(side, row, col);
+    return egg_detector.detect(stream.video().snapshot());
+}
+
+}
+
 void quest_hatch_egg(
     ProgramEnvironment& env,
     ConsoleHandle& console, ProControllerContext& context,
@@ -1012,27 +1137,25 @@ void quest_hatch_egg(
     enter_box_system_from_overworld(env.program_info(), console, context);
     context.wait_for(std::chrono::milliseconds(400));
     
-    //move_to_left_box(context);
-    BoxCurrentEggDetector egg_detector;
-    SomethingInBoxSlotDetector sth_in_box_detector(COLOR_RED);
+    //Read every box slot from one frame, with the cursor on the party lead.
+    move_box_cursor(env.program_info(), console, context, BoxCursorLocation::PARTY, 0, 0);
+    context.wait_for_all_requests();
+    context.wait_for(std::chrono::milliseconds(300));
+    const VideoSnapshot box_screen = console.video().snapshot();
     bool egg_found = false;
     uint8_t row = 0;
     uint8_t col = 0;
-    for ( ; row < 5; row++){
-        for (uint8_t j_col = 0; j_col < 6; j_col++){
-            col = (row % 2 == 0 ? j_col : 5 - j_col);
-            move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, row, col);
-            context.wait_for_all_requests();
-            auto snapshot = console.video().snapshot();
-            if (sth_in_box_detector.detect(snapshot) && egg_detector.detect(snapshot)){
-                console.log("Found egg.");
+    for ( ; row < 5 && !egg_found; row++){
+        for (col = 0; col < 6; col++){
+            if (BoxEggDetector(BoxCursorLocation::SLOTS, row, col).detect(box_screen)){
+                console.log("Found egg at row " + std::to_string(row) + ", column " + std::to_string(col) + ".");
                 egg_found = true;
                 break;
             }
         }
-        if (egg_found){
-            break;
-        }
+    }
+    if (egg_found){
+        row--;
     }
 
     if (!egg_found){
@@ -1042,12 +1165,24 @@ void quest_hatch_egg(
             BoxCursorLocation::SLOTS, row, col,
             BoxCursorLocation::PARTY, 0, 0);
 
-        leave_box_system_to_overworld(env.program_info(), console, context);
+        //Make sure the party lead is the egg before riding off. Move the cursor off it first.
+        move_box_cursor(env.program_info(), console, context, BoxCursorLocation::SLOTS, row, col);
+        if (!box_slot_is_egg(console, context, BoxCursorLocation::PARTY, 0, 0)){
+            console.log("Party lead is not an egg after the swap. Swapping it back.", COLOR_RED);
+        }else{
+            leave_box_system_to_overworld(env.program_info(), console, context);
 
-        hatch_eggs_anywhere(env, console, context, true, 1);
+            //If the hatch fails, still put the lead back in its box slot.
+            //The quest stays on the list, so it counts as a failed attempt.
+            try{
+                hatch_eggs_anywhere(env, console, context, true, 1);
+            }catch (OperationFailedException& e){
+                console.log("Egg hatch failed: " + e.message() + " Restoring the party lead.", COLOR_RED);
+            }
 
-        enter_box_system_from_overworld(env.program_info(), console, context);
-        context.wait_for(std::chrono::milliseconds(400));
+            enter_box_system_from_overworld(env.program_info(), console, context);
+            context.wait_for(std::chrono::milliseconds(400));
+        }
 
         swap_two_box_slots(env.program_info(), console, context,
             BoxCursorLocation::PARTY, 0, 0,
