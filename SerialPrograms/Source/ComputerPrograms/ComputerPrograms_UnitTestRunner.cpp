@@ -50,6 +50,7 @@
 #include "Pokemon/Navigation/Pokemon_RouteScorer_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
+#include "Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
@@ -79,6 +80,22 @@ bool matches_any(std::string_view test_name, std::span<const std::string_view> f
         }
     }
     return false;
+}
+
+void add_navigation_tests(UnitTestDatabase& ret){
+    Pokemon::add_tests_LegPlanner(ret);
+    Pokemon::add_tests_RobustLegPlanner(ret);
+    Pokemon::add_tests_WanderRecovery(ret);
+    Pokemon::add_tests_LegWalker(ret);
+    Pokemon::add_tests_WallRecovery(ret);
+    Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_ConnectedMaps(ret);
+    Pokemon::add_tests_MoveMechanics(ret);
+    Pokemon::add_tests_RuntimeMap(ret);
+    Pokemon::add_tests_RouteLog(ret);
+    Pokemon::add_tests_RouteScorer(ret);
+    Pokemon::add_tests_SimFaults(ret);
+    Pokemon::add_tests_SimGolden(ret);
 }
 
 } // namespace
@@ -111,18 +128,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_LabDeviceAccess(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
-    Pokemon::add_tests_LegPlanner(ret);
-    Pokemon::add_tests_RobustLegPlanner(ret);
-    Pokemon::add_tests_LegWalker(ret);
-    Pokemon::add_tests_WallRecovery(ret);
-    Pokemon::add_tests_MapData(ret);
-    Pokemon::add_tests_ConnectedMaps(ret);
-    Pokemon::add_tests_MoveMechanics(ret);
-    Pokemon::add_tests_RuntimeMap(ret);
-    Pokemon::add_tests_RouteLog(ret);
-    Pokemon::add_tests_RouteScorer(ret);
-    Pokemon::add_tests_SimFaults(ret);
-    Pokemon::add_tests_SimGolden(ret);
+    add_navigation_tests(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);

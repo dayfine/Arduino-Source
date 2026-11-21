@@ -97,7 +97,7 @@ std::string describe(const std::optional<Legs>& legs){
         text += std::format("{}{} {} {}:", text.empty() ? "" : "; ", direction_name(leg.direction), leg.tiles,
             leg.to_wall ? "to wall" : leg.held ? "held" : "open");
         for (const TilePos& pos : leg.after){
-            text += " " + to_string(pos);
+            text += std::format(" {}", to_string(pos));
         }
     }
     return text;
@@ -277,6 +277,27 @@ const PlanCase PLAN_CASES[] = {
         .input = {.rows = {".....", "#...#"}, .from = {{0, 0}}, .goal = {3, 1}, .costs = {.open_error = 1, .open_error_per = 0}},
         .expectation = {.legs = "east 1 open: (1, 0) (2, 0); south 1 to wall: (1, 1) (2, 1); east 2 to wall: (3, 1)"},
     },
+    {
+        .name = "along_wander is forbidden by default",
+        .input = {.rows = {".ww.", "...."}, .from = {{0, 0}}, .goal = {3, 0}},
+        .expectation = {.legs = "south 1 to wall: (0, 1); east 3 to wall: (3, 1); north 1 to wall: (3, 0)"},
+    },
+    {
+        .name = "forbid_along_wander false allows walking along wander",
+        .input = {
+            .rows = {".ww.", "...."}, .from = {{0, 0}}, .goal = {3, 0},
+            .costs = {.forbid_along_wander = false},
+        },
+        .expectation = {.legs = "east 3 to wall: (3, 0)"},
+    },
+    {
+        .name = "forbid_along_wander false avoids costly wander",
+        .input = {
+            .rows = {".ww.", "...."}, .from = {{0, 0}}, .goal = {3, 0},
+            .costs = {.per_wander_tile = 20, .forbid_along_wander = false},
+        },
+        .expectation = {.legs = "south 1 to wall: (0, 1); east 3 to wall: (3, 1); north 1 to wall: (3, 0)"},
+    },
 };
 
 
@@ -382,6 +403,150 @@ const CostCase COST_CASES[] = {
     },
 };
 
+template <typename State>
+struct ToyLegStep{
+    State next;
+    Direction facing = Direction::NORTH;
+    int action = 0;
+    bool warped = false;
+    bool ends_leg = false;
+    bool wild = false;
+};
+
+class ToyLegModel{
+public:
+    using State = TilePos;
+    using StateHash = std::hash<TilePos>;
+
+    explicit ToyLegModel(std::vector<std::string_view> rows)
+        : m_rows(rows.begin(), rows.end())
+    {}
+
+    std::optional<ToyLegStep<State>> press(const State& state, Direction direction) const{
+        const TilePos next = state.next(direction);
+        const char tile = at(next);
+        if (tile == '#'){
+            return std::nullopt;
+        }
+        ToyLegStep<State> step;
+        step.next = next;
+        step.facing = direction;
+        if (tile == 'W'){
+            step.warped = true;
+            step.ends_leg = true;
+        }else if (tile == 'A'){
+            step.action = 1;
+        }else if (tile == '"'){
+            step.wild = true;
+        }
+        return step;
+    }
+    bool held_at(const State& state, Direction direction) const{
+        return at(state.next(direction)) == '#';
+    }
+    char tile_at(const State& state) const{
+        return at(state);
+    }
+
+private:
+    char at(const TilePos& pos) const{
+        if (pos.y < 0 || pos.y >= (int)m_rows.size() || pos.x < 0 || pos.x >= (int)m_rows[pos.y].size()){
+            return '#';
+        }
+        return m_rows[pos.y][pos.x];
+    }
+
+    std::vector<std::string> m_rows;
+};
+
+
+struct FromLegModelCase{
+    std::string name = {};
+    struct Input{
+        std::vector<std::string_view> rows = {};
+        TilePos start = {};
+        TilePos goal = {};
+        TilePos unheld_warp_from = {};
+        Direction unheld_warp_dir = Direction::EAST;
+        TilePos unheld_action_from = {};
+        Direction unheld_action_dir = Direction::EAST;
+        TilePos held_wall_from = {};
+        Direction held_wall_dir = Direction::NORTH;
+    };
+    struct Expectation{
+        std::string plan = {};
+    };
+    Input input = {};
+    Expectation expectation = {};
+};
+
+const FromLegModelCase FROM_LEG_MODEL_CASES[] = {
+    {
+        .name = "Pokemon::RobustLegPlanner - RobustModelFromLegModel",
+        .input = {
+            //  'W' (warp) and 'A' (action) must be treated as unheld stops so the
+            //  robust planner walks around them rather than crossing or holding against them.
+            .rows = {
+                ".W.w.",
+                ".....",
+                "#..A.",
+            },
+            .start = {0, 0},
+            .goal = {4, 0},
+            .unheld_warp_from = {0, 0},
+            .unheld_warp_dir = Direction::EAST,
+            .unheld_action_from = {2, 2},
+            .unheld_action_dir = Direction::EAST,
+            .held_wall_from = {0, 0},
+            .held_wall_dir = Direction::NORTH,
+        },
+        .expectation = {
+            .plan = "south 1 to wall: (0, 1); east 4 to wall: (4, 1); north 1 to wall: (4, 0)",
+        },
+    },
+};
+
+class Test_RobustLegPlanner_FromLegModel : public UnitTest{
+public:
+    explicit Test_RobustLegPlanner_FromLegModel(const FromLegModelCase& scenario)
+        : UnitTest(scenario.name)
+        , m_case(scenario)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ToyLegModel leg_model(m_case.input.rows);
+        const RobustModelFromLegModel<ToyLegModel> model(
+            leg_model,
+            [&](const TilePos& pos){ return leg_model.tile_at(pos) == 'w'; },
+            [&](const TilePos& pos){ return leg_model.tile_at(pos) == '"'; }
+        );
+        if (model.held_at(m_case.input.unheld_warp_from, m_case.input.unheld_warp_dir)){
+            return "Expected warp to be unheld.";
+        }
+        if (model.held_at(m_case.input.unheld_action_from, m_case.input.unheld_action_dir)){
+            return "Expected non-zero action to be unheld.";
+        }
+        if (!model.held_at(m_case.input.held_wall_from, m_case.input.held_wall_dir)){
+            return "Expected wall to be held.";
+        }
+
+        const std::optional<Legs> legs = plan_robust_legs(
+            model,
+            {m_case.input.start},
+            [&](const TilePos& pos){ return pos == m_case.input.goal; },
+            EXACT
+        );
+        const std::string actual = describe(legs);
+        if (actual != m_case.expectation.plan){
+            return std::format("Planned \"{}\", expected \"{}\".", actual, m_case.expectation.plan);
+        }
+        return true;
+    }
+
+private:
+    const FromLegModelCase& m_case;
+};
+
 } // namespace
 
 
@@ -391,6 +556,9 @@ void add_tests_RobustLegPlanner(UnitTestDatabase& database){
     }
     for (const CostCase& scenario : COST_CASES){
         database.add<Test_RobustLegPlanner_Cost>(scenario);
+    }
+    for (const FromLegModelCase& scenario : FROM_LEG_MODEL_CASES){
+        database.add<Test_RobustLegPlanner_FromLegModel>(scenario);
     }
 }
 
