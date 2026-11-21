@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Battle HUD detectors
+/*  PokemonLZA - Battle HUD detectors
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "PokemonLZA_AutoStoryBattleHudDetectors.h"
-#include "PokemonLZA_AutoStoryPixelShares.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_PixelShares.h"
+#include "PokemonLZA_BattleHudDetectors.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

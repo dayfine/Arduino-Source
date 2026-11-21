@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Battle HUD detectors
+/*  PokemonLZA - Battle HUD detectors
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryBattleHudDetectors_H
-#define PokemonAutomation_PokemonLZA_AutoStoryBattleHudDetectors_H
+#ifndef PokemonAutomation_PokemonLZA_BattleHudDetectors_H
+#define PokemonAutomation_PokemonLZA_BattleHudDetectors_H
 
 #include <vector>
 #include "Common/Cpp/Color.h"

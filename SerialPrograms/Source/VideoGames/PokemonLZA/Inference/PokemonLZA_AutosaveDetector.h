@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Autosave detector
+/*  PokemonLZA - Autosave detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryAutosaveDetector_H
-#define PokemonAutomation_PokemonLZA_AutoStoryAutosaveDetector_H
+#ifndef PokemonAutomation_PokemonLZA_AutosaveDetector_H
+#define PokemonAutomation_PokemonLZA_AutosaveDetector_H
 
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"

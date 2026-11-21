@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Minimap match Tests
+/*  PokemonLZA - Minimap match Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -18,8 +18,8 @@
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
-#include "PokemonLZA_AutoStoryMinimapMatch.h"
+#include "VideoGames/PokemonLZA/Inference/PokemonLZA_Inference_Tests.h"
+#include "PokemonLZA_MinimapMatch.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -158,7 +158,7 @@ private:
 } // namespace
 
 
-void add_tests_AutoStoryMinimapMatch(UnitTestDatabase& database){
+void add_tests_MinimapMatch(UnitTestDatabase& database){
     for (const MatchCase& test : MATCH_CASES){
         database.add<MatchTest>(test);
     }

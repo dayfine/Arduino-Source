@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Intro Screens Tests
+/*  PokemonLZA - Intro Screens Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -13,8 +13,8 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_SystemKeyboardDetector.h"
 #include "Tests/ImageUnitTest.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
-#include "PokemonLZA_AutoStoryIntroScreens.h"
+#include "PokemonLZA_Inference_Tests.h"
+#include "PokemonLZA_IntroScreens.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -276,7 +276,7 @@ public:
 } // namespace
 
 
-void add_tests_AutoStoryIntroScreens(UnitTestDatabase& database){
+void add_tests_IntroScreens(UnitTestDatabase& database){
     for (const FrameCase& test : FRAME_CASES){
         database.add<Test_IntroScreenFrame>(test);
     }

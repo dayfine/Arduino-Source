@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Controls hint detector
+/*  PokemonLZA - Controls hint detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
 
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
-#include "PokemonLZA_AutoStoryPixelShares.h"
-#include "PokemonLZA_AutoStoryControlsHintDetector.h"
+#include "PokemonLZA_PixelShares.h"
+#include "PokemonLZA_ControlsHintDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

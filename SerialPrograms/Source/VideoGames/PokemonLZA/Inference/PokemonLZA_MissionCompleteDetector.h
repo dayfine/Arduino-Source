@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Mission banner detectors
+/*  PokemonLZA - Mission complete detector
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryMissionBannerDetectors_H
-#define PokemonAutomation_PokemonLZA_AutoStoryMissionBannerDetectors_H
+#ifndef PokemonAutomation_PokemonLZA_MissionCompleteDetector_H
+#define PokemonAutomation_PokemonLZA_MissionCompleteDetector_H
 
 #include "Common/Cpp/Color.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"

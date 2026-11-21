@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - New game intro screens
+/*  PokemonLZA - New game intro screens
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -6,8 +6,8 @@
  *
  */
 
-#ifndef PokemonAutomation_PokemonLZA_AutoStoryIntroScreens_H
-#define PokemonAutomation_PokemonLZA_AutoStoryIntroScreens_H
+#ifndef PokemonAutomation_PokemonLZA_IntroScreens_H
+#define PokemonAutomation_PokemonLZA_IntroScreens_H
 
 #include <cstddef>
 #include <optional>

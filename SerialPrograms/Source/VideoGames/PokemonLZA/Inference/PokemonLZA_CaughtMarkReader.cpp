@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Caught mark reader
+/*  PokemonLZA - Caught mark reader
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -10,7 +10,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/Images/BinaryImage_FilterRgb32.h"
 #include "Kernels/Waterfill/Kernels_Waterfill_Session.h"
-#include "PokemonLZA_AutoStoryCaughtMarkReader.h"
+#include "PokemonLZA_CaughtMarkReader.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

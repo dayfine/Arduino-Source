@@ -1,4 +1,4 @@
-/*  PokemonLZA AutoStory - Dialog Detectors Tests
+/*  PokemonLZA - Dialog Detectors Tests
  *
  *  From: https://github.com/PokemonAutomation/
  *
@@ -15,10 +15,10 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStoryScreenEvents.h"
-#include "VideoGames/PokemonLZA/Programs/AutoStory/PokemonLZA_AutoStory_Tests.h"
-#include "PokemonLZA_AutoStoryDialogChoiceBox.h"
-#include "PokemonLZA_AutoStoryDialogDetectors.h"
+#include "PokemonLZA_DialogChoiceBox.h"
+#include "PokemonLZA_Inference_Tests.h"
+#include "PokemonLZA_SelectionArrowDetector.h"
+#include "PokemonLZA_StoryDialogDetector.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -241,8 +241,8 @@ struct FrameCase{
     Input input;
     struct Expectation{
         std::optional<DialogChoiceRows> rows;   //  None: no choice menu read.
-        //  The screen events' CHOICE_BOX; none: not checked.
-        std::optional<bool> choice_box = std::nullopt;
+        //  Whether dialog_choice_box() finds the selection arrow; none: not checked.
+        std::optional<bool> choice_arrow = std::nullopt;
     };
     Expectation expectation;
 };
@@ -251,7 +251,7 @@ const FrameCase FRAME_CASES[] = {
     {
         .name = "the tourist's yes or yes (2 rows, Traditional Chinese)",
         .input = {.file = "AutoStoryDetectors/ArrivalToAd/0065-text_box+choice_box.jpg"},
-        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_box = true},
+        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_arrow = true},
     },
     {
         .name = "the bag's \"not really\" (2 rows, Traditional Chinese)",
@@ -266,12 +266,12 @@ const FrameCase FRAME_CASES[] = {
     {
         .name = "Villy's \"I'll get it back\" or \"battle\" at 01.02 (2 rows, Italian: a wider panel)",
         .input = {.file = "AutoStoryDialogChoices/it_0102_villy_2rows_row0.png"},
-        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_box = true},
+        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_arrow = true},
     },
     {
         .name = "Villy's \"I'll get it back\" or \"battle\" at 01.02 (2 rows, French: the arrow left of x 1256)",
         .input = {.file = "AutoStoryDialogChoices/fr_0102_villy_2rows_row0.png"},
-        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_box = true},
+        .expectation = {.rows = DialogChoiceRows{.count = 2, .selected = 0}, .choice_arrow = true},
     },
     {
         .name = "light pavement, no menu",
@@ -290,13 +290,13 @@ UnitTestResult check_frame(const FrameCase& test){
     if (!same(rows, test.expectation.rows)){
         return std::format("{}: expected {}, read {}.", test.input.file, describe(test.expectation.rows), describe(rows));
     }
-    if (!test.expectation.choice_box){
+    if (!test.expectation.choice_arrow){
         return true;
     }
-    PlzaScreenObserver observer;
-    const bool choice_box = observer.read(frame).has(ScreenEvent::CHOICE_BOX);
-    if (choice_box != *test.expectation.choice_box){
-        return std::format("{}: expected the choice box {}.", test.input.file, *test.expectation.choice_box ? "on" : "off");
+    SelectionArrowDetector arrow(COLOR_YELLOW, /*overlay=*/nullptr, SelectionArrowType::RIGHT, dialog_choice_box());
+    const bool choice_arrow = arrow.detect(frame);
+    if (choice_arrow != *test.expectation.choice_arrow){
+        return std::format("{}: expected the choice arrow {}.", test.input.file, *test.expectation.choice_arrow ? "on" : "off");
     }
     return true;
 }
@@ -320,7 +320,7 @@ private:
 } // namespace
 
 
-void add_tests_AutoStoryDialogDetectors(UnitTestDatabase& database){
+void add_tests_DialogDetectors(UnitTestDatabase& database){
     for (const DialogCase& test : DIALOG_CASES){
         database.add<DialogCaseTest<DialogCase, check_dialog>>("StoryDialogDetector", test);
     }
