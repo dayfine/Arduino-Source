@@ -8,6 +8,7 @@
 #include <functional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/CancellableScope.h"
@@ -212,6 +213,122 @@ UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
     return true;
 }
 
+//  Every authored scene keeps the full opening-line guard unless the
+//  preceding settle actually observed dialogue.
+UnitTestResult test_scene_start_waits(Logger& logger){
+    constexpr std::string_view LAST_ROW = "01.11";
+    constexpr size_t EXPECTED_SCENES = 23;
+    //  The default grid naturally plays Barry's doorway scene. The two
+    //  other measured doorway scenes are supplied by the test below.
+    constexpr std::string_view DEFAULT_SKIP = "barry_goes_home";
+    SimExecutor sim(logger);
+    run_rows_on(sim, logger, {.from = "00.00", .to = std::string(LAST_ROW)});
+    if (!sim.result().error.empty()){
+        return std::format("The run failed: {}", sim.result().error);
+    }
+    size_t scenes = 0;
+    size_t guarded = 0;
+    for (const auto& [row, step] : story_steps()){
+        if (row > LAST_ROW || step.kind != StoryStepKind::MASH){
+            continue;
+        }
+        const auto found = sim.misses().dialog_waits.find(step.name);
+        const bool should_skip = step.name == DEFAULT_SKIP;
+        if (found == sim.misses().dialog_waits.end()){
+            if (!should_skip){
+                return std::format("{} {} skipped its opening-line guard without preceding dialogue.", row, step.name);
+            }
+        }else{
+            if (should_skip){
+                return std::format("{} {} repeated its opening-line guard after preceding dialogue.", row, step.name);
+            }
+            //  Mirrors SCENE_START_WAIT in StoryWalkSteps.cpp.
+            if (found->second != Milliseconds(15000)){
+                return std::format("{} {} waits {} ms for its opening line; expected the full 15000 ms guard.",
+                    row, step.name, found->second.count());
+            }
+            guarded++;
+        }
+        scenes++;
+    }
+    if (scenes != EXPECTED_SCENES){
+        return std::format("Audited {} scene steps through {}; expected {}.", scenes, LAST_ROW, EXPECTED_SCENES);
+    }
+    if (guarded + 1 != scenes){
+        return std::format("{} of {} scenes kept the guard; expected one exact skip.", guarded, scenes);
+    }
+    logger.log(std::format("{} scene steps audited through {}; {} used the full opening-line guard.", scenes, LAST_ROW, guarded));
+    return true;
+}
+
+//  Console B, 2026-11-15: these arrival scenes had already been played by
+//  the preceding settle, so their separate 15 s waits did no work.
+UnitTestResult test_seen_scene_skips_start_wait(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.scenes["down_the_stairs"] = {sim_line("Mom calls the player")};
+    knobs.scenes["barry_bursts_out"] = {sim_line("Barry goes home")};
+    knobs.scenes["up_barrys_stairs"] = {sim_line("Barry runs to the lake")};
+    SimExecutor sim(logger, /*misses=*/{}, knobs);
+    run_rows_on(sim, logger, {.from = "00.01", .to = "00.01"});
+    if (!sim.result().error.empty()){
+        return std::format("The run failed: {}", sim.result().error);
+    }
+    const std::pair<std::string_view, std::string_view> expected_skips[] = {
+        {"down_the_stairs", "mom_calls"},
+        {"barry_bursts_out", "barry_goes_home"},
+        {"up_barrys_stairs", "barry_runs_to_the_lake"},
+    };
+    for (const auto& [previous, scene] : expected_skips){
+        if (sim.misses().dialog_waits.contains(std::string(scene))){
+            return std::format("{} repeated an opening-line wait after {} already observed dialogue.", scene, previous);
+        }
+    }
+    return true;
+}
+
+//  Dialogue seen before an intervening TALK or BATTLE belongs to the step
+//  before that action, not to the following scene.
+UnitTestResult test_intervening_step_keeps_start_wait(Logger& logger){
+    const StoryStepKind intervening_kinds[] = {StoryStepKind::TALK, StoryStepKind::BATTLE};
+    for (StoryStepKind kind : intervening_kinds){
+        GridSim grid(
+            {.world = story_plan_world("TwinleafTown", "TwinleafTown")},
+            /*start=*/{0, 0}, Pokemon::Direction::NORTH, /*can_run=*/false
+        );
+        std::vector<std::string> notes;
+        SimMisses misses;
+        const std::string io_step = "scene";
+        SimWorldKnobs knobs;
+        knobs.first_line[io_step] = Milliseconds(0);
+        knobs.scenes[io_step] = {sim_line("the scene's line")};
+        SimStoryStepIO io(grid, notes, misses, knobs, io_step, []{ return false; }, [](const Pokemon::Pose&){});
+        StoryWalkSteps walks(io);
+        CancellableHolder<CancellableScope> scope;
+        StoryLogBackend backend(Pokemon::StoryBackendKind::SCRIPT, /*log=*/{}, scope);
+        StoryBoundActions actions = naming_actions();
+        actions.battle = [](const StoryStep&, RunState&){ return Pokemon::outcome_ok(); };
+        StoryEngineSteps engine(walks, actions, backend);
+        RunState state;
+
+        StoryStep preceding{.kind = StoryStepKind::MASH, .name = "preceding_scene"};
+        engine.act(preceding, state);
+        misses.dialog_waits.clear();
+        StoryStep intervening{.kind = kind, .name = "intervening_step"};
+        engine.act(intervening, state);
+        misses.dialog_waits.clear();
+        StoryStep following{.kind = StoryStepKind::MASH, .name = "following_scene"};
+        engine.act(following, state);
+
+        const auto found = misses.dialog_waits.find(io_step);
+        if (found == misses.dialog_waits.end() || found->second != Milliseconds(15000)){
+            return std::format("A scene after {} did not keep its full opening-line guard.",
+                Pokemon::story_step_kind_name(kind));
+        }
+    }
+    logger.log("Scenes after TALK and BATTLE keep their full opening-line guard.");
+    return true;
+}
+
 
 
 struct AutoStoryStoryActionsInput{
@@ -259,6 +376,18 @@ const AutoStoryStoryActionsCase AUTO_STORY_STORY_ACTIONS_CASES[] = {
     },
     {
         .input = {"Story actions: the steps the sim stubs from 00.00 to 01.11 all need the console", test_stubbed_steps_need_the_console},
+        .expectation = {},
+    },
+    {
+        .input = {"Story actions: scene starts retain the full guard until dialogue is observed", test_scene_start_waits},
+        .expectation = {},
+    },
+    {
+        .input = {"Story actions: a scene played by the preceding settle skips its start wait", test_seen_scene_skips_start_wait},
+        .expectation = {},
+    },
+    {
+        .input = {"Story actions: an intervening step invalidates a prior settle's dialogue", test_intervening_step_keeps_start_wait},
         .expectation = {},
     },
 };

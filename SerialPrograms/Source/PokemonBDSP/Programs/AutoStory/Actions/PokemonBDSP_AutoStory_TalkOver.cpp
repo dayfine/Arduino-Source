@@ -35,7 +35,13 @@ public:
         return {m_eyes.observe(m_stream.video().snapshot(), now), now};
     }
     virtual void press(SceneMove move, Milliseconds wait) override{
+        if (move == SceneMove::NEXT){
+            m_saw_dialogue = true;
+        }
         pbf_press_button(m_context, move == SceneMove::NEXT ? m_spec.next : BUTTON_B, TALK_OVER_HOLD, wait);
+    }
+    bool saw_dialogue() const{
+        return m_saw_dialogue;
     }
     virtual bool flee_battle() override{
         if (m_spec.watch == TalkOverWatch::TRAINER){
@@ -53,6 +59,7 @@ private:
     ProControllerContext& m_context;
     const TalkOverSpec& m_spec;
     BdspScreenObserver m_eyes;
+    bool m_saw_dialogue = false;
 };
 
 } // namespace
@@ -63,7 +70,7 @@ TalkOverEnd talk_over(VideoStream& stream, ProControllerContext& context, const 
     const Pokemon::SettleEnd end = Pokemon::run_settle(spec.settle, label, io);
     switch (end.result){
     case Pokemon::SettleEnd::Result::QUIET:
-        return TalkOverEnd::QUIET;
+        return io.saw_dialogue() ? TalkOverEnd::DIALOGUE : TalkOverEnd::QUIET;
     case Pokemon::SettleEnd::Result::BATTLE:
         return TalkOverEnd::BATTLE;
     case Pokemon::SettleEnd::Result::TIMED_OUT:

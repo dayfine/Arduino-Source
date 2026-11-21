@@ -250,6 +250,23 @@ UnitTestResult roark_speaks_late(Logger& logger){
     return passes(run_case(logger, "01.03", "01.03", {.fade = {}, .banner = {}}, {.first_line = {{talk, 7000ms}}}));
 }
 
+//  A MASH scene whose preceding step did not observe dialogue keeps the
+//  original 15 s opening-line watch. Both delays are therefore handled by
+//  the real mash/settle path, rather than silently walking on mid-scene.
+UnitTestResult mash_scene_speaks_late(Logger& logger){
+    const Milliseconds delays[] = {7000ms, 9000ms};
+    for (Milliseconds delay : delays){
+        SimWorldKnobs knobs;
+        knobs.first_line["barry_warns_us"] = delay;
+        knobs.scenes["barry_warns_us"] = {sim_line("Barry warns the player")};
+        const std::string stopped = run_case(logger, "00.01", "00.01", {.fade = {}, .banner = {}}, knobs);
+        if (!stopped.empty()){
+            return std::format("The scene with its first line at {} ms {}", delay.count(), stopped);
+        }
+    }
+    return true;
+}
+
 //  How many seeds wanderers_move() runs.
 constexpr uint32_t WANDER_SEEDS = 8;
 
@@ -680,6 +697,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.name = "any one fade with its hold unseen from 00.00 to 01.11: every row still passes", .input = {every_single_hold_miss}, .expectation = {}},
     {.name = "01.02 to 01.05 at night, the Gate's dim floor", .input = {night_and_dim_floors}, .expectation = {}},
     {.name = "01.03 Roark's first line 7 s after the A press", .input = {roark_speaks_late}, .expectation = {}},
+    {.name = "00.01 MASH first lines at 7 s and 9 s", .input = {mash_scene_speaks_late}, .expectation = {}},
     {.name = "01.03 with Oreburgh's people wandering (the pokefan on 45, 37..39)", .input = {[](Logger& logger){
         return wanderers_move(logger, "01.03");
     }}, .expectation = {}},

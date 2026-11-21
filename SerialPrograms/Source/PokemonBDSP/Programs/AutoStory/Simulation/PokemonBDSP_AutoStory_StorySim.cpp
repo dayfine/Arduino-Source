@@ -163,22 +163,29 @@ std::string play_scene(const SimScene& scene, const Pokemon::SettleRule& rule){
 }
 } // namespace detail
 
-//  Plays the step's scene knob through the program's settle if it has one.
-//  Without, a scene may take us to another map (Mom walks us out, 00.04):
-//  with a dialogue open the stub scene plays it. Otherwise only a door
-//  fades, and a Center's slow fade-in (SimCenterDoors::fade_in) plays.
-void SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, const std::string&){
+//  Settles the simulated screen through the program's settle. A scene knob
+//  supplies its beats; otherwise a dialogue may take us to another map (Mom
+//  walks us out, 00.04), or only a door fades, and a Center's slow fade-in
+//  (SimCenterDoors::fade_in) plays.
+bool SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, const std::string&){
     const bool fade = kind == SettleKind::AFTER_WARP;
     const bool fading_in = std::exchange(m_misses.fading_in, false);
+    bool saw_dialogue = m_sim.player().dialog;
+    const Milliseconds uncovered = m_route.take_uncovered_first_line();
     const auto scene = m_knobs.scenes.find(m_step);
     if (scene != m_knobs.scenes.end()){
+        SimScene beats = scene->second;
+        if (uncovered > Milliseconds(0)){
+            beats.insert(beats.begin(), sim_pause("the first line is still approaching", uncovered, true));
+        }
         m_misses.fade_unseen = false;
         m_sim.end_dialogue();
-        const std::string early = play_scene(scene->second, settle_rule(kind));
+        saw_dialogue |= std::ranges::any_of(beats, [](const SimBeat& beat){ return beat.line; });
+        const std::string early = play_scene(beats, settle_rule(kind));
         if (!early.empty()){
             m_route.note(label + ": talk-over " + early + ".", RouteNote::FAILURE);
         }
-        return;
+        return saw_dialogue;
     }
     const auto center = m_knobs.centers.find(m_step);
     if (fading_in && center != m_knobs.centers.end() && center->second.fade_in > 0ms){
@@ -193,6 +200,7 @@ void SimStoryStepIO::settle(Button, const std::string& label, SettleKind kind, c
     }
     m_misses.fade_unseen = false;
     m_sim.end_dialogue();
+    return saw_dialogue;
 }
 
 SimStoryStepIO::FadeShown SimStoryStepIO::next_fade(){
@@ -394,10 +402,19 @@ WalkResult SimKnobRouteIO::slide_on(const SimSlide& slide, WalkResult result){
 }
 
 bool SimKnobRouteIO::dialog_within(Milliseconds wait, Color color){
+    m_uncovered_first_line = Milliseconds(0);
+    Milliseconds& longest = m_misses.dialog_waits[m_step];
+    longest = std::max(longest, wait);
     const auto late = m_knobs.first_line.find(m_step);
     if (late != m_knobs.first_line.end() && late->second > wait){
+        m_uncovered_first_line = late->second - wait;
         note(std::format("[Sim] {}: the first line comes after {} ms, past the {} ms wait.", m_step, late->second.count(), wait.count()), RouteNote::LOG);
         return false;
+    }
+    if (late != m_knobs.first_line.end()){
+        //  The knob is the current step's line; no map dialogue is needed.
+        m_uncovered_first_line = Milliseconds(0);
+        return true;
     }
     return GridSimRouteIO::dialog_within(wait, color);
 }
