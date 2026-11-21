@@ -15,7 +15,7 @@ const EnumDropdownDatabase<BBQuests>& BBQuests_database(){
     static EnumDropdownDatabase<BBQuests> database{
         {BBQuests::auto_10,         "auto-10",          "Defeat 10 wild Pokemon using Auto Battle!"},
         {BBQuests::make_tm,         "make-tm",          "Make yourself a TM!"},
-        //{BBQuests::pickup_10,       "pickup-10",        "Pick up items on the ground 10 times!"},
+        {BBQuests::pickup_10,       "pickup-10",        "Pick up items on the ground 10 times!"},
         {BBQuests::sneak_up,        "sneak-up",         "Successfully sneak up on 1 Pokemon and surprise them with a battle!"},
         {BBQuests::photo_fly,       "photo-fly",        "Take a photo of a wild Pokemon in flight!"},
         {BBQuests::photo_swim,      "photo-swim",       "Take a photo of a wild Pokemon that is swimming!"},
@@ -108,8 +108,9 @@ BBQuestTable::BBQuestTable()
         "Exclude the quests in the table. If you want to skip a quest, select it below. "
         "(Quests can be explicitly included, but this is not necessary.) "
         "Do not exclude too many quests, as rerolling costs BP. "
-        "The program will automatically reroll all quests if none are possible, but will not handle being out of BP. "
-        "Does not include egg hatching or pickup quests, as eggs are handled in other options and pickup is not possible. ",
+        "If no quest is possible, the program rerolls one quest it cannot do, or all quests if there is none. "
+        "Quests the program cannot do, such as pickup, are never run, but can be rerolled or skipped here. "
+        "Does not include egg hatching, as eggs are handled in other options. ",
         //"Duplicates of the same quest",
         //duplicates will work in table order. might lead to weird behavior like rerolling and then marking a quest as complete.
         //won't break the program though.
@@ -149,7 +150,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         1000
     )
     , SAVE_NUM_QUESTS(
-        "<b>Save and reset the game after attempting this many quests:</b><br>This preserves progress and prevents potential game lags from long runs.<br>0 disables this option.",
+        "<b>Save and reset the game after completing this many quests:</b><br>This preserves progress and prevents potential game lags from long runs.<br>0 disables this option.",
         LockMode::UNLOCK_WHILE_RUNNING, 50
     )
     , INVERTED_FLIGHT(
@@ -190,6 +191,16 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
         "<b>Number of Retries:</b><br>Reattempt a quest this many times if it fails.",
         LockMode::UNLOCK_WHILE_RUNNING, 1, 0, 5
     )
+    , OUT_OF_RETRIES(
+        "<b>Out of Retries:</b><br>When a quest fails all its retries, do the selected option.",
+        {
+            {OutOfRetries::Skip,    "skip",     "Skip Quest - Not attempted again while it stays on the panel"},
+            {OutOfRetries::Reroll,  "reroll",   "Reroll Quest - Costs BP"},
+            {OutOfRetries::Stop,    "stop",     "Stop Program"},
+        },
+        LockMode::UNLOCK_WHILE_RUNNING,
+        OutOfRetries::Skip
+    )
     , FIX_TIME_WHEN_DONE(
         "<b>Fix Time when Done:</b><br>Fix the time after the program finishes.",
         LockMode::UNLOCK_WHILE_RUNNING, false
@@ -210,6 +221,7 @@ BBQOption::BBQOption(OCR::LanguageOCROption* language_option)
     PA_ADD_OPTION(BATTLE_AI);
     PA_ADD_OPTION(CATCH_ON_WIN);
     PA_ADD_OPTION(NUM_RETRIES);
+    PA_ADD_OPTION(OUT_OF_RETRIES);
     PA_ADD_OPTION(FIX_TIME_WHEN_DONE);
 }
 
