@@ -136,12 +136,9 @@ bool door_fade_was_battle(VideoStream& stream, ProControllerContext& context){
     if (first != 2){
         return false;
     }
-    OverworldWatcher overworld(COLOR_GREEN);
-    ShortDialogWatcher dialog(COLOR_YELLOW);
     BattleMenuWatcher late_menu(BattleType::STARTER, COLOR_YELLOW);
     DetectorToFinder<BattleDialogDetector> late_dialog("BattleDialogWatcher", 250ms, COLOR_YELLOW);
-    const int after = wait_until(stream, context, 8s, {{overworld}, {dialog}, {late_menu}, {late_dialog}});
-    return after == 2 || after == 3;
+    return wait_until(stream, context, 8s, {{late_menu}, {late_dialog}}) >= 0;
 }
 
 //  Holds the D-pad toward a door (with B after the shoes) for `timeout`
