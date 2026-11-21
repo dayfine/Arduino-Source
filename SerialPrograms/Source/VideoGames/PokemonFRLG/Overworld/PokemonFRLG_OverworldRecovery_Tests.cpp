@@ -25,6 +25,7 @@
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRecoveryWalk.h"
+#include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldWalkWatches.h"
 
 namespace PokemonAutomation{
@@ -75,7 +76,9 @@ struct ScriptedRoute{
     std::string failure;
     //  Whether the tap past a leg's wall moves the player, and the taps made.
     bool moves_past_wall = false;
+    std::vector<bool> wall_tap_moves;
     size_t wall_taps = 0;
+    std::vector<Milliseconds> waits;
     //  The way each walked step started facing.
     std::vector<std::optional<Direction>> facings;
     //  How the watches for a trainer end, in order; DONE after these. The
@@ -96,9 +99,15 @@ struct ScriptedRoute{
             return std::optional<WarpBattle>(WarpBattle::NONE);
         };
         calls.log = [this](const std::string& message){ logs.push_back(message); };
-        calls.moved_past_wall = [this](const RouteStep&){
+        calls.moved_past_wall = [this](const RouteStep&) -> bool{
             wall_taps++;
+            if (wall_taps <= wall_tap_moves.size()){
+                return wall_tap_moves[wall_taps - 1];
+            }
             return moves_past_wall;
+        };
+        calls.wait = [this](Milliseconds duration){
+            waits.push_back(duration);
         };
         calls.fail = [this](const std::string& message){
             failure = message;
@@ -239,7 +248,7 @@ UnitTestResult test_open_water_legs(){
     for (size_t c = 0; c + 1 < route->size(); c++){
         RouteStep& step = (*route)[c];
         RouteStep& next = (*route)[c + 1];
-        if (step.surfing && step.action == RouteAction::WALK && !step.warps && next.action == RouteAction::WALK && !next.warps){
+        if (step.surfing && step.action == RouteAction::WALK && !step.warps && step.tiles > 20 && next.action == RouteAction::WALK && !next.warps){
             step.to_wall = false;
             step.lands_after = 0;
             next.to_wall = false;
@@ -249,6 +258,7 @@ UnitTestResult test_open_water_legs(){
     size_t chained = 0;
     while (chained + 1 < route->size() && !(
         (*route)[chained].surfing && !(*route)[chained].to_wall && !(*route)[chained].warps
+        && (*route)[chained].tiles > 20
         && (*route)[chained + 1].action == RouteAction::WALK && !(*route)[chained + 1].to_wall && !(*route)[chained + 1].warps
     )){
         chained++;
@@ -899,6 +909,163 @@ UnitTestResult test_grass_in_sight(){
     return expect_logged(script.logs, {"Robin (3, 1) (stopped by a trainer, now at (3, 2))"});
 }
 
+UnitTestResult test_wanderer_unmoved_wait_and_retry(){
+    const std::string json = R"({
+        "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-19"},
+        "tiles": ["#######", "#.....#", "#.....#", "#######"],
+        "elevation": ["3333333", "3333333", "3333333", "3333333"],
+        "objects": [
+            {"name": "youngster", "kind": "npc", "x": 3, "y": 1, "wander": {"x0": 3, "y0": 1, "x1": 3, "y1": 2}}
+        ]
+    })";
+    const std::vector<MapData> maps{parse_map(json, "Corridor")};
+    const MapPosition start{"Corridor", {2, 1}};
+    RouteStep leg = walk(Direction::EAST, 3, {"Corridor", {5, 1}});
+    leg.to_wall = true;
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route"};
+
+    //  Blocked twice by the wanderer, then succeeds on the 3rd attempt.
+    {
+        ScriptedRoute script;
+        script.ends[0] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
+        script.ends[1] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
+        if (script.run({leg}, &planning) || script.walked.size() != 3 || script.waits.size() != 2){
+            return std::format("Expected 3 walks and 2 waits, got {} walks, {} waits: {}",
+                script.walked.size(), script.waits.size(), script.failure);
+        }
+    }
+
+    //  Blocked more than MAX_WANDER_WAITS times: waits MAX_WANDER_WAITS times, then rejoins/fails.
+    {
+        ScriptedRoute script;
+        for (size_t i = 0; i < MAX_WANDER_WAITS + 3; i++){
+            script.ends[i] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
+        }
+        if (!script.run({leg}, &planning) || script.waits.size() != MAX_WANDER_WAITS){
+            return std::format("Expected failure after {} waits, got {} waits (failed={})",
+                MAX_WANDER_WAITS, script.waits.size(), !script.failure.empty());
+        }
+    }
+
+    return true;
+}
+
+UnitTestResult test_wanderer_wall_rehold(){
+    const std::string json = R"({
+        "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-19"},
+        "tiles": ["#######", "#.....#", "#######"],
+        "elevation": ["3333333", "3333333", "3333333"],
+        "objects": [
+            {"name": "youngster", "kind": "npc", "x": 3, "y": 1, "wander": {"x0": 3, "y0": 1, "x1": 4, "y1": 1}}
+        ]
+    })";
+    const std::vector<MapData> maps{parse_map(json, "Corridor")};
+    const MapPosition start{"Corridor", {1, 1}};
+    RouteStep leg = walk(Direction::EAST, 4, {"Corridor", {5, 1}});
+    leg.to_wall = true;
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route", .wall_check = WallCheck::TAP};
+
+    ScriptedRoute script;
+    script.wall_tap_moves = {true, false};
+    if (script.run({leg}, &planning) || script.walked.size() != 2 || script.waits.size() != 1){
+        return std::format("Expected 2 walks and 1 wait after moved_past_wall, got {} walks, {} waits: {}",
+            script.walked.size(), script.waits.size(), script.failure);
+    }
+    return true;
+}
+
+UnitTestResult test_open_leg_wanderer_mid_hold_block(){
+    //  Models CeruleanCity 05.04: (10, 12) -> east 13 (open) -> (23, 12),
+    //  then north -> (23, 1) with a building wall above (17..18, 12) and a
+    //  wandering NPC stepping onto (18, 12) mid-leg.
+    std::vector<std::string> rows(16, std::string(26, '.'));
+    rows[0] = std::string(26, '#');
+    rows[15] = std::string(26, '#');
+    for (int y = 0; y < 16; y++){
+        rows[y][0] = '#';
+        rows[y][25] = '#';
+    }
+    //  Building wall north of row 12 from x=12..21, and column 24 walled
+    //  above row 12 so column 23 is the only path north while (23, 12) stays
+    //  an open stop (x=24, y=12 is walkable).
+    for (int y = 1; y <= 11; y++){
+        for (int x = 12; x <= 21; x++){
+            rows[y][x] = '#';
+        }
+        rows[y][24] = '#';
+    }
+    rows[13] = std::string(26, '#');
+    std::string tiles_json = "[";
+    std::string elev_json = "[";
+    for (size_t y = 0; y < rows.size(); y++){
+        if (y > 0){
+            tiles_json += ",";
+            elev_json += ",";
+        }
+        tiles_json += "\"" + rows[y] + "\"";
+        elev_json += "\"" + std::string(26, '3') + "\"";
+    }
+    tiles_json += "]";
+    elev_json += "]";
+    const std::string json = std::format(R"({{
+        "name": "CeruleanCity", "source": {{"decomp_file": "", "revision": "test", "date": "2026-11-20"}},
+        "tiles": {},
+        "elevation": {},
+        "objects": [
+            {{"name": "lass", "kind": "npc", "x": 18, "y": 12, "wander": {{"x0": 18, "y0": 12, "x1": 19, "y1": 12}}}}
+        ]
+    }})", tiles_json, elev_json);
+    const std::vector<MapData> maps{parse_map(json, "CeruleanCity")};
+    const MapPosition start{"CeruleanCity", {10, 12}};
+    const MapPosition goal{"CeruleanCity", {23, 1}};
+
+    //  1. Sim repro of the un-tapped hold bug: east 13 (not tapped) is bumped
+    //     at (18, 12), leaving the player at (17, 12), and north hits the wall.
+    {
+        RouteStep east = walk(Direction::EAST, 13, {"CeruleanCity", {23, 12}});
+        east.tapped = false;
+        RouteStep north = walk(Direction::NORTH, 11, goal);
+        north.to_wall = true;
+        SimScript script;
+        script.wanderer_blocks.push_back(SimWandererBlock{.map = "CeruleanCity", .tile = {18, 12}, .clear_after_waits = 1});
+        OverworldSim sim(maps, start, Direction::EAST, script);
+        OverworldSimWalker walker(sim, SimWalkerRules{});
+        const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route"};
+        walker.run({east, north}, planning, Direction::EAST);
+        if (sim.state().position == goal){
+            return "Expected untap-marked hold to be bumped at (18, 12) and miss goal";
+        }
+    }
+
+    //  2. Planned route marks east 13 as tapped; OverworldRecovery waits for
+    //     the wanderer at (18, 12) and taps the remaining 6 tiles to (23, 12),
+    //     then walks north to (23, 1).
+    const std::optional<std::vector<RouteStep>> route = plan_overworld_route(maps, start, RouteGoal{goal, std::nullopt});
+    if (!route || route->empty()){
+        return "Failed to plan CeruleanCity route";
+    }
+    if (!(*route)[0].tapped){
+        return std::format("Expected first leg {} crossing wander box to be marked tapped", to_string((*route)[0]));
+    }
+    SimScript script;
+    script.wanderer_blocks.push_back(SimWandererBlock{.map = "CeruleanCity", .tile = {18, 12}, .clear_after_waits = 1});
+    OverworldSim sim(maps, start, Direction::EAST, script);
+    OverworldSimWalker walker(sim, SimWalkerRules{});
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = start, .label = "Route"};
+    const std::string err = walker.run(*route, planning, Direction::EAST);
+    if (!err.empty()){
+        return std::format("Expected route to succeed with wanderer recovery, failed: {}", err);
+    }
+    if (!(sim.state().position == goal)){
+        return std::format("Expected final position {}, got {}", to_string(goal), to_string(sim.state().position));
+    }
+    if (sim.state().time < WANDER_WAIT_DURATION){
+        return std::format("Expected sim time >= {} ms after wanderer wait, got {} ms",
+            WANDER_WAIT_DURATION.count(), sim.state().time.count());
+    }
+    return true;
+}
+
 const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "stop, recover, resume", .body = test_stop_recover_resume},
@@ -978,6 +1145,18 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "the frame of a leg's interrupt", .body = test_interrupt_frame},
         .expectation = {.description = "saved under DebugDumps/AutoStory/route/, named for the interrupt"},
+    },
+    {
+        .input = {.name = "wanderer unmoved wait and retry", .body = test_wanderer_unmoved_wait_and_retry},
+        .expectation = {.description = "waits and retries up to MAX_WANDER_WAITS when blocked by a wandering NPC"},
+    },
+    {
+        .input = {.name = "wanderer wall re-hold", .body = test_wanderer_wall_rehold},
+        .expectation = {.description = "waits and re-holds a to_wall leg touching a wander box when moved_past_wall detects movement"},
+    },
+    {
+        .input = {.name = "open leg wanderer mid-hold block", .body = test_open_leg_wanderer_mid_hold_block},
+        .expectation = {.description = "taps open legs crossing a wander box and waits/resumes when blocked mid-leg by a wandering NPC"},
     },
 
 };

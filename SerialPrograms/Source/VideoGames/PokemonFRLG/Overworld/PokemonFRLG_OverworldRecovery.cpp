@@ -8,6 +8,7 @@
 #include <format>
 #include <utility>
 #include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "Pokemon/Navigation/Pokemon_WanderRules.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldHeldInPlace.h"
 #include "PokemonFRLG_OverworldLegTrace.h"
@@ -25,6 +26,15 @@ namespace{
 
 using Pokemon::EndBasis;
 using Pokemon::ROUTE_LOG_TAG;
+
+const MapData* map_named(const std::vector<MapData>& maps, const std::string& name){
+    for (const MapData& map : maps){
+        if (map.name == name){
+            return &map;
+        }
+    }
+    return nullptr;
+}
 
 std::vector<Pokemon::RouteTile> route_tiles(const std::optional<MapPosition>& position){
     if (!position){
@@ -216,28 +226,21 @@ public:
         }
         m_last = leg;
         m_last_late = outcome.end == StepEnd::LATE;
-        if (outcome.end == StepEnd::DONE){
-            check_wall(step);
-        }
         return outcome;
     }
 
-private:
-    //  TODO(forest drift, 2026-11-01): diagnostic; remove or turn into a recovery once the cause is known.
-    //  Four runs ended the walk to Viridian Forest's north gate off its
-    //  column, which 52 legs walked by hand didn't reproduce: one more tap
-    //  toward a leg's wall moves nobody who stands at it. Only logged: the
-    //  screen check can't tell a bump from a step yet, and failing on it
-    //  stopped good runs.
-    void check_wall(const RouteStep& step) const{
+    //  Returns true if `step` is a walk to a wall and moved_past_wall() reports
+    //  movement after DONE.
+    bool check_wall(const RouteStep& step) const{
         if (!step.to_wall || step.warps || step.action != RouteAction::WALK
             || m_wall_check == WallCheck::SKIP || !m_calls.moved_past_wall
         ){
-            return;
+            return false;
         }
-        if (!m_calls.moved_past_wall(step)){
-            return;
-        }
+        return m_calls.moved_past_wall(step);
+    }
+
+    void log_moved_past_wall(const RouteStep& step) const{
         m_calls.log(std::format(
             "Position check (logged only): a tap after {} moved the screen as a step would; believed at {}, after {} re-hold(s) "
             "for something seen late (the leg's interrupts are the \"Leg:\" lines above).",
@@ -245,6 +248,7 @@ private:
         ));
     }
 
+private:
     const RouteCalls& m_calls;
     WallCheck m_wall_check = WallCheck::TAP;
     std::string m_last;
@@ -304,6 +308,22 @@ public:
                 continue;
             }
             if (outcome.end == StepEnd::DONE){
+                const std::optional<MapPosition> start = m_next >= m_holds ? m_at : std::nullopt;
+                if (m_steps.check_wall(step)){
+                    if (m_wander_waits < MAX_WANDER_WAITS && touches_wander_box(step, start)){
+                        m_wander_waits++;
+                        m_held_again = true;
+                        m_calls.log(std::format(
+                            "Route: {} moved past wall (touches wander box); waiting ({}/{}) and re-holding.",
+                            to_string(step), m_wander_waits, MAX_WANDER_WAITS
+                        ));
+                        if (m_calls.wait){
+                            m_calls.wait(WANDER_WAIT_DURATION);
+                        }
+                        continue;
+                    }
+                    m_steps.log_moved_past_wall(step);
+                }
                 if (!after_done(step, outcome.movement)){
                     return;
                 }
@@ -351,6 +371,7 @@ private:
         m_drift.walked(step);
         m_at = step.end;
         m_facing = step.facing_after;
+        m_wander_waits = 0;
         m_lines.done(step, ++m_next, m_holds);
         check_open_leg(step, start, movement);
         return true;
@@ -371,6 +392,7 @@ private:
         Pokemon::apply_gate_change(m_gates, step.gate_change);
         read_gates();
         m_facing = step.facing_after;
+        m_wander_waits = 0;
         m_lines.done(step, ++m_next, m_holds);
         return true;
     }
@@ -523,13 +545,89 @@ private:
         return StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{.min = 0, .max = 0}, .movement = HoldMovement::NONE};
     }
 
+    bool ahead_has_wanderer(const MapPosition& pos, Direction dir) const{
+        if (maps() == nullptr){
+            return false;
+        }
+        const MapData* map = map_named(*maps(), pos.map);
+        if (map == nullptr){
+            return false;
+        }
+        const TilePos ahead = pos.point.next(dir);
+        return in_bounds(*map, ahead) && wander_object_at(*map, ahead) != nullptr;
+    }
+
+    bool blocked_by_wanderer(const RouteStep& step, const std::optional<MapPosition>& start) const{
+        if (maps() == nullptr){
+            return false;
+        }
+        if (!m_unmoved_starts.empty()){
+            for (const StopCandidate& candidate : m_unmoved_starts){
+                if (ahead_has_wanderer(candidate.player, step.direction)){
+                    return true;
+                }
+            }
+            return false;
+        }
+        if (start){
+            return ahead_has_wanderer(*start, step.direction);
+        }
+        if (m_next != 0){
+            return false;
+        }
+        const int across = m_drift.unsure_across(step.direction) ? OPEN_LEG_SHORTFALL : 0;
+        for (const StopCandidate& candidate : before_people(*maps(), m_hold_from, step, across)){
+            if (ahead_has_wanderer(candidate.player, step.direction)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool leg_touches_wander_box(const std::vector<MapPosition>& tiles) const{
+        if (maps() == nullptr){
+            return false;
+        }
+        return Pokemon::leg_touches_wander_box(tiles, [&](const MapPosition& pos){
+            return map_named(*maps(), pos.map);
+        });
+    }
+
+    bool touches_wander_box(const RouteStep& step, const std::optional<MapPosition>& start) const{
+        if (maps() == nullptr){
+            return false;
+        }
+        if (start){
+            return leg_touches_wander_box(leg_tiles(*maps(), *start, step));
+        }
+        for (const MapPosition& from : m_hold_from){
+            if (leg_touches_wander_box(leg_tiles(*maps(), from, step))){
+                return true;
+            }
+        }
+        return false;
+    }
+
     //  After `step` moved nothing, from `start` if known: walked again
     //  from where it started, once. False once the route has failed.
     bool after_unmoved(const RouteStep& step, const std::optional<MapPosition>& start){
         const std::string leg = to_string(step);
+        m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "stopped part-way");
+        if (m_wander_waits < MAX_WANDER_WAITS && blocked_by_wanderer(step, start)){
+            m_wander_waits++;
+            m_stops--;
+            m_unmoved.clear();
+            m_calls.log(std::format(
+                "Route: {} blocked by a wandering NPC; waiting ({}/{}) and retrying.",
+                leg, m_wander_waits, MAX_WANDER_WAITS
+            ));
+            if (m_calls.wait){
+                m_calls.wait(WANDER_WAIT_DURATION);
+            }
+            return true;
+        }
         const bool again = m_unmoved == leg;
         m_unmoved = leg;
-        m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "stopped part-way");
         if (again){
             m_calls.fail("walk_overworld_route(): " + leg + " moved nothing twice in a row: the player is not walking.");
             return false;
@@ -564,6 +662,49 @@ private:
         return rejoin(step, blocked, WalkedTiles{.min = 0, .max = 0});
     }
 
+    bool mid_leg_wanderer_wait(
+        const RouteStep& step, const StepOutcome& outcome, const std::optional<MapPosition>& start
+    ){
+        if (!step.tapped || !start || maps() == nullptr || !outcome.walked){
+            return false;
+        }
+        const int moved = outcome.walked->min;
+        if (moved < 0 || moved >= step.tiles || m_wander_waits >= MAX_WANDER_WAITS){
+            return false;
+        }
+        RouteStep prefix = step;
+        prefix.tiles = moved;
+        const std::vector<MapPosition> walked_tiles = leg_tiles(*maps(), *start, prefix);
+        if ((int)walked_tiles.size() != moved + 1){
+            return false;
+        }
+        const MapPosition& stopped_at = walked_tiles.back();
+        if (!ahead_has_wanderer(stopped_at, step.direction)){
+            return false;
+        }
+        m_wander_waits++;
+        m_stops--;
+        m_unmoved.clear();
+        const bool exact = outcome.blocked || outcome.walked->min == outcome.walked->max;
+        m_calls.log(std::format(
+            "Route: {} blocked after {} tile(s) by a wandering NPC; waiting ({}/{}) and {}.",
+            to_string(step), moved, m_wander_waits, MAX_WANDER_WAITS,
+            exact ? std::format("tapping remaining {} tile(s)", step.tiles - moved) : "re-anchoring"
+        ));
+        if (m_calls.wait){
+            m_calls.wait(WANDER_WAIT_DURATION);
+        }
+        if (!exact){
+            return false;
+        }
+        if (moved > 0){
+            m_at = stopped_at;
+            m_facing = step.direction;
+            m_plan[m_next].tiles = step.tiles - moved;
+        }
+        return true;
+    }
+
     //  After a stop on `step`, from `start` if known. False once the route
     //  has failed.
     bool after_stop(
@@ -575,6 +716,9 @@ private:
         }
         if (step.to_wall){
             return after_wall_stop(step, outcome, start, crossing);
+        }
+        if (mid_leg_wanderer_wait(step, outcome, start)){
+            return true;
         }
         //  A hold on that took no warp left the player anywhere on the leg:
         //  found again there, as after any stop (console B, 2026-11-16
@@ -969,6 +1113,7 @@ private:
     bool m_leg_from_caller_start = false;   //  the leg walked last started on the caller's start
     size_t m_next = 0;
     size_t m_stops = 0;
+    size_t m_wander_waits = 0;
     size_t m_holds = 0;     //  of the plan, holds to walls that find the player
     size_t m_unchecked = 0; //  of the plan, the holds and the way back after them
     std::optional<Walked> m_walked;     //  the step walked last, if it may have stopped part-way

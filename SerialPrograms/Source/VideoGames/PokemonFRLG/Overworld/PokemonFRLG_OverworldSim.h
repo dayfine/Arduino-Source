@@ -112,6 +112,9 @@ public:
     //  Watches `watchers` for `duration`, as wait_until().
     std::optional<SimSeen> watch(const std::vector<SimWatcher>& watchers, Milliseconds duration);
 
+    //  Waits `duration` on the sim clock, letting hit wanderer blocks clear.
+    void wait(Milliseconds duration);
+
     //  Runs from or fights the battle on screen, back to the overworld. A
     //  trainer's battle can't be run from; a battle that isn't there is
     //  waited out (the story's battle loop gives up after 15 s).
@@ -178,7 +181,8 @@ private:
     void stuck_hold(Direction direction);
     void lose_press_in_slide(Direction direction, Milliseconds end);
     void bump(Direction direction, Milliseconds pressed);
-    std::optional<Step> press(Direction direction) const;
+    bool wanderer_blocks(const std::string& map_name, const TilePos& tile);
+    std::optional<Step> press(Direction direction);
     std::optional<Step> take_warp(int map_index, const TilePos& tile) const;
     std::optional<Step> cross_edge(Direction direction) const;
     //  The lift's door to the floor picked, if `map_index` is a lift and
@@ -258,6 +262,7 @@ private:
     //  The trainer (an object of the player's map) whose message is up or
     //  about to show, and whose battle follows it.
     std::optional<size_t> m_trainer_speaking;
+    std::set<size_t> m_wanderers_hit;
     //  The trainer whose battle is on screen or about to show.
     std::optional<size_t> m_trainer;
     //  The trees cut since the last warp, and their maps.

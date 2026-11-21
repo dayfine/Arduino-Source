@@ -27,6 +27,19 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
+//  Fault injection: a wandering NPC standing on `tile` of `map`, blocking
+//  steps onto it. When `clear_after_waits` is set (default 1), the NPC
+//  steps out of the way once OverworldSim::wait() has been called that many
+//  times after blocking; when `until_time` is set, it also clears once the
+//  sim clock reaches `until_time`.
+struct SimWandererBlock{
+    std::string map;
+    TilePos tile;
+    std::optional<int> clear_after_waits = 1;
+    Milliseconds from_time{0};
+    std::optional<Milliseconds> until_time;
+};
+
 //  What a test sets up beyond the maps.
 struct SimScript{
     std::vector<SimEncounter> encounters;
@@ -163,6 +176,8 @@ struct SimScript{
     //  removeobject): a tap 0.4 s after his battle's text was lost (console
     //  B, 2026-11-11 17:51, 09.02 east_of_silph_scope). Not set: none.
     std::optional<Milliseconds> scene_after_trainer_battle;
+    //  Fault injection: wandering NPCs blocking specific tiles mid-hold/leg.
+    std::vector<SimWandererBlock> wanderer_blocks;
     SimTiming timing;
 };
 

@@ -554,6 +554,46 @@ UnitTestResult test_revisited_tiles(){
     return true;
 }
 
+UnitTestResult test_wander_box_routing(){
+    const std::string detour_json = R"({
+        "name": "Hall", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-19"},
+        "tiles": ["#######", "#.....#", "#.....#", "#######"],
+        "elevation": ["3333333", "3333333", "3333333", "3333333"],
+        "objects": [
+            {"name": "youngster", "kind": "npc", "x": 3, "y": 1, "wander": {"x0": 2, "y0": 1, "x1": 4, "y1": 1}}
+        ]
+    })";
+    const std::vector<MapData> detour_maps{parse_map(detour_json, "Hall")};
+    const std::optional<std::vector<RouteStep>> detour_route = plan_overworld_route(
+        detour_maps, {"Hall", {1, 1}}, {{"Hall", {5, 1}}, std::nullopt}
+    );
+    if (!detour_route){
+        return "Expected a detour route around the wander box.";
+    }
+    for (const RouteStep& step : *detour_route){
+        if (step.end.point.y == 1 && step.end.point.x >= 2 && step.end.point.x <= 4){
+            return "Expected route to detour around wander box (2..4, 1), got:" + describe(*detour_route);
+        }
+    }
+
+    const std::string corridor_json = R"({
+        "name": "Corridor", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-19"},
+        "tiles": ["#######", "#.....#", "#######"],
+        "elevation": ["3333333", "3333333", "3333333"],
+        "objects": [
+            {"name": "youngster", "kind": "npc", "x": 3, "y": 1, "wander": {"x0": 2, "y0": 1, "x1": 4, "y1": 1}}
+        ]
+    })";
+    const std::vector<MapData> corridor_maps{parse_map(corridor_json, "Corridor")};
+    const std::optional<std::vector<RouteStep>> corridor_route = plan_overworld_route(
+        corridor_maps, {"Corridor", {1, 1}}, {{"Corridor", {5, 1}}, std::nullopt}
+    );
+    if (!corridor_route){
+        return "Expected route through wander box when no detour exists.";
+    }
+    return true;
+}
+
 const RouteTestCase ROUTE_CASES[] = {
     {
         .input = {.name = "tiles a route crosses twice", .body = test_revisited_tiles},
@@ -614,6 +654,10 @@ const RouteTestCase ROUTE_CASES[] = {
     {
         .input = {.name = "Mewtwo's tile is blocked", .body = test_mewtwo_tile_unreachable},
         .expectation = {.description = "Mewtwo's tile is blocked"},
+    },
+    {
+        .input = {.name = "wander box routing", .body = test_wander_box_routing},
+        .expectation = {.description = "detours around short wander boxes and crosses when no detour exists"},
     },
 };
 
