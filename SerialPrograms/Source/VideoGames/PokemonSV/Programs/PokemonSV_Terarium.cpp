@@ -4,32 +4,41 @@
  *
  */
 
+#include "Common/Cpp/Time.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/Tools/ErrorDumper.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/OCR/OCR_Routines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_NormalBattleMenus.h"
 #include "VideoGames/PokemonSV/Inference/Battles/PokemonSV_EncounterWatcher.h"
 #include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_OverworldDetector.h"
+#include "VideoGames/PokemonSV/Inference/Overworld/PokemonSV_PlaceNameBannerReader.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_GameEntry.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_SaveGame.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_MenuNavigation.h"
 #include "VideoGames/PokemonSV/Programs/PokemonSV_WorldNavigation.h"
+#include "PokemonSV_TerariumPlazaReturn.h"
 #include "PokemonSV_Terarium.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonSV{
 
-void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context){
+namespace{
+
+// Flies to the closest Pokecenter on the map, once. Nothing here checks where
+// the player lands: the closest-Pokecenter search can fall back to any fly
+// point. Returns false if the fly failed or a battle interrupted it; the
+// caller decides whether to try again, so one return can't loop for minutes.
+bool fly_toward_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, bool laggy){
     stream.log("Attempting to return to Central Plaza.");
     //Modified version of handle_battles_and_back_to_pokecenter()
     bool returned_to_pokecenter = false;
-    bool laggy = false;
 
-    while(!returned_to_pokecenter){
+    {
         EncounterWatcher encounter_watcher(stream, COLOR_RED);
         int ret = run_until<ProControllerContext>(
             stream, context,
@@ -67,13 +76,15 @@ void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProController
                 pbf_press_button(context, BUTTON_ZR, 320ms, 800ms);
 
                 try{
-                    //The only pokecenter on the map is Central Plaza
-                    fly_to_closest_pokecenter_on_map(info, stream, context);
+                    //The only pokecenter on the map is Central Plaza. Each failed search
+                    //costs ~13 s, and repeating the same one rarely helps (bbq-m5 11:20:
+                    //17 identical "no Pokecenter" tries), so give up after 3.
+                    fly_to_closest_pokecenter_on_map(info, stream, context, 3);
                     context.wait_for_all_requests();
                     returned_to_pokecenter = true;
                 }catch (...){
-                    stream.log("Failed to return to Pokecenter. Closing map and retrying.");
-                    laggy = true;
+                    //The next try mashes B back to the overworld first.
+                    stream.log("Failed to return to Pokecenter.", COLOR_RED);
                 }
                 context.wait_for_all_requests();
             },
@@ -110,6 +121,75 @@ void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProController
         }
     }
     context.wait_for_all_requests();
+    return returned_to_pokecenter;
+}
+
+class PlazaReturnConsoleActions : public PlazaReturnActions{
+public:
+    PlazaReturnConsoleActions(
+        const ProgramInfo& info, VideoStream& stream, ProControllerContext& context,
+        Language language
+    )
+        : m_info(info)
+        , m_stream(stream)
+        , m_context(context)
+        , m_language(language)
+    {}
+
+    virtual bool fly_to_plaza(bool overshoot) override{
+        return fly_toward_plaza(m_info, m_stream, m_context, overshoot);
+    }
+
+    // The banner fades in shortly after the overworld is back and stays for
+    // a few seconds. Read until it matches or the window ends.
+    virtual std::string read_landing_banner(const std::function<bool(const std::string& text)>& matches) override{
+        PlaceNameBannerReader reader;
+        VideoOverlaySet overlays(m_stream.overlay());
+        reader.make_overlays(overlays);
+
+        std::string last;
+        const WallClock deadline = current_time() + std::chrono::seconds(8);
+        while (current_time() < deadline){
+            m_context.wait_for_all_requests();
+            VideoSnapshot screen = m_stream.video().snapshot();
+            for (std::string& text : reader.read(m_stream.logger(), m_language, screen)){
+                if (matches(text)){
+                    return text;
+                }
+                if (!text.empty()){
+                    last = std::move(text);
+                }
+            }
+            m_context.wait_for(std::chrono::milliseconds(250));
+        }
+        return last;
+    }
+
+private:
+    const ProgramInfo& m_info;
+    VideoStream& m_stream;
+    ProControllerContext& m_context;
+    const Language m_language;
+};
+
+}
+
+void return_to_plaza(const ProgramInfo& info, VideoStream& stream, ProControllerContext& context, Language language){
+    const bool ocr_available = OCR::ocr_language_available(language);
+    if (!ocr_available){
+        stream.log("No OCR data for the game language. Central Plaza arrivals won't be checked.", COLOR_ORANGE);
+    }
+    const std::string expected_banner = central_plaza_banner_to_check(language, ocr_available);
+
+    PlazaReturnConsoleActions actions(info, stream, context, language);
+    const PlazaReturnResult result = return_to_plaza_checked(stream.logger(), actions, expected_banner, 3);
+    if (result == PlazaReturnResult::FAILED){
+        OperationFailedExceptionWithScreenshot::fire(
+            ErrorReportMode::SEND_ERROR_REPORT,
+            "Unable to return to Central Plaza: no landing showed its name.",
+            stream
+        );
+    }
 }
 
 void map_move_cursor_fly(
@@ -133,7 +213,8 @@ void map_move_cursor_fly(
             stream.log("Failed to fly! Closing map and retrying.");
             press_Bs_to_back_to_overworld(info, stream, context);
             if (i == 2){
-                OperationFailedExceptionWithScreenshot::fire(
+                throw_and_log<TerariumFlyFailedException>(
+                    stream.logger(),
                     ErrorReportMode::SEND_ERROR_REPORT,
                     "Unable to fly to " + location + "!",
                     stream
