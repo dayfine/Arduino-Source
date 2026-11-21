@@ -93,18 +93,16 @@ void PanelListWidget::handle_panel_clicked(const std::string& text){
         PERSISTENT_SETTINGS().panels[JSON_PROGRAM_PANEL] = "";
         return;
     }
-    std::shared_ptr<const PanelDescriptor>& descriptor = iter->second;
+    const std::shared_ptr<const PanelDescriptor>& descriptor = iter->second;
 //    cout << descriptor->display_name() << endl;
-    if (!m_panel_holder.report_new_panel_intent(*descriptor)){
-        return;
-    }
     try{
-        std::unique_ptr<PanelSession> panel = descriptor->make_panel();
-//        try{
-            panel->load_json(PERSISTENT_SETTINGS().panels[descriptor->identifier()]);
-//        }catch (ParseException&){}
-        m_panel_holder.load_panel(descriptor, std::move(panel));
-
+        if (!load_panel_session(
+            descriptor,
+            PERSISTENT_SETTINGS().panels[descriptor->identifier()],
+            m_panel_holder
+        )){
+            return;
+        }
         PERSISTENT_SETTINGS().panels[JSON_PROGRAM_PANEL] = iter->first;
     }catch (const Exception& error){
         QMessageBox box;

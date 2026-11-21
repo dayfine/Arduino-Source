@@ -30,6 +30,10 @@ public:
     // Load the panel specified in the persistent setting.
     void load_persistent_panel();
 
+    //  Shows the program with this identifier ("<game>:<program>"), as
+    //  clicking it does. Returns an error message, or "" on success.
+    std::string select_program(const std::string& identifier);
+
     virtual QSize sizeHint() const override;
 
 private:
