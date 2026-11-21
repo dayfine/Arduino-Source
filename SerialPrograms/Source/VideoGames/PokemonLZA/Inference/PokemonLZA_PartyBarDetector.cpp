@@ -243,12 +243,12 @@ const PartyBarCase PARTY_BAR_CASES[] = {
     {
         //  No D-pad marker with a party of one: the empty last slot shows the bar.
         .name = "one filled in Hotel Z's lobby, five empty",
-        .input = {.image = "AutoStoryScreenEvents/de_0205_lobby_start_party1.png"},
+        .input = {.image = "PartyBarDetector/de_0205_lobby_start_party1.png"},
         .expectation = {.filled_slots = 1},
     },
     {
         .name = "one filled at the lobby elevator's A prompt",
-        .input = {.image = "AutoStoryScreenEvents/de_0205_elevator_prompt_steady.png"},
+        .input = {.image = "PartyBarDetector/de_0205_elevator_prompt_steady.png"},
         .expectation = {.filled_slots = 1},
     },
 };
