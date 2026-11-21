@@ -47,6 +47,7 @@ public:
     BDSPAutoStory();
 
     virtual void program(SingleSwitchProgramEnvironment& env, ProControllerContext& context) override;
+    virtual std::optional<std::vector<PrecheckSummary>> precheck_summaries() const override;
 
 private:
     virtual void on_config_value_changed(void* object) override;

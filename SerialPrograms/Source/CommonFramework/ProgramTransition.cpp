@@ -13,6 +13,7 @@ void ProgramTransitionLatch::started(ActionSource source, std::optional<std::str
     std::lock_guard<Mutex> lg(m_lock);
     m_stop_requested = false;
     m_error = false;
+    m_start_failure.reset();
     m_last = ProgramTransition{ProgramAction::START, source, std::move(request_id), now};
 }
 void ProgramTransitionLatch::stop_requested(ActionSource source, std::optional<std::string> request_id, WallClock now){
@@ -20,9 +21,13 @@ void ProgramTransitionLatch::stop_requested(ActionSource source, std::optional<s
     m_stop_requested = true;
     m_last = ProgramTransition{ProgramAction::STOP, source, std::move(request_id), now};
 }
-void ProgramTransitionLatch::error_reported(){
+void ProgramTransitionLatch::error_reported(std::optional<ProgramStartFailure> start_failure){
     std::lock_guard<Mutex> lg(m_lock);
     m_error = true;
+    if (start_failure && m_last && m_last->action == ProgramAction::START){
+        start_failure->request_id = m_last->request_id;
+        m_start_failure = std::move(start_failure);
+    }
 }
 void ProgramTransitionLatch::finished(WallClock now){
     std::lock_guard<Mutex> lg(m_lock);
@@ -30,7 +35,7 @@ void ProgramTransitionLatch::finished(WallClock now){
         return;
     }
     const ActionSource source = m_error ? ActionSource::PROGRAM_ERROR : ActionSource::PROGRAM;
-    m_last = ProgramTransition{ProgramAction::STOP, source, std::nullopt, now};
+    m_last = ProgramTransition{ProgramAction::STOP, source, std::nullopt, now, std::move(m_start_failure)};
 }
 std::optional<ProgramTransition> ProgramTransitionLatch::last() const{
     std::lock_guard<Mutex> lg(m_lock);

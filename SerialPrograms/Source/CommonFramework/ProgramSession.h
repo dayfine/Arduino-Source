@@ -157,6 +157,8 @@ protected:
 private:
     //  Everything here must be called under the lock.
 
+    friend void report_start_check_failure(ProgramEnvironment& env, std::string check, std::string message);
+
     void set_state(ProgramState state);
     //  Records the start time and who asked, before the state goes RUNNING.
     void mark_started(ActionSource source, std::optional<std::string> request_id);

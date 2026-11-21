@@ -164,6 +164,14 @@ std::string verify_story_checkpoint(
 } // namespace
 
 
+std::optional<std::vector<PrecheckSummary>> BDSPAutoStory::precheck_summaries() const{
+    return std::vector<PrecheckSummary>{
+        {.name = "game_screen", .needs = "Live video, a ready controller and a running game."},
+        {.name = "save_location", .needs = "When resuming, the loaded save must match the starting checkpoint's location."},
+    };
+}
+
+
 BDSPAutoStory::~BDSPAutoStory(){
     STARTER_RNG.run().remove_listener(*this);
 }
@@ -255,17 +263,19 @@ void start_story(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context, const StoryCheckpoint& row,
     Pokemon::StoryStart start, Pokemon::StoryGameHooks& game, Pokemon::RunState& state
 ){
-    //  The loaded save must be where the start row saved; a retry's reload
-    //  in a later row is checked by that row's own start save.
     game.check_save_place = [&env, &context, place = row.saves_in]{
         return check_start_place(env, context, place);
     };
     const Pokemon::Outcome loaded = Pokemon::prepare_story_start(row.id, start, game, state);
     game.check_save_place = nullptr;
     if (loaded.failure == Pokemon::StoryPreflight::FAILURE){
+        report_start_check_failure(env, "game_screen", loaded.detail);
         throw UserSetupError(env.console, std::format("AutoStory did not start, nothing was pressed: {}", loaded.detail));
     }
     if (!loaded.succeeded()){
+        if (loaded.failure == "wrong_save"){
+            report_start_check_failure(env, "save_location", loaded.detail);
+        }
         Pokemon::log_story_failure(game);
         throw OperationFailedException(
             ErrorReportMode::NO_ERROR_REPORT,

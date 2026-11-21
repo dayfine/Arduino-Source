@@ -37,12 +37,20 @@ enum class ActionSource{
     PROGRAM_ERROR,  //  The program ended with an error.
 };
 
+struct ProgramStartFailure{
+    std::string check = {};
+    std::string message = {};
+    WallClock at = {};
+    std::optional<std::string> request_id = {};  // The request that started the run.
+};
+
 //  One start or stop of a program.
 struct ProgramTransition{
     ProgramAction action;
     ActionSource source;
     std::optional<std::string> request_id;  //  The lab request's id, if a lab request asked.
     WallClock at;
+    std::optional<ProgramStartFailure> start_failure = {};
 };
 
 
@@ -56,7 +64,7 @@ public:
     //  The program went STOPPING because `source` asked.
     void stop_requested(ActionSource source, std::optional<std::string> request_id, WallClock now);
     //  The running program reported an error.
-    void error_reported();
+    void error_reported(std::optional<ProgramStartFailure> start_failure = {});
     //  The program went STOPPED.
     void finished(WallClock now);
 
@@ -67,6 +75,7 @@ private:
     bool m_stop_requested = false;
     bool m_error = false;
     std::optional<ProgramTransition> m_last;
+    std::optional<ProgramStartFailure> m_start_failure;
 };
 
 

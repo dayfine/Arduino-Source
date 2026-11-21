@@ -56,6 +56,8 @@ public:
 
 
 private:
+    friend void report_start_check_failure(ProgramEnvironment& env, std::string check, std::string message);
+
     const ProgramInfo& m_program_info;
     ProgramSession& m_session;
     Logger& m_logger;
@@ -65,6 +67,9 @@ private:
 };
 
 
+
+
+void report_start_check_failure(ProgramEnvironment& env, std::string check, std::string message);
 
 
 //  Templates

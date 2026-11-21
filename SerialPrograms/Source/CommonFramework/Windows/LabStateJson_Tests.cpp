@@ -276,6 +276,78 @@ const GoldenCase GOLDEN_CASES[] = {
 };
 
 
+struct StartOutcomeInput{
+    bool stopped_by_user = false;
+    bool restarted = false;
+};
+struct StartOutcomeExpectation{
+    bool outcome_written = false;
+};
+struct StartOutcomeCase{
+    std::string name;
+    StartOutcomeInput input;
+    StartOutcomeExpectation expectation;
+};
+
+constexpr std::string_view CORRELATED_START_FAILURE = R"("last_transition": {
+      "action": "stop",
+      "source": "error",
+      "request_id": null,
+      "at": "2026-11-14T06:10:12.124Z"
+    },
+    "last_outcome": {
+      "run_id": null,
+      "request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+      "outcome": "start_check_failed",
+      "check": "game_screen",
+      "message": "The game is not running.",
+      "at": "2026-11-14T06:10:12.122Z"
+    })";
+
+class Test_LabStartOutcome : public UnitTest{
+public:
+    explicit Test_LabStartOutcome(StartOutcomeCase test_case)
+        : UnitTest(std::format("CommonFramework::LabStateJson - {}", test_case.name))
+        , m_case(std::move(test_case))
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        LabAppState state = stopped_ui();
+        const WallClock now = state.written_at;
+        ProgramTransitionLatch latch;
+        latch.started(ActionSource::LAB, "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10", now - 3ms);
+        latch.error_reported(ProgramStartFailure{
+            .check = "game_screen", .message = "The game is not running.", .at = now - 2ms,
+        });
+        if (m_case.input.stopped_by_user){
+            latch.stop_requested(ActionSource::UI, std::nullopt, now - 1ms);
+        }
+        latch.finished(now);
+        if (m_case.input.restarted){
+            latch.started(ActionSource::UI, std::nullopt, now + 1ms);
+            state.legacy.state = "RUNNING";
+        }
+        state.last_transition = latch.last();
+
+        const std::string json = lab_state_json_text(state);
+        const bool expected = m_case.expectation.outcome_written;
+        if (json.contains(R"("last_outcome": {)") != expected || json.contains(CORRELATED_START_FAILURE) != expected){
+            return std::format("Expected startup outcome present: {}, got {}", m_case.expectation.outcome_written, json);
+        }
+        return true;
+    }
+
+private:
+    StartOutcomeCase m_case;
+};
+
+const StartOutcomeCase START_OUTCOME_CASES[] = {
+    {.name = "failed startup is written with the start request", .input = {}, .expectation = {.outcome_written = true}},
+    {.name = "UI stop takes precedence over startup failure", .input = {.stopped_by_user = true}, .expectation = {}},
+    {.name = "new start clears previous outcome", .input = {.restarted = true}, .expectation = {}},
+};
+
+
 //  One legacy field changed in the stopped_ui() golden state.
 struct FieldInput{
     std::string state = "STOPPED";
@@ -601,6 +673,9 @@ void add_tests_LabStateJson(UnitTestDatabase& database){
     }
     for (const SinceCase& c : SINCE_CASES){
         database.add<Test_LabTransitionSince>(c);
+    }
+    for (const StartOutcomeCase& c : START_OUTCOME_CASES){
+        database.add<Test_LabStartOutcome>(c);
     }
     for (const ThrottleCase& c : THROTTLE_CASES){
         database.add<Test_LabStateThrottle>(c);
