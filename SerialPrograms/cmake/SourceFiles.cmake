@@ -1509,9 +1509,16 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_WallRecovery.h
     Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.h
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery.cpp
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery.h
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h
     Source/Pokemon/Navigation/Pokemon_LegTrace.cpp
     Source/Pokemon/Navigation/Pokemon_LegTrace.h
     Source/Pokemon/Navigation/Pokemon_LegTrace_Tests.cpp
