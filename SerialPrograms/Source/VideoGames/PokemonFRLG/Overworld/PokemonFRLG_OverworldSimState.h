@@ -17,7 +17,9 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
+#include "CommonTools/ScreenEvents/ScreenEventLog.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults.h"
 #include "PokemonFRLG_HideoutLiftRoom.h"
 #include "PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_OverworldSimScreens.h"
@@ -26,6 +28,8 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
+
+using Pokemon::SimWandererBlock;
 
 //  What a test sets up beyond the maps.
 struct SimScript{
@@ -163,6 +167,8 @@ struct SimScript{
     //  removeobject): a tap 0.4 s after his battle's text was lost (console
     //  B, 2026-11-11 17:51, 09.02 east_of_silph_scope). Not set: none.
     std::optional<Milliseconds> scene_after_trainer_battle;
+    //  Fault injection: wandering NPCs blocking specific tiles mid-hold/leg.
+    std::vector<SimWandererBlock> wanderer_blocks;
     SimTiming timing;
 };
 

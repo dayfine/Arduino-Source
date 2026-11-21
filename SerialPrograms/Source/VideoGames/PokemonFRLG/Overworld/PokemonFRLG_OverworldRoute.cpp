@@ -16,6 +16,7 @@
 #include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
+#include "Pokemon/Navigation/Pokemon_WanderRules.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldObjects.h"
@@ -303,6 +304,9 @@ public:
         }
         if (in_trainer_line(step.next)){
             step.extra_cost += route_cost(m_costs, RouteCost::LINE_TILE);
+        }
+        if (wander_object_at(m_maps[step.next.map], step.next.state.position) != nullptr){
+            step.extra_cost += route_cost(m_costs, RouteCost::WANDER_TILE);
         }
         return step;
     }
@@ -615,6 +619,14 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
     for (int c : std::views::iota(1, (int)tiles.size()) | std::views::filter([&](int n){ return tiles[n].map != tiles[n - 1].map; })){
         step.connection_steps.push_back(c);
+    }
+    if (!step.tapped && step.action == RouteAction::WALK && !step.surfing && !step.warps && !step.to_wall && !step.spin_tiles && step.connection_steps.empty()){
+        if (Pokemon::leg_touches_wander_box(tiles, [&](const MapPosition& pos){
+            const int idx = find_map(maps, pos.map);
+            return idx >= 0 ? &maps[idx] : nullptr;
+        })){
+            step.tapped = true;
+        }
     }
     return step;
 }

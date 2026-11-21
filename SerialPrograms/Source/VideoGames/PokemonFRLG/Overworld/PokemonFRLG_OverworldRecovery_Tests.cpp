@@ -25,6 +25,7 @@
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_OverworldRecoveryWalk.h"
+#include "PokemonFRLG_OverworldWanderRecovery_Tests.h"
 #include "PokemonFRLG_OverworldWalkWatches.h"
 
 namespace PokemonAutomation{
@@ -239,7 +240,7 @@ UnitTestResult test_open_water_legs(){
     for (size_t c = 0; c + 1 < route->size(); c++){
         RouteStep& step = (*route)[c];
         RouteStep& next = (*route)[c + 1];
-        if (step.surfing && step.action == RouteAction::WALK && !step.warps && next.action == RouteAction::WALK && !next.warps){
+        if (step.surfing && step.action == RouteAction::WALK && !step.warps && step.tiles > 20 && next.action == RouteAction::WALK && !next.warps){
             step.to_wall = false;
             step.lands_after = 0;
             next.to_wall = false;
@@ -249,6 +250,7 @@ UnitTestResult test_open_water_legs(){
     size_t chained = 0;
     while (chained + 1 < route->size() && !(
         (*route)[chained].surfing && !(*route)[chained].to_wall && !(*route)[chained].warps
+        && (*route)[chained].tiles > 20
         && (*route)[chained + 1].action == RouteAction::WALK && !(*route)[chained + 1].to_wall && !(*route)[chained + 1].warps
     )){
         chained++;
@@ -979,7 +981,6 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
         .input = {.name = "the frame of a leg's interrupt", .body = test_interrupt_frame},
         .expectation = {.description = "saved under DebugDumps/AutoStory/route/, named for the interrupt"},
     },
-
 };
 
 } // namespace
@@ -989,6 +990,7 @@ void add_tests_OverworldRecovery(UnitTestDatabase& database){
     for (const auto& scenario : OVERWORLD_RECOVERY_CASES){
         database.add<Test_OverworldRecovery>(scenario);
     }
+    add_tests_OverworldWanderRecovery(database);
 }
 
 
