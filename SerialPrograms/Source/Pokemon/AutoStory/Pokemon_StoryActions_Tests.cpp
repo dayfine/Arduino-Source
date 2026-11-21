@@ -131,6 +131,7 @@ UnitTestResult test_lint_names_steps_without_actions(){
             with_args(make(StoryStepKind::GAME, "buy more", "mart"), {{"map", std::string("M")}}),
             with_args(make(StoryStepKind::GAME, "meet Bill again", "bill"), {{"slot", int64_t(1)}}),
         },
+        .postconditions = {},
     };
     const std::vector<std::string> problems = lint_story_checkpoint(data, table);
     const std::vector<std::string> expected = {

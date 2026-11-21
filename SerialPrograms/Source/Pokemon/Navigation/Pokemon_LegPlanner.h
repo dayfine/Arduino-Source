@@ -92,6 +92,9 @@ struct Step{
     //  The walk can be interrupted on this step, e.g. by a wild battle in
     //  tall grass. See LegCosts::per_open_wild_stop.
     bool wild = false;
+    //  The step crosses a map connection (without warping). See
+    //  LegCosts::per_open_connection_stop.
+    bool connection = false;
 };
 
 
@@ -133,6 +136,9 @@ struct LegCosts{
     //  Extra again when that leg has a wild step, where an interruption is
     //  likely.
     int per_open_wild_stop = 0;
+    //  Extra when an open leg crosses a map connection, where map-load
+    //  stalls can shift the stopping tile unless it runs to a wall.
+    int per_open_connection_stop = 0;
 };
 
 
@@ -167,6 +173,7 @@ struct Node{
     int facing = 4;
     bool moving = false;
     bool wild = false;
+    bool connection = false;
     bool tap_from_wall = false;
     bool tapped = false;
     //  The tiles of the leg so far, up to MAX_COUNTED_RUN.
@@ -179,8 +186,8 @@ struct Node{
 template <typename State, typename StateHash>
 struct NodeHash{
     size_t operator()(const Node<State>& node) const{
-        return (StateHash()(node.state) * 80 + node.facing * 16 + (node.moving ? 8 : 0) + (node.wild ? 4 : 0)
-            + (node.tap_from_wall ? 2 : 0) + (node.tapped ? 1 : 0)) * (MAX_COUNTED_RUN + 1) + node.run;
+        return (StateHash()(node.state) * 160 + node.facing * 32 + (node.moving ? 16 : 0) + (node.wild ? 8 : 0)
+            + (node.connection ? 4 : 0) + (node.tap_from_wall ? 2 : 0) + (node.tapped ? 1 : 0)) * (MAX_COUNTED_RUN + 1) + node.run;
     }
 };
 
@@ -206,7 +213,9 @@ int stop_cost(const Model& model, const Node<State>& node, const LegCosts& costs
             }
         }
     }
-    int cost = costs.per_open_stop + (node.wild ? costs.per_open_wild_stop : 0);
+    int cost = costs.per_open_stop
+        + (node.wild ? costs.per_open_wild_stop : 0)
+        + (node.connection ? costs.per_open_connection_stop : 0);
     if constexpr (requires { model.open_stop_risk(node.state, Direction::NORTH); }){
         cost += model.open_stop_risk(node.state, (Direction)node.facing);
     }
@@ -300,6 +309,7 @@ void expand(
         const bool from_wall = current.moving && model.held_at(current.state, (Direction)current.facing);
         const Node<State> next{
             step->next, (int)step->facing, continues, (extends && current.wild) || step->wild,
+            (extends && current.connection) || step->connection,
             !extends && from_wall, current.tapped || (!extends && current.tap_from_wall),
             extends ? std::min(current.run + 1, MAX_COUNTED_RUN) : 1
         };

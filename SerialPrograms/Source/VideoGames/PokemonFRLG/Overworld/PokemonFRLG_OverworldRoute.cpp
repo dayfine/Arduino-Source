@@ -279,6 +279,7 @@ public:
         //  A slide ends the leg: the hold must let go on the spinner.
         step.ends_leg = transition->warped || transition->spin;
         step.warped = transition->warped;
+        step.connection = !transition->warped && transition->next.map != state.map;
         step.facing = transition->facing.value_or(direction);
         if (transition->spin){
             step.facing = transition->spin->facing;
@@ -464,6 +465,7 @@ Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     leg_costs.per_turn = route_cost(costs, RouteCost::TURN);
     leg_costs.per_open_stop = route_cost(costs, RouteCost::OPEN_STOP);
     leg_costs.per_open_wild_stop = route_cost(costs, RouteCost::OPEN_WILD_STOP);
+    leg_costs.per_open_connection_stop = route_cost(costs, RouteCost::OPEN_CONNECTION_STOP);
     return leg_costs;
 }
 
