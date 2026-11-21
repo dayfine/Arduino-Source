@@ -3,9 +3,29 @@
   "game": "frlg",
   "checkpoint": {
     "id": "05.04",
-    "title": "Nugget Bridge 10x farm, withdraw lead",
+    "title": "Nugget Bridge 10x farm: deposit lead, farm 10 Nuggets, withdraw lead",
     "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
+      {
+        "id": "pc_front_deposit",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"}
+        },
+        "why": "to Cerulean Center PC to deposit lead"
+      },
+      {
+        "id": "deposit_lead",
+        "kind": "game_action",
+        "action": "pc",
+        "args": {
+          "do": "deposit",
+          "box": 1,
+          "slot": 1
+        },
+        "why": "deposit lead into Box 2 slot 1 so only Rattata remains for Nugget Bridge fainting"
+      },
       {
         "id": "nugget_bridge_10x",
         "kind": "game_action",

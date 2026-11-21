@@ -3,7 +3,7 @@
   "game": "frlg",
   "checkpoint": {
     "id": "05.03",
-    "title": "Nugget Bridge: Beat 5 trainers, return to PC, deposit lead",
+    "title": "Nugget Bridge: Beat 5 trainers, return to Center",
     "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
@@ -156,33 +156,13 @@
         "why": "south down column 23 to the wall at (23, 15) to absorb the Route24->CeruleanCity connection stall"
       },
       {
-        "id": "pc_front",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"}
-        },
-        "why": "back to Cerulean Center PC to deposit lead"
-      },
-      {
-        "id": "deposit_lead",
-        "kind": "game_action",
-        "action": "pc",
-        "args": {
-          "do": "deposit",
-          "box": 1,
-          "slot": 1
-        },
-        "why": "deposit lead into Box 2 slot 1 so only Rattata remains for Nugget Bridge fainting"
-      },
-      {
         "id": "cerulean_nurse",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
         },
-        "why": "set nurse pose before Nugget Bridge 10x farm"
+        "why": "heal at Cerulean Center after Nugget Bridge"
       },
       {
         "id": "heal_cerulean",
@@ -196,7 +176,7 @@
     "lead": "after_brock",
     "notes": {
       "checkpoint": [
-        "Cerulean 05.03: beat 5 Nugget Bridge trainers, return to Cerulean Center PC, deposit lead in Box 2."
+        "Cerulean 05.03: beat 5 Nugget Bridge trainers and heal at Cerulean Center."
       ]
     }
   },
