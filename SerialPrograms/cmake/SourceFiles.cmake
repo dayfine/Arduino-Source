@@ -2230,24 +2230,39 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonLZA/Inference/Map/PokemonLZA_MapIconDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_AlertEyeDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_AutosaveDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_AutosaveDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_ButtonDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_ControlsHintDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_ControlsHintDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DayNightChangeDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DayNightChangeDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DayNightStateDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DayNightStateDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_Detectors_Tests.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogChoiceBox.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogChoiceBox.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_DialogDetectors_Tests.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceCalorieDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceCalorieDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceRewardNameReader.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_HyperspaceRewardNameReader.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_Inference_Tests.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_MainMenuDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_OverworldPartySelectionDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_PixelShares.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_PixelShares.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_SelectionArrowDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_StoryDialogDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_StoryDialogDetector.h
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_TutorialCardDetector.cpp
+    Source/VideoGames/PokemonLZA/Inference/PokemonLZA_TutorialCardDetector.h
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_WeatherDetector.cpp
     Source/VideoGames/PokemonLZA/Inference/PokemonLZA_WeatherDetector.h
     Source/VideoGames/PokemonLZA/InferenceTraining/PokemonLZA_GenerateLocationNameOCR.cpp

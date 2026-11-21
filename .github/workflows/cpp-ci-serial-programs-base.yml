@@ -245,7 +245,9 @@ jobs:
         uses: actions/checkout@v7
         if: inputs.run-tests
         with:
-          repository: 'PokemonAutomation/CommandLineTests'
+          # The fork's active Switch + PLZA AutoStory fixtures for dayfine/Arduino-Source#644 (rebased on upstream/main 0b0b009, branch plza/autostory). Fork-only pin: dropped at upstream handoff.
+          repository: 'dayfine/CommandLineTests'
+          ref: 'ee10083592f059cd9660af58da9b1ab65a624679'
           path: 'CommandLineTests'
 
       # The unit tests assume the downloadable resources they need are already downloaded
