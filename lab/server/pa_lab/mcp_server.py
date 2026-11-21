@@ -380,6 +380,8 @@ class LabMcp:
         except shot.Refused as e:
             return self._refused(name, e.refusal)
         png = result.pop('png')
+        LOG.info('shot request=%s frame=%s bytes=%d timing_ms=%s', result['request'], result['frame_seq'],
+                 len(png), result['timing_ms'])
         return {'content': [{'type': 'image', 'data': base64.b64encode(png).decode('ascii'),
                              'mimeType': 'image/png'},
                             {'type': 'text', 'text': _json_text(result)}],

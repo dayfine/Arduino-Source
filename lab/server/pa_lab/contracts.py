@@ -668,7 +668,8 @@ REFUSAL_DOC = Obj([
 EVENT_PAYLOADS: Dict[str, Spec] = {
     'program_finished': Obj([F('run_id', Nullable(Str())), F('verdict', Enum('passed', 'failed', 'stopped')),
                              F('checkpoint', Nullable(Str()))]),
-    'stopped': Obj([F('source', Enum(*TRANSITION_SOURCES)), F('run_id', Nullable(Str()), required=False)]),
+    'stopped': Obj([F('source', Enum(*TRANSITION_SOURCES)), F('run_id', Nullable(Str()), required=False),
+                    F('start_request_id', Uuid(), required=False, doc='the MCP request that started this run')]),
     'video_lost': Obj([F('last_frame_seq', Nullable(Int(minimum=0)))]),
     'save': Obj([F('save', Document('save_resource'))]),
     'lease_changed': Obj([F('old', LEASE), F('new', LEASE)]),

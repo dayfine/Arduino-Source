@@ -112,6 +112,8 @@ class LeaseTests(PlaneTest):
         lease = self.plane.lease('B')
         self.assertEqual((lease['state'], lease['expires_at']), ('agent_idle', '2026-11-14T07:20:00.000Z'))
         self.assertEqual(self.types()[-2:], [('lease_changed', 'run_ended'), ('stopped', None)])
+        stop = self.plane.next_events('reader', 'B', 0)['events'][-1]
+        self.assertEqual(stop['payload']['start_request_id'], run)
 
 
 class RetryTests(PlaneTest):

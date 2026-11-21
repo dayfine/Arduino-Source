@@ -167,14 +167,20 @@ def take_shot(console: ConsoleReader, arguments: Dict[str, Any],
         raise refuse_timeout('snapshot', name)
     png_path = Path(channel.snapshot_path(name, LABEL))
     frame = _parse_saved(journal, instance_id, png_path)
-    age_ms = int(round((console.now() - timestamps.parse(frame['captured_at'])) * 1000))
+    journal_at = console.now()
+    captured_at = timestamps.parse(frame['captured_at'])
+    age_ms = round((journal_at - captured_at) * 1000)
+    timing_ms = {'request_to_capture': round((captured_at - started) * 1000), 'capture_to_journal': age_ms}
     if age_ms > max_age_ms:
         raise Refused('video_stale', 'The saved frame is {} ms old (max_age_ms {}).'.format(age_ms, max_age_ms),
-                      dict(frame, instance_id=instance_id))
+                      dict(frame, instance_id=instance_id, timing_ms=timing_ms))
+    png = _read_png(png_path)
+    timing_ms['png_read'] = round((console.now() - journal_at) * 1000)
     return {
         'console': console.console,
         'path': str(png_path),
-        'png': _read_png(png_path),
+        'png': png,
+        'timing_ms': timing_ms,
         'instance_id': instance_id,
         'frame_seq': frame['frame_seq'],
         'captured_at': frame['captured_at'],
