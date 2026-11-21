@@ -1,8 +1,10 @@
 """Reads the planned legs of a route walk from a SerialPrograms log.
 
 walk_route() logs, per walk:
-    [Route] <label>: plan from Sandgem Town (20, 7), Sandgem Town (21, 7):
+    [Route] <label>: plan from Sandgem Town (20, 7), Sandgem Town (21, 7): east 9 (to wall) to ...; ...
     [Route] Leg 1/8: east 9 (to wall) to Sandgem Town (29, 7), Sandgem Town (29, 8)
+Older logs end the plan line at "plan from <tiles>:" and put each leg on a
+line of its own after it; either way the legs are read from the "Leg" lines.
 and while walking:
     [Walk] <label>: east 9 (to wall): blocked after 2800ms, 0 wild battle(s).
 """
@@ -10,7 +12,7 @@ import re
 from dataclasses import dataclass
 
 PLACE = re.compile(r'([A-Z][\w\' .-]*?) \((-?\d+), (-?\d+)\)')
-PLAN = re.compile(r'\[Route\] (.+?): plan from (.+):\s*$')
+PLAN = re.compile(r'\[Route\] (.+?): plan from (.+?):(?: |\s*$)')
 LEG = re.compile(r'\[Route\] Leg (\d+)/(\d+): (north|south|east|west) (\d+) \((to wall|open)\) to (.+?)\s*$')
 WALK = re.compile(r'\[Walk\] (.+?): (north|south|east|west) (\d+) \((?:to wall|open)\)(?:: at the wall\?)?: (\w+) after')
 

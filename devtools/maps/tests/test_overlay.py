@@ -34,6 +34,13 @@ LOG = [
     '2026-10-30 07:08:00.000]: [Route] Back to Route 202: plan from Sandgem Town (29, 2):',
 ]
 
+#  The plan on one line, its legs after the start tiles.
+ONE_LINE_PLAN = [
+    '2026-11-09 07:07:09.275]: [Route] West to the Route 201 sign: plan from Sandgem Town (20, 7), Sandgem Town (21, 7):'
+    ' east 9 (to wall) to Sandgem Town (29, 7), Sandgem Town (29, 8); west 40 (to wall) to Route 201 (53, 5), Route 201 (53, 6)',
+    '2026-11-09 07:07:09.275]: [Route] Leg 1/2: east 9 (to wall) to Sandgem Town (29, 7), Sandgem Town (29, 8)',
+]
+
 
 class GridSourceTest(unittest.TestCase):
     def test_rows_tiles_and_image(self):
@@ -78,6 +85,12 @@ class RouteLogTest(unittest.TestCase):
 
     def test_only_one_label(self):
         self.assertEqual(len(route_log.parse(LOG, 'Back to Route 202')), 1)
+
+    def test_one_line_plan(self):
+        walks = route_log.parse(ONE_LINE_PLAN)
+        self.assertEqual([w.label for w in walks], ['West to the Route 201 sign'])
+        self.assertEqual(walks[0].start, [('Sandgem Town', 20, 7), ('Sandgem Town', 21, 7)])
+        self.assertEqual([(l.direction, l.tiles) for l in walks[0].legs], [('east', 9)])
 
 
 class FetchTest(unittest.TestCase):
