@@ -5,13 +5,16 @@
  */
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "Controllers/MgbaLink/MgbaLink_Protocol.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkMoves.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
@@ -44,6 +47,19 @@ Button slope_buttons(const SlopePress& press){
     return buttons;
 }
 
+//  Converts wall-clock elapsed time back into game time so press_at() maps
+//  correctly when running on an accelerated GBA emulator.
+Milliseconds to_game_duration(Milliseconds wall){
+    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator){
+        return wall;
+    }
+    const double speed = MgbaLink::speed_multiplier();
+    if (!std::isfinite(speed) || speed <= 0.0 || speed == 1.0){
+        return wall;
+    }
+    return Milliseconds(std::max<int64_t>(0, (int64_t)std::llround((double)wall.count() * speed)));
+}
+
 //  The press under way `elapsed` after the first of `presses` began.
 size_t press_at(const std::vector<SlopePress>& presses, Milliseconds elapsed){
     Milliseconds end(0);
@@ -62,6 +78,7 @@ public:
     SlopeMessageWatcher()
         : VisualInferenceCallback("SlopeMessageWatcher")
         , m_detector(COLOR_RED)
+        , m_gate(scale_emulator_duration(SlopeMessageGate::HOLD))
     {}
     virtual void make_overlays(VideoOverlaySet& items) const override{
         m_detector.make_overlays(items);
@@ -97,7 +114,7 @@ SlopeSendResult send_slope_presses(SlopeEnv& env, const std::vector<SlopePress>&
         watchers
     );
     if (seen == 0){
-        const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
+        const Milliseconds elapsed = to_game_duration(std::chrono::duration_cast<Milliseconds>(current_time() - start));
         return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = press_at(presses, elapsed)};
     }
     return SlopeSendResult{.sent = seen == 1 ? SlopeSent::MESSAGE : SlopeSent::ALL};

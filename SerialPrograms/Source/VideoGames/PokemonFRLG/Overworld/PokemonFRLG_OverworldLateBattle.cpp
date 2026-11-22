@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_OverworldLateBattle.h"
 
@@ -16,7 +17,7 @@ namespace PokemonFRLG{
 
 const std::vector<Pokemon::EventLag>& wild_battle_lags(){
     static const std::vector<Pokemon::EventLag> LAGS{
-        {ScreenEvent::BATTLE_STARTED, OverworldWalkSteps::LATE_WILD_BATTLE_DELAY},
+        {ScreenEvent::BATTLE_STARTED, scale_emulator_duration(OverworldWalkSteps::LATE_WILD_BATTLE_DELAY)},
     };
     return LAGS;
 }
@@ -51,7 +52,8 @@ LateStop place_late_stop(
         return out;
     }
     const Milliseconds since_hold = std::chrono::duration_cast<Milliseconds>(*pressed - hold_start);
-    out.walked = walked_near(step, tile_reached(since_hold, tile_time, step.tiles), tile_time);
+    const Milliseconds scaled_tile = scale_emulator_duration(tile_time);
+    out.walked = walked_near(step, tile_reached(since_hold, scaled_tile, step.tiles), tile_time);
     return out;
 }
 
