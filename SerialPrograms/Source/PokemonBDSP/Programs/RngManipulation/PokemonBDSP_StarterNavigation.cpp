@@ -96,11 +96,33 @@ void navigate_to_lake_blinks(Logger& logger, ProControllerContext& context){
     context.wait_for_all_requests();
 }
 
+static bool advance_pre_walk_dialogue(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context
+){
+    //  Different game languages split Barry's pre-walk lines into different box counts
+    //  (e.g. 4 in English, 5 in Japanese). Press A until the dialog stays gone (> 1500ms),
+    //  which marks the 4.5s walk into the tall grass toward the briefcase.
+    for (size_t i = 0; i < 10; i++){
+        pbf_press_button(context, BUTTON_A, 100ms, 600ms);
+        context.wait_for_all_requests();
+
+        ShortDialogWatcher dialog;
+        if (wait_until(env.console, context, 1500ms, {{dialog}}) < 0){
+            env.log(
+                "Tall-grass walk detected after " + std::to_string(i + 1)
+                + " pre-walk dialogue press(es)."
+            );
+            return true;
+        }
+    }
+    return false;
+}
+
 void navigate_to_pre_briefcase(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
     env.log("Advancing to the pre-briefcase position.");
 
-    //  Dismiss the lake-blink line; Barry turns north to spot the briefcase
-    //  (~2.5-3.5s with no dialogue box) before the pre-walk conversation begins.
+    //  Dismiss the lake-blink line; Barry turns north (~2.5-3.5s) before speaking.
     pbf_wait(context, 1500ms);
     pbf_press_button(context, BUTTON_A, 100ms, 1000ms);
     context.wait_for_all_requests();
@@ -111,28 +133,7 @@ void navigate_to_pre_briefcase(SingleSwitchProgramEnvironment& env, ProControlle
         context.wait_for_all_requests();
     }
 
-    //  Advance pre-walk dialogue boxes until the walk into the tall grass starts
-    //  (dialog box stays absent > 1500ms). Different game languages split this
-    //  conversation into different box counts (e.g. 4 in English, 5 in Japanese).
-    bool entered_walk = false;
-    for (size_t i = 0; i < 10; i++){
-        pbf_press_button(context, BUTTON_A, 100ms, 600ms);
-        context.wait_for_all_requests();
-
-        ShortDialogWatcher dialog;
-        if (wait_until(env.console, context, 1500ms, {{dialog}}) < 0){
-            entered_walk = true;
-            env.log(
-                "Tall-grass walk detected after " + std::to_string(i + 1)
-                + " pre-walk dialogue press(es)."
-            );
-            break;
-        }
-    }
-
-    //  Wait for the tall-grass walk + briefcase zoom to open Briefcase Box 1,
-    //  then advance two boxes to Briefcase Box 3 (the line right before Starly).
-    if (entered_walk){
+    if (advance_pre_walk_dialogue(env, context)){
         ShortDialogWatcher briefcase_dialog;
         wait_until(env.console, context, 8000ms, {{briefcase_dialog}});
         pbf_wait(context, 500ms);
