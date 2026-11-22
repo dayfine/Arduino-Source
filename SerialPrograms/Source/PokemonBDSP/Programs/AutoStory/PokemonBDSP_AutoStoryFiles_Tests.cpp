@@ -81,13 +81,13 @@ private:
 
 const StoryTableCase STORY_TABLE_CASES[] = {
     {
-        .name = "All 23 authored checkpoints load",
+        .name = "All 24 authored checkpoints load",
         .input = {.extra_file = "bdsp-mine-01.03.plan"},
         .expectation = {
             .ids = {
                 "00.00", "00.01", "00.02", "00.03", "00.04", "00.04b", "00.04c", "00.04d",
                 "00.05", "00.05b", "00.05c",
-                "01.01", "01.02", "01.02b", "01.03", "01.04", "01.05", "01.06", "01.07", "01.08", "01.09", "01.10", "01.11",
+                "01.01", "01.02", "01.02b", "01.03", "01.03b", "01.04", "01.05", "01.06", "01.07", "01.08", "01.09", "01.10", "01.11",
             },
             .extra_file_id = "01.03",
             .extra_file_saves_in = "Oreburgh City",
@@ -398,22 +398,22 @@ const DevFileCase DEV_FILE_CASES[] = {
     {
         .name = "Dev file: none, the built-in rows in id order",
         .input = {},
-        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev"},
+        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 24 user rows | dev"},
     },
     {
         .name = "Dev file: replaces the built-in file of its name",
         .input = {.files = {{.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = retitle}}},
-        .expectation = {.summary = "Retimed | dev_only | 23 user rows | dev bdsp-00.01.plan.json"},
+        .expectation = {.summary = "Retimed | dev_only | 24 user rows | dev bdsp-00.01.plan.json"},
     },
     {
         .name = "Dev file: an out-of-order file's row stays in id order",
         .input = {.files = {{.file = "bdsp-mine-01.03.plan.json", .builtin = "bdsp-mine-01.03.plan"}}},
-        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev bdsp-mine-01.03.plan.json"},
+        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 24 user rows | dev bdsp-mine-01.03.plan.json"},
     },
     {
         .name = "Dev file: a dev_only row is not listed for a user",
         .input = {.files = {{.file = "bdsp-00.01.plan.json", .builtin = "bdsp-00.01.plan", .mutate = mark_dev_only}}},
-        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only 00.01 | 22 user rows | dev bdsp-00.01.plan.json"},
+        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only 00.01 | 23 user rows | dev bdsp-00.01.plan.json"},
     },
     {
         .name = "Dev file: named like no built-in file, refused",

@@ -13,7 +13,9 @@
 #ifndef PokemonAutomation_PokemonBDSP_AutoStoryBattleMoves_H
 #define PokemonAutomation_PokemonBDSP_AutoStoryBattleMoves_H
 
+#include <array>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
@@ -45,6 +47,17 @@ size_t choose_move(const std::vector<MoveSlot>& slots);
 //  The names, in the story's language, and PP of the moves on the move
 //  menu `moves` of `screen`.
 std::vector<MoveSlot> read_move_menu(const ImageViewRGB32& screen, const BattleMoveMenuState& moves);
+
+//  Updates `slots` from `cache` for unread names. If any newly-read slot
+//  differs from `cache`, the active Pokemon changed (e.g. a switch after a
+//  faint) and unread slots are cleared instead of keeping the old Pokemon's.
+void apply_remembered_moves(std::vector<MoveSlot>& slots, std::array<std::string, 4>& cache);
+
+//  Clears the cross-turn move-name cache used by pick_best_move().
+void clear_remembered_moves();
+
+//  Whether the currently cached active move list contains `slug`.
+bool remembered_move_includes(std::string_view slug);
 
 //  The best move on the move menu `moves` of `screen`, 1-based, as
 //  choose_move() picks from the names read in the game's language and the

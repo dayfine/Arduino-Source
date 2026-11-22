@@ -812,12 +812,19 @@ UnitTestResult test_choose_move(Logger&){
         {"slot 1 unread at 38 PP: a status move", {{"", 38}, {"", 40}, {"", 20}}, 3},
         {"Growl unread, Tackle read", {{"", 40}, {"tackle", 35}}, 2},
         {"Scratch, Leer, Ember and Mach Punch", {{"scratch", 35}, {"leer", 30}, {"ember", 25}, {"mach-punch", 30}}, 4},
+        {"Shinx Tackle beats Thunder Shock", {{"tackle", 35}, {"leer", 30}, {"thunder-shock", 30}, {"charge", 20}}, 1},
     };
     for (const Case& c : cases){
         const size_t best = choose_move(c.slots);
         if (best != c.best){
             return std::string(c.name) + ": picked move " + std::to_string(best) + ", expected " + std::to_string(c.best) + ".";
         }
+    }
+    std::array<std::string, 4> cache{"scratch", "leer", "ember", "taunt"};
+    std::vector<MoveSlot> shinx{{"tackle", 35}, {"leer", 30}, {"", 30}, {"", 20}};
+    apply_remembered_moves(shinx, cache);
+    if (!shinx[2].slug.empty() || !shinx[3].slug.empty()){
+        return "Switching active Pokemon must clear stale unread move cache slots.";
     }
     return true;
 }
