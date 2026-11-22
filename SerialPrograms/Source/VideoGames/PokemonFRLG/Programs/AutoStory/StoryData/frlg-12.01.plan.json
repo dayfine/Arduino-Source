@@ -70,14 +70,14 @@
       {
         "id": "teach_surf",
         "action": "teach",
-        "why": "HM03 Surf in place of Water Pulse (after 04.06 Mega Kick, 05.02b Water Pulse and 06.02 Dig, the lead knows Water Pulse, Bite, Dig and Mega Kick; Surf upgrades Water Pulse and 13.03 Blizzard later replaces Dig), unless the lead knows it; an HM, so not a one-shot TM; keep list: Bite, Dig and Mega Kick stay and the one other move (Water Pulse) goes; fails if none or several are outside the list",
+        "why": "HM03 Surf in place of Dig (after 04.06 Mega Kick, 05.02b Water Pulse and 06.02 Dig, the lead knows Water Pulse, Bite, Dig and Mega Kick; Dig is unused after Lt. Surge and keeping Water Pulse gives 35 Water PP across Kayden, Kirk and Koga, matching pokeguy's Surf, Water Pulse, Bite, Mega Kick moveset), unless the lead knows it; an HM, so not a one-shot TM; keep list: Bite, Water Pulse and Mega Kick stay and Dig goes; fails if none or several are outside the list",
         "args": {
           "item": "hm03",
           "move": "surf",
           "slot": 1,
           "keep": [
             "bite",
-            "dig",
+            "water-pulse",
             "mega-kick"
           ]
         }
