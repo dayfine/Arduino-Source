@@ -139,7 +139,7 @@ const std::set<std::string, std::less<>>& legs_before_2026_11_15(){
         "11.03/below_secret_house_attendant", "12.01/center_northwest_corner", "12.01/below_kayden_line",
         "12.01/east_column_to_kirk", "12.01/east_column_to_wall", "12.01/top_row_to_wall", "12.01/down_to_koga",
         "12.02b/beside_warden", "13.01/statue_row", "13.01/statue_wall", "13.01/statue_tile",
-        "14.01/center_northwest_corner", "14.01/below_quiz_1", "14.01/below_door_1", "14.01/to_quiz_2_machine",
+        "14.01/below_quiz_1", "14.01/below_door_1", "14.01/to_quiz_2_machine",
         "14.01/below_quiz_2", "14.01/above_door_2", "14.01/below_quiz_3", "14.01/above_door_3",
         "14.01/below_quiz_4", "14.01/east_of_door_4", "14.01/below_quiz_5", "14.01/below_door_5",
         "14.01/below_quiz_6", "14.01/below_door_6", "14.01/below_blaine", "14.02b/above_door_6",

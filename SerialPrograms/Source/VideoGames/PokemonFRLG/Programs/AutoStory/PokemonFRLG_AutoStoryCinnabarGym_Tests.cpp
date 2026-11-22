@@ -26,6 +26,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_WanderRules.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryParty.h"
@@ -597,7 +598,73 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
     return true;
 }
 
+UnitTestResult test_cinnabar_center_avoids_wanderers(){
+    const std::vector<MapData>& maps = story_maps();
+    auto find_center = [&](const std::string& name) -> const MapData*{
+        for (const MapData& map : maps){
+            if (map.name == name){
+                return &map;
+            }
+        }
+        return nullptr;
+    };
+    const MapData* center = find_center("CinnabarIsland_PokemonCenter_1F");
+    if (center == nullptr){
+        return "CinnabarIsland_PokemonCenter_1F is missing from story_maps().";
+    }
+    if (wander_object_at(*center, {2, 4}) == nullptr){
+        return "Expected CinnabarIsland_PokemonCenter_1F to include Cooltrainer F wandering row 4.";
+    }
+    if (wander_object_at(*center, {9, 7}) == nullptr){
+        return "Expected CinnabarIsland_PokemonCenter_1F to include Gentleman wandering (8..10, 6..8).";
+    }
+    const StoryCheckpoint& row = checkpoint("14.01");
+    for (const StoryStep& step : row.steps){
+        if (step.name != "center_northeast_corner"){
+            continue;
+        }
+        const auto legs_it = step.args.find("legs");
+        const std::vector<Pokemon::StoryLeg>* legs = legs_it == step.args.end()
+            ? nullptr
+            : std::get_if<std::vector<Pokemon::StoryLeg>>(&legs_it->second);
+        if (legs == nullptr){
+            return "14.01/center_northeast_corner: expected legs.";
+        }
+        const auto route = fixed_route(maps, MapPosition{"CinnabarIsland_PokemonCenter_1F", {7, 4}}, *legs);
+        if (!route){
+            return "14.01/center_northeast_corner: fixed_route failed.";
+        }
+        MapPosition cur{"CinnabarIsland_PokemonCenter_1F", {7, 4}};
+        for (const RouteStep& rs : *route){
+            const std::vector<MapPosition> tiles = leg_tiles(maps, cur, rs);
+            if (leg_touches_wander_box(tiles, [&](const MapPosition& pos){ return find_center(pos.map); })){
+                return std::format("14.01/center_northeast_corner: {} crosses a Center wanderer.", to_string(rs));
+            }
+            cur = rs.end;
+        }
+        const auto out = plan_overworld_route(maps, cur, RouteGoal{MapPosition{"CinnabarIsland_Gym", {25, 16}}, Direction::NORTH});
+        if (!out){
+            return "14.01/to_gym_east_room: plan_overworld_route failed from northeast corner.";
+        }
+        for (const RouteStep& rs : *out){
+            if (cur.map == "CinnabarIsland_PokemonCenter_1F"){
+                const std::vector<MapPosition> tiles = leg_tiles(maps, cur, rs);
+                if (leg_touches_wander_box(tiles, [&](const MapPosition& pos){ return find_center(pos.map); })){
+                    return std::format("14.01/to_gym_east_room: {} crosses a Center wanderer.", to_string(rs));
+                }
+            }
+            cur = rs.end;
+        }
+        return true;
+    }
+    return "14.01: center_northeast_corner not found.";
+}
+
 const AutoStoryCinnabarGymCase AUTO_STORY_CINNABAR_GYM_CASES[] = {
+    {
+        .input = {.name = "14.01 Cinnabar Center anchor and exit avoid Center wanderers", .body = test_cinnabar_center_avoids_wanderers},
+        .expectation = {.description = "CinnabarIsland_PokemonCenter_1F includes Cooltrainer F and Gentleman, and 14.01 avoids their wander boxes"},
+    },
     {
         .input = {.name = "Cinnabar Gym's quiz doors are shut on the map", .body = test_quiz_doors_on_map},
         .expectation = {.description = "each of 14.01's door steps crosses one barrier tile between floor"},

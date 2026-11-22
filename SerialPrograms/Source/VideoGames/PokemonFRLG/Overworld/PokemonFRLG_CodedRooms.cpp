@@ -186,6 +186,22 @@ MapData pokemon_center_room(const std::string& name, const Pokemon::WarpDestinat
             warp.to = outside;
         }
     }
+    if (name == "CinnabarIsland_PokemonCenter_1F"){
+        //  pokefirered data/maps/CinnabarIsland_PokemonCenter_1F/map.json:
+        //  Cooltrainer F wanders left-and-right on row 4 (blocking the way
+        //  west from the nurse to (0, 4)), Gentleman wanders around (9, 7),
+        //  and Youngster sits at (14, 6). Bill at (11, 5) is hidden by
+        //  FLAG_HIDE_CINNABAR_POKECENTER_BILL until after Blaine.
+        MapObject cooltrainer = object("cooltrainer_f", Pokemon::ObjectKind::NPC, {2, 4});
+        cooltrainer.wander = Pokemon::TileBox{.x0 = 1, .y0 = 4, .x1 = 3, .y1 = 4};
+        room.objects.push_back(std::move(cooltrainer));
+
+        MapObject gentleman = object("gentleman", Pokemon::ObjectKind::NPC, {9, 7});
+        gentleman.wander = Pokemon::TileBox{.x0 = 8, .y0 = 6, .x1 = 10, .y1 = 8};
+        room.objects.push_back(std::move(gentleman));
+
+        room.objects.push_back(object("youngster", Pokemon::ObjectKind::NPC, {14, 6}));
+    }
     return room;
 }
 
