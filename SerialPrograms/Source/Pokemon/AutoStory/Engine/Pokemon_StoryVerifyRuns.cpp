@@ -166,10 +166,17 @@ VerifyRowReport run_verify_row(
 ){
     VerifyRowReport report;
     report.checkpoint = std::string(checkpoint_id);
-    backend.log(std::format(
-        "[Verify] {}: phase 1, {} tries from one save, {} must pass; phase 2, up to {} tries, the first pass saved",
-        checkpoint_id, verify.tries, verify.min_pass, verify.reset_budget
-    ));
+    if (verify.tries > 0){
+        backend.log(std::format(
+            "[Verify] {}: phase 1, {} tries from one save, {} must pass; phase 2, up to {} tries, the first pass saved",
+            checkpoint_id, verify.tries, verify.min_pass, verify.reset_budget
+        ));
+    }else{
+        backend.log(std::format(
+            "[Verify] {}: up to {} tries, the first pass saved",
+            checkpoint_id, verify.reset_budget
+        ));
+    }
 
     const auto stop = [&](std::string code, std::string detail) -> VerifyRowReport{
         backend.log(std::format("[Verify] {}: {}; stopping", checkpoint_id, detail));
@@ -247,25 +254,27 @@ VerifyRowReport run_verify_row(
         return false;
     };
 
-    for (size_t c = 1; c <= verify.tries && report.phase1_passes < verify.min_pass; c++){
-        const std::optional<bool> ok = try_once(/*phase=*/1, c, verify.tries);
-        if (!ok){
-            return report;
+    if (verify.tries > 0){
+        for (size_t c = 1; c <= verify.tries && report.phase1_passes < verify.min_pass; c++){
+            const std::optional<bool> ok = try_once(/*phase=*/1, c, verify.tries);
+            if (!ok){
+                return report;
+            }
+            report.phase1_passes += *ok ? 1 : 0;
+            if (report.phase1_passes + (verify.tries - c) < verify.min_pass){
+                return stop("verify_below_min_pass", std::format(
+                    "phase 1 passed {} of {}, {} left: under {}",
+                    report.phase1_passes, c, verify.tries - c, verify.min_pass
+                ));
+            }
         }
-        report.phase1_passes += *ok ? 1 : 0;
-        if (report.phase1_passes + (verify.tries - c) < verify.min_pass){
+        if (report.phase1_passes < verify.min_pass){
             return stop("verify_below_min_pass", std::format(
-                "phase 1 passed {} of {}, {} left: under {}",
-                report.phase1_passes, c, verify.tries - c, verify.min_pass
+                "phase 1 passed {} of {}, under {}", report.phase1_passes, verify.tries, verify.min_pass
             ));
         }
+        backend.log(std::format("[Verify] {}: phase 1 reached {} passes", checkpoint_id, report.phase1_passes));
     }
-    if (report.phase1_passes < verify.min_pass){
-        return stop("verify_below_min_pass", std::format(
-            "phase 1 passed {} of {}, under {}", report.phase1_passes, verify.tries, verify.min_pass
-        ));
-    }
-    backend.log(std::format("[Verify] {}: phase 1 reached {} passes", checkpoint_id, report.phase1_passes));
 
     for (size_t c = 1; c <= verify.reset_budget; c++){
         const std::optional<bool> ok = try_once(/*phase=*/2, c, verify.reset_budget);

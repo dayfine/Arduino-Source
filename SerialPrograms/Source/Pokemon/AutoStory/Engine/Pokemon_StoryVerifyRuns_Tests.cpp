@@ -201,6 +201,33 @@ UnitTestResult test_verify_row_stops_on_precondition_and_unread(Logger&, Cancell
     return true;
 }
 
+UnitTestResult test_verify_row_skips_phase1_when_tries_zero(Logger&, CancellableScope& scope){
+    FakeStoryBackend backend(FakeStoryScript{}, scope);
+    size_t saves = 0;
+    size_t reloads = 0;
+    StoryGame game = fake_game(saves, reloads);
+    RunState state;
+
+    //  Phase 1 skipped (tries = 0, min_pass = 0); phase 2 fails once, then passes and saves.
+    const VerifyRowReport report = run_verify_row(
+        backend, "20.01",
+        StoryVerify{.tries = 0, .min_pass = 0, .reset_budget = 3},
+        scripted_factory("20.01", {
+            StoryFailure{.code = "blackout"},
+            std::nullopt,
+        }),
+        game, state
+    );
+    PA_STORY_EXPECT(report.passed);
+    PA_STORY_EXPECT(report.saved);
+    PA_STORY_EXPECT(report.phase1_passes == 0);
+    PA_STORY_EXPECT(report.attempts == 2);
+    PA_STORY_EXPECT(report.reloads == 1);
+    PA_STORY_EXPECT(saves == 1);
+    PA_STORY_EXPECT(reloads == 1);
+    return true;
+}
+
 #undef PA_STORY_EXPECT
 
 } // namespace
@@ -212,6 +239,7 @@ void add_tests_StoryVerifyRuns(UnitTestDatabase& database){
     database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyRowPhase1AndPhase2Save", test_verify_row_phase1_and_phase2_save);
     database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyRowStopsEarlyBelowMinPass", test_verify_row_stops_early_below_min_pass);
     database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyRowStopsOnPreconditionAndUnread", test_verify_row_stops_on_precondition_and_unread);
+    database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyRowSkipsPhase1WhenTriesZero", test_verify_row_skips_phase1_when_tries_zero);
 }
 
 
