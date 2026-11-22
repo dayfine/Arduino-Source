@@ -657,7 +657,8 @@ UnitTestResult test_poses_chain(Logger&){
                 at = walked.at;
                 measured = walked.measured;
             }else if (step.action == "scene" || step.action == "sandgem_potions" || step.action == "jubilife_stairs" ||
-                step.action == "gym_until_roark_beaten" || step.action == "smash_the_rock" ||
+                step.action == "train_fire_starter_in_mine" || step.action == "gym_until_roark_beaten" ||
+                step.action == "smash_the_rock" ||
                 step.action == "azure_flute_if_there" || step.action == "starter_briefcase" ||
                 step.action == "choose_starter" || step.action == "catch_tutorial" ||
                 step.action == "catch_pokemon" || step.action == "talk_to_wanderer"

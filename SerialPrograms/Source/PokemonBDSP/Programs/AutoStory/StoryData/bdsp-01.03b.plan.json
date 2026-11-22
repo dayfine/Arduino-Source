@@ -1,0 +1,48 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
+  "checkpoint": {
+    "id": "01.03b",
+    "title": "Oreburgh Mine training (Chimchar)",
+    "start": {
+      "facing": "south",
+      "map": "OreburghCity",
+      "tiles": [
+        [
+          47,
+          21
+        ],
+        [
+          46,
+          21
+        ]
+      ]
+    },
+    "events": [
+      {
+        "id": "train_fire_starter_in_mine",
+        "action": "train_fire_starter_in_mine",
+        "why": "train Chimchar in Oreburgh Mine until Monferno learns Mach Punch before Roark; skipped for Piplup and Turtwig",
+        "args": {
+          "pose_after": {
+            "facing": "south",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                47,
+                21
+              ]
+            ]
+          }
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
+  },
+  "execution": {
+    "on_failure": "reload_and_retry",
+    "saves_in": "Oreburgh City"
+  }
+}
