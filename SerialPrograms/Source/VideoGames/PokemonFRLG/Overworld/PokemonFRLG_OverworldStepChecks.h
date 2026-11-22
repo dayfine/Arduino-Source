@@ -84,6 +84,15 @@ enum class OpenLegCheck{
     TRUST,      //  taken to have ended where planned
 };
 
+//  Whether `step`, an open WALK leg from `start` on `maps`, crosses grass,
+//  cave/wild-encounter tiles, special tiles (warp/ledge/spin/fall/button/surf),
+//  or map boundaries. Plain safe open legs return false and are trusted.
+bool open_leg_needs_reanchor(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteStep& step
+);
+
 //  The ways, east-west and north-south, the player may be a tile off the
 //  plan along: from the route's start (an open leg of the route before, or
 //  a scene, may leave them a tile off it), or after an open leg that way

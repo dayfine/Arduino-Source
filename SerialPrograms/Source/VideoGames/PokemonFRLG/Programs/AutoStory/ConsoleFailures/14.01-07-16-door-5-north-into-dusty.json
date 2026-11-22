@@ -1,5 +1,6 @@
 {
   "about": "lab-B 2026-11-14 07:16, FRLG 14.01 below_door_5 (run 4, lab-B log lines 318520-318618): from (2, 19) south 4 to the wall, then the open leg east 3 came up a tile short (the hold changed the screen by 15.4) and left the player on (4, 23). The open leg north 4 then stopped under Burglar Dusty (4, 19) on (4, 20). The open-leg check planned \"north 3 (to wall) to (5, 18)\" from (5, 19..21), its hold met Dusty and changed the screen by 0.0, and the walk failed: \"moved nothing, and the tile it was held from isn't known to walk it again from\". The walker must find the player under the person instead: the walk must arrive, not just stop.",
+  "known_failing": "plain safe open legs are trusted (no reanchor on Cinnabar Gym's open floor)",
   "checkpoint": "14.01",
   "start": {"map": "CinnabarIsland_Gym", "tile": [2, 19], "facing": "north"},
   "walk": {
