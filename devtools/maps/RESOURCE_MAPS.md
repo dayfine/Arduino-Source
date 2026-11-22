@@ -69,13 +69,15 @@ Do not rewrite the resource pin merely to make a locally edited map pass.
 
 ## Offline tools and tests
 
-The existing decomp CLI forwards to the publisher parser. Fetch and overlay
-commands still work without the Python package. For decompilation, supply the
-approved tools on PYTHONPATH:
+Offline map/decomp and leg-trace tools (`pokesim.maps.dppt_map_decomp_parser`,
+`pokesim.maps.leg_trace`, `pokesim.maps.leg_replay`, route rendering, and their
+Python unit tests) live in `PokemonSimulation`. Legacy `devtools/maps` Python
+helpers have been retired; this directory retains only the pinned resource lock
+(`map-resources.lock.json`) and this guide.
+
+Native runtime-map schema and parity tests remain here:
 
 ```sh
-PYTHONPATH=/path/to/pokesim/src python3 -m devtools.maps decomp ROUTE_204_NORTH --text
-python3 -m unittest devtools.maps.tests.test_overlay
 cmake -S devtools/runtime-map-tests -B build/runtime-map-tests
 cmake --build build/runtime-map-tests -j4
 ctest --test-dir build/runtime-map-tests --output-on-failure
