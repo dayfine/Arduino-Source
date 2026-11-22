@@ -18,6 +18,7 @@
 #include <string>
 #include <string_view>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "PokemonFRLG_AutoStorySupplies.h"
 
 namespace PokemonAutomation{
@@ -69,6 +70,12 @@ int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string
 //  Antidote, Full Heal...) the bag needs to hold `target` of it: 0 if it
 //  already does.
 int fill_shortfall(const Supplies& supplies, int target, const std::string& item);
+
+//  Whether the lead survives `steps` of overworld poison damage (1 HP per
+//  4 steps) given `supplies`: ok if not poisoned, if the bag holds an
+//  Antidote or Full Heal, or if the lead's estimated HP exceeds `steps / 4`
+//  (using `lead.stats->hp` or `fallback_max_hp`).
+Pokemon::Outcome check_poison_survival(int steps, int fallback_max_hp, const Supplies& supplies);
 
 //  Registers the healing tests.
 void add_tests_AutoStoryHealing(UnitTestDatabase& database);

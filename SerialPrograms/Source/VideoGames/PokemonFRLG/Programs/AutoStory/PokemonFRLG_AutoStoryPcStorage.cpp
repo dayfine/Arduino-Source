@@ -173,6 +173,17 @@ PcStorageDialog::PcStorageDialog(const PcTransfer& transfer)
 {}
 
 PcDecision PcStorageDialog::next(const PcView& view){
+    if (m_transfer.action == PcAction::WITHDRAW && !m_transferred && view.screen == PcScreen::BOX_GRID
+        && m_box_switch_step > 0 && m_box_switch_step <= m_transfer.box + 1
+    ){
+        m_others_in_a_row = 0;
+        if (m_box_switch_step <= m_transfer.box){
+            m_box_switch_step++;
+            return {PcPress::RIGHT};
+        }
+        m_box_switch_step++;
+        return {PcPress::DOWN};
+    }
     //  A fade, or a box screen still drawing its hand: wait for the screen,
     //  as long as a PC screen change takes, and press nothing into it.
     if (!settled(view, m_transferred)){
@@ -283,6 +294,13 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
     }
     if (!view.cursor || *view.cursor >= BOX_SLOTS){
         return {PcPress::FAIL, "the hand wasn't read on the box"};
+    }
+    if (m_transfer.box > 0 && m_box_switch_step == 0){
+        if (*view.cursor >= BOX_COLUMNS){
+            return {PcPress::UP};
+        }
+        m_box_switch_step = 1;
+        return {PcPress::UP};
     }
     //  A species: each cell the hand reaches is read, its Pokemon taken if
     //  it is the one, else the hand goes on to the next cell.
