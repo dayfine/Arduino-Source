@@ -116,7 +116,7 @@ inline constexpr std::string_view FRLG_PLAN_GOLDEN[] = {
     "02.03 below_old_man_trigger from ViridianCity_PokemonCenter_1F (7, 4) facing north to ViridianCity (20, 9) facing north",
     "02.03   walk south 5 (warp) -> ViridianCity (26, 27) [walk only]",
     "02.03   walk west 5 -> ViridianCity (21, 27)",
-    "02.03   walk north 18 -> ViridianCity (21, 9)",
+    "02.03   walk north 18 (to wall) -> ViridianCity (21, 9)",
     "02.03   walk west 1 (to wall) -> ViridianCity (20, 9)",
     "02.03   face north -> ViridianCity (20, 9)",
     "02.03 past_old_man from ViridianCity (20, 8) facing east to ViridianCity (20, 5) facing north",

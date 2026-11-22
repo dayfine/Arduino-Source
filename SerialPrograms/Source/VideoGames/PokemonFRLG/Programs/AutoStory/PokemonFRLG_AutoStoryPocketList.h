@@ -44,6 +44,7 @@ public:
 struct PocketRead{
     std::vector<BagRow> rows;
     size_t downs = 0;
+    bool saw_cancel = false;
 };
 
 //  The pocket's rows from the top, as pocket_rows() keeps them: the six
@@ -72,8 +73,8 @@ void open_battle_bag(ProControllerContext& context, size_t rows);
 void open_battle_items_pocket(ProControllerContext& context);
 //  From the battle menu: the Items pocket through BAG (`rows` as
 //  open_battle_bag() takes it), read whole, and back to the battle menu.
-//  Empty if nothing could be read.
-std::vector<BagRow> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language, size_t rows);
+//  nullopt if nothing could be read (vs empty vector when CANCEL was read).
+std::optional<std::vector<BagRow>> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language, size_t rows);
 
 
 } // namespace PokemonFRLG

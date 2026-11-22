@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/OCR/OCR_Routines.h"
 #include "Pokemon/Inference/Pokemon_NameReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
@@ -36,6 +37,7 @@ namespace{
 
 //  The player's HP box's name, as WildEncounterReader's for the foe.
 const ImageFloatBox OWN_NAME_BOX(0.585, 0.490, 0.260, 0.063);
+const ImageFloatBox OWN_LEVEL_BOX(0.845, 0.490, 0.115, 0.063);
 //  The party list's names: the big top-left slot's, then the column's,
 //  OWN_PARTY_ROW apart.
 const ImageFloatBox FIRST_SLOT_NAME_BOX(0.131, 0.235, 0.158, 0.058);
@@ -65,6 +67,34 @@ std::string read_own_battler(Logger& logger, Language language, const ImageViewR
     const std::string read = read_name(logger, language, extract_box_reference(game, OWN_NAME_BOX), battle_species(), /*bright=*/false);
     logger.log(read.empty() ? "Battle: our Pokemon out wasn't read." : std::format("Battle: our {} is out.", read));
     return read;
+}
+
+std::optional<uint8_t> read_own_level(Logger& logger, Language language, const ImageViewRGB32& screen){
+    if (language == Language::None){
+        return std::nullopt;
+    }
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const ImageRGB32 ready = preprocess_for_ocr(extract_box_reference(game, OWN_LEVEL_BOX));
+    for (const OCR::TextColorRange& filter : DARK_TEXT_FILTERS()){
+        const ImageRGB32 bw = to_blackwhite_rgb32_range(ready, /*in_range_black=*/true, filter.mins, filter.maxs);
+        const std::string text = OCR::ocr_read(language, bw, OCR::PageSegMode::SINGLE_LINE);
+        int value = 0;
+        bool any = false;
+        for (char ch : text){
+            if (ch >= '0' && ch <= '9'){
+                any = true;
+                value = value * 10 + (ch - '0');
+                if (value > 100){
+                    break;
+                }
+            }
+        }
+        if (any && value >= 1 && value <= 100){
+            return static_cast<uint8_t>(value);
+        }
+    }
+    logger.log("Battle: our level wasn't read.");
+    return std::nullopt;
 }
 
 std::optional<size_t> party_slot_of(Logger& logger, Language language, const ImageViewRGB32& screen, std::string_view species){
