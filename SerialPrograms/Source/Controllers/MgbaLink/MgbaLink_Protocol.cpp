@@ -4,8 +4,10 @@
  *
  */
 
+#include <algorithm>
 #include <charconv>
 #include <cmath>
+#include <stdlib.h>
 #include "MgbaLink_Protocol.h"
 
 namespace PokemonAutomation{
@@ -130,11 +132,17 @@ std::vector<std::string> LineSplitter::push(std::string_view data){
 
 
 
+FrameClock::FrameClock(WallClock t0, uint64_t f0, double speed)
+    : m_t0(t0)
+    , m_f0(f0)
+    , m_speed((std::isfinite(speed) && speed > 0.0) ? std::clamp(speed, MIN_SPEED, MAX_SPEED) : 1.0)
+{}
+
 WallClock FrameClock::timestamp(uint64_t frame) const{
     double frames = frame >= m_f0
         ? (double)(frame - m_f0)
         : -(double)(m_f0 - frame);
-    double microseconds = std::round(frames * 1000000.0 / GBA_FRAMES_PER_SECOND);
+    double microseconds = std::round(frames * 1000000.0 / frames_per_second());
     return m_t0 + std::chrono::duration_cast<WallDuration>(
         std::chrono::microseconds((int64_t)microseconds)
     );
@@ -156,6 +164,27 @@ FrameClock::Stamp FrameClock::stamp(WallClock now, uint64_t frame, WallDuration 
     m_last_stamp = time;
     result.time = time;
     return result;
+}
+
+double parse_speed_multiplier(const char* value){
+    if (value == nullptr || *value == '\0'){
+        return 1.0;
+    }
+    std::string_view text(value);
+    double parsed = 1.0;
+    std::from_chars_result result = std::from_chars(text.data(), text.data() + text.size(), parsed);
+    if (result.ec != std::errc() || result.ptr != text.data() + text.size()){
+        return 1.0;
+    }
+    if (!std::isfinite(parsed) || parsed <= 0.0){
+        return 1.0;
+    }
+    return std::clamp(parsed, FrameClock::MIN_SPEED, FrameClock::MAX_SPEED);
+}
+
+double speed_multiplier(){
+    static const double speed = parse_speed_multiplier(getenv("PA_MGBA_SPEED"));
+    return speed;
 }
 
 }  // namespace MgbaLink

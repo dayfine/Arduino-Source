@@ -150,6 +150,7 @@ private:
 //  Frame numbers to timestamps, anchored at (t0, frame 1000).
 struct FrameClockInput{
     uint64_t frame;
+    double speed = 1.0;
 };
 struct FrameClockExpectation{
     std::chrono::microseconds offset_from_anchor;
@@ -169,7 +170,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        FrameClock clock(CLOCK_T0, 1000);
+        FrameClock clock(CLOCK_T0, 1000, m_case.input.speed);
         WallDuration offset = clock.timestamp(m_case.input.frame) - CLOCK_T0;
         if (offset != std::chrono::duration_cast<WallDuration>(m_case.expectation.offset_from_anchor)){
             return std::format("offset {} us", std::chrono::duration_cast<std::chrono::microseconds>(offset).count());
@@ -179,6 +180,40 @@ public:
 
 private:
     FrameClockCase m_case;
+};
+
+class Test_ParseSpeedMultiplier : public UnitTest{
+public:
+    Test_ParseSpeedMultiplier()
+        : UnitTest("Controllers::MgbaLink - parse speed multiplier")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        struct Case{
+            const char* text;
+            double expected;
+        };
+        const Case cases[] = {
+            {nullptr, 1.0},
+            {"", 1.0},
+            {"abc", 1.0},
+            {"2x", 1.0},
+            {"0", 1.0},
+            {"-2", 1.0},
+            {"1", 1.0},
+            {"2", 2.0},
+            {"4", 4.0},
+            {"0.5", 0.5},
+            {"0.1", 0.5},
+            {"16", 8.0},
+        };
+        for (const Case& c : cases){
+            double got = parse_speed_multiplier(c.text);
+            if (got != c.expected){
+                return std::format("parse_speed_multiplier({}) = {}, expected {}", c.text ? c.text : "null", got, c.expected);
+            }
+        }
+        return true;
+    }
 };
 
 
@@ -524,10 +559,13 @@ void add_clock_tests(UnitTestDatabase& database){
         {.name = "next frame", .input = {1001}, .expectation = {std::chrono::microseconds(16743)}},
         {.name = "60 frames", .input = {1060}, .expectation = {std::chrono::microseconds(1004562)}},
         {.name = "before the anchor (after a LOAD)", .input = {940}, .expectation = {std::chrono::microseconds(-1004562)}},
+        {.name = "60 frames at 2x", .input = {1060, 2.0}, .expectation = {std::chrono::microseconds(502281)}},
+        {.name = "60 frames at 4x", .input = {1060, 4.0}, .expectation = {std::chrono::microseconds(251141)}},
     };
     for (const FrameClockCase& test_case : FRAME_CLOCK_CASES){
         database.add<Test_FrameClock>(test_case);
     }
+    database.add<Test_ParseSpeedMultiplier>();
 
     using std::chrono::milliseconds;
     const StampCase STAMP_CASES[] = {
