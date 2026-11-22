@@ -2122,6 +2122,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLateBattle.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLateBattle.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLateBattle_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MailGlitchRooms.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MailGlitchRooms.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.cpp
@@ -2550,6 +2552,16 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_NuggetBridgeFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.h
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchActions.cpp
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchActions.h
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchActivation.cpp
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchActivation.h
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchBattle.cpp
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchBattle.h
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchTable.cpp
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchTable.h
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitch_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitch_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryScreenEvents_Tests.cpp

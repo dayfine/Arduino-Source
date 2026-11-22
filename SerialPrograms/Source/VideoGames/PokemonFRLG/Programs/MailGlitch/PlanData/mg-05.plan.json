@@ -1,0 +1,148 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "mg-05",
+    "title": "Route 8 setup and double battle: faint+Revive Rattata, equip Sitrus Berry + Retro Mail, Knock Off + Recycle vs Twins Eli & Anne",
+    "start": {"map": "LavenderTown", "tiles": [[18, 7]], "facing": "south"},
+    "events": [
+      {
+        "id": "to_route8_cut_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route8", "tiles": [[48, 12]], "facing": "west"}
+        },
+        "why": "walk west from Lavender Town into Route 8 to east of Cut tree (47, 12)"
+      },
+      {
+        "id": "cut_route8_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "west"
+        },
+        "declared_after": {"map": "Route8", "tiles": [[47, 12]], "facing": "west"},
+        "why": "cut Route 8 fence tree (47, 12) to enter the grass patch"
+      },
+      {
+        "id": "to_route8_grass",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route8", "tiles": [[45, 12]], "facing": "west"}
+        },
+        "why": "step into Route 8 grass (45, 12) to faint Rattata cleanly"
+      },
+      {
+        "id": "prepare_rattata_berry_hp",
+        "kind": "game_action",
+        "action": "prepare_berry_hp",
+        "args": {
+          "species": "rattata",
+          "sweeper": "blastoise",
+          "pace": "west"
+        },
+        "declared_after": {"map": "Route8", "tiles": [[45, 12]], "facing": "west"},
+        "why": "faint Rattata in 1 wild battle, flee with Blastoise, and use Revive -> exact maxHP / 2"
+      },
+      {
+        "id": "arrange_slot1_chding",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {
+          "species": "farfetchd",
+          "target_slot": 1
+        },
+        "why": "place CH'DING (Knock Off) in Party Slot 1"
+      },
+      {
+        "id": "arrange_slot2_rattata",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {
+          "species": "rattata",
+          "target_slot": 2
+        },
+        "why": "place Rattata (exact maxHP / 2 Berry holder) in Party Slot 2"
+      },
+      {
+        "id": "arrange_slot3_mimien",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {
+          "species": "mr-mime",
+          "target_slot": 3
+        },
+        "why": "place MIMIEN (Recycle) in Party Slot 3"
+      },
+      {
+        "id": "arrange_slot4_blastoise",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {
+          "species": "blastoise",
+          "target_slot": 4
+        },
+        "why": "place Blastoise (Surf sweeper) in Party Slot 4"
+      },
+      {
+        "id": "give_sitrus_berry_slot2",
+        "kind": "game_action",
+        "action": "give_bag_item",
+        "args": {
+          "item": "sitrus-berry",
+          "target_slot": 2
+        },
+        "why": "equip Sitrus Berry from Berry Pouch onto Slot 2 (Rattata) for Turn-0 auto-eat"
+      },
+      {
+        "id": "give_retro_mail_slot3",
+        "kind": "game_action",
+        "action": "give_bag_item",
+        "args": {
+          "item": "retro-mail",
+          "target_slot": 3
+        },
+        "why": "equip Retro Mail with 1 Easy Chat word onto Slot 3 (MIMIEN)"
+      },
+      {
+        "id": "to_twins_eli_anne",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route8", "tiles": [[40, 5]], "facing": "north"}
+        },
+        "why": "walk out of Route 8 grass and north to (40, 5) facing Twins Eli & Anne (40..41, 3, sight=1)"
+      },
+      {
+        "id": "activate_mail_glitch_battle",
+        "kind": "game_action",
+        "action": "mail_glitch_double_battle",
+        "args": {
+          "knock_off_species": "farfetchd",
+          "recycle_species": "mr-mime",
+          "sweeper": "blastoise",
+          "step_direction": "north"
+        },
+        "declared_after": {"map": "Route8", "tiles": [[40, 4]], "facing": "north"},
+        "why": "step into Twins Eli & Anne sightline and execute Turn-0 Berry + Turn-1 Knock Off/switch + Turn-2 Recycle/switch + sweep"
+      },
+      {
+        "id": "verify_mail_glitch",
+        "kind": "game_action",
+        "action": "verify_mail_glitch",
+        "args": {
+          "species": "mr-mime"
+        },
+        "why": "confirm MIMIEN displays the held-item icon (recycled Sitrus Berry with Mail Glitch active)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

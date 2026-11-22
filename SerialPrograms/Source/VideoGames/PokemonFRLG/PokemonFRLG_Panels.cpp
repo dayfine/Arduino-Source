@@ -20,6 +20,7 @@
 #include "Programs/Farming/PokemonFRLG_EvTrainer.h"
 
 #include "Programs/AutoStory/PokemonFRLG_AutoStory.h"
+#include "Programs/MailGlitch/PokemonFRLG_MailGlitchActivation.h"
 
 #include "Programs/ShinyHunting/PokemonFRLG_GiftReset.h"
 #include "Programs/ShinyHunting/PokemonFRLG_LegendaryReset.h"
@@ -70,6 +71,7 @@ std::vector<PanelEntry> PanelListFactory::make_panels() const{
     ret.emplace_back(make_SingleSwitchProgram<EvTrainer>());
     ret.emplace_back(make_SingleSwitchProgram<HeldItemFarmerSafariZone>());
     ret.emplace_back(make_SingleSwitchProgram<ItemDuplication>());
+    ret.emplace_back(make_SingleSwitchProgram<MailGlitchActivation>());
     ret.emplace_back(make_SingleSwitchProgram<EliteFourFarmer>());
 
     ret.emplace_back("---- General ----");

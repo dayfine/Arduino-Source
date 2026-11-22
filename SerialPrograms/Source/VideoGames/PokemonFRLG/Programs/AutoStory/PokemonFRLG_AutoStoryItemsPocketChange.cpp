@@ -26,6 +26,7 @@
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTeachPlan.h"
 #include "PokemonFRLG_AutoStoryTrashCanLayout.h"
+#include "VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchActions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -105,6 +106,15 @@ const std::vector<ItemsPocketChangeRow>& items_pocket_change_rows(){
         {StoryStepKind::GAME,       HALL_OF_FAME_ACTION,    ItemsPocketChange::NONE},
         {StoryStepKind::GAME,       LEAGUE_TOP_UP_ACTION,   ItemsPocketChange::COUNTED},
         {StoryStepKind::GAME,       NUGGET_FARM_ACTION,     ItemsPocketChange::STALE},
+        {StoryStepKind::GAME,       BUY_COINS_ACTION,       ItemsPocketChange::NONE},
+        {StoryStepKind::GAME,       REDEEM_PRIZE_MON_ACTION, ItemsPocketChange::NONE},
+        {StoryStepKind::GAME,       INGAME_TRADE_ACTION,    ItemsPocketChange::NONE},
+        {StoryStepKind::GAME,       PARTY_SWAP_ACTION,      ItemsPocketChange::NONE},
+        {StoryStepKind::GAME,       GIVE_BAG_ITEM_ACTION,   ItemsPocketChange::STALE},
+        {StoryStepKind::GAME,       SWITCH_GRIND_ACTION,    ItemsPocketChange::NONE},
+        {StoryStepKind::GAME,       PREPARE_BERRY_HP_ACTION, ItemsPocketChange::STALE},
+        {StoryStepKind::GAME,       MAIL_GLITCH_DOUBLE_BATTLE_ACTION, ItemsPocketChange::NONE},
+        {StoryStepKind::GAME,       VERIFY_MAIL_GLITCH_ACTION, ItemsPocketChange::NONE},
     };
     return ROWS;
 }

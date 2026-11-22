@@ -8,6 +8,7 @@
 #include <string_view>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
+#include "PokemonFRLG_MailGlitchRooms.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_PokemonCenterRoom.h"
 
@@ -259,6 +260,7 @@ const std::vector<MapData>& all_maps(){
             add_walked_boxes(maps.back());
         }
         add_unmapped_centers(maps);
+        add_mail_glitch_rooms(maps);
         return maps;
     }();
     return MAPS;

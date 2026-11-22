@@ -1,0 +1,155 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "mg-01",
+    "title": "Celadon setup: Fly to Celadon, Coin Case, Retro Mail on Dept Store 4F, buy 200 coins, redeem Abra",
+    "start": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+    "events": [
+      {
+        "id": "fly_celadon",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "CeladonCity",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+        "why": "Fly from any outdoor Fly-capable save directly to Celadon City's Pokemon Center landing tile (48, 12)"
+      },
+      {
+        "id": "to_coin_case_man",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_Restaurant", "tiles": [[2, 2]], "facing": "west"}
+        },
+        "why": "enter Celadon Restaurant (37, 29) and walk to face CoinCaseMan at (1, 2)"
+      },
+      {
+        "id": "talk_coin_case_man",
+        "kind": "talk",
+        "why": "receive the Coin Case (idempotent if already obtained)"
+      },
+      {
+        "id": "clear_coin_case_text",
+        "kind": "scene",
+        "declared_after": {"map": "CeladonCity_Restaurant", "tiles": [[2, 2]], "facing": "west"},
+        "why": "clear the Coin Case dialog back to overworld"
+      },
+      {
+        "id": "to_dept_store_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_DepartmentStore_1F", "tiles": [[6, 2]], "facing": "north"}
+        },
+        "why": "exit Restaurant, enter Celadon Dept Store 1F, and stand below the elevator door (6, 1)"
+      },
+      {
+        "id": "lift_1f_to_4f",
+        "kind": "game_action",
+        "action": "lift_floor",
+        "args": {
+          "from": "1F",
+          "to": "4F"
+        },
+        "declared_after": {"map": "CeladonCity_DepartmentStore_4F", "tiles": [[6, 2]], "facing": "south"},
+        "why": "ride the Dept Store elevator from 1F to 4F (Wise Man Gifts)"
+      },
+      {
+        "id": "to_4f_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_DepartmentStore_4F", "tiles": [[3, 11]], "facing": "south"}
+        },
+        "why": "walk to face the 4F clerk (3, 13) across counter row 12"
+      },
+      {
+        "id": "buy_retro_mail",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "CeladonCity_DepartmentStore_4F",
+          "items": [
+            {"item": "retro-mail", "quantity": 2}
+          ]
+        },
+        "why": "buy 2 Retro Mail ($50 each) for MIMIEN and backup"
+      },
+      {
+        "id": "back_to_4f_lift",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_DepartmentStore_4F", "tiles": [[6, 2]], "facing": "north"}
+        },
+        "why": "return to below 4F elevator door (6, 1)"
+      },
+      {
+        "id": "lift_4f_to_1f",
+        "kind": "game_action",
+        "action": "lift_floor",
+        "args": {
+          "from": "4F",
+          "to": "1F"
+        },
+        "declared_after": {"map": "CeladonCity_DepartmentStore_1F", "tiles": [[6, 2]], "facing": "south"},
+        "why": "ride the elevator back down to 1F"
+      },
+      {
+        "id": "to_coins_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_GameCorner", "tiles": [[6, 4]], "facing": "north"}
+        },
+        "why": "exit Dept Store, enter Game Corner (34, 21), and stand across counter from CoinsClerk (6, 2)"
+      },
+      {
+        "id": "buy_200_coins",
+        "kind": "game_action",
+        "action": "buy_coins",
+        "args": {
+          "coins": 200
+        },
+        "why": "buy 200 coins (4 x 50 coins = $4,000; Abra costs 180 in FireRed / 120 in LeafGreen)"
+      },
+      {
+        "id": "to_prize_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity_GameCorner_PrizeRoom", "tiles": [[4, 4]], "facing": "north"}
+        },
+        "why": "exit Game Corner, enter Prize Room (39, 20), and stand facing PrizeClerkMons (4, 2)"
+      },
+      {
+        "id": "redeem_abra",
+        "kind": "game_action",
+        "action": "redeem_prize_mon",
+        "args": {
+          "slot": 0
+        },
+        "why": "redeem Abra (slot 0, Lv 9 in FireRed) into party"
+      },
+      {
+        "id": "exit_prize_room",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeladonCity", "tiles": [[39, 21]], "facing": "south"}
+        },
+        "why": "exit Prize Room onto Celadon City (39, 21) and save"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "live_start": true
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}
