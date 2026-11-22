@@ -337,6 +337,25 @@ std::string ProgramSession::stop_program(ActionSource source, std::optional<std:
 
 
 
+bool ProgramSession::prepare_program_run(){
+    std::lock_guard<Mutex> lg(m_lock);
+    if (current_state() != ProgramState::RUNNING){
+        return false;
+    }
+
+    std::string error = check_validity();
+    if (!error.empty()){
+        push_error(error);
+        throw UserSetupError(logger(), std::move(error));
+    }
+
+    m_current_stats = m_descriptor.make_stats();
+    load_historical_stats();
+    push_stats();
+    return true;
+}
+
+
 void ProgramSession::run_program(){
     SleepSuppressScope sleep_scope(GlobalSettings::instance().SLEEP_SUPPRESS->PROGRAM_RUNNING);
     ProgramOutcomeKind outcome = ProgramOutcomeKind::FAILED;
@@ -345,22 +364,9 @@ void ProgramSession::run_program(){
         set_finished(outcome);
     });
 
-    {
-        std::lock_guard<Mutex> lg(m_lock);
-        if (current_state() != ProgramState::RUNNING){
-            outcome = ProgramOutcomeKind::CANCELLED;
-            return;
-        }
-
-        std::string error = check_validity();
-        if (!error.empty()){
-            push_error(error);
-            throw UserSetupError(logger(), std::move(error));
-        }
-
-        m_current_stats = m_descriptor.make_stats();
-        load_historical_stats();
-        push_stats();
+    if (!prepare_program_run()){
+        outcome = ProgramOutcomeKind::CANCELLED;
+        return;
     }
 
     m_instance->options().reset_state();

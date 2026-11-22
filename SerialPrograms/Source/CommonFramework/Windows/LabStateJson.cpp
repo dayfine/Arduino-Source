@@ -11,7 +11,7 @@
 #include <format>
 #include <string_view>
 #include <vector>
-#include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/EnumStringMap.h"
 #include "LabStateJson.h"
 
 namespace PokemonAutomation{
@@ -206,25 +206,18 @@ void write_transition(const std::optional<ProgramTransition>& transition, Ordere
     json.close();
 }
 
-std::string_view outcome_name(ProgramOutcomeKind kind){
-    switch (kind){
-    case ProgramOutcomeKind::PASSED:
-        return "passed";
-    case ProgramOutcomeKind::FAILED:
-        return "failed";
-    case ProgramOutcomeKind::CANCELLED:
-        return "cancelled";
-    case ProgramOutcomeKind::START_CHECK_FAILED:
-        return "start_check_failed";
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown program outcome.");
-}
+const EnumStringMap<ProgramOutcomeKind> OUTCOME_NAMES{
+    {ProgramOutcomeKind::PASSED, "passed"},
+    {ProgramOutcomeKind::FAILED, "failed"},
+    {ProgramOutcomeKind::CANCELLED, "cancelled"},
+    {ProgramOutcomeKind::START_CHECK_FAILED, "start_check_failed"},
+};
 
 void write_outcome(const ProgramOutcome& outcome, OrderedJsonWriter& json){
     json.open(outcome.kind == ProgramOutcomeKind::START_CHECK_FAILED ? "last_outcome" : "terminal_outcome");
     json.value("run_id", "null");
     json.value("request_id", json_nullable(outcome.start_request_id));
-    json.value("outcome", json_string(outcome_name(outcome.kind)));
+    json.value("outcome", json_string(OUTCOME_NAMES.get_string(outcome.kind)));
     if (!outcome.checkpoint.empty()){
         json.value("checkpoint", json_string(outcome.checkpoint));
     }

@@ -173,6 +173,7 @@ private:
 
 
 private:
+    bool prepare_program_run();
     void run_program();
 
 
