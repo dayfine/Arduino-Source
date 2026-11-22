@@ -95,6 +95,15 @@ void unknown_execution_field(JsonObject& root){
     root.get_object_throw("execution")["frob"] = true;
 }
 
+void bad_poison_survival_steps(JsonObject& root){
+    JsonObject ps;
+    ps["steps"] = 0;
+    ps["max_hp"] = 55;
+    JsonObject post;
+    post["poison_survival"] = std::move(ps);
+    root.get_object_throw("metadata")["postconditions"] = std::move(post);
+}
+
 JsonValue builtin_document(std::string_view name){
     for (const auto& [file, text] : autostory_checkpoint_json()){
         if (file == name){
@@ -289,6 +298,11 @@ const DevFileCase DEV_FILE_CASES[] = {
     {
         .name = "Dev file: changes the checkpoint id, refused",
         .input = {.files = {{.file = "frlg-02.02.plan.json", .builtin = "frlg-02.02.plan", .mutate = other_id}}},
+        .expectation = {.rejected = true},
+    },
+    {
+        .name = "Dev file: non-positive poison_survival steps, refused",
+        .input = {.files = {{.file = "frlg-04.05.plan.json", .builtin = "frlg-04.05.plan", .mutate = bad_poison_survival_steps}}},
         .expectation = {.rejected = true},
     },
 };

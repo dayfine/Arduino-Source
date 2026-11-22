@@ -379,11 +379,11 @@ UnitTestResult test_walk_after_a_push_goes_round_the_boulder(){
 //  planned on show it where it stands; leaving the map puts it back.
 UnitTestResult test_boulder_flags_follow_the_boulder(){
     std::set<std::string> flags;
-    note_boulder_pushed(MapPosition{"VictoryRoad_1F", {6, 19}}, Direction::EAST, /*tiles=*/2, flags);
-    note_boulder_pushed(MapPosition{"VictoryRoad_1F", {8, 19}}, Direction::EAST, /*tiles=*/3, flags);
-    const std::set<std::string> expected{"boulder_at:VictoryRoad_1F@7,19=12,19"};
+    note_boulder_pushed(MapPosition{"VictoryRoad_1F", {6, 18}}, Direction::EAST, /*tiles=*/2, flags);
+    note_boulder_pushed(MapPosition{"VictoryRoad_1F", {8, 18}}, Direction::EAST, /*tiles=*/3, flags);
+    const std::set<std::string> expected{"boulder_at:VictoryRoad_1F@7,18=12,18"};
     if (flags != expected){
-        return std::format("{} flag(s), not the one for (7, 19) to (12, 19).", flags.size());
+        return std::format("{} flag(s), not the one for (7, 18) to (12, 18).", flags.size());
     }
     const std::vector<BoulderMove> moved = moved_boulders(flags);
     const std::vector<MapData> maps = with_boulders_moved(story_maps(), moved);
@@ -392,10 +392,10 @@ UnitTestResult test_boulder_flags_follow_the_boulder(){
             continue;
         }
         const bool there = std::any_of(map.objects.begin(), map.objects.end(), [](const MapObject& object){
-            return object.name == "pushable_boulder" && object.x == 12 && object.y == 19;
+            return object.name == "pushable_boulder" && object.x == 12 && object.y == 18;
         });
         if (!there){
-            return "no boulder on (12, 19) in the maps.";
+            return "no boulder on (12, 18) in the maps.";
         }
     }
     boulders_back_after_map_change("VictoryRoad_1F", "VictoryRoad_2F", flags);
