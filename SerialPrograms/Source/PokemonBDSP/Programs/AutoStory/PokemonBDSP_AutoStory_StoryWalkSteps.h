@@ -161,6 +161,9 @@ private:
     bool m_previous_settle_saw_dialogue = false;
     //  The MASH now running immediately follows that settle.
     bool m_scene_start_already_played = false;
+    //  Actual player facing from the last walk/turn, distinct from a step's
+    //  declared target facing (which talk() uses as the direction to turn).
+    std::optional<Pokemon::Direction> m_actual_facing;
 };
 
 

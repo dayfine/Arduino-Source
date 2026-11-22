@@ -95,6 +95,8 @@ struct RouteEnd{
     //  The next step's scene started on the way (RouteWalkPlan::scene_next):
     //  its dialogue is open, and `tiles` are where the walk may have stopped.
     bool scene = false;
+    //  The player's actual facing after the last leg walked, if any.
+    std::optional<Pokemon::Direction> facing = std::nullopt;
 };
 //  walk_route(), but a fade on a leg with a warp at most a tile or two past
 //  its end ends the walk there, as arrived early: the walk ran on onto the
