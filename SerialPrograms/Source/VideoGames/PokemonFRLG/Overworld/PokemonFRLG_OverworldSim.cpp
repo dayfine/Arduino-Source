@@ -138,6 +138,7 @@ OverworldSim::OverworldSim(std::vector<MapData> maps, MapPosition start, Directi
     : m_maps(std::move(maps))
     , m_script(std::move(script))
     , m_map(find_map(m_maps, start.map))
+    , m_wanderer_blocks(m_script.wanderer_blocks)
     , m_encounter_rng(m_script.encounter_seed)
 {
     if (m_map < 0){
@@ -278,9 +279,17 @@ std::optional<OverworldSim::Step> OverworldSim::cross_edge(Direction direction) 
     return Step{(int)across->map, after_step_onto(map(), m_player, to, across->tile, kind), false, std::nullopt, false};
 }
 
+bool OverworldSim::wanderer_blocks(const std::string& map_name, const TilePos& tile){
+    if (!m_wanderer_blocks.blocks(map_name, tile, m_now)){
+        return false;
+    }
+    note(std::format("a wandering NPC on {} blocks {}.", map_name, to_string(tile)));
+    return true;
+}
+
 //  Pressing `direction` once, as the planner's press() reads the game, and
 //  also hopping a ledge the way it faces.
-std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const{
+std::optional<OverworldSim::Step> OverworldSim::press(Direction direction){
     const TilePos here = m_player.position;
     if (exit_mat(map(), here) == direction){
         return take_warp(m_map, here);
@@ -290,11 +299,18 @@ std::optional<OverworldSim::Step> OverworldSim::press(Direction direction) const
         return take_warp(m_map, ahead);
     }
     if (!in_bounds(map(), ahead)){
-        return cross_edge(direction);
+        const std::optional<Step> edge = cross_edge(direction);
+        if (edge && wanderer_blocks(m_maps[edge->map].name, edge->player.position)){
+            return std::nullopt;
+        }
+        return edge;
     }
     if (ledge_direction(tile_at(map(), ahead)) == direction){
         const TilePos landed = ahead.next(direction);
         return Step{m_map, PlayerState{landed, elevation_at(map(), landed), false}, false, std::nullopt, true};
+    }
+    if (wanderer_blocks(map().name, ahead)){
+        return std::nullopt;
     }
     const StepKind kind = classify_step(map(), m_player, direction);
     if (kind != StepKind::WALK && kind != StepKind::STOP_SURFING){
@@ -600,7 +616,11 @@ bool OverworldSim::drops_turn_tap(){
 }
 
 std::optional<SimSeen> OverworldSim::watch(const std::vector<SimWatcher>& watchers, Milliseconds duration){
-    return watch_until(watchers, m_now, m_now + duration);
+    const std::optional<SimSeen> seen = watch_until(watchers, m_now, m_now + duration);
+    if (watchers.empty()){
+        m_wanderer_blocks.on_wait();
+    }
+    return seen;
 }
 
 SimBattleEnd OverworldSim::handle_battle(SimBattleChoice choice){
@@ -948,6 +968,7 @@ RouteCalls OverworldSimWalker::calls(){
     calls.landed_on = [this](const MapPosition&){ return !m_sim.state().surfing; };
     calls.riding = [this](const RouteStep&){ return m_sim.state().on_bike; };
     calls.wait_out_slide = [this](const RouteStep& step){ return wait_out_slide(step); };
+    calls.wait = [this](Milliseconds duration){ m_sim.watch({}, duration); };
     return calls;
 }
 

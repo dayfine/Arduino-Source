@@ -92,6 +92,38 @@ int SimFaults::faulted(FaultClass fault) const{
 }
 
 
+SimWandererBlocks::SimWandererBlocks(std::vector<SimWandererBlock> blocks)
+    : m_blocks(std::move(blocks))
+{}
+
+bool SimWandererBlocks::blocks(std::string_view map, const TilePos& tile, Milliseconds now){
+    for (size_t i = 0; i < m_blocks.size(); i++){
+        const SimWandererBlock& block = m_blocks[i];
+        if (block.map != map || block.tile != tile){
+            continue;
+        }
+        if (now < block.from_time || (block.until_time && now >= *block.until_time)){
+            continue;
+        }
+        if (block.clear_after_waits && *block.clear_after_waits <= 0){
+            continue;
+        }
+        m_hit.insert(i);
+        return true;
+    }
+    return false;
+}
+
+void SimWandererBlocks::on_wait(){
+    for (size_t index : m_hit){
+        SimWandererBlock& block = m_blocks[index];
+        if (block.clear_after_waits && *block.clear_after_waits > 0){
+            (*block.clear_after_waits)--;
+        }
+    }
+}
+
+
 
 } // namespace Pokemon
 } // namespace PokemonAutomation

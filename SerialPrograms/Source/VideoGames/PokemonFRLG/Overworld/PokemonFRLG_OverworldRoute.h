@@ -32,8 +32,8 @@ namespace PokemonFRLG{
 //  `goal`, or nothing if there is none. `maps` must hold every map the route
 //  may pass through; warps to other maps are not taken. A route between two
 //  tiles of one map stays on that map if any route does: leaving it resets
-//  its objects (pushed boulders). Planned with Pokemon::plan_legs() on the
-//  game's step rules.
+//  its objects (pushed boulders). Planned with Pokemon::plan_robust_legs()
+//  for single-map walk stretches and Pokemon::plan_legs() otherwise.
 std::optional<std::vector<RouteStep>> plan_overworld_route(
     const std::vector<MapData>& maps,
     const MapPosition& start,

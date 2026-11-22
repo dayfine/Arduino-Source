@@ -1525,9 +1525,17 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Pokemon_WallRecovery.h
     Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_WallRecovery_Tests.h
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery.cpp
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery.h
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h
+    Source/Pokemon/Navigation/Pokemon_WanderRules.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_LegPlanner_Tests.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner.h
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h
     Source/Pokemon/Navigation/Pokemon_LegWalker.cpp
     Source/Pokemon/Navigation/Pokemon_LegWalker.h
     Source/Pokemon/Navigation/Pokemon_LegWalker_Tests.cpp
@@ -2112,10 +2120,16 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldLegTrace.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoverySupport.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoverySupport.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWanderRecovery_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWanderRecovery_Tests.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldPress.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRobustRoute.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRobustRoute.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteStrings.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h

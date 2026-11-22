@@ -294,7 +294,7 @@ BikeTap console_bike_tap(
     }
     const VideoSnapshot after = console.video().snapshot();
     if (before && after && tap_scroll_change(before, after, GameSettings::instance().GAME_BOX) > WALL_TAP_MOVED_RMSD){
-        return BikeTap{.moved = true};
+        return BikeTap{.moved = true, .interrupt = std::nullopt};
     }
     const bool late = Pokemon::clear_late_interrupts(console, context, interrupts, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0;
     return BikeTap{.moved = false, .interrupt = std::nullopt, .cleared_late = late};
@@ -821,6 +821,9 @@ RouteCalls console_route_calls(
     calls.leg_ended = [&console, &planning](const std::string& leg_text){
         const bool stepped = planning.pause != nullptr && !planning.pause->step_label().empty();
         return save_route_screenshot(console, stepped ? planning.pause->step_label() : planning.label, leg_text);
+    };
+    calls.wait = [&context](Milliseconds duration){
+        context.wait_for(duration);
     };
     return calls;
 }

@@ -220,22 +220,6 @@ void add_unmapped_centers(std::vector<MapData>& maps){
     }
 }
 
-//  Pallet Town's fat man wanders over (7..19, 15..19), which holds the whole
-//  shore (7..10, 16) the way onto Route 21's water goes by. A planned route
-//  never crosses a wanderer's box, so none would reach the water. He stands on
-//  his own tile (13, 17) in the planner's model: east of the shore, off the
-//  way; a person in the way on the console is waited out (12.03).
-void waive_pallet_fat_man_box(MapData& map){
-    if (map.name != "PalletTown"){
-        return;
-    }
-    for (MapObject& object : map.objects){
-        if (object.name == "fat_man"){
-            object.wander.reset();
-        }
-    }
-}
-
 //  A trainer whose walk the map pack leaves out: the pack has them standing
 //  on their own tile, and a route past it was planned through their line.
 struct WalkedBox{
@@ -272,7 +256,6 @@ const std::vector<MapData>& all_maps(){
         std::vector<MapData> maps;
         for (std::string_view name : MAP_NAMES){
             maps.push_back(load_map(std::string(name)));
-            waive_pallet_fat_man_box(maps.back());
             add_walked_boxes(maps.back());
         }
         add_unmapped_centers(maps);

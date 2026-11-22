@@ -158,6 +158,47 @@ UnitTestResult test_classes_match_enum(){
     return true;
 }
 
+UnitTestResult test_wanderer_blocks_wait_and_time(){
+    SimWandererBlocks blocks({
+        SimWandererBlock{
+            .map = "Route2",
+            .tile = {3, 4},
+            .clear_after_waits = 1,
+            .from_time = Milliseconds(100),
+            .until_time = Milliseconds(5000),
+        },
+        SimWandererBlock{
+            .map = "Route2",
+            .tile = {8, 9},
+            .clear_after_waits = 1,
+            .from_time = Milliseconds(0),
+            .until_time = Milliseconds(1000),
+        },
+    });
+
+    //  Before from_time, (3, 4) does not block.
+    if (blocks.blocks("Route2", {3, 4}, Milliseconds(50))){
+        return "Expected block before from_time to be inactive.";
+    }
+    //  At from_time, (3, 4) blocks and records itself as hit.
+    if (!blocks.blocks("Route2", {3, 4}, Milliseconds(100))){
+        return "Expected block at from_time to be active.";
+    }
+    //  on_wait() clears (3, 4) because it was hit, but leaves unhit (8, 9) active.
+    blocks.on_wait();
+    if (blocks.blocks("Route2", {3, 4}, Milliseconds(200))){
+        return "Expected hit block to clear after 1 wait.";
+    }
+    if (!blocks.blocks("Route2", {8, 9}, Milliseconds(200))){
+        return "Expected unhit block to remain active after on_wait().";
+    }
+    //  At until_time, (8, 9) clears by time.
+    if (blocks.blocks("Route2", {8, 9}, Milliseconds(1000))){
+        return "Expected block at until_time to be inactive.";
+    }
+    return true;
+}
+
 const SimFaultsTestCase SIM_FAULTS_CASES[] = {
     {.input = {.name = "none named faults none", .body = test_none_named}, .expectation = {.description = "3 chances, none faulted"}},
     {.input = {.name = "the named chances are faulted, from 1", .body = test_named_from_one}, .expectation = {.description = "1 and 3 of 4 faulted"}},
@@ -165,6 +206,7 @@ const SimFaultsTestCase SIM_FAULTS_CASES[] = {
     {.input = {.name = "no chances, nothing counted", .body = test_no_chances}, .expectation = {.description = "0 chances, none faulted"}},
     {.input = {.name = "each class has its own name", .body = test_class_names}, .expectation = {.description = "no two classes share a name"}},
     {.input = {.name = "fault_classes() lists every class in order", .body = test_classes_match_enum}, .expectation = {.description = "the list is the enum's values, in order"}},
+    {.input = {.name = "wanderer blocks respect waits, hit tracking, and time windows", .body = test_wanderer_blocks_wait_and_time}, .expectation = {.description = "hit blocks clear on wait, unhit blocks stay active, time window respected"}},
 };
 
 } // namespace
