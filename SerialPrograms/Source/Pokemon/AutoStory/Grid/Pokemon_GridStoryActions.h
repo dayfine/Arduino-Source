@@ -25,7 +25,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
-#include "Pokemon/Navigation/Pokemon_Direction.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h"
 #include "Pokemon_GridStoryArgs.h"
 
 namespace PokemonAutomation{

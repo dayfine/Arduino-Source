@@ -19,8 +19,8 @@
 #include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
-#include "Pokemon/Navigation/Pokemon_Direction.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
