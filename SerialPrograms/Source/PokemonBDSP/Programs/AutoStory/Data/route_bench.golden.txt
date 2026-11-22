@@ -44,7 +44,7 @@ walk run with no stops) | verdict (why). A ratio above 1.5 is flagged "!".
 00.05c to_main_boulevard | 2500 | 2500 | 2500 | 0 | 0 | 0 | 3.57! | 1.00 | 1.00 | 700 ms (stand-in) | PASS
 00.05c along_main_boulevard | 24100 | 24100 | 24100 | 0 | 0 | 0 | 7.42! | 1.00 | 1.00 | 3250 ms (stand-in) | PASS
 00.05c beside_the_president | 10500 | 10500 | 10500 | 0 | 0 | 0 | 4.77! | 1.00 | 1.00 | 2200 ms (stand-in) | PASS
-00.05c to_the_route_203_street | 21000 | 21000 | 21000 | 0 | 0 | 0 | 6.00! | 1.00 | 1.00 | 3500 ms (stand-in) | PASS
+00.05c below_the_route_203_street | 17800 | 17800 | 17800 | 0 | 0 | 0 | 5.93! | 1.00 | 1.00 | 3000 ms (stand-in) | PASS
 01.01 west_of_barrys_trigger | 7300 | 7300 | 7300 | 0 | 0 | 0 | 6.35! | 1.00 | 1.00 | 1150 ms (stand-in) | PASS
 01.02 south_to_the_cliff | 1800 | 1800 | 1800 | 1 | 0 | 0 | 2.57! | 1.00 | 1.00 | 700 ms (stand-in) | PASS
 01.02 by_the_gate | 24815 | 26050 | 13700 | 2 | 9 | 0 | 3.60! | 1.00 | 1.00 | 6900 ms (stand-in) | PASS

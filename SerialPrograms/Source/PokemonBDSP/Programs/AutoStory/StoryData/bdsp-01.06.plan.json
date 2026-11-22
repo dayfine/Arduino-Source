@@ -1,8 +1,24 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
+    "id": "01.06",
+    "title": "Route 203 to Jubilife",
+    "start": {
+      "facing": "west",
+      "map": "Route203",
+      "tiles": [
+        [
+          55,
+          9
+        ]
+      ]
+    },
     "events": [
       {
-        "action": "town",
+        "id": "up_jubilifes_road",
+        "action": "route",
+        "why": "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road's west column",
         "args": {
           "fight_wild": false,
           "target": {
@@ -14,14 +30,14 @@
                 8
               ]
             ]
-          }
-        },
-        "id": "up_jubilifes_road",
-        "kind": "route",
-        "why": "down Route 203 (its ledges only south), west along it into Jubilife's street, north up the road's west column"
+          },
+          "variant": "town"
+        }
       },
       {
-        "action": "town",
+        "id": "below_rowans_trigger",
+        "action": "route",
+        "why": "east along row 8 to the sign's wall",
         "args": {
           "fight_wild": false,
           "target": {
@@ -33,33 +49,17 @@
                 8
               ]
             ]
-          }
-        },
-        "id": "below_rowans_trigger",
-        "kind": "route",
-        "why": "east along row 8 to the sign's wall"
+          },
+          "variant": "town"
+        }
       }
     ],
-    "id": "01.06",
-    "start": {
-      "facing": "west",
-      "map": "Route203",
-      "tiles": [
-        [
-          55,
-          9
-        ]
-      ]
-    },
-    "title": "Route 203 to Jubilife"
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Route 203"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "testing"
   }
 }

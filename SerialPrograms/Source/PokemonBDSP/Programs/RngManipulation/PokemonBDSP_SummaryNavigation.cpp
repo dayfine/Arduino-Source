@@ -118,48 +118,13 @@ bool close_starter_summary(SingleSwitchProgramEnvironment& env, ProControllerCon
 }
 
 
-bool read_observed_pokemon(
-    SingleSwitchProgramEnvironment& env,
-    ProControllerContext& context,
-    Language language,
-    const Pokemon::BaseStats& base_stats,
-    uint8_t level,
-    bool shiny,
-    bool shiny_known,
-    BdspObservedStarter& observed
-){
-    if (!navigate_to_summary(env, context)){
-        env.log("Could not reach the summary, so this attempt says nothing about timing.",
-            COLOR_ORANGE);
-        return false;
-    }
+namespace{
 
-    SummaryReader reader;
-
-    //  2nd page: nature and gender
-    {
-        VideoSnapshot memo = env.console.video().snapshot();
-        observed.nature = reader.read_nature(env.logger(), language, memo);
-        Pokemon::BdspGender gender = reader.read_gender(env.logger(), memo);
-        observed.gender = gender;
-        observed.gender_known = gender != Pokemon::BdspGender::Genderless;
-    }
-    //  3rd page: stats
-    {
-        pbf_press_dpad(context, DPAD_RIGHT, 100ms, 1500ms);
-        context.wait_for_all_requests();
-        VideoSnapshot skills = env.console.video().snapshot();
-        observed.stats = reader.read_stats(env.logger(), skills);
-    }
-    observed.base_stats = base_stats;
-    observed.level = level;
-    observed.shiny = shiny;
-    observed.shiny_known = shiny_known;
-
+void log_observed_pokemon(SingleSwitchProgramEnvironment& env, const BdspObservedStarter& observed){
     auto stat = [](int16_t value){
         return value < 0 ? std::string("?") : std::to_string(value);
     };
-    bool nature_read = observed.nature != Pokemon::NatureCheckerValue::UnableToDetect;
+    const bool nature_read = observed.nature != Pokemon::NatureCheckerValue::UnableToDetect;
     env.log(
         "Read from the summary: nature "
         + (nature_read
@@ -174,12 +139,50 @@ bool read_observed_pokemon(
         + "/" + stat(observed.stats.spdef) + "/" + stat(observed.stats.speed) + ".",
         nature_read && observed.gender_known ? COLOR_BLUE : COLOR_ORANGE
     );
+}
+
+} // namespace
+
+bool read_observed_pokemon(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    const ObservedPokemonRequest& request,
+    BdspObservedStarter& observed
+){
+    if (!navigate_to_summary(env, context)){
+        env.log("Could not reach the summary, so this attempt says nothing about timing.",
+            COLOR_ORANGE);
+        return false;
+    }
+
+    SummaryReader reader;
+
+    //  2nd page: nature and gender
+    {
+        const VideoSnapshot memo = env.console.video().snapshot();
+        observed.nature = reader.read_nature(env.logger(), request.language, memo);
+        const Pokemon::BdspGender gender = reader.read_gender(env.logger(), memo);
+        observed.gender = gender;
+        observed.gender_known = gender != Pokemon::BdspGender::Genderless;
+    }
+    //  3rd page: stats
+    {
+        pbf_press_dpad(context, DPAD_RIGHT, 100ms, 1500ms);
+        context.wait_for_all_requests();
+        const VideoSnapshot skills = env.console.video().snapshot();
+        observed.stats = reader.read_stats(env.logger(), skills);
+    }
+    observed.base_stats = request.base_stats;
+    observed.level = request.level;
+    observed.shiny = request.shiny == ObservedShiny::Shiny;
+    observed.shiny_known = request.shiny != ObservedShiny::Unknown;
+    log_observed_pokemon(env, observed);
     return true;
 }
 
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

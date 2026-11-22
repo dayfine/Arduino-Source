@@ -5,7 +5,7 @@
  *  Adapted from PokemonAutomation/Arduino-Source#1717 by Developer-Butters.
  *
  *  Plays Brilliant Diamond / Shining Pearl from a new game to Floaroma Town:
- *  the story table (PokemonBDSP_AutoStory_StoryTable.h) run by the shared
+ *  the story table (PokemonBDSP_AutoStoryTable.h) run by the shared
  *  story engine, from the start checkpoint to the end one.
  *
  */
@@ -20,10 +20,10 @@
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 #include "Pokemon/Options/Pokemon_StoryRunOptions.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
-#include "PokemonBDSP_AutoStory_ConsoleStory.h"
-#include "PokemonBDSP_AutoStory_StarterRng.h"
-#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
-#include "PokemonBDSP_AutoStory_StoryTable.h"
+#include "PokemonBDSP_AutoStoryExecutor.h"
+#include "PokemonBDSP_AutoStoryStarterRng.h"
+#include "PokemonBDSP_AutoStoryCheckpoint.h"
+#include "PokemonBDSP_AutoStoryTable.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

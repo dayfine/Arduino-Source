@@ -13,10 +13,11 @@
 #ifndef PokemonAutomation_Pokemon_CenterVisit_H
 #define PokemonAutomation_Pokemon_CenterVisit_H
 
+#include <optional>
 #include <string_view>
 #include "Pokemon_SceneJudges.h"
 #include "Pokemon_Settle.h"
-#include "Pokemon_StoryOutcome.h"
+#include "Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -60,13 +61,13 @@ public:
 //  Walks in and waits out the fade-in. Fails CENTER_NOT_ENTERED when the
 //  reads then say outside: the nurse's presses would land elsewhere
 //  (FRLG console B 2026-11-13, 12.03).
-Outcome enter_center(std::string_view label, CenterVisitIO& io);
+std::optional<StoryFailure> enter_center(std::string_view label, CenterVisitIO& io);
 //  Walks out and waits out the fade. Fails CENTER_NOT_LEFT when the reads
 //  then say inside (BDSP r143a).
-Outcome leave_center(std::string_view label, CenterVisitIO& io);
+std::optional<StoryFailure> leave_center(std::string_view label, CenterVisitIO& io);
 //  enter_center(), the nurse, leave_center(): from below the door back to
 //  below it.
-Outcome run_center_visit(std::string_view label, CenterVisitIO& io);
+std::optional<StoryFailure> run_center_visit(std::string_view label, CenterVisitIO& io);
 
 
 

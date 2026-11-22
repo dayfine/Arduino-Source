@@ -40,8 +40,8 @@ public:
 
 //  One seed's outcome in a fake Monte Carlo row.
 struct FakeSeed{
-    std::optional<std::string> failure;
-    std::map<std::string, double> measures;
+    std::optional<std::string> failure = std::nullopt;
+    std::map<std::string, double> measures = {};
 };
 
 //  Seeds 1 to `last`.
@@ -56,21 +56,21 @@ std::vector<uint32_t> every_seed_to(uint32_t last){
 struct RunSeedsCase{
     struct Input{
         //  Unset: the default count.
-        std::optional<uint32_t> seeds;
+        std::optional<uint32_t> seeds = std::nullopt;
         //  By seed; a seed not given passes with no measures.
-        std::map<uint32_t, FakeSeed> outcomes;
+        std::map<uint32_t, FakeSeed> outcomes = {};
     };
     struct Expectation{
-        uint32_t seeds;
-        std::vector<uint32_t> ran;
-        std::vector<SweepFailure> failures;
-        std::map<std::string, SeedStats> stats;
-        std::vector<std::string> log;
+        uint32_t seeds = 0;
+        std::vector<uint32_t> ran = {};
+        std::vector<SweepFailure> failures = {};
+        std::map<std::string, SeedStats> stats = {};
+        std::vector<std::string> log = {};
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 const RunSeedsCase RUN_SEEDS_CASES[] = {

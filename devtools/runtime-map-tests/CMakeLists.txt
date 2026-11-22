@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.24)
 project(RuntimeMapTests LANGUAGES CXX)
 enable_testing()
 get_filename_component(ROOT "../.." ABSOLUTE)
-set(NAV "${ROOT}/SerialPrograms/Source/Pokemon/Navigation")
+set(NAV "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Grid/Maps")
 add_library(RuntimeMapDecoder STATIC
     "${NAV}/Pokemon_RuntimeMap.cpp"
     "${NAV}/Pokemon_MapData.cpp"
@@ -43,8 +43,8 @@ include("${ROOT}/SerialPrograms/cmake/EmbedTextFiles.cmake")
 # retain a second ../ alias, which Ninja can treat as duplicate generated outputs.
 file(GLOB CANONICAL_MAPS "${NAV}/TestMaps/*.json")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CANONICAL_MAPS})
-pa_embed_text_files(RuntimeMapLegacyTests ../../SerialPrograms/Source/Pokemon/Navigation/TestMaps
-    Pokemon/Navigation/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
+pa_embed_text_files(RuntimeMapLegacyTests ../../SerialPrograms/Source/Pokemon/Navigation/Grid/Maps/TestMaps
+    Pokemon/Navigation/Grid/Maps/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
 get_property(MAP_DEPENDENCIES DIRECTORY PROPERTY CMAKE_CONFIGURE_DEPENDS)
 foreach(INPUT IN LISTS MAP_DEPENDENCIES)
     if(INPUT MATCHES "TestMaps/.*\\.json$")

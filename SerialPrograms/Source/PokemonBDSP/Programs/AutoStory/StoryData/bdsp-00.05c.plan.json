@@ -1,8 +1,24 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
+    "id": "00.05c",
+    "title": "Jubilife: the Poketch, up to the street east to Route 203",
+    "start": {
+      "facing": "north",
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          15,
+          19
+        ]
+      ]
+    },
     "events": [
       {
-        "action": "line",
+        "id": "to_main_boulevard",
+        "action": "route",
+        "why": "south to the main boulevard",
         "args": {
           "fight_wild": false,
           "target": {
@@ -14,14 +30,14 @@
                 22
               ]
             ]
-          }
-        },
-        "id": "to_main_boulevard",
-        "kind": "route",
-        "why": "south to the main boulevard"
+          },
+          "variant": "line"
+        }
       },
       {
-        "action": "line",
+        "id": "along_main_boulevard",
+        "action": "route",
+        "why": "east along the main boulevard",
         "args": {
           "fight_wild": false,
           "target": {
@@ -33,14 +49,14 @@
                 22
               ]
             ]
-          }
-        },
-        "id": "along_main_boulevard",
-        "kind": "route",
-        "why": "east along the main boulevard"
+          },
+          "variant": "line"
+        }
       },
       {
-        "action": "line",
+        "id": "beside_the_president",
+        "action": "route",
+        "why": "south down column 45 to the Poketch president",
         "args": {
           "fight_wild": false,
           "target": {
@@ -52,34 +68,36 @@
                 35
               ]
             ]
-          }
-        },
-        "id": "beside_the_president",
-        "kind": "route",
-        "why": "south down column 45 to the Poketch president"
+          },
+          "variant": "line"
+        }
       },
       {
         "id": "president",
-        "kind": "talk",
+        "action": "talk",
         "why": "the Poketch Company's president at (46, 36)"
       },
       {
-        "declared_after": {
-          "facing": "east",
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              45,
-              35
-            ]
-          ]
-        },
         "id": "the_poketch",
-        "kind": "scene",
-        "why": "the coupons for the Poketch; he walks off north"
+        "action": "scene",
+        "why": "the coupons for the Poketch; he walks off north",
+        "args": {
+          "pose_after": {
+            "facing": "east",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                45,
+                35
+              ]
+            ]
+          }
+        }
       },
       {
-        "action": "line",
+        "id": "below_the_route_203_street",
+        "action": "route",
+        "why": "up the main road to row 24 and east along it, two rows below the street: at night ace_trainer_m_1 stands on the street at (48, 22), off his DS range (45..47, 21), and stopped the walk east along row 22 three times out of three (lab-B 2026-11-22)",
         "args": {
           "fight_wild": false,
           "target": {
@@ -87,37 +105,39 @@
             "map": "JubilifeCity",
             "tiles": [
               [
-                58,
-                22
+                56,
+                24
               ]
             ]
-          }
-        },
+          },
+          "variant": "line"
+        }
+      },
+      {
         "id": "to_the_route_203_street",
-        "kind": "route",
-        "why": "up the main road and east along the street"
+        "action": "legs",
+        "why": "not planned: up onto the street east of him, then east to (58, 22), facing east for 01.01",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ]
+        }
       }
     ],
-    "id": "00.05c",
-    "start": {
-      "facing": "north",
-      "map": "JubilifeCity",
-      "tiles": [
-        [
-          15,
-          19
-        ]
-      ]
-    },
-    "title": "Jubilife: the Poketch, up to the street east to Route 203"
+    "metadata": {
+      "phase": "reproduction"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Jubilife City"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "reproduction"
   }
 }

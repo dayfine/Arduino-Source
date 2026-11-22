@@ -2,28 +2,24 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The engine's lower layers on a scripted backend: the action registry
- *  (lint and dispatch, a game's action replacing a built-in), the step
- *  runner (skip_if from flags and readers, the declared end pose, the
- *  "[Step]" line), and the worked example of a game action, take_warp.
+ *  The engine on a FakeStoryBackend: a test game whose actions answer as
+ *  scripted (pass, fail, fail once, press, wait for a white fade in the
+ *  scripted looks), so a run's report, inputs and retries are checked with
+ *  no console.
  *
  */
 
-#include <chrono>
 #include <format>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
-#include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon_StoryActionRegistry.h"
-#include "Pokemon_StoryFakeBackend.h"
-#include "Pokemon_StoryStepRunner.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
+#include "Pokemon_StoryEngine.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Pokemon_StoryEngine_Tests.h"
 
 namespace PokemonAutomation{
@@ -35,329 +31,328 @@ namespace{
 using namespace std::chrono_literals;
 
 
-//  One look: `events`, standing on `pose` if given.
-Observation<GridPose> look(std::initializer_list<ScreenEvent> events, std::optional<GridPose> pose = std::nullopt){
-    Observation<GridPose> observation;
-    observation.events = ScreenEvents(events);
-    observation.pose = std::move(pose);
+//  What the test game's actions share across a run.
+struct TestWorld{
+    //  How many times "fail_once" ran.
+    size_t fail_once_calls = 0;
+};
+
+//  Actions exercising jump-ahead and RunState::actions_ahead.
+void add_jump_actions(StoryActions& actions){
+    actions.emplace("jump_to_press_a", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend&, RunState&){
+            return std::optional<StoryFailure>(StoryFailure{
+                .code = "jumped",
+                .detail = "ahead on screen",
+                .resume_at_action = "press_a",
+            });
+        };
+    });
+    actions.emplace("log_ahead", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend& backend, RunState& state){
+            std::string text;
+            for (const std::string& action : state.actions_ahead){
+                if (!text.empty()){
+                    text += ", ";
+                }
+                text += action;
+            }
+            backend.log(std::format("ahead: {}", text));
+            return std::optional<StoryFailure>();
+        };
+    });
+}
+
+//  The test game's actions; none takes args.
+StoryActions test_actions(TestWorld& world){
+    StoryActions actions;
+    actions.emplace("ok", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend&, RunState&){
+            return std::optional<StoryFailure>();
+        };
+    });
+    actions.emplace("fail", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend&, RunState&){
+            return std::optional<StoryFailure>(StoryFailure{.code = "scripted_failure"});
+        };
+    });
+    actions.emplace("fail_once", [&world](const JsonObject&) -> StoryStepRun{
+        return [&world](StoryBackend&, RunState&){
+            return world.fail_once_calls++ == 0 ? std::optional<StoryFailure>(StoryFailure{.code = "scripted_failure"}) : std::nullopt;
+        };
+    });
+    actions.emplace("not_running", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend&, RunState&){
+            return std::optional<StoryFailure>(game_not_running_failure());
+        };
+    });
+    actions.emplace("press_a", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend& backend, RunState&){
+            backend.press(NintendoSwitch::BUTTON_A, /*hold=*/80ms, /*release=*/80ms);
+            return std::optional<StoryFailure>();
+        };
+    });
+    //  Walks north until a look shows a white fade, at most 3 slices.
+    actions.emplace("walk_to_fade", [](const JsonObject&) -> StoryStepRun{
+        return [](StoryBackend& backend, RunState&){
+            for (size_t slice = 0; slice < 3; slice++){
+                backend.stick(/*degrees=*/0, /*duration=*/500ms, /*release=*/0ms, StoryPace::WALK);
+                if (backend.observe().events.has(ScreenEvent::FADE_WHITE)){
+                    return std::optional<StoryFailure>();
+                }
+            }
+            return std::optional<StoryFailure>(StoryFailure{.code = "no_fade", .detail = "no white fade in 3 slices"});
+        };
+    });
+    add_jump_actions(actions);
+    return actions;
+}
+
+//  The test game. Its save fails at the checkpoints of `save_failures`; its
+//  reload presses HOME and answers `reload_start`.
+StoryGame test_game(std::set<std::string> save_failures, std::optional<std::string> reload_start){
+    StoryGame game;
+    game.save = [save_failures = std::move(save_failures)](StoryBackend&, const StoryCheckpoint& checkpoint){
+        if (save_failures.contains(checkpoint.id)){
+            return std::optional<StoryFailure>(StoryFailure{.code = "save_error", .detail = "the disk is full"});
+        }
+        return std::optional<StoryFailure>();
+    };
+    game.reload = [reload_start = std::move(reload_start)](StoryBackend& backend, const StoryCheckpoint&){
+        backend.press(NintendoSwitch::BUTTON_HOME, /*hold=*/80ms, /*release=*/80ms);
+        return reload_start;
+    };
+    return game;
+}
+
+//  A checkpoint `id` whose steps are named for their actions.
+struct TestCheckpoint{
+    std::string id = {};
+    std::vector<std::string> actions = {};
+};
+
+std::vector<StoryCheckpoint> checkpoints_of(const std::vector<TestCheckpoint>& tests, TestWorld& world){
+    StoryActions actions = test_actions(world);
+    std::vector<StoryCheckpoint> checkpoints;
+    for (const TestCheckpoint& test : tests){
+        StoryCheckpoint checkpoint{.id = test.id, .title = "Test", .steps = {}};
+        for (const std::string& action : test.actions){
+            checkpoint.steps.push_back(StoryStep{.name = action, .why = "", .action = action, .run = actions.find(action)->second(JsonObject())});
+        }
+        checkpoints.push_back(std::move(checkpoint));
+    }
+    return checkpoints;
+}
+
+//  A look that shows `events`.
+ScreenObservation look(ScreenEvents events){
+    ScreenObservation observation;
+    observation.events = events;
     return observation;
 }
 
-GridPose on_map(std::string map){
-    return GridPose{.map = std::move(map), .tiles = {}, .facing = std::nullopt};
-}
-
-std::string joined(const std::vector<std::string>& items){
+//  "a b": the strings, space-separated.
+std::string joined(const std::vector<std::string>& texts, std::string_view separator = " "){
     std::string text;
-    for (const std::string& item : items){
-        text += (text.empty() ? "" : ", ") + item;
+    for (const std::string& part : texts){
+        text += (text.empty() ? "" : std::string(separator)) + part;
     }
     return text;
 }
 
-bool has_line(const FakeStoryBackend<GridPose>& backend, std::string_view line){
-    for (const std::string& each : backend.lines()){
-        if (each == line){
+//  "done" or "failed at 01.01 fail: scripted_failure" (no step name when the
+//  checkpoint failed outside its steps).
+std::string verdict(const std::optional<CheckpointFailure>& failure, const std::vector<StoryCheckpoint>& checkpoints){
+    if (!failure){
+        return "done";
+    }
+    std::string event;
+    for (const StoryCheckpoint& checkpoint : checkpoints){
+        if (checkpoint.id == failure->checkpoint_id && failure->event_index){
+            event = checkpoint.steps[*failure->event_index].name;
+        }
+    }
+    return std::format("failed at {} {}: {}", failure->checkpoint_id, event, failure->failure.code);
+}
+
+
+struct RangeCase{
+    std::string name;
+    struct Input{
+        std::vector<TestCheckpoint> checkpoints = {};
+        size_t attempts = 1;
+        std::set<std::string> save_failures = {};
+        //  What the reload answers.
+        std::optional<std::string> reload_start = std::nullopt;
+        std::vector<ScreenObservation> looks = {};
+    };
+    Input input;
+    struct Expectation{
+        //  verdict() of the run.
+        std::string verdict = {};
+        //  The backend's inputs, joined by ", ".
+        std::string inputs = {};
+        //  A log line the run wrote, if any is checked.
+        std::string line = {};
+    };
+    Expectation expectation;
+};
+
+const RangeCase RANGE_CASES[] = {
+    {
+        .name = "two checkpoints pass",
+        .input = {.checkpoints = {{"01.00", {"ok", "press_a"}}, {"01.01", {"ok"}}}},
+        .expectation = {.verdict = "done", .inputs = "press A", .line = "[Checkpoint] 01.01: passed on attempt 1 (one-shot)"},
+    },
+    {
+        .name = "a save that fails is logged and the run goes on",
+        .input = {.checkpoints = {{"01.00", {"ok"}}, {"01.01", {"press_a"}}}, .save_failures = {"01.00"}},
+        .expectation = {.verdict = "done", .inputs = "press A", .line = "[Save] 01.00: save failed: save_error: the disk is full"},
+    },
+    {
+        .name = "a failed step stops the run at its event",
+        .input = {.checkpoints = {{"01.00", {"ok", "fail", "press_a"}}}},
+        .expectation = {.verdict = "failed at 01.00 fail: scripted_failure", .inputs = "", .line = "[Checkpoint] 01.00: failed at 2 fail: scripted_failure"},
+    },
+    {
+        .name = "a failed checkpoint passes after a reload to its start",
+        .input = {.checkpoints = {{"01.01", {"fail_once"}}}, .attempts = 3, .reload_start = "01.01"},
+        .expectation = {.verdict = "done", .inputs = "press HOME", .line = "[Checkpoint] 01.01: passed on attempt 2 (1 reset)"},
+    },
+    {
+        .name = "a reload to an earlier checkpoint's start replays it",
+        .input = {
+            .checkpoints = {{"01.00", {"press_a"}}, {"01.01", {"fail_once"}}},
+            .attempts = 2,
+            .reload_start = "01.00",
+        },
+        .expectation = {.verdict = "done", .inputs = "press A, press HOME, press A", .line = "[Checkpoint] 01.01: passed on attempt 2 (1 reset)"},
+    },
+    {
+        .name = "a checkpoint stops the run after its last attempt fails",
+        .input = {.checkpoints = {{"01.01", {"fail"}}}, .attempts = 2, .reload_start = "01.01"},
+        .expectation = {.verdict = "failed at 01.01 fail: scripted_failure", .inputs = "press HOME"},
+    },
+    {
+        .name = "a reload to an unknown start stops the run",
+        .input = {.checkpoints = {{"01.01", {"fail"}}}, .attempts = 3},
+        .expectation = {.verdict = "failed at 01.01 : start_unknown", .inputs = "press HOME", .line = "[Checkpoint] 01.01: reloaded to no start of this run"},
+    },
+    {
+        .name = "a failure that repeats stops the run with no reload",
+        .input = {.checkpoints = {{"01.01", {"not_running"}}}, .attempts = 3, .reload_start = "01.01"},
+        .expectation = {.verdict = "failed at 01.01 not_running: game_not_running", .inputs = ""},
+    },
+    {
+        .name = "a walk ends on the scripted white fade",
+        .input = {.checkpoints = {{"01.01", {"walk_to_fade"}}}, .looks = {look({}), look({ScreenEvent::FADE_WHITE})}},
+        .expectation = {.verdict = "done", .inputs = "stick 0deg 500ms walk, stick 0deg 500ms walk"},
+    },
+    {
+        .name = "a walk whose fade never shows fails",
+        .input = {.checkpoints = {{"01.01", {"walk_to_fade"}}}, .looks = {look({ScreenEvent::DIALOG_BOX})}},
+        .expectation = {
+            .verdict = "failed at 01.01 walk_to_fade: no_fade",
+            .inputs = "stick 0deg 500ms walk, stick 0deg 500ms walk, stick 0deg 500ms walk",
+            .line = "[Event] 01.01/1 walk_to_fade: failed: no_fade: no white fade in 3 slices",
+        },
+    },
+    {
+        .name = "a jump skips intermediate steps to its target action",
+        .input = {.checkpoints = {{"01.00", {"jump_to_press_a", "fail", "ok", "press_a"}}}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A",
+            .line = "[Event] 01.00: ahead on screen during jump_to_press_a: jumping to press_a, skipping fail, ok",
+        },
+    },
+    {
+        .name = "a jump to the immediate next step skips nothing",
+        .input = {.checkpoints = {{"01.00", {"jump_to_press_a", "press_a"}}}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A",
+            .line = "[Event] 01.00: ahead on screen during jump_to_press_a: jumping to press_a",
+        },
+    },
+    {
+        .name = "a jump whose target action is not ahead fails normally",
+        .input = {.checkpoints = {{"01.00", {"press_a", "jump_to_press_a", "ok"}}}},
+        .expectation = {
+            .verdict = "failed at 01.00 jump_to_press_a: jumped",
+            .inputs = "press A",
+            .line = "[Checkpoint] 01.00: failed at 2 jump_to_press_a: jumped: ahead on screen",
+        },
+    },
+    {
+        .name = "actions_ahead lists only future step actions",
+        .input = {.checkpoints = {{"01.00", {"press_a", "log_ahead", "ok", "fail"}}}},
+        .expectation = {
+            .verdict = "failed at 01.00 fail: scripted_failure",
+            .inputs = "press A",
+            .line = "ahead: fail, ok",
+        },
+    },
+    {
+        .name = "actions_ahead is empty on the last step",
+        .input = {.checkpoints = {{"01.00", {"press_a", "log_ahead"}}}},
+        .expectation = {
+            .verdict = "done",
+            .inputs = "press A",
+            .line = "ahead: ",
+        },
+    },
+};
+
+UnitTestResult check_range(const RangeCase& test, CancellableScope& scope){
+    TestWorld world;
+    StoryGame game = test_game(test.input.save_failures, test.input.reload_start);
+    game.attempts_per_checkpoint = test.input.attempts;
+    std::vector<StoryCheckpoint> checkpoints = checkpoints_of(test.input.checkpoints, world);
+    FakeStoryBackend backend({.looks = test.input.looks}, scope);
+    RunState state;
+    const std::optional<CheckpointFailure> failure = run_checkpoints(backend, checkpoints, game, state);
+    const std::string got = verdict(failure, checkpoints);
+    if (got != test.expectation.verdict){
+        return std::format("expected \"{}\", got \"{}\"", test.expectation.verdict, got);
+    }
+    const std::string inputs = joined(backend.inputs(), ", ");
+    if (inputs != test.expectation.inputs){
+        return std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, inputs);
+    }
+    if (test.expectation.line.empty()){
+        return true;
+    }
+    for (const std::string& line : backend.lines()){
+        if (line == test.expectation.line){
             return true;
         }
     }
-    return false;
+    return std::format("expected the line \"{}\" in:\n{}", test.expectation.line, joined(backend.lines(), "\n"));
 }
 
 
-//  The worked example of a game's own action: a door or stairs warp. A
-//  warp is a fade out, then a fade in on the target's map. No fade is not
-//  "arrived": FRLG 00.31 (console B, 2026-11-10) took it so and saved on
-//  the wrong floor.
-Outcome take_warp(StoryBackend<GridPose>& backend, const StoryActionCall& call, RunState&){
-    const Direction direction = story_arg<Direction>(call.args, "direction");
-    const GridPose& to = story_arg<GridPose>(call.args, "to");
-    backend.hold(direction, 400ms, StoryPace::WALK);
-    bool faded = false;
-    for (size_t c = 0; c < 40; c++){
-        const Observation<GridPose> now = backend.observe();
-        if (now.events.has(ScreenEvent::FADE_BLACK)){
-            faded = true;
-        }else if (faded && now.pose && now.pose->map == to.map){
-            return outcome_ok(pose_of(*now.pose));
-        }
-        backend.wait(100ms);
-    }
-    return outcome_failed(faded ? "warp_wrong_map" : "warp_no_fade");
-}
-
-//  A game with take_warp, a route of its own (one hold north) and a
-//  reader "door_open" that reads `door_open`.
-StoryGame<GridPose> test_game(std::optional<int> door_open = std::nullopt){
-    StoryGame<GridPose> game;
-    game.id = "test";
-    game.actions.push_back({
-        .spec = {.kind = StoryStepKind::GAME, .name = "take_warp", .args = {
-            {.key = "direction", .type = StoryArgType::DIRECTION, .required = true, .fallback = std::nullopt, .why = "into the door"},
-            {.key = "to", .type = StoryArgType::GRID_POSE, .required = true, .fallback = std::nullopt, .why = "the warp's end"},
-        }},
-        .handler = &take_warp,
-    });
-    game.actions.push_back({
-        .spec = *find_story_action(builtin_story_actions(), StoryStepKind::ROUTE, "route"),
-        .handler = [](StoryBackend<GridPose>& backend, const StoryActionCall&, RunState&){
-            backend.hold(Direction::NORTH, 100ms, StoryPace::RUN);
-            return outcome_ok();
-        },
-    });
-    if (door_open){
-        game.readers.push_back({
-            .name = "door_open", .supplies = {"door_open"}, .use = StoryReaderUse::ON_REQUEST, .console_only = false,
-            .read = [value = *door_open](StoryBackend<GridPose>&, Observation<GridPose>& observation){
-                observation.readings["door_open"] = value;
-            },
-        });
-    }
-    return game;
-}
-
-StoryStep make_step(StoryStepKind kind, std::string action, StoryActionArgs args){
-    StoryStep step;
-    step.kind = kind;
-    step.name = "s";
-    step.action = std::move(action);
-    step.args = std::move(args);
-    return step;
-}
-
-
-
-struct RegistryCase{
-    //  A step checked and, when it lints clean, dispatched on a backend that
-    //  shows talk text once, then the overworld.
-    struct Input{
-        StoryStep step;
-    };
-
-    //  The lint errors joined by "; ", then (for a clean step) the failure and
-    //  the inputs sent.
-    struct Expectation{
-        std::string_view lint = {};
-        std::string_view failure = {};
-        std::string_view inputs = {};
-    };
-
-    std::string_view name;
-    Input input;
-    Expectation expectation;
-};
-
-const RegistryCase REGISTRY_CASES[] = {
-    {.name = "legs tap each tile", .input = {.step = make_step(StoryStepKind::LEGS, "", {{"legs", std::vector<StoryLeg>{{Direction::NORTH, 2}, {Direction::EAST, 1}}}})},
-     .expectation = {.inputs = "tap north, tap north, tap east"}},
-    {.name = "legs empty", .input = {.step = make_step(StoryStepKind::LEGS, "", {{"legs", std::vector<StoryLeg>{}}})},
-     .expectation = {.lint = "no legs"}},
-    {.name = "face without direction", .input = {.step = make_step(StoryStepKind::STEP, "face", {})},
-     .expectation = {.lint = "missing argument \"direction\" (the way to step or face)"}},
-    {.name = "unknown game action", .input = {.step = make_step(StoryStepKind::GAME, "take_wrap", {})},
-     .expectation = {.lint = "unknown action \"take_wrap\" for GAME"}},
-    {.name = "talk", .input = {.step = make_step(StoryStepKind::TALK, "", {})},
-     .expectation = {.inputs = "press A, press A"}},
-    {.name = "answer no", .input = {.step = make_step(StoryStepKind::ANSWER, "", {{"yes", false}})},
-     .expectation = {.inputs = "press B"}},
-    {.name = "battle", .input = {.step = make_step(StoryStepKind::BATTLE, "", {})},
-     .expectation = {.inputs = "battle"}},
-    {.name = "ready needs the game", .input = {.step = make_step(StoryStepKind::READY, "", {{"target", on_map("CeruleanCity")}})},
-     .expectation = {.failure = "unsupported_step"}},
-    {.name = "game route replaces the built-in", .input = {.step = make_step(StoryStepKind::ROUTE, "", {{"target", on_map("Route4")}})},
-     .expectation = {.inputs = "hold north 100ms run"}},
-    {.name = "save without the game's save", .input = {.step = make_step(StoryStepKind::SAVE, "", {})},
-     .expectation = {.failure = "unsupported_step"}},
-};
-
-std::string check_registry(const RegistryCase& test, CancellableScope& scope){
-    const StoryGame<GridPose> game = test_game();
-    const StoryActionRegistry<GridPose> registry(game);
-    std::vector<std::string> lint = registry.check(test.input.step);
-    if (joined(lint) != test.expectation.lint){
-        return std::format("expected lint \"{}\", got \"{}\"", test.expectation.lint, joined(lint));
-    }
-    if (!lint.empty()){
-        return "";
-    }
-    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::DIALOG_BOX}), look({ScreenEvent::DIALOG_BOX}), look({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
-    RunState state;
-    const Outcome outcome = registry.dispatch(backend, test.input.step, state);
-    if (outcome.failure != test.expectation.failure){
-        return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, to_string(outcome));
-    }
-    if (joined(backend.inputs()) != test.expectation.inputs){
-        return std::format("expected inputs \"{}\", got \"{}\"", test.expectation.inputs, joined(backend.inputs()));
-    }
-    return "";
-}
-
-class StoryActionRegistryTest : public UnitTest{
+class StoryEngineTest : public UnitTest{
 public:
-    explicit StoryActionRegistryTest(RegistryCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine registry - {}", test.name))
-        , m_case(std::move(test))
+    explicit StoryEngineTest(RangeCase test_case)
+        : UnitTest(std::format("Pokemon::StoryEngine - {}", test_case.name))
+        , m_case(std::move(test_case))
     {}
+
     virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        const std::string error = check_registry(m_case, scope);
-        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
+        return check_range(m_case, scope);
     }
+
 private:
-    RegistryCase m_case;
+    RangeCase m_case;
 };
-
-
-
-struct RunnerCase{
-    //  One step, read from JSON, run by the step runner on a backend that
-    //  shows the overworld, with `flags` set and the "door_open" reader
-    //  reading `door_open`.
-    struct Input{
-        std::string_view step;
-        std::vector<std::string> flags = {};
-        std::optional<int> door_open = std::nullopt;
-    };
-
-    //  The failure, a line the run logged and the map of the outcome's pose.
-    struct Expectation{
-        std::string_view failure = {};
-        std::string_view line = {};
-        std::string_view pose_map = {};
-    };
-
-    std::string_view name;
-    Input input;
-    Expectation expectation;
-};
-
-const RunnerCase RUNNER_CASES[] = {
-    {.name = "skip_if a flag", .input = {.step = R"({"id": "s", "kind": "talk", "skip_if": ["got_candy"]})", .flags = {"got_candy"}},
-     .expectation = {.line = "[Step] s TALK/default: skipped"}},
-    {.name = "skip_if a reader", .input = {.step = R"({"id": "s", "kind": "talk", "skip_if": ["door_open"]})", .door_open = 1},
-     .expectation = {.line = "[Step] s TALK/default: skipped"}},
-    {.name = "skip_if a reader that says no", .input = {.step = R"({"id": "s", "kind": "scene", "skip_if": ["door_open"]})", .door_open = 0},
-     .expectation = {.line = "[Step] s MASH/default: ok"}},
-    {.name = "skip_if nobody answers", .input = {.step = R"({"id": "s", "kind": "scene", "skip_if": ["door_open"]})"},
-     .expectation = {.line = "[Step] s MASH/default: ok"}},
-    {.name = "declared end pose", .input = {.step = R"({"id": "s", "kind": "scene", "declared_after": {"map": "Route1", "tiles": [[1, 2]]}})"},
-     .expectation = {.line = "[Step] s MASH/default: ok", .pose_map = "Route1"}},
-    {.name = "talk to nobody fails", .input = {.step = R"({"id": "s", "kind": "talk"})"},
-     .expectation = {.failure = "talk_no_text", .line = "[Step] s TALK/default: failed: talk_no_text: A opened no text box (class=screen_unread)"}},
-};
-
-std::string check_runner(const RunnerCase& test, CancellableScope& scope){
-    const StoryGame<GridPose> game = test_game(test.input.door_open);
-    const StoryActionRegistry<GridPose> registry(game);
-    FakeStoryBackend<GridPose> backend({.looks = {look({ScreenEvent::PLAYER_CAN_MOVE})}}, scope);
-    StoryStepRunner<GridPose> runner(registry, backend);
-    RunState state;
-    state.flags.insert(test.input.flags.begin(), test.input.flags.end());
-    const StoryStep step = read_story_step(parse_json(std::string(test.input.step)), test.name, registry.specs());
-    const Outcome outcome = runner.run(step, state);
-    if (outcome.failure != test.expectation.failure){
-        return std::format("expected failure \"{}\", got \"{}\"", test.expectation.failure, to_string(outcome));
-    }
-    if (!has_line(backend, test.expectation.line)){
-        return std::format("expected the line \"{}\", logged: {}", test.expectation.line, joined(backend.lines()));
-    }
-    const std::string map = outcome.pose ? outcome.pose->map : "";
-    if (map != test.expectation.pose_map){
-        return std::format("expected the pose on \"{}\", got \"{}\"", test.expectation.pose_map, map);
-    }
-    return "";
-}
-
-class StoryStepRunnerTest : public UnitTest{
-public:
-    explicit StoryStepRunnerTest(RunnerCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine runner - {}", test.name))
-        , m_case(std::move(test))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        const std::string error = check_runner(m_case, scope);
-        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
-    }
-private:
-    RunnerCase m_case;
-};
-
-
-
-struct WarpCase{
-    //  take_warp north to B3F, from B4F, on a scripted game.
-    struct Input{
-        std::vector<Observation<GridPose>> looks;
-    };
-
-    //  How take_warp ended: "" for arrived.
-    struct Expectation{
-        std::string_view failure = {};
-    };
-
-    std::string_view name;
-    Input input;
-    Expectation expectation;
-};
-
-const WarpCase WARP_CASES[] = {
-    {.name = "fade then B3F", .input = { .looks = {
-        look({}, on_map("RocketHideout_B4F")), look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B3F")),
-     }}, .expectation = {}},
-    //  The screen darkens at the stairs but no fade starts and the map
-    //  stays B4F: the old wait took this for arrived (00.31's false pass).
-    {.name = "black_without_warp", .input = {.looks = {look({ScreenEvent::SCREEN_STILL}, on_map("RocketHideout_B4F"))}},
-     .expectation = {.failure = "warp_no_fade"}},
-    {.name = "fade back to B4F", .input = {.looks = {look({ScreenEvent::FADE_BLACK}), look({ScreenEvent::PLAYER_CAN_MOVE}, on_map("RocketHideout_B4F"))}},
-     .expectation = {.failure = "warp_wrong_map"}},
-};
-
-std::string check_warp(const WarpCase& test, CancellableScope& scope){
-    const StoryGame<GridPose> game = test_game();
-    const StoryActionRegistry<GridPose> registry(game);
-    FakeStoryBackend<GridPose> backend({.looks = test.input.looks}, scope);
-    StoryStepRunner<GridPose> runner(registry, backend);
-    RunState state;
-    const StoryStep step = make_step(StoryStepKind::GAME, "take_warp", {
-        {"direction", Direction::NORTH},
-        {"to", on_map("RocketHideout_B3F")},
-    });
-    const Outcome outcome = runner.run(step, state);
-    if (outcome.failure != test.expectation.failure){
-        return std::format("expected \"{}\", got \"{}\"", test.expectation.failure, to_string(outcome));
-    }
-    if (outcome.succeeded() && (!outcome.pose || outcome.pose->map != "RocketHideout_B3F")){
-        return "expected the pose on RocketHideout_B3F";
-    }
-    return "";
-}
-
-class StoryTakeWarpTest : public UnitTest{
-public:
-    explicit StoryTakeWarpTest(WarpCase test)
-        : UnitTest(std::format("Pokemon::StoryEngine take_warp - {}", test.name))
-        , m_case(std::move(test))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
-        const std::string error = check_warp(m_case, scope);
-        return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
-    }
-private:
-    WarpCase m_case;
-};
-
 
 } // namespace
 
 
 void add_tests_StoryEngine(UnitTestDatabase& database){
-    for (const RegistryCase& test : REGISTRY_CASES){
-        database.add<StoryActionRegistryTest>(test);
-    }
-    for (const RunnerCase& test : RUNNER_CASES){
-        database.add<StoryStepRunnerTest>(test);
-    }
-    for (const WarpCase& test : WARP_CASES){
-        database.add<StoryTakeWarpTest>(test);
+    for (const RangeCase& test : RANGE_CASES){
+        database.add<StoryEngineTest>(test);
     }
 }
 

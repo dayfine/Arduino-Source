@@ -51,7 +51,7 @@ struct TargetSelectionResult{
 TargetSelectionResult select_target(const TargetSearchRequest& request);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

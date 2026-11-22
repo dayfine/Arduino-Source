@@ -72,6 +72,6 @@ std::string RngAim::describe_correction() const{
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

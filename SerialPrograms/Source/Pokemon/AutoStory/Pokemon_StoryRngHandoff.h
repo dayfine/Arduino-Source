@@ -29,7 +29,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
-#include "Pokemon_StoryOutcome.h"
+#include "Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -69,10 +69,10 @@ struct RngHandoffResult{
 using RngHandoffCall = std::function<RngHandoffResult()>;
 
 //  Runs `call` for the RNG program `program` ("Starter RNG"). A success is
-//  logged with its summary and returned as an ok Outcome. A failure throws
+//  logged with its summary and returns std::nullopt. A failure throws
 //  OperationFailedException with an error report, so that no row retry
 //  reruns the program's reset loop.
-Outcome run_rng_handoff(Logger& logger, const std::string& program, const RngHandoffCall& call);
+std::optional<StoryFailure> run_rng_handoff(Logger& logger, const std::string& program, const RngHandoffCall& call);
 
 //  As run_rng_handoff(), for a program whose call may end in the user's turn:
 //  returns that message, which is logged, and the run stops there. Returns

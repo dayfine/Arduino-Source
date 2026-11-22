@@ -38,6 +38,48 @@ void schedule_span_bounds(
 }
 
 
+namespace{
+
+std::vector<PressSchedule> collect_gap_schedules(
+    const std::vector<double>& at,
+    const BdspTimelineContext& timeline,
+    const NavigationTimings& timings,
+    size_t first_free,
+    double starly,
+    size_t max_schedules
+){
+    std::vector<PressSchedule> schedules;
+    const double earliest_select = starly + timings.move_seconds;
+    for (size_t blink = first_free;
+        blink + 1 < at.size() && schedules.size() < max_schedules;
+        blink++
+    ){
+        const double gap_start = at[blink];
+        const double gap_end = at[blink + 1];
+        //  Centred in the gap when there is room, pushed as late as the navigation
+        //  demands when there is not.
+        const double select_at = std::max(
+            (gap_start + gap_end - timings.prompt_seconds) / 2, earliest_select
+        );
+        const double confirm_at = select_at + timings.prompt_seconds;
+        if (select_at - gap_start < timings.guard_seconds
+            || gap_end - confirm_at < timings.guard_seconds
+        ){
+            continue;
+        }
+        schedules.push_back(PressSchedule{
+            .span = blink + 1 + timeline.advances_after_accept,
+            .starly_seconds = starly,
+            .select_seconds = select_at,
+            .confirm_seconds = confirm_at,
+            .blinks_before_confirm = blink + 1 - first_free,
+        });
+    }
+    return schedules;
+}
+
+} // namespace
+
 std::vector<PressSchedule> schedule_presses(
     const Pokemon::Xorshift128State& state,
     const BdspTimelineContext& timeline,
@@ -45,57 +87,25 @@ std::vector<PressSchedule> schedule_presses(
     uint64_t press,
     size_t max_schedules
 ){
-    std::vector<PressSchedule> schedules;
-
-    size_t first_free = first_free_blink(timeline);
-    size_t last_waited = first_free - 1 - timeline.advance_delay_2;
+    const size_t first_free = first_free_blink(timeline);
+    const size_t last_waited = first_free - 1 - timeline.advance_delay_2;
 
     Pokemon::Xorshift128 rng(state);
     rng.advance(press);
-    BdspTimelineResult simulated = simulate_timeline(
+    const BdspTimelineResult simulated = simulate_timeline(
         rng, timeline, timeline_depth(timeline, max_schedules)
     );
     const std::vector<double>& at = simulated.advance_times;
     if (at.size() < first_free + 2){
-        return schedules;
+        return {};
     }
 
     //  The second press goes between the last blink it waits for and the next.
-    double starly = (at[last_waited] + at[last_waited + 1]) / 2;
+    const double starly = (at[last_waited] + at[last_waited + 1]) / 2;
     if (starly < timings.ready_seconds){
-        return schedules;
+        return {};
     }
-    double earliest_select = starly + timings.move_seconds;
-
-    for (size_t blink = first_free;
-        blink + 1 < at.size() && schedules.size() < max_schedules;
-        blink++
-    ){
-        double gap_start = at[blink];
-        double gap_end = at[blink + 1];
-
-        //  Centred in the gap when there is room, pushed as late as the navigation
-        //  demands when there is not.
-        double select_at = std::max(
-            (gap_start + gap_end - timings.prompt_seconds) / 2, earliest_select
-        );
-        double confirm_at = select_at + timings.prompt_seconds;
-        if (select_at - gap_start < timings.guard_seconds
-            || gap_end - confirm_at < timings.guard_seconds
-        ){
-            continue;
-        }
-
-        schedules.push_back(PressSchedule{
-            /*span*/                  blink + 1 + timeline.advances_after_accept,
-            /*starly_seconds*/        starly,
-            /*select_seconds*/        select_at,
-            /*confirm_seconds*/       confirm_at,
-            /*blinks_before_confirm*/ blink + 1 - first_free,
-        });
-    }
-
-    return schedules;
+    return collect_gap_schedules(at, timeline, timings, first_free, starly, max_schedules);
 }
 
 
@@ -125,6 +135,6 @@ bool wait_until_moment(ProControllerContext& context, Logger& logger, WallClock 
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -1,5 +1,5 @@
 {
-  "about": "Leg records of BDSP AutoStory row 00.04 run on the grid simulation (Simulation/PokemonBDSP_AutoStory_LegTrace_Tests.cpp). Rewrite with PA_UPDATE_LEG_TRACE=1.",
+  "about": "Leg records of BDSP AutoStory row 00.04 run on the grid simulation (Simulation/PokemonBDSP_AutoStoryLegTrace_Tests.cpp). Rewrite with PA_UPDATE_LEG_TRACE=1.",
   "legs": [
     {"checkpoint":"00.04","chunks":3,"dir":"east","end":[["Sandgem Town",29,11],["Sandgem Town",29,12]],"end_kind":"wall","event":"onto_the_path","interrupts":[],"known":"wall","leg":1,"ms":1350,"planned_end":[["Sandgem Town",29,11],["Sandgem Town",29,12]],"tiles":3},
     {"checkpoint":"00.04","chunks":0,"dir":"north","end":[["Sandgem Town",29,11]],"end_kind":"wall","event":"onto_the_path","interrupts":[],"known":"wall","leg":2,"ms":1050,"planned_end":[["Sandgem Town",29,11]],"tiles":1},

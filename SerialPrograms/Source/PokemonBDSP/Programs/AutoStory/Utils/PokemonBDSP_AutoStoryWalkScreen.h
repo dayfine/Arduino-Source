@@ -1,0 +1,217 @@
+/*  BDSP AutoStory - Walk screen
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ *  How much the screen changes as we walk, and following a warp's fade frame by frame.
+ *
+ */
+
+#ifndef PokemonAutomation_PokemonBDSP_AutoStoryWalkScreen_H
+#define PokemonAutomation_PokemonBDSP_AutoStoryWalkScreen_H
+
+#include <array>
+#include <functional>
+#include <optional>
+#include <string>
+#include "Common/Cpp/Time.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
+#include "Pokemon/AutoStory/Pokemon_Transitions.h"
+#include "PokemonBDSP_AutoStoryWalkResult.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
+
+
+//  How much the screen changed between two frames, 0 for identical. Walking scrolls
+//  the whole view: 16 to 85 per 400ms on Route 202, against about 6 for running in
+//  place against trees.
+double walk_screen_change(const ImageViewRGB32& before, const ImageViewRGB32& after);
+//  Screen change metric threshold indicative of blocked movement against an obstacle.
+constexpr double WALK_BLOCKED_CHANGE = 16.0;
+//  For whole-tile D-pad taps: a tap that moves changes the screen by 21 to 50
+//  (r244a: 40 per tap along Route 204's row 27); a tap into a wall or an NPC
+//  bumps for 10 to 13.4, and an NPC walking past does the same, so 10 counted
+//  bumps as steps (r244a, 2026-10-31).
+constexpr double WALK_TAP_BLOCKED_CHANGE = 16.0;
+//  More than walking changes in 400ms: a new scene, such as a battle opening.
+constexpr double WALK_SCENE_CHANGE = 120.0;
+
+namespace detail{
+
+//  How one horizontal band of the view scrolled between two frames, on
+//  smoothed 192x108 copies: the shift (dx, dy) of `before` that best lines
+//  up with `after`, leaving out the middle where the player stands, and the
+//  mean difference per colour channel (0 to 255) with and without it.
+struct BandShift{
+    int dx = 0;
+    int dy = 0;
+    double unshifted = 0;
+    double shifted = 0;
+
+    //  A shift lines up at least twice as well as none, and none leaves a
+    //  real difference.
+    bool lines_up() const;
+};
+
+//  How the view scrolled between two frames, band by band from the top.
+//  Outside, the camera follows the player, so a step scrolls everything one
+//  way; a TV, a conveyor, a passer-by or a cloud shadow changes part of the
+//  view with no common scroll. In r83's and r84's Floaroma video, frames
+//  300 ms apart while standing (screen changes up to 57, cloud shadows, text
+//  boxes) never read as scrolled. The camera looks down at an angle, so a
+//  step north or south scrolls the near rows further than the far ones: on
+//  Twinleaf's path (00.01 below_barrys_warning, 2026-11-15) 7 pixels at the
+//  top and 10 at the bottom, and one shift for the whole view lined up only
+//  1.7 to 1.9 times better than none. Each band alone is close to one shift.
+struct ViewShift{
+    static constexpr size_t BANDS = 4;
+    std::array<BandShift, BANDS> bands;
+
+    //  At least 3 bands line up, with shifts the same way.
+    bool scrolled() const;
+};
+
+//  Calculates the view scroll shift between before and after images.
+ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& after);
+
+//  Each band's shift and how much better than none it lines up, for logs.
+std::string describe_view_shift(const ViewShift& shift);
+
+//  How widely pixel changes spread across lit rows and columns on a 192x108
+//  copy, excluding pure-black void pixels (r+g+b < 45 in both frames, as in
+//  dark cave corridors like Oreburgh Mine). A camera scroll moves scenery
+//  across both most lit rows and most lit columns; a bump, passing NPC, cloud
+//  shadow or localized flash stays narrow in at least one axis.
+struct PixelChangeCoverage{
+    double changed_rows = 0;    //  fraction of lit rows with >= 25% lit pixels changed
+    double changed_cols = 0;    //  fraction of lit cols with >= 25% lit pixels changed
+    double changed_pixels = 0;  //  fraction of lit pixels with |dR|+|dG|+|dB| > 36
+
+    bool scrolled() const;
+};
+
+PixelChangeCoverage walk_pixel_coverage(const ImageViewRGB32& before, const ImageViewRGB32& after);
+
+//  Whether the player moved between `before` and `after`, frames around a
+//  D-pad tap. Outside: only if the view scrolled. Inside, the camera can
+//  stay put while the player crosses a room (the house's 1F), so there a
+//  screen change of at least `line` counts, as it did before.
+bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line);
+
+//  How a tap's frames read, as tap_moved() decides: outside, the view's
+//  shift; inside, only the screen change against `line`.
+struct TapRead{
+    std::optional<ViewShift> shift;     //  none indoors
+    bool moved = false;
+};
+//  tap_moved(), with the shift it read outside.
+TapRead read_tap(const ImageViewRGB32& before, const ImageViewRGB32& after, double line);
+
+//  One tap of a walk, as the walk read it.
+struct TapChunk{
+    size_t chunk = 0;       //  1 for the walk's first
+    double change = 0;      //  walk_screen_change() over the tap
+    double largest = 0;     //  the walk's largest change so far, this one included
+    bool moved = false;
+};
+
+//  Keeps the frames of taps that read as still although the screen changed
+//  by at least 60% of the walk's largest change: steps the shift check may
+//  have missed (00.01 below_barrys_warning: north 18 counted 3 while the
+//  player walked about 5, and no frames were kept to see why). At most
+//  `max_pairs` pairs a walk.
+class StillTapFrames{
+public:
+    using Save = std::function<void(const ImageViewRGB32& before, const ImageViewRGB32& after, size_t chunk)>;
+
+    explicit StillTapFrames(Save save, size_t max_pairs = 10);
+
+    //  Calls the save hook with the tap's frames if the tap is suspect and
+    //  the walk has pairs left.
+    void keep_if_suspect(const TapChunk& tap, const ImageViewRGB32& before, const ImageViewRGB32& after);
+
+private:
+    Save m_save;
+    size_t m_max_pairs;
+    size_t m_saved = 0;
+};
+
+} // namespace detail
+
+//  One band's scroll shift.
+using detail::BandShift;
+//  View scroll shift calculation.
+using detail::ViewShift;
+//  Calculates the view scroll shift between before and after images.
+using detail::walk_view_shift;
+//  Each band's shift, for logs.
+using detail::describe_view_shift;
+//  Row/column spread of changed pixels between two frames.
+using detail::PixelChangeCoverage;
+using detail::walk_pixel_coverage;
+//  Whether the player moved between before and after frames.
+using detail::tap_moved;
+//  How a tap's frames read, for the walk's log.
+using detail::TapRead;
+//  tap_moved(), with the shift it read outside.
+using detail::read_tap;
+//  One tap of a walk, as the walk read it.
+using detail::TapChunk;
+//  The frames of taps that read as still but may have stepped.
+using detail::StillTapFrames;
+
+
+//  Whether two frames show different scenes: a change walking cannot make
+//  (WALK_SCENE_CHANGE). UNKNOWN without both frames.
+Pokemon::SceneChange walk_scenes_differ(const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after);
+
+//  What a warp's fade must show before a step takes it as one. All of it
+//  reads Pokemon::BDSP_FADE_PROFILE. Dark is the profile's uniform tier, or
+//  with `partial_dark` its partial tier's texture (a doorway's dim fade
+//  frames, which run_into_door() has stopped on since #268) up to the same
+//  dark sum. Dark must hold `dark_for` and white (always uniform) `white_for`.
+struct WarpFadeRule{
+    bool partial_dark = false;
+    Milliseconds dark_for = Milliseconds(0);
+    Milliseconds white_for = Milliseconds(0);
+};
+
+//  A warp's fade followed frame by frame (a Pokemon::TransitionTracker on
+//  BDSP_FADE_PROFILE) rather than judged on one frame. A fade shows when its
+//  dark or white has held as the rule says; or, when its hold fell between
+//  two frames (a 50 ms door fade), at the first frame of another scene
+//  after the fall, as `compare` tells scenes apart. That one unseen hold
+//  used to leave a door run to its 12 s timeout. Not thread-safe.
+class WarpFadeWatch{
+public:
+    explicit WarpFadeWatch(WarpFadeRule rule, Pokemon::TransitionTracker::CompareScenes compare = walk_scenes_differ);
+
+    //  Adds a frame; times must not go back. Returns the fade this frame
+    //  shows, NONE if none (yet).
+    WarpFade push(const Pokemon::TransitionSample& sample);
+    //  When the screen last went dark as the rule counts dark; none if it
+    //  has not.
+    std::optional<WallClock> went_dark() const{
+        return m_went_dark;
+    }
+    //  How the last fade showed, for the log; "" before one.
+    const std::string& how() const{
+        return m_how;
+    }
+
+private:
+    WarpFadeRule m_rule;
+    Pokemon::TransitionTracker m_tracker;
+    std::optional<WallClock> m_dark_since;
+    std::optional<WallClock> m_white_since;
+    std::optional<WallClock> m_went_dark;
+    std::string m_how;
+};
+
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
+#endif

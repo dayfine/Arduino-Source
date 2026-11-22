@@ -183,6 +183,6 @@ BdspHitIdentification identify_hit_advance(
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -20,7 +20,7 @@
 #include <string>
 #include <string_view>
 #include "Common/Cpp/CancellableScope.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

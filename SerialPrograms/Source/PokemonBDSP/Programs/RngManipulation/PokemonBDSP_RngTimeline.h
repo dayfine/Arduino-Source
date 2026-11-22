@@ -51,7 +51,7 @@ BdspTimelineResult simulate_timeline(
 bool time_of_advance(const BdspTimelineResult& result, uint64_t advance, double& seconds);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

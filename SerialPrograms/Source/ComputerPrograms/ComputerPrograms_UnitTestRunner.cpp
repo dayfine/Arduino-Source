@@ -39,22 +39,16 @@
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 
-#include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
-#include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
-#include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
-#include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
-#include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RouteScorer_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
-#include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
-#include "Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h"
-#include "Pokemon/Navigation/Simulation/Pokemon_KnownFailing_Tests.h"
-#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h"
-#include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
-#include "Pokemon/Navigation/Simulation/Pokemon_SimSeeds_Tests.h"
-#include "Pokemon/Navigation/Simulation/Pokemon_SimSweep_Tests.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_Interrupts_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_Settle_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_Transitions_Tests.h"
+#include "Pokemon/Navigation/Grid/Walker/Pokemon_DoorApproach_Tests.h"
+#include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -74,28 +68,23 @@ namespace ComputerPrograms{
 
 
 
-static void add_tests_NavigationSimulation(UnitTestDatabase& ret){
-    Pokemon::add_tests_SimFaults(ret);
-    Pokemon::add_tests_SimGolden(ret);
-    Pokemon::add_tests_SimSweep(ret);
-    Pokemon::add_tests_SimSeeds(ret);
-    Pokemon::add_tests_KnownFailing(ret);
+namespace{
+
+void add_pokemon_autostory_tests(UnitTestDatabase& ret){
+    Pokemon::add_tests_Navigation(ret);
+    Pokemon::add_tests_AutoStory(ret);
+    Pokemon::add_tests_CenterVisit(ret);
+    Pokemon::add_tests_DoorApproach(ret);
+    Pokemon::add_tests_Interrupts(ret);
+    Pokemon::add_tests_SceneJudges(ret);
+    Pokemon::add_tests_Settle(ret);
+    Pokemon::add_tests_StoryInterrupts(ret);
+    Pokemon::add_tests_StoryLaunch(ret);
+    Pokemon::add_tests_StoryRngHandoff(ret);
+    Pokemon::add_tests_Transitions(ret);
 }
 
-static void add_tests_Navigation(UnitTestDatabase& ret){
-    Pokemon::add_tests_LegPlanner(ret);
-    Pokemon::add_tests_RobustLegPlanner(ret);
-    Pokemon::add_tests_LegWalker(ret);
-    Pokemon::add_tests_WallRecovery(ret);
-    Pokemon::add_tests_WanderRecovery(ret);
-    Pokemon::add_tests_MapData(ret);
-    Pokemon::add_tests_ConnectedMaps(ret);
-    Pokemon::add_tests_MoveMechanics(ret);
-    Pokemon::add_tests_RuntimeMap(ret);
-    Pokemon::add_tests_RouteLog(ret);
-    Pokemon::add_tests_RouteScorer(ret);
-    add_tests_NavigationSimulation(ret);
-}
+} // namespace
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
@@ -120,8 +109,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     OCR::add_tests(ret);
     add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
-    add_tests_Navigation(ret);
-    Pokemon::add_tests_AutoStory(ret);
+    add_pokemon_autostory_tests(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_HomeTileReader(ret);

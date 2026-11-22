@@ -138,11 +138,11 @@ struct StarterRngAttemptIO{
     EventNotificationOption* notification_error = nullptr;
     StarterRngStats* stats = nullptr;
 
-    std::function<void()> on_reset;
-    std::function<void()> on_miss;
-    std::function<void()> on_hit;
-    std::function<void()> on_shiny;
-    std::function<void()> on_error;
+    std::function<void()> on_reset = {};
+    std::function<void()> on_miss = {};
+    std::function<void()> on_hit = {};
+    std::function<void()> on_shiny = {};
+    std::function<void()> on_error = {};
 };
 
 
@@ -162,7 +162,7 @@ struct StarterRngRunResult{
     Pokemon::BdspPokemonResult target{};
     uint64_t target_advance = 0;
     uint64_t resets_used = 0;
-    std::string last_failure_reason;
+    std::string last_failure_reason = {};
     //  False when a shiny was caught but the game was not left where
     //  `finish_battle_on_shiny` and `close_summary_after_read` promise: the
     //  caller must not go on from it.
@@ -175,7 +175,7 @@ struct BdspStarterAttemptResult{
     bool shiny = false;
     Pokemon::BdspPokemonResult target{};
     uint64_t target_advance = 0;
-    std::string failure_reason;
+    std::string failure_reason = {};
     //  See StarterRngRunResult::settled.
     bool settled = true;
 };
@@ -210,7 +210,7 @@ StarterRngRunResult run_starter_rng_attempts(
 );
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

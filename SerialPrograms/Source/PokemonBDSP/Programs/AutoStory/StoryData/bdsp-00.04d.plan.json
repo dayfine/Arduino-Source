@@ -1,7 +1,23 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
+    "id": "00.04d",
+    "title": "Route 202's trainers, Dawn in Jubilife",
+    "start": {
+      "map": "Route202",
+      "tiles": [
+        [
+          30,
+          24
+        ]
+      ]
+    },
     "events": [
       {
+        "id": "north_to_jubilife",
+        "action": "route",
+        "why": "north past Route 202's trainers, fighting who sees us",
         "args": {
           "fight_wild": false,
           "target": {
@@ -137,100 +153,87 @@
               ]
             ]
           }
-        },
-        "id": "north_to_jubilife",
-        "kind": "route",
-        "why": "north past Route 202's trainers, fighting who sees us"
+        }
       },
       {
-        "action": "jubilife_stairs",
-        "declared_after": {
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              45,
-              59
-            ],
-            [
-              46,
-              59
-            ],
-            [
-              47,
-              59
-            ],
-            [
-              45,
-              60
-            ],
-            [
-              46,
-              60
-            ],
-            [
-              47,
-              60
-            ]
-          ]
-        },
         "id": "jubilife_stairs",
-        "kind": "game_action",
-        "why": "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)"
+        "action": "jubilife_stairs",
+        "why": "Jubilife's south edge is a wall with stairs in it, west of where the route may leave us (r78)",
+        "args": {
+          "pose_after": {
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                45,
+                59
+              ],
+              [
+                46,
+                59
+              ],
+              [
+                47,
+                59
+              ],
+              [
+                45,
+                60
+              ],
+              [
+                46,
+                60
+              ],
+              [
+                47,
+                60
+              ]
+            ]
+          }
+        }
       },
       {
-        "declared_after": {
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              45,
-              59
-            ],
-            [
-              46,
-              59
-            ],
-            [
-              47,
-              59
-            ],
-            [
-              45,
-              60
-            ],
-            [
-              46,
-              60
-            ],
-            [
-              47,
-              60
-            ]
-          ]
-        },
         "id": "dawn_scene",
-        "kind": "scene",
-        "why": "Dawn walks over while we stand still"
+        "action": "scene",
+        "why": "Dawn walks over while we stand still",
+        "args": {
+          "pose_after": {
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                45,
+                59
+              ],
+              [
+                46,
+                59
+              ],
+              [
+                47,
+                59
+              ],
+              [
+                45,
+                60
+              ],
+              [
+                46,
+                60
+              ],
+              [
+                47,
+                60
+              ]
+            ]
+          }
+        }
       }
     ],
-    "id": "00.04d",
-    "start": {
-      "map": "Route202",
-      "tiles": [
-        [
-          30,
-          24
-        ]
-      ]
-    },
-    "title": "Route 202's trainers, Dawn in Jubilife"
+    "metadata": {
+      "phase": "reproduction"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Route 202"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "reproduction"
   }
 }

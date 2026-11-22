@@ -107,9 +107,9 @@ UnitTestResult check_sim_golden(Logger& logger, const std::string& path, const s
         const std::string crlf = with_crlf(text);
         FileIO file;
         if (!file.open(path, FileMode::WRITE | FileMode::BINARY) || file.write(crlf) != crlf.size()){
-            return "Could not write " + path + ".";
+            return std::format("Could not write {}.", path);
         }
-        logger.log("Wrote " + path + ".");
+        logger.log(std::format("Wrote {}.", path));
         return true;
     }
     std::string golden;

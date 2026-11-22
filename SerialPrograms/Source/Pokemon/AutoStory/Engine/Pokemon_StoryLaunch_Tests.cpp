@@ -18,7 +18,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon_StoryFakeBackend.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Pokemon_StoryLaunch.h"
 #include "Pokemon_StoryLaunch_Tests.h"
 
@@ -50,8 +50,8 @@ enum class Screen{
 inline constexpr std::string_view SCREEN = "screen";
 inline constexpr std::string_view TILE = "home.tile";
 
-Observation<GridPose> look(Screen screen){
-    Observation<GridPose> observation;
+ScreenObservation look(Screen screen){
+    ScreenObservation observation;
     switch (screen){
     case Screen::HOME_ON_GAME:
     case Screen::HOME_OFF_GAME:
@@ -311,18 +311,18 @@ std::string describe_inputs(const std::vector<std::string>& inputs){
 }
 
 std::string check_launch(const LaunchCase& test, CancellableScope& scope){
-    std::vector<Observation<GridPose>> looks;
+    std::vector<ScreenObservation> looks;
     for (Screen screen : test.input.screens){
         looks.push_back(look(screen));
     }
-    FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
-    const Outcome outcome = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check, test.input.overworld_check), test.input.request);
-    if (test.expectation.failure.empty() && !outcome.succeeded()){
-        return std::format("expected success, got {}", to_string(outcome));
+    FakeStoryBackend backend({.looks = std::move(looks)}, scope);
+    const std::optional<StoryFailure> failure = launch_story_game(backend, test_policy(test.input.backup, test.input.game_screens, test.input.tile_check, test.input.overworld_check), test.input.request);
+    if (test.expectation.failure.empty() && failure){
+        return std::format("expected success, got {}", *failure);
     }
     if (!test.expectation.failure.empty()){
-        if (outcome.failure != STORY_LAUNCH_FAILED || outcome.detail.find(test.expectation.failure) == std::string::npos){
-            return std::format("expected a launch failure with \"{}\", got {}", test.expectation.failure, to_string(outcome));
+        if (!failure || failure->code != STORY_LAUNCH_FAILED || failure->detail.find(test.expectation.failure) == std::string::npos){
+            return std::format("expected a launch failure with \"{}\", got {}", test.expectation.failure, failure ? std::format("{}", *failure) : std::string("success"));
         }
     }
     const std::vector<std::string> expected = expected_inputs(test.expectation.inputs);

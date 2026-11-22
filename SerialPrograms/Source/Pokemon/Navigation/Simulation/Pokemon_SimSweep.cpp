@@ -5,6 +5,7 @@
  */
 
 #include <format>
+#include <utility>
 #include "Pokemon_SimSweep.h"
 
 namespace PokemonAutomation{
@@ -32,7 +33,7 @@ UnitTestResult run_sweep(Logger& logger, std::string_view row, std::string_view 
     for (const SweepVariant& variant : variants){
         std::optional<std::string> stopped = variant.run();
         if (stopped){
-            failures.push_back({variant.step, variant.label, std::move(*stopped)});
+            failures.push_back({.step = variant.step, .variant = variant.label, .stopped = std::move(*stopped)});
         }
     }
     return sweep_result(logger, row, fault, variants.size(), failures);
@@ -62,7 +63,4 @@ std::optional<std::string> variant_failure(const std::optional<std::string>& fai
 
 
 } // namespace Pokemon
-
-
-
 } // namespace PokemonAutomation

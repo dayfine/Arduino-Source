@@ -7,6 +7,7 @@
  *
  */
 
+#include <format>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -24,22 +25,22 @@ namespace{
 
 struct SimGoldenTestCase{
     struct Input{
-        UnitTestResult (*body)(Logger& logger);
+        UnitTestResult (*body)(Logger& logger) = nullptr;
     };
 
     struct Expectation{
-        std::string_view description;
+        std::string_view description = {};
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_SimGolden : public UnitTest{
 public:
     explicit Test_SimGolden(SimGoldenTestCase scenario)
-        : UnitTest("Pokemon::Navigation - Sim golden: " + scenario.name)
+        : UnitTest(std::format("Pokemon::Navigation - Sim golden: {}", scenario.name))
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -54,7 +55,7 @@ UnitTestResult expect_equal(std::string_view what, std::string_view actual, std:
     if (actual == expected){
         return true;
     }
-    return std::string(what) + ": expected \"" + std::string(expected) + "\", got \"" + std::string(actual) + "\".";
+    return std::format("{}: expected \"{}\", got \"{}\".", what, expected, actual);
 }
 
 //  The difference as text for expect_equal(): "(none)" when the texts match.
