@@ -15,9 +15,10 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
-#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMemberMenuReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_DigitReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryActions.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGameArgs.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemUse.h"
@@ -45,7 +46,6 @@ namespace{
 constexpr Milliseconds MENU_TAP = 100ms;
 constexpr Milliseconds MENU_WAIT = 250ms;
 constexpr Milliseconds DIALOG_TIMEOUT = 60000ms;
-constexpr Milliseconds TRADE_TIMEOUT = 90000ms;
 constexpr Milliseconds BAG_SLIDE_WAIT = 1500ms;
 
 void tap_dpad_times(ProControllerContext& context, DpadPosition dir, size_t count){
@@ -56,6 +56,83 @@ void tap_dpad_times(ProControllerContext& context, DpadPosition dir, size_t coun
 
 bool is_berry_item(std::string_view item){
     return item.ends_with("-berry");
+}
+
+//  Language-free Berry Pouch row finder using the fixed 2-digit berry index
+//  ("No.XX ", pokefirered/src/berry_pouch.c:686-697). Returns 0-based row from
+//  the top of the Berry Pouch (cursor reset back to top), or nullopt if not found.
+std::optional<int> berry_pouch_target_number(std::string_view item){
+    if (item == "oran-berry"){
+        return 7;
+    }
+    if (item == "sitrus-berry"){
+        return 10;
+    }
+    return std::nullopt;
+}
+
+std::optional<size_t> find_berry_row_in_pouch(
+    ConsoleHandle& console,
+    ProControllerContext& context,
+    std::string_view item
+){
+    const std::optional<int> target_num = berry_pouch_target_number(item);
+    if (!target_num){
+        return std::nullopt;
+    }
+    //  Berry Pouch window (pokefirered/src/berry_pouch.c:218-225, 670-675):
+    //  tilemapLeft=11 (x=88), tilemapTop=1 (y=8), item_X=9 (x=97), upText_Y=2 (y=10),
+    //  7 visible rows (16px pitch). "No." spans ~12px (x=97..109); 2 digits sit in x=108..124.
+    constexpr int BERRY_POUCH_VISIBLE_ROWS = 7;
+    constexpr size_t MAX_BERRIES = 43;
+    auto read_row_num = [&](const ImageViewRGB32& screen, int shown) -> int{
+        const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+        const ImageFloatBox box(108.0 / 240, (10.0 + 16.0 * shown) / 160, 16.0 / 240, 14.0 / 160);
+        return read_digits_waterfill_template(console.logger(), extract_box_reference(game, box), DigitTemplateType::StatBox);
+    };
+
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return std::nullopt;
+    }
+    for (int shown = 0; shown < BERRY_POUCH_VISIBLE_ROWS; shown++){
+        const int num = read_row_num(screen, shown);
+        if (num == *target_num){
+            return static_cast<size_t>(shown);
+        }
+    }
+    //  Scroll past the first 7 rows (Berry Pouch scrolls once cursor passes row 3).
+    size_t downs = 0;
+    for (int c = 0; c < 3; c++){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 350ms);
+        downs++;
+    }
+    std::optional<size_t> found;
+    int last_num = -1;
+    for (size_t idx = BERRY_POUCH_VISIBLE_ROWS; idx < MAX_BERRIES; idx++){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 350ms);
+        downs++;
+        context.wait_for_all_requests();
+        VideoSnapshot cur = console.video().snapshot();
+        if (!cur){
+            break;
+        }
+        const int num = read_row_num(cur, BERRY_POUCH_VISIBLE_ROWS - 1);
+        if (num == *target_num){
+            found = idx;
+            break;
+        }
+        if (num < 0 || num == last_num){
+            break;
+        }
+        last_num = num;
+    }
+    for (size_t c = 0; c < downs; c++){
+        pbf_press_dpad(context, DPAD_UP, 80ms, 120ms);
+    }
+    context.wait_for_all_requests();
+    return found;
 }
 
 //  Opens Bag to `pocket` (0 = Items, 1 = Key Items, 2 = Poke Balls) with cursor on top row.
@@ -169,8 +246,21 @@ Outcome run_ingame_trade(StoryEnv& env, const StoryStep& step){
     //  Select mon -> SUMMARY / TRADE (cursor starts on SUMMARY? No: pokefirered EventScript_ChooseMonForInGameTrade
     //  opens party menu in PARTY_MENU_TYPE_INGAME_TRADE where pressing A directly selects the mon!).
     pbf_press_button(env.context, BUTTON_A, 160ms, 1000ms);
-    //  Wait out the trade cutscene and final dialog back to overworld.
-    mash_until_overworld(env.console, env.context, TRADE_TIMEOUT);
+    //  The trade cutscene shows a blue battle-style dialog ("Take good care of ...!")
+    //  that only closes on A/B (and that BattleScreenWatcher treats as a battle screen,
+    //  causing mash_until_overworld to stall). Tap A until the cutscene fades back to
+    //  the NPC's white post-trade dialog, then clear to overworld.
+    WhiteDialogWatcher post_trade_dialog(COLOR_RED);
+    run_until<ProControllerContext>(
+        env.console, env.context,
+        [](ProControllerContext& context){
+            for (int c = 0; c < 45; c++){
+                pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+            }
+        },
+        {{post_trade_dialog}}
+    );
+    mash_until_overworld(env.console, env.context, DIALOG_TIMEOUT);
     env.party.invalidate();
     return Pokemon::outcome_ok();
 }
@@ -253,21 +343,21 @@ Outcome run_give_bag_item(StoryEnv& env, const StoryStep& step){
         pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
         pbf_press_button(env.context, BUTTON_A, 160ms, 2000ms);
         //  Reset Berry Pouch cursor to top row.
-        for (int c = 0; c < 10; c++){
+        for (int c = 0; c < 12; c++){
             pbf_press_dpad(env.context, DPAD_UP, 80ms, 100ms);
         }
         env.context.wait_for_all_requests();
-        //  Find the target berry (or take row 0 if only 1 berry exists and OCR didn't match).
-        const std::optional<size_t> berry_row = find_item_row_in_open_pocket(env.console, env.context, env.language, item);
+        //  Identify target berry by its language-free 2-digit index ("No.07" / "No.10").
+        const std::optional<size_t> berry_row = find_berry_row_in_pouch(env.console, env.context, item);
         const size_t row = berry_row.value_or(0);
         if (!berry_row){
-            env.console.log(std::format("MailGlitch: couldn't match {} in Berry Pouch; using row 1.", item), COLOR_ORANGE);
+            env.console.log(std::format("MailGlitch: couldn't match {} index in Berry Pouch; using row 1.", item), COLOR_ORANGE);
         }
         tap_dpad_times(env.context, DPAD_DOWN, row);
-        //  Berry Pouch context menu (pokefirered src/berry_pouch.c):
-        //    0 = USE, 1 = TOSS, 2 = GIVE, 3 = EXIT.
+        //  Berry Pouch field context menu (pokefirered/src/berry_pouch.c:187-192):
+        //    0 = USE, 1 = GIVE, 2 = TOSS, 3 = EXIT.
         pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
-        tap_dpad_times(env.context, DPAD_DOWN, 2);
+        tap_dpad_times(env.context, DPAD_DOWN, 1);
         pbf_press_button(env.context, BUTTON_A, 160ms, 1500ms);
     }else{
         env.console.log(std::format("MailGlitch: giving {} from Items pocket to party slot {}.", item, *slot + 1));
@@ -418,16 +508,11 @@ bool swap_party_slots(StoryEnv& env, size_t from_slot, size_t to_slot){
         return false;
     }
     pbf_wait(env.context, 300ms);
-    env.context.wait_for_all_requests();
-    const VideoSnapshot screen = env.console.video().snapshot();
-    //  Party member menu: SUMMARY (0), field moves (1..k), SWITCH (1+k), ITEM (2+k), CANCEL (3+k).
-    size_t switch_row = 1;
-    if (screen){
-        if (const std::optional<PartyMemberMenu> menu = read_party_member_menu(env.console.logger(), env.language, screen)){
-            switch_row = 1 + menu->field_moves.size();
-        }
-    }
-    tap_dpad_times(env.context, DPAD_DOWN, switch_row);
+    //  Language-free SWITCH selection (pokefirered/src/party_menu.c:2963-2988, 3069-3072):
+    //  For >= 2 non-Egg mons, numActions >= 4 so the menu wraps, and the bottom 3 rows
+    //  are always [SWITCH, ITEM/MAIL, CANCEL] regardless of field moves or language.
+    //  Starting on SUMMARY (row 0), DPAD_UP x 3 always lands on SWITCH.
+    tap_dpad_times(env.context, DPAD_UP, 3);
     pbf_press_button(env.context, BUTTON_A, 160ms, 600ms);
 
     if (to_slot > from_slot){

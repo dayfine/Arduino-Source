@@ -188,27 +188,69 @@ size_t pick_sweeper_attack_slot(const SummaryRead& summary, size_t battle_index)
     return 0;
 }
 
-//  Steps east onto Pokemon Tower 5F PurifiedZone, clears the heal dialog, and returns to the patch anchor.
-void heal_on_purified_zone(StoryEnv& env, PaceSpot& spot, int64_t pad_steps_east){
+//  Spins in place (short 40ms taps cycling clockwise) without leaving the tile.
+//  In FRLG (pokefirered/src/field_control_avatar.c:141, 244; field_player_avatar.c:463-466),
+//  turning in place sets T_TILE_CENTER -> checkStandardWildEncounter = TRUE on every turn,
+//  rolling wild encounters faster than walking with zero positional drift.
+size_t next_clockwise_index(std::optional<Direction> facing){
+    if (!facing){
+        return 0;
+    }
+    switch (*facing){
+    case Direction::NORTH: return 1;
+    case Direction::EAST:  return 2;
+    case Direction::SOUTH: return 3;
+    case Direction::WEST:  return 0;
+    }
+    return 0;
+}
+
+bool spin_for_encounter(StoryEnv& env){
+    static constexpr DpadPosition CLOCKWISE[4] = {DPAD_UP, DPAD_RIGHT, DPAD_DOWN, DPAD_LEFT};
+    for (int attempt = 0; attempt < 3; attempt++){
+        const size_t start_idx = next_clockwise_index(
+            OverworldWalkSteps::read_facing(env.console, env.context, env.player_gender)
+        );
+        BattleFlashWatcher battle_flash(COLOR_RED);
+        WhiteDialogWatcher dialog(COLOR_RED);
+        const int ret = run_until<ProControllerContext>(
+            env.console, env.context,
+            [start_idx](ProControllerContext& ctx){
+                for (size_t i = 0; i < 80; i++){
+                    pbf_press_dpad(ctx, CLOCKWISE[(start_idx + i) % 4], 40ms, 220ms);
+                }
+            },
+            {{battle_flash}, {dialog}}
+        );
+        if (ret == 0){
+            return true;
+        }
+        if (ret == 1){
+            mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
+        }
+    }
+    return false;
+}
+
+//  Steps east onto Pokemon Tower 5F PurifiedZone, clears the heal dialog, and returns to the patch tile.
+void heal_on_purified_zone(StoryEnv& env, int64_t pad_steps_east){
     if (pad_steps_east <= 0){
         return;
     }
     env.console.log("MailGlitch: stepping onto Pokemon Tower 5F PurifiedZone to heal HP/PP.");
-    //  If pacing left the player 1 tile east of anchor, 1 fewer step east is needed.
-    const int64_t steps_to_pad = spot.displaced ? std::max<int64_t>(1, pad_steps_east - 1) : pad_steps_east;
-    for (int64_t i = 0; i < steps_to_pad; i++){
-        step_once(env.console, env.context, Direction::EAST, spot.facing, env.player_gender);
-        spot.facing = Direction::EAST;
+    std::optional<Direction> facing = OverworldWalkSteps::read_facing(env.console, env.context, env.player_gender);
+    for (int64_t i = 0; i < pad_steps_east; i++){
+        step_once(env.console, env.context, Direction::EAST, facing, env.player_gender);
+        facing = Direction::EAST;
     }
     //  PurifiedZone triggers a white dialog + heal jingle; mash B back to overworld.
     pbf_wait(env.context, 1000ms);
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
-    //  Step west back to the patch anchor.
+    //  Step west back to the exact patch tile.
     for (int64_t i = 0; i < pad_steps_east; i++){
-        step_once(env.console, env.context, Direction::WEST, spot.facing, env.player_gender);
-        spot.facing = Direction::WEST;
+        step_once(env.console, env.context, Direction::WEST, facing, env.player_gender);
+        facing = Direction::WEST;
     }
-    spot.displaced = false;
 }
 
 //  Uses a Revive from the Items pocket on 0-based `party_slot` to set HP == maxHP / 2.
@@ -257,7 +299,6 @@ Outcome run_switch_grind_step(StoryEnv& env, RunState&, const StoryStep& step){
     const int64_t target_level = Pokemon::story_arg<int64_t>(step.args, "target_level");
     const std::string& learn_move = Pokemon::story_arg<std::string>(step.args, "learn_move");
     const size_t learn_slot = counted_arg(step.args, "learn_slot", 4).value_or(0);
-    const Direction pace = Pokemon::story_arg<Direction>(step.args, "pace");
     const int64_t pad_steps_east = Pokemon::story_arg<int64_t>(step.args, "heal_pad_steps_east");
     const int64_t heal_every = std::max<int64_t>(1, Pokemon::story_arg<int64_t>(step.args, "heal_every"));
     const int64_t max_encounters = Pokemon::story_arg<int64_t>(step.args, "encounters");
@@ -295,15 +336,13 @@ Outcome run_switch_grind_step(StoryEnv& env, RunState&, const StoryStep& step){
         trainee, current_level, target_level, sweeper, learn_slot + 1, learn_move
     ));
 
-    PaceSpot spot;
     int64_t since_heal = 0;
     for (int64_t battle = 1; battle <= max_encounters; battle++){
         if (pad_steps_east > 0 && since_heal >= heal_every){
-            heal_on_purified_zone(env, spot, pad_steps_east);
+            heal_on_purified_zone(env, pad_steps_east);
             since_heal = 0;
         }
-        ConsolePatchSteps patch_steps(env.console, env.context, env.player_gender, pace, spot, []{});
-        if (!find_paced_encounter(env.console.logger(), console_bike_select(env.console, env.context, env.player_gender), patch_steps)){
+        if (!spin_for_encounter(env)){
             return Pokemon::outcome_failed("grind_no_encounter", trainee);
         }
         if (handle_encounter(env.console, env.context, true)){
@@ -345,7 +384,7 @@ Outcome run_switch_grind_step(StoryEnv& env, RunState&, const StoryStep& step){
                 env.console.log(std::format("MailGlitch: switch_grind battle {}: {} is Lv {}.", battle, trainee, current_level));
                 if (current_level >= static_cast<unsigned>(target_level)){
                     if (pad_steps_east > 0){
-                        heal_on_purified_zone(env, spot, pad_steps_east);
+                        heal_on_purified_zone(env, pad_steps_east);
                     }
                     if (!find_move_slot(*trainee_summary, learn_move)){
                         env.console.log(std::format("MailGlitch: warning — {} did not read on {} summary.", learn_move, trainee), COLOR_ORANGE);
@@ -361,7 +400,6 @@ Outcome run_switch_grind_step(StoryEnv& env, RunState&, const StoryStep& step){
 Outcome run_prepare_berry_hp_step(StoryEnv& env, RunState&, const StoryStep& step){
     const std::string& holder = Pokemon::story_arg<std::string>(step.args, "species");
     const std::string& sweeper = Pokemon::story_arg<std::string>(step.args, "sweeper");
-    const Direction pace = Pokemon::story_arg<Direction>(step.args, "pace");
 
     const std::optional<size_t> holder_slot = find_party_slot_by_species(env, holder);
     if (!holder_slot){
@@ -379,9 +417,7 @@ Outcome run_prepare_berry_hp_step(StoryEnv& env, RunState&, const StoryStep& ste
     }
 
     env.console.log(std::format("MailGlitch: fainting {} in wild battle to Revive to exact maxHP / 2.", holder));
-    PaceSpot spot;
-    ConsolePatchSteps patch_steps(env.console, env.context, env.player_gender, pace, spot, []{});
-    if (!find_paced_encounter(env.console.logger(), console_bike_select(env.console, env.context, env.player_gender), patch_steps)){
+    if (!spin_for_encounter(env)){
         return Pokemon::outcome_failed("berry_hp_no_encounter", holder);
     }
     if (handle_encounter(env.console, env.context, true)){
