@@ -43,16 +43,22 @@ Button slope_buttons(const SlopePress& press){
     return buttons;
 }
 
-//  The press under way `elapsed` after the first of `presses` began.
-size_t press_at(const std::vector<SlopePress>& presses, Milliseconds elapsed){
+struct PressAtTime{
+    size_t index = 0;
+    Milliseconds remaining = Milliseconds(0);
+};
+
+//  The press under way `elapsed` after the first of `presses` began, and how
+//  much of its hold remained.
+PressAtTime press_at(const std::vector<SlopePress>& presses, Milliseconds elapsed){
     Milliseconds end(0);
     for (size_t c = 0; c < presses.size(); c++){
         end += presses[c].hold;
         if (elapsed < end){
-            return c;
+            return PressAtTime{.index = c, .remaining = end - elapsed};
         }
     }
-    return presses.empty() ? 0 : presses.size() - 1;
+    return PressAtTime{.index = presses.empty() ? 0 : presses.size() - 1};
 }
 
 //  A white dialog that opens during a batch (SlopeMessageGate).
@@ -75,8 +81,8 @@ private:
 };
 
 //  Sends `presses` back to back, one batch with no wait between, watching
-//  for a battle and, if `message`, for a message. A battle's press is the
-//  one under way by the time since the batch began.
+//  for a battle and, if `message`, for a message. The interrupted press is
+//  the one under way by the time since the batch began.
 SlopeSendResult send_slope_presses(SlopeEnv& env, const std::vector<SlopePress>& presses, bool message){
     SlopeMessageWatcher opened;
     BattleScreenWatcher battle(COLOR_RED);
@@ -97,9 +103,48 @@ SlopeSendResult send_slope_presses(SlopeEnv& env, const std::vector<SlopePress>&
     );
     if (seen == 0){
         const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
-        return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = press_at(presses, elapsed)};
+        const PressAtTime at = press_at(presses, elapsed);
+        return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = at.index};
     }
-    return SlopeSendResult{.sent = seen == 1 ? SlopeSent::MESSAGE : SlopeSent::ALL};
+    if (seen == 1){
+        const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
+        const Milliseconds opened_at = elapsed > SlopeMessageGate::HOLD
+            ? elapsed - SlopeMessageGate::HOLD
+            : Milliseconds(0);
+        const PressAtTime at = press_at(presses, opened_at);
+        return SlopeSendResult{.sent = SlopeSent::MESSAGE, .press = at.index, .press_remaining = at.remaining};
+    }
+    return SlopeSendResult{.sent = SlopeSent::ALL};
+}
+
+//  Clears an unexpected white dialog (e.g. "REPEL's effect wore off!" or a
+//  Biker's pre-battle line) while keeping B held so the player does not roll
+//  once back in the overworld. Returns true if a battle starts.
+bool clear_slope_dialog(SlopeEnv& env){
+    BattleScreenWatcher battle(COLOR_RED);
+    WhiteDialogOverWatcher closed(COLOR_RED);
+    const int ret = run_until<ProControllerContext>(
+        env.console, env.context,
+        [](ProControllerContext& context){
+            for (size_t c = 0; c < 6; c++){
+                pbf_controller_state(context, BUTTON_B | BUTTON_A, DPAD_NONE, {0, 0}, {0, 0}, SlopeMechanics::CLOSE_PRESS);
+                pbf_controller_state(context, BUTTON_B, DPAD_NONE, {0, 0}, {0, 0}, SlopeMechanics::CLOSE_WAIT);
+            }
+        },
+        {battle, closed}
+    );
+    if (ret == 0){
+        return true;
+    }
+    BattleScreenWatcher after_battle(COLOR_RED);
+    const int after = run_until<ProControllerContext>(
+        env.console, env.context,
+        [](ProControllerContext& context){
+            pbf_controller_state(context, BUTTON_B, DPAD_NONE, {0, 0}, {0, 0}, Milliseconds(2500));
+        },
+        {after_battle}
+    );
+    return after == 0;
 }
 
 std::string slope_end_name(SlopeEnd end){
@@ -123,6 +168,7 @@ std::optional<StoryFailure> ride(SlopeEnv& env, const StoryStep&, const std::vec
             return end == BattleEnd::WON;
         },
         .log = [&env](const std::string& text){ env.console.log(text); },
+        .clear_dialog = [&env]{ return clear_slope_dialog(env); },
     };
     const SlopeResult result = ride_slope(moves, calls);
     if (result.end != SlopeEnd::DONE){
