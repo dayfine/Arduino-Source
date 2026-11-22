@@ -251,6 +251,7 @@ UnitTestResult check_triggers_avoided(const StoryStep& step, const std::vector<R
     const Trigger TRIGGERS[] = {
         {"ViridianCity", {20, 8}, "the old man's trigger", old_man},
         {"ViridianCity", {22, 8}, "the old man's trigger", old_man},
+        {"PokemonTower_2F", {17, 5}, "the Tower rival's upper trigger", step.name == "tower_2f_east_of_rival"},
         {"CinnabarIsland", {20, 5}, "the locked Gym door's trigger", walk_state().cinnabar_gym_locked},
     };
     for (const Trigger& trigger : TRIGGERS){
