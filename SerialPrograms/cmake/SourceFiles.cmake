@@ -1536,15 +1536,34 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
+    Source/Pokemon/Navigation/Pokemon_ConnectedMaps.cpp
+    Source/Pokemon/Navigation/Pokemon_ConnectedMaps.h
+    Source/Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h
     Source/Pokemon/Navigation/Pokemon_Direction.cpp
     Source/Pokemon/Navigation/Pokemon_Direction.h
     Source/Pokemon/Navigation/Pokemon_GateState.cpp
     Source/Pokemon/Navigation/Pokemon_GateState.h
     Source/Pokemon/Navigation/Pokemon_Grid.cpp
     Source/Pokemon/Navigation/Pokemon_Grid.h
+    Source/Pokemon/Navigation/Pokemon_MapData.cpp
+    Source/Pokemon/Navigation/Pokemon_MapData.h
+    Source/Pokemon/Navigation/Pokemon_MapData_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_MapData_Tests.h
+    Source/Pokemon/Navigation/Pokemon_MapFeatures.h
+    Source/Pokemon/Navigation/Pokemon_MapGates.h
+    Source/Pokemon/Navigation/Pokemon_MapTiles.h
+    Source/Pokemon/Navigation/Pokemon_MoveMechanics.h
+    Source/Pokemon/Navigation/Pokemon_MoveMechanics_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h
+    Source/Pokemon/Navigation/Pokemon_NavigationTestMaps.h
     Source/Pokemon/Navigation/Pokemon_RobustLegPlanner.h
     Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h
+    Source/Pokemon/Navigation/Pokemon_RuntimeMap.cpp
+    Source/Pokemon/Navigation/Pokemon_RuntimeMap.h
+    Source/Pokemon/Navigation/Pokemon_RuntimeMap_Tests.cpp
+    Source/Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h
     Source/Pokemon/Navigation/Pokemon_WanderRecovery.cpp
     Source/Pokemon/Navigation/Pokemon_WanderRecovery.h
     Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.cpp

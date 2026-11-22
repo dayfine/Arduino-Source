@@ -39,7 +39,11 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
+#include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
+#include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
+#include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h"
+#include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -82,7 +86,11 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     add_tests_ImageStats(ret);
     OCR::add_tests(ret);
     Kernels::add_tests(ret);
+    Pokemon::add_tests_ConnectedMaps(ret);
+    Pokemon::add_tests_MapData(ret);
+    Pokemon::add_tests_MoveMechanics(ret);
     Pokemon::add_tests_RobustLegPlanner(ret);
+    Pokemon::add_tests_RuntimeMap(ret);
     Pokemon::add_tests_WanderRecovery(ret);
     Pokemon::add_tests_AutoStory(ret);
     add_tests_ScreenEvents(ret);
