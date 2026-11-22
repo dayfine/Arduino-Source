@@ -53,7 +53,9 @@ void fight_story_battle(VideoStream& stream, ProControllerContext& context, cons
 void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label);
 
 //  A wild battle at its battle menu, fought with the best move until it ends.
-void fight_wild_battle(VideoStream& stream, ProControllerContext& context, const std::string& label);
+//  If the lead faints and another Pokemon switches in, flees immediately and
+//  returns false so training can heal instead of fighting with the backup.
+bool fight_wild_battle(VideoStream& stream, ProControllerContext& context, const std::string& label);
 
 
 
