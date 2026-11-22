@@ -4,11 +4,16 @@
  *
  */
 
+#include <atomic>
 #include <format>
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "CommonTools/ScreenEvents/ScreenFades.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStoryScreenEvents.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryWalkScreen.h"
 #include "PokemonBDSP_AutoStoryWildBattle.h"
 #include "PokemonBDSP_AutoStoryTalkOver.h"
 
@@ -18,6 +23,34 @@ namespace PokemonBDSP{
 
 
 namespace{
+
+//  Watches every frame during a settle press wait so short (< 1 s) map-change
+//  fades (e.g. Mom's walk out of PlayerHouse1F in Japanese) cannot hide between
+//  1200 ms look() snapshots. Always returns false so press timing is unchanged.
+class WaitFadeRecorder : public VisualInferenceCallback{
+public:
+    WaitFadeRecorder()
+        : VisualInferenceCallback("WaitFadeRecorder")
+    {}
+
+    virtual void make_overlays(VideoOverlaySet& items) const override{}
+    virtual bool process_frame(const ImageViewRGB32& frame, WallClock timestamp) override{
+        if (m_fade.load(std::memory_order_relaxed) == WarpFade::NONE){
+            const WarpFade seen = fade_of_screen(frame);
+            if (seen != WarpFade::NONE){
+                m_fade.store(seen, std::memory_order_relaxed);
+            }
+        }
+        return false;
+    }
+
+    WarpFade fade() const{
+        return m_fade.load(std::memory_order_relaxed);
+    }
+
+private:
+    std::atomic<WarpFade> m_fade{WarpFade::NONE};
+};
 
 //  run_settle()'s looks and presses on the console.
 class ConsoleSettleIO : public Pokemon::SettleIO{
@@ -32,14 +65,34 @@ public:
     virtual Pokemon::SettleLook look() override{
         m_context.wait_for_all_requests();
         const WallClock now = current_time();
-        const ScreenEvents events = m_eyes.observe(m_stream.video().snapshot(), now);
+        ScreenEvents events = m_eyes.observe(m_stream.video().snapshot(), now);
+        if (m_fade_during_wait != WarpFade::NONE && fade_in(events) == WarpFade::NONE){
+            events.merge(fade_events(m_fade_during_wait));
+        }
+        m_fade_during_wait = WarpFade::NONE;
         return {.events = events, .when = now, .player_still = m_eyes.player_still()};
     }
     virtual void press(SceneMove move, Milliseconds wait) override{
         if (move == SceneMove::NEXT){
             m_saw_dialogue = true;
         }
-        pbf_press_button(m_context, move == SceneMove::NEXT ? m_spec.next : BUTTON_B, TALK_OVER_HOLD, wait);
+        const Button button = move == SceneMove::NEXT ? m_spec.next : BUTTON_B;
+        if (!m_spec.settle.judge.warp || wait <= Milliseconds(0)){
+            pbf_press_button(m_context, button, TALK_OVER_HOLD, wait);
+            return;
+        }
+        pbf_press_button(m_context, button, TALK_OVER_HOLD, Milliseconds(0));
+        WaitFadeRecorder recorder;
+        run_until<ProControllerContext>(
+            m_stream, m_context,
+            [wait](ProControllerContext& context){
+                pbf_wait(context, wait);
+            },
+            {{recorder}}
+        );
+        if (recorder.fade() != WarpFade::NONE){
+            m_fade_during_wait = recorder.fade();
+        }
     }
     bool saw_dialogue() const{
         return m_saw_dialogue;
@@ -61,6 +114,7 @@ private:
     const TalkOverSpec& m_spec;
     BdspScreenObserver m_eyes;
     bool m_saw_dialogue = false;
+    WarpFade m_fade_during_wait = WarpFade::NONE;
 };
 
 } // namespace
