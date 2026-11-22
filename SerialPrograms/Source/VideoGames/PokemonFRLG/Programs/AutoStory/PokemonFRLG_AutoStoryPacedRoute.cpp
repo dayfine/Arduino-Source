@@ -41,6 +41,11 @@ std::vector<MapData> make_story_maps(bool silph_cleared){
     //  leaving him in makes 05.09's east leg treat (12, 15) as a wall and
     //  overshoot onto column 12 into Camper Ethan (12, 19).
     flags.insert("FLAG_HIDE_NUGGET_BRIDGE_ROCKET");
+    //  Rocket Hideout B4F's Silph Scope ball (20, 5) is hidden at new game
+    //  until Giovanni drops it after 09.02's battle. Leaving it in makes
+    //  09.02/beside_giovanni mark east 2 to (19, 5) as to_wall, so the wall-
+    //  check tap steps east onto (20, 5) past Giovanni.
+    flags.insert("FLAG_HIDE_SILPH_SCOPE");
     if (silph_cleared){
         //  Giovanni's Rockets leave Silph Co. and Saffron City when he has
         //  lost on 11F (SilphCo_11F_EventScript_Giovanni sets both).
