@@ -69,7 +69,7 @@
       {
         "id": "teach_blizzard",
         "action": "teach",
-        "why": "TM14 Blizzard over Dig (pokeguy, PokemonSimulation docs/progression/pokeguy-moves.md: Strength, Surf, Bite, Blizzard; the user approved the TM spend 2026-11-12), taught as soon as it is picked up; keep list: every move the lead can know but Dig, so the one other move (Dig) goes; fails if none or several are outside the list",
+        "why": "TM14 Blizzard over Mega Kick (12.01 replaced Dig with Surf so the lead knows Surf, Water Pulse, Bite, Mega Kick; replacing Mega Kick yields pokeguy's Surf, Water Pulse, Bite, Blizzard for Silph/Blaine/Erika, and 19.04 Strength later replaces Water Pulse), taught as soon as it is picked up; keep list: every move the lead can know except Mega Kick/Dig; fails if none or several are outside the list",
         "args": {
           "item": "tm14",
           "move": "blizzard",
@@ -81,7 +81,6 @@
             "water-gun",
             "bubble",
             "bite",
-            "mega-kick",
             "water-pulse",
             "surf"
           ]
