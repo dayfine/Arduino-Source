@@ -57,6 +57,7 @@ public:
 
 private:
     friend void report_start_check_failure(ProgramEnvironment& env, std::string check, std::string message);
+    friend void report_run_checkpoint(ProgramEnvironment& env, std::string checkpoint);
 
     const ProgramInfo& m_program_info;
     ProgramSession& m_session;
@@ -70,6 +71,7 @@ private:
 
 
 void report_start_check_failure(ProgramEnvironment& env, std::string check, std::string message);
+void report_run_checkpoint(ProgramEnvironment& env, std::string checkpoint);
 
 
 //  Templates

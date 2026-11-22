@@ -158,12 +158,13 @@ private:
     //  Everything here must be called under the lock.
 
     friend void report_start_check_failure(ProgramEnvironment& env, std::string check, std::string message);
+    friend void report_run_checkpoint(ProgramEnvironment& env, std::string checkpoint);
 
     void set_state(ProgramState state);
     //  Records the start time and who asked, before the state goes RUNNING.
     void mark_started(ActionSource source, std::optional<std::string> request_id);
     //  The run ended: records who ended it, unless a stop was asked for, and goes STOPPED.
-    void set_finished();
+    void set_finished(ProgramOutcomeKind kind);
     void push_stats();
     void push_error(const std::string& message);
     void push_download_error(const std::string& message);

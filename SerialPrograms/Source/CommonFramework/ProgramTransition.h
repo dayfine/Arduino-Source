@@ -16,6 +16,7 @@
 
 #include <optional>
 #include <string>
+#include <string_view>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/Concurrency/Mutex.h"
 
@@ -37,11 +38,20 @@ enum class ActionSource{
     PROGRAM_ERROR,  //  The program ended with an error.
 };
 
-struct ProgramStartFailure{
+enum class ProgramOutcomeKind{
+    PASSED,
+    FAILED,
+    CANCELLED,
+    START_CHECK_FAILED,
+};
+
+struct ProgramOutcome{
+    ProgramOutcomeKind kind = ProgramOutcomeKind::PASSED;
+    std::string checkpoint = {};
     std::string check = {};
     std::string message = {};
     WallClock at = {};
-    std::optional<std::string> request_id = {};  // The request that started the run.
+    std::optional<std::string> start_request_id = {};
 };
 
 //  One start or stop of a program.
@@ -50,7 +60,7 @@ struct ProgramTransition{
     ActionSource source;
     std::optional<std::string> request_id;  //  The lab request's id, if a lab request asked.
     WallClock at;
-    std::optional<ProgramStartFailure> start_failure = {};
+    std::optional<ProgramOutcome> outcome = {};
 };
 
 
@@ -64,9 +74,11 @@ public:
     //  The program went STOPPING because `source` asked.
     void stop_requested(ActionSource source, std::optional<std::string> request_id, WallClock now);
     //  The running program reported an error.
-    void error_reported(std::optional<ProgramStartFailure> start_failure = {});
+    void error_reported(std::string_view message);
+    void start_check_failed(std::string check, std::string message, WallClock at);
+    void set_checkpoint(std::string checkpoint);
     //  The program went STOPPED.
-    void finished(WallClock now);
+    void finished(WallClock now, ProgramOutcomeKind kind);
 
     std::optional<ProgramTransition> last() const;
 
@@ -75,7 +87,7 @@ private:
     bool m_stop_requested = false;
     bool m_error = false;
     std::optional<ProgramTransition> m_last;
-    std::optional<ProgramStartFailure> m_start_failure;
+    ProgramOutcome m_outcome;
 };
 
 

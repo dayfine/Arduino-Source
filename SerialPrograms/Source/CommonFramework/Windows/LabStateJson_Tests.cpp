@@ -276,17 +276,18 @@ const GoldenCase GOLDEN_CASES[] = {
 };
 
 
-struct StartOutcomeInput{
+struct OutcomeInput{
+    ProgramOutcomeKind kind = ProgramOutcomeKind::START_CHECK_FAILED;
     bool stopped_by_user = false;
     bool restarted = false;
 };
-struct StartOutcomeExpectation{
-    bool outcome_written = false;
+struct OutcomeExpectation{
+    std::string_view json = {};
 };
-struct StartOutcomeCase{
+struct OutcomeCase{
     std::string name;
-    StartOutcomeInput input;
-    StartOutcomeExpectation expectation;
+    OutcomeInput input;
+    OutcomeExpectation expectation;
 };
 
 constexpr std::string_view CORRELATED_START_FAILURE = R"("last_transition": {
@@ -304,9 +305,9 @@ constexpr std::string_view CORRELATED_START_FAILURE = R"("last_transition": {
       "at": "2026-11-14T06:10:12.122Z"
     })";
 
-class Test_LabStartOutcome : public UnitTest{
+class Test_LabOutcome : public UnitTest{
 public:
-    explicit Test_LabStartOutcome(StartOutcomeCase test_case)
+    explicit Test_LabOutcome(OutcomeCase test_case)
         : UnitTest(std::format("CommonFramework::LabStateJson - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
@@ -316,13 +317,27 @@ public:
         const WallClock now = state.written_at;
         ProgramTransitionLatch latch;
         latch.started(ActionSource::LAB, "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10", now - 3ms);
-        latch.error_reported(ProgramStartFailure{
-            .check = "game_screen", .message = "The game is not running.", .at = now - 2ms,
-        });
+        switch (m_case.input.kind){
+        case ProgramOutcomeKind::START_CHECK_FAILED:
+            latch.start_check_failed("game_screen", "The game is not running.", now - 2ms);
+            latch.error_reported("Startup wrapper message.");
+            break;
+        case ProgramOutcomeKind::FAILED:
+            latch.set_checkpoint("00.03");
+            latch.error_reported("Dawn's scene did not trigger.");
+            break;
+        case ProgramOutcomeKind::PASSED:
+            latch.set_checkpoint("01.11");
+            break;
+        case ProgramOutcomeKind::CANCELLED:
+            break;
+        }
         if (m_case.input.stopped_by_user){
             latch.stop_requested(ActionSource::UI, std::nullopt, now - 1ms);
         }
-        latch.finished(now);
+        const ProgramOutcomeKind kind = m_case.input.kind == ProgramOutcomeKind::START_CHECK_FAILED
+            ? ProgramOutcomeKind::FAILED : m_case.input.kind;
+        latch.finished(now, kind);
         if (m_case.input.restarted){
             latch.started(ActionSource::UI, std::nullopt, now + 1ms);
             state.legacy.state = "RUNNING";
@@ -330,21 +345,39 @@ public:
         state.last_transition = latch.last();
 
         const std::string json = lab_state_json_text(state);
-        const bool expected = m_case.expectation.outcome_written;
-        if (json.contains(R"("last_outcome": {)") != expected || json.contains(CORRELATED_START_FAILURE) != expected){
-            return std::format("Expected startup outcome present: {}, got {}", m_case.expectation.outcome_written, json);
+        if (m_case.expectation.json.empty()){
+            return !json.contains(R"("last_outcome": {)") && !json.contains(R"("terminal_outcome": {)");
+        }
+        const bool start_failure = m_case.input.kind == ProgramOutcomeKind::START_CHECK_FAILED &&
+            !m_case.input.stopped_by_user;
+        if (!json.contains(start_failure ? R"("last_outcome": {)" : R"("terminal_outcome": {)") ||
+            !json.contains(m_case.expectation.json) ||
+            !json.contains(R"("request_id": "5f0c2a8e-3d41-4b7a-9c55-0e6a1f2b7c10",
+      "outcome":)") ||
+            (m_case.input.stopped_by_user && json.contains("game_screen"))
+        ){
+            return std::format("Wrong terminal outcome: {}", json);
         }
         return true;
     }
 
 private:
-    StartOutcomeCase m_case;
+    OutcomeCase m_case;
 };
 
-const StartOutcomeCase START_OUTCOME_CASES[] = {
-    {.name = "failed startup is written with the start request", .input = {}, .expectation = {.outcome_written = true}},
-    {.name = "UI stop takes precedence over startup failure", .input = {.stopped_by_user = true}, .expectation = {}},
+const OutcomeCase OUTCOME_CASES[] = {
+    {.name = "failed startup is written with the start request", .input = {},
+     .expectation = {.json = CORRELATED_START_FAILURE}},
+    {.name = "UI stop takes precedence over startup failure", .input = {.stopped_by_user = true},
+     .expectation = {.json = R"("outcome": "cancelled",)"}},
     {.name = "new start clears previous outcome", .input = {.restarted = true}, .expectation = {}},
+    {.name = "success reports the last checkpoint", .input = {.kind = ProgramOutcomeKind::PASSED},
+     .expectation = {.json = R"("outcome": "passed",
+      "checkpoint": "01.11",)"}},
+    {.name = "failure reports the checkpoint and reason without media", .input = {.kind = ProgramOutcomeKind::FAILED},
+     .expectation = {.json = R"("outcome": "failed",
+      "checkpoint": "00.03",
+      "message": "Dawn's scene did not trigger.",)"}},
 };
 
 
@@ -674,8 +707,8 @@ void add_tests_LabStateJson(UnitTestDatabase& database){
     for (const SinceCase& c : SINCE_CASES){
         database.add<Test_LabTransitionSince>(c);
     }
-    for (const StartOutcomeCase& c : START_OUTCOME_CASES){
-        database.add<Test_LabStartOutcome>(c);
+    for (const OutcomeCase& c : OUTCOME_CASES){
+        database.add<Test_LabOutcome>(c);
     }
     for (const ThrottleCase& c : THROTTLE_CASES){
         database.add<Test_LabStateThrottle>(c);

@@ -37,11 +37,11 @@ const ProgramInfo& ProgramEnvironment::program_info() const{
 
 void report_start_check_failure(ProgramEnvironment& env, std::string check, std::string message){
     env.log(std::format("[StartCheck] {}: {}", check, message), COLOR_RED);
-    env.m_session.m_transitions.error_reported(ProgramStartFailure{
-        .check = std::move(check),
-        .message = std::move(message),
-        .at = current_time(),
-    });
+    env.m_session.m_transitions.start_check_failed(std::move(check), std::move(message), current_time());
+}
+
+void report_run_checkpoint(ProgramEnvironment& env, std::string checkpoint){
+    env.m_session.m_transitions.set_checkpoint(std::move(checkpoint));
 }
 
 

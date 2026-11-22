@@ -11,6 +11,7 @@
 #include <format>
 #include <string_view>
 #include <vector>
+#include "Common/Cpp/Exceptions.h"
 #include "LabStateJson.h"
 
 namespace PokemonAutomation{
@@ -205,14 +206,35 @@ void write_transition(const std::optional<ProgramTransition>& transition, Ordere
     json.close();
 }
 
-void write_start_failure(const ProgramStartFailure& failure, OrderedJsonWriter& json){
-    json.open("last_outcome");
+std::string_view outcome_name(ProgramOutcomeKind kind){
+    switch (kind){
+    case ProgramOutcomeKind::PASSED:
+        return "passed";
+    case ProgramOutcomeKind::FAILED:
+        return "failed";
+    case ProgramOutcomeKind::CANCELLED:
+        return "cancelled";
+    case ProgramOutcomeKind::START_CHECK_FAILED:
+        return "start_check_failed";
+    }
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown program outcome.");
+}
+
+void write_outcome(const ProgramOutcome& outcome, OrderedJsonWriter& json){
+    json.open(outcome.kind == ProgramOutcomeKind::START_CHECK_FAILED ? "last_outcome" : "terminal_outcome");
     json.value("run_id", "null");
-    json.value("request_id", json_nullable(failure.request_id));
-    json.value("outcome", json_string("start_check_failed"));
-    json.value("check", json_string(failure.check));
-    json.value("message", json_string(failure.message));
-    json.value("at", json_timestamp(failure.at));
+    json.value("request_id", json_nullable(outcome.start_request_id));
+    json.value("outcome", json_string(outcome_name(outcome.kind)));
+    if (!outcome.checkpoint.empty()){
+        json.value("checkpoint", json_string(outcome.checkpoint));
+    }
+    if (outcome.kind == ProgramOutcomeKind::START_CHECK_FAILED){
+        json.value("check", json_string(outcome.check));
+    }
+    if (outcome.kind == ProgramOutcomeKind::START_CHECK_FAILED || !outcome.message.empty()){
+        json.value("message", json_string(outcome.message));
+    }
+    json.value("at", json_timestamp(outcome.at));
     json.close();
 }
 
@@ -221,8 +243,8 @@ void write_program(const LabAppState& state, OrderedJsonWriter& json){
     json.value("state", json_string(lower_case(state.legacy.state)));
     json.value("run_id", "null");
     write_transition(state.last_transition, json);
-    if (state.last_transition && state.last_transition->start_failure){
-        write_start_failure(*state.last_transition->start_failure, json);
+    if (state.legacy.state == "STOPPED" && state.last_transition && state.last_transition->outcome){
+        write_outcome(*state.last_transition->outcome, json);
     }
     if (state.paused){
         json.value("paused", json_string(*state.paused));

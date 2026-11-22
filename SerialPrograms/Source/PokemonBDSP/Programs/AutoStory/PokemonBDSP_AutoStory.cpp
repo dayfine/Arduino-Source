@@ -299,6 +299,7 @@ std::string run_story(
         Pokemon::log_story_failure(game);
         throw;
     }
+    report_run_checkpoint(env, report.completed ? range.to.value_or("") : report.failed_checkpoint);
     Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
     std::string done;
     try{
@@ -385,6 +386,7 @@ void BDSPAutoStory::run_plan(
     Pokemon::RunState state;
     start_story(env, context, plan.rows.front(), start, game, state);
     if (const std::optional<Pokemon::VerifyPolicy> verify = RUN.VERIFY.policy()){
+        report_run_checkpoint(env, plan.rows.front().id);
         const std::string summary = verify_story_checkpoint(plan.rows.front().id, *verify, segment, game, state);
         send_program_finished_notification(env, NOTIFICATION_PROGRAM_FINISH, summary);
         return;

@@ -67,10 +67,10 @@ void apply(Step step, WallClock now, ProgramTransitionLatch& latch){
         latch.stop_requested(ActionSource::LAB, std::string(REQUEST_ID), now);
         return;
     case Step::ERROR_REPORTED:
-        latch.error_reported();
+        latch.error_reported("Program error");
         return;
     case Step::FINISHED:
-        latch.finished(now);
+        latch.finished(now, ProgramOutcomeKind::PASSED);
         return;
     }
 }

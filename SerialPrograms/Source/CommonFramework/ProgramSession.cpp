@@ -7,6 +7,7 @@
 #include <future>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PanicDump.h"
+#include "Common/Cpp/ScopeExit.h"
 #include "Common/Cpp/Logging/GlobalLogger.h"
 #include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/Logging/Logger.h"
@@ -188,8 +189,8 @@ void ProgramSession::mark_started(ActionSource source, std::optional<std::string
     m_last_state_change.store(now, std::memory_order_relaxed);
     m_transitions.started(source, std::move(request_id), now);
 }
-void ProgramSession::set_finished(){
-    m_transitions.finished(current_time());
+void ProgramSession::set_finished(ProgramOutcomeKind kind){
+    m_transitions.finished(current_time(), kind);
     set_state(ProgramState::STOPPED);
 }
 void ProgramSession::push_stats(){
@@ -200,7 +201,7 @@ void ProgramSession::push_stats(){
     );
 }
 void ProgramSession::push_error(const std::string& message){
-    m_transitions.error_reported();
+    m_transitions.error_reported(message);
     m_listeners.run_method(&Listener::error, message);
 }
 
@@ -338,15 +339,22 @@ std::string ProgramSession::stop_program(ActionSource source, std::optional<std:
 
 void ProgramSession::run_program(){
     SleepSuppressScope sleep_scope(GlobalSettings::instance().SLEEP_SUPPRESS->PROGRAM_RUNNING);
+    ProgramOutcomeKind outcome = ProgramOutcomeKind::FAILED;
+    ScopeExit finish([&]{
+        std::lock_guard<Mutex> lg(m_lock);
+        set_finished(outcome);
+    });
 
     {
         std::lock_guard<Mutex> lg(m_lock);
         if (current_state() != ProgramState::RUNNING){
+            outcome = ProgramOutcomeKind::CANCELLED;
             return;
         }
 
         std::string error = check_validity();
         if (!error.empty()){
+            push_error(error);
             throw UserSetupError(logger(), std::move(error));
         }
 
@@ -377,11 +385,15 @@ void ProgramSession::run_program(){
             internal_run_program(*env);
             env->log_to_ui("- Program Finished -");
             logger().log("Program finished normally!", COLOR_BLUE);
+            outcome = ProgramOutcomeKind::PASSED;
         }catch (OperationCancelledException&){
+            outcome = ProgramOutcomeKind::CANCELLED;
             env->log_to_ui("- Program Stopped -");
         }catch (ProgramCancelledException&){
+            outcome = ProgramOutcomeKind::CANCELLED;
             env->log_to_ui("- Program Stopped -");
         }catch (ProgramFinishedException& e){
+            outcome = ProgramOutcomeKind::PASSED;
             logger().log("Program finished early!", COLOR_BLUE);
             env->log_to_ui("- Program Finished -");
             send_program_finished_notification(
@@ -466,7 +478,6 @@ void ProgramSession::run_program(){
         std::lock_guard<Mutex> lg(m_lock);
         push_stats();
         update_historical_stats_with_current();
-        set_finished();
     }
 }
 
