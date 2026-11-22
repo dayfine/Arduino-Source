@@ -2,6 +2,21 @@
 
 > [!NOTE]
 > Analysis based on `origin/bdsp/core-adopt` (PR #772) and `origin/frlg/core-adopt` (PR #779) diffed against the top of the shared seam stack `origin/autostory/navigation-sim-seam` (PR #771), alongside `origin/bdsp/lean` (PR #753) and `origin/frlg/lean` (PR #652).
+>
+> **Single source of truth for live seam PR status & core decisions (`S1`–`S17`, `E1`–`E10`):** [`autostory/SHARED_CORE.md`](https://github.com/dayfine/Arduino-Source/blob/agents/autostory/SHARED_CORE.md) on the `agents` branch.
+> **Navigation seam layout & rules:** [`SerialPrograms/Source/Pokemon/Navigation/README.md`](https://github.com/dayfine/Arduino-Source/blob/autostory/navigation-sim-seam/SerialPrograms/Source/Pokemon/Navigation/README.md) (PR #771).
+> **GitHub milestone tracker:** [#144](https://github.com/dayfine/Arduino-Source/issues/144).
+
+---
+
+## 0. Landing Priority: Finish the Existing Seam Stack First
+
+Before starting any new extraction PR from Sections 2 and 4 below, **prioritize landing the existing 11-PR stack** (`#572 → #667 → #648 → #653 → #741 → #762 → #764 → #768 → #769 → #770 → #771`) plus `#772`/`#779` (`core-adopt`):
+
+- **Already built & mostly green:** 9 of the 11 seam PRs (`#572`, `#667`, `#648`, `#653`, `#762`, `#764`, `#768`, `#769`, `#770`) are `CLEAN`; only `#741` and `#771` have a single Windows CI failure, and `#779` has Code Health + Ubuntu failures (`#772` has 0 failing checks).
+- **Immediate win (~41k lines / ~340 files):** Landing `#572`–`#771` strips the duplicated shared infrastructure out of both `bdsp/lean` (`#753`) and `frlg/lean` (`#652`) and puts the Phase 1 target primitives (`#762` Maps, `#764` WallRecovery/RouteScorer, `#769` Trace/Replay, `#771` Sim harness) on `main`.
+- **Avoids rebase churn:** Starting Phase 1–4 extractions before `#771` merges would force continuous rebasing across 11+ stacked PRs.
+- **Parallelizable:** `#728` (`ns/system-keyboard`, based on `main`) is independent and can land in parallel once its CI check is fixed.
 
 ---
 
