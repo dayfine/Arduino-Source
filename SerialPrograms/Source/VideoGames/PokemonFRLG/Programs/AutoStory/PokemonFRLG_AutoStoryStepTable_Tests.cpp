@@ -15,7 +15,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -46,58 +45,9 @@ namespace PokemonFRLG{
 
 namespace{
 
-using Pokemon::StoryStepKind;
-
-const StoryStepKind ALL_KINDS[] = {
-    StoryStepKind::NEW_GAME, StoryStepKind::OPTIONS, StoryStepKind::ROUTE, StoryStepKind::LEGS,
-    StoryStepKind::STEP, StoryStepKind::TALK, StoryStepKind::ANSWER, StoryStepKind::MASH,
-    StoryStepKind::BATTLE, StoryStepKind::TRAIN, StoryStepKind::HEAL, StoryStepKind::SHOP,
-    StoryStepKind::SAVE, StoryStepKind::READY, StoryStepKind::GAME,
-};
-
-//  The action StoryExecutor::game() ran for a GAME `step` before the table.
-StoryActionId old_game_dispatch(const StoryStep& step){
-    if (step.action == CLOSE_TRAINER_CARD){
-        return StoryActionId::CLOSE_TRAINER_CARD;
-    }
-    if (step.action == LEAVE_GIFT_SUMMARY){
-        return StoryActionId::LEAVE_GIFT_SUMMARY;
-    }
-    if (step.action == CUT_TREE_VARIANT){
-        return StoryActionId::CUT_TREE;
-    }
-    if (step.action == PUSH_BOULDER_VARIANT){
-        return StoryActionId::PUSH_BOULDER;
-    }
-    if (step.action == TRASH_CANS_VARIANT){
-        return StoryActionId::TRASH_CANS;
-    }
-    return StoryActionId::GAME;
-}
-
-//  The action StoryExecutor ran for `step` before the table: the shared
-//  per-kind dispatch (StoryStepExecutor::run()) into the kinds it
-//  overrode. Nothing for the kinds it left to the shared executor.
-std::optional<StoryActionId> old_dispatch(const StoryStep& step){
-    switch (step.kind){
-    case StoryStepKind::NEW_GAME:   return StoryActionId::NEW_GAME;
-    case StoryStepKind::OPTIONS:    return StoryActionId::OPTIONS;
-    case StoryStepKind::ROUTE:      return StoryActionId::ROUTE;
-    case StoryStepKind::LEGS:       return StoryActionId::LEGS;
-    case StoryStepKind::STEP:       return StoryActionId::STEP;
-    case StoryStepKind::TALK:       return StoryActionId::TALK;
-    case StoryStepKind::ANSWER:     return StoryActionId::ANSWER;
-    case StoryStepKind::MASH:       return StoryActionId::MASH;
-    case StoryStepKind::BATTLE:     return StoryActionId::BATTLE;
-    case StoryStepKind::HEAL:       return StoryActionId::HEAL;
-    case StoryStepKind::SHOP:       return StoryActionId::SHOP;
-    case StoryStepKind::READY:      return StoryActionId::READY;
-    case StoryStepKind::GAME:       return old_game_dispatch(step);
-    case StoryStepKind::TRAIN:
-    case StoryStepKind::SAVE:
-        return std::nullopt;
-    }
-    return std::nullopt;
+//  The action StoryExecutor ran for `step` by S11 action name.
+StoryActionId expected_dispatch(const StoryStep& step){
+    return story_action_id_of(step.action);
 }
 
 //  FRLG's rows bound to a recorder: each action adds its name to `trace`.
@@ -105,83 +55,64 @@ class FakeGame{
 public:
     FakeGame()
         : m_table(make_story_action_table([this](StoryActionId id){ return recorder(id); }))
-        , m_executor(m_table, m_guard)
     {}
 
-    const Pokemon::StoryActionTable& table() const{
+    const FrlgActionTable& table() const{
         return m_table;
     }
-    //  `step` through the table: the outcome, and the actions it ran.
-    Pokemon::Outcome run(const StoryStep& step, std::vector<std::string>& trace){
+    std::optional<Pokemon::StoryFailure> run(const StoryStep& step, std::vector<std::string>& trace){
         m_trace = &trace;
-        Pokemon::RunState state;
-        return m_executor.run(step, state);
+        FrlgRunState state;
+        const auto it = m_table.find(step.action);
+        if (it == m_table.end() || !it->second){
+            return frlg_unsupported_step(step);
+        }
+        return it->second(step, state);
     }
 
 private:
-    Pokemon::StoryAction recorder(StoryActionId id){
-        return {.act = [this, id](const StoryStep&, Pokemon::RunState&){
+    FrlgStepAction recorder(StoryActionId id){
+        return [this, id](const StoryStep&, FrlgRunState&) -> std::optional<Pokemon::StoryFailure>{
             m_trace->emplace_back(story_action_name(id));
-            return Pokemon::outcome_ok();
-        }};
+            return std::nullopt;
+        };
     }
 
     std::vector<std::string>* m_trace = nullptr;
-    Pokemon::StepGuard m_guard;
-    Pokemon::StoryActionTable m_table;
-    Pokemon::TableExecutor m_executor;
+    FrlgActionTable m_table;
 };
 
-//  Why `step` didn't run what old_dispatch() did, or empty.
+//  Why `step` didn't run what expected_dispatch() did, or empty.
 std::string parity_error(FakeGame& game, const StoryStep& step){
     std::vector<std::string> trace;
-    const Pokemon::Outcome outcome = game.run(step, trace);
-    const std::optional<StoryActionId> expected = old_dispatch(step);
-    const std::string label = std::format("{} '{}' ({})", Pokemon::story_step_kind_name(step.kind), step.action, step.name);
-    if (!expected){
-        if (!trace.empty() || outcome.failure != "unsupported_step"){
-            return label + ": expected unsupported, ran " + (trace.empty() ? outcome.failure : trace[0]);
-        }
-        return "";
-    }
-    if (trace != std::vector<std::string>{std::string(story_action_name(*expected))} || !outcome.succeeded()){
-        return std::format("{}: expected {}, ran {} action(s){}", label, story_action_name(*expected),
+    const std::optional<Pokemon::StoryFailure> failure = game.run(step, trace);
+    const StoryActionId expected = expected_dispatch(step);
+    const std::string label = std::format("{} ({})", step.action, step.name);
+    if (trace != std::vector<std::string>{std::string(story_action_name(expected))} || failure){
+        return std::format("{}: expected {}, ran {} action(s){}", label, story_action_name(expected),
             trace.size(), trace.empty() ? "" : ", first " + trace[0]);
     }
     return "";
 }
 
-//  Every kind, with no variant, an unknown one, and each one a row names.
-//  The table finds a row by the variant's first word, where game() compared
-//  the whole variant; the rows' variants are one word, as every authored
-//  step's is (test_parity_story_steps()).
-std::vector<StoryStep> every_kind_and_variant(){
-    std::vector<std::string> variants{"", "no_such_variant", "no_such_variant key=1"};
-    for (const StoryActionRow& row : story_action_rows()){
-        if (!row.variant.empty()){
-            variants.push_back(row.variant);
-        }
-    }
-    std::vector<StoryStep> steps;
-    for (StoryStepKind kind : ALL_KINDS){
-        for (const std::string& variant : variants){
-            StoryStep step;
-            step.kind = kind;
-            step.name = "synthetic";
-            step.action = variant;
-            steps.push_back(std::move(step));
-        }
-    }
-    return steps;
-}
-
 UnitTestResult test_parity_every_kind(){
     FakeGame game;
-    for (const StoryStep& step : every_kind_and_variant()){
+    for (const std::string& action : frlg_action_names()){
+        StoryStep step;
+        step.name = "synthetic";
+        step.action = action;
         const std::string error = parity_error(game, step);
         if (!error.empty()){
             return error;
         }
+    }
+    StoryStep unknown;
+    unknown.name = "synthetic";
+    unknown.action = "no_such_action";
+    std::vector<std::string> trace;
+    const std::optional<Pokemon::StoryFailure> failure = game.run(unknown, trace);
+    if (!trace.empty() || !failure || failure->code != "unsupported_step"){
+        return "unknown action: expected unsupported_step.";
     }
     return true;
 }
@@ -203,8 +134,10 @@ UnitTestResult test_every_step_bound(){
     FakeGame game;
     std::string problems;
     for (const StoryCheckpoint& data : story_checkpoints()){
-        for (const std::string& problem : Pokemon::lint_story_checkpoint(data, game.table())){
-            problems += "\n" + problem;
+        for (const StoryStep& step : data.steps){
+            if (!game.table().contains(step.action)){
+                problems += std::format("\n{}/{}: unbound action '{}'", data.id, step.name, step.action);
+            }
         }
     }
     if (!problems.empty()){
@@ -217,9 +150,9 @@ UnitTestResult test_every_step_bound(){
 //  Every action a step can name says what it does to the Items pocket: a
 //  new one without a row would leave a battle on rows it changed.
 UnitTestResult test_every_action_declares_pocket_change(){
-    for (const Pokemon::StoryActionSpec& spec : story_action_specs()){
-        if (!items_pocket_change(spec.kind, spec.name)){
-            return std::format("{} \"{}\" has no Items pocket change.", Pokemon::story_step_kind_name(spec.kind), spec.name);
+    for (const std::string& action : frlg_action_names()){
+        if (!items_pocket_change(action)){
+            return std::format("\"{}\" has no Items pocket change.", action);
         }
     }
     return true;
@@ -278,7 +211,6 @@ const StepTableTestCase STEP_TABLE_CASES[] = {
 };
 
 struct PocketChangeInput{
-    StoryStepKind kind;
     std::string action;
 };
 struct PocketChangeExpectation{
@@ -297,7 +229,7 @@ public:
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const std::optional<ItemsPocketChange> change = items_pocket_change(m_case.input.kind, m_case.input.action);
+        const std::optional<ItemsPocketChange> change = items_pocket_change(m_case.input.action);
         if (change != m_case.expectation.change){
             return std::format("Got {}; expected {}.", change ? static_cast<int>(*change) : -1, static_cast<int>(m_case.expectation.change));
         }
@@ -310,18 +242,17 @@ private:
 
 //  The places the story changes the Items pocket, each as it is kept.
 const PocketChangeCase POCKET_CHANGE_CASES[] = {
-    {.name = "a Mart buys and sells", .input = {StoryStepKind::GAME, MART_ACTION}, .expectation = {ItemsPocketChange::STALE}},
-    {.name = "Viridian's shop", .input = {StoryStepKind::SHOP, ""}, .expectation = {ItemsPocketChange::STALE}},
-    {.name = "a use_item step", .input = {StoryStepKind::GAME, USE_ITEM_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
-    {.name = "a use_repel step", .input = {StoryStepKind::GAME, USE_REPEL_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
-    {.name = "a talk: a gift or an item ball", .input = {StoryStepKind::TALK, ""}, .expectation = {ItemsPocketChange::STALE}},
-    {.name = "a wanderer's talk", .input = {StoryStepKind::TALK, TALK_WANDERER_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
-    {.name = "a battle counts its items", .input = {StoryStepKind::BATTLE, "fight"}, .expectation = {ItemsPocketChange::COUNTED}},
-    {.name = "a ready step counts its items", .input = {StoryStepKind::READY, ""}, .expectation = {ItemsPocketChange::COUNTED}},
-    {.name = "heal_to_full counts its items", .input = {StoryStepKind::GAME, HEAL_TO_FULL_ACTION}, .expectation = {ItemsPocketChange::COUNTED}},
-    {.name = "count_items reads the pocket", .input = {StoryStepKind::GAME, COUNT_ITEMS_VARIANT}, .expectation = {ItemsPocketChange::COUNTED}},
-    {.name = "a TM taught: the TM Case", .input = {StoryStepKind::GAME, TEACH_ACTION}, .expectation = {ItemsPocketChange::NONE}},
-    {.name = "a walk", .input = {StoryStepKind::ROUTE, RUN_VARIANT}, .expectation = {ItemsPocketChange::NONE}},
+    {.name = "a Mart buys and sells", .input = {MART_ACTION}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "Viridian's shop", .input = {"shop"}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a use_item step", .input = {USE_ITEM_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a use_repel step", .input = {USE_REPEL_VARIANT}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a talk: a gift or an item ball", .input = {"talk"}, .expectation = {ItemsPocketChange::STALE}},
+    {.name = "a battle counts its items", .input = {"battle"}, .expectation = {ItemsPocketChange::COUNTED}},
+    {.name = "a ready step counts its items", .input = {"ready"}, .expectation = {ItemsPocketChange::COUNTED}},
+    {.name = "heal_to_full counts its items", .input = {HEAL_TO_FULL_ACTION}, .expectation = {ItemsPocketChange::COUNTED}},
+    {.name = "count_items reads the pocket", .input = {COUNT_ITEMS_VARIANT}, .expectation = {ItemsPocketChange::COUNTED}},
+    {.name = "a TM taught: the TM Case", .input = {TEACH_ACTION}, .expectation = {ItemsPocketChange::NONE}},
+    {.name = "a walk", .input = {"route"}, .expectation = {ItemsPocketChange::NONE}},
 };
 
 } // namespace

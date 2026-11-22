@@ -6,7 +6,6 @@
 #include <utility>
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "LegacyJsonFormat.h"
 #include "JsonWriter.h"
 

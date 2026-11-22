@@ -12,7 +12,6 @@
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkMoves.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
@@ -25,7 +24,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-using Pokemon::StoryStep;
+using Pokemon::StoryFailure;
 
 
 namespace{
@@ -112,7 +111,7 @@ std::string slope_end_name(SlopeEnd end){
     return "unknown";
 }
 
-Pokemon::Outcome ride(SlopeEnv& env, const StoryStep& step, const std::vector<SlopeMove>& moves){
+std::optional<StoryFailure> ride(SlopeEnv& env, const StoryStep&, const std::vector<SlopeMove>& moves){
     const SlopeCalls calls{
         .send = [&env](const std::vector<SlopePress>& presses, bool message){
             return send_slope_presses(env, presses, message);
@@ -127,9 +126,9 @@ Pokemon::Outcome ride(SlopeEnv& env, const StoryStep& step, const std::vector<Sl
     };
     const SlopeResult result = ride_slope(moves, calls);
     if (result.end != SlopeEnd::DONE){
-        return Pokemon::outcome_failed("slope_" + slope_end_name(result.end), std::format("move {}", result.move + 1));
+        return frlg_failure("slope_" + slope_end_name(result.end), std::format("move {}", result.move + 1));
     }
-    return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 int read_count(const std::vector<BagRow>& rows, const std::string& item){
@@ -137,11 +136,11 @@ int read_count(const std::vector<BagRow>& rows, const std::string& item){
     return row == rows.end() ? 0 : row->count;
 }
 
-Pokemon::Outcome count_items(SlopeEnv& env, const StoryStep& step){
+std::optional<StoryFailure> count_items(SlopeEnv& env, const StoryStep& step){
     const std::vector<std::string>* items = game_arg<std::vector<std::string>>(step.args, "items");
     const bool* found = game_arg<bool>(step.args, "found");
     if (items == nullptr){
-        return Pokemon::unsupported_step(step);
+        return frlg_unsupported_step(step);
     }
     const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
     //  The counts the story keeps (Potions, Super Potions, ...) from the bag
@@ -153,27 +152,20 @@ Pokemon::Outcome count_items(SlopeEnv& env, const StoryStep& step){
         const int count = read_count(rows, item);
         env.console.log(std::format("Bag: {} x{}.", item, count));
         if (count < 0){
-            return Pokemon::outcome_failed("count_unread", item);
+            return frlg_failure("count_unread", item);
         }
         if (found != nullptr && *found && count != env.counted_items[item] + 1){
-            return Pokemon::outcome_failed("item_not_found", std::format("{}: {}, was {}", item, count, env.counted_items[item]));
+            return frlg_failure("item_not_found", std::format("{}: {}, was {}", item, count, env.counted_items[item]));
         }
         env.counted_items[item] = count;
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 } // namespace
 
 
-Pokemon::StoryActionSpec count_items_action_spec(){
-    return {.kind = Pokemon::StoryStepKind::GAME, .name = COUNT_ITEMS_VARIANT, .args = {
-        required_arg("items", Pokemon::StoryArgType::WORDS, "the items' bag slugs (\"rare-candy\")"),
-        optional_arg("found", Pokemon::StoryArgType::BOOLEAN, false, "each must be one more than the last count kept"),
-    }};
-}
-
-std::optional<Pokemon::Outcome> run_slope_step(SlopeEnv& env, const StoryStep& step){
+std::optional<std::optional<StoryFailure>> run_slope_step(SlopeEnv& env, const StoryStep& step){
     if (step.action == COUNT_ITEMS_VARIANT){
         return count_items(env, step);
     }

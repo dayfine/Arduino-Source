@@ -16,6 +16,7 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteSteps.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 
 namespace PokemonAutomation{

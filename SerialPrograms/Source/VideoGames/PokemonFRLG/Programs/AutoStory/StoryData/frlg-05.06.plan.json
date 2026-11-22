@@ -4,139 +4,300 @@
   "checkpoint": {
     "id": "05.06",
     "title": "Route 24 and 25 to Bill's Sea Cottage: Franklin, Kelsey, Nob and Haley",
-    "start": {"map": "Route24", "tiles": [[11, 15]], "facing": "east"},
+    "start": {
+      "map": "Route24",
+      "tiles": [
+        [
+          11,
+          15
+        ]
+      ],
+      "facing": "east"
+    },
     "events": [
       {
         "id": "below_franklin_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "north off Nugget Bridge, east into Route 25, round its ledges to (15, 5), below the end of Franklin's line",
         "args": {
-          "target": {"map": "Route25", "tiles": [[15, 5]], "facing": "north"}
-        },
-        "why": "north off Nugget Bridge, east into Route 25, round its ledges to (15, 5), below the end of Franklin's line"
+          "target": {
+            "map": "Route25",
+            "tiles": [
+              [
+                15,
+                5
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "franklin_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (15, 4), at the end of Franklin's line",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (15, 4), at the end of Franklin's line"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "hiker_franklin",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Machop and Geodude, Lv15; Franklin stops at (14, 4)",
         "args": {
           "trainer": "TRAINER_HIKER_FRANKLIN",
-          "foes": ["machop", "geodude"]
-        },
-        "declared_after": {"map": "Route25", "tiles": [[15, 4]], "facing": "north"},
-        "why": "Machop and Geodude, Lv15; Franklin stops at (14, 4)"
+          "foes": [
+            "machop",
+            "geodude"
+          ],
+          "pose_after": {
+            "map": "Route25",
+            "tiles": [
+              [
+                15,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "west_of_dan",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "to (17, 4), short of Joey's (18, 4); round Wayne (17, 7) to (19, 6); up to (19, 4)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 2}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 2}]
-        },
-        "why": "to (17, 4), short of Joey's (18, 4); round Wayne (17, 7) to (19, 6); up to (19, 4)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "round_dan",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "onto (20, 4); up to (20, 2), east to (24, 2), down column 23 past Dan to (23, 5), to (24, 7) above Kelsey's line",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 4}, {"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 1}, {"direction": "south", "tiles": 2}]
-        },
-        "why": "onto (20, 4); up to (20, 2), east to (24, 2), down column 23 past Dan to (23, 5), to (24, 7) above Kelsey's line"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 4
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "kelsey_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (24, 8), at the end of Kelsey's line",
         "args": {
-          "direction": "south"
-        },
-        "why": "onto (24, 8), at the end of Kelsey's line"
+          "direction": "south",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "picnicker_kelsey",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Nidoran M and Nidoran F, Lv15; Kelsey stops at (23, 8)",
         "args": {
           "trainer": "TRAINER_PICNICKER_KELSEY",
-          "foes": ["nidoran-m", "nidoran-f"]
-        },
-        "declared_after": {"map": "Route25", "tiles": [[24, 8]], "facing": "south"},
-        "why": "Nidoran M and Nidoran F, Lv15; Kelsey stops at (23, 8)"
+          "foes": [
+            "nidoran-m",
+            "nidoran-f"
+          ],
+          "pose_after": {
+            "map": "Route25",
+            "tiles": [
+              [
+                24,
+                8
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "west_of_nob_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "along row 8 to (26, 8)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 2}]
-        },
-        "why": "along row 8 to (26, 8)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "nob_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (27, 8), above Nob",
         "args": {
-          "direction": "east"
-        },
-        "why": "onto (27, 8), above Nob"
+          "direction": "east",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "hiker_nob",
-        "kind": "battle",
+        "action": "battle",
+        "why": "three Geodude and a Machop, Lv13",
         "args": {
           "trainer": "TRAINER_HIKER_NOB",
-          "foes": ["geodude", "geodude", "machop", "geodude"]
-        },
-        "declared_after": {"map": "Route25", "tiles": [[27, 8]], "facing": "east"},
-        "why": "three Geodude and a Machop, Lv13"
+          "foes": [
+            "geodude",
+            "geodude",
+            "machop",
+            "geodude"
+          ],
+          "pose_after": {
+            "map": "Route25",
+            "tiles": [
+              [
+                27,
+                8
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "below_haley_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "below Flint's column to (29, 9), up to (29, 6), east to (34, 6), down to (34, 9), east along row 9 past Chad's column to the water, (42, 9)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}, {"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 3}, {"direction": "east", "tiles": 5}, {"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 8}]
-        },
-        "why": "below Flint's column to (29, 9), up to (29, 6), east to (34, 6), down to (34, 9), east along row 9 past Chad's column to the water, (42, 9)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 5
+            },
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 8
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "haley_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (42, 8), at the end of Haley's line",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (42, 8), at the end of Haley's line"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "lass_haley",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Oddish, Pidgey and Oddish, Lv13; Haley stops at (42, 7)",
         "args": {
           "trainer": "TRAINER_LASS_HALEY",
-          "foes": ["oddish", "pidgey", "oddish"]
-        },
-        "declared_after": {"map": "Route25", "tiles": [[42, 8]], "facing": "north"},
-        "why": "Oddish, Pidgey and Oddish, Lv13; Haley stops at (42, 7)"
+          "foes": [
+            "oddish",
+            "pidgey",
+            "oddish"
+          ],
+          "pose_after": {
+            "map": "Route25",
+            "tiles": [
+              [
+                42,
+                8
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "sea_cottage",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east along row 8, up column 51 into the Sea Cottage (51, 4), a step in from its mat",
         "args": {
-          "target": {"map": "Route25_SeaCottage", "tiles": [[7, 8]], "facing": "north"}
-        },
-        "why": "east along row 8, up column 51 into the Sea Cottage (51, 4), a step in from its mat"
+          "target": {
+            "map": "Route25_SeaCottage",
+            "tiles": [
+              [
+                7,
+                8
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -154,6 +315,5 @@
         "The row saves inside the Sea Cottage, which the save card names ROUTE 25."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

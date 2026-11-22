@@ -19,14 +19,13 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryParty.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -53,24 +52,24 @@ struct GrindPlan{
 //  where the step heals.
 inline const std::string GRIND_ACTION = "grind";
 //  `plan` and `nurse` as its action's args.
-Pokemon::StoryActionArgs grind_args(const GrindPlan& plan, Pokemon::GridPose nurse);
+FrlgArgMap grind_args(const GrindPlan& plan, Pokemon::GridPose nurse);
 //  The plan a GRIND_ACTION step's args give; nothing if one is out of
 //  range.
-std::optional<GrindPlan> grind_plan_of(const Pokemon::StoryActionArgs& args);
+std::optional<GrindPlan> grind_plan_of(const FrlgArgMap& args);
 
 //  The table's GRIND step: `nurse` is where the player faces the nurse.
-Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::GridPose nurse);
+StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::GridPose nurse);
 
 //  The GAME action that checks a GRIND step's plan before the walk out to
 //  its patch: GRIND_ACTION's args but the nurse.
 inline const std::string GRIND_CHECK_ACTION = "grind_check";
 //  `plan` as GRIND_CHECK_ACTION's args; grind_plan_of() reads them back.
-Pokemon::StoryActionArgs grind_check_args(const GrindPlan& plan);
+FrlgArgMap grind_check_args(const GrindPlan& plan);
 
 //  The table's check before the walk out to a GRIND step's patch: when the
 //  lead already has what `plan` grinds for, the step sets a run flag named
 //  `name`, which the walk out, the GRIND step and the way back skip_if.
-Pokemon::StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan);
+StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan);
 
 
 

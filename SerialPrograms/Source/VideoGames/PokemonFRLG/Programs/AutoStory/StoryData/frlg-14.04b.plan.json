@@ -4,96 +4,180 @@
   "checkpoint": {
     "id": "14.04b",
     "title": "Out of the gym, Fly to Celadon's Center and heal",
-    "start": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"},
-    "start_gates": {"opened": ["CeladonCity_Gym/cut_tree_3_5"]},
+    "start": {
+      "map": "CeladonCity_Gym",
+      "tiles": [
+        [
+          6,
+          5
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "below_lori",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "a tap west from below Erika (6, 5) to below Lori (5, 4), on (5, 5)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 1}]
-        },
-        "why": "a tap west from below Erika (6, 5) to below Lori (5, 4), on (5, 5)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "row_5_to_wall",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "run west from below Lori (5, 5) over the inner tree's tile (3, 5) to the wall at (1, 5): the tree, cut in 14.03, is still cut (start_gates: a save keeps it; only a warp grows it back), and Erika's win beats every trainer in the gym (set_gym_trainers 4); the wall stops any overshoot",
         "args": {
-          "legs": [{"direction": "west", "tiles": 4}]
-        },
-        "why": "run west from below Lori (5, 5) over the inner tree's tile (3, 5) to the wall at (1, 5): the tree, cut in 14.03, is still cut (start_gates: a save keeps it; only a warp grows it back), and Erika's win beats every trainer in the gym (set_gym_trainers 4); the wall stops any overshoot"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 4
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "column_1_down_to_wall",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "run down column 1 to the wall at (1, 10), (1, 11) being wall: past Tamia, who stands on (2, 9) since her battle",
         "args": {
-          "legs": [{"direction": "south", "tiles": 5}]
-        },
-        "why": "run down column 1 to the wall at (1, 10), (1, 11) being wall: past Tamia, who stands on (2, 9) since her battle"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 5
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "onto_column_2",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "a tap east from the wall (1, 10) onto column 2, (2, 10), right below Tamia (2, 9)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}]
-        },
-        "why": "a tap east from the wall (1, 10) onto column 2, (2, 10), right below Tamia (2, 9)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "column_2_to_wall",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "run down the west aisle from (2, 10) to the wall at (2, 18): behind Lass Kay (3, 11), who looks east, and clear of Beauty Bridget's line (6..8, 10) that a planned way out through the middle crosses; all are beaten since Erika's win, and the wall stops any overshoot",
         "args": {
-          "legs": [{"direction": "south", "tiles": 8}]
-        },
-        "why": "run down the west aisle from (2, 10) to the wall at (2, 18): behind Lass Kay (3, 11), who looks east, and clear of Beauty Bridget's line (6..8, 10) that a planned way out through the middle crosses; all are beaten since Erika's win, and the wall stops any overshoot"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 8
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "out_of_gym",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east along row 18 and out of the gym's door onto Celadon City below it (11, 31): Fly works outdoors only",
         "args": {
-          "target": {"map": "CeladonCity", "tiles": [[11, 31]], "facing": "south"}
-        },
-        "why": "east along row 18 and out of the gym's door onto Celadon City below it (11, 31): Fly works outdoors only"
+          "target": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                11,
+                31
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "fly_celadon",
-        "kind": "game_action",
         "action": "fly",
+        "why": "the Pidgey flies to Celadon City, landing below the Pokemon Center's door (48, 11) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_CELADON_CITY), as 14.03; the yard's tree (40, 35), grown back, is left standing",
         "args": {
           "town": "CeladonCity",
-          "species": "pidgey"
-        },
-        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
-        "why": "the Pidgey flies to Celadon City, landing below the Pokemon Center's door (48, 11) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_CELADON_CITY), as 14.03; the yard's tree (40, 35), grown back, is left standing"
+          "species": "pidgey",
+          "pose_after": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                48,
+                12
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "celadon_below_center",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "turn to face the Center's door (48, 11) from the landing",
         "args": {
-          "target": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "north"}
-        },
-        "why": "turn to face the Center's door (48, 11) from the landing"
+          "target": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                48,
+                12
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "celadon_nurse",
-        "kind": "game_action",
         "action": "center_enter",
-        "declared_after": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
-        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center",
+        "args": {
+          "pose_after": {
+            "map": "CeladonCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "heal_celadon",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP and PP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "CeladonCity_PokemonCenter_1F",
+          "tiles": [
+            [
+              7,
+              4
+            ]
+          ],
+          "facing": "north"
+        }
+      }
+    }
   },
   "execution": {
     "menu": "full",
@@ -103,12 +187,11 @@
         "Out the way in: row 5 over the inner tree's tile and column 1 to their walls, Tamia standing on (2, 9) where her battle left her, the inner tree (3, 5) still cut (a save keeps the map's objects and temp flags; only a warp clears them).",
         "Out of the gym's door and by Fly to the Center's door, as PokeGuy (1:27:07, same-city Fly): the walk round the yard, through the regrown tree (40, 35) and up through the city was 79 tiles (user, 2026-11-15: every Center trip flies once Fly is learned, unless the Center is really close). The row ends at the nurse, where 15.01 starts."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+    },
+    "start_gates": {
+      "opened": [
+        "CeladonCity_Gym/cut_tree_3_5"
+      ]
     }
   }
 }

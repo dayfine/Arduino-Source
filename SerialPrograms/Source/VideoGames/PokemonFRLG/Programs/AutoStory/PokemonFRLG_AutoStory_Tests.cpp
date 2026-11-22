@@ -122,8 +122,8 @@ WalkGates& walk_state(){
 //  Starts a walk at `checkpoint`'s start: its start_gates and start_flags.
 void begin_walk(const StoryCheckpoint& checkpoint){
     walk_state() = WalkGates{};
-    if (checkpoint.start_gates){
-        walk_state().gates = *checkpoint.start_gates;
+    if (!checkpoint.start_gates.opened.empty() || !checkpoint.start_gates.switches_on.empty()){
+        walk_state().gates = checkpoint.start_gates;
     }
     walk_state().card_key_held = std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end();
     walk_state().run_flags.insert(checkpoint.start_flags.begin(), checkpoint.start_flags.end());
@@ -133,8 +133,8 @@ void begin_walk(const StoryCheckpoint& checkpoint){
 //  A walk through the checkpoint that follows the one before: only what its
 //  start says replaces the gates carried.
 void continue_walk(const StoryCheckpoint& checkpoint){
-    if (checkpoint.start_gates){
-        walk_state().gates = *checkpoint.start_gates;
+    if (!checkpoint.start_gates.opened.empty() || !checkpoint.start_gates.switches_on.empty()){
+        walk_state().gates = checkpoint.start_gates;
     }
     if (std::ranges::find(checkpoint.start_flags, "card_key_held") != checkpoint.start_flags.end()){
         walk_state().card_key_held = true;
@@ -198,10 +198,9 @@ std::string describe(const StoryPose& pose){
 
 //  A table pose as a StoryPose; FRLG's table has one-tile poses only.
 StoryPose one_tile(const Pokemon::GridPose& grid_pose){
-    const Pokemon::Pose pose = Pokemon::pose_of(grid_pose);
-    const std::optional<StoryPose> ret = story_pose(pose);
+    const std::optional<StoryPose> ret = story_pose(grid_pose);
     if (!ret){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Not a one-tile pose: " + Pokemon::to_string(pose));
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Not a one-tile pose: " + format_grid_pose(grid_pose));
     }
     return *ret;
 }
@@ -306,7 +305,7 @@ void note_revisits(const StoryStep& step, const MapPosition& start, const std::v
 
 //  Walks `step`'s fixed legs from `pose` and moves `pose` to their end.
 UnitTestResult check_legs(StoryPose& pose, const StoryStep& step){
-    const std::optional<std::vector<RouteStep>> route = fixed_route(walk_maps(), MapPosition{pose.map, pose.tile}, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
+    const std::optional<std::vector<RouteStep>> route = fixed_route(walk_maps(), MapPosition{pose.map, pose.tile}, frlg_arg<std::vector<StoryLeg>>(step.args, "legs"));
     if (!route || route->empty()){
         return step.name + ": the legs can't be walked from " + describe(pose) + ".";
     }
@@ -354,7 +353,7 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, StoryPlans& p
             return step.name + ": the facing is unknown at " + describe(pose) + " and no wall is beside it.";
         }
     }
-    const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
+    const StoryPose target = one_tile(frlg_arg<Pokemon::GridPose>(step.args, "target"));
     const RouteGoal goal{{target.map, target.tile}, target.facing};
     const Pokemon::GateRules rules{.card_key_held = walk_state().card_key_held};
     const std::optional<std::vector<RouteStep>> route = plan_overworld_route_gated(walk_story_maps(), start, goal, walk_state().gates, rules, default_route_costs(), facing);
@@ -393,8 +392,8 @@ UnitTestResult check_route(StoryPose& pose, const StoryStep& step, StoryPlans& p
 //  trainer walks up and stands beside the player for the routes after the
 //  battle (TRAINER_AT_FLAG), as note_line_trainer() records it.
 void step_into_line(const StoryStep& step, StoryPose& pose){
-    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
-    const int tiles = step.action == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
+    const Direction direction = frlg_arg<Direction>(step.args, "direction");
+    const int tiles = step.variant == TRAINER_LINE_VARIANT ? TRAINER_LINE_TILES : 1;
     for (int c = 0; c < tiles; c++){
         pose = StoryPose{pose.map, pose.tile.next(direction), direction};
         if (note_trainer_walked_up(MapPosition{pose.map, pose.tile}, walk_state().run_flags)){
@@ -407,12 +406,12 @@ void step_into_line(const StoryStep& step, StoryPose& pose){
 UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPose& pose, StoryPlans& plans){
     for (const StoryStep& step : checkpoint.steps){
         const std::string map_before = pose.map;
-        if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
-            UnitTestResult result = step.kind == StoryStepKind::ROUTE ? check_route(pose, step, plans) : check_legs(pose, step);
+        if (step.action == "route" || step.action == "legs"){
+            UnitTestResult result = step.action == "route" ? check_route(pose, step, plans) : check_legs(pose, step);
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
-        }else if (step.kind == StoryStepKind::READY){
+        }else if (step.action == "ready"){
             //  The nurse may be needed: that way must plan too, but the pose
             //  goes on from where the player stands.
             StoryPose nurse_pose = pose;
@@ -421,14 +420,14 @@ UnitTestResult check_checkpoint_steps(const StoryCheckpoint& checkpoint, StoryPo
             if (result.result != UnitTestResult::PASSED){
                 return checkpoint.id + " " + result.message;
             }
-        }else if (step.kind == StoryStepKind::STEP && (step.action == TRAINER_LINE_VARIANT || step.action == TRAINER_WAIT_VARIANT)){
+        }else if (step.action == "step" && (step.variant == TRAINER_LINE_VARIANT || step.variant == TRAINER_WAIT_VARIANT)){
             step_into_line(step, pose);
-        }else if (step.kind == StoryStepKind::STEP){
-            const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+        }else if (step.action == "step"){
+            const Direction direction = frlg_arg<Direction>(step.args, "direction");
             pose = StoryPose{pose.map, pose.tile.next(direction), direction};
         }
         if (step.pose_after){
-            pose = one_tile(Pokemon::grid_pose_of(*step.pose_after));
+            pose = one_tile(*step.pose_after);
         }
         trainers_back_after_map_change(map_before, pose.map, walk_state().run_flags);
         apply_step_effects(step);
@@ -465,9 +464,9 @@ UnitTestResult chain_story_routes(StoryPlans& plans){
         const StoryCheckpoint& checkpoint = checkpoints[c];
         continue_walk(checkpoint);
         if (c > 0 && starts_after_unauthored_rows(checkpoint.id)){
-            pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
+            pose = one_tile(*checkpoint.start);
         }else if (c > 0){
-            const StoryPose start = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
+            const StoryPose start = one_tile(*checkpoint.start);
             const bool same_facing = !start.facing || start.facing == pose.facing;
             if (start.map != pose.map || !(start.tile == pose.tile) || !same_facing){
                 return checkpoint.id + " starts at " + describe(start) + ", but " + checkpoints[c - 1].id + " ends at " + describe(pose) + ".";
@@ -715,7 +714,7 @@ UnitTestResult test_runs_after_shoes(){
     size_t runs = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
-            if ((step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS) || step.action == TAPS_VARIANT){
+            if ((step.action != "route" && step.action != "legs") || step.variant == TAPS_VARIANT){
                 continue;
             }
             const MoveSpeed expected = has_shoes ? MoveSpeed::RUN : MoveSpeed::WALK;
@@ -758,8 +757,8 @@ const MapObject* trainer_seeing(const MapData& map, const TilePos& tile, const s
 //  last.
 TilePos step_end(const StoryPose& pose, const StoryStep& step, const std::set<std::string>& beaten){
     const MapData* map = find_map_named(pose.map);
-    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
-    if (step.action != TRAINER_LINE_VARIANT || map == nullptr){
+    const Direction direction = frlg_arg<Direction>(step.args, "direction");
+    if (step.variant != TRAINER_LINE_VARIANT || map == nullptr){
         return pose.tile.next(direction);
     }
     TilePos tile = pose.tile;
@@ -790,12 +789,12 @@ bool wild_everywhere(const MapData& map){
 std::vector<RouteStep> legs_walked(const StoryPose& pose, const StoryStep& step){
     const MapPosition start{pose.map, pose.tile};
     std::optional<std::vector<RouteStep>> route;
-    if (step.kind == StoryStepKind::LEGS){
-        route = fixed_route(walk_maps(), start, Pokemon::story_arg<std::vector<StoryLeg>>(step.args, "legs"));
+    if (step.action == "legs"){
+        route = fixed_route(walk_maps(), start, frlg_arg<std::vector<StoryLeg>>(step.args, "legs"));
     }else if (step.args.contains("target")){
         const MapData* map = find_map_named(pose.map);
         const std::optional<Direction> facing = pose.facing ? pose.facing : map ? wall_beside(*map, pose.tile) : std::nullopt;
-        const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
+        const StoryPose target = one_tile(frlg_arg<Pokemon::GridPose>(step.args, "target"));
         route = plan_overworld_route_gated(walk_story_maps(), start, RouteGoal{{target.map, target.tile}, target.facing}, walk_state().gates, Pokemon::GateRules{.card_key_held = walk_state().card_key_held}, story_route_costs(), facing);
     }
     return route ? *route : std::vector<RouteStep>{};
@@ -897,23 +896,23 @@ std::string tile_problem(const MapPosition& tile, const std::set<std::string>& b
 //  LEGS whose legs through grass end on walls or are one tile (Route 6).
 bool grass_held(const StoryPose& pose, const StoryStep& step){
     const std::vector<RouteStep> legs = legs_walked(pose, step);
-    return step.kind == StoryStepKind::LEGS && std::all_of(legs.begin(), legs.end(), [](const RouteStep& leg){ return !leg.wild || leg.to_wall || leg.tiles == 1; });
+    return step.action == "legs" && std::all_of(legs.begin(), legs.end(), [](const RouteStep& leg){ return !leg.wild || leg.to_wall || leg.tiles == 1; });
 }
 
 //  Moves `pose` past `step`, as check_checkpoint() does.
 UnitTestResult advance(StoryPose& pose, const StoryStep& step){
-    if (step.kind == StoryStepKind::ROUTE){
+    if (step.action == "route"){
         StoryPlans plans;
         return check_route(pose, step, plans);
     }
-    if (step.kind == StoryStepKind::LEGS){
+    if (step.action == "legs"){
         return check_legs(pose, step);
     }
-    if (step.kind == StoryStepKind::STEP){
-        pose = StoryPose{pose.map, step_end(pose, step, {}), Pokemon::story_arg<Direction>(step.args, "direction")};
+    if (step.action == "step"){
+        pose = StoryPose{pose.map, step_end(pose, step, {}), frlg_arg<Direction>(step.args, "direction")};
     }
     if (step.pose_after){
-        pose = one_tile(Pokemon::grid_pose_of(*step.pose_after));
+        pose = one_tile(*step.pose_after);
     }
     apply_step_effects(step);
     return true;
@@ -956,19 +955,19 @@ void add_beaten_after(const StoryStep& step, std::set<std::string>& beaten){
 //  checkpoint's save): grass is walked as any floor.
 UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<std::string>& beaten, bool& repelled){
     begin_walk(checkpoint);
-    StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
+    StoryPose pose = one_tile(*checkpoint.start);
     for (size_t c = 0; c < checkpoint.steps.size(); c++){
         const StoryStep& step = checkpoint.steps[c];
         const std::string where = checkpoint.id + "/" + step.name + ": ";
-        if (step.action == USE_REPEL_VARIANT || (step.action == USE_ITEM_VARIANT && is_repel(Pokemon::story_arg<std::string>(step.args, "item")))){
+        if (step.action == USE_REPEL_VARIANT || (step.action == USE_ITEM_VARIANT && is_repel(frlg_arg<std::string>(step.args, "item")))){
             repelled = true;
         }
-        const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+        const bool walks = step.action == "route" || step.action == "legs";
         //  A GRIND's or a capture's patch is grass: the route there may end on it.
         const bool to_patch = step.args.contains("target") && c + 1 < checkpoint.steps.size()
             && (checkpoint.steps[c + 1].action == GRIND_ACTION || checkpoint.steps[c + 1].action == CAPTURE_ACTION);
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
-            const StoryPose end = to_patch ? one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")) : StoryPose{};
+            const StoryPose end = to_patch ? one_tile(frlg_arg<Pokemon::GridPose>(step.args, "target")) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
             if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || repelled || grass_held(pose, step)) && problem.starts_with("in the grass"))
                 && !(incidental_fights(checkpoint.id) && problem.starts_with("in the line of the trainer"))
@@ -984,8 +983,8 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<std::stri
             return where + problem;
         }
         const MapData* map = find_map_named(pose.map);
-        const MapObject* trainer = step.kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, step, beaten), beaten, step.action == TRAINER_WAIT_VARIANT) : nullptr;
-        if (trainer != nullptr && (c + 1 == checkpoint.steps.size() || checkpoint.steps[c + 1].kind != StoryStepKind::BATTLE)){
+        const MapObject* trainer = step.action == "step" && map ? trainer_seeing(*map, step_end(pose, step, beaten), beaten, step.variant == TRAINER_WAIT_VARIANT) : nullptr;
+        if (trainer != nullptr && (c + 1 == checkpoint.steps.size() || checkpoint.steps[c + 1].action != "battle")){
             return where + "steps into a trainer's line with no battle after it.";
         }
         if (trainer != nullptr){
@@ -1048,14 +1047,14 @@ UnitTestResult test_legs_onto_stairs_their_way(){
             continue;
         }
         begin_walk(checkpoint);
-        StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint.start));
+        StoryPose pose = one_tile(*checkpoint.start);
         for (const StoryStep& step : checkpoint.steps){
-            if (step.kind == StoryStepKind::ROUTE){
+            if (step.action == "route"){
                 if (const std::string problem = planned_onto_stairs_sideways(legs_walked(pose, step)); !problem.empty()){
                     return std::format("{}/{}: {}", checkpoint.id, step.name, problem);
                 }
             }
-            const std::vector<RouteStep> legs = step.kind == StoryStepKind::LEGS ? legs_walked(pose, step) : std::vector<RouteStep>{};
+            const std::vector<RouteStep> legs = step.action == "legs" ? legs_walked(pose, step) : std::vector<RouteStep>{};
             if (!legs.empty() && !legs.back().warps){
                 const MapData* map = find_map_named(legs.back().end.map);
                 const std::optional<Direction> taken = map ? exit_mat(*map, legs.back().end.point) : std::nullopt;
@@ -1127,7 +1126,7 @@ UnitTestResult test_approaches_end_on_their_tile(){
     std::string wrong;
     size_t count = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        const std::optional<StoryPose> start = checkpoint.start ? story_pose(Pokemon::pose_of(Pokemon::grid_pose_of(*checkpoint.start))) : std::nullopt;
+        const std::optional<StoryPose> start = checkpoint.start ? story_pose(*checkpoint.start) : std::nullopt;
         if (!start){
             continue;
         }
@@ -1138,12 +1137,12 @@ UnitTestResult test_approaches_end_on_their_tile(){
         for (size_t c = 0; c < checkpoint.steps.size(); c++){
             const StoryStep& step = checkpoint.steps[c];
             const std::string where = c > 0 ? checkpoint.id + "/" + checkpoint.steps[c - 1].name : "";
-            if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+            if (step.action == "route" || step.action == "legs"){
                 for (RouteStep leg : legs_walked(pose, step)){
-                    leg.tapped |= step.action == TAPS_VARIANT;
+                    leg.tapped |= step.variant == TAPS_VARIANT;
                     approach.push_back(leg);
                 }
-            }else if (step.kind == StoryStepKind::TALK && !approach.empty() && !PASSED_ON_CONSOLE.contains(where)){
+            }else if (step.action == "talk" && !approach.empty() && !PASSED_ON_CONSOLE.contains(where)){
                 if (const std::string problem = approach_off_tile(approach); !problem.empty()){
                     count++;
                     wrong += "\n    " + where + ": " + problem;
@@ -1174,7 +1173,7 @@ UnitTestResult test_facing_after_trainer_battles(){
     std::string wrong;
     size_t count = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        const std::optional<StoryPose> start = checkpoint.start ? story_pose(Pokemon::pose_of(Pokemon::grid_pose_of(*checkpoint.start))) : std::nullopt;
+        const std::optional<StoryPose> start = checkpoint.start ? story_pose(*checkpoint.start) : std::nullopt;
         if (!start){
             continue;
         }
@@ -1182,12 +1181,12 @@ UnitTestResult test_facing_after_trainer_battles(){
         StoryPose pose = *start;
         for (size_t c = 0; c < checkpoint.steps.size(); c++){
             const StoryStep& step = checkpoint.steps[c];
-            const bool after_line = c > 0 && (checkpoint.steps[c - 1].action == TRAINER_LINE_VARIANT || checkpoint.steps[c - 1].action == TRAINER_WAIT_VARIANT);
-            if (step.kind == StoryStepKind::BATTLE && after_line && step.pose_after){
-                const std::optional<Direction> declared = one_tile(Pokemon::grid_pose_of(*step.pose_after)).facing;
+            const bool after_line = c > 0 && (checkpoint.steps[c - 1].variant == TRAINER_LINE_VARIANT || checkpoint.steps[c - 1].variant == TRAINER_WAIT_VARIANT);
+            if (step.action == "battle" && after_line && step.pose_after){
+                const std::optional<Direction> declared = one_tile(*step.pose_after).facing;
                 if (declared != pose.facing){
                     count++;
-                    wrong += std::format("\n    {}/{}: declared {}, faces {}", checkpoint.id, step.name, describe(one_tile(Pokemon::grid_pose_of(*step.pose_after))), describe(pose));
+                    wrong += std::format("\n    {}/{}: declared {}, faces {}", checkpoint.id, step.name, describe(one_tile(*step.pose_after)), describe(pose));
                 }
             }
             if (UnitTestResult result = advance(pose, step); result.result != UnitTestResult::PASSED){
@@ -1232,7 +1231,7 @@ UnitTestResult test_robin_crossing(){
             continue;
         }
         const std::vector<std::optional<MapPosition>> expected{MapPosition{"Route3", {40, 9}}};
-        if (wanderer_stops(one_tile(Pokemon::grid_pose_of(*checkpoint.start)), checkpoint.steps[0]) != expected){
+        if (wanderer_stops(one_tile(*checkpoint.start), checkpoint.steps[0]) != expected){
             return "Expected 04.02/route4_nurse to cross Lass Robin's sight once, the walk placing her stop on Route3 (40, 9).";
         }
         return true;
@@ -1272,16 +1271,16 @@ UnitTestResult check_trigger(const TriggerCase& c){
     }
     const MapPosition onto{c.map, {c.onto_x, c.y}};
     begin_walk(*checkpoint);
-    StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint->start));
+    StoryPose pose = one_tile(*checkpoint->start);
     for (const StoryStep& step : checkpoint->steps){
         const std::string where = c.checkpoint + "/" + step.name + ": ";
-        if (step.name == c.step && step.kind == StoryStepKind::STEP && onto == MapPosition{pose.map, pose.tile.next(Pokemon::story_arg<Direction>(step.args, "direction"))}){
+        if (step.name == c.step && step.action == "step" && onto == MapPosition{pose.map, pose.tile.next(frlg_arg<Direction>(step.args, "direction"))}){
             return true;
         }
         if (step.name == c.step){
             return where + "expected a step onto " + to_string(onto) + ", from " + describe(pose) + ".";
         }
-        const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+        const bool walks = step.action == "route" || step.action == "legs";
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             if (tile.map == c.map && tile.point.y == c.y && tile.point.x >= c.x0 && tile.point.x <= c.x1){
                 return where + "walks over the trigger at " + to_string(tile) + ".";
@@ -1322,11 +1321,11 @@ UnitTestResult test_nugget_bridge_order(){
     const std::vector<StoryStep>& steps = checkpoint->steps;
     std::string met;
     begin_walk(*checkpoint);
-    StoryPose pose = one_tile(Pokemon::grid_pose_of(*checkpoint->start));
+    StoryPose pose = one_tile(*checkpoint->start);
     for (size_t c = 0; c < steps.size(); c++){
         const MapData* map = find_map_named(pose.map);
-        const MapObject* trainer = steps[c].kind == StoryStepKind::STEP && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}, false) : nullptr;
-        if (trainer != nullptr && (c + 1 == steps.size() || steps[c + 1].kind != StoryStepKind::BATTLE)){
+        const MapObject* trainer = steps[c].action == "step" && map ? trainer_seeing(*map, step_end(pose, steps[c], {}), {}, false) : nullptr;
+        if (trainer != nullptr && (c + 1 == steps.size() || steps[c + 1].action != "battle")){
             return "05.05/" + steps[c].name + ": no battle right after the step.";
         }
         met += trainer ? " " + to_string(TilePos{trainer->x, trainer->y}) : "";
@@ -1348,7 +1347,7 @@ UnitTestResult test_nugget_bridge_order(){
 UnitTestResult test_save_places(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         if (checkpoint.start){
-            const std::string start = Pokemon::grid_pose_of(*checkpoint.start).map;
+            const std::string start = checkpoint.start->map;
             if (!save_card_place(start)){
                 return std::format("{} starts on {}, which has no save card place.", checkpoint.id, start);
             }
@@ -1609,14 +1608,14 @@ UnitTestResult test_start_menu_opening(){
 }
 
 UnitTestResult test_lint(){
-    //  FRLG's own action args (a battle's trainer and foes), with no console.
-    const Pokemon::StoryActionTable table = make_story_action_table([](StoryActionId){
-        return Pokemon::StoryAction{};
+    const FrlgActionTable table = make_story_action_table([](StoryActionId){
+        return FrlgStepAction{};
     });
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(checkpoint, table);
-        if (!problems.empty()){
-            return problems[0];
+        for (const StoryStep& step : checkpoint.steps){
+            if (!table.contains(step.action)){
+                return std::format("{}/{}: unbound action '{}'", checkpoint.id, step.name, step.action);
+            }
         }
     }
     return true;
@@ -1629,12 +1628,12 @@ UnitTestResult test_story_trainers(){
     size_t battles = 0;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (const StoryStep& step : checkpoint.steps){
-            if (step.kind != StoryStepKind::BATTLE){
+            if (step.action != "battle"){
                 continue;
             }
             battles++;
-            const std::string& trainer = Pokemon::story_arg<std::string>(step.args, "trainer");
-            const std::vector<std::string>& foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+            const std::string& trainer = frlg_arg<std::string>(step.args, "trainer");
+            const std::vector<std::string>& foes = frlg_arg<std::vector<std::string>>(step.args, "foes");
             if (foes.empty() || (trainer.empty() && foes.size() != 1)){
                 return std::format("{}, {}: no trainer or no foes.", checkpoint.id, step.name);
             }
@@ -1672,13 +1671,11 @@ UnitTestResult test_no_talk_ends_checkpoint(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         for (size_t i = 0; i < checkpoint.steps.size(); i++){
             const StoryStep& talk = checkpoint.steps[i];
-            if (talk.kind != StoryStepKind::TALK){
+            if (talk.action != "talk"){
                 continue;
             }
             const bool followed = std::any_of(checkpoint.steps.begin() + i + 1, checkpoint.steps.end(), [&](const StoryStep& step){
-                return std::ranges::all_of(step.skip_if, [&](const std::string& name){
-                    return std::ranges::find(talk.skip_if, name) != talk.skip_if.end();
-                });
+                return step.skip_if.empty() || step.skip_if == talk.skip_if;
             });
             if (!followed){
                 return std::format("{}: talk {} ends the checkpoint with its message open.", checkpoint.id, talk.name);

@@ -4,175 +4,318 @@
   "checkpoint": {
     "id": "14.03",
     "title": "Cinnabar's Center out to the street and Fly to Celadon City, Cut into the gym's yard, Beauty Tamia, the inner tree, Beauty Lori, to below Erika",
-    "start": {"map": "CinnabarIsland_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "CinnabarIsland_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "cinnabar_outside",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of Cinnabar's Center onto the street below its door (14, 11): Fly works outdoors only",
         "args": {
-          "target": {"map": "CinnabarIsland", "tiles": [[14, 12]], "facing": "south"}
-        },
-        "why": "out of Cinnabar's Center onto the street below its door (14, 11): Fly works outdoors only"
+          "target": {
+            "map": "CinnabarIsland",
+            "tiles": [
+              [
+                14,
+                12
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "fly_celadon",
-        "kind": "game_action",
         "action": "fly",
+        "why": "the Pidgey (Fly, 10.01), found in the party by its summary's species, flies to Celadon City (pokeguy 1:23:45), landing below the Pokemon Center's door (48, 11) on its heal spot, where the walk to the gym starts",
         "args": {
           "town": "CeladonCity",
-          "species": "pidgey"
-        },
-        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
-        "why": "the Pidgey (Fly, 10.01), found in the party by its summary's species, flies to Celadon City (pokeguy 1:23:45), landing below the Pokemon Center's door (48, 11) on its heal spot, where the walk to the gym starts"
+          "species": "pidgey",
+          "pose_after": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                48,
+                12
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "above_gym_tree",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "from Fly's landing on Celadon's heal spot (48, 12) (pokefirered heal_locations.json, HEAL_LOCATION_CELADON_CITY), south through the city to row 30 and east to above the tree (40, 35), the only way from the city to the gym's yard (CeladonCity map.json, EventScript_CutTree)",
         "args": {
-          "target": {"map": "CeladonCity", "tiles": [[40, 34]], "facing": "south"}
-        },
-        "why": "from Fly's landing on Celadon's heal spot (48, 12) (pokefirered heal_locations.json, HEAL_LOCATION_CELADON_CITY), south through the city to row 30 and east to above the tree (40, 35), the only way from the city to the gym's yard (CeladonCity map.json, EventScript_CutTree)"
+          "target": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                40,
+                34
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cut_gym_tree",
-        "kind": "game_action",
         "action": "cut_tree",
+        "why": "the Oddish cuts the tree; a step onto its tile (pokeguy 1:24:05)",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "CeladonCity", "tiles": [[40, 35]], "facing": "south"},
-        "why": "the Oddish cuts the tree; a step onto its tile (pokeguy 1:24:05)"
+          "direction": "south",
+          "pose_after": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                40,
+                35
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "yard_west_wall",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down to row 37 and west along it to the yard's tree wall (3, 37): a wall ends the long hold on a known tile. An open hold to the gap's column (11, 37) ended by its time, and when its position check misread it as not moved (console B, 2026-11-14 09:45, run 12) the walk again from (40, 37) ran on to the wall, and north from (4, 37) met the ledge (4..9, 33)",
         "args": {
-          "target": {"map": "CeladonCity", "tiles": [[4, 37]], "facing": "west"}
-        },
-        "why": "down to row 37 and west along it to the yard's tree wall (3, 37): a wall ends the long hold on a known tile. An open hold to the gap's column (11, 37) ended by its time, and when its position check misread it as not moved (console B, 2026-11-14 09:45, run 12) the walk again from (40, 37) ran on to the wall, and north from (4, 37) met the ledge (4..9, 33)"
+          "target": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                4,
+                37
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "below_gym_gap",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "7 taps east from the tree wall (4, 37) to (11, 37), below the gap in the ledges (10..11, 33) and the gym's door (11, 30): a tile off, north meets a ledge (4..9 or 12..19, 33) or the fence beside the door",
         "args": {
-          "legs": [{"direction": "east", "tiles": 7}]
-        },
-        "why": "7 taps east from the tree wall (4, 37) to (11, 37), below the gap in the ledges (10..11, 33) and the gym's door (11, 30): a tile off, north meets a ledge (4..9 or 12..19, 33) or the fence beside the door"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 7
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "below_tamia_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up column 11 through the gap in the ledges (10..11, 33) into the gym's door (11, 30), and in the gym (no running) up the west aisle to (2, 11), a tile below Beauty Tamia's line (2, 7..10): out of Lass Kay's (4..6, 11), behind her, and Beauty Bridget's (6..8, 10)",
         "args": {
-          "target": {"map": "CeladonCity_Gym", "tiles": [[2, 11]], "facing": "north"}
-        },
-        "why": "up column 11 through the gap in the ledges (10..11, 33) into the gym's door (11, 30), and in the gym (no running) up the west aisle to (2, 11), a tile below Beauty Tamia's line (2, 7..10): out of Lass Kay's (4..6, 11), behind her, and Beauty Bridget's (6..8, 10)"
+          "target": {
+            "map": "CeladonCity_Gym",
+            "tiles": [
+              [
+                2,
+                11
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "tamia_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (2, 10), the end of Tamia's line (sight 4): she walks down to (2, 9) (pokeguy 1:24:11, the west aisle)",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (2, 10), the end of Tamia's line (sight 4): she walks down to (2, 9) (pokeguy 1:24:11, the west aisle)"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "tamia",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Beauty Tamia (TRAINER_BEAUTY_TAMIA): two Bellsprout Lv24 (pokeguy: one Bite each)",
         "args": {
           "trainer": "TRAINER_BEAUTY_TAMIA",
-          "foes": ["bellsprout", "bellsprout"]
-        },
-        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[2, 10]], "facing": "north"},
-        "why": "Beauty Tamia (TRAINER_BEAUTY_TAMIA): two Bellsprout Lv24 (pokeguy: one Bite each)"
+          "foes": [
+            "bellsprout",
+            "bellsprout"
+          ],
+          "pose_after": {
+            "map": "CeladonCity_Gym",
+            "tiles": [
+              [
+                2,
+                10
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "rare_candies_lead",
-        "kind": "game_action",
         "action": "use_item",
-        "args": {"item": "rare-candy", "count": 2},
-        "why": "two Rare Candies on the lead after Tamia (pokeguy 1:25:00, PokemonSimulation docs/progression/pokeguy-route.md section 12), from 09.01's and 10.05's pickups: as many as the bag has, a new move declined so the lead keeps Bite, Water Pulse, Surf and Blizzard; 14.04's Lv44 check decides if it is enough"
+        "why": "two Rare Candies on the lead after Tamia (pokeguy 1:25:00, PokemonSimulation docs/progression/pokeguy-route.md section 12), from 09.01's and 10.05's pickups: as many as the bag has, a new move declined so the lead keeps Bite, Water Pulse, Surf and Blizzard; 14.04's Lv44 check decides if it is enough",
+        "args": {
+          "item": "rare-candy",
+          "count": 2
+        }
       },
       {
         "id": "column_1_west",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "a tap west from (2, 10) to (1, 10): Tamia stands on (2, 9) now, in column 2, where the map still has her on (2, 6), so no planned route past her",
         "args": {
-          "legs": [{"direction": "west", "tiles": 1}]
-        },
-        "why": "a tap west from (2, 10) to (1, 10): Tamia stands on (2, 9) now, in column 2, where the map still has her on (2, 6), so no planned route past her"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "column_1_to_wall",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "run up column 1 from (1, 10) to the wall at (1, 5): Tamia is beaten, no other trainer looks down column 1, and the wall (1, 4) stops any overshoot",
         "args": {
-          "legs": [{"direction": "north", "tiles": 5}]
-        },
-        "why": "run up column 1 from (1, 10) to the wall at (1, 5): Tamia is beaten, no other trainer looks down column 1, and the wall (1, 4) stops any overshoot"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 5
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "beside_inner_tree",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "a tap east from (1, 5) to (2, 5), beside the inner tree (3, 5)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}]
-        },
-        "why": "a tap east from (1, 5) to (2, 5), beside the inner tree (3, 5)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "cut_inner_tree",
-        "kind": "game_action",
         "action": "cut_tree",
+        "why": "the Oddish cuts the inner tree; a step onto its tile (pokeguy 1:25:30)",
         "args": {
-          "direction": "east"
-        },
-        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[3, 5]], "facing": "east"},
-        "why": "the Oddish cuts the inner tree; a step onto its tile (pokeguy 1:25:30)"
+          "direction": "east",
+          "pose_after": {
+            "map": "CeladonCity_Gym",
+            "tiles": [
+              [
+                3,
+                5
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "lori_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "east along row 5 onto (5, 5), right below Beauty Lori (5, 4), the start of her line (sight 3): she doesn't walk",
         "args": {
-          "direction": "east"
-        },
-        "why": "east along row 5 onto (5, 5), right below Beauty Lori (5, 4), the start of her line (sight 3): she doesn't walk"
+          "direction": "east",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "lori",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Beauty Lori (TRAINER_BEAUTY_LORI): Exeggcute Lv24 (pokeguy: one Bite); the player stepped east into her line, so faces east afterwards",
         "args": {
           "trainer": "TRAINER_BEAUTY_LORI",
-          "foes": ["exeggcute"]
-        },
-        "declared_after": {"map": "CeladonCity_Gym", "tiles": [[5, 5]], "facing": "east"},
-        "why": "Beauty Lori (TRAINER_BEAUTY_LORI): Exeggcute Lv24 (pokeguy: one Bite); the player stepped east into her line, so faces east afterwards"
+          "foes": [
+            "exeggcute"
+          ],
+          "pose_after": {
+            "map": "CeladonCity_Gym",
+            "tiles": [
+              [
+                5,
+                5
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "beside_erika",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "a tap east from below Lori (5, 5) to below Erika (6, 4), on (6, 5): out of Lass Lisa's line (7, 5..6) and Cooltrainer Mary's (6..7, 7)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}]
-        },
-        "why": "a tap east from below Lori (5, 5) to below Erika (6, 4), on (6, 5): out of Lass Lisa's line (7, 5..6) and Cooltrainer Mary's (6..7, 7)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "below_erika",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "turn to face Erika (6, 4): no tile to walk",
         "args": {
-          "target": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"}
-        },
-        "why": "turn to face Erika (6, 4): no tile to walk"
+          "target": {
+            "map": "CeladonCity_Gym",
+            "tiles": [
+              [
+                6,
+                5
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "CeladonCity_Gym",
+          "tiles": [
+            [
+              6,
+              5
+            ]
+          ],
+          "facing": "north"
+        }
+      }
+    }
   },
   "execution": {
     "menu": "full",
@@ -184,12 +327,6 @@
         "The gym (CeladonCity_Gym map.json), 13 x 20, no running, entered on (6, 18): Erika (6, 4); trees (6, 8), (3, 5), (9, 6); its trainers and lines: Lass Kay (3, 11) east 3, Beauty Bridget (9, 10) west 3, Picnicker Tina (10, 7) south 2, Beauty Tamia (2, 6) south 4, Beauty Lori (5, 4) south 3, Lass Lisa (7, 4) south 2, Cooltrainer Mary (8, 7) west 2. Every way to Erika crosses a line; pokeguy's crosses only Tamia's and Lori's.",
         "Ends in front of Erika and saves there: her own pre-battle checkpoint (battle-checkpoint-retry), 14.04."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {"map": "CeladonCity_Gym", "tiles": [[6, 5]], "facing": "north"}
     }
   }
 }

@@ -2,10 +2,6 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  FRLG's launch policy driving the shared launch on a scripted console:
- *  each case is the screens the console shows, look by look (the last
- *  repeats), and the presses the launch must make, or where it must fail.
- *
  */
 
 #include <format>
@@ -15,8 +11,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
-#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonFRLG_AutoStoryLaunch.h"
 #include "PokemonFRLG_AutoStoryLaunch_Tests.h"
 
@@ -24,30 +19,23 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-using Pokemon::GridPose;
-
 
 namespace{
 
-
-//  The scripted console's "Close software?": the Switch's prompts
-//  (Pokemon::switch_launch_prompts()) read a look's frame, and a scripted
-//  look has none, so the test answers it from a reading.
 constexpr std::string_view CLOSE_SOFTWARE = "test.close_software";
 
-//  What the scripted console shows.
 enum class Screen{
     HOME,
     CLOSE_SOFTWARE,
     CHECK_ONLINE,
-    BLACK,          //  a boot or a load
-    QUIET,          //  nothing on screen: the GBA's title, or the overworld
+    BLACK,
+    QUIET,
     LOAD_MENU,
-    RECAP,          //  "Previously on your quest", a box over a picture
+    RECAP,
 };
 
-Pokemon::Observation<GridPose> look(Screen screen){
-    Pokemon::Observation<GridPose> observation;
+ScreenObservation look(Screen screen){
+    ScreenObservation observation;
     switch (screen){
     case Screen::HOME:
         observation.events = ScreenEvents{ScreenEvent::SWITCH_HOME_MENU};
@@ -73,13 +61,11 @@ Pokemon::Observation<GridPose> look(Screen screen){
     return observation;
 }
 
-//  `screens`, then the overworld for as many looks as it takes to settle.
 std::vector<Screen> then_settled(std::vector<Screen> screens){
     screens.insert(screens.end(), {Screen::QUIET, Screen::QUIET, Screen::QUIET, Screen::QUIET});
     return screens;
 }
 
-//  `count` looks at HOME.
 std::vector<Screen> home_looks(size_t count){
     return std::vector<Screen>(count, Screen::HOME);
 }
@@ -89,24 +75,20 @@ std::vector<Screen> joined(std::vector<Screen> first, const std::vector<Screen>&
     return first;
 }
 
-//  One launch.
 struct LaunchCase{
     struct Input{
-        std::vector<Screen> screens;
+        std::vector<Screen> screens = {};
         bool handle_online_license_check = false;
     };
     struct Expectation{
-        //  Empty: the launch succeeds; else a part of its failure's detail.
         std::string_view failure = {};
-        //  The inputs in order, by space: a button ("A", "HOME") or "wait".
         std::string inputs = {};
     };
-    std::string_view name;
-    Input input;
-    Expectation expectation;
+    std::string_view name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
-//  `count` A's, by space.
 std::string a_presses(size_t count){
     std::string text;
     for (size_t c = 0; c < count; c++){
@@ -115,7 +97,6 @@ std::string a_presses(size_t count){
     return text;
 }
 
-//  `count` waits, by space.
 std::string waits(size_t count){
     std::string text;
     for (size_t c = 0; c < count; c++){
@@ -142,9 +123,6 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
                                         Screen::QUIET, Screen::LOAD_MENU}),
                .handle_online_license_check = true},
      .expectation = {.inputs = "X A A wait A A wait wait wait"}},
-    //  Console B, 2026-11-14 02:41: HOME showed for about 1.5 s after the
-    //  A on the tile; each look there took A again, and the launch failed
-    //  as stuck on HOME while the game booted. HOME now waits.
     {.name = "HOME for 1.5 s after the launch, then the boot",
      .input = {.screens = then_settled(joined({Screen::QUIET, Screen::HOME, Screen::CLOSE_SOFTWARE, Screen::HOME},
                                               joined(home_looks(3), {Screen::BLACK, Screen::QUIET, Screen::LOAD_MENU, Screen::BLACK})))},
@@ -158,7 +136,6 @@ const std::vector<LaunchCase> LAUNCH_CASES = {
      .expectation = {.failure = "stuck on title", .inputs = "X A " + a_presses(12)}},
 };
 
-//  The fake backend's record of `input` ("A" -> "press A").
 std::string recorded(std::string_view input){
     if (input == "wait"){
         return "wait 500ms";
@@ -189,11 +166,11 @@ std::string describe_inputs(const std::vector<std::string>& inputs){
 }
 
 UnitTestResult check_launch(const LaunchCase& test, CancellableScope& scope){
-    std::vector<Pokemon::Observation<GridPose>> looks;
+    std::vector<ScreenObservation> looks;
     for (Screen screen : test.input.screens){
         looks.push_back(look(screen));
     }
-    Pokemon::FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
+    Pokemon::FakeStoryBackend backend(Pokemon::FakeStoryScript{.looks = std::move(looks)}, scope);
     const std::vector<Pokemon::StoryLaunchPrompt> switch_prompts{{
         .name = "close software",
         .matches = [](const ScreenObservation& observation){
@@ -204,19 +181,20 @@ UnitTestResult check_launch(const LaunchCase& test, CancellableScope& scope){
         switch_prompts,
         {.handle_online_license_check = test.input.handle_online_license_check}
     );
-    //  The scripted HOME has no frame to read a tile name from: its cursor
-    //  is on FireRed's tile.
     policy.tile_selected = [](const ScreenObservation&){
         return true;
     };
-    const Pokemon::Outcome outcome = Pokemon::launch_story_game(backend, policy, {});
-    if (test.expectation.failure.empty() && !outcome.succeeded()){
-        return std::format("expected success, got {}", Pokemon::to_string(outcome));
+    const std::optional<Pokemon::StoryFailure> failed = Pokemon::launch_story_game(backend, policy, {});
+    if (test.expectation.failure.empty() && failed){
+        return std::format("expected success, got {}", *failed);
     }
     if (!test.expectation.failure.empty()
-        && (outcome.failure != Pokemon::STORY_LAUNCH_FAILED || outcome.detail.find(test.expectation.failure) == std::string::npos)
+        && (!failed || failed->code != Pokemon::STORY_LAUNCH_FAILED || failed->detail.find(test.expectation.failure) == std::string::npos)
     ){
-        return std::format("expected a launch failure with \"{}\", got {}", test.expectation.failure, Pokemon::to_string(outcome));
+        return std::format(
+            "expected a launch failure with \"{}\", got {}",
+            test.expectation.failure, failed ? std::format("{}", *failed) : std::string("ok")
+        );
     }
     const std::vector<std::string> expected = expected_inputs(test.expectation.inputs);
     if (backend.inputs() != expected){
@@ -238,7 +216,6 @@ public:
 private:
     LaunchCase m_test;
 };
-
 
 } // namespace
 

@@ -7,7 +7,6 @@
 #include <algorithm>
 #include <format>
 #include <string>
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
@@ -19,34 +18,35 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-Pokemon::Outcome boulder_pushed(Pokemon::RunState& state, const StoryStep& step, const std::vector<MapData>& maps){
+std::optional<Pokemon::StoryFailure> boulder_pushed(
+    FrlgRunState& state, const StoryStep& step, const std::vector<MapData>& maps
+){
     const std::optional<StoryPose> here = story_pose(state.pose);
     if (!here){
-        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+        return frlg_failure("no_pose", format_grid_pose(state.pose));
     }
-    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
-    const int64_t tiles = Pokemon::story_arg<int64_t>(step.args, "tiles");
+    const Direction direction = frlg_arg<Direction>(step.args, "direction");
+    const int64_t tiles = frlg_arg<int64_t>(step.args, "tiles");
     StoryPose at{here->map, here->tile, direction};
     for (int64_t c = 0; c < tiles; c++){
         at.tile = at.tile.next(direction);
     }
     note_boulder_pushed(MapPosition{here->map, here->tile}, direction, tiles, state.flags);
-    //  The boulder stands a tile ahead; on a floor switch's button, the
-    //  switch is on for good and its barrier open.
     const auto map = std::find_if(maps.begin(), maps.end(), [&](const MapData& item){
         return item.name == at.map;
     });
-    const Pokemon::MapSwitch* pressed = map == maps.end() ? nullptr : Pokemon::switch_with_button(*map, at.tile.next(direction));
+    const Pokemon::MapSwitch* pressed = map == maps.end()
+        ? nullptr
+        : Pokemon::switch_with_button(*map, at.tile.next(direction));
     if (pressed != nullptr){
         state.gates.switches_on.insert(Pokemon::switch_key(*pressed));
     }
-    return Pokemon::outcome_ok(to_pose(at));
+    state.pose = to_grid_pose(at);
+    return std::nullopt;
 }
 
 namespace{
 
-//  A tap, and once more if it did not do what `wanted` asks and something
-//  that stopped it was cleared.
 BoulderPressRead press_for(Direction direction, bool (*wanted)(const BoulderPressRead&), BoulderPresses& presses){
     const BoulderPressRead read = presses.press(direction);
     if (wanted(read) || read.scrolled || !presses.clear_interrupt()){
@@ -87,42 +87,51 @@ BoulderPush push_boulder_tiles(Direction direction, int64_t tiles, BoulderPresse
     return push;
 }
 
-Pokemon::Outcome boulder_push_outcome(const StoryStep& step, const std::vector<MapData>& maps, const BoulderPush& push, Pokemon::RunState& state){
+std::optional<Pokemon::StoryFailure> boulder_push_outcome(
+    const StoryStep& step, const std::vector<MapData>& maps, const BoulderPush& push, FrlgRunState& state
+){
     if (!push.failure){
         return boulder_pushed(state, step, maps);
     }
-    Pokemon::Outcome outcome = Pokemon::outcome_failed("boulder_push", *push.failure);
     if (const std::optional<StoryPose> here = story_pose(state.pose)){
-        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+        const Direction direction = frlg_arg<Direction>(step.args, "direction");
         StoryPose at{here->map, here->tile, direction};
         for (int64_t c = 0; c < push.walked; c++){
             at.tile = at.tile.next(direction);
         }
-        outcome.pose = to_pose(at);
+        state.pose = to_grid_pose(at);
     }
-    return outcome;
+    return frlg_failure("boulder_push", *push.failure);
 }
 
-Pokemon::Outcome tree_cut(Pokemon::RunState& state, const StoryStep& step, const std::vector<MapData>& maps){
+std::optional<Pokemon::StoryFailure> tree_cut(
+    FrlgRunState& state, const StoryStep& step, const std::vector<MapData>& maps
+){
     const std::optional<StoryPose> here = story_pose(state.pose);
     if (!here){
-        return Pokemon::outcome_failed("no_pose", Pokemon::to_string(state.pose));
+        return frlg_failure("no_pose", format_grid_pose(state.pose));
     }
-    const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    const Direction direction = frlg_arg<Direction>(step.args, "direction");
     const StoryPose on_tree{here->map, here->tile.next(direction), direction};
     if (const std::optional<std::string> key = cut_gate_key(maps, MapPosition{on_tree.map, on_tree.tile})){
         state.gates.opened.insert(*key);
     }
-    return Pokemon::outcome_ok(to_pose(on_tree));
+    state.pose = to_grid_pose(on_tree);
+    return std::nullopt;
 }
 
-Pokemon::Outcome regrow_on_warp(const std::vector<MapData>& maps, const std::function<Pokemon::Outcome()>& run, Pokemon::RunState& state){
-    const std::string map_before = state.pose.map;
-    Pokemon::Outcome outcome = run();
-    if (state.pose.map != map_before){
+std::optional<Pokemon::StoryFailure> regrow_on_warp(
+    const std::vector<MapData>& maps,
+    const std::function<std::optional<Pokemon::StoryFailure>()>& run,
+    FrlgRunState& state
+){
+    const std::string map_before = state.pose ? state.pose->map : std::string();
+    std::optional<Pokemon::StoryFailure> failure = run();
+    const std::string map_after = state.pose ? state.pose->map : std::string();
+    if (map_after != map_before){
         regrow_cut_gates(maps, state.gates);
     }
-    return outcome;
+    return failure;
 }
 
 

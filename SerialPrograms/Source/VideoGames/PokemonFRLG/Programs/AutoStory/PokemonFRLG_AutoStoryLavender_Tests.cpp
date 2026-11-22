@@ -26,8 +26,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
@@ -128,7 +126,7 @@ UnitTestResult row_on_sim(
     std::string_view id, const SimScript& script, const std::vector<std::vector<std::string>>& fought, const MapPosition& end
 ){
     const StoryCheckpoint& row = checkpoint(id);
-    const StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    const StoryPose at = *story_pose(*row.start);
     OverworldSim sim(maps_after_route10(), MapPosition{at.map, at.tile}, *at.facing, script);
     return row_checked(sim, id, fought, end);
 }
@@ -138,7 +136,7 @@ UnitTestResult row_checked(
     OverworldSim& sim, std::string_view id, const std::vector<std::vector<std::string>>& fought, const MapPosition& end
 ){
     const StoryCheckpoint& row = checkpoint(id);
-    const StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    const StoryPose at = *story_pose(*row.start);
     if (const std::string failure = row_rest(sim, at, row, 0); !failure.empty()){
         return std::string(id) + ": " + failure;
     }
@@ -407,17 +405,17 @@ UnitTestResult tile_off_after_open_legs(std::string_view id){
     const StoryCheckpoint& row = checkpoint(id);
     const std::vector<MapData>& maps = story_maps();
     std::optional<RouteStep> before;
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     for (size_t s = 0; s < row.steps.size(); s++){
         const StoryStep& step = row.steps[s];
-        const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+        const bool walks = step.action == "route" || step.action == "legs";
         if (!walks){
             //  A step that isn't a walk starts where the table says.
             before.reset();
             if (step.pose_after){
-                at = *story_pose(Pokemon::pose_of(*step.pose_after));
+                at = *story_pose(*step.pose_after);
             }else if (step.action == CUT_TREE_VARIANT){
-                const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+                const Direction direction = frlg_arg<Direction>(step.args, "direction");
                 at = StoryPose{at.map, at.tile.next(direction), direction};
             }
             continue;
@@ -612,7 +610,7 @@ UnitTestResult test_celadon_save_place(Logger&){
 //  (talk_battle_hide_flag()).
 UnitTestResult test_hideout_row(Logger&){
     const StoryCheckpoint& row = checkpoint("09.01");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     std::vector<MapData> maps = maps_after_route10();
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing);
     std::vector<std::string> fought;
@@ -624,7 +622,7 @@ UnitTestResult test_hideout_row(Logger&){
             }
             continue;
         }
-        at = *story_pose(Pokemon::pose_of(*step.pose_after));
+        at = *story_pose(*step.pose_after);
         for (MapData& map : maps){
             hide_objects(map, {*hidden});
         }
@@ -655,7 +653,7 @@ UnitTestResult test_hideout_row(Logger&){
 //  STONE's pickup hides its ball, as the game does.
 UnitTestResult test_hideout_giovanni_row(Logger&){
     const StoryCheckpoint& row = checkpoint("09.02");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     std::vector<MapData> maps = maps_after_route10();
     if (std::none_of(maps.begin(), maps.end(), [](const MapData& map){ return map.name == LIFT_MAP; })){
         maps.push_back(rocket_hideout_lift_room());
@@ -663,8 +661,8 @@ UnitTestResult test_hideout_giovanni_row(Logger&){
     const SimScript script{};
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     for (const StoryStep& step : row.steps){
-        if (step.kind == StoryStepKind::BATTLE){
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+        if (step.action == "battle"){
+            at = *story_pose(*step.pose_after);
             continue;
         }
         if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
@@ -880,7 +878,7 @@ std::vector<MapPosition> walked_tiles(MapPosition from, const std::vector<RouteS
 //  (test_below_lift_one_backtrack()).
 UnitTestResult test_hideout_giovanni_row_no_tile_twice(Logger&){
     const StoryCheckpoint& row = checkpoint("09.02");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     std::vector<MapData> maps = maps_after_route10();
     if (std::none_of(maps.begin(), maps.end(), [](const MapData& map){ return map.name == LIFT_MAP; })){
         maps.push_back(rocket_hideout_lift_room());
@@ -889,11 +887,11 @@ UnitTestResult test_hideout_giovanni_row_no_tile_twice(Logger&){
     auto sim = std::make_unique<OverworldSim>(maps, MapPosition{at.map, at.tile}, *at.facing, script);
     std::vector<MapPosition> walked{{at.map, at.tile}};
     for (const StoryStep& step : row.steps){
-        if (step.kind == StoryStepKind::BATTLE){
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+        if (step.action == "battle"){
+            at = *story_pose(*step.pose_after);
             continue;
         }
-        if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+        if (step.action == "route" || step.action == "legs"){
             const std::optional<std::vector<RouteStep>> route = walked_route(at, step);
             if (!route){
                 return std::format("09.02/{}: no route.", step.name);

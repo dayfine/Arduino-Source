@@ -63,7 +63,7 @@ bool settled(const PcView& view, bool transferred){
 } // namespace
 
 
-Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer){
+FrlgArgMap pc_args(const PcTransfer& transfer){
     if (transfer.action == PcAction::DEPOSIT){
         return {
             {"do", std::string("deposit")},
@@ -72,7 +72,7 @@ Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer){
             {"if_present", transfer.if_missing == PcMissing::SKIP},
         };
     }
-    Pokemon::StoryActionArgs args = {
+    FrlgArgMap args = {
         {"do", std::string("withdraw")},
         {"box", int64_t(transfer.box + 1)},
         {"if_present", false},
@@ -86,7 +86,7 @@ Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer){
     return args;
 }
 
-std::optional<PcTransfer> pc_transfer_of(const Pokemon::StoryActionArgs& args){
+std::optional<PcTransfer> pc_transfer_of(const FrlgArgMap& args){
     const std::string* action = game_arg<std::string>(args, "do");
     const std::optional<size_t> box = counted_arg(args, "box", BOX_COUNT);
     if (action == nullptr || !box){

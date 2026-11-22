@@ -17,9 +17,8 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonFRLG_AutoStoryMember.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -64,15 +63,15 @@ bool is_hm_move(std::string_view move);
 //  one known move outside them is forgotten.
 inline const std::string TEACH_ACTION = "teach";
 //  `plan` as its action's args.
-Pokemon::StoryActionArgs teach_args(const TeachPlan& plan);
+FrlgArgMap teach_args(const TeachPlan& plan);
 //  The plan a TEACH_ACTION step's args give; nothing if the item isn't a
 //  TM or HM or a slot is out of range.
-std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args);
+std::optional<TeachPlan> teach_plan_of(const FrlgArgMap& args);
 
 //  The table's TEACH step, once per save (StoryStep::once_per_save): a
 //  retry from the same save skips it when the lead knew the move or there
 //  was no TM.
-Pokemon::StoryStep teach_step(std::string name, std::string why, const TeachPlan& plan);
+StoryStep teach_step(std::string name, std::string why, const TeachPlan& plan);
 
 
 //  The move slot `plan` forgets for a member that knows `moves`: nothing

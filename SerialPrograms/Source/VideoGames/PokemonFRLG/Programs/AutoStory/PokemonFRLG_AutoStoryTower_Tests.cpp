@@ -23,7 +23,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryLevelCheck.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
@@ -120,13 +119,13 @@ std::vector<MapData> maps_with_beaten(const std::vector<Beaten>& beaten){
 //  and the Marowak's scripted battles, which no trainer of the sim's
 //  starts, and a talk whose script warps the player (Mr. Fuji's).
 bool scripted(const StoryStep& step){
-    if (step.kind == StoryStepKind::TALK){
+    if (step.action == "talk"){
         return step.pose_after.has_value();
     }
-    if (step.kind != StoryStepKind::BATTLE){
+    if (step.action != "battle"){
         return false;
     }
-    const std::string& trainer = Pokemon::story_arg<std::string>(step.args, "trainer");
+    const std::string& trainer = frlg_arg<std::string>(step.args, "trainer");
     return trainer.empty() || trainer.starts_with("TRAINER_RIVAL_");
 }
 
@@ -140,7 +139,7 @@ struct RowRun{
 //  a scripted one, the sim started again where the table says it ends.
 RowRun run_row(std::string_view id, std::vector<MapData> maps){
     const StoryCheckpoint& row = checkpoint(id);
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     //  The Department Store's lift (10.01): its room in `maps`, its floors
     //  the sim's own (SimScript::lift_floors).
     const SimScript script{};
@@ -148,7 +147,7 @@ RowRun run_row(std::string_view id, std::vector<MapData> maps){
     RowRun run;
     for (const StoryStep& step : row.steps){
         if (scripted(step)){
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            at = *story_pose(*step.pose_after);
             run.fought.insert(run.fought.end(), sim->state().trainers_beaten.begin(), sim->state().trainers_beaten.end());
             if (!sim->state().violations.empty()){
                 run.failure = std::format("{}: a violation before {}: {}", id, step.name, sim->state().violations.back());
@@ -267,7 +266,7 @@ UnitTestResult test_tower_7f_and_fuji(Logger&){
 UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id, std::string_view battle, unsigned pokeguy){
     std::optional<LevelCheck> check;
     for (const StoryStep& step : checkpoint(id).steps){
-        if (step.kind == StoryStepKind::BATTLE && step.name == battle){
+        if (step.action == "battle" && step.name == battle){
             break;
         }
         if (step.action == LEVEL_ACTION){

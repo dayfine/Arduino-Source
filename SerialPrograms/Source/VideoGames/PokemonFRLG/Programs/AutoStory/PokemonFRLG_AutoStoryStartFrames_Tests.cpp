@@ -22,10 +22,12 @@
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStartFrames.h"
 
@@ -399,38 +401,51 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         size_t walks = 0;
         std::vector<std::string> lines;
-        Pokemon::Checkpoint checkpoint = one_walk(walks);
-        add_start_check(
-            checkpoint, to_pose(StoryPose{"CeruleanCity_PokemonCenter_1F", TilePos{7, 4}, Direction::NORTH}),
-            [this]{ return read_start_frames(reference(), m_case.input.screen, 3); },
-            [&lines](const std::string& line){ lines.push_back(line); }
-        );
+        std::vector<Pokemon::StoryCheckpoint> checkpoints;
+        checkpoints.push_back(one_walk(walks, lines));
+        struct LocalScope : CancellableScope{};
+    LocalScope scope;
+        Pokemon::FakeStoryBackend backend(Pokemon::FakeStoryScript{}, scope);
+        Pokemon::StoryGame game;
+        game.attempts_per_checkpoint = 1;
         Pokemon::RunState state;
-        Pokemon::EventLogger log = [](const std::string&){};
-        const Pokemon::CheckpointReport report = Pokemon::run_checkpoint(state, checkpoint, log);
-        const bool stopped = !report.completed && report.failure.failure == "start_failed";
+        const std::optional<Pokemon::CheckpointFailure> failure = Pokemon::run_checkpoints(backend, checkpoints, game, state);
+        const bool completed = !failure.has_value();
+        const bool stopped = failure.has_value() && failure->failure.code == "start_failed";
         const bool logged = lines.size() == 1 && lines[0].starts_with(m_case.expectation.logged);
-        if ((m_case.expectation.walked ? !report.completed || walks != 1 : !stopped || walks != 0) || !logged){
+        if ((m_case.expectation.walked ? !completed || walks != 1 : !stopped || walks != 0) || !logged){
             return std::format(
                 "expected {}, \"{}\" logged; got {} walk(s), {}: {}",
                 m_case.expectation.walked ? "the walk" : "a stop before it", m_case.expectation.logged,
-                walks, Pokemon::to_string(report.failure), lines.empty() ? "nothing logged" : lines[0]
+                walks, failure ? failure->failure.code : std::string("ok"), lines.empty() ? "nothing logged" : lines[0]
             );
         }
         return true;
     }
 
 private:
-    static Pokemon::Checkpoint one_walk(size_t& walks){
-        Pokemon::Checkpoint checkpoint;
+    Pokemon::StoryCheckpoint one_walk(size_t& walks, std::vector<std::string>& lines) const{
+        Pokemon::StoryCheckpoint checkpoint;
         checkpoint.id = "07.02";
-        Pokemon::Event walk;
-        walk.name = "to_the_door";
-        walk.act = [&walks](Pokemon::RunState&){
-            walks++;
-            return Pokemon::outcome_ok();
-        };
-        checkpoint.events.push_back(std::move(walk));
+        checkpoint.steps.push_back(Pokemon::StoryStep{
+            .name = "save_at_start_pose",
+            .action = "start_check",
+            .run = [this, &lines](Pokemon::StoryBackend&, Pokemon::RunState&){
+                return run_start_check(
+                    to_grid_pose(StoryPose{"CeruleanCity_PokemonCenter_1F", TilePos{7, 4}, Direction::NORTH}),
+                    [this]{ return read_start_frames(reference(), m_case.input.screen, 3); },
+                    [&lines](const std::string& line){ lines.push_back(line); }
+                );
+            },
+        });
+        checkpoint.steps.push_back(Pokemon::StoryStep{
+            .name = "to_the_door",
+            .action = "route",
+            .run = [&walks](Pokemon::StoryBackend&, Pokemon::RunState&) -> std::optional<Pokemon::StoryFailure>{
+                walks++;
+                return std::nullopt;
+            },
+        });
         return checkpoint;
     }
     std::optional<ImageRGB32> reference() const{

@@ -1,11 +1,9 @@
-/*  Native Checkpoint Engine with Scripted Game IO
+/*  Native Checkpoint Engine with Scripted Game IO (#648)
  *  From: https://github.com/PokemonAutomation/
  */
 #include <format>
 #include <limits>
 #include "Common/Cpp/Exceptions.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -16,14 +14,14 @@ namespace PokemonFRLG{
 namespace StoryReplayInternal{
 namespace{
 struct ReplayStopped{};
-Pokemon::Pose native_pose(const OverworldPose& pose){
-    return Pokemon::tile_pose(pose.position.map, {pose.position.point}, pose.facing);
+Pokemon::GridPose native_pose(const OverworldPose& pose){
+    return Pokemon::GridPose{pose.position.map, {pose.position.point}, pose.facing};
 }
 JsonValue action_json(const StoryStep& event, const OverworldPose& from, const OverworldPress& next){
     JsonObject action;
     action["event"] = event.name;
     action["map"] = from.position.map;
-    action["direction"] = direction_name(Pokemon::story_arg<Direction>(event.args, "direction"));
+    action["direction"] = direction_name(frlg_arg<Direction>(event.args, "direction"));
     if (next.warped || next.pose.position.map != from.position.map){
         action["kind"] = "transition";
         action["to_map"] = next.pose.position.map;
@@ -45,21 +43,20 @@ void check_candidate_move(const JsonObject& command, const OverworldPose& from, 
         throw ParseException("story replay: supplied transition disagrees with native rules");
     }
 }
-//  The engine's pose as {"map", "tiles": [[x, y], ...], "facing"}: its
-//  tiles whatever its certainty.
-JsonValue engine_pose_json(const Pokemon::Pose& pose){
+//  The engine's grid pose as {"map", "tiles": [[x, y], ...], "facing"}.
+JsonValue engine_pose_json(const Pokemon::GridPose& pose){
     JsonObject result;
     result["map"] = pose.map;
     JsonArray tiles;
-    for (const Pokemon::TilePos& tile : Pokemon::tiles_of(pose)){
+    for (const Pokemon::TilePos& tile : pose.tiles){
         JsonArray pair;
         pair.push_back(tile.x);
         pair.push_back(tile.y);
         tiles.push_back(std::move(pair));
     }
     result["tiles"] = std::move(tiles);
-    if (const std::optional<Direction> facing = Pokemon::facing_of(pose)){
-        result["facing"] = direction_name(*facing);
+    if (pose.facing){
+        result["facing"] = direction_name(*pose.facing);
     }
     return result;
 }
@@ -68,24 +65,18 @@ ReplayExecutor::ReplayExecutor(const ReplayData& data, const JsonValue& scenario
     : m_data(&data), m_scenario(&scenario.to_object_throw())
     , m_pose(read_pose(m_scenario->get_object_throw("entry").get_value_throw("pose"), data.maps))
     , m_table(make_story_action_table([this](StoryActionId id){ return replay_action(id); }))
-    , m_executor(m_table, m_guard)
     , m_interrupts(step_interrupts([this](bool){ return look(); }, interrupt_actions()))
-{
-    m_executor.set_interrupts(&m_interrupts);
-}
-bool ReplayStepGuard::stops_on_failure(const StoryStep&) const{
-    return true;
-}
-Pokemon::StoryAction ReplayExecutor::replay_action(StoryActionId id){
+{}
+FrlgStepAction ReplayExecutor::replay_action(StoryActionId id){
     switch (id){
     case StoryActionId::ROUTE:
-        return {.act = [this](const StoryStep& step, Pokemon::RunState& state){ return replay_route(step, state); }};
+        return [this](const StoryStep& step, FrlgRunState& state){ return replay_route(step, state); };
     case StoryActionId::STEP:
-        return {.act = [this](const StoryStep& step, Pokemon::RunState& state){ return replay_step(step, state); }};
+        return [this](const StoryStep& step, FrlgRunState& state){ return replay_step(step, state); };
     case StoryActionId::MASH:
-        return {.act = [this](const StoryStep& step, Pokemon::RunState&){ return replay_scene(step); }};
+        return [this](const StoryStep& step, FrlgRunState& state){ return replay_scene(step, state); };
     default:
-        return {.act = [](const StoryStep& step, Pokemon::RunState&){ return Pokemon::unsupported_step(step); }};
+        return [](const StoryStep& step, FrlgRunState&){ return frlg_unsupported_step(step); };
     }
 }
 const JsonObject* ReplayExecutor::signal() const{
@@ -94,24 +85,73 @@ const JsonObject* ReplayExecutor::signal() const{
 const JsonObject& ReplayExecutor::parameters(const StoryStep& step) const{
     return m_data->binding.to_object_throw().get_object_throw("capabilities").get_object_throw(step.name).get_object_throw("parameters");
 }
-Pokemon::Checkpoint ReplayExecutor::build(){
-    Pokemon::Checkpoint checkpoint = Pokemon::build_story_checkpoint(m_data->row, *this);
-    checkpoint.start.push_back(Pokemon::condition("scripted_entry", [this](Pokemon::RunState&){
-        const auto expected = authored_pose(Pokemon::pose_of(*m_data->row.start), m_data->maps);
-        return m_scenario->get_object_throw("entry").get_string_throw("screen") == "overworld"
-            && pose_json(m_pose, m_pose.facing) == pose_json(expected, expected.facing);
-    }));
+Pokemon::StoryCheckpoint ReplayExecutor::build(FrlgRunState& state){
+    Pokemon::StoryCheckpoint checkpoint;
+    checkpoint.id = m_data->row.id;
+    checkpoint.title = m_data->row.title;
+    checkpoint.steps.push_back(Pokemon::StoryStep{
+        .name = "scripted_entry",
+        .why = "",
+        .action = "start_check",
+        .run = [this](Pokemon::StoryBackend&, Pokemon::RunState&) -> std::optional<Pokemon::StoryFailure>{
+            const auto expected = authored_pose(*m_data->row.start, m_data->maps);
+            const bool ok = m_scenario->get_object_throw("entry").get_string_throw("screen") == "overworld"
+                && pose_json(m_pose, m_pose.facing) == pose_json(expected, expected.facing);
+            if (!ok){
+                return frlg_failure("start_failed", "scripted_entry", true);
+            }
+            return std::nullopt;
+        },
+    });
+    for (const StoryStep& step : m_data->row.steps){
+        checkpoint.steps.push_back(Pokemon::StoryStep{
+            .name = step.name,
+            .why = step.why,
+            .action = step.action,
+            .run = [this, step, &state](Pokemon::StoryBackend&, Pokemon::RunState&){
+                return run(step, state);
+            },
+        });
+    }
     return checkpoint;
 }
-Pokemon::Outcome ReplayExecutor::run(const StoryStep& step, Pokemon::RunState& state){
+std::optional<Pokemon::StoryFailure> ReplayExecutor::run(const StoryStep& step, FrlgRunState& state){
     m_active = step.name;
-    Pokemon::Outcome outcome = m_executor.run(step, state);
-    if (outcome.succeeded()){
+    const Pokemon::InterruptCheck cleared = Pokemon::clear_story_interrupt(m_interrupts, step.name, step.action);
+    if (cleared.pose_lost){
+        state.pose = std::nullopt;
+    }
+    if (cleared.failure){
+        if (!m_known){
+            state.pose = std::nullopt;
+        }
+        return cleared.failure;
+    }
+    if (!m_known){
+        state.pose = std::nullopt;
+    }
+    std::optional<Pokemon::StoryFailure> failure;
+    const auto it = m_table.find(step.action);
+    if (it == m_table.end() || !it->second){
+        failure = frlg_unsupported_step(step);
+    }else{
+        failure = it->second(step, state);
+    }
+    if (!failure){
+        if (step.pose_after){
+            state.pose = *step.pose_after;
+        }
+        if (step.gates_after){
+            Pokemon::apply_gate_change(state.gates, *step.gates_after);
+        }
+        for (const std::string& flag : step.flags_after){
+            state.flags.insert(flag);
+        }
         m_completed.push_back(step.name);
     }else if (!m_known){
-        state.pose = Pokemon::Pose{};
+        state.pose = std::nullopt;
     }
-    return outcome;
+    return failure;
 }
 void ReplayExecutor::lose_pose(std::string basis){
     m_known = false;
@@ -135,7 +175,7 @@ Pokemon::ScreenLook ReplayExecutor::look(){
 }
 StepInterruptActions ReplayExecutor::interrupt_actions(){
     const auto recorded = [this](bool warp){
-        return [this, warp](const Pokemon::InterruptVerdict& verdict, Pokemon::RunState&){
+        return [this, warp](const Pokemon::InterruptVerdict& verdict) -> std::optional<Pokemon::StoryFailure>{
             JsonObject action;
             action["event"] = m_active;
             action["kind"] = "interrupt";
@@ -144,7 +184,7 @@ StepInterruptActions ReplayExecutor::interrupt_actions(){
             if (warp){
                 lose_pose("unknown-after-warp");
             }
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         };
     };
     return {.wild = recorded(false), .trainer = recorded(false), .dialog = recorded(false), .warp = recorded(true)};
@@ -199,7 +239,10 @@ ReplayLeg ReplayExecutor::prepare_gate_leg(const JsonValue& value, const Overwor
             after.switches_on.insert(key);
         }
     }
-    RouteStep step{.action = opens ? RouteAction::OPEN_GATE : RouteAction::PRESS_SWITCH, .direction = facing, .tiles = 0};
+    RouteStep step;
+    step.action = opens ? RouteAction::OPEN_GATE : RouteAction::PRESS_SWITCH;
+    step.direction = facing;
+    step.tiles = 0;
     step.end = current.position;
     step.facing_after = facing;
     step.gate_change = Pokemon::gate_change_between(gates, after);
@@ -229,7 +272,10 @@ ReplayLeg ReplayExecutor::prepare_leg(const JsonValue& value, OverworldPose& cur
     if (tiles < (kind == "turn" ? 0 : 1) || tiles > 4096){
         throw ParseException("story replay: invalid supplied leg length");
     }
-    RouteStep step{.action = kind == "turn" ? RouteAction::FACE : RouteAction::WALK, .direction = facing, .tiles = (int)tiles};
+    RouteStep step;
+    step.action = kind == "turn" ? RouteAction::FACE : RouteAction::WALK;
+    step.direction = facing;
+    step.tiles = (int)tiles;
     for (int64_t n = 0; n < tiles; n++){
         const auto next = predict_overworld_press(maps_through(gates), current, facing);
         if (!next){
@@ -264,14 +310,14 @@ std::vector<RouteStep> ReplayExecutor::prepare_route(const StoryStep& step){
         m_legs.emplace_back(prepare_leg(command, current, gates));
         route.push_back(m_legs.back().step);
     }
-    const OverworldPose goal = authored_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")), m_data->maps);
+    const OverworldPose goal = authored_pose(frlg_arg<Pokemon::GridPose>(step.args, "target"), m_data->maps);
     if (!(pose_json(current, current.facing) == pose_json(goal, goal.facing))){
         throw ParseException("story replay: supplied candidate misses its authored target");
     }
     return route;
 }
 void ReplayExecutor::default_plan(const StoryStep& step){
-    const OverworldPose goal = authored_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")), m_data->maps);
+    const OverworldPose goal = authored_pose(frlg_arg<Pokemon::GridPose>(step.args, "target"), m_data->maps);
     const auto planned = plan_overworld_route_gated(
         m_data->maps, m_pose.position, {goal.position, goal.facing}, m_gates, m_rules, story_route_costs(), m_pose.facing
     );
@@ -305,7 +351,7 @@ void ReplayExecutor::timed_plan(const StoryStep& step, const std::vector<RouteSt
     const RoutePlanning planning{.maps = &m_data->maps, .gates = m_gates, .start = m_pose.position,
         .label = step.name, .wall_check = WallCheck::SKIP};
     const std::string failure = OverworldSimWalker(sim).run(route, planning);
-    const auto goal = authored_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")), m_data->maps);
+    const auto goal = authored_pose(frlg_arg<Pokemon::GridPose>(step.args, "target"), m_data->maps);
     const bool matched = failure.empty() && sim.state().position == goal.position
         && sim.state().facing == goal.facing && sim.state().violations.empty();
     JsonObject result;
@@ -342,7 +388,9 @@ StepOutcome ReplayExecutor::walk_leg(const RouteStep& step){
         if (s && pose_json(m_pose, m_pose.facing) == s->get_value_throw("from")
             && s->get_string_throw("direction") == direction_name(step.direction)){
             observe_interruption(next->pose);
-            return StepOutcome{.end = StepEnd::STOPPED};
+            StepOutcome stopped;
+            stopped.end = StepEnd::STOPPED;
+            return stopped;
         }
         m_pose = next->pose;
         m_moves++;
@@ -355,9 +403,9 @@ StepOutcome ReplayExecutor::walk_leg(const RouteStep& step){
     m_basis = "model-prediction";
     return StepOutcome{};
 }
-Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step, Pokemon::RunState& state){
+std::optional<Pokemon::StoryFailure> ReplayExecutor::replay_route(const StoryStep& step, FrlgRunState& state){
     m_gates = state.gates;
-    m_rules = Pokemon::gate_rules_of(state);
+    m_rules = frlg_gate_rules(state);
     default_plan(step);
     const std::vector<RouteStep> route = prepare_route(step);
     size_t moves = 0;
@@ -365,7 +413,7 @@ Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step, Pokemon::Ru
         moves += (size_t)leg.tiles;
     }
     if (moves > (size_t)m_data->binding.to_object_throw().get_integer_throw("max_route_moves")){
-        return Pokemon::outcome_failed("route_move_budget_exceeded");
+        return frlg_failure("route_move_budget_exceeded");
     }
     timed_plan(step, route);
     m_next_leg = 0;
@@ -377,31 +425,33 @@ Pokemon::Outcome ReplayExecutor::replay_route(const StoryStep& step, Pokemon::Ru
     try{
         run_route(route, m_pose.facing, nullptr, calls);
     }catch (const ReplayStopped&){
-        return Pokemon::outcome_failed(m_interrupted ? "encounter_requires_recovery" : "native_route_stopped");
+        return frlg_failure(m_interrupted ? "encounter_requires_recovery" : "native_route_stopped");
     }
     if (signal() && !m_interrupted){
         throw ParseException("story replay: physical encounter injection was not reached");
     }
     state.gates = m_gates;
-    return Pokemon::outcome_ok(native_pose(m_pose));
+    state.pose = native_pose(m_pose);
+    return std::nullopt;
 }
-Pokemon::Outcome ReplayExecutor::replay_step(const StoryStep& step, const Pokemon::RunState& state){
-    const auto next = predict_overworld_press(maps_through(state.gates), m_pose, Pokemon::story_arg<Direction>(step.args, "direction"));
+std::optional<Pokemon::StoryFailure> ReplayExecutor::replay_step(const StoryStep& step, FrlgRunState& state){
+    const auto next = predict_overworld_press(maps_through(state.gates), m_pose, frlg_arg<Direction>(step.args, "direction"));
     if (!next){
         lose_pose("unknown-after-transition");
-        return Pokemon::outcome_failed("step_unresolved");
+        return frlg_failure("step_unresolved");
     }
     m_actions.push_back(action_json(step, m_pose, *next));
     if (signal()){
         lose_pose("unknown-after-transition");
-        return Pokemon::outcome_failed("transition_unconfirmed");
+        return frlg_failure("transition_unconfirmed");
     }
     m_pose = next->pose;
     m_moves++;
     m_basis = "model-prediction";
-    return Pokemon::outcome_ok(native_pose(m_pose));
+    state.pose = native_pose(m_pose);
+    return std::nullopt;
 }
-Pokemon::Outcome ReplayExecutor::replay_scene(const StoryStep& step){
+std::optional<Pokemon::StoryFailure> ReplayExecutor::replay_scene(const StoryStep& step, FrlgRunState& state){
     JsonObject action;
     action["event"] = step.name;
     action["kind"] = "scene";
@@ -409,11 +459,11 @@ Pokemon::Outcome ReplayExecutor::replay_scene(const StoryStep& step){
     m_actions.push_back(std::move(action));
     const JsonObject* s = signal();
     const auto& required = parameters(step).get_value_throw("require_received");
-    const auto expected = authored_pose(Pokemon::pose_of(*step.pose_after), m_data->maps);
+    const auto expected = authored_pose(*step.pose_after, m_data->maps);
     if (!s || s->get_string_throw("screen") != "overworld" || s->get_value_throw("pose") != pose_json(expected, expected.facing)
         || s->get_value_throw("received") != required){
         lose_pose("unknown-after-scene");
-        return Pokemon::outcome_failed("scene_evidence_missing_or_mismatched");
+        return frlg_failure("scene_evidence_missing_or_mismatched");
     }
     m_pose = read_pose(s->get_value_throw("pose"), m_data->maps);
     m_basis = "scripted-observation";
@@ -425,12 +475,19 @@ Pokemon::Outcome ReplayExecutor::replay_scene(const StoryStep& step){
         }
         m_received[item] = previous + received;
     }
-    return Pokemon::outcome_ok(native_pose(m_pose));
+    state.pose = native_pose(m_pose);
+    return std::nullopt;
 }
-JsonValue ReplayExecutor::report(const Pokemon::CheckpointReport& result, const Pokemon::RunState& state, const JsonArray& logs) const{
+JsonValue ReplayExecutor::report(
+    const std::optional<Pokemon::CheckpointFailure>& failure,
+    const FrlgRunState& state,
+    const JsonArray& logs
+) const{
+    const bool completed = !failure.has_value();
+    const std::string failure_code = failure ? failure->failure.code : std::string();
     JsonObject root;
     root["format"] = "pokesim-native-checkpoint-replay/1";
-    root["status"] = result.completed ? "model_complete" : "stopped";
+    root["status"] = completed ? "model_complete" : "stopped";
     root["checkpoint"] = m_data->row.id;
     root["profile_sha256"] = m_data->binding_hash;
     root["profile_map_revision"] = m_data->binding.to_object_throw().get_string_throw("map_revision");
@@ -438,8 +495,8 @@ JsonValue ReplayExecutor::report(const Pokemon::CheckpointReport& result, const 
     root["native_source_revision"] = m_data->source_revision;
     root["route_source"] = "supplied-python-candidate-not-native-planner";
     root["native_parity"] = "diagnostic-profile-only-not-live-executor";
-    root["failure"] = result.completed ? JsonValue() : JsonValue(result.failure.failure == "start_failed" ? "entry_requirement_failed" : result.failure.failure);
-    root["active_event"] = result.completed || result.failed_event == 0 ? JsonValue() : JsonValue(m_active);
+    root["failure"] = completed ? JsonValue() : JsonValue(failure_code == "start_failed" ? "entry_requirement_failed" : failure_code);
+    root["active_event"] = (completed || m_active.empty()) ? JsonValue() : JsonValue(m_active);
     root["completed_events"] = m_completed.clone();
     root["pose"] = m_known ? pose_json(m_pose, m_pose.facing) : JsonValue();
     root["pose_basis"] = m_basis;
@@ -448,11 +505,8 @@ JsonValue ReplayExecutor::report(const Pokemon::CheckpointReport& result, const 
     root["save_performed"] = false;
     root["policy_basis"] = "synthetic-offline-policy";
     root["initialization"] = "existing-engine-from_save-after-scripted-entry-check";
-    //  The engine's pose as a grid pose (its tiles, whatever its certainty),
-    //  or null when unknown.
-    root["engine_pose"] = state.pose.certainty == Pokemon::PoseCertainty::UNKNOWN ? JsonValue()
-        : engine_pose_json(state.pose);
-    root["engine_failure"] = result.failure.failure;
+    root["engine_pose"] = !state.pose ? JsonValue() : engine_pose_json(*state.pose);
+    root["engine_failure"] = failure_code;
     root["engine_log"] = logs.clone();
     root["walker_log"] = m_route_logs.clone();
     root["actions"] = m_actions.clone();

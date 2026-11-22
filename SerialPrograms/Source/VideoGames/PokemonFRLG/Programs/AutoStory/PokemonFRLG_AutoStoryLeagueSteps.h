@@ -26,11 +26,10 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryLeagueRows.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -46,15 +45,12 @@ inline const std::string LEAGUE_TOP_UP_ACTION = "league_top_up";
 //  (summary_current_hp()) and its moves' PP (the summary's KNOWN MOVES).
 //  Every value compared is logged,
 //  wanted against read. A read that fails or is unsure fails
-//  "postcondition_unread" (the loop stops: never a save on a guess), with
-//  the screen kept in DebugDumps/AutoStory/league.
-Pokemon::Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row);
-
-//  LEAGUE_TOP_UP_ACTION's spec.
-std::vector<Pokemon::StoryActionSpec> league_action_specs();
+//  "postcondition_unread" (repeats = true so the loop stops: never a save
+//  on a guess), with the screen kept in DebugDumps/AutoStory/league.
+std::optional<Pokemon::StoryFailure> check_league_save(StoryEnv& env, const StoryCheckpoint& row);
 
 //  On the console, a LEAGUE_TOP_UP_ACTION step; nothing for another.
-std::optional<Pokemon::Outcome> run_league_step(StoryEnv& env, const Pokemon::StoryStep& step);
+std::optional<std::optional<Pokemon::StoryFailure>> run_league_step(StoryEnv& env, const StoryStep& step);
 
 
 

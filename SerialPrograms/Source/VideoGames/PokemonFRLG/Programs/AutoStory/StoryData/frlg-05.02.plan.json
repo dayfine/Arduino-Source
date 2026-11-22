@@ -4,64 +4,120 @@
   "checkpoint": {
     "id": "05.02",
     "title": "Cerulean: Grind to Lv19 (Bite), return to Center",
-    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "CeruleanCity_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "grind_patch",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "west to Route 4 grass to reach Lv19 for Bite",
         "args": {
-          "target": {"map": "Route4", "tiles": [[86, 16]], "facing": "west"}
-        },
-        "why": "west to Route 4 grass to reach Lv19 for Bite"
+          "target": {
+            "map": "Route4",
+            "tiles": [
+              [
+                86,
+                16
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "grind_to_lv19",
-        "kind": "game_action",
         "action": "grind",
+        "why": "reach Lv19 for Bite before Rival",
         "args": {
           "slot": 1,
           "level": 19,
           "encounters": 20,
           "pace": "west",
           "heal_every": 25,
-          "nurse": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "reach Lv19 for Bite before Rival"
+          "nurse": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "cerulean_road",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "align on Route 4 row 11 before crossing into Cerulean City",
         "args": {
-          "target": {"map": "Route4", "tiles": [[94, 11]], "facing": "east"}
-        },
-        "why": "align on Route 4 row 11 before crossing into Cerulean City"
+          "target": {
+            "map": "Route4",
+            "tiles": [
+              [
+                94,
+                11
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cerulean_east_wall",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "run east to the Pokecenter sign wall (26, 21) to absorb the Route4->CeruleanCity connection stall",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[26, 21]], "facing": "east"}
-        },
-        "why": "run east to the Pokecenter sign wall (26, 21) to absorb the Route4->CeruleanCity connection stall"
+          "target": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                26,
+                21
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cerulean_nurse_pre",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "heal before Rival",
         "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "heal before Rival"
+          "target": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_cerulean_pre",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP before Rival"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -71,6 +127,5 @@
         "Cerulean 05.02: grind to Lv19 (Bite) and return to Cerulean Center."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

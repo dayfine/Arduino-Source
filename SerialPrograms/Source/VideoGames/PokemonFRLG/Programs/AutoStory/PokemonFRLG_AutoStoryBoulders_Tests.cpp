@@ -246,7 +246,6 @@ UnitTestResult test_push_boulder_step_on_sim(){
     OverworldSim sim(story_maps(), MapPosition{"VictoryRoad_1F", {7, 19}}, Direction::NORTH);
     StoryPose at{"VictoryRoad_1F", {7, 19}, Direction::NORTH};
     StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
     step.name = "push";
     step.action = PUSH_BOULDER_VARIANT;
     step.args = {{"direction", Direction::NORTH}, {"tiles", int64_t(2)}, {"activate", false}};
@@ -275,7 +274,6 @@ bool boulder_on(const OverworldSim& sim, TilePos tile){
 //  already on.
 StoryStep push_step(Direction direction, int64_t tiles){
     StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
     step.name = "push";
     step.action = PUSH_BOULDER_VARIANT;
     step.args = {{"direction", direction}, {"tiles", tiles}, {"activate", false}};
@@ -364,7 +362,7 @@ UnitTestResult test_walk_after_a_push_goes_round_the_boulder(){
         return failure;
     }
     StoryStep corner;
-    corner.kind = Pokemon::StoryStepKind::ROUTE;
+    corner.action = "route";
     corner.name = "by_boulder_2_corner";
     const Pokemon::GridPose target{"VictoryRoad_1F", {{6, 18}}, std::nullopt};
     corner.args = {{"target", target}, {"fight_wild", false}};

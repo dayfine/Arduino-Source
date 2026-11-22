@@ -450,15 +450,15 @@ UnitTestResult test_parse(){
 //  Route 18's water to the Safari Zone's door, the slope taken as declared.
 UnitTestResult test_routes(){
     const StoryCheckpoint& row = checkpoint("11.02");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     std::unique_ptr<OverworldSim> sim = std::make_unique<OverworldSim>(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (step.action == SLOPE_VARIANT){
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            at = *story_pose(*step.pose_after);
             sim = std::make_unique<OverworldSim>(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
             continue;
         }
-        if (step.kind != Pokemon::StoryStepKind::ROUTE){
+        if (step.action != "route"){
             continue;
         }
         if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){

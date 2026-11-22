@@ -481,7 +481,7 @@ UnitTestResult test_quantity_presses(){
 
 UnitTestResult test_mart_args(){
     const MartPlan plan = pewter_plan({{"potion", 5}, {"repel", 3}});
-    const Pokemon::StoryActionArgs args = mart_args(plan);
+    const FrlgArgMap args = mart_args(plan);
     const std::optional<MartPlan> back = mart_plan_of(args);
     if (!back || back->map != plan.map
         || back->lines.size() != 2 || back->lines[1].item != "repel" || back->lines[1].quantity != 3
@@ -500,7 +500,7 @@ UnitTestResult test_mart_args(){
     if (!selling_back || selling_back->sells.size() != 1 || selling_back->sells[0].item != "nugget" || args.contains("sell")){
         return "The sales didn't read back from their args, or were written when none.";
     }
-    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+    const std::vector<std::pair<std::string, FrlgArgValue>> bad_args{
         {"items", std::vector<Pokemon::StoryItem>{}},
         {"map", std::string("Nowhere_Mart")},
         {"map", std::string("ViridianCity_Mart")},
@@ -510,7 +510,7 @@ UnitTestResult test_mart_args(){
         {"sell", std::vector<Pokemon::StoryItem>{{"nugget", 0}}},
     };
     for (const auto& [key, value] : bad_args){
-        Pokemon::StoryActionArgs bad = args;
+        FrlgArgMap bad = args;
         bad[key] = value;
         if (mart_plan_of(bad)){
             return "Expected a bad " + key + " refused.";
@@ -592,9 +592,9 @@ const std::set<std::string_view> LATE_MART_CHECKPOINTS = {"07.01", "12.01"};
 
 //  Whether a step is a battle that can cost the money (a prize or a loss).
 bool fights(const StoryStep& step){
-    return step.kind == Pokemon::StoryStepKind::BATTLE
-        || step.kind == Pokemon::StoryStepKind::TRAIN
-        || (step.kind == Pokemon::StoryStepKind::GAME && (step.action == GRIND_ACTION || step.action == CAPTURE_ACTION));
+    return step.action == "battle"
+        || step.action == "train"
+        || step.action == GRIND_ACTION || step.action == CAPTURE_ACTION;
 }
 
 //  Whether `data` has a Mart step after a battle or a long walk.
@@ -602,13 +602,13 @@ bool has_late_mart(const StoryCheckpoint& data){
     size_t walk = 0;
     bool fought = false;
     for (const StoryStep& step : data.steps){
-        if (step.kind == Pokemon::StoryStepKind::GAME && step.action == MART_ACTION){
+        if (step.action == MART_ACTION){
             if (fought || walk > MAX_WALK_BEFORE_MART){
                 return true;
             }
             walk = 0;
             fought = false;
-        }else if (step.kind == Pokemon::StoryStepKind::ROUTE || step.kind == Pokemon::StoryStepKind::LEGS){
+        }else if (step.action == "route" || step.action == "legs"){
             walk++;
         }else if (fights(step)){
             fought = true;

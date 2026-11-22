@@ -17,7 +17,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "CommonTools/ScreenEvents/ScreenEventLog.h"
+#include "Pokemon/AutoStory/Pokemon_ScreenEventLog.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimFaults.h"
 #include "PokemonFRLG_HideoutLiftRoom.h"

@@ -23,7 +23,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
@@ -88,7 +87,7 @@ const StoryCheckpoint& safari_row(){
 //  The scene after the counter's YES: the script walks the player in and
 //  warps them to the center, where the table says.
 bool warps_by_script(const StoryStep& step){
-    return step.kind == StoryStepKind::MASH && step.pose_after.has_value();
+    return step.action == "scene" && step.pose_after.has_value();
 }
 
 bool on_grass(const MapPosition& position){
@@ -116,7 +115,7 @@ std::optional<SafariWalk> safari_walk(std::string& failure){
     std::optional<StoryPose> at;
     for (const StoryStep& step : row.steps){
         if (warps_by_script(step)){
-            at = story_pose(Pokemon::pose_of(*step.pose_after));
+            at = story_pose(*step.pose_after);
             continue;
         }
         if (!at){
@@ -129,7 +128,7 @@ std::optional<SafariWalk> safari_walk(std::string& failure){
         if (parse_fly_step(step)){
             return walk;
         }
-        if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS){
+        if (step.action != "route" && step.action != "legs"){
             continue;
         }
         const std::optional<std::vector<RouteStep>> route = walked_route(*at, step);
@@ -160,7 +159,7 @@ std::optional<SafariWalk> safari_walk(std::string& failure){
 //  City, with no trainer seen and nothing in the way.
 UnitTestResult test_safari(){
     const StoryCheckpoint& row = safari_row();
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     auto sim = std::make_unique<OverworldSim>(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (warps_by_script(step)){
@@ -168,7 +167,7 @@ UnitTestResult test_safari(){
             if (!(sim->state().position == trigger)){
                 return std::format("11.03: the counter's scene from {}, not its trigger {}.", to_string(sim->state().position), to_string(trigger));
             }
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            at = *story_pose(*step.pose_after);
             sim = std::make_unique<OverworldSim>(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
             continue;
         }

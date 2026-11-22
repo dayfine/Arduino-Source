@@ -107,7 +107,7 @@ std::optional<SlopeMove> parse_slope_move(std::string_view text){
     return std::nullopt;
 }
 
-std::optional<std::vector<SlopeMove>> parse_slope_step(const Pokemon::StoryStep& step){
+std::optional<std::vector<SlopeMove>> parse_slope_step(const StoryStep& step){
     const std::vector<std::string>* words = step.action == SLOPE_VARIANT
         ? game_arg<std::vector<std::string>>(step.args, "moves")
         : nullptr;
@@ -123,14 +123,6 @@ std::optional<std::vector<SlopeMove>> parse_slope_step(const Pokemon::StoryStep&
         moves.push_back(std::move(*move));
     }
     return moves;
-}
-
-Pokemon::StoryActionSpec slope_action_spec(){
-    return {.kind = Pokemon::StoryStepKind::GAME, .name = SLOPE_VARIANT, .args = {
-        required_arg("moves", Pokemon::StoryArgType::WORDS,
-            "the moves on Route 17's slope, in order: \"step <direction> <n>\", \"roll <n>\", \"brake <n>\", "
-            "\"search <direction> <n> <item>\" (PokemonFRLG_AutoStorySlope.h)"),
-    }};
 }
 
 std::vector<SlopePress> slope_move_presses(const SlopeMove& move){

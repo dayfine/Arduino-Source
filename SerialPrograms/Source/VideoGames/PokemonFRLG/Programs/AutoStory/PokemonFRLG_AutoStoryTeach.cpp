@@ -105,8 +105,8 @@ TeachDecision decide_keep(const TeachPlan& plan, const std::vector<std::string>&
 
 } // namespace
 
-Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
-    Pokemon::StoryActionArgs args{{"item", plan.item}, {"move", plan.move}};
+FrlgArgMap teach_args(const TeachPlan& plan){
+    FrlgArgMap args{{"item", plan.item}, {"move", plan.move}};
     if (plan.species.empty()){
         args.emplace("slot", int64_t(plan.member + 1));
     }else{
@@ -126,7 +126,7 @@ Pokemon::StoryActionArgs teach_args(const TeachPlan& plan){
     return args;
 }
 
-std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args){
+std::optional<TeachPlan> teach_plan_of(const FrlgArgMap& args){
     const std::string* item = game_arg<std::string>(args, "item");
     const std::string* move = game_arg<std::string>(args, "move");
     const std::string* species = game_arg<std::string>(args, "species");
@@ -163,9 +163,8 @@ std::optional<TeachPlan> teach_plan_of(const Pokemon::StoryActionArgs& args){
     return plan;
 }
 
-Pokemon::StoryStep teach_step(std::string name, std::string why, const TeachPlan& plan){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep teach_step(std::string name, std::string why, const TeachPlan& plan){
+    StoryStep step;
     step.name = std::move(name);
     step.why = std::move(why);
     step.action = TEACH_ACTION;

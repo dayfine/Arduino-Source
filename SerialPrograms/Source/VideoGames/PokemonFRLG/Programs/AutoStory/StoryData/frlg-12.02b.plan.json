@@ -4,85 +4,182 @@
   "checkpoint": {
     "id": "12.02b",
     "title": "The GOLD TEETH to the Warden for HM04 STRENGTH; heal at Fuchsia's Center",
-    "start": {"map": "FuchsiaCity_Gym", "tiles": [[6, 13]], "facing": "east"},
+    "start": {
+      "map": "FuchsiaCity_Gym",
+      "tiles": [
+        [
+          6,
+          13
+        ]
+      ],
+      "facing": "east"
+    },
     "events": [
       {
         "id": "below_warden",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the gym by the way in, Koga's win having beaten every gym trainer (FuchsiaCity_Gym_EventScript_DefeatedKoga, set_gym_trainers 5); east along the city's south row to the Warden's door (33, 31) and in, west along row 9 and up the west wall to (1, 6) (pokeguy 1:18:04 to 1:18:24)",
         "args": {
-          "target": {"map": "FuchsiaCity_WardensHouse", "tiles": [[1, 6]], "facing": "north"}
-        },
-        "why": "out of the gym by the way in, Koga's win having beaten every gym trainer (FuchsiaCity_Gym_EventScript_DefeatedKoga, set_gym_trainers 5); east along the city's south row to the Warden's door (33, 31) and in, west along row 9 and up the west wall to (1, 6) (pokeguy 1:18:04 to 1:18:24)"
+          "target": {
+            "map": "FuchsiaCity_WardensHouse",
+            "tiles": [
+              [
+                1,
+                6
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "beside_warden",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "a tap a tile from the wall (1, 6) east to below the Warden (3, 6): no wall there stops a run",
         "args": {
-          "legs": [{"direction": "east", "tiles": 2}]
-        },
-        "why": "a tap a tile from the wall (1, 6) east to below the Warden (3, 6): no wall there stops a run"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "face_warden",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "turn to the Warden (3, 5)",
         "args": {
-          "target": {"map": "FuchsiaCity_WardensHouse", "tiles": [[3, 6]], "facing": "north"}
-        },
-        "why": "turn to the Warden (3, 5)"
+          "target": {
+            "map": "FuchsiaCity_WardensHouse",
+            "tiles": [
+              [
+                3,
+                6
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "talk_warden",
-        "kind": "talk",
+        "action": "talk",
         "why": "the Warden (3, 5): the GOLD TEETH from the Safari Zone (11.03)"
       },
       {
         "id": "hm04_strength",
-        "kind": "scene",
-        "declared_after": {"map": "FuchsiaCity_WardensHouse", "tiles": [[3, 6]], "facing": "north"},
-        "why": "he takes the GOLD TEETH and gives HM04 STRENGTH (FuchsiaCity_WardensHouse_EventScript_GiveGoldTeeth; no YES/NO with the teeth; pokeguy 1:18:25 to 1:18:39)"
+        "action": "scene",
+        "why": "he takes the GOLD TEETH and gives HM04 STRENGTH (FuchsiaCity_WardensHouse_EventScript_GiveGoldTeeth; no YES/NO with the teeth; pokeguy 1:18:25 to 1:18:39)",
+        "args": {
+          "pose_after": {
+            "map": "FuchsiaCity_WardensHouse",
+            "tiles": [
+              [
+                3,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "warden_outside",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the Warden's door onto the street below it (33, 31): Fly works outdoors only",
         "args": {
-          "target": {"map": "FuchsiaCity", "tiles": [[33, 32]], "facing": "south"}
-        },
-        "why": "out of the Warden's door onto the street below it (33, 31): Fly works outdoors only"
+          "target": {
+            "map": "FuchsiaCity",
+            "tiles": [
+              [
+                33,
+                32
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "fly_fuchsia",
-        "kind": "game_action",
         "action": "fly",
-        "args": {"town": "FuchsiaCity", "species": "pidgey"},
-        "declared_after": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "south"},
-        "why": "the walk from the Warden's door to the Center's is 85 tiles round the city's west side (story route plan golden); Fly to Fuchsia City lands below the Center's door (25, 31) on its heal spot (user, 2026-11-15: \"yeh should fly\")"
+        "why": "the walk from the Warden's door to the Center's is 85 tiles round the city's west side (story route plan golden); Fly to Fuchsia City lands below the Center's door (25, 31) on its heal spot (user, 2026-11-15: \"yeh should fly\")",
+        "args": {
+          "town": "FuchsiaCity",
+          "species": "pidgey",
+          "pose_after": {
+            "map": "FuchsiaCity",
+            "tiles": [
+              [
+                25,
+                32
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "below_center_door",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "turn to the Center's door (25, 31) from Fly's landing: no tile to walk",
         "args": {
-          "target": {"map": "FuchsiaCity", "tiles": [[25, 32]], "facing": "north"}
-        },
-        "why": "turn to the Center's door (25, 31) from Fly's landing: no tile to walk"
+          "target": {
+            "map": "FuchsiaCity",
+            "tiles": [
+              [
+                25,
+                32
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "fuchsia_nurse",
-        "kind": "game_action",
         "action": "center_enter",
-        "declared_after": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
-        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center",
+        "args": {
+          "pose_after": {
+            "map": "FuchsiaCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "heal_fuchsia",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP and PP (pokeguy uses a Potion and flies on at 24/126, 1:18:40)"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "FuchsiaCity_PokemonCenter_1F",
+          "tiles": [
+            [
+              7,
+              4
+            ]
+          ],
+          "facing": "north"
+        }
+      }
+    }
   },
   "execution": {
     "menu": "full",
@@ -92,12 +189,6 @@
         "Strength is not taught here: pokeguy teaches it over Water Pulse at Victory Road (19.02, D3).",
         "Ends at Fuchsia's nurse, where 13.01 starts (Fly to Pallet Town, Surf down Route 21)."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {"map": "FuchsiaCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
     }
   }
 }

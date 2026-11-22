@@ -33,8 +33,8 @@ std::string_view grind_end_name(GrindEnd end){
 }
 
 
-Pokemon::StoryActionArgs grind_check_args(const GrindPlan& plan){
-    Pokemon::StoryActionArgs args{
+FrlgArgMap grind_check_args(const GrindPlan& plan){
+    FrlgArgMap args{
         {"slot", int64_t(plan.member + 1)},
         {"level", int64_t(plan.level)},
         {"encounters", int64_t(plan.max_encounters)},
@@ -44,13 +44,13 @@ Pokemon::StoryActionArgs grind_check_args(const GrindPlan& plan){
     return args;
 }
 
-Pokemon::StoryActionArgs grind_args(const GrindPlan& plan, Pokemon::GridPose nurse){
-    Pokemon::StoryActionArgs args = grind_check_args(plan);
+FrlgArgMap grind_args(const GrindPlan& plan, Pokemon::GridPose nurse){
+    FrlgArgMap args = grind_check_args(plan);
     args.emplace("nurse", std::move(nurse));
     return args;
 }
 
-std::optional<GrindPlan> grind_plan_of(const Pokemon::StoryActionArgs& args){
+std::optional<GrindPlan> grind_plan_of(const FrlgArgMap& args){
     const std::optional<size_t> member = counted_arg(args, "slot", PARTY_SLOTS);
     const std::optional<size_t> level = number_arg(args, "level", 2, 100);
     const std::optional<size_t> encounters = number_arg(args, "encounters", 1, 9999);
@@ -65,9 +65,8 @@ std::optional<GrindPlan> grind_plan_of(const Pokemon::StoryActionArgs& args){
     };
 }
 
-Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::GridPose nurse){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep grind_step(std::string name, std::string why, const GrindPlan& plan, Pokemon::GridPose nurse){
+    StoryStep step;
     step.name = std::move(name);
     step.why = std::move(why);
     step.action = GRIND_ACTION;
@@ -75,9 +74,8 @@ Pokemon::StoryStep grind_step(std::string name, std::string why, const GrindPlan
     return step;
 }
 
-Pokemon::StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep grind_check_step(std::string name, std::string why, const GrindPlan& plan){
+    StoryStep step;
     step.name = std::move(name);
     step.why = std::move(why);
     step.action = GRIND_CHECK_ACTION;

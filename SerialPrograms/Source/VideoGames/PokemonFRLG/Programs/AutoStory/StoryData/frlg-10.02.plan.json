@@ -4,18 +4,39 @@
   "checkpoint": {
     "id": "10.02",
     "title": "Pokemon Tower 1F and 2F, saved below the rival's trigger",
-    "start": {"map": "LavenderTown_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "LavenderTown_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "tower_2f_east_of_rival",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the Center's door (6, 5), east to the Tower's door (18, 6), up 1F to its stairs (18, 9), and on 2F from its stairs (18, 10) up column 18 to (17, 6), a tile east of the trigger (16, 6) below the rival (16, 5); the other trigger (17, 5) is north of it",
         "args": {
-          "target": {"map": "PokemonTower_2F", "tiles": [[17, 6]], "facing": "west"}
-        },
-        "why": "out of the Center's door (6, 5), east to the Tower's door (18, 6), up 1F to its stairs (18, 9), and on 2F from its stairs (18, 10) up column 18 to (17, 6), a tile east of the trigger (16, 6) below the rival (16, 5); the other trigger (17, 5) is north of it"
+          "target": {
+            "map": "PokemonTower_2F",
+            "tiles": [
+              [
+                17,
+                6
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -26,6 +47,5 @@
         "The save card's place in the Tower isn't in save_card_place(): a run started at 10.03 doesn't check it."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

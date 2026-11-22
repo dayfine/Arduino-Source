@@ -33,7 +33,6 @@ namespace PokemonFRLG{
 namespace{
 
 using Pokemon::StoryLeg;
-using Pokemon::StoryStep;
 
 struct FieldMovesInput{
     std::string name;
@@ -105,7 +104,7 @@ UnitTestResult test_args(){
     if (!plan || plan->slot != 1 || plan->menu_row != 1 || plan->town != 8){
         return "Expected slot 2, menu row 2, Celadon City.";
     }
-    const Pokemon::DeclaredPose landed = Pokemon::TileDeclared{"CeladonCity", {{48, 12}}, Direction::SOUTH};
+    const Pokemon::GridPose landed = Pokemon::GridPose{"CeladonCity", {{48, 12}}, Direction::SOUTH};
     if (!(fly.pose_after == landed)){
         return "Expected the fly step to end below Celadon's Center door, (48, 12).";
     }
@@ -126,12 +125,8 @@ UnitTestResult test_args(){
     if (parse_surf_step(surf) || is_field_move_step(surf)){
         return "Expected no surf step with an arg it doesn't take.";
     }
-    const std::vector<Pokemon::StoryActionSpec> specs = field_action_specs();
-    const auto has = [&](const std::string& name){
-        return std::any_of(specs.begin(), specs.end(), [&](const Pokemon::StoryActionSpec& spec){ return spec.name == name; });
-    };
-    if (!has(FLY_VARIANT) || !has(SURF_VARIANT)){
-        return "Expected fly and surf among the field actions.";
+    if (!is_known_frlg_action(FLY_VARIANT) || !is_known_frlg_action(SURF_VARIANT)){
+        return "Expected fly and surf among FRLG actions.";
     }
     return true;
 }
@@ -179,7 +174,7 @@ UnitTestResult test_fly_no_takeoff_on_sim(){
 
 StoryStep legs_step(std::string name, std::vector<StoryLeg> legs){
     StoryStep step;
-    step.kind = Pokemon::StoryStepKind::LEGS;
+    step.action = "legs";
     step.name = std::move(name);
     step.args = {{"legs", std::move(legs)}};
     return step;

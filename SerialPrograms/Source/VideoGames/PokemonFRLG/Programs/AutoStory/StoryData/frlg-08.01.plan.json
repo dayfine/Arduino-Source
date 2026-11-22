@@ -4,360 +4,812 @@
   "checkpoint": {
     "id": "08.01",
     "title": "Through Rock Tunnel: Ashton, Winston, Martha, Allen, Lenny, Sofia, Dudley, Cooper and Dana",
-    "start": {"map": "Route10_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "Route10_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "below_route10_tree",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the Center (13, 20), west along row 21 to the wall (9, 21), below the tree (10, 20)",
         "args": {
-          "target": {"map": "Route10", "tiles": [[10, 21]], "facing": "north"}
-        },
-        "why": "out of the Center (13, 20), west along row 21 to the wall (9, 21), below the tree (10, 20)"
+          "target": {
+            "map": "Route10",
+            "tiles": [
+              [
+                10,
+                21
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cut_route10_tree",
-        "kind": "game_action",
         "action": "cut_tree",
+        "why": "the tree; a step onto its tile",
         "args": {
-          "direction": "north"
-        },
-        "declared_after": {"map": "Route10", "tiles": [[10, 20]], "facing": "north"},
-        "why": "the tree; a step onto its tile"
+          "direction": "north",
+          "pose_after": {
+            "map": "Route10",
+            "tiles": [
+              [
+                10,
+                20
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "west_of_tree",
-        "kind": "step",
+        "action": "step",
+        "why": "a step west along row 20",
         "args": {
-          "direction": "west"
-        },
-        "declared_after": {"map": "Route10", "tiles": [[9, 20]], "facing": "west"},
-        "why": "a step west along row 20"
+          "direction": "west",
+          "pose_after": {
+            "map": "Route10",
+            "tiles": [
+              [
+                9,
+                20
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "below_rock_tunnel",
-        "kind": "step",
+        "action": "step",
+        "why": "a step west, below the mouth (8, 19)",
         "args": {
-          "direction": "west"
-        },
-        "declared_after": {"map": "Route10", "tiles": [[8, 20]], "facing": "west"},
-        "why": "a step west, below the mouth (8, 19)"
+          "direction": "west",
+          "pose_after": {
+            "map": "Route10",
+            "tiles": [
+              [
+                8,
+                20
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "rock_tunnel_1f",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "north into Rock Tunnel",
         "args": {
-          "target": {"map": "RockTunnel_1F", "tiles": [[17, 2]], "facing": "north"}
-        },
-        "why": "north into Rock Tunnel"
+          "target": {
+            "map": "RockTunnel_1F",
+            "tiles": [
+              [
+                17,
+                2
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "above_ashton_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "down column 17 to the wall (17, 8), east along row 8 to (25, 8), onto row 9 and west to the wall (24, 9)",
         "args": {
-          "legs": [{"direction": "south", "tiles": 6}, {"direction": "east", "tiles": 8}, {"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 1}]
-        },
-        "why": "down column 17 to the wall (17, 8), east along row 8 to (25, 8), onto row 9 and west to the wall (24, 9)"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 6
+            },
+            {
+              "direction": "east",
+              "tiles": 8
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "ashton_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (24, 10), in Ashton's line: he walks up to (25, 10)",
         "args": {
-          "direction": "south"
-        },
-        "why": "onto (24, 10), in Ashton's line: he walks up to (25, 10)"
+          "direction": "south",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "pokemaniac_ashton",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Slowpoke, Slowpoke and Slowpoke",
         "args": {
           "trainer": "TRAINER_POKEMANIAC_ASHTON",
-          "foes": ["cubone", "slowpoke"]
-        },
-        "declared_after": {"map": "RockTunnel_1F", "tiles": [[24, 10]], "facing": "south"},
-        "why": "Slowpoke, Slowpoke and Slowpoke"
+          "foes": [
+            "cubone",
+            "slowpoke"
+          ],
+          "pose_after": {
+            "map": "RockTunnel_1F",
+            "tiles": [
+              [
+                24,
+                10
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "b1f_south_ladder",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east along row 12 and up column 45 to the ladder (45, 2), down to B1F",
         "args": {
-          "target": {"map": "RockTunnel_B1F", "tiles": [[38, 28]], "facing": "north"}
-        },
-        "why": "east along row 12 and up column 45 to the ladder (45, 2), down to B1F"
+          "target": {
+            "map": "RockTunnel_B1F",
+            "tiles": [
+              [
+                38,
+                28
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "winston_line_end",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "west to the wall (33, 28), down column 33 to the wall (33, 38), up to (33, 37) and west to (32, 37)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 5}, {"direction": "south", "tiles": 10}, {"direction": "north", "tiles": 1}, {"direction": "west", "tiles": 1}]
-        },
-        "why": "west to the wall (33, 28), down column 33 to the wall (33, 38), up to (33, 37) and west to (32, 37)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 5
+            },
+            {
+              "direction": "south",
+              "tiles": 10
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "winston_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "along row 37 onto (29, 37), the end of Winston's line: he walks down to (29, 36)",
         "args": {
-          "direction": "west"
-        },
-        "why": "along row 37 onto (29, 37), the end of Winston's line: he walks down to (29, 36)"
+          "direction": "west",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "pokemaniac_winston",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Slowpoke and Slowpoke",
         "args": {
           "trainer": "TRAINER_POKEMANIAC_WINSTON",
-          "foes": ["slowpoke"]
-        },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[29, 37]], "facing": "west"},
-        "why": "Slowpoke and Slowpoke"
+          "foes": [
+            "slowpoke"
+          ],
+          "pose_after": {
+            "map": "RockTunnel_B1F",
+            "tiles": [
+              [
+                29,
+                37
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "below_martha_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "west along row 37 to (13, 37), up to the wall (13, 35), west to the corner (11, 35), east to (16, 35)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 16}, {"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "east", "tiles": 5}]
-        },
-        "why": "west along row 37 to (13, 37), up to the wall (13, 35), west to the corner (11, 35), east to (16, 35)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 16
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 5
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "martha_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "up column 16 onto (16, 33), beside Martha; from (17, 35), a tile short, up column 17 onto (17, 33), the end of her line",
         "args": {
-          "direction": "north"
-        },
-        "why": "up column 16 onto (16, 33), beside Martha; from (17, 35), a tile short, up column 17 onto (17, 33), the end of her line"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "picnicker_martha",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Oddish and Bulbasaur",
         "args": {
           "trainer": "TRAINER_PICNICKER_MARTHA",
-          "foes": ["oddish", "bulbasaur"]
-        },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[16, 33]], "facing": "north"},
-        "why": "Oddish and Bulbasaur"
+          "foes": [
+            "oddish",
+            "bulbasaur"
+          ],
+          "pose_after": {
+            "map": "RockTunnel_B1F",
+            "tiles": [
+              [
+                16,
+                33
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_allen_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "east to the wall (17, 33), up column 17 to the wall (17, 28), east to the wall (29, 28), up column 29 past Steve's line to the wall (29, 19), east to (40, 19), up to row 17, west to the wall (38, 17) and up to the wall (38, 12)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 5}, {"direction": "east", "tiles": 12}, {"direction": "north", "tiles": 9}, {"direction": "east", "tiles": 11}, {"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 5}]
-        },
-        "why": "east to the wall (17, 33), up column 17 to the wall (17, 28), east to the wall (29, 28), up column 29 past Steve's line to the wall (29, 19), east to (40, 19), up to row 17, west to the wall (38, 17) and up to the wall (38, 12)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 5
+            },
+            {
+              "direction": "east",
+              "tiles": 12
+            },
+            {
+              "direction": "north",
+              "tiles": 9
+            },
+            {
+              "direction": "east",
+              "tiles": 11
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 5
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "allen_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "along row 12 onto (36, 12), below Allen",
         "args": {
-          "direction": "west"
-        },
-        "why": "along row 12 onto (36, 12), below Allen"
+          "direction": "west",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "hiker_allen",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Geodude, Geodude and Graveler",
         "args": {
           "trainer": "TRAINER_HIKER_ALLEN",
-          "foes": ["geodude"]
-        },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[36, 12]], "facing": "west"},
-        "why": "Geodude, Geodude and Graveler"
+          "foes": [
+            "geodude"
+          ],
+          "pose_after": {
+            "map": "RockTunnel_B1F",
+            "tiles": [
+              [
+                36,
+                12
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "west_of_b1f_ladder",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "west along row 12 to the wall (32, 12), up column 32 to the wall (32, 2)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 10}]
-        },
-        "why": "west along row 12 to the wall (32, 12), up column 32 to the wall (32, 2)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 4
+            },
+            {
+              "direction": "north",
+              "tiles": 10
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "1f_west_ladder",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "onto the ladder (33, 3), up to 1F",
         "args": {
-          "target": {"map": "RockTunnel_1F", "tiles": [[4, 2]], "facing": "north"}
-        },
-        "why": "onto the ladder (33, 3), up to 1F"
+          "target": {
+            "map": "RockTunnel_1F",
+            "tiles": [
+              [
+                4,
+                2
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "above_lenny_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "east to the wall (6, 2), down column 6 to the wall (6, 9)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 2}, {"direction": "south", "tiles": 7}]
-        },
-        "why": "east to the wall (6, 2), down column 6 to the wall (6, 9)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "south",
+              "tiles": 7
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "lenny_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (7, 9), the end of Lenny's line: he walks down to (7, 8)",
         "args": {
-          "direction": "east"
-        },
-        "why": "onto (7, 9), the end of Lenny's line: he walks down to (7, 8)"
+          "direction": "east",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "hiker_lenny",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Machop and Onix",
         "args": {
           "trainer": "TRAINER_HIKER_LENNY",
-          "foes": ["geodude", "machop", "geodude", "geodude"]
-        },
-        "declared_after": {"map": "RockTunnel_1F", "tiles": [[7, 9]], "facing": "east"},
-        "why": "Machop and Onix"
+          "foes": [
+            "geodude",
+            "machop",
+            "geodude",
+            "geodude"
+          ],
+          "pose_after": {
+            "map": "RockTunnel_1F",
+            "tiles": [
+              [
+                7,
+                9
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "west_of_lucas_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "east to the wall (11, 9), down column 11 to the wall (11, 24), east to the wall (18, 24), west to (14, 24), up column 14 to the wall (14, 16), east to the wall (20, 16)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 15}, {"direction": "east", "tiles": 7}, {"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 8}, {"direction": "east", "tiles": 6}]
-        },
-        "why": "east to the wall (11, 9), down column 11 to the wall (11, 24), east to the wall (18, 24), west to (14, 24), up column 14 to the wall (14, 16), east to the wall (20, 16)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 4
+            },
+            {
+              "direction": "south",
+              "tiles": 15
+            },
+            {
+              "direction": "east",
+              "tiles": 7
+            },
+            {
+              "direction": "west",
+              "tiles": 4
+            },
+            {
+              "direction": "north",
+              "tiles": 8
+            },
+            {
+              "direction": "east",
+              "tiles": 6
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "b1f_middle_ladder",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up column 20 onto the ladder (20, 13), down to B1F",
         "args": {
-          "target": {"map": "RockTunnel_B1F", "tiles": [[27, 12]], "facing": "north"}
-        },
-        "why": "up column 20 onto the ladder (20, 13), down to B1F"
+          "target": {
+            "map": "RockTunnel_B1F",
+            "tiles": [
+              [
+                27,
+                12
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "east_of_sofia_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "down to the wall (27, 15), west along row 15 to the wall (15, 15), down to row 16 and west to (13, 16)",
         "args": {
-          "legs": [{"direction": "south", "tiles": 3}, {"direction": "west", "tiles": 12}, {"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 2}]
-        },
-        "why": "down to the wall (27, 15), west along row 15 to the wall (15, 15), down to row 16 and west to (13, 16)"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "west",
+              "tiles": 12
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "sofia_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "along row 16 onto (11, 16), below Sofia",
         "args": {
-          "direction": "west"
-        },
-        "why": "along row 16 onto (11, 16), below Sofia"
+          "direction": "west",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "picnicker_sofia",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Pidgey, Pidgey and Pidgeotto",
         "args": {
           "trainer": "TRAINER_PICNICKER_SOFIA",
-          "foes": ["jigglypuff", "pidgey", "meowth"]
-        },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[11, 16]], "facing": "west"},
-        "why": "Pidgey, Pidgey and Pidgeotto"
+          "foes": [
+            "jigglypuff",
+            "pidgey",
+            "meowth"
+          ],
+          "pose_after": {
+            "map": "RockTunnel_B1F",
+            "tiles": [
+              [
+                11,
+                16
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "east_of_dudley_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "west to the wall (8, 16), up to (8, 15)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 1}]
-        },
-        "why": "west to the wall (8, 16), up to (8, 15)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 3
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "dudley_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "along row 15 onto (5, 15), the end of Dudley's line: he walks down to (5, 14)",
         "args": {
-          "direction": "west"
-        },
-        "why": "along row 15 onto (5, 15), the end of Dudley's line: he walks down to (5, 14)"
+          "direction": "west",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "hiker_dudley",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Geodude, Geodude and Graveler",
         "args": {
           "trainer": "TRAINER_HIKER_DUDLEY",
-          "foes": ["geodude", "geodude", "graveler"]
-        },
-        "declared_after": {"map": "RockTunnel_B1F", "tiles": [[5, 15]], "facing": "west"},
-        "why": "Geodude, Geodude and Graveler"
+          "foes": [
+            "geodude",
+            "geodude",
+            "graveler"
+          ],
+          "pose_after": {
+            "map": "RockTunnel_B1F",
+            "tiles": [
+              [
+                5,
+                15
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "past_cooper",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "west to the wall (1, 15), up column 1 past Cooper (2, 6) to the wall (1, 2), back to (1, 3)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 13}, {"direction": "south", "tiles": 1}]
-        },
-        "why": "west to the wall (1, 15), up column 1 past Cooper (2, 6) to the wall (1, 2), back to (1, 3)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 4
+            },
+            {
+              "direction": "north",
+              "tiles": 13
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "1f_east_ladder",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east onto the ladder (2, 3), up to 1F",
         "args": {
-          "target": {"map": "RockTunnel_1F", "tiles": [[45, 21]], "facing": "north"}
-        },
-        "why": "east onto the ladder (2, 3), up to 1F"
+          "target": {
+            "map": "RockTunnel_1F",
+            "tiles": [
+              [
+                45,
+                21
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "above_dana_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "west to the wall (39, 21), down column 39 to Ariana (39, 27), east to the wall (45, 26), down column 44 to the wall (44, 30), west to the wall (39, 30), down to the wall (39, 35), west to (37, 35), up to the wall (37, 32), west to the wall (31, 32), up to (31, 29), west to (28, 29) and down to the wall (28, 31)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 6}, {"direction": "south", "tiles": 5}, {"direction": "east", "tiles": 6}, {"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 4}, {"direction": "west", "tiles": 5}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 2}, {"direction": "north", "tiles": 3}, {"direction": "west", "tiles": 6}, {"direction": "north", "tiles": 3}, {"direction": "west", "tiles": 3}, {"direction": "south", "tiles": 2}]
-        },
-        "why": "west to the wall (39, 21), down column 39 to Ariana (39, 27), east to the wall (45, 26), down column 44 to the wall (44, 30), west to the wall (39, 30), down to the wall (39, 35), west to (37, 35), up to the wall (37, 32), west to the wall (31, 32), up to (31, 29), west to (28, 29) and down to the wall (28, 31)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 6
+            },
+            {
+              "direction": "south",
+              "tiles": 5
+            },
+            {
+              "direction": "east",
+              "tiles": 6
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 4
+            },
+            {
+              "direction": "west",
+              "tiles": 5
+            },
+            {
+              "direction": "south",
+              "tiles": 5
+            },
+            {
+              "direction": "west",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 3
+            },
+            {
+              "direction": "west",
+              "tiles": 6
+            },
+            {
+              "direction": "north",
+              "tiles": 3
+            },
+            {
+              "direction": "west",
+              "tiles": 3
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "dana_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "along row 31 onto (26, 31), the end of Dana's line: she walks down to (26, 30)",
         "args": {
-          "direction": "west"
-        },
-        "why": "along row 31 onto (26, 31), the end of Dana's line: she walks down to (26, 30)"
+          "direction": "west",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "picnicker_dana",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Meowth, Oddish and Pidgey",
         "args": {
           "trainer": "TRAINER_PICNICKER_DANA",
-          "foes": ["meowth", "oddish", "pidgey"]
-        },
-        "declared_after": {"map": "RockTunnel_1F", "tiles": [[26, 31]], "facing": "west"},
-        "why": "Meowth, Oddish and Pidgey"
+          "foes": [
+            "meowth",
+            "oddish",
+            "pidgey"
+          ],
+          "pose_after": {
+            "map": "RockTunnel_1F",
+            "tiles": [
+              [
+                26,
+                31
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "above_south_mouth",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "west along row 31 to (20, 31), onto row 32 and west to the wall (12, 32), down column 12 to the wall (12, 37), east to the wall (14, 37), up to (14, 36), east to the wall (19, 36), back to (18, 36)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 6}, {"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 8}, {"direction": "south", "tiles": 5}, {"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 1}, {"direction": "east", "tiles": 5}, {"direction": "west", "tiles": 1}]
-        },
-        "why": "west along row 31 to (20, 31), onto row 32 and west to the wall (12, 32), down column 12 to the wall (12, 37), east to the wall (14, 37), up to (14, 36), east to the wall (19, 36), back to (18, 36)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 6
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 8
+            },
+            {
+              "direction": "south",
+              "tiles": 5
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 5
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "route10_south",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "onto the mouth (18, 37), out onto Route 10",
         "args": {
-          "target": {"map": "Route10", "tiles": [[8, 58]], "facing": "south"}
-        },
-        "why": "onto the mouth (18, 37), out onto Route 10"
+          "target": {
+            "map": "Route10",
+            "tiles": [
+              [
+                8,
+                58
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -381,6 +833,5 @@
         "The corner (11, 35), wall north and rock west, finds the player from any of (11..14, 35) after a battle; east to the wall (19, 35) did not (console B, 2026-11-09 13:35: found 5 tiles off)."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

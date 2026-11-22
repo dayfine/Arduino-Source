@@ -4,122 +4,226 @@
   "checkpoint": {
     "id": "04.01",
     "title": "Pewter Center, then Route 3's trainers",
-    "start": {"map": "PewterCity", "tiles": [[17, 26]], "facing": "south"},
+    "start": {
+      "map": "PewterCity",
+      "tiles": [
+        [
+          17,
+          26
+        ]
+      ],
+      "facing": "south"
+    },
     "events": [
       {
         "id": "pewter_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "in by the door below the player",
         "args": {
-          "target": {"map": "PewterCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "in by the door below the player"
+          "target": {
+            "map": "PewterCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_pewter",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       },
       {
         "id": "west_of_janice_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of Pewter by row 21, east into Route 3, short of Janice's line",
         "args": {
-          "target": {"map": "Route3", "tiles": [[13, 8]]}
-        },
-        "why": "out of Pewter by row 21, east into Route 3, short of Janice's line"
+          "target": {
+            "map": "Route3",
+            "tiles": [
+              [
+                13,
+                8
+              ]
+            ]
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "below_colton_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "to (14, 7), in the ledges' gap",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 1}]
-        },
-        "why": "to (14, 7), in the ledges' gap"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "colton_line",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (14, 6), in Colton's line",
         "args": {
           "direction": "north"
-        },
-        "why": "onto (14, 6), in Colton's line"
+        }
       },
       {
         "id": "bug_catcher_colton",
-        "kind": "battle",
+        "action": "battle",
+        "why": "his Bug Pokemon; Colton stops at (13, 6)",
         "args": {
           "trainer": "TRAINER_BUG_CATCHER_COLTON",
-          "foes": ["caterpie", "weedle", "caterpie"]
-        },
-        "declared_after": {"map": "Route3", "tiles": [[14, 6]], "facing": "north"},
-        "why": "his Bug Pokemon; Colton stops at (13, 6)"
+          "foes": [
+            "caterpie",
+            "weedle",
+            "caterpie"
+          ],
+          "pose_after": {
+            "map": "Route3",
+            "tiles": [
+              [
+                14,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "past_ben",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "up to row 3 above Ben, down at x 18 east of his line, to (24, 5)",
         "args": {
-          "legs": [{"direction": "north", "tiles": 3}, {"direction": "east", "tiles": 4}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 6}]
-        },
-        "why": "up to row 3 above Ben, down at x 18 east of his line, to (24, 5)"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 4
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 6
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "greg_line",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (25, 5), below Greg",
         "args": {
           "direction": "east"
-        },
-        "why": "onto (25, 5), below Greg"
+        }
       },
       {
         "id": "bug_catcher_greg",
-        "kind": "battle",
+        "action": "battle",
+        "why": "his Bug Pokemon; Greg is already next to the player",
         "args": {
           "trainer": "TRAINER_BUG_CATCHER_GREG",
-          "foes": ["weedle", "kakuna", "caterpie", "metapod"]
-        },
-        "declared_after": {"map": "Route3", "tiles": [[25, 5]], "facing": "east"},
-        "why": "his Bug Pokemon; Greg is already next to the player"
+          "foes": [
+            "weedle",
+            "kakuna",
+            "caterpie",
+            "metapod"
+          ],
+          "pose_after": {
+            "map": "Route3",
+            "tiles": [
+              [
+                25,
+                5
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "above_james_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "along row 5 to the wall at (36, 5)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 11}]
-        },
-        "why": "along row 5 to the wall at (36, 5)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 11
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "james_line",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (36, 6), at the end of James's line",
         "args": {
           "direction": "south"
-        },
-        "why": "onto (36, 6), at the end of James's line"
+        }
       },
       {
         "id": "bug_catcher_james",
-        "kind": "battle",
+        "action": "battle",
+        "why": "his Bug Pokemon; James stops at (35, 6)",
         "args": {
           "trainer": "TRAINER_BUG_CATCHER_JAMES",
-          "foes": ["caterpie", "metapod"]
-        },
-        "declared_after": {"map": "Route3", "tiles": [[36, 6]], "facing": "south"},
-        "why": "his Bug Pokemon; James stops at (35, 6)"
+          "foes": [
+            "caterpie",
+            "metapod"
+          ],
+          "pose_after": {
+            "map": "Route3",
+            "tiles": [
+              [
+                36,
+                6
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "save_spot",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "down to (36, 8), beside the wall east of it",
         "args": {
-          "legs": [{"direction": "south", "tiles": 2}]
-        },
-        "why": "down to (36, 8), beside the wall east of it"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -135,6 +239,5 @@
         "Saved here, the trainers behind, so a failure on the way to Route 4 doesn't fight them again."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

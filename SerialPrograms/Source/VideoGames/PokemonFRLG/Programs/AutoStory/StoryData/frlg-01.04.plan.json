@@ -4,31 +4,63 @@
   "checkpoint": {
     "id": "01.04",
     "title": "Oak stops the player and walks them to the lab",
-    "start": {"map": "PalletTown", "tiles": [[6, 8]], "facing": "south"},
+    "start": {
+      "map": "PalletTown",
+      "tiles": [
+        [
+          6,
+          8
+        ]
+      ],
+      "facing": "south"
+    },
     "events": [
       {
         "id": "below_oaks_trigger",
-        "kind": "route",
+        "action": "route",
+        "why": "below the north exit, short of Oak's trigger at (12, 1)",
         "args": {
-          "target": {"map": "PalletTown", "tiles": [[12, 2]], "facing": "north"}
-        },
-        "why": "below the north exit, short of Oak's trigger at (12, 1)"
+          "target": {
+            "map": "PalletTown",
+            "tiles": [
+              [
+                12,
+                2
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "oaks_trigger",
-        "kind": "step",
+        "action": "step",
+        "why": "the trigger: \"Don't go out!\"",
         "args": {
           "direction": "north"
-        },
-        "why": "the trigger: \"Don't go out!\""
+        }
       },
       {
         "id": "to_the_lab",
-        "kind": "scene",
-        "declared_after": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "north"},
-        "why": "Oak walks the player into the lab; the scene ends at the table"
+        "action": "scene",
+        "why": "Oak walks the player into the lab; the scene ends at the table",
+        "args": {
+          "pose_after": {
+            "map": "PalletTown_ProfessorOaksLab",
+            "tiles": [
+              [
+                6,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "before_pokemon",
@@ -37,6 +69,5 @@
         "PlayerEnter walks the player up 8 tiles from the lab's door."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

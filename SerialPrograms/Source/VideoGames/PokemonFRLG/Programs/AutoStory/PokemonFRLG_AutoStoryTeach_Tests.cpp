@@ -441,7 +441,7 @@ UnitTestResult test_teach_by_species(){
 
 UnitTestResult test_teach_args(){
     const TeachPlan plan{.item = "hm03", .move = "surf", .member = 0, .forget_move = "tail-whip"};
-    const Pokemon::StoryActionArgs args = teach_args(plan);
+    const FrlgArgMap args = teach_args(plan);
     const std::optional<TeachPlan> back = teach_plan_of(args);
     if (!back || back->item != "hm03" || back->move != "surf" || back->member != 0 || back->forget_move != "tail-whip"){
         return "The Surf plan didn't read back from its args.";
@@ -466,7 +466,7 @@ UnitTestResult test_teach_args(){
     ){
         return "Expected exactly one of slot and species.";
     }
-    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+    const std::vector<std::pair<std::string, FrlgArgValue>> bad_args{
         {"item", std::string("potion")},
         {"item", std::string("tutors")},
         {"slot", int64_t(7)},
@@ -474,7 +474,7 @@ UnitTestResult test_teach_args(){
         {"move", std::string("")},
     };
     for (const auto& [key, value] : bad_args){
-        Pokemon::StoryActionArgs bad = args;
+        FrlgArgMap bad = args;
         bad[key] = value;
         if (teach_plan_of(bad)){
             return "Expected a bad " + key + " refused.";

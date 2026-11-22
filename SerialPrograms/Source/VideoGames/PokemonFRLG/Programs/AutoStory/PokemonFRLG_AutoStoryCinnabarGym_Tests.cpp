@@ -19,9 +19,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_MapUtil.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryLevelCheck.h"
@@ -144,8 +142,8 @@ struct GymWalk{
 //  the table says.
 std::string gym_step_on_sim(const StoryStep& step, const std::string& id, GymWalk& walk){
     const bool center = step.action == CENTER_ENTER_VARIANT;
-    if (center || (step.kind == StoryStepKind::BATTLE && step.name == "blaine")){
-        walk.at = *story_pose(Pokemon::pose_of(*step.pose_after));
+    if (center || (step.action == "battle" && step.name == "blaine")){
+        walk.at = *story_pose(*step.pose_after);
         if (center){
             walk.place();
         }
@@ -211,7 +209,7 @@ UnitTestResult test_quiz_doors_on_map(){
         if (!step.name.starts_with("into_door_")){
             continue;
         }
-        const StoryPose door = *story_pose(Pokemon::pose_of(*step.pose_after));
+        const StoryPose door = *story_pose(*step.pose_after);
         const TilePos before = door.tile.next(behind(*door.facing));
         const TilePos after = door.tile.next(*door.facing);
         doors++;
@@ -250,11 +248,12 @@ struct GymLegs{
 std::vector<GymLegs> gym_routes(std::string_view id){
     const StoryCheckpoint& row = checkpoint(id);
     std::vector<GymLegs> all;
-    std::optional<StoryPose> at = story_pose(Pokemon::pose_of(*row.start));
+    std::optional<StoryPose> at = story_pose(*row.start);
     for (const StoryStep& step : row.steps){
-        const Pokemon::GridPose* target = Pokemon::value_if_at_it<Pokemon::GridPose>(step.args, step.args.find("target"));
-        const std::optional<StoryPose> to = target == nullptr ? std::nullopt : story_pose(Pokemon::pose_of(*target));
-        if (step.kind == StoryStepKind::ROUTE && at && to && at->map == GYM){
+        const auto target_it = step.args.find("target");
+        const Pokemon::GridPose* target = target_it == step.args.end() ? nullptr : std::get_if<Pokemon::GridPose>(&target_it->second);
+        const std::optional<StoryPose> to = target == nullptr ? std::nullopt : story_pose(*target);
+        if (step.action == "route" && at && to && at->map == GYM){
             const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
                 story_maps(), MapPosition{at->map, at->tile}, RouteGoal{MapPosition{to->map, to->tile}, to->facing},
                 story_route_costs(), at->facing.value_or(Direction::NORTH)
@@ -262,7 +261,7 @@ std::vector<GymLegs> gym_routes(std::string_view id){
             all.push_back(GymLegs{.step = &step, .route = route.value_or(std::vector<RouteStep>{})});
         }
         if (step.pose_after){
-            at = story_pose(Pokemon::pose_of(*step.pose_after));
+            at = story_pose(*step.pose_after);
         }else if (to){
             at = to;
         }else{
@@ -323,22 +322,24 @@ UnitTestResult test_short_holds_clear_of_trainers(){
 std::vector<GymLegs> gym_legs(std::string_view id){
     const StoryCheckpoint& row = checkpoint(id);
     std::vector<GymLegs> all;
-    std::optional<StoryPose> at = story_pose(Pokemon::pose_of(*row.start));
+    std::optional<StoryPose> at = story_pose(*row.start);
     for (const StoryStep& step : row.steps){
-        const Pokemon::GridPose* target = Pokemon::value_if_at_it<Pokemon::GridPose>(step.args, step.args.find("target"));
-        const std::vector<Pokemon::StoryLeg>* legs = Pokemon::value_if_at_it<std::vector<Pokemon::StoryLeg>>(step.args, step.args.find("legs"));
-        std::optional<StoryPose> after = step.pose_after ? story_pose(Pokemon::pose_of(*step.pose_after)) : std::nullopt;
+        const auto target_it = step.args.find("target");
+        const Pokemon::GridPose* target = target_it == step.args.end() ? nullptr : std::get_if<Pokemon::GridPose>(&target_it->second);
+        const auto legs_it = step.args.find("legs");
+        const std::vector<Pokemon::StoryLeg>* legs = legs_it == step.args.end() ? nullptr : std::get_if<std::vector<Pokemon::StoryLeg>>(&legs_it->second);
+        std::optional<StoryPose> after = step.pose_after ? story_pose(*step.pose_after) : std::nullopt;
         if (!after && target != nullptr){
-            after = story_pose(Pokemon::pose_of(*target));
+            after = story_pose(*target);
         }
-        if (step.kind == StoryStepKind::LEGS && legs != nullptr && at && at->map == GYM){
+        if (step.action == "legs" && legs != nullptr && at && at->map == GYM){
             const std::optional<std::vector<RouteStep>> route = fixed_route(story_maps(), MapPosition{at->map, at->tile}, *legs);
             all.push_back(GymLegs{.step = &step, .route = route.value_or(std::vector<RouteStep>{})});
             if (!after && route && !route->empty()){
                 after = StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after};
             }
         }
-        if (after || step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+        if (after || step.action == "route" || step.action == "legs"){
             at = after;
         }
     }
@@ -401,7 +402,7 @@ UnitTestResult test_quiz_approaches_end_at_machine(){
     int quizzes = 0;
     for (size_t c = 1; c < row.steps.size(); c++){
         const StoryStep& talk = row.steps[c];
-        if (talk.kind != StoryStepKind::TALK || !talk.name.starts_with("quiz_")){
+        if (talk.action != "talk" || !talk.name.starts_with("quiz_")){
             continue;
         }
         quizzes++;
@@ -412,7 +413,7 @@ UnitTestResult test_quiz_approaches_end_at_machine(){
                 legs = &item;
             }
         }
-        if (legs == nullptr || before.action != TAPS_VARIANT || legs->route.empty() || !legs->route.back().to_wall){
+        if (legs == nullptr || before.variant != TAPS_VARIANT || legs->route.empty() || !legs->route.back().to_wall){
             return std::format("14.01 {}: expected taps ending against the machine before it, found {}.", talk.name, before.name);
         }
     }
@@ -448,7 +449,7 @@ UnitTestResult test_gym_walks_end_clear_of_rechecks(){
         std::vector<GymLegs> routes = gym_routes(id);
         all.insert(all.end(), routes.begin(), routes.end());
         for (const GymLegs& planned : all){
-            const bool tapped = planned.step->kind == StoryStepKind::LEGS && planned.step->action == TAPS_VARIANT;
+            const bool tapped = planned.step->action == "legs" && planned.step->variant == TAPS_VARIANT;
             const std::optional<RouteStep> open = tapped ? std::nullopt : open_last_hold(planned.route);
             if (open){
                 return std::format(
@@ -466,7 +467,7 @@ UnitTestResult test_gym_walks_end_clear_of_rechecks(){
 //  Blaine's battle, which ends where it starts; then 14.02b from there out
 //  of the gym to the nurse.
 UnitTestResult test_gym_rows(){
-    GymWalk walk(*story_pose(Pokemon::pose_of(*checkpoint("14.01").start)));
+    GymWalk walk(*story_pose(*checkpoint("14.01").start));
     if (const std::string failure = row_on_sim("14.01", walk); !failure.empty()){
         return failure;
     }
@@ -477,7 +478,7 @@ UnitTestResult test_gym_rows(){
     if (!walk.all_fought().empty()){
         return "14.01: fought a gym trainer; the quiz is answered instead.";
     }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("14.02").start));
+    const StoryPose next = *story_pose(*checkpoint("14.02").start);
     if (next.map != GYM || !(next.tile == below_blaine.point)){
         return "14.02 doesn't start where 14.01 ends.";
     }
@@ -487,7 +488,7 @@ UnitTestResult test_gym_rows(){
     if (!(walk.sim->state().position == below_blaine)){
         return std::format("14.02: ended on {}, not in front of Blaine where 14.02b starts.", to_string(walk.sim->state().position));
     }
-    const StoryPose after_blaine = *story_pose(Pokemon::pose_of(*checkpoint("14.02b").start));
+    const StoryPose after_blaine = *story_pose(*checkpoint("14.02b").start);
     if (after_blaine.map != GYM || !(after_blaine.tile == below_blaine.point)){
         return "14.02b doesn't start where 14.02 ends.";
     }
@@ -569,7 +570,7 @@ public:
 UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id, std::string_view battle, unsigned pokeguy){
     std::optional<LevelCheck> check;
     for (const StoryStep& step : checkpoint(id).steps){
-        if (step.kind == StoryStepKind::BATTLE && step.name == battle){
+        if (step.action == "battle" && step.name == battle){
             break;
         }
         if (step.action == LEVEL_ACTION){

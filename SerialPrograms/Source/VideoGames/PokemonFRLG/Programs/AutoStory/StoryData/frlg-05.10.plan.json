@@ -4,123 +4,245 @@
   "checkpoint": {
     "id": "05.10",
     "title": "The Cerulean Rocket, Route 5, the Underground Path and Route 6 to Vermilion's Pokemon Center: Jeff",
-    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "CeruleanCity_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "cerulean_west_wall",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "loop south of the wandering boy to Cerulean west wall (7, 29)",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[7, 29]], "facing": "west"}
-        },
-        "why": "loop south of the wandering boy to Cerulean west wall (7, 29)"
+          "target": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                7,
+                29
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "west_of_rocket",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "through the burgled house and out of the hole in its back wall, west of the Rocket (33, 6)",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[32, 7]], "facing": "east"}
-        },
-        "why": "through the burgled house and out of the hole in its back wall, west of the Rocket (33, 6)"
+          "target": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                32,
+                7
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "rocket_trigger",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (33, 7), below the Rocket",
         "args": {
           "direction": "east"
-        },
-        "why": "onto (33, 7), below the Rocket"
+        }
       },
       {
         "id": "rocket_grunt",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Machop and Drowzee, Lv17; TM28 Dig",
         "args": {
           "trainer": "TRAINER_TEAM_ROCKET_GRUNT_5",
-          "foes": ["machop", "drowzee"]
-        },
-        "declared_after": {"map": "CeruleanCity", "tiles": [[33, 7]], "facing": "north"},
-        "why": "Machop and Drowzee, Lv17; TM28 Dig"
+          "foes": [
+            "machop",
+            "drowzee"
+          ],
+          "pose_after": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                33,
+                7
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "route5_fence",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "align against the Route 5 horizontal fence (y=34) after the CeruleanCity->Route5 connection",
         "args": {
-          "target": {"map": "Route5", "tiles": [[29, 33]], "facing": "south"}
-        },
-        "why": "align against the Route 5 horizontal fence (y=34) after the CeruleanCity->Route5 connection"
+          "target": {
+            "map": "Route5",
+            "tiles": [
+              [
+                29,
+                33
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "route6_column15",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "round the yard and down Cerulean's east side, Route 5 into the Underground Path, through it onto Route 6, west to column 15",
         "args": {
-          "target": {"map": "Route6", "tiles": [[15, 14]]}
-        },
-        "why": "round the yard and down Cerulean's east side, Route 5 into the Underground Path, through it onto Route 6, west to column 15"
+          "target": {
+            "map": "Route6",
+            "tiles": [
+              [
+                15,
+                14
+              ]
+            ]
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "round_keigo_and_elijah",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "down column 15 to the wall (15, 33); up to (15, 31), west to the wall (7, 31), down to the wall (7, 33), east to (9, 33)",
         "args": {
-          "legs": [{"direction": "south", "tiles": 19}, {"direction": "north", "tiles": 1}, {"direction": "north", "tiles": 1}, {"direction": "west", "tiles": 8}, {"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 2}]
-        },
-        "why": "down column 15 to the wall (15, 33); up to (15, 31), west to the wall (7, 31), down to the wall (7, 33), east to (9, 33)"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 19
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 8
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "jeff_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (10, 33), in Jeff's line",
         "args": {
-          "direction": "east"
-        },
-        "why": "onto (10, 33), in Jeff's line"
+          "direction": "east",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "camper_jeff",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Spearow and Raticate, Lv16; Jeff stops at (11, 33)",
         "args": {
           "trainer": "TRAINER_CAMPER_JEFF",
-          "foes": ["spearow", "raticate"]
-        },
-        "declared_after": {"map": "Route6", "tiles": [[10, 33]], "facing": "east"},
-        "why": "Spearow and Raticate, Lv16; Jeff stops at (11, 33)"
+          "foes": [
+            "spearow",
+            "raticate"
+          ],
+          "pose_after": {
+            "map": "Route6",
+            "tiles": [
+              [
+                10,
+                33
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "vermilion_south",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "cross Route6->VermilionCity south past the house wall (y=6)",
         "args": {
-          "target": {"map": "VermilionCity", "tiles": [[19, 8]]}
-        },
-        "why": "cross Route6->VermilionCity south past the house wall (y=6)"
+          "target": {
+            "map": "VermilionCity",
+            "tiles": [
+              [
+                19,
+                8
+              ]
+            ]
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "vermilion_wall",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "align against the house south wall (18, 6) before entering the Center",
         "args": {
-          "target": {"map": "VermilionCity", "tiles": [[19, 7]], "facing": "north"}
-        },
-        "why": "align against the house south wall (18, 6) before entering the Center"
+          "target": {
+            "map": "VermilionCity",
+            "tiles": [
+              [
+                19,
+                7
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "vermilion_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down Route 6's south path into Vermilion City, to the Pokemon Center",
         "args": {
-          "target": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "down Route 6's south path into Vermilion City, to the Pokemon Center"
+          "target": {
+            "map": "VermilionCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_vermilion",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -134,6 +256,5 @@
         "Then down into Vermilion City (offset 12) to its Pokemon Center."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

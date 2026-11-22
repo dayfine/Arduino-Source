@@ -27,8 +27,8 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryVerifyRuns.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonFRLG_AutoStoryLeagueFightData.h"
 #include "PokemonFRLG_AutoStoryLeagueRows.h"
 #include "PokemonFRLG_AutoStoryPlannedBetween.h"
@@ -101,36 +101,68 @@ public:
         , m_script(std::move(script))
     {}
 
-    Pokemon::Segment segment(){
-        Pokemon::Segment segment;
-        segment.id = "20";
-        for (std::string_view id : FIGHT_ROWS){
-            const StoryCheckpoint& row = fight_row(id);
-            Pokemon::CheckpointSpec spec;
-            spec.id = row.id;
-            spec.title = row.title;
-            spec.verify = row.verify;
-            spec.build = [this, id = row.id]{
-                return checkpoint(id);
-            };
-            segment.checkpoints.push_back(std::move(spec));
-        }
-        return segment;
+    struct LeagueRunReport{
+        bool completed = true;
+        std::string failure = {};
+        std::string failed_checkpoint = {};
+    };
+
+    Pokemon::StoryGame make_row_game(const std::string& row_id){
+        Pokemon::StoryGame game;
+        game.attempts_per_checkpoint = 1;
+        game.reload = [this](Pokemon::StoryBackend&, const Pokemon::StoryCheckpoint& failed) -> std::optional<std::string>{
+            m_side = m_saved;
+            return failed.id;
+        };
+        game.save = [this, row_id](Pokemon::StoryBackend&, const Pokemon::StoryCheckpoint&) -> std::optional<Pokemon::StoryFailure>{
+            saves++;
+            m_saved = m_side;
+            if (const LeagueFightData* next = next_league_fight(*league_row_fight(fight_row(row_id)))){
+                const LeagueEntryCheck check = league_entry_check(*next, m_saved);
+                if (!check.short_of.empty()){
+                    broken_saves.push_back(std::format("{}: {}", row_id, check.short_of.front()));
+                }
+            }
+            return std::nullopt;
+        };
+        return game;
     }
 
-    Pokemon::SegmentHooks hooks(){
-        Pokemon::SegmentHooks hooks;
-        hooks.reload = [this](Pokemon::RunState&){
-            m_side = m_saved;
-            return Pokemon::outcome_ok();
-        };
-        hooks.verify_pass = [this](const std::string& id, Pokemon::RunState&){
-            return league_row_pass(fight_row(id), m_side);
-        };
-        hooks.log = [this](const std::string& line){
-            log += std::format("\n    {}", line);
-        };
-        return hooks;
+    LeagueRunReport run_from(std::string_view first = "20.01"){
+        struct LocalScope : CancellableScope{};
+        LocalScope scope;
+        Pokemon::FakeStoryBackend backend(Pokemon::FakeStoryScript{}, scope);
+        Pokemon::RunState state;
+        bool started = false;
+        for (std::string_view id : FIGHT_ROWS){
+            if (id == first){
+                started = true;
+            }
+            if (!started){
+                continue;
+            }
+            const StoryCheckpoint& row = fight_row(id);
+            Pokemon::StoryGame game = make_row_game(row.id);
+            const Pokemon::VerifyRowReport report = Pokemon::run_verify_row(
+                backend, row.id, *row.verify,
+                [this, row_id = row.id]{ return checkpoint(row_id); },
+                game, state,
+                [this, row_id = row.id](Pokemon::StoryBackend&, const Pokemon::StoryCheckpoint&, Pokemon::RunState&){
+                    return league_row_pass(fight_row(row_id), m_side);
+                }
+            );
+            for (const std::string& line : backend.lines()){
+                log += std::format("\n    {}", line);
+            }
+            if (!report.passed){
+                return LeagueRunReport{
+                    .completed = false,
+                    .failure = report.failure ? report.failure->failure.code : std::string("failed"),
+                    .failed_checkpoint = row.id,
+                };
+            }
+        }
+        return LeagueRunReport{.completed = true};
     }
 
     int full_restores_saved() const{
@@ -144,42 +176,32 @@ public:
     std::string log;
 
 private:
-    Pokemon::Checkpoint checkpoint(const std::string& id){
-        Pokemon::Checkpoint checkpoint;
-        checkpoint.id = id;
-        Pokemon::Event fight;
-        fight.name = "fight";
-        fight.act = [this, id](Pokemon::RunState&){
-            const LeagueFightData& data = *league_row_fight(fight_row(id));
-            const LeagueEntryCheck entry = top_up(data);
-            if (!entry.short_of.empty()){
-                return Pokemon::outcome_failed("precondition_failed", entry.short_of.front());
-            }
-            const ScriptedTry one = m_script(id);
-            fights++;
-            if (!one.won){
-                return Pokemon::outcome_failed("blackout");
-            }
-            for (const auto& [item, count] : one.used){
-                m_side.bag[item] -= count;
-            }
-            m_side.hp = std::clamp(one.hp_left, 1, MAX_HP);
-            m_side.pp["surf"] = std::max(0, m_side.pp["surf"] - one.surf_spent);
-            return Pokemon::outcome_ok();
-        };
-        checkpoint.events.push_back(std::move(fight));
-        checkpoint.save = [this, id](Pokemon::RunState&){
-            saves++;
-            m_saved = m_side;
-            if (const LeagueFightData* next = next_league_fight(*league_row_fight(fight_row(id)))){
-                const LeagueEntryCheck check = league_entry_check(*next, m_saved);
-                if (!check.short_of.empty()){
-                    broken_saves.push_back(std::format("{}: {}", id, check.short_of.front()));
+    Pokemon::StoryCheckpoint checkpoint(const std::string& id){
+        Pokemon::StoryCheckpoint cp;
+        cp.id = id;
+        cp.steps.push_back(Pokemon::StoryStep{
+            .name = "fight",
+            .action = "battle",
+            .run = [this, id](Pokemon::StoryBackend&, Pokemon::RunState&) -> std::optional<Pokemon::StoryFailure>{
+                const LeagueFightData& data = *league_row_fight(fight_row(id));
+                const LeagueEntryCheck entry = top_up(data);
+                if (!entry.short_of.empty()){
+                    return frlg_failure("precondition_failed", entry.short_of.front(), true);
                 }
-            }
-            return Pokemon::outcome_ok();
-        };
-        return checkpoint;
+                const ScriptedTry one = m_script(id);
+                fights++;
+                if (!one.won){
+                    return frlg_failure("blackout");
+                }
+                for (const auto& [item, count] : one.used){
+                    m_side.bag[item] -= count;
+                }
+                m_side.hp = std::clamp(one.hp_left, 1, MAX_HP);
+                m_side.pp["surf"] = std::max(0, m_side.pp["surf"] - one.surf_spent);
+                return std::nullopt;
+            },
+        });
+        return cp;
     }
 
     //  The heal rule's top-up before `fight`, on our side.
@@ -252,14 +274,9 @@ public:
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         FakeLeague game(m_case.input.bag, scripted(m_case.input.tries));
-        Pokemon::Segment segment = game.segment();
-        Pokemon::SegmentHooks hooks = game.hooks();
-        Pokemon::RunState state;
-        const Pokemon::SegmentReport report = Pokemon::run_segment(
-            Pokemon::SegmentRange{m_case.input.first, "20.05"}, Pokemon::SegmentPolicy{}, segment, hooks, state
-        );
+        const FakeLeague::LeagueRunReport report = game.run_from(m_case.input.first);
         const LeagueRunCase::Expectation& want = m_case.expectation;
-        const std::string failure = report.completed ? "" : report.failure.failure;
+        const std::string& failure = report.failure;
         if (report.completed != want.completed || failure != want.failure || report.failed_checkpoint != want.failed_row
             || game.fights != want.fights || game.saves != want.saves || game.full_restores_saved() != want.full_restores_saved
             || !game.broken_saves.empty()
@@ -396,10 +413,7 @@ public:
         std::string first_broken;
         for (uint32_t seed = 1; seed <= m_case.input.runs; seed++){
             FakeLeague game(lorelei_bag(), random_tries(seed, m_case.input.losses_in_ten));
-            Pokemon::Segment segment = game.segment();
-            Pokemon::SegmentHooks hooks = game.hooks();
-            Pokemon::RunState state;
-            Pokemon::run_segment(/*range=*/{}, Pokemon::SegmentPolicy{}, segment, hooks, state);
+            game.run_from("20.01");
             if (!game.broken_saves.empty() && first_broken.empty()){
                 first_broken = std::format("seed {}: saved {}", seed, game.broken_saves.front());
             }

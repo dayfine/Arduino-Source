@@ -33,9 +33,8 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -104,9 +103,7 @@ struct SlopeMove{
 std::optional<SlopeMove> parse_slope_move(std::string_view words);
 //  A SLOPE_VARIANT step's moves, or nothing if it isn't one or a move
 //  doesn't parse.
-std::optional<std::vector<SlopeMove>> parse_slope_step(const Pokemon::StoryStep& step);
-//  SLOPE_VARIANT and its args.
-Pokemon::StoryActionSpec slope_action_spec();
+std::optional<std::vector<SlopeMove>> parse_slope_step(const StoryStep& step);
 
 //  One state of the controller, held for `hold`.
 struct SlopePress{

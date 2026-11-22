@@ -17,8 +17,8 @@
     "events": [
       {
         "id": "by_pad_to_bottom_right",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "from the door mat (14, 23) up the entrance room, round the gym guide (15, 20), to a tile west of the pad (18, 20) (SaffronCity_Gym map.json warp 3), the room's only pad",
         "args": {
           "target": {
             "map": "SaffronCity_Gym",
@@ -29,32 +29,32 @@
               ]
             ],
             "facing": "east"
-          }
-        },
-        "why": "from the door mat (14, 23) up the entrance room, round the gym guide (15, 20), to a tile west of the pad (18, 20) (SaffronCity_Gym map.json warp 3), the room's only pad"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "pad_to_bottom_right",
-        "kind": "step",
+        "action": "step",
+        "why": "onto the pad (18, 20), which warps to (28, 23) in the bottom right room",
         "args": {
-          "direction": "east"
-        },
-        "declared_after": {
-          "map": "SaffronCity_Gym",
-          "tiles": [
-            [
-              28,
-              23
-            ]
-          ],
-          "facing": "east"
-        },
-        "why": "onto the pad (18, 20), which warps to (28, 23) in the bottom right room"
+          "direction": "east",
+          "pose_after": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                28,
+                23
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "along_row_22",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "west along row 22 (Cameron (24, 18) sees (24, 19) to (24, 21), so not row 21) to the room's west wall",
         "args": {
           "target": {
             "map": "SaffronCity_Gym",
@@ -65,14 +65,14 @@
               ]
             ],
             "facing": "west"
-          }
-        },
-        "why": "west along row 22 (Cameron (24, 18) sees (24, 19) to (24, 21), so not row 21) to the room's west wall"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "below_pad_to_top_right",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up to the tile below the pad (20, 20): the gym has no way between rooms but its pads",
         "args": {
           "target": {
             "map": "SaffronCity_Gym",
@@ -83,32 +83,32 @@
               ]
             ],
             "facing": "north"
-          }
-        },
-        "why": "up to the tile below the pad (20, 20): the gym has no way between rooms but its pads"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "pad_to_top_right",
-        "kind": "step",
+        "action": "step",
+        "why": "onto the pad (20, 20), which warps to (28, 4) in the top right room",
         "args": {
-          "direction": "north"
-        },
-        "declared_after": {
-          "map": "SaffronCity_Gym",
-          "tiles": [
-            [
-              28,
-              4
-            ]
-          ],
-          "facing": "north"
-        },
-        "why": "onto the pad (20, 20), which warps to (28, 4) in the top right room"
+          "direction": "north",
+          "pose_after": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                28,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "by_pad_to_top_left",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down and west along row 6, below Johan's line (24, 3 to 5), to a tile above the pad (20, 7)",
         "args": {
           "target": {
             "map": "SaffronCity_Gym",
@@ -119,32 +119,32 @@
               ]
             ],
             "facing": "south"
-          }
-        },
-        "why": "down and west along row 6, below Johan's line (24, 3 to 5), to a tile above the pad (20, 7)"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "pad_to_top_left",
-        "kind": "step",
+        "action": "step",
+        "why": "onto the pad (20, 7), which warps to (0, 4) in the top left room",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {
-          "map": "SaffronCity_Gym",
-          "tiles": [
-            [
-              0,
-              4
-            ]
-          ],
-          "facing": "south"
-        },
-        "why": "onto the pad (20, 7), which warps to (0, 4) in the top left room"
+          "direction": "south",
+          "pose_after": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                0,
+                4
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "by_pad_to_sabrina",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down column 0, far from Preston's line (4, 3 to 5), to a tile above the pad (0, 7)",
         "args": {
           "target": {
             "map": "SaffronCity_Gym",
@@ -155,32 +155,32 @@
               ]
             ],
             "facing": "south"
-          }
-        },
-        "why": "down column 0, far from Preston's line (4, 3 to 5), to a tile above the pad (0, 7)"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "pad_to_sabrina",
-        "kind": "step",
+        "action": "step",
+        "why": "onto the pad (0, 7), which warps to (18, 15) in Sabrina's room, the middle one",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {
-          "map": "SaffronCity_Gym",
-          "tiles": [
-            [
-              18,
-              15
-            ]
-          ],
-          "facing": "south"
-        },
-        "why": "onto the pad (0, 7), which warps to (18, 15) in Sabrina's room, the middle one"
+          "direction": "south",
+          "pose_after": {
+            "map": "SaffronCity_Gym",
+            "tiles": [
+              [
+                18,
+                15
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "below_sabrina",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "west and up to the tile below Sabrina (14, 11), facing her",
         "args": {
           "target": {
             "map": "SaffronCity_Gym",
@@ -191,11 +191,26 @@
               ]
             ],
             "facing": "north"
-          }
-        },
-        "why": "west and up to the tile below Sabrina (14, 11), facing her"
+          },
+          "variant": "run"
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "SaffronCity_Gym",
+          "tiles": [
+            [
+              14,
+              12
+            ]
+          ],
+          "facing": "north"
+        }
+      }
+    }
   },
   "execution": {
     "menu": "full",
@@ -205,21 +220,6 @@
         "Ends at (14, 12), facing Sabrina (14, 11), where 18.02 starts: the save in front of her.",
         "The gym is nine rooms of 9x6 tiles with no door between them: each room's pads (the map's step_on warps) lead to another room's, and the way from the entrance to Sabrina is four of them: (18, 20) to (28, 23), (20, 20) to (28, 4), (20, 7) to (0, 4), (0, 7) to (18, 15). The player lands on a pad and walks off it before the next. The trainers on the way (Cameron (24, 18), Johan (24, 2), Preston (4, 2), sight 3 south) are not fought: each leg keeps out of their lines, and the sim test fails if one is met. The others (Tyron, Amanda, Stacy, Tasha) are in rooms the route does not enter."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {
-        "map": "SaffronCity_Gym",
-        "tiles": [
-          [
-            14,
-            12
-          ]
-        ],
-        "facing": "north"
-      }
     }
   }
 }

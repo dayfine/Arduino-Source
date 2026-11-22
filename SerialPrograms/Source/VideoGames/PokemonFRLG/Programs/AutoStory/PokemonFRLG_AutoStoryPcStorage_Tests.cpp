@@ -660,9 +660,9 @@ UnitTestResult test_pc_args(){
         }
     }
     const auto args = [](std::string action, int64_t slot, int64_t box){
-        return Pokemon::StoryActionArgs{{"do", std::move(action)}, {"slot", slot}, {"box", box}};
+        return FrlgArgMap{{"do", std::move(action)}, {"slot", slot}, {"box", box}};
     };
-    const std::vector<Pokemon::StoryActionArgs> bad_args{
+    const std::vector<FrlgArgMap> bad_args{
         {},
         args("deposit", 7, 1),
         args("deposit", 0, 1),
@@ -670,10 +670,10 @@ UnitTestResult test_pc_args(){
         args("withdraw", 31, 1),
         args("release", 1, 1),
         //  A withdrawal names a slot or a species, not both.
-        Pokemon::StoryActionArgs{{"do", std::string("withdraw")}, {"box", int64_t(1)}},
-        Pokemon::StoryActionArgs{{"do", std::string("withdraw")}, {"box", int64_t(1)}, {"slot", int64_t(1)}, {"species", std::string("magikarp")}},
+        FrlgArgMap{{"do", std::string("withdraw")}, {"box", int64_t(1)}},
+        FrlgArgMap{{"do", std::string("withdraw")}, {"box", int64_t(1)}, {"slot", int64_t(1)}, {"species", std::string("magikarp")}},
     };
-    for (const Pokemon::StoryActionArgs& bad : bad_args){
+    for (const FrlgArgMap& bad : bad_args){
         if (pc_transfer_of(bad)){
             return "Expected a missing or out-of-range arg refused.";
         }

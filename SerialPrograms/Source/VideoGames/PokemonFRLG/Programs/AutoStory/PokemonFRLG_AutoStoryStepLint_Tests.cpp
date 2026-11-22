@@ -17,9 +17,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryBattleRisk.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryMartPlan.h"
@@ -34,8 +32,25 @@ namespace PokemonFRLG{
 
 namespace{
 
+//  Where `checkpoint` declares its end: the last step's target/pose_after
+//  if any (matching legacy checkpoint_end_pose()).
+std::optional<Pokemon::GridPose> declared_end_pose(const StoryCheckpoint& checkpoint){
+    for (auto it = checkpoint.steps.rbegin(); it != checkpoint.steps.rend(); ++it){
+        if (it->pose_after){
+            return *it->pose_after;
+        }
+        if (it->action == "route" && it->args.contains("target")){
+            return frlg_arg<Pokemon::GridPose>(it->args, "target");
+        }
+        if (it->action == "legs" || it->action == "step"){
+            return std::nullopt;
+        }
+    }
+    return checkpoint.start;
+}
+
 //  Without a sim: each checkpoint starts where the one before it declares
-//  its end (checkpoint_end_pose()), so the stage tests, each from its own
+//  its end (declared_end_pose()), so the stage tests, each from its own
 //  first row's start, chain into the whole story. A row whose end is left
 //  to its legs' taps (04.01, 05.01) is checked by its stage's run; a
 //  stage's last row must declare its end.
@@ -47,20 +62,20 @@ UnitTestResult test_declared_ends_chain(){
         if (starts_after_unauthored_rows(data.id)){
             continue;
         }
-        const std::optional<Pokemon::GridPose> end = Pokemon::checkpoint_end_pose(before);
+        const std::optional<Pokemon::GridPose> end = declared_end_pose(before);
         if (!end){
             if (before.id.substr(0, 2) != data.id.substr(0, 2)){
                 return std::format("{} ends its stage, but declares no end for {} to start from.", before.id, data.id);
             }
             continue;
         }
-        const std::optional<StoryPose> ends = story_pose(Pokemon::pose_of(*end));
-        const std::optional<StoryPose> start = data.start ? story_pose(Pokemon::pose_of(*data.start)) : std::nullopt;
+        const std::optional<StoryPose> ends = story_pose(*end);
+        const std::optional<StoryPose> start = data.start ? story_pose(*data.start) : std::nullopt;
         const bool same = ends && start && start->map == ends->map && start->tile == ends->tile
             && (!start->facing || !ends->facing || start->facing == ends->facing);
         if (!same){
             return std::format("{} starts at {}, but {} declares its end at {}.", data.id,
-                data.start ? Pokemon::to_string(Pokemon::pose_of(*data.start)) : std::string("a new game"), before.id, Pokemon::to_string(Pokemon::pose_of(*end)));
+                data.start ? format_grid_pose(*data.start) : std::string("a new game"), before.id, format_grid_pose(*end));
         }
     }
     return true;
@@ -78,10 +93,10 @@ UnitTestResult test_no_answer_after_walk(){
         for (size_t c = 1; c < row.steps.size(); c++){
             const StoryStep& walk = row.steps[c - 1];
             const StoryStep& answer = row.steps[c];
-            if (answer.kind != StoryStepKind::ANSWER){
+            if (answer.action != "answer"){
                 continue;
             }
-            if (walk.kind == StoryStepKind::ROUTE || walk.kind == StoryStepKind::LEGS){
+            if (walk.action == "route" || walk.action == "legs"){
                 return std::format("{}/{}: follows the walk {}, which answers a YES/NO at its end with B.", row.id, answer.name, walk.name);
             }
         }
@@ -147,7 +162,7 @@ UnitTestResult test_legs_need_a_reason(){
     std::set<std::string, std::less<>> listed_seen;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (step.kind != StoryStepKind::LEGS){
+            if (step.action != "legs"){
                 continue;
             }
             const std::string key = row.id + "/" + step.name;
@@ -186,7 +201,7 @@ const std::set<std::string, std::less<>>& bosses_sharing_before_2026_11_16(){
 //  declared pose after it (a level check, a bag count, a teach), not a
 //  Fly, a walk, a scene or another battle.
 bool stays_in_place(const StoryStep& step){
-    return step.kind == StoryStepKind::GAME && !step.pose_after;
+    return !is_core_action(step.action) && !step.pose_after;
 }
 
 //  The first step of `row` before its battle `battle` that is not in
@@ -195,7 +210,7 @@ bool stays_in_place(const StoryStep& step){
 std::optional<std::string_view> walk_before_battle(const StoryCheckpoint& row, size_t battle){
     for (size_t c = 0; c < battle; c++){
         const StoryStep& step = row.steps[c];
-        const bool trigger = c + 1 == battle && (step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::TALK);
+        const bool trigger = c + 1 == battle && (step.action == "step" || step.action == "talk");
         if (!trigger && !stays_in_place(step)){
             return step.name;
         }
@@ -212,10 +227,10 @@ UnitTestResult test_boss_battle_is_its_own_checkpoint(){
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (size_t c = 0; c < row.steps.size(); c++){
             const StoryStep& step = row.steps[c];
-            if (step.kind != StoryStepKind::BATTLE){
+            if (step.action != "battle"){
                 continue;
             }
-            if (default_battle_risk(Pokemon::story_arg<std::string>(step.args, "trainer")) != BattleRisk::HIGH){
+            if (default_battle_risk(frlg_arg<std::string>(step.args, "trainer")) != BattleRisk::HIGH){
                 continue;
             }
             const std::optional<std::string_view> walk = walk_before_battle(row, c);
@@ -249,7 +264,7 @@ std::vector<RowMart> story_marts(){
     std::vector<RowMart> marts;
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (step.kind != StoryStepKind::GAME || step.action != MART_ACTION){
+            if (step.action != MART_ACTION){
                 continue;
             }
             if (const std::optional<MartPlan> plan = mart_plan_of(step.args)){

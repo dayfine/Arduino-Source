@@ -2,34 +2,27 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  FRLG's story checkpoint, and the fixed routes, wall turns and mart
- *  orders its rows are built from.
+ *  FRLG's story checkpoint data, run plan, and handoff types.
  *
  */
 
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryCheckpoints_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryCheckpoints_H
 
-#include <functional>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
-#include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryVerify.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedTypes.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
+#include "VideoGames/PokemonFRLG/Programs/RngManipulation/PokemonFRLG_BlindNavigation.h"
 #include "PokemonFRLG_AutoStoryActions.h"
-#include "PokemonFRLG_AutoStoryBattle.h"
-#include "PokemonFRLG_AutoStoryStartFrames.h"
-#include "PokemonFRLG_AutoStoryStepInterrupts.h"
-#include "PokemonFRLG_AutoStoryStepTable.h"
-#include "PokemonFRLG_AutoStorySaveChecks.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
+#include "PokemonFRLG_AutoStorySupplies.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -40,22 +33,13 @@ namespace PokemonFRLG{
 //  Each is off unless its option is on.
 enum class StoryHandoff{
     NONE,
-    //  The checkpoint's new game stops on the player's keyboard, the name
-    //  typed and OK not pressed, which is where SID Helper starts.
     SID_HELPER,
-    //  The checkpoint saves south of the table, facing the starter's ball,
-    //  which is where Starter RNG starts. With the handoff off, it runs on
-    //  into the next checkpoint as one, as the story did before the split.
     STARTER_RNG,
-    //  The checkpoint saves where Gift RNG starts for its gift: beside the
-    //  Magikarp salesman, facing him, or facing the Eevee's ball.
     GIFT_RNG,
 };
 
 //  Lead must survive `steps` of overworld poison damage (1 HP per 4 steps)
-//  at the end of a checkpoint, either by not being poisoned, by holding a
-//  cure (Antidote or Full Heal), or by having enough HP (`max_hp` fallback
-//  when the lead's summary stats were not read).
+//  at the end of a checkpoint.
 struct PoisonSurvivalPostcondition{
     int steps = 0;
     int max_hp = 0;
@@ -63,15 +47,26 @@ struct PoisonSurvivalPostcondition{
     bool operator==(const PoisonSurvivalPostcondition&) const = default;
 };
 
-//  A shared checkpoint with what FRLG adds to it.
-struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
+//  An authored FRLG story checkpoint with its parsed steps, start pose,
+//  execution settings, phase (S12), and postconditions.
+struct StoryCheckpoint{
+    std::string id = {};
+    std::string title = {};
+    std::optional<Pokemon::GridPose> start = std::nullopt;
+    std::vector<StoryStep> steps = {};
+    Pokemon::GateState start_gates = {};
+    std::set<std::string> start_flags = {};
+    Pokemon::CheckpointTestingStatus phase = Pokemon::CheckpointTestingStatus::TESTING;
+    Pokemon::StoryPostconditions postconditions = {};
+    std::optional<Pokemon::StoryVerify> verify = std::nullopt;
+    bool dev_only = false;
+    bool autosave = false;
+    bool reload_when_chained = false;
     //  The healing items at its start, for a run that loads its save.
-    Supplies supplies;
+    Supplies supplies = {};
     //  The START menu at its end, when it saves.
     StartMenu menu = StartMenu::FULL;
-    //  Starts from the game as another program left it, loading no save:
-    //  the way back into the story after an RNG program. A run that starts
-    //  before it passes over it.
+    //  Starts from the game as another program left it, loading no save.
     bool live_start = false;
     //  The RNG program the user may run at this checkpoint.
     StoryHandoff handoff = StoryHandoff::NONE;
@@ -82,11 +77,22 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
 };
 
 //  The pose the start check of `data` compares the loaded save with:
-//  nothing for a new game, or for a live-start row, which loads no save
-//  but starts where an RNG program left the game (console B, 2026-11-11:
-//  09.04 stopped on the shiny Eevee's summary, which its start frame
-//  could never match).
-std::optional<Pokemon::Pose> checked_start_pose(const StoryCheckpoint& data);
+//  nothing for a new game or a live-start row.
+std::optional<Pokemon::GridPose> checked_start_pose(const StoryCheckpoint& data);
+
+//  Where `checkpoint` ends: its postconditions' position, else the last
+//  step's pose_after or target. Unset if a trailing legs step leaves it unplaced.
+std::optional<Pokemon::GridPose> checkpoint_end_pose(const StoryCheckpoint& checkpoint);
+inline Pokemon::GateState checkpoint_gates(const StoryCheckpoint& checkpoint, size_t steps_done){
+    Pokemon::GateState gates = checkpoint.start_gates;
+    const size_t done = std::min(steps_done, checkpoint.steps.size());
+    for (size_t c = 0; c < done; c++){
+        if (checkpoint.steps[c].gates_after){
+            Pokemon::apply_gate_change(gates, *checkpoint.steps[c].gates_after);
+        }
+    }
+    return gates;
+}
 
 //  The handoffs a run stops for (AutoStory's options).
 struct StoryHandoffs{
@@ -97,29 +103,16 @@ struct StoryHandoffs{
 
 //  What a run from table row `first` to `last` does.
 struct StoryRunPlan{
-    //  The checkpoints to run, in order.
-    std::vector<StoryCheckpoint> rows;
-    //  NONE: the run ends after `rows`. SID_HELPER: `rows` is empty; the run
-    //  plays the new game to the player's keyboard and stops there.
-    //  STARTER_RNG: the run stops after `rows`, the last of which saves at
-    //  the starter's ball. GIFT_RNG: likewise, where a gift is taken; with
-    //  `rows` empty, the run started at the live-start row after it (04.03)
-    //  and takes Gift RNG from the save where the row before `first` ends.
+    std::vector<StoryCheckpoint> rows = {};
     StoryHandoff stop = StoryHandoff::NONE;
 };
 
-//  The rows of `checkpoints` from `first` to `last`, both inclusive, as a
-//  run with `handoffs` takes them: live-start rows only when the run
-//  starts there (04.03 with Gift RNG's handoff on starts at the handoff
-//  instead), a run that reaches a handoff that is on stops for it, and
-//  a STARTER_RNG row whose handoff is off is joined with the row after it,
-//  under its own id.
 StoryRunPlan plan_story_run(
     const std::vector<StoryCheckpoint>& checkpoints, size_t first, size_t last, const StoryHandoffs& handoffs
 );
+
 //  A way the player at `tile` can turn to without stepping: a wall there,
-//  with no one standing in it. West and east first: walking north or south
-//  into a sign would read it.
+//  with no one standing in it.
 std::optional<Direction> wall_beside(const MapData& map, const TilePos& tile);
 
 

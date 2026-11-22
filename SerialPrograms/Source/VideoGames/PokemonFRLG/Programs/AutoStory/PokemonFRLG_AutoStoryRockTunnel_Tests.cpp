@@ -20,7 +20,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
@@ -199,7 +198,7 @@ std::set<std::string> trainers_gone(const OverworldSim& sim, const std::vector<M
 std::vector<RockTunnelFloor> find_rock_tunnel_floors(){
     const StoryCheckpoint& row = checkpoint("08.01");
     const std::vector<MapData> maps = maps_after_route10();
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing, SimScript{});
     std::vector<RockTunnelFloor> floors;
     std::set<std::string> beaten;

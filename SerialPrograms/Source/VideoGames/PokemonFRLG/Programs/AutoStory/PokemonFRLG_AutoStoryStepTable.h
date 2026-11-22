@@ -2,11 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  FRLG's story steps as rows of the shared action table
- *  (Pokemon/AutoStory/Pokemon_StoryActions.h): each row names what does
- *  a kind of step, or one variant of it. The console (StoryExecutor) binds
- *  each name to its console action; the tests bind them to a recorder, so
- *  the rows are checked without a console.
+ *  FRLG's story steps dispatched by S11 action name (StoryActionId): the
+ *  console (StoryExecutor) binds each id to its console action; simulations
+ *  and tests bind them to their own handlers.
  *
  */
 
@@ -14,14 +12,12 @@
 #define PokemonAutomation_PokemonFRLG_AutoStoryStepTable_H
 
 #include <functional>
-#include <span>
+#include <map>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -44,59 +40,32 @@ enum class StoryActionId{
     HEAL,
     SHOP,
     READY,
-    //  CLOSE_TRAINER_CARD: back from SID Helper (close_trainer_card()).
     CLOSE_TRAINER_CARD,
-    //  LEAVE_GIFT_SUMMARY: back from Gift RNG (leave_gift_summary()).
     LEAVE_GIFT_SUMMARY,
-    //  CUT_TREE_VARIANT: the tree ahead cut, and a step onto its tile.
     CUT_TREE,
-    //  PUSH_BOULDER_VARIANT: Strength, and the boulder ahead pushed on.
     PUSH_BOULDER,
-    //  TRASH_CANS_VARIANT: the search for Vermilion Gym's switches.
     TRASH_CANS,
-    //  Any other GAME step: a capture or a PC deposit or withdrawal
-    //  (capture_step(), pc_step() in PokemonFRLG_AutoStoryCapture.h); a
-    //  shiny met in a capture stops the program without reloading. A MART,
-    //  TEACH, LEVEL, GRIND or fossil CHOICE
-    //  (PokemonFRLG_AutoStoryAbilities.h); a GRIND heals by routing to its
-    //  target, the nurse, and back.
     GAME,
 };
+
 //  "route", "game": the action's name in logs and test traces.
 std::string_view story_action_name(StoryActionId id);
 
-//  A row of FRLG's table: the action for steps of `kind` whose variant is
-//  named `variant`, or for every other step of `kind` if it is empty.
-struct StoryActionRow{
-    Pokemon::StoryStepKind kind;
-    std::string variant;
-    StoryActionId id;
-};
-//  Every row. TRAIN and SAVE have none: FRLG's story doesn't use them.
-const std::vector<StoryActionRow>& story_action_rows();
+//  Maps an S11 action name ("route", "scene", "cut_tree", "mart", ...) to its
+//  StoryActionId.
+StoryActionId story_action_id_of(std::string_view action);
 
-//  The actions FRLG's steps name, with the args each takes: the built-in
-//  ones (Pokemon_BuiltinStoryActions.h), then a ROUTE and a LEGS named
-//  "run" (RUN_VARIANT), which take the same args and run with B held,
-//  STEPs named "trainer_line" (TRAINER_LINE_VARIANT) and "trainer_wait"
-//  (TRAINER_WAIT_VARIANT), a TALK named "wanderer" (TALK_WANDERER_VARIANT),
-//  then FRLG's GAME actions: closing the Trainer
-//  Card or the Gift RNG summary, cutting a tree, the trash cans, a PC
-//  transfer, a capture, the fossil, a LEVEL check, a Mart, a TEACH and a
-//  GRIND, each with the args it declares.
-//  A story file is read against these.
-std::span<const Pokemon::StoryActionSpec> story_action_specs();
+//  How one binding (the console, a sim, a test) does each action id.
+using StoryActionBinding = std::function<FrlgStepAction(StoryActionId id)>;
 
-//  How one binding (the console, a test) does each action.
-using StoryActionBinding = std::function<Pokemon::StoryAction(StoryActionId id)>;
-//  The rows as a table, each with `bind`'s action for its id and its
-//  spec's args, and each of FRLG's GAME actions with the GAME row's action
-//  and its own args.
-Pokemon::StoryActionTable make_story_action_table(const StoryActionBinding& bind);
+//  Action table keyed by S11 action name.
+using FrlgActionTable = std::map<std::string, FrlgStepAction, std::less<>>;
+
+//  Builds an action table covering every registered FRLG S11 action name.
+FrlgActionTable make_story_action_table(const StoryActionBinding& bind);
 
 
-//  The rows against the dispatch they replaced, and every checkpoint linted
-//  against them.
+//  Registers step table unit tests.
 void add_tests_AutoStoryStepTable(UnitTestDatabase& database);
 
 

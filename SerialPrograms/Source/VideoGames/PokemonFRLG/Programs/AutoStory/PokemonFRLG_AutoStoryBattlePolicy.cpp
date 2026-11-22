@@ -9,7 +9,6 @@
 #include <cmath>
 #include <format>
 #include <limits>
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryBattleRisk.h"
 #include "PokemonFRLG_AutoStoryItemsPocket.h"
@@ -170,11 +169,11 @@ namespace{
 
 //  A battle step's "foe_stats" rows, [defense, sp_defense] or [defense,
 //  sp_defense, hp] each; empty if there are none or a row isn't that.
-std::vector<FoeStats> foe_stats_of(const Pokemon::StoryActionArgs& args){
+std::vector<FoeStats> foe_stats_of(const FrlgArgMap& args){
     constexpr size_t COLUMNS = 2;
     constexpr size_t WITH_HP = 3;
     std::vector<FoeStats> foes;
-    for (const std::vector<int64_t>& row : Pokemon::story_arg<std::vector<std::vector<int64_t>>>(args, "foe_stats")){
+    for (const std::vector<int64_t>& row : frlg_arg<std::vector<std::vector<int64_t>>>(args, "foe_stats")){
         if (row.size() != COLUMNS && row.size() != WITH_HP){
             return {};
         }
@@ -238,8 +237,8 @@ bool surf_empty(const PartyMember& lead){
 
 } // namespace
 
-BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args){
-    const std::optional<BattlePolicyKind> kind = battle_policy_kind(Pokemon::story_arg<std::string>(args, "policy"));
+BattlePolicy battle_policy_of(const FrlgArgMap& args){
+    const std::optional<BattlePolicyKind> kind = battle_policy_kind(frlg_arg<std::string>(args, "policy"));
     BattlePolicy policy;
     policy.foe_stats = foe_stats_of(args);
     if (!kind){
@@ -247,14 +246,14 @@ BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args){
     }
     policy.kind = *kind;
     policy.goals = SetupGoals{
-        .spa = static_cast<int>(Pokemon::story_arg<int64_t>(args, "setup_spa")),
-        .accuracy = static_cast<int>(Pokemon::story_arg<int64_t>(args, "setup_accuracy")),
-        .outspeed = Pokemon::story_arg<bool>(args, "setup_outspeed"),
-        .guard_accuracy = Pokemon::story_arg<bool>(args, "setup_guard_accuracy"),
-        .torrent_power = Pokemon::story_arg<bool>(args, "setup_torrent_power"),
-        .target_torrent = Pokemon::story_arg<bool>(args, "setup_target_torrent"),
+        .spa = static_cast<int>(frlg_arg<int64_t>(args, "setup_spa")),
+        .accuracy = static_cast<int>(frlg_arg<int64_t>(args, "setup_accuracy")),
+        .outspeed = frlg_arg<bool>(args, "setup_outspeed"),
+        .guard_accuracy = frlg_arg<bool>(args, "setup_guard_accuracy"),
+        .torrent_power = frlg_arg<bool>(args, "setup_torrent_power"),
+        .target_torrent = frlg_arg<bool>(args, "setup_target_torrent"),
     };
-    if (std::optional<std::vector<FoeThreat>> foes = foe_threats_of(Pokemon::story_arg<std::vector<std::vector<int64_t>>>(args, "foe_threats"))){
+    if (std::optional<std::vector<FoeThreat>> foes = foe_threats_of(frlg_arg<std::vector<std::vector<int64_t>>>(args, "foe_threats"))){
         policy.foes = std::move(*foes);
     }
     return policy;

@@ -19,11 +19,8 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h"
-#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_LoadMenuDetector.h"
-#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkMoves.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
 #include "PokemonFRLG_AutoStoryScreenEvents.h"
@@ -34,16 +31,12 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 using namespace std::chrono_literals;
-using Pokemon::GridPose;
 using Pokemon::StoryLaunchPolicy;
-using Pokemon::StoryLaunchPress;
 using Pokemon::StoryLaunchPrompt;
 
 
 namespace{
 
-//  How long mash_until_overworld() may take after the launch: the recap's
-//  pages, then the START menu's check.
 constexpr Milliseconds RECAP_TIMEOUT = 20000ms;
 
 bool shows(const ScreenObservation& look, std::string_view reading){
@@ -51,7 +44,6 @@ bool shows(const ScreenObservation& look, std::string_view reading){
     return it != look.readings.end() && it->second != 0;
 }
 
-//  Nothing on screen: no fade, box or battle.
 bool quiet(const ScreenObservation& look){
     for (ScreenEvent event : {
         ScreenEvent::FADE_BLACK, ScreenEvent::FADE_WHITE, ScreenEvent::DIALOG_BOX,
@@ -64,10 +56,6 @@ bool quiet(const ScreenObservation& look){
     return true;
 }
 
-//  Whether the launch chose CONTINUE on the load menu: the screens after
-//  it are the save loading and the overworld, not the GBA's title, so a
-//  quiet one is no longer pressed. Set by the load menu's prompt once it
-//  matches, as the driver presses each prompt it matches.
 struct ContinueChosen{
     bool chosen = false;
 };
@@ -78,19 +66,14 @@ std::function<bool(const ScreenObservation&)> showing(std::string_view reading){
     };
 }
 
-//  The online license check: as the RNG programs' hard reset, a second on
-//  it, then A.
 StoryLaunchPrompt license_check_prompt(){
     return {.name = "license check", .matches = showing(FrlgLaunchReadings::CHECK_ONLINE),
             .press = {.button = BUTTON_A, .hold = 160ms, .release = 1840ms}};
 }
 
 
-//  The console, for the launch alone: presses, and looks that read HOME,
-//  the license check and FRLG's screens into the launch's readings (the
-//  Switch's prompts read the look's frame themselves).
-//  code-health: allow public_methods -- the StoryBackend interface; nothing to split
-class FrlgLaunchBackend : public Pokemon::StoryBackend<GridPose>{
+//  The console, for the launch alone (#648 concrete StoryBackend).
+class FrlgLaunchBackend : public Pokemon::StoryBackend{
 public:
     FrlgLaunchBackend(ConsoleHandle& console, ProControllerContext& context)
         : m_console(console)
@@ -100,28 +83,14 @@ public:
         , m_load_menu(COLOR_BLUE)
     {}
 
-    virtual Pokemon::StoryBackendKind kind() const override{
-        return Pokemon::StoryBackendKind::CONSOLE;
-    }
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
         pbf_press_button(m_context, button, hold, release);
     }
-    virtual void tap(Pokemon::Direction direction) override{
-        pbf_press_dpad(m_context, OverworldWalkSteps::dpad(direction), 80ms, 400ms);
-    }
-    virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace) override{
-        pbf_press_dpad(m_context, OverworldWalkSteps::dpad(direction), duration, 0ms);
-    }
-    virtual void stick(double, Milliseconds, Milliseconds, Pokemon::StoryPace) override{
-        //  FRLG walks by the D-pad: a launch never moves the stick.
-    }
+    virtual void stick(double, Milliseconds, Milliseconds, Pokemon::StoryPace) override{}
     virtual void wait(Milliseconds duration) override{
         m_context.wait_for(duration);
     }
-    virtual Pokemon::Observation<GridPose> observe() override;
-    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{
-        return Pokemon::outcome_failed("unsupported_step", "a launch fights no battle");
-    }
+    virtual ScreenObservation observe() override;
     virtual void log(std::string_view line) override{
         m_console.log(std::string(line), COLOR_BLUE);
     }
@@ -135,7 +104,6 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     HomeMenuDetector m_home;
-    //  The boot's black screen, as the RNG programs' hard reset reads it.
     BlackScreenDetector m_black;
     CheckOnlineDetector m_check_online;
     LoadMenuDetector m_load_menu;
@@ -154,22 +122,18 @@ void FrlgLaunchBackend::read_prompts(const ImageViewRGB32& frame, ScreenObservat
     }
 }
 
-Pokemon::Observation<GridPose> FrlgLaunchBackend::observe(){
+ScreenObservation FrlgLaunchBackend::observe(){
     m_context.wait_for_all_requests();
     VideoSnapshot frame = m_console.video().snapshot();
-    Pokemon::Observation<GridPose> look;
+    ScreenObservation look;
     if (frame && m_black.detect(*frame.frame)){
-        //  The game booting or loading: never HOME, whose dark theme is
-        //  dark too.
         look.events.set(ScreenEvent::FADE_BLACK, true);
     }else if (frame && m_home.detect(*frame.frame)){
-        //  Alone: FRLG's detectors may read HOME's plain screen as quiet.
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
-        static_cast<ScreenObservation&>(look) = Pokemon::screen_observation(m_observer.observe(frame, current_time()));
+        look.events = m_observer.observe(frame, current_time());
         read_prompts(*frame.frame, look);
     }else{
-        //  No frame: nothing to read, so not a quiet overworld either.
         look.events.set(ScreenEvent::FADE_BLACK, true);
     }
     look.when = current_time();
@@ -188,8 +152,6 @@ StoryLaunchPolicy frlg_launch_policy(
     StoryLaunchPolicy policy;
     policy.game = "frlg";
     policy.tile_selected = Pokemon::switch_home_tile_named(Language::English, "Pokémon FireRed Version");
-    //  The GBA's boot and title, read only after the launch, as the
-    //  overworld is quiet too.
     policy.title = [chosen](const ScreenObservation& look){
         return !chosen->chosen && quiet(look);
     };
@@ -223,12 +185,11 @@ StoryLaunchPolicy frlg_launch_policy(
         return chosen->chosen && quiet(look);
     };
     policy.settled_looks = 4;
-    //  The title takes A through the boot's logos too, a second apart.
     policy.presses_per_screen = 12;
     return policy;
 }
 
-Pokemon::Outcome launch_frlg_save(ConsoleHandle& console, ProControllerContext& context){
+std::optional<Pokemon::StoryFailure> launch_frlg_save(ConsoleHandle& console, ProControllerContext& context){
     FrlgLaunchBackend backend(console, context);
     const StoryLaunchPolicy policy = frlg_launch_policy(
         Pokemon::switch_launch_prompts(console),
@@ -238,16 +199,19 @@ Pokemon::Outcome launch_frlg_save(ConsoleHandle& console, ProControllerContext& 
         .save = Pokemon::StoryLaunchRequest::Save::LATEST,
         .running = Pokemon::StoryLaunchRequest::Running::RESTART,
     };
-    Pokemon::Outcome launched = Pokemon::launch_story_game(backend, policy, request);
-    if (!launched.succeeded()){
-        return launched;
+    if (std::optional<Pokemon::StoryFailure> failed = Pokemon::launch_story_game(backend, policy, request)){
+        return failed;
     }
     try{
         mash_until_overworld(console, context, RECAP_TIMEOUT);
     }catch (OperationFailedException& e){
-        return Pokemon::outcome_failed(std::string(Pokemon::STORY_LAUNCH_FAILED), std::format("frlg: no START menu after the load: {}", e.message()));
+        return Pokemon::StoryFailure{
+            .code = std::string(Pokemon::STORY_LAUNCH_FAILED),
+            .detail = std::format("frlg: no START menu after the load: {}", e.message()),
+            .repeats = true,
+        };
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 

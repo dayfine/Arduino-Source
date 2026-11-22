@@ -18,10 +18,9 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -64,19 +63,14 @@ bool use_recovery_item(
 //  as the bag was read): all of them, or with `any` at least one.
 bool bag_holds(const Supplies& supplies, const std::vector<Pokemon::StoryItem>& needs, bool any);
 
-//  HEAL_TO_FULL_ACTION's, restore_pp's, CHECK_FULL_HP_ACTION's and
-//  BAG_CHECK_ACTION's specs.
-std::vector<Pokemon::StoryActionSpec> healing_action_specs();
-
 //  On the console, a HEAL_TO_FULL_ACTION, restore_pp,
 //  CHECK_FULL_HP_ACTION or BAG_CHECK_ACTION step (its flag set in `state`); nothing for another.
-std::optional<Pokemon::Outcome> run_healing_step(StoryEnv& env, Pokemon::RunState& state, const Pokemon::StoryStep& step);
+std::optional<std::optional<Pokemon::StoryFailure>> run_healing_step(StoryEnv& env, FrlgRunState& state, const StoryStep& step);
 
 //  A MART_ACTION step with "fill_to": its first line cut to the
 //  fill_shortfall() of `supplies` (at most the plan's quantity), in
-//  `step`. Nothing to buy: the step's Outcome, unchanged, logged. Nothing
-//  for another step, left as it was.
-std::optional<Pokemon::Outcome> fill_mart_to(Logger& logger, const Supplies& supplies, Pokemon::StoryStep& step);
+//  `step`. Returns true when there is nothing to buy (skipping the Mart).
+bool fill_mart_to(Logger& logger, const Supplies& supplies, StoryStep& step);
 
 
 
