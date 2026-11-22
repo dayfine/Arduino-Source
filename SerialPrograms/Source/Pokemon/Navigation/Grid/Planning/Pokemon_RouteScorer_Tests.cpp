@@ -300,18 +300,17 @@ UnitTestResult test_tiles_walked_back(){
 }
 
 
-struct RouteScorerInput{
-    UnitTestResult (*test)() = nullptr;
-};
-
-struct RouteScorerExpectation{
-    std::string_view description = {};
-};
-
 struct RouteScorerCase{
+    struct Input{
+        UnitTestResult (*test)() = nullptr;
+    };
+    struct Expectation{
+        std::string_view description = {};
+    };
+
     std::string name = {};
-    RouteScorerInput input = {};
-    RouteScorerExpectation expectation = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_RouteScorer : public UnitTest{

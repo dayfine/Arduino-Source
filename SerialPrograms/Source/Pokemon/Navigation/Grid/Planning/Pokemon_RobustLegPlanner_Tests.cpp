@@ -108,20 +108,21 @@ constexpr RobustLegCosts EXACT{.exact_open_tiles = 12};
 constexpr RobustLegCosts HELD{.open_error = 1, .open_error_per = 0, .hold_open_legs = true};
 
 
-struct PlanInput{
-    std::vector<std::string_view> rows;
-    bool wraps = false;
-    std::vector<TilePos> from;
-    TilePos goal;
-    RobustLegCosts costs = {};
-};
-struct PlanExpectation{
-    std::string_view legs;  //  as describe() writes them
-};
 struct PlanCase{
+    struct Input{
+        std::vector<std::string_view> rows;
+        bool wraps = false;
+        std::vector<TilePos> from;
+        TilePos goal;
+        RobustLegCosts costs = {};
+    };
+    struct Expectation{
+        std::string_view legs;  //  as describe() writes them
+    };
+
     std::string_view name;
-    PlanInput input;
-    PlanExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_RobustLegPlanner_Plan : public UnitTest{
@@ -131,7 +132,7 @@ public:
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const PlanInput& input = m_scenario.input;
+        const PlanCase::Input& input = m_scenario.input;
         const ToyGame game(input.rows, input.wraps);
         const TilePos goal = input.goal;
         const std::optional<Legs> legs = plan_robust_legs(game, input.from,
@@ -319,19 +320,20 @@ const PlanCase PLAN_CASES[] = {
 };
 
 
-struct CostInput{
-    std::vector<std::string_view> rows;
-    TilePos from;
-    Legs legs;
-    RobustLegCosts costs = {};
-};
-struct CostExpectation{
-    long long cost = 0;
-};
 struct CostCase{
+    struct Input{
+        std::vector<std::string_view> rows;
+        TilePos from;
+        Legs legs;
+        RobustLegCosts costs = {};
+    };
+    struct Expectation{
+        long long cost = 0;
+    };
+
     std::string_view name;
-    CostInput input;
-    CostExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_RobustLegPlanner_Cost : public UnitTest{
@@ -341,7 +343,7 @@ public:
         , m_scenario(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const CostInput& input = m_scenario.input;
+        const CostCase::Input& input = m_scenario.input;
         const ToyGame game(input.rows, false);
         const long long actual = robust_legs_cost(game, {input.from}, input.legs, input.costs);
         if (actual != m_scenario.expectation.cost){

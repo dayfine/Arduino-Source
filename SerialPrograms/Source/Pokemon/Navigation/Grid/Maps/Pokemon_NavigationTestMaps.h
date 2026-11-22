@@ -15,8 +15,8 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-//  (name, JSON text) of each map in Pokemon/Navigation/TestMaps/, built into
-//  the program by pa_embed_text_files() (cmake/EmbedTextFiles.cmake).
+//  (name, JSON text) of each map in Pokemon/Navigation/Grid/Maps/TestMaps/,
+//  built into the program by pa_embed_text_files() (cmake/EmbedTextFiles.cmake).
 const std::vector<std::pair<std::string, std::string>>& navigation_test_map_json();
 
 

@@ -48,7 +48,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
