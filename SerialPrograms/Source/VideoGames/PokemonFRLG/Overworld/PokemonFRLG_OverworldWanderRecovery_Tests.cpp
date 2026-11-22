@@ -11,7 +11,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"

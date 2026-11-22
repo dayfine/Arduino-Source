@@ -8,7 +8,7 @@
 #include <format>
 #include <string>
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
-#include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryMovedBoulders.h"

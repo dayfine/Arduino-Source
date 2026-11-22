@@ -10,8 +10,8 @@
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "Pokemon/Navigation/Pokemon_ConnectedMaps.h"
-#include "Pokemon/Navigation/Pokemon_LegWalker.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_ConnectedMaps.h"
+#include "Pokemon/Navigation/Grid/Walker/Pokemon_LegWalker.h"
 #include "PokemonFRLG_OverworldLateBattle.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldWalk.h"

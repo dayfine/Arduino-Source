@@ -14,8 +14,8 @@
 #include <optional>
 #include <set>
 #include <string>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
-#include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h"
 #include "PokemonFRLG_OverworldTiles.h"
 #include "PokemonFRLG_OverworldWildTiles.h"
 

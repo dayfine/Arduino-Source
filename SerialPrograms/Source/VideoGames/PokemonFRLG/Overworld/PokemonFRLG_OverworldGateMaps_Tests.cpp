@@ -15,7 +15,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedPlanner.h"
 #include "PokemonFRLG_OverworldGateMaps_Tests.h"
 #include "PokemonFRLG_OverworldMaps.h"
 

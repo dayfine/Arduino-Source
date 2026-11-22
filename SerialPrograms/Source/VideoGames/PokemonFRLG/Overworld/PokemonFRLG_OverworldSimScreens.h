@@ -15,7 +15,7 @@
 #include <string_view>
 #include "Common/Cpp/Time.h"
 #include "PokemonFRLG_MovementMechanics.h"
-#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{

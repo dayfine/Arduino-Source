@@ -14,7 +14,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_GateState.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h"
 #include "Pokemon_DeclaredPose.h"
 #include "Pokemon_StoryCheckpointMetadata.h"
 #include "Pokemon_StoryPostconditions.h"

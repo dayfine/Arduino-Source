@@ -13,7 +13,7 @@
 
 #include <string>
 #include "Pokemon/AutoStory/Types/Pokemon_DeclaredPose.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "Pokemon_StoryPoseConcept.h"
 
 namespace PokemonAutomation{

@@ -6,7 +6,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
-#include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_StoryReplay_Executor.h"
