@@ -99,12 +99,15 @@ Outcome run_buy_coins(StoryEnv& env, const StoryStep& step){
     while (remaining > 0){
         const bool buy_500 = remaining >= 500;
         const int64_t batch = buy_500 ? 500 : 50;
-        //  Talk to CoinsClerk: welcome text + multichoice box.
-        pbf_press_button(env.context, BUTTON_A, 160ms, 2200ms);
+        //  Talk to CoinsClerk:
+        //    Page 1: "Welcome to ROCKET GAME CORNER!\p" -> A advances page break.
+        //    Page 2: "Do you need some game COINS?..." + multichoice (0 = 50, 1 = 500, 2 = NO THANKS).
+        pbf_press_button(env.context, BUTTON_A, 160ms, 1800ms);
+        pbf_press_button(env.context, BUTTON_A, 160ms, 1800ms);
         if (buy_500){
             pbf_press_dpad(env.context, DPAD_DOWN, 120ms, 300ms);
         }
-        pbf_press_button(env.context, BUTTON_A, 160ms, 1200ms);
+        pbf_press_button(env.context, BUTTON_A, 160ms, 1500ms);
         mash_until_overworld(env.console, env.context, DIALOG_TIMEOUT);
         remaining -= batch;
         env.console.log(std::format("MailGlitch: bought {} coins ({} remaining).", batch, std::max<int64_t>(0, remaining)));
