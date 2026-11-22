@@ -10,6 +10,7 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP_StarterNavigation.h"
 
 namespace PokemonAutomation{
@@ -18,7 +19,7 @@ namespace PokemonBDSP{
 
 
 const Milliseconds AFTER_BRIEFCASE = 4000ms;
-const Milliseconds PRE_BRIEFCASE_DURATION = 18200ms;
+const Milliseconds PRE_BRIEFCASE_DURATION = 21000ms;
 const Milliseconds PROMPT_ANIMATION = 1000ms;
 const Milliseconds SCHEDULING_SLACK = 100ms;
 
@@ -95,17 +96,54 @@ void navigate_to_lake_blinks(Logger& logger, ProControllerContext& context){
     context.wait_for_all_requests();
 }
 
-void navigate_to_pre_briefcase(Logger& logger, ProControllerContext& context){
-    logger.log("Advancing to the pre-briefcase position.");
+void navigate_to_pre_briefcase(SingleSwitchProgramEnvironment& env, ProControllerContext& context){
+    env.log("Advancing to the pre-briefcase position.");
 
-    //  total duration equal to PRE_BRIEFCASE_DURATION (above)
+    //  Dismiss the lake-blink line; Barry turns north to spot the briefcase
+    //  (~2.5-3.5s with no dialogue box) before the pre-walk conversation begins.
     pbf_wait(context, 1500ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 3500ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 2000ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 1500ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 1500ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 5500ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 2000ms);
+    pbf_press_button(context, BUTTON_A, 100ms, 1000ms);
+    context.wait_for_all_requests();
+    {
+        ShortDialogWatcher first_dialog;
+        wait_until(env.console, context, 5000ms, {{first_dialog}});
+        pbf_wait(context, 500ms);
+        context.wait_for_all_requests();
+    }
+
+    //  Advance pre-walk dialogue boxes until the walk into the tall grass starts
+    //  (dialog box stays absent > 1500ms). Different game languages split this
+    //  conversation into different box counts (e.g. 4 in English, 5 in Japanese).
+    bool entered_walk = false;
+    for (size_t i = 0; i < 10; i++){
+        pbf_press_button(context, BUTTON_A, 100ms, 600ms);
+        context.wait_for_all_requests();
+
+        ShortDialogWatcher dialog;
+        if (wait_until(env.console, context, 1500ms, {{dialog}}) < 0){
+            entered_walk = true;
+            env.log(
+                "Tall-grass walk detected after " + std::to_string(i + 1)
+                + " pre-walk dialogue press(es)."
+            );
+            break;
+        }
+    }
+
+    //  Wait for the tall-grass walk + briefcase zoom to open Briefcase Box 1,
+    //  then advance two boxes to Briefcase Box 3 (the line right before Starly).
+    if (entered_walk){
+        ShortDialogWatcher briefcase_dialog;
+        wait_until(env.console, context, 8000ms, {{briefcase_dialog}});
+        pbf_wait(context, 500ms);
+    }else{
+        env.log(
+            "Tall-grass walk not detected via dialog gap; falling back to timed wait.",
+            COLOR_ORANGE
+        );
+        pbf_wait(context, 4000ms);
+    }
+    pbf_press_button(context, BUTTON_A, 100ms, 1800ms);
     pbf_press_button(context, BUTTON_A, 100ms, 0ms);
     context.wait_for_all_requests();
 }
