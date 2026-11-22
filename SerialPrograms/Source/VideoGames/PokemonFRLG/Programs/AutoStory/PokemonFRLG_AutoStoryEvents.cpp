@@ -655,7 +655,11 @@ Outcome open_gym_door(StoryEnv& env, RunState& state, const StoryStep& step){
 //  stepping onto (11, 15) to trigger the Nugget Bridge Rocket, losing the
 //  battle, and waking back at the Center nurse.
 Outcome nugget_farm(StoryEnv& env, RunState& state, const StoryStep& step){
-    const int64_t count = arg<int64_t>(step, "count");
+    const int64_t step_count = arg<int64_t>(step, "count");
+    const int64_t count = StoryExecutor::effective_nugget_farm_count(env.nugget_farm_count, step_count);
+    if (count <= 0){
+        return Pokemon::outcome_ok(state.pose);
+    }
     const Pokemon::Pose nurse_input = Pokemon::pose_of(arg<Pokemon::GridPose>(step, "nurse"));
     const std::optional<StoryPose> nurse_pose = story_pose(nurse_input);
     if (!nurse_pose){
@@ -838,9 +842,24 @@ bool StoryExecutor::master_ball_skipped(bool take_master_ball, Pokemon::StoryChe
     return !take_master_ball || checks == Pokemon::StoryCheckLevel::SPEEDRUN;
 }
 
+bool StoryExecutor::nugget_farm_skipped(uint16_t nugget_farm_count){
+    return nugget_farm_count == 0;
+}
+
+int64_t StoryExecutor::effective_nugget_farm_count(uint16_t nugget_farm_count, int64_t step_count){
+    if (nugget_farm_count == 0){
+        return 0;
+    }
+    (void)step_count;
+    return static_cast<int64_t>(nugget_farm_count);
+}
+
 bool StoryExecutor::holds(std::string_view condition, RunState& state){
     if (condition == "master_ball_skipped"){
         return master_ball_skipped(m_env.take_master_ball, m_env.checks);
+    }
+    if (condition == "nugget_farm_skipped"){
+        return nugget_farm_skipped(m_env.nugget_farm_count);
     }
     return Pokemon::StoryStepExecutor::holds(condition, state);
 }

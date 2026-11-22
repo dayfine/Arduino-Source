@@ -31,6 +31,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStartMenuOpening.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGenderMenu.h"
@@ -1814,6 +1815,29 @@ UnitTestResult test_option_presses(){
     return true;
 }
 
+//  Nugget Bridge farm count option: 0 skips via nugget_farm_skipped, > 0 overrides the step count.
+UnitTestResult test_nugget_farm_option(){
+    if (!StoryExecutor::nugget_farm_skipped(0)){
+        return "nugget_farm_skipped should hold when nugget_farm_count is 0.";
+    }
+    if (StoryExecutor::nugget_farm_skipped(1) || StoryExecutor::nugget_farm_skipped(10)){
+        return "nugget_farm_skipped should not hold when nugget_farm_count > 0.";
+    }
+    if (StoryExecutor::effective_nugget_farm_count(0, 10) != 0){
+        return "effective_nugget_farm_count(0, 10) should be 0.";
+    }
+    if (StoryExecutor::effective_nugget_farm_count(10, 10) != 10){
+        return "effective_nugget_farm_count(10, 10) should be 10.";
+    }
+    if (StoryExecutor::effective_nugget_farm_count(3, 10) != 3){
+        return "effective_nugget_farm_count(3, 10) should be 3.";
+    }
+    if (StoryExecutor::effective_nugget_farm_count(25, 10) != 25){
+        return "effective_nugget_farm_count(25, 10) should be 25.";
+    }
+    return true;
+}
+
 const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "every route plans, and checkpoints chain", .body = test_routes_and_chain},
@@ -1922,6 +1946,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "Nugget Bridge: its five trainers, south to north", .body = test_nugget_bridge_order},
         .expectation = {.description = "verifies the Nugget Bridge trainers' order"},
+    },
+    {
+        .input = {.name = "Nugget Bridge farm option: skip on 0, custom count when > 0", .body = test_nugget_farm_option},
+        .expectation = {.description = "verifies nugget_farm_skipped and effective_nugget_farm_count"},
     },
 };
 
