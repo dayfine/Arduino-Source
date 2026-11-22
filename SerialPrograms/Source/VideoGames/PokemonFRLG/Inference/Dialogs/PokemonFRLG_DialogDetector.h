@@ -37,7 +37,11 @@ public:
     BlackScreenWatcher(Color color = COLOR_RED)
         : PokemonAutomation::BlackScreenWatcher(
             color,
-            GameSettings::instance().GAME_BOX.inner_to_outer({0.231692, 0.0616538, 0.551385, 0.9045})
+            GameSettings::instance().GAME_BOX.inner_to_outer({0.231692, 0.0616538, 0.551385, 0.9045}),
+            100,
+            10,
+            FinderType::PRESENT,
+            scale_emulator_duration(std::chrono::milliseconds(100))
         )
     {}
 };
@@ -46,7 +50,11 @@ public:
     BlackScreenOverWatcher(Color color = COLOR_RED)
         : PokemonAutomation::BlackScreenOverWatcher(
             color,
-            GameSettings::instance().GAME_BOX.inner_to_outer({0.231692, 0.0616538, 0.551385, 0.9045})
+            GameSettings::instance().GAME_BOX.inner_to_outer({0.231692, 0.0616538, 0.551385, 0.9045}),
+            100,
+            10,
+            scale_emulator_duration(std::chrono::milliseconds(100)),
+            scale_emulator_duration(std::chrono::milliseconds(100))
         )
     {}
 };
