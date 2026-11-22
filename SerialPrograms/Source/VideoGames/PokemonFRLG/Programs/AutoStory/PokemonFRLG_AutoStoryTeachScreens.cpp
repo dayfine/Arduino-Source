@@ -459,16 +459,29 @@ bool ConsoleTeachScreens::talk_to_tutor(){
         m_console.log("Teach: " + e.message(), COLOR_RED);
         return false;
     }
-    //  "Which POKEMON wants to learn it?": A only on its advance arrow, as
-    //  A on the party menu would choose the lead.
+    //  "Which POKEMON wants to learn it?": FRLG has no advance arrow on the
+    //  final dialog line before the party menu, so press A on an advance arrow
+    //  or once a plain white dialog has stayed still past video lag.
+    size_t dialog_still = 0;
     for (size_t c = 0; c < 50; c++){
         m_context.wait_for_all_requests();
         VideoSnapshot snapshot = m_console.video().snapshot();
-        if (snapshot && AdvanceWhiteDialogDetector(COLOR_RED).detect(snapshot)){
-            pbf_press_button(m_context, BUTTON_A, 160ms, 240ms);
-        }else if (snapshot && read_teach_screen(snapshot) == TeachScreen::PARTY_PROMPT){
+        if (snapshot && read_teach_screen(snapshot) == TeachScreen::PARTY_PROMPT){
             return true;
+        }
+        if (snapshot && AdvanceWhiteDialogDetector(COLOR_RED).detect(snapshot)){
+            dialog_still = 0;
+            pbf_press_button(m_context, BUTTON_A, 160ms, 240ms);
+        }else if (snapshot && WhiteDialogDetector(COLOR_RED).detect(snapshot)){
+            dialog_still++;
+            if (dialog_still >= 2){
+                dialog_still = 0;
+                pbf_press_button(m_context, BUTTON_A, 160ms, 500ms);
+            }else{
+                pbf_wait(m_context, 300ms);
+            }
         }else{
+            dialog_still = 0;
             pbf_wait(m_context, 300ms);
         }
     }

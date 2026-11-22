@@ -55,6 +55,7 @@
         "id": "old_man_tutorial",
         "kind": "scene",
         "declared_after": {"map": "ViridianCity", "tiles": [[20, 8]], "facing": "east"},
+        "flags_after": ["old_man_tutorial_done"],
         "why": "about 60 lines and his demo battle; TEACHY TV"
       },
       {

@@ -65,20 +65,34 @@ const std::vector<MapData>& cleared_story_maps(){
     return maps;
 }
 
+void place_viridian_old_man_at_8(std::vector<MapData>& maps){
+    for (MapData& map : maps){
+        if (map.name != "ViridianCity"){
+            continue;
+        }
+        for (Pokemon::MapObject& object : map.objects){
+            if (object.x == 21 && object.y == 6){
+                object.y = 8;
+            }
+        }
+    }
+}
+
 } // namespace
 
 const std::vector<MapData>& run_story_maps(const std::set<std::string>& run_flags){
     const bool cleared = run_flags.contains(std::string(SILPH_CLEARED_FLAG));
+    const bool old_man_done = run_flags.contains("old_man_tutorial_done");
     const std::vector<MapData>& base = cleared ? cleared_story_maps() : story_maps();
     const std::vector<TrainerMove> moved = moved_trainers(run_flags);
     const std::vector<BoulderMove> pushed = moved_boulders(run_flags);
-    if (moved.empty() && pushed.empty()){
+    if (moved.empty() && pushed.empty() && old_man_done){
         return base;
     }
     //  One copy per set of trainers moved, kept while the program runs:
     //  callers hold references into it. `run_flags` is a set, so the key
     //  lists the moves in one order.
-    std::string key = cleared ? "cleared" : "all";
+    std::string key = std::string(cleared ? "cleared" : "all") + (old_man_done ? "|old_man_done" : "|old_man_8");
     for (const TrainerMove& move : moved){
         key += std::format("|{}={},{}", move.trainer, move.x, move.y);
     }
@@ -90,7 +104,11 @@ const std::vector<MapData>& run_story_maps(const std::set<std::string>& run_flag
     LockGuard<Mutex> guard(lock);
     auto it = moved_maps.find(key);
     if (it == moved_maps.end()){
-        it = moved_maps.emplace(key, with_boulders_moved(with_trainers_moved(base, moved), pushed)).first;
+        std::vector<MapData> copy = with_boulders_moved(with_trainers_moved(base, moved), pushed);
+        if (!old_man_done){
+            place_viridian_old_man_at_8(copy);
+        }
+        it = moved_maps.emplace(key, std::move(copy)).first;
     }
     return it->second;
 }
