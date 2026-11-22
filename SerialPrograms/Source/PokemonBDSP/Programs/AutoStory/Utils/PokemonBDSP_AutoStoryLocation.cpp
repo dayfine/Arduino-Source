@@ -83,7 +83,18 @@ bool story_reads_text(std::optional<Language> language){
 
 bool location_banner_showing(const ImageViewRGB32& screen){
     const ImageStats white = image_stats(extract_box_reference(screen, LOCATION_BANNER_WHITE));
-    return white.average.sum() >= 690 && white.stddev.sum() <= 30;
+    if (white.average.sum() < 690 || white.stddev.sum() > 30){
+        return false;
+    }
+    //  Reject full-screen white flashes (e.g., cave wild battle intros) and
+    //  bright top-left streaks without banner text. In non-English runs OCR
+    //  is skipped so any showing banner matches "(unread)".
+    const ImageStats body = image_stats(extract_box_reference(screen, ImageFloatBox(0.10, 0.25, 0.80, 0.65)));
+    if (body.average.sum() >= 680 && body.stddev.sum() <= 60){
+        return false;
+    }
+    const ImageStats text = image_stats(extract_box_reference(screen, LOCATION_BANNER_TEXT));
+    return text.stddev.sum() >= 25;
 }
 
 std::string location_banner_stats(const ImageViewRGB32& screen){

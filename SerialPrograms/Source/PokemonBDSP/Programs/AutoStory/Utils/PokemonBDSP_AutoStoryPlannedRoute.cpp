@@ -671,7 +671,7 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
         m_io.press(detail::WAIT_FOR_THE_WAY);
         const WalkResult rest = m_io.walk_taps(leg.direction, leg.tiles - moved, walk.label + ": the rest");
         moved = std::min(leg.tiles, moved + rest.moved_chunks);
-        walk.result.stop = rest.stop;
+        walk.result.stop = rest.stop == WalkStop::LIMIT && moved < leg.tiles ? WalkStop::BLOCKED : rest.stop;
         walk.result.walked += rest.walked;
         walk.result.wild_battles += rest.wild_battles;
         if (rest.origin == WalkOrigin::MAY_PRECEDE_LEG){

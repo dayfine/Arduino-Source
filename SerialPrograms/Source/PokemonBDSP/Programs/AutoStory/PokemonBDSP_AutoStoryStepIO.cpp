@@ -136,15 +136,17 @@ constexpr size_t DOOR_RUN_BATTLES = 3;
 //  3D intro animates continuously until BattleDialogDetector / BattleMenuWatcher
 //  fires (~5-6 s).
 constexpr Milliseconds DOOR_FADE_BATTLE_WAIT = 8s;
-bool door_fade_was_battle(VideoStream& stream, ProControllerContext& context, const std::string& banner){
-    BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8},
-        Pokemon::BDSP_FADE_PROFILE.dark_max_sum, Pokemon::BDSP_FADE_PROFILE.uniform_max_stddev_sum,
-        BlackScreenWatcher::FinderType::GONE, 500ms);
-    BattleMenuWatcher battle_menu(BattleType::STARTER, COLOR_YELLOW);
-    DetectorToFinder<BattleDialogDetector> battle_dialog("BattleDialogWatcher", 250ms, COLOR_YELLOW);
-    const int first = wait_until(stream, context, 10s, {{battle_menu}, {battle_dialog}, {gone}});
-    if (first != 2){
-        return first == 0 || first == 1;
+bool door_fade_was_battle(VideoStream& stream, ProControllerContext& context, const std::string& banner, WarpFade fade){
+    if (fade == WarpFade::BLACK){
+        BlackScreenWatcher gone(COLOR_RED, {0.1, 0.1, 0.8, 0.8},
+            Pokemon::BDSP_FADE_PROFILE.dark_max_sum, Pokemon::BDSP_FADE_PROFILE.uniform_max_stddev_sum,
+            BlackScreenWatcher::FinderType::GONE, 500ms);
+        BattleMenuWatcher battle_menu(BattleType::STARTER, COLOR_YELLOW);
+        DetectorToFinder<BattleDialogDetector> battle_dialog("BattleDialogWatcher", 250ms, COLOR_YELLOW);
+        const int first = wait_until(stream, context, 10s, {{battle_menu}, {battle_dialog}, {gone}});
+        if (first != 2){
+            return first == 0 || first == 1;
+        }
     }
     BattleMenuWatcher late_menu(BattleType::STARTER, COLOR_YELLOW);
     DetectorToFinder<BattleDialogDetector> late_dialog("BattleDialogWatcher", 250ms, COLOR_YELLOW);
@@ -183,8 +185,8 @@ WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direc
     for (size_t battles = 0;; battles++){
         const WallClock start = current_time();
         const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, remaining, banner);
-        const bool battle_fade = end.ret == 0 && end.fade == WarpFade::BLACK && remaining.dark_from > 0ms &&
-            door_fade_was_battle(stream, context, banner);
+        const bool battle_fade = end.ret == 0 && end.fade != WarpFade::NONE && remaining.dark_from > 0ms &&
+            door_fade_was_battle(stream, context, banner, end.fade);
         if (end.ret == 2 || battle_fade){
             const WallClock stopped = std::min(end.went_dark, current_time());
             const Milliseconds ran = std::chrono::duration_cast<Milliseconds>(stopped - start) - ROUTE_START_DELAY;
