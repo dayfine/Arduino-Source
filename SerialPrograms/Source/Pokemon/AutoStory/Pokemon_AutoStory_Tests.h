@@ -19,7 +19,10 @@
 #include "Grid/Pokemon_GridStoryActions_Tests.h"
 #include "Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
+#include "Pokemon_CenterVisit_Tests.h"
 #include "Pokemon_Interrupts_Tests.h"
+#include "Pokemon_SceneJudges_Tests.h"
+#include "Pokemon_Settle_Tests.h"
 #include "Pokemon_StoryInterrupts_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
 #include "Pokemon_Transitions_Tests.h"
@@ -41,6 +44,9 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_Transitions(database);
     add_tests_Interrupts(database);
     add_tests_StoryInterrupts(database);
+    add_tests_SceneJudges(database);
+    add_tests_Settle(database);
+    add_tests_CenterVisit(database);
 }
 
 
