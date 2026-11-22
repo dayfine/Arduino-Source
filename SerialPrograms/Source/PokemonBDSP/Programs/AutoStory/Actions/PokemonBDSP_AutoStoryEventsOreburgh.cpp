@@ -120,19 +120,20 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
     fail_step(stream, "Oreburgh Gym: did not reach Roark.");
 }
 
-constexpr Milliseconds MINE_PACE_STEP_HOLD = 600ms;
+constexpr Milliseconds MINE_PACE_STEP_HOLD = 450ms;
 constexpr Milliseconds MINE_PACE_STEP_WAIT = 400ms;
 constexpr Milliseconds MINE_ENCOUNTER_TIMEOUT = 120s;
 constexpr Milliseconds MINE_BATTLE_MENU_WAIT = 15s;
 constexpr Milliseconds MINE_COLUMN_WALK_LIMIT = 15000ms;
-constexpr Milliseconds MINE_CAVERN_STEP_HOLD = 2400ms;
+constexpr Milliseconds MINE_CAVERN_STEP_HOLD = 1200ms;
 constexpr size_t MINE_TRAINING_BATTLES = 5;
 
 //  Paces north/south along column 12 in OreburghMineB1F (between the two
 //  conveyor belts, well clear of both warps) until a wild battle opens.
-void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context){
+//  `go_south` persists across encounters so battles interrupting a south
+//  walk do not drift into the south warp to OreburghMine.
+void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context, bool& go_south){
     const auto deadline = current_time() + MINE_ENCOUNTER_TIMEOUT;
-    bool go_south = true;
     while (current_time() < deadline){
         const double y = go_south ? -1.0 : 1.0;
         go_south = !go_south;
@@ -188,8 +189,9 @@ void train_in_oreburgh_mine(VideoStream& stream, ProControllerContext& context, 
     }
     confirm_battle_overworld(stream, context, "into Oreburgh Mine");
     walk_until(stream, context, run_from_wild_battle, {0, -1}, MINE_CAVERN_STEP_HOLD, "into Oreburgh Mine cavern");
+    bool go_south = false;
     for (size_t done = 0; done < battles; done++){
-        pace_for_mine_encounter(stream, context);
+        pace_for_mine_encounter(stream, context, go_south);
         fight_wild_battle(stream, context, "Oreburgh Mine training");
         if (in_pokemon_center(stream)){
             stream.log("[01.04] Fainted during Oreburgh Mine training; back at the Center with XP kept.", COLOR_ORANGE);
