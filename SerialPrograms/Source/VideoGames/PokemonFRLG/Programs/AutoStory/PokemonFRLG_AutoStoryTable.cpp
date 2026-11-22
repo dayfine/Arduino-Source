@@ -142,7 +142,7 @@ Pokemon::StoryVerify read_verify(const JsonObject& verify, std::string_view sour
     const int64_t tries = verify.get_integer_throw("tries", std::string(source));
     const int64_t min_pass = verify.get_integer_throw("min_pass", std::string(source));
     const int64_t reset_budget = verify.get_integer_throw("reset_budget", std::string(source));
-    if (tries <= 0 || min_pass <= 0 || min_pass > tries || reset_budget <= 0){
+    if (tries < 0 || min_pass < 0 || min_pass > tries || (tries > 0 && min_pass == 0) || reset_budget <= 0){
         throw ParseException(std::format(
             "{}: invalid verify policy (tries={}, min_pass={}, reset_budget={})",
             source, tries, min_pass, reset_budget
