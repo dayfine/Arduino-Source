@@ -234,6 +234,37 @@ const BattleAfterWarpCase BATTLE_AFTER_WARP_CASES[] = {
     {.name = "a battle 3 s after the ladder's fade", .input = {.delay = Milliseconds(3000)}, .expectation = {.end = ON_3F}},
 };
 
+//  19.04c ladder_3f (2026-11-22): Victory Road's cave battle wipe opens
+//  ~2.83 s after the step, faster than Route 1's 3.7 s LATE_WILD_BATTLE_DELAY.
+//  On a 6-tile running leg (~0.8 s), BATTLE_STARTED arrives before
+//  hold_start + LATE_WILD_BATTLE_DELAY (since_hold < 0). place_late_stop()
+//  must leave `walked` unplaced (whole leg) instead of clamping to 0..2.
+class Test_OverworldLateBattleFastWipe : public UnitTest{
+public:
+    Test_OverworldLateBattleFastWipe()
+        : UnitTest("PokemonFRLG::OverworldLateBattle - fast cave wipe leaves stop unplaced instead of clamping to 0..2")
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        RouteStep step;
+        step.direction = Direction::NORTH;
+        step.tiles = 6;
+        step.wild = true;
+        step.end = MapPosition{"VictoryRoad_2F", {5, 13}};
+        const WallClock hold_start = current_time();
+        ScreenEventLog log;
+        log.record(ScreenEvents{ScreenEvent::FADE_BLACK}, hold_start + 2160ms);
+        log.record(ScreenEvents{ScreenEvent::BATTLE_STARTED}, hold_start + 3566ms);
+        const LateStop stop = place_late_stop(step, 134ms, log, hold_start, hold_start + 4000ms);
+        if (stop.walked.has_value()){
+            return std::format(
+                "Expected unplaced (whole leg) for fast cave wipe, got {} to {} tiles in.",
+                stop.walked->min, stop.walked->max
+            );
+        }
+        return true;
+    }
+};
+
 } // namespace
 
 
@@ -259,6 +290,7 @@ void add_tests_OverworldLateBattle(UnitTestDatabase& database){
     for (const BattleAfterWarpCase& item : BATTLE_AFTER_WARP_CASES){
         database.add<Test_OverworldBattleAfterWarp>(item);
     }
+    database.add<Test_OverworldLateBattleFastWipe>();
 }
 
 

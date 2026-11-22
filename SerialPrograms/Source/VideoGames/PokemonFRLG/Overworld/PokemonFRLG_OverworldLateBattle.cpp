@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <format>
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_OverworldWalk.h"
 #include "PokemonFRLG_OverworldLateBattle.h"
 
@@ -16,7 +17,7 @@ namespace PokemonFRLG{
 
 const std::vector<Pokemon::EventLag>& wild_battle_lags(){
     static const std::vector<Pokemon::EventLag> LAGS{
-        {ScreenEvent::BATTLE_STARTED, OverworldWalkSteps::LATE_WILD_BATTLE_DELAY},
+        {ScreenEvent::BATTLE_STARTED, scale_emulator_duration(OverworldWalkSteps::LATE_WILD_BATTLE_DELAY)},
     };
     return LAGS;
 }
@@ -51,7 +52,17 @@ LateStop place_late_stop(
         return out;
     }
     const Milliseconds since_hold = std::chrono::duration_cast<Milliseconds>(*pressed - hold_start);
-    out.walked = walked_near(step, tile_reached(since_hold, tile_time, step.tiles), tile_time);
+    //  LATE_WILD_BATTLE_DELAY (3.7 s) was measured on Route 1's grass wipe;
+    //  cave wipes (Victory Road 2F/3F, ~2.83 s) open ~0.9 s sooner, which
+    //  puts *pressed before hold_start. Clamping negative since_hold to 0
+    //  falsely narrows the stop to 0..2 tiles and leaves recovery holds short
+    //  of the anchor wall; leave it unplaced so run_route() searches the whole
+    //  leg instead.
+    if (since_hold.count() < 0){
+        return out;
+    }
+    const Milliseconds scaled_tile = scale_emulator_duration(tile_time);
+    out.walked = walked_near(step, tile_reached(since_hold, scaled_tile, step.tiles), tile_time);
     return out;
 }
 
