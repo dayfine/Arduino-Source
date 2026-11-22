@@ -37,6 +37,7 @@ struct BlinkRecoveryConfig{
     size_t confirmation_events = 6;
     size_t window_events = 52; // chosen for redundancy
     size_t max_failed_windows = 3;
+    size_t max_confirmation_failures = 3; // drop stuck provisional candidate and resume trimming
     Seconds liveness_timeout = std::chrono::seconds(3600); // in case blinks are never arriving
     Seconds poll_interval = std::chrono::seconds(1);
     Seconds reanchor_interval = std::chrono::seconds(30);
