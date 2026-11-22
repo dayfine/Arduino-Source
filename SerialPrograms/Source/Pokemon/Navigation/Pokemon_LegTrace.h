@@ -77,28 +77,28 @@ struct LegPlan{
     size_t tiles = 0;
     LegEndKind end_kind = LegEndKind::OPEN;
     //  Every tile the leg may end on; empty where the plan does not say.
-    std::vector<RouteTile> ends;
+    std::vector<RouteTile> ends = {};
 };
 
 //  One walked leg.
 struct LegRecord{
-    std::string checkpoint;
-    std::string event;
+    std::string checkpoint = {};
+    std::string event = {};
     //  1-based, counted through the event, replans included.
     size_t leg = 0;
-    LegPlan plan;
+    LegPlan plan = {};
     //  The taps that moved, where the leg counts them.
-    std::optional<size_t> moved;
+    std::optional<size_t> moved = {};
     //  What the walks of the leg report: chunks of screen movement, and the
     //  time the direction was held.
     size_t chunks = 0;
     int64_t walked_ms = 0;
     //  The tiles the leg ended on, as the walker knows them.
-    std::vector<RouteTile> end;
+    std::vector<RouteTile> end = {};
     LegEndKnown known = LegEndKnown::UNKNOWN;
-    std::vector<LegInterrupt> interrupts;
+    std::vector<LegInterrupt> interrupts = {};
     //  Why the leg ended other than as planned ("replan", "warp"), or "".
-    std::string note;
+    std::string note = {};
 };
 
 //  The record as one line of compact JSON, keys sorted.
@@ -122,7 +122,7 @@ struct LegWalk{
     int64_t walked_ms = 0;
     size_t wild_battles = 0;
     //  The taps that moved, for a walk of taps.
-    std::optional<size_t> tapped;
+    std::optional<size_t> tapped = {};
 };
 
 //  Builds a walker's leg records from what it does, and hands each, as its

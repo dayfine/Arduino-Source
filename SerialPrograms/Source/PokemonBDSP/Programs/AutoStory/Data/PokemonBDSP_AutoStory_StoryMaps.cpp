@@ -131,11 +131,11 @@ const StoryWorld& jubilife_east_maps(){
 //  in. In the corner map's tiles.
 const std::vector<TilePos>& jubilife_east_entrance(){
     static const std::vector<TilePos> tiles = []{
-        std::vector<TilePos> tiles;
+        std::vector<TilePos> result;
         for (const TilePos& pos : map_region("JubilifeCity", "east_entrance")){
-            tiles.push_back({pos.x - JUBILIFE_EAST_CORNER.x, pos.y - JUBILIFE_EAST_CORNER.y});
+            result.push_back({pos.x - JUBILIFE_EAST_CORNER.x, pos.y - JUBILIFE_EAST_CORNER.y});
         }
-        return tiles;
+        return result;
     }();
     return tiles;
 }
