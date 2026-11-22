@@ -1,18 +1,16 @@
 # pa-lab console daemon (`lab/server`)
 
-## Next task — report the run outcome through MCP
+## Next task — verify structured run outcomes on Console B
 
-Have the app publish a structured result with the terminal transition for one program, starting
-with BDSP AutoStory. Carry the original Start request ID, whether the run passed, failed, or was
-cancelled, and the checkpoint and reason when available. Surface it through `next_events` so
-clients can determine the result from MCP. Reuse `program.last_outcome` and the existing
-`start_check_failed` result. Keep pre-Start refusals distinct from outcomes after Start.
+Bring the pilot's app state writer and outcome reporting into the current BDSP lab build, then
+run BDSP AutoStory from `00.03` through `02.01` with `serve --actions`. Verify that
+`next_events` reports a terminal event with the original Start request ID, including the
+checkpoint and reason when available. Use the app log for extra detail. A screenshot or video
+may be unavailable. Test cancellation during a safe run on an appropriate save.
 
-Acceptance: native and fake-app HTTP tests cover ordinary success, a checkpoint failure, and
-cancellation. Then verify the result and Start correlation on a short live console-B run.
-[Fork #748](https://github.com/dayfine/Arduino-Source/pull/748) has merged. It adds
-`payload.start_request_id` to tracked Stop events and reports screenshot timing. Use that same
-live session to compare capture latency and frame drops with and without MCP screenshots.
+Use the same session to compare capture latency and frame drops with and without MCP
+screenshots. [Fork #748](https://github.com/dayfine/Arduino-Source/pull/748) added screenshot
+timings and `payload.start_request_id` on Stop events.
 
 ### Current status (2026-11-21)
 
@@ -22,6 +20,14 @@ inputs, and started AutoStory. An exact Start retry returned the stored result a
 found no mismatches. The game failed inside checkpoint `00.03`; MCP observed the Stop and the
 app log provided the checkpoint and reason. The full soak still needs user takeover and a daemon
 restart during a pending request. Live verification of #748 is pending.
+
+The terminal-outcome implementation passed 39 native tests and 253 daemon tests offline.
+The fake-app HTTP tests cover fast completion before the Start reply, checkpoint failure
+without media, and cancellation reported after the app finishes stopping. The tested app
+patch targets the pilot revision `cefea4514`. Live validation on the current BDSP branch
+requires carrying forward its app state writer. The two drafts cover the daemon and guide
+([#777](https://github.com/dayfine/Arduino-Source/pull/777)) and the pilot app patch
+([#778](https://github.com/dayfine/Arduino-Source/pull/778)).
 
 The local server designed in `docs/design/Agent-Integration.md` (fork #131, branch
 `design/agent-integration`). Slice 0: the version-1 contracts, golden examples and a parser.
@@ -46,6 +52,7 @@ The feature map, slice numbers and PRs live here, not in the guide.
 | User hold (`Lab/hold`) | app, scripts, and status support are in use; MCP takeover remains to be exercised live | [GUIDE.md](GUIDE.md#your-hold), #608, #609 |
 | `shot`, `game_open`, `ensure_game`, `describe_program` | pilot exercised `shot` and `describe_program`; `ensure_game` returns `game_unknown` until the app can identify the active game | Slice 2, #504; shot timings in #748 |
 | Leases, request records, events | acquire, release, exact Start retry, and Stop observation verified in the pilot | Slice 3; Stop correlation in #748 |
+| Structured run outcomes | implemented and tested offline for BDSP AutoStory. Console B verification is pending | [Follow a run to its result](https://github.com/dayfine/Arduino-Source/blob/abc2bb5e14c00c0504c33265147eb64397d11d3c/lab/server/GUIDE.md#follow-a-run-to-its-result) |
 | `run_program`, `stop_program` | the pilot used `run_program` and observed the program ending on its own; live `stop_program` remains to be exercised | Slice 5a, #592, channel adapter #611 |
 | Options on `run_program`, `cfr_batch` | both exercised in the pilot | Slice 5b, #600 |
 | Server preflight inside `run_program` | merged and exercised with BDSP; the superseded app `preflight` command (#601, #616) is slated for removal | [Preflight split](#preflight-split) |
@@ -59,7 +66,7 @@ The feature map, slice numbers and PRs live here, not in the guide.
 
 ## Plan order
 
-1. **Report terminal run outcomes.** See [the next task](#next-task--report-the-run-outcome-through-mcp).
+1. **Verify terminal run outcomes on Console B.** See [the next task](#next-task--verify-structured-run-outcomes-on-console-b).
 2. **Identify the active game before Start.** Hook the app's observed title into `ensure_game` so
    callers can distinguish a matching title, a mismatch, and `game_unknown`.
 3. **Finish the console-B soak.** Cover live Stop, user takeover, and daemon restart during a
@@ -182,6 +189,14 @@ New in `state.json`: `written_at` (heartbeat), `instance.{id,pid,profile}`, `pan
 `program.run_id`, `program.last_transition.{action,source,request_id,at}`,
 `video.{state,frame_seq,captured_at,signal}`, `observation.{game,screen}`.
 `legacy.legacy_view()` is the mapping as code; `tests/test_contracts.py` checks the three twins.
+
+When a run stops, the app can publish `program.terminal_outcome` with `passed`, `failed`,
+or `cancelled`, the original Start request ID, and the checkpoint and failure reason when
+available. Start-check failures keep their existing `program.last_outcome` field. Use
+`next_events` to read the result under the original Start request ID. A pass yields
+`program_finished` with verdict `passed`. Cancellation yields `program_finished` with verdict
+`stopped` and reason `cancelled`. Failures yield `program_failed` with verdict `failed` or
+`start_check_failed`.
 
 ## What Slice 1 (the app writer) must produce
 
@@ -626,7 +641,7 @@ option with `skips_check: "<check name>"` on a boolean entry (true skips the che
 candidate must name it as `false`: left out, the panel's value would apply, and that may be true.
 
 How the server reads it (built): `program.last_outcome` is written in the same `state.json` as the
-stop transition that ended the run, and cleared (null) at the next start. On a new stop transition
+stop transition that ended the run and cleared at the next start. On a new stop transition
 the control plane emits `stopped` as before and, when `last_outcome.outcome` is
 `start_check_failed`, a `program_failed` event (`verdict: start_check_failed`, `check`, `message`,
 `evidence`) with the event's `request_id` = `last_outcome.request_id` (null for a user's Start). A
