@@ -862,16 +862,25 @@ bool detail::frame_shows_hold(WallClock frame_time, WallClock hold_start, Millis
 
 std::optional<double> hold_scroll_change(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction){
     //  A scroll moves every band that would show it; a town's banner (top
-    //  left) or water only some.
-    std::optional<double> least;
+    //  left) touches only top and left (two bands). When all four bands are
+    //  kept, taking the second-smallest still rejects a top-left banner
+    //  (bottom and right stay 0) while tolerating a single near-repeating
+    //  off-map border band whose self-shift just exceeds HOLD_UNMOVED_RMSD
+    //  (Victory Road 3F east corridor north 7, 19.04d: right band 4.5,
+    //  top/bottom/left 70+).
+    std::vector<double> changes;
+    changes.reserve(4);
     for (const ImageFloatBox& band : edge_bands(game)){
         if (repeats_along_walk(before, band, game, direction) && repeats_along_walk(after, band, game, direction)){
             continue;
         }
-        const double change = ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band));
-        least = least ? std::min(*least, change) : change;
+        changes.push_back(ImageMatch::pixel_RMSD(extract_box_reference(before, band), extract_box_reference(after, band)));
     }
-    return least;
+    if (changes.empty()){
+        return std::nullopt;
+    }
+    std::sort(changes.begin(), changes.end());
+    return changes.size() == 4 ? changes[1] : changes[0];
 }
 
 HoldMovement hold_movement(std::optional<double> change){
