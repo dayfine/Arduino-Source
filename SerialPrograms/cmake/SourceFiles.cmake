@@ -1597,6 +1597,11 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLogTypes.h
     Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog_Tests.cpp
     Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog_Tests.h
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_LegTypes.h
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_LegWalker.cpp
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_LegWalker.h
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_LegWalker_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_LegWalker_Tests.h
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
