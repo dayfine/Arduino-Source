@@ -217,6 +217,16 @@ bool tap_moved_on_water(const ImageViewRGB32& before, const ImageViewRGB32& afte
     return stepped < still * WATER_STEP_RATIO;
 }
 
+bool tap_step_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction){
+    if (tap_scroll_change(before, after, game) <= WALL_TAP_MOVED_RMSD){
+        return false;
+    }
+    if (dark_cave_screen(before)){
+        return true;
+    }
+    return tap_moved_on_water(before, after, game, direction);
+}
+
 namespace{
 
 //  Over this share of water on the player's tile, they are surfing.
@@ -271,7 +281,8 @@ constexpr TapTiming BIKE_TAP_TIMING{BIKE_TAP, BIKE_TAP_PERIOD - BIKE_TAP, BIKE_T
 //  is watched on for a late interrupt, which is cleared.
 BikeTap console_bike_tap(
     ConsoleHandle& console, ProControllerContext& context,
-    const RouteStep& step, const OverworldInterrupts& interrupts, const TapTiming& timing
+    const RouteStep& step, const OverworldInterrupts& interrupts, const TapTiming& timing,
+    bool multi_tile = false
 ){
     context.wait_for_all_requests();
     const VideoSnapshot before = console.video().snapshot();
@@ -295,7 +306,13 @@ BikeTap console_bike_tap(
         return BikeTap{.moved = false, .interrupt = (size_t)ret};
     }
     const VideoSnapshot after = console.video().snapshot();
-    if (before && after && tap_scroll_change(before, after, GameSettings::instance().GAME_BOX) > WALL_TAP_MOVED_RMSD){
+    const ImageFloatBox game = GameSettings::instance().GAME_BOX;
+    const bool moved = before && after && (
+        multi_tile
+            ? tap_scroll_change(before, after, game) > WALL_TAP_MOVED_RMSD
+            : tap_step_moved(before, after, game, step.direction)
+    );
+    if (moved){
         return BikeTap{.moved = true, .interrupt = std::nullopt};
     }
     const bool late = Pokemon::clear_late_interrupts(console, context, interrupts, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0;
@@ -340,7 +357,8 @@ StepWalk walk_step_taps(
     BikeTapCalls calls;
     calls.tap = [&](int tap){
         const TapTiming timing{STEP_TAP, STEP_TAP_RELEASE, step_tap_settle(step, tap)};
-        return console_bike_tap(console, context, step, watched, timing);
+        const bool multi_tile = step.spin_tiles && tap == step.tiles;
+        return console_bike_tap(console, context, step, watched, timing, multi_tile);
     };
     calls.clear = [&](size_t index){ watched[index]->clear(console, context); };
     calls.log = [&](const std::string& message){ console.log(message, COLOR_ORANGE); };
@@ -737,8 +755,12 @@ bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, cons
         ));
         return moved;
     }
-    console.log(std::format("Position check: a tap toward the wall of {} changed the screen by {:.1f}.", to_string(step), change));
-    return change > WALL_TAP_MOVED_RMSD;
+    const bool moved = tap_step_moved(before, after, game, step.direction);
+    console.log(std::format(
+        "Position check: a tap toward the wall of {} changed the screen by {:.1f}{}.",
+        to_string(step), change, change > WALL_TAP_MOVED_RMSD && !moved ? " (stayed put)" : ""
+    ));
+    return moved;
 }
 
 //  Whether the player's walking sprite shows, read up to LANDED_READS
