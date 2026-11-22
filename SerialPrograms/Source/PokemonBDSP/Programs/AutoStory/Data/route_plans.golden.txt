@@ -137,9 +137,9 @@ anchor); 0 from one start tile.
 
 == 00.04 beside_mom (costs: route)
   from: PlayerHouse1F (6, 9) facing north (tile)
-  target: PlayerHouse1F (6, 8) facing east (tile)
+  target: PlayerHouse1F (6, 7) facing east (tile)
   start candidates: PlayerHouse1F (6, 9)
-  1. north 1 (open) -> PlayerHouse1F (6, 8)
+  1. north 2 (open) -> PlayerHouse1F (6, 7)
   totals: 1 legs, 0 turns, 1 open, 0 localization
 
 == 00.04 into_moms_call (costs: trigger)

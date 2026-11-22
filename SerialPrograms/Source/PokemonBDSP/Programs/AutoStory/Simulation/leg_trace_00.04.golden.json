@@ -17,7 +17,7 @@
     {"checkpoint":"00.04","chunks":37,"dir":"south","end":[["Twinleaf Town",15,26]],"end_kind":"wall","event":"into_twinleaf","interrupts":[],"known":"wall","leg":1,"ms":6600,"planned_end":[["Twinleaf Town",15,26]],"tiles":37},
     {"checkpoint":"00.04","chunks":4,"dir":"north","end":[["Twinleaf Town",15,22]],"end_kind":"open","event":"into_twinleaf","interrupts":[],"known":"dead_reckoned","leg":2,"moved":4,"ms":3200,"planned_end":[["Twinleaf Town",15,22]],"tiles":4},
     {"checkpoint":"00.04","chunks":5,"dir":"east","end":[["Twinleaf Town",20,22]],"end_kind":"open","event":"to_moms_doorstep","interrupts":[],"known":"dead_reckoned","leg":1,"moved":5,"ms":4000,"planned_end":[["Twinleaf Town",20,22]],"tiles":5},
-    {"checkpoint":"00.04","chunks":1,"dir":"north","end":[["PlayerHouse1F",6,8]],"end_kind":"open","event":"beside_mom","interrupts":[],"known":"dead_reckoned","leg":1,"moved":1,"ms":800,"planned_end":[["PlayerHouse1F",6,8]],"tiles":1},
+    {"checkpoint":"00.04","chunks":2,"dir":"north","end":[["PlayerHouse1F",6,7]],"end_kind":"open","event":"beside_mom","interrupts":[],"known":"dead_reckoned","leg":1,"moved":2,"ms":1600,"planned_end":[["PlayerHouse1F",6,7]],"tiles":2},
     {"checkpoint":"00.04","chunks":0,"dir":"north","end":[],"end_kind":"wall","event":"into_the_east_corner","interrupts":[],"known":"wall","leg":1,"ms":0,"planned_end":[],"tiles":4},
     {"checkpoint":"00.04","chunks":0,"dir":"east","end":[],"end_kind":"wall","event":"into_the_east_corner","interrupts":[],"known":"wall","leg":2,"ms":0,"planned_end":[],"tiles":6},
     {"checkpoint":"00.04","chunks":0,"dir":"south","end":[],"end_kind":"wall","event":"into_the_east_corner","interrupts":[],"known":"wall","leg":3,"ms":0,"planned_end":[],"tiles":4},
