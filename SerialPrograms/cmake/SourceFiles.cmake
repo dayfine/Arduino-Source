@@ -1808,6 +1808,10 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_NuggetBridgeFarmer.h
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.cpp
     Source/VideoGames/PokemonFRLG/Programs/Farming/PokemonFRLG_PickupFarmer.h
+    Source/VideoGames/PokemonFRLG/Programs/LegendaryCatch/PokemonFRLG_LegendaryCatch.cpp
+    Source/VideoGames/PokemonFRLG/Programs/LegendaryCatch/PokemonFRLG_LegendaryCatch.h
+    Source/VideoGames/PokemonFRLG/Programs/LegendaryCatch/PokemonFRLG_LegendaryCatchRequirements.cpp
+    Source/VideoGames/PokemonFRLG/Programs/LegendaryCatch/PokemonFRLG_LegendaryCatchRequirements.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.cpp
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_BattleMenuNavigation.h
     Source/VideoGames/PokemonFRLG/Programs/PokemonFRLG_SafariOptimalAction.cpp

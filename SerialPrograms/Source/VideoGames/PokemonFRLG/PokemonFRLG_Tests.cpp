@@ -30,6 +30,7 @@
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
+#include "Programs/LegendaryCatch/PokemonFRLG_LegendaryCatchRequirements.h"
 #include "Tests/TestUtils.h"
 
 #include "PokemonFRLG_Tests.h"
@@ -54,6 +55,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_BoxSorter(database);
     add_tests_EliteFourRoomDetector(database);
     add_tests_HallOfFameSavingDetector(database);
+    add_tests_LegendaryCatchRequirements(database);
     add_tests_PartyEmptySlotDetector(database);
     add_tests_PartyHeldItemDetector(database);
     add_tests_PartyLevelUpReader(database);
