@@ -195,6 +195,11 @@ const PlanCase PLAN_CASES[] = {
         .expectation = {.legs = "south 2 to wall: (0, 2)"},
     },
     {
+        .name = "a tapped open leg over a ledge counts taps, not tile distance",
+        .input = {.rows = {".", ".", "v", ".", ".", "."}, .from = {{0, 0}}, .goal = {0, 4}, .costs = EXACT},
+        .expectation = {.legs = "south 3 open: (0, 4)"},
+    },
+    {
         .name = "a ledge cannot be climbed",
         .input = {.rows = {".", "v", "."}, .from = {{0, 2}}, .goal = {0, 0}},
         .expectation = {.legs = "none"},

@@ -286,6 +286,36 @@ std::string describe_view_shift(const ViewShift& shift){
     return text;
 }
 
+bool PixelChangeCoverage::scrolled() const{
+    return changed_rows >= 0.45 && changed_cols >= 0.45;
+}
+
+PixelChangeCoverage walk_pixel_coverage(const ImageViewRGB32& before, const ImageViewRGB32& after){
+    const ImageRGB32 a = before.scale_to(VIEW_WIDTH, VIEW_HEIGHT);
+    const ImageRGB32 b = after.scale_to(VIEW_WIDTH, VIEW_HEIGHT);
+    constexpr int PIXEL_SUM_DELTA = 36;
+    std::array<int, VIEW_WIDTH> col_hits{};
+    int changed_rows = 0;
+    size_t changed_pixels = 0;
+    for (int y = 0; y < VIEW_HEIGHT; y++){
+        int row_hits = 0;
+        for (int x = 0; x < VIEW_WIDTH; x++){
+            const uint32_t p = a.pixel(x, y), q = b.pixel(x, y);
+            const int d = std::abs((int)((p >> 16) & 0xff) - (int)((q >> 16) & 0xff))
+                + std::abs((int)((p >> 8) & 0xff) - (int)((q >> 8) & 0xff))
+                + std::abs((int)(p & 0xff) - (int)(q & 0xff));
+            if (d > PIXEL_SUM_DELTA){
+                changed_pixels++;
+                row_hits++;
+                col_hits[(size_t)x]++;
+            }
+        }
+        changed_rows += row_hits >= VIEW_WIDTH / 4 ? 1 : 0;
+    }
+    const int changed_cols = (int)std::count_if(col_hits.begin(), col_hits.end(), [](int n){ return n >= VIEW_HEIGHT / 4; });
+    return {(double)changed_rows / VIEW_HEIGHT, (double)changed_cols / VIEW_WIDTH, (double)changed_pixels / (VIEW_WIDTH * VIEW_HEIGHT)};
+}
+
 bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line){
     return read_tap(before, after, line).moved;
 }
@@ -645,10 +675,12 @@ private:
             m_before = std::move(after);
             return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
         }
-        //  Use the same plain RMSD threshold for tapped and held walks
-        //  (FRLG-style): real moving taps measure 40-80 RMSD while bumps
-        //  measure 0.4-13.4, avoiding ViewShift false-blocks in caves/tunnels.
-        const bool still = change < still_line(change);
+        //  For D-pad taps outside fixed-camera indoor rooms, a real step
+        //  scrolls the viewport across both rows and columns (45%+ each),
+        //  whereas bumps, passing NPCs, and localized flashes stay narrow.
+        const bool still = m_spec.input == WalkInput::TAPS
+            ? !tap_chunk_moved(*m_before.frame, *after.frame, change)
+            : change < WALK_BLOCKED_CHANGE;
         if (!still){
             //  A quiet tap and then a moving one: the first moved too. What
             //  blocks a tap still blocks the next; the view barely changed
@@ -666,15 +698,15 @@ private:
         return {ChunkNext::NEXT_CHUNK, WalkStop::LIMIT};
     }
 
-    //  The largest change a chunk of this walk made is a step. A bump into an
-    //  NPC measured 17.2 after steps of 63 to 65 (r250a, Floaroma's old
-    //  woman), over the fixed line of 16, so for taps "still" is also
-    //  anything under 40% of the walk's own steps.
-    double still_line(double change){
-        m_largest = std::max(m_largest, change);
-        return m_spec.input == WalkInput::TAPS
-            ? std::max(WALK_TAP_BLOCKED_CHANGE, 0.4 * m_largest)
-            : WALK_BLOCKED_CHANGE;
+    bool tap_chunk_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double change){
+        if (indoors(after)){
+            return change >= WALK_TAP_BLOCKED_CHANGE;
+        }
+        const PixelChangeCoverage cov = walk_pixel_coverage(before, after);
+        m_stream.log(std::format("[Walk] {}: coverage rows {:.0f}% cols {:.0f}% px {:.0f}% ({}).",
+            m_spec.label, cov.changed_rows * 100.0, cov.changed_cols * 100.0, cov.changed_pixels * 100.0,
+            cov.scrolled() ? "moved" : "still"));
+        return cov.scrolled();
     }
 
     //  What hold()'s watcher `ret` saw (see after_watchers()).
@@ -737,7 +769,7 @@ private:
         ){
             VideoSnapshot after = snapshot_or_fail(m_stream, m_spec.label);
             const double change = walk_screen_change(*m_before_still.frame, *after.frame);
-            if (change >= still_line(change)){
+            if (tap_chunk_moved(*m_before_still.frame, *after.frame, change)){
                 m_result.moved_chunks++;
             }
         }
@@ -765,7 +797,6 @@ private:
     size_t m_unchanged = 0;
     size_t m_chunks = 0;
     size_t m_moved_at_battle = 0;
-    double m_largest = 0;
     LocationBannerWatcher m_banner;
 };
 
