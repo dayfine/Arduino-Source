@@ -574,7 +574,7 @@ std::string run_blind_starter_sequence(
         run.env, run.context, session.watchers, session.callbacks, session.recovery, session.config,
         press_advance, lead_seconds, run.displays.state
     );
-    navigate_to_pre_briefcase(run.env.logger(), run.context);
+    navigate_to_pre_briefcase(run.env, run.context);
 
     const WallClock briefcase_time = session.recovery.clock.middle_of_advance(press_advance);
     while (current_time() + 3s < briefcase_time){

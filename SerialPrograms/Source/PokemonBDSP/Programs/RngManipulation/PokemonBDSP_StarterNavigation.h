@@ -71,7 +71,7 @@ void navigate_skip_spot_to_lakefront(Logger& logger, ProControllerContext& conte
 
 void navigate_to_lake_blinks(Logger& logger, ProControllerContext& context);
 
-void navigate_to_pre_briefcase(Logger& logger, ProControllerContext& context);
+void navigate_to_pre_briefcase(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 
 
 bool issue_starter_sequence(
