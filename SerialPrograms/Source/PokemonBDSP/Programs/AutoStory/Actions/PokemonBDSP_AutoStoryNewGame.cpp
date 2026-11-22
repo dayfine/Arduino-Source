@@ -333,8 +333,14 @@ void enter_player_name(VideoStream& stream, ProControllerContext& context, StepT
     }
     trace.action("Typing the player's name: " + name);
     FastCodeEntry::type_on_system_keyboard(stream, context, name);
-    pbf_press_button(context, BUTTON_PLUS, 80ms, 0ms);
-    if (!wait_for_keyboard(stream, context, true, 5s)){
+    //  IME keyboards (e.g. Chinese/Korean) consume the first PLUS to commit the
+    //  composing word and need a second PLUS to press OK and close the keyboard.
+    bool closed = false;
+    for (size_t attempt = 0; attempt < 3 && !closed; attempt++){
+        pbf_press_button(context, BUTTON_PLUS, 80ms, 300ms);
+        closed = wait_for_keyboard(stream, context, true, 2500ms);
+    }
+    if (!closed){
         trace.fail("The keyboard stayed open after PLUS (OK).");
     }
     trace.action("Name confirmed.");
