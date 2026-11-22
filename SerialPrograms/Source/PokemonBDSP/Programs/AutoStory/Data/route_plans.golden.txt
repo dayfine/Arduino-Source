@@ -102,15 +102,23 @@ anchor); 0 from one start tile.
   3. west 1 (open) -> Route 201 (55, 5)
   totals: 3 legs, 2 turns, 2 open, 1 localization
 
-== 00.04 along_route_201_road (costs: line)
+== 00.04 over_the_ledge (costs: route)
+  from: Route201 (55, 5) facing west (tile)
+  target: Route201 (55, 14) facing south (tile)
+  start candidates: Route 201 (55, 5)
+  1. south 8 (open) -> Route 201 (55, 14)
+  totals: 1 legs, 0 turns, 1 open, 0 localization
+
+== 00.04 along_route_201_road (costs: route)
   from: Route201 (55, 14) facing south (tile)
   target: Route201 (15, 14) facing west (tile)
   start candidates: Route 201 (55, 14)
   1. west 16 (open) -> Route 201 (39, 14)
-  2. north 3 (open) -> Route 201 (39, 11)
-  3. west 24 (open) -> Route 201 (15, 11)
-  4. south 2 (open) -> Route 201 (15, 14)
-  totals: 4 legs, 3 turns, 4 open, 0 localization
+  2. north 5 (to wall) -> Route 201 (39, 9)
+  3. west 25 (to wall) -> Route 201 (14, 9)
+  4. east 1 (open) -> Route 201 (15, 9)
+  5. south 4 (open) -> Route 201 (15, 14)
+  totals: 5 legs, 4 turns, 3 open, 0 localization
 
 == 00.04 into_twinleaf (costs: line)
   from: Route201 (15, 14) facing west (tile)

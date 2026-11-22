@@ -876,14 +876,17 @@ Blocker RouteWalker::talk_to_blocker(const std::string& leg_label){
     return Blocker::THING;
 }
 
-//  One tile we may stand on: what stopped us is on the next tile, and goes
-//  on our map.
+//  One tile we may stand on: what stopped us is on the next tile. Uncover it
+//  rather than blocking it so the replanner routes around it without treating
+//  a guessed runtime blocker as a wall to localize against (lab-B 2026-11-21,
+//  00.04 along_route_201_road: an overcounted chunk put a false wall ahead and
+//  "west 1 (to wall)" collapsed the widened belief onto the wrong tile).
 void RouteWalker::mark_blocker(const LegWalk& walk, const std::vector<TilePos>& stopped){
     if (stopped.size() != 1){
         return;
     }
     const TilePos blocker = stopped[0].next(walk.planned.leg.direction);
-    m_grid.block(blocker);
+    m_grid.uncover(blocker);
     m_io.note("[Route] " + walk.label + ": something the map lacks is at " +
         describe(m_maps, blocker) + "; marked it.", RouteNote::WARNING);
 }

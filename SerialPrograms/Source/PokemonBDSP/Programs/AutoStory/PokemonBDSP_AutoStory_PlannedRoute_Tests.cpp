@@ -599,6 +599,45 @@ UnitTestResult test_open_leg_turn_tap_facing_guard(Logger&){
     return true;
 }
 
+//  Route 201 (lab-B, 2026-11-21 15:10, 00.04 along_route_201_road): an open
+//  leg blocked by an unmapped obstacle with a +1 overcounted chunk widened
+//  the belief set to {counted, counted - 1}, but mark_blocker() placed a
+//  wall on counted + 1 and the replanner localized against that guessed wall,
+//  collapsing belief to the wrong tile. Runtime blockers must be routed
+//  around without acting as localization walls.
+UnitTestResult test_blocked_open_leg_overcount_does_not_localize_on_blocker(Logger&){
+    const StoryWorld room = make_world({
+        "###########",
+        "#.........#",
+        "#.........#",
+        "#.........#",
+        "###########",
+    });
+    //  Start at (8, 2), goal (3, 2). Planned: west 5 (open).
+    //  Blocked after 3 overcounted chunks (real player at (6, 2), obstacle at (5, 2)).
+    //  The walker must localize against a real room wall rather than running a
+    //  "west ... (to wall)" leg into the guessed blocker at (4, 2).
+    Script script{.steps = {
+        walk_step("5 taps: T: west 5 (open)", WalkStop::BLOCKED, 3200ms, 3),
+        press_step("wait 2500 ms x1"),
+        walk_step("2 taps: T: west 5 (open): the rest", WalkStop::BLOCKED, 1600ms, 0),
+        press_step("A 80 ms x1"),
+        answer_step("dialog within 2000 ms", false),
+    }};
+    try{
+        const ScriptedWalk walk = walk_script(room, /*from=*/{8, 2}, /*goal=*/{3, 2}, /*sights=*/{}, script);
+        return std::format("unexpected completion: {}", walk.failure);
+    }catch (const ScriptMismatch& e){
+        if (e.message.find("wall: T: west") != std::string::npos){
+            return std::format("replanner localized against guessed runtime blocker: {}", e.message);
+        }
+        if (e.message.find("a call after the script's end:") == std::string::npos){
+            return std::format("script mismatch before replan: {}", e.message);
+        }
+        return true;
+    }
+}
+
 
 struct PlannedRouteInput{
     std::string name;
@@ -665,6 +704,10 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     },
     {
         .input = {"open leg skips turn tap when already facing or facing unknown", test_open_leg_turn_tap_facing_guard},
+        .expectation = {},
+    },
+    {
+        .input = {"blocked open leg does not localize against guessed runtime blocker", test_blocked_open_leg_overcount_does_not_localize_on_blocker},
         .expectation = {},
     },
 };

@@ -177,29 +177,22 @@
       {
         "args": {
           "fight_wild": false,
-          "legs": [
-            {
-              "direction": "south",
-              "tiles": 8
-            }
-          ]
-        },
-        "declared_after": {
-          "facing": "south",
-          "map": "Route201",
-          "tiles": [
-            [
-              55,
-              14
+          "target": {
+            "facing": "south",
+            "map": "Route201",
+            "tiles": [
+              [
+                55,
+                14
+              ]
             ]
-          ]
+          }
         },
         "id": "over_the_ledge",
-        "kind": "legs",
+        "kind": "route",
         "why": "south over the ledge to the lower road"
       },
       {
-        "action": "line",
         "args": {
           "fight_wild": false,
           "target": {

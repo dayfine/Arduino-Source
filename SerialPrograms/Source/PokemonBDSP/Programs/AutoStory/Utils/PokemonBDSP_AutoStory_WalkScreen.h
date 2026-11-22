@@ -79,6 +79,21 @@ ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& af
 //  Each band's shift and how much better than none it lines up, for logs.
 std::string describe_view_shift(const ViewShift& shift);
 
+//  How widely pixel changes spread across rows and columns on a 192x108 copy.
+//  A camera scroll moves scenery across both most rows and most columns
+//  (measured 52%-100% across overworld and dark caves on lab-B); a bump,
+//  passing NPC, cloud shadow or localized flash stays below 20% in at least
+//  one axis.
+struct PixelChangeCoverage{
+    double changed_rows = 0;    //  fraction of rows with >= 25% changed pixels
+    double changed_cols = 0;    //  fraction of cols with >= 25% changed pixels
+    double changed_pixels = 0;  //  fraction of all pixels with |dR|+|dG|+|dB| > 36
+
+    bool scrolled() const;
+};
+
+PixelChangeCoverage walk_pixel_coverage(const ImageViewRGB32& before, const ImageViewRGB32& after);
+
 //  Whether the player moved between `before` and `after`, frames around a
 //  D-pad tap. Outside: only if the view scrolled. Inside, the camera can
 //  stay put while the player crosses a room (the house's 1F), so there a
@@ -133,6 +148,9 @@ using detail::ViewShift;
 using detail::walk_view_shift;
 //  Each band's shift, for logs.
 using detail::describe_view_shift;
+//  Row/column spread of changed pixels between two frames.
+using detail::PixelChangeCoverage;
+using detail::walk_pixel_coverage;
 //  Whether the player moved between before and after frames.
 using detail::tap_moved;
 //  How a tap's frames read, for the walk's log.

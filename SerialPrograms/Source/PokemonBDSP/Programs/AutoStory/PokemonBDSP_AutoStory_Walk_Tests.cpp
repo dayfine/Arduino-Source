@@ -439,6 +439,54 @@ UnitTestResult test_view_shift(Logger&){
         return cave_err.empty() ? UnitTestResult(true) : UnitTestResult(cave_err);
 }
 
+UnitTestResult test_pixel_change_coverage(Logger&){
+        const ImageRGB32 before = scenery(0, 0);
+        struct Case{
+            std::string name;
+            ImageRGB32 after;
+            bool scrolled;
+        };
+        std::vector<Case> cases;
+        cases.push_back({"identical view", scenery(0, 0), false});
+        cases.push_back({"step east", scenery(16, 0), true});
+        cases.push_back({"step south", scenery(0, 12), true});
+        cases.push_back({"step north with perspective", scenery_after_a_step_north(), true});
+        cases.push_back({"step west with perspective", scenery_after_a_step_west(), true});
+        {
+            ImageRGB32 shadow = scenery(0, 0);
+            paint(shadow, 0, 0, 384, 90, 0.6);
+            cases.push_back({"cloud shadow over top 42%", std::move(shadow), false});
+        }
+        {
+            ImageRGB32 tv = scenery(0, 0);
+            paint(tv, 20, 20, 110, 80, 0, 0xffffffff);
+            cases.push_back({"localized bright flash/TV", std::move(tv), false});
+        }
+        {
+            ImageRGB32 bump = scenery(0, 0);
+            paint(bump, 160, 65, 224, 155, 0, 0xffff4040);
+            cases.push_back({"bump/player sprite change only", std::move(bump), false});
+        }
+        for (const Case& item : cases){
+            const PixelChangeCoverage cov = walk_pixel_coverage(before, item.after);
+            if (cov.scrolled() != item.scrolled){
+                return std::format("{}: expected {}, got rows={:.2f} cols={:.2f} px={:.2f}.",
+                    item.name, item.scrolled ? "scrolled" : "still",
+                    cov.changed_rows, cov.changed_cols, cov.changed_pixels);
+            }
+        }
+        ImageRGB32 cave_before = scenery(0, 0);
+        ImageRGB32 cave_after = scenery(24, 0);
+        paint(cave_before, /*x0=*/0, /*y0=*/108, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
+        paint(cave_after, /*x0=*/0, /*y0=*/108, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
+        const PixelChangeCoverage cave_cov = walk_pixel_coverage(cave_before, cave_after);
+        if (!cave_cov.scrolled()){
+            return std::format("cave south black edge step: expected scrolled, got rows={:.2f} cols={:.2f}.",
+                cave_cov.changed_rows, cave_cov.changed_cols);
+        }
+        return true;
+}
+
 //  walk_view_shift() on the console's frames around D-pad taps.
 struct ViewShiftFramesTestCase{
     std::string name;
@@ -836,6 +884,10 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     },
     {
         .input = {"a step scrolls the view; moving scenery does not", test_view_shift},
+        .expectation = {},
+    },
+    {
+        .input = {"pixel change row/col coverage separates steps from bumps and flashes", test_pixel_change_coverage},
         .expectation = {},
     },
     {
