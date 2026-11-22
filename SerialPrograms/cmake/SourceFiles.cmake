@@ -1548,7 +1548,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_CenterVisit.h
     Source/Pokemon/AutoStory/Pokemon_CenterVisit_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_ConsoleReadings.h
     Source/Pokemon/AutoStory/Pokemon_FadeProfiles.h
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay.cpp
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay.h
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_FrameReplay_Tests.h
     Source/Pokemon/AutoStory/Pokemon_InterruptHandlers.h
     Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_Interrupts.h
@@ -1561,6 +1566,9 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h
     Source/Pokemon/AutoStory/Pokemon_ScreenEventLog.cpp
     Source/Pokemon/AutoStory/Pokemon_ScreenEventLog.h
+    Source/Pokemon/AutoStory/Pokemon_ScriptedReadings.h
+    Source/Pokemon/AutoStory/Pokemon_ScriptedReadings_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_ScriptedReadings_Tests.h
     Source/Pokemon/AutoStory/Pokemon_Settle.cpp
     Source/Pokemon/AutoStory/Pokemon_Settle.h
     Source/Pokemon/AutoStory/Pokemon_Settle_Tests.cpp
@@ -1672,6 +1680,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLogTypes.h
     Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog_Tests.cpp
     Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog_Tests.h
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_DoorApproach.cpp
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_DoorApproach.h
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_DoorApproach_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Walker/Pokemon_DoorApproach_Tests.h
     Source/Pokemon/Navigation/Grid/Walker/Pokemon_LegTypes.h
     Source/Pokemon/Navigation/Grid/Walker/Pokemon_LegWalker.cpp
     Source/Pokemon/Navigation/Grid/Walker/Pokemon_LegWalker.h
