@@ -126,7 +126,7 @@
       {
         "id": "into_floaroma",
         "action": "legs",
-        "why": "run north until Floaroma's banner; on after a wild battle",
+        "why": "not planned: run north until Floaroma's banner; on after a wild battle",
         "args": {
           "fight_wild": false,
           "legs": [

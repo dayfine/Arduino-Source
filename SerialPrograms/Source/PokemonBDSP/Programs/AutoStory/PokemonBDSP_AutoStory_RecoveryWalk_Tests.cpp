@@ -121,30 +121,30 @@ const BdspStep& mine_step(){
     return step;
 }
 
-struct RecoveryInput{
-    std::string name;
-    std::vector<size_t> taps;
-    Direction direction = Direction::SOUTH;
-    size_t tiles = 5;
-    SimEncounterPhase phase = SimEncounterPhase::BEFORE_MOVEMENT;
-    WalkOrigin origin = WalkOrigin::CURRENT_LEG;
-    size_t interrupted_holds = 0;
-    RecoveryBattle recovery_battle = RecoveryBattle::NONE;
-};
-struct RecoveryExpectation{
-    std::string failure = {};
-    TilePos end = {.x = 18, .y = 29};
-    Direction facing = Direction::WEST;
-};
 struct RecoveryCase{
-    RecoveryInput input;
-    RecoveryExpectation expectation;
+    struct Input{
+        std::vector<size_t> taps;
+        Direction direction = Direction::SOUTH;
+        size_t tiles = 5;
+        SimEncounterPhase phase = SimEncounterPhase::BEFORE_MOVEMENT;
+        WalkOrigin origin = WalkOrigin::CURRENT_LEG;
+        size_t interrupted_holds = 0;
+        RecoveryBattle recovery_battle = RecoveryBattle::NONE;
+    };
+    struct Expectation{
+        std::string failure = {};
+        TilePos end = {.x = 18, .y = 29};
+        Direction facing = Direction::WEST;
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_RecoveryWalk : public UnitTest{
 public:
     explicit Test_RecoveryWalk(RecoveryCase data)
-        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: " + data.input.name), m_case(std::move(data))
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: " + data.name), m_case(std::move(data))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const StoryWorld* world = story_plan_world("OreburghMine", "OreburghMine");
@@ -192,17 +192,17 @@ private:
 //  the battle, as the console's do: the player ends at the leg's end, a
 //  tile short when the battle came before its tap moved. Red until the
 //  story's taps read their events: the leg kept all 15 of its tiles.
-struct PlacedBattleInput{
-    std::string name;
-    size_t tap;
-    SimEncounterPhase phase;
-};
-struct PlacedBattleExpectation{
-    size_t tiles_in;    //  how far along east 14 the taps left the player
-};
 struct PlacedBattleCase{
-    PlacedBattleInput input;
-    PlacedBattleExpectation expectation;
+    struct Input{
+        size_t tap;
+        SimEncounterPhase phase;
+    };
+    struct Expectation{
+        size_t tiles_in;    //  how far along east 14 the taps left the player
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 //  "4 to 6 tiles in." in a placement line, if any.
@@ -223,7 +223,7 @@ std::optional<std::pair<size_t, size_t>> placed_span(const std::vector<std::stri
 class Test_PlacedLegBattle : public UnitTest{
 public:
     explicit Test_PlacedLegBattle(PlacedBattleCase data)
-        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: a battle on an open leg's taps, placed by its screen events: " + data.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: a battle on an open leg's taps, placed by its screen events: " + data.name)
         , m_case(std::move(data))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -317,21 +317,21 @@ const BdspStep& story_step(std::string_view row, std::string_view name){
 //  ran a row off, under Roark's rocks. With a wild battle on the input's
 //  tap, the table's to_roarks_corner from (15, 9) must end on his corner
 //  (20, 28) facing west, and beside_roarks_rock on (20, 29).
-struct CornerInput{
-    std::string name;
-    std::vector<SimWildTap> battle;
-};
-struct CornerExpectation{
-    std::string failure = {};
-};
 struct CornerCase{
-    CornerInput input;
-    CornerExpectation expectation;
+    struct Input{
+        std::vector<SimWildTap> battle;
+    };
+    struct Expectation{
+        std::string failure = {};
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 class Test_RoarksCorner : public UnitTest{
 public:
     explicit Test_RoarksCorner(CornerCase data)
-        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.03 to Roark's corner, " + data.input.name), m_case(std::move(data))
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.03 to Roark's corner, " + data.name), m_case(std::move(data))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         const StoryWorld& world = *story_plan_world("OreburghMine", "OreburghMine");
@@ -379,20 +379,14 @@ private:
 };
 
 const CornerCase CORNER_CASES[] = {
-    {.input = {.name = "no battle", .battle = {}}, .expectation = {}},
-    {.input = {.name = "battle on south 5 tap 3",
-        .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 5, .tap = 3}}}, .expectation = {}},
-    {.input = {.name = "battle on south 5 tap 5",
-        .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 5, .tap = 5}}}, .expectation = {}},
-    {.input = {.name = "battle on east 14 tap 7",
-        .battle = {{.label = "to_roarks_corner", .direction = Direction::EAST, .requested_tiles = 14, .tap = 7}}}, .expectation = {}},
-    {.input = {.name = "battle on south 10 tap 4",
-        .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 10, .tap = 4}}}, .expectation = {}},
+    {.name = "no battle", .input = {.battle = {}}, .expectation = {}},
+    {.name = "battle on south 5 tap 3", .input = {.battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 5, .tap = 3}}}, .expectation = {}},
+    {.name = "battle on south 5 tap 5", .input = {.battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 5, .tap = 5}}}, .expectation = {}},
+    {.name = "battle on east 14 tap 7", .input = {.battle = {{.label = "to_roarks_corner", .direction = Direction::EAST, .requested_tiles = 14, .tap = 7}}}, .expectation = {}},
+    {.name = "battle on south 10 tap 4", .input = {.battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 10, .tap = 4}}}, .expectation = {}},
     //  On a leg's first tap the battle may have begun before it (MC seed 90037).
-    {.input = {.name = "battle on east 14 tap 1",
-        .battle = {{.label = "to_roarks_corner", .direction = Direction::EAST, .requested_tiles = 14, .tap = 1}}}, .expectation = {}},
-    {.input = {.name = "battle on south 10 tap 1",
-        .battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 10, .tap = 1}}}, .expectation = {}},
+    {.name = "battle on east 14 tap 1", .input = {.battle = {{.label = "to_roarks_corner", .direction = Direction::EAST, .requested_tiles = 14, .tap = 1}}}, .expectation = {}},
+    {.name = "battle on south 10 tap 1", .input = {.battle = {{.label = "to_roarks_corner", .direction = Direction::SOUTH, .requested_tiles = 10, .tap = 1}}}, .expectation = {}},
 };
 
 //  The Oreburgh Mine's warps, from the decomp's warp events (Platinum's
@@ -619,26 +613,26 @@ CenterWalk center_walk(GridSim& sim, const CitySteps& steps, Logger& logger){
 //  and walk in, never west of column 46. From the hall's other columns the
 //  count north is far off the map's and the walk must fail.
 enum class MineExitSteps{ OLD, PREVIOUS, TABLE };
-struct MineExitInput{
-    std::string name;
-    int hall_column = 12;
-    bool past_the_fade = false;
-    MineExitSteps steps = MineExitSteps::TABLE;
-    //  Every seed and start time of the Hiker's, not just the first.
-    bool every_hiker = false;
-};
-struct MineExitExpectation{
-    bool below_the_door = true;
-    std::optional<bool> west_of_column_46 = false;
-};
 struct MineExitCase{
-    MineExitInput input;
-    MineExitExpectation expectation;
+    struct Input{
+        int hall_column = 12;
+        bool past_the_fade = false;
+        MineExitSteps steps = MineExitSteps::TABLE;
+        //  Every seed and start time of the Hiker's, not just the first.
+        bool every_hiker = false;
+    };
+    struct Expectation{
+        bool below_the_door = true;
+        std::optional<bool> west_of_column_46 = false;
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 class Test_MineExit : public UnitTest{
 public:
     explicit Test_MineExit(MineExitCase data)
-        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.03 out of the mine on the decomp's warps, " + data.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.03 out of the mine on the decomp's warps, " + data.name)
         , m_case(std::move(data))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -697,26 +691,26 @@ private:
 };
 
 const MineExitCase MINE_EXIT_CASES[] = {
-    {.input = {.name = "old steps from the hall's column 12", .hall_column = 12, .steps = MineExitSteps::OLD},
+    {.name = "old steps from the hall's column 12", .input = {.hall_column = 12, .steps = MineExitSteps::OLD},
         .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
-    {.input = {.name = "old steps from the hall's column 13", .hall_column = 13, .steps = MineExitSteps::OLD},
+    {.name = "old steps from the hall's column 13", .input = {.hall_column = 13, .steps = MineExitSteps::OLD},
         .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
     //  The steps of 13:50 reach the door on the map, round the Hiker's rows
     //  to the west.
-    {.input = {.name = "13:50's steps from the hall's column 12", .hall_column = 12, .steps = MineExitSteps::PREVIOUS},
+    {.name = "13:50's steps from the hall's column 12", .input = {.hall_column = 12, .steps = MineExitSteps::PREVIOUS},
         .expectation = {.below_the_door = true, .west_of_column_46 = true}},
-    {.input = {.name = "from the hall's column 12", .hall_column = 12}, .expectation = {}},
-    {.input = {.name = "from the hall's column 12, a tile past the fade", .hall_column = 12, .past_the_fade = true}, .expectation = {}},
-    {.input = {.name = "from the hall's column 12, the Hiker at every seed and start time", .hall_column = 12, .every_hiker = true},
+    {.name = "from the hall's column 12", .input = {.hall_column = 12}, .expectation = {}},
+    {.name = "from the hall's column 12, a tile past the fade", .input = {.hall_column = 12, .past_the_fade = true}, .expectation = {}},
+    {.name = "from the hall's column 12, the Hiker at every seed and start time", .input = {.hall_column = 12, .every_hiker = true},
         .expectation = {}},
-    {.input = {.name = "from the hall's column 12, a tile past the fade, the Hiker at every seed and start time", .hall_column = 12,
+    {.name = "from the hall's column 12, a tile past the fade, the Hiker at every seed and start time", .input = {.hall_column = 12,
         .past_the_fade = true, .every_hiker = true}, .expectation = {}},
     //  Off column 46 the run north is not the map's 37 or 38 tiles: up
     //  column 45 it stops at the mine's sign, up column 47 it goes through
     //  the Center's door.
-    {.input = {.name = "from the hall's column 11", .hall_column = 11},
+    {.name = "from the hall's column 11", .input = {.hall_column = 11},
         .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
-    {.input = {.name = "from the hall's column 13", .hall_column = 13},
+    {.name = "from the hall's column 13", .input = {.hall_column = 13},
         .expectation = {.below_the_door = false, .west_of_column_46 = std::nullopt}},
 };
 
@@ -799,15 +793,15 @@ private:
 //  column 11 has no wall to the north and no other wall brings those tiles
 //  together. The table's steps after line 6, with a wild battle the input's
 //  tiles up, must end in Floaroma where the row's last walk says.
-struct LineSevenInput{
-    std::string name;
-    size_t battle_after_tiles = 0;
-};
-struct LineSevenExpectation{
-};
 struct LineSevenCase{
-    LineSevenInput input;
-    LineSevenExpectation expectation;
+    struct Input{
+        size_t battle_after_tiles = 0;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 std::string run_line_7_steps(
@@ -840,7 +834,7 @@ std::string run_line_7_steps(
     return "";
 }
 
-UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger, const LineSevenInput& input){
+UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger, const LineSevenCase::Input& input){
     const StoryWorld& world = *story_plan_world("Route204North", "FloaromaTown");
     GridSim sim({.world = &world}, story_to_world(world, "Route204North", {11, 12}), Direction::WEST, true);
     std::vector<std::string> notes;
@@ -877,7 +871,7 @@ UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger, const LineSev
 class Test_LineSevenBattle : public UnitTest{
 public:
     explicit Test_LineSevenBattle(LineSevenCase data)
-        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.10 into Floaroma, " + data.input.name), m_case(std::move(data))
+        : UnitTest("PokemonBDSP::AutoStory - Recovery walk: 01.10 into Floaroma, " + data.name), m_case(std::move(data))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         return test_line_7_battle_reaches_floaroma(logger, m_case.input);
@@ -887,38 +881,38 @@ private:
 };
 
 const LineSevenCase LINE_SEVEN_CASES[] = {
-    {.input = {.name = "no battle", .battle_after_tiles = 0}, .expectation = {}},
-    {.input = {.name = "a wild battle 3 tiles up (lab-B, 2026-11-08)", .battle_after_tiles = 3}, .expectation = {}},
-    {.input = {.name = "a wild battle 6 tiles up", .battle_after_tiles = 6}, .expectation = {}},
+    {.name = "no battle", .input = {.battle_after_tiles = 0}, .expectation = {}},
+    {.name = "a wild battle 3 tiles up (lab-B, 2026-11-08)", .input = {.battle_after_tiles = 3}, .expectation = {}},
+    {.name = "a wild battle 6 tiles up", .input = {.battle_after_tiles = 6}, .expectation = {}},
 };
 
 } // namespace
 
 void add_tests_AutoStory_RecoveryWalk(UnitTestDatabase& database){
     const RecoveryCase CASES[] = {
-        {.input = {.name = "uninterrupted native mine step", .taps = {}}, .expectation = {.failure = ""}},
-        {.input = {.name = "last tap interrupted before movement", .taps = {5}}, .expectation = {.failure = ""}},
-        {.input = {.name = "last tap completed before battle", .taps = {5}, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.failure = ""}},
-        {.input = {.name = "two interrupted advances, row 15", .taps = {4, 5}}, .expectation = {.failure = ""}},
-        {.input = {.name = "last west leg recovers position and facing", .taps = {9}, .direction = Direction::WEST, .tiles = 9}, .expectation = {.failure = ""}},
-        {.input = {.name = "repeat the interrupted recovery hold", .taps = {5}, .interrupted_holds = 1}, .expectation = {.failure = ""}},
-        {.input = {.name = "recovery hold budget exhausted", .taps = {5}, .interrupted_holds = 10}, .expectation = {.failure = "recovery budget"}},
+        {.name = "uninterrupted native mine step", .input = {.taps = {}}, .expectation = {.failure = ""}},
+        {.name = "last tap interrupted before movement", .input = {.taps = {5}}, .expectation = {.failure = ""}},
+        {.name = "last tap completed before battle", .input = {.taps = {5}, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.failure = ""}},
+        {.name = "two interrupted advances, row 15", .input = {.taps = {4, 5}}, .expectation = {.failure = ""}},
+        {.name = "last west leg recovers position and facing", .input = {.taps = {9}, .direction = Direction::WEST, .tiles = 9}, .expectation = {.failure = ""}},
+        {.name = "repeat the interrupted recovery hold", .input = {.taps = {5}, .interrupted_holds = 1}, .expectation = {.failure = ""}},
+        {.name = "recovery hold budget exhausted", .input = {.taps = {5}, .interrupted_holds = 10}, .expectation = {.failure = "recovery budget"}},
         //  A second battle, in the recovery walk, on its first tap or hold
         //  (MC seeds 717266 and 331438): the walk plans again to the step's end.
-        {.input = {.name = "battle on the recovery's first tap", .taps = {5}, .recovery_battle = RecoveryBattle::FIRST_TAP}, .expectation = {.failure = ""}},
-        {.input = {.name = "battle on the recovery's first hold", .taps = {5}, .recovery_battle = RecoveryBattle::FIRST_HOLD}, .expectation = {.failure = ""}},
+        {.name = "battle on the recovery's first tap", .input = {.taps = {5}, .recovery_battle = RecoveryBattle::FIRST_TAP}, .expectation = {.failure = ""}},
+        {.name = "battle on the recovery's first hold", .input = {.taps = {5}, .recovery_battle = RecoveryBattle::FIRST_HOLD}, .expectation = {.failure = ""}},
         //  A battle that may have begun before the leg: localized from the
         //  leg's tiles all the same, and re-planned to the step's end.
-        {.input = {.name = "first input may belong to previous leg", .taps = {1}}, .expectation = {.failure = ""}},
-        {.input = {.name = "late encounter origin unknown", .taps = {5}, .origin = WalkOrigin::MAY_PRECEDE_LEG}, .expectation = {.failure = ""}},
+        {.name = "first input may belong to previous leg", .input = {.taps = {1}}, .expectation = {.failure = ""}},
+        {.name = "late encounter origin unknown", .input = {.taps = {5}, .origin = WalkOrigin::MAY_PRECEDE_LEG}, .expectation = {.failure = ""}},
     };
     for (const RecoveryCase& scenario : CASES){
         database.add<Test_RecoveryWalk>(scenario);
     }
     const PlacedBattleCase PLACED_CASES[] = {
-        {.input = {.name = "tap 3", .tap = 3, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.tiles_in = 14}},
-        {.input = {.name = "tap 7, before it moved", .tap = 7, .phase = SimEncounterPhase::BEFORE_MOVEMENT}, .expectation = {.tiles_in = 13}},
-        {.input = {.name = "the last tap", .tap = 14, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.tiles_in = 14}},
+        {.name = "tap 3", .input = {.tap = 3, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.tiles_in = 14}},
+        {.name = "tap 7, before it moved", .input = {.tap = 7, .phase = SimEncounterPhase::BEFORE_MOVEMENT}, .expectation = {.tiles_in = 13}},
+        {.name = "the last tap", .input = {.tap = 14, .phase = SimEncounterPhase::AFTER_MOVEMENT}, .expectation = {.tiles_in = 14}},
     };
     for (const PlacedBattleCase& scenario : PLACED_CASES){
         database.add<Test_PlacedLegBattle>(scenario);

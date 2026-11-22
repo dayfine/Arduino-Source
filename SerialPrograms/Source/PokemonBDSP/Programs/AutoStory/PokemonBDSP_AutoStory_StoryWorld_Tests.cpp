@@ -175,23 +175,21 @@ UnitTestResult test_story_world_block_uncover(Logger&){
 }
 
 
-struct StoryWorldInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct StoryWorldExpectation{
-};
-
 struct StoryWorldCase{
-    StoryWorldInput input;
-    StoryWorldExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryWorld : public UnitTest{
 public:
     explicit Test_StoryWorld(StoryWorldCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Story world: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Story world: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -210,18 +208,9 @@ private:
 
 
 const StoryWorldCase STORY_WORLD_CASES[] = {
-    {
-        .input = {"what each tile does to a step", test_story_world_steps},
-        .expectation = {},
-    },
-    {
-        .input = {"maps joined at offsets", test_story_world_join},
-        .expectation = {},
-    },
-    {
-        .input = {"blocked and uncovered tiles", test_story_world_block_uncover},
-        .expectation = {},
-    },
+    {.name = "what each tile does to a step", .input = {test_story_world_steps}, .expectation = {}},
+    {.name = "maps joined at offsets", .input = {test_story_world_join}, .expectation = {}},
+    {.name = "blocked and uncovered tiles", .input = {test_story_world_block_uncover}, .expectation = {}},
 };
 
 namespace{
@@ -259,31 +248,31 @@ std::optional<std::string> edge_mismatch(const StoryWorld& world){
     return std::nullopt;
 }
 
-struct ConnectedWorldInput{
-    std::string_view name;
-    //  The story's plan world between two places (story_plan_world()), or,
-    //  if `world` is set, that world.
-    std::string_view plan_from = {};
-    std::string_view plan_to = {};
-    const StoryWorld& (*world)() = nullptr;
-};
-struct ConnectedWorldExpectation{
-    //  Connections over all the maps: two for each pair that meets.
-    size_t connections = 0;
-};
 struct ConnectedWorldCase{
-    ConnectedWorldInput input;
-    ConnectedWorldExpectation expectation;
+    struct Input{
+        //  The story's plan world between two places (story_plan_world()), or,
+        //  if `world` is set, that world.
+        std::string_view plan_from = {};
+        std::string_view plan_to = {};
+        const StoryWorld& (*world)() = nullptr;
+    };
+    struct Expectation{
+        //  Connections over all the maps: two for each pair that meets.
+        size_t connections = 0;
+    };
+    std::string_view name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_ConnectedStoryWorld : public UnitTest{
 public:
     explicit Test_ConnectedStoryWorld(ConnectedWorldCase test_case)
-        : UnitTest(std::format("PokemonBDSP::AutoStory - Story world as connected maps: {}", test_case.input.name))
+        : UnitTest(std::format("PokemonBDSP::AutoStory - Story world as connected maps: {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        const ConnectedWorldInput& input = m_case.input;
+        const ConnectedWorldCase::Input& input = m_case.input;
         const StoryWorld* found = input.world != nullptr
             ? &input.world()
             : story_plan_world(std::string(input.plan_from), std::string(input.plan_to));
@@ -311,27 +300,33 @@ private:
 
 const ConnectedWorldCase CONNECTED_WORLD_CASES[] = {
     {
-        .input = {.name = "Route 201, Sandgem and Route 202", .world = story_maps},
+        .name = "Route 201, Sandgem and Route 202",
+        .input = {.world = story_maps},
         .expectation = {.connections = 4},
     },
     {
-        .input = {.name = "Twinleaf to Route 202", .plan_from = "TwinleafTown", .plan_to = "Route202"},
+        .name = "Twinleaf to Route 202",
+        .input = {.plan_from = "TwinleafTown", .plan_to = "Route202"},
         .expectation = {.connections = 8},
     },
     {
-        .input = {.name = "Route 203 into Jubilife", .plan_from = "Route203", .plan_to = "JubilifeCity"},
+        .name = "Route 203 into Jubilife",
+        .input = {.plan_from = "Route203", .plan_to = "JubilifeCity"},
         .expectation = {.connections = 2},
     },
     {
-        .input = {.name = "Jubilife up Route 204's south half", .plan_from = "JubilifeCity", .plan_to = "Route204South"},
+        .name = "Jubilife up Route 204's south half",
+        .input = {.plan_from = "JubilifeCity", .plan_to = "Route204South"},
         .expectation = {.connections = 2},
     },
     {
-        .input = {.name = "Route 204's north half into Floaroma", .plan_from = "Route204North", .plan_to = "FloaromaTown"},
+        .name = "Route 204's north half into Floaroma",
+        .input = {.plan_from = "Route204North", .plan_to = "FloaromaTown"},
         .expectation = {.connections = 2},
     },
     {
-        .input = {.name = "Jubilife alone", .world = jubilife_maps},
+        .name = "Jubilife alone",
+        .input = {.world = jubilife_maps},
         .expectation = {.connections = 0},
     },
 };

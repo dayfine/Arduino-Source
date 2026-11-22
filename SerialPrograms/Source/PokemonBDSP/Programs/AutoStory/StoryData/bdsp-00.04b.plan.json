@@ -221,7 +221,7 @@
       {
         "id": "above_center_sign",
         "action": "legs",
-        "why": "west to the road's west wall, then south onto the Center's sign",
+        "why": "not planned: west to the road's west wall, then south onto the Center's sign",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -250,7 +250,7 @@
       {
         "id": "below_center_door",
         "action": "legs",
-        "why": "taps round the sign to below the Center's door",
+        "why": "not planned: taps round the sign to below the Center's door",
         "args": {
           "fight_wild": false,
           "legs": [

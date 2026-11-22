@@ -288,23 +288,21 @@ UnitTestResult test_route_records(Logger& logger){
 }
 
 
-struct StoryMapsInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct StoryMapsExpectation{
-};
-
 struct StoryMapsCase{
-    StoryMapsInput input;
-    StoryMapsExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryMaps : public UnitTest{
 public:
     explicit Test_StoryMaps(StoryMapsCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -323,34 +321,13 @@ private:
 
 
 const StoryMapsCase STORY_MAPS_CASES[] = {
-    {
-        .input = {"Route 202: the catch patch and the walk to it", test_route202_catch_grass},
-        .expectation = {},
-    },
-    {
-        .input = {"Sandgem Town: from the road's last row by walls to below the Center's door", test_sandgem_center_approach},
-        .expectation = {},
-    },
-    {
-        .input = {"Route 202: from every tile of the training area into Sandgem", test_training_to_sandgem},
-        .expectation = {},
-    },
-    {
-        .input = {"Oreburgh Gym: the column up to Roark", test_oreburgh_gym_column},
-        .expectation = {},
-    },
-    {
-        .input = {"Oreburgh Mine B1F: the entrance hall corridor and warps", test_oreburgh_mine_hall},
-        .expectation = {},
-    },
-    {
-        .input = {"Oreburgh: 01.04's taps from the Center's door to the Gym's", test_oreburgh_center_to_gym_taps},
-        .expectation = {},
-    },
-    {
-        .input = {"Route records: counted legs trace on their maps", test_route_records},
-        .expectation = {},
-    },
+    {.name = "Route 202: the catch patch and the walk to it", .input = {test_route202_catch_grass}, .expectation = {}},
+    {.name = "Sandgem Town: from the road's last row by walls to below the Center's door", .input = {test_sandgem_center_approach}, .expectation = {}},
+    {.name = "Route 202: from every tile of the training area into Sandgem", .input = {test_training_to_sandgem}, .expectation = {}},
+    {.name = "Oreburgh Gym: the column up to Roark", .input = {test_oreburgh_gym_column}, .expectation = {}},
+    {.name = "Oreburgh Mine B1F: the entrance hall corridor and warps", .input = {test_oreburgh_mine_hall}, .expectation = {}},
+    {.name = "Oreburgh: 01.04's taps from the Center's door to the Gym's", .input = {test_oreburgh_center_to_gym_taps}, .expectation = {}},
+    {.name = "Route records: counted legs trace on their maps", .input = {test_route_records}, .expectation = {}},
 };
 
 void add_tests_AutoStory_StoryMaps(UnitTestDatabase& database){

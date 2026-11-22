@@ -61,31 +61,31 @@ std::string_view result_name(WildEscapeResult result){
     return "?";
 }
 
-struct EscapePolicyInput{
-    std::string name;
-    std::vector<WildRunOutcome> outcomes;
-    WildBattleEscapePolicy policy = {};
-};
-struct EscapePolicyExpectation{
-    WildEscapeResult result = WildEscapeResult::ESCAPED;
-    size_t runs = 0;
-    size_t fights = 0;
-};
 struct EscapePolicyCase{
-    EscapePolicyInput input;
-    EscapePolicyExpectation expectation;
+    struct Input{
+        std::vector<WildRunOutcome> outcomes;
+        WildBattleEscapePolicy policy = {};
+    };
+    struct Expectation{
+        WildEscapeResult result = WildEscapeResult::ESCAPED;
+        size_t runs = 0;
+        size_t fights = 0;
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_WildBattlePolicy : public UnitTest{
 public:
     explicit Test_WildBattlePolicy(EscapePolicyCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Wild battle escape policy: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Wild battle escape policy: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         ScriptedEscapeActions actions(m_case.input.outcomes);
         const WildEscapeResult result = escape_wild_battle(actions, m_case.input.policy);
-        const EscapePolicyExpectation& expected = m_case.expectation;
+        const EscapePolicyCase::Expectation& expected = m_case.expectation;
         if (result != expected.result || actions.runs() != expected.runs || actions.fights() != expected.fights){
             return std::format("expected {} after {} Run presses and {} fights, got {} after {} and {}.",
                 result_name(expected.result), expected.runs, expected.fights,
@@ -104,32 +104,39 @@ constexpr WildRunOutcome UNCERTAIN = WildRunOutcome::UNCERTAIN;
 
 const EscapePolicyCase WILD_BATTLE_POLICY_CASES[] = {
     {
-        .input = {.name = "the first Run works", .outcomes = {ESCAPED}},
+        .name = "the first Run works",
+        .input = {.outcomes = {ESCAPED}},
         .expectation = {.result = WildEscapeResult::ESCAPED, .runs = 1},
     },
     {
-        .input = {.name = "text still scrolling twice, then away", .outcomes = {UNCERTAIN, UNCERTAIN, ESCAPED}},
+        .name = "text still scrolling twice, then away",
+        .input = {.outcomes = {UNCERTAIN, UNCERTAIN, ESCAPED}},
         .expectation = {.result = WildEscapeResult::ESCAPED, .runs = 3},
     },
     {
-        .input = {.name = "two refusals, then the third Run works", .outcomes = {TRAPPED, TRAPPED, ESCAPED}},
+        .name = "two refusals, then the third Run works",
+        .input = {.outcomes = {TRAPPED, TRAPPED, ESCAPED}},
         .expectation = {.result = WildEscapeResult::ESCAPED, .runs = 3},
     },
     {
-        .input = {.name = "never a menu or an exit: the attempts run out", .outcomes = {UNCERTAIN}, .policy = {.attempts = 5}},
+        .name = "never a menu or an exit: the attempts run out",
+        .input = {.outcomes = {UNCERTAIN}, .policy = {.attempts = 5}},
         .expectation = {.result = WildEscapeResult::UNCONFIRMED, .runs = 5},
     },
     //  Onix's Bind in Oreburgh Mine, console B 2026-11-07: nine Runs refused.
     {
-        .input = {.name = "bound: every Run refused, so the battle is fought", .outcomes = {TRAPPED}},
+        .name = "bound: every Run refused, so the battle is fought",
+        .input = {.outcomes = {TRAPPED}},
         .expectation = {.result = WildEscapeResult::FOUGHT, .runs = 3, .fights = 1},
     },
     {
-        .input = {.name = "refusals between scrolling text count up to the fight", .outcomes = {TRAPPED, UNCERTAIN, TRAPPED, UNCERTAIN, TRAPPED}},
+        .name = "refusals between scrolling text count up to the fight",
+        .input = {.outcomes = {TRAPPED, UNCERTAIN, TRAPPED, UNCERTAIN, TRAPPED}},
         .expectation = {.result = WildEscapeResult::FOUGHT, .runs = 5, .fights = 1},
     },
     {
-        .input = {.name = "bound with the fight turned off: the attempts run out", .outcomes = {TRAPPED}, .policy = {.attempts = 6, .fallback = TrappedFallback::GIVE_UP}},
+        .name = "bound with the fight turned off: the attempts run out",
+        .input = {.outcomes = {TRAPPED}, .policy = {.attempts = 6, .fallback = TrappedFallback::GIVE_UP}},
         .expectation = {.result = WildEscapeResult::UNCONFIRMED, .runs = 6},
     },
 };

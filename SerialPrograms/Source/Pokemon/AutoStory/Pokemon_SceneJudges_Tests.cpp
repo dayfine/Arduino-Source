@@ -42,7 +42,7 @@ std::optional<size_t> first_beat(const std::vector<ScreenEvents>& beats, SceneMo
     const Milliseconds every = 1000ms;
     WallClock now = WallClock();
     for (size_t c = 0; c < beats.size(); c++){
-        if (judge.look(beats[c], now) == want){
+        if (judge.look(beats[c], now, /*player_still=*/false) == want){
             return c;
         }
         now += every;

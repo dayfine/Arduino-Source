@@ -26,19 +26,28 @@ bool navigate_to_summary(SingleSwitchProgramEnvironment& env, ProControllerConte
 //  Backs out of the Pokemon summary screen (3rd page -> party -> X menu -> overworld).
 bool close_starter_summary(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 
+enum class ObservedShiny{
+    Unknown,
+    NotShiny,
+    Shiny,
+};
+
+struct ObservedPokemonRequest{
+    Language language = Language::None;
+    Pokemon::BaseStats base_stats = {};
+    uint8_t level = 0;
+    ObservedShiny shiny = ObservedShiny::Unknown;
+};
+
 bool read_observed_pokemon(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
-    Language language,
-    const Pokemon::BaseStats& base_stats,
-    uint8_t level,
-    bool shiny,
-    bool shiny_known,
+    const ObservedPokemonRequest& request,
     BdspObservedStarter& observed
 );
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

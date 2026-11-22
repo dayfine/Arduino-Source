@@ -106,23 +106,21 @@ UnitTestResult test_cursor_moves_stay_inside(){
     return true;
 }
 
-struct MenuCursorInput{
-    std::string name;
-    UnitTestResult (*body)();
-};
-
-struct MenuCursorExpectation{
-};
-
 struct MenuCursorCase{
-    MenuCursorInput input;
-    MenuCursorExpectation expectation;
+    struct Input{
+        UnitTestResult (*body)();
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_MenuCursor : public UnitTest{
 public:
     explicit Test_MenuCursor(MenuCursorCase test_case)
-        : UnitTest("NintendoSwitch::MenuCursor - " + test_case.input.name)
+        : UnitTest("NintendoSwitch::MenuCursor - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -135,11 +133,13 @@ private:
 
 const MenuCursorCase MENU_CURSOR_CASES[] = {
     {
-        .input = {"presses from item to item", test_cursor_moves},
+        .name = "presses from item to item",
+        .input = {test_cursor_moves},
         .expectation = {},
     },
     {
-        .input = {"presses stay inside the grid", test_cursor_moves_stay_inside},
+        .name = "presses stay inside the grid",
+        .input = {test_cursor_moves_stay_inside},
         .expectation = {},
     },
 };

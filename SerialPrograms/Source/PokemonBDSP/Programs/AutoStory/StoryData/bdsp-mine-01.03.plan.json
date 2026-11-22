@@ -77,7 +77,7 @@
       {
         "id": "south_to_the_rock",
         "action": "legs",
-        "why": "south against the corridor rock (15, 11)",
+        "why": "not planned: south against the corridor rock (15, 11)",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -102,7 +102,7 @@
       {
         "id": "to_roarks_corner",
         "action": "legs",
-        "why": "east around the rock, across the room, down column 29, west to Roark's rock",
+        "why": "not planned: east around the rock, across the room, down column 29, west to Roark's rock",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -158,7 +158,7 @@
       {
         "id": "beside_roarks_rock",
         "action": "legs",
-        "why": "south against the room's wall",
+        "why": "not planned: south against the room's wall",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -183,7 +183,7 @@
       {
         "id": "below_roark",
         "action": "legs",
-        "why": "west 2 to below Roark",
+        "why": "not planned: west 2 to below Roark",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -229,7 +229,7 @@
       {
         "id": "below_the_coal_rooms_warp",
         "action": "legs",
-        "why": "east around crate, up column 29, west across row 17, and up corridor to warp doorstep",
+        "why": "not planned: east around crate, up column 29, west across row 17, and up corridor to warp doorstep",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -329,7 +329,7 @@
       {
         "id": "north_to_the_centers_wall",
         "action": "legs",
-        "why": "north up column 46 to the wall west of the Center's door",
+        "why": "not planned: north up column 46 to the wall west of the Center's door",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -354,7 +354,7 @@
       {
         "id": "east_below_the_centers_door",
         "action": "legs",
-        "why": "a tap east below the door",
+        "why": "not planned: a tap east below the door",
         "args": {
           "fight_wild": false,
           "legs": [

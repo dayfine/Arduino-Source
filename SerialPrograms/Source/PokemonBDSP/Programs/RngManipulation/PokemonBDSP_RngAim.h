@@ -11,9 +11,9 @@
 #include <stdint.h>
 #include <string>
 #include <vector>
+#include "Common/Cpp/Logging/AbstractLogger.h"
 
 namespace PokemonAutomation{
-    class Logger;
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
@@ -46,7 +46,7 @@ private:
 };
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

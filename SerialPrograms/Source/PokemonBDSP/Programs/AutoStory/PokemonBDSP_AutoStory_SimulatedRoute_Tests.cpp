@@ -402,23 +402,21 @@ UnitTestResult test_story_routes_holds_overshoot(Logger& logger){
 }
 
 
-struct SimulatedRouteInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct SimulatedRouteExpectation{
-};
-
 struct SimulatedRouteCase{
-    SimulatedRouteInput input;
-    SimulatedRouteExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_SimulatedRoute : public UnitTest{
 public:
     explicit Test_SimulatedRoute(SimulatedRouteCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Planned route: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Planned route: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -437,22 +435,10 @@ private:
 
 
 const SimulatedRouteCase SIMULATED_ROUTE_CASES[] = {
-    {
-        .input = {"blocked from several possible tiles routes around", test_blocked_from_several_tiles},
-        .expectation = {},
-    },
-    {
-        .input = {"Jubilife Center with every timed hold overshooting", test_jubilife_center_held_overshoot},
-        .expectation = {},
-    },
-    {
-        .input = {"Jubilife to the Center past the kids", test_jubilife_center_kids},
-        .expectation = {},
-    },
-    {
-        .input = {"fault sweep: every story route with timed holds overshooting", test_story_routes_holds_overshoot},
-        .expectation = {},
-    },
+    {.name = "blocked from several possible tiles routes around", .input = {test_blocked_from_several_tiles}, .expectation = {}},
+    {.name = "Jubilife Center with every timed hold overshooting", .input = {test_jubilife_center_held_overshoot}, .expectation = {}},
+    {.name = "Jubilife to the Center past the kids", .input = {test_jubilife_center_kids}, .expectation = {}},
+    {.name = "fault sweep: every story route with timed holds overshooting", .input = {test_story_routes_holds_overshoot}, .expectation = {}},
 };
 
 void add_tests_AutoStory_SimulatedRoute(UnitTestDatabase& database){

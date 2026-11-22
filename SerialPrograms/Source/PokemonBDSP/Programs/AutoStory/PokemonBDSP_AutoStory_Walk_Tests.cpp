@@ -670,17 +670,15 @@ UnitTestResult test_row_trainers(Logger&){
     return true;
 }
 
-struct AutoStoryWalkInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryWalkExpectation{
-};
-
 struct AutoStoryWalkCase{
-    AutoStoryWalkInput input;
-    AutoStoryWalkExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 //  place_leg_battle() on synthetic walks of 10 taps, their events recorded
@@ -827,7 +825,7 @@ UnitTestResult test_still_after_fade_watcher(Logger&){
 class Test_AutoStoryWalk : public UnitTest{
 public:
     explicit Test_AutoStoryWalk(AutoStoryWalkCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -846,70 +844,22 @@ private:
 
 
 const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
-    {
-        .input = {"a turn is a D-pad tap too short to step", test_route_turn_tap},
-        .expectation = {},
-    },
-    {
-        .input = {"indoors() under the evening tint", test_indoors_any_light},
-        .expectation = {},
-    },
-    {
-        .input = {"out of a door needs its fade", test_door_fade},
-        .expectation = {},
-    },
-    {
-        .input = {"a fade is uniform, dark or white; a dim floor is none (lab-B, 2026-11-08)", test_fade_of},
-        .expectation = {},
-    },
-    {
-        .input = {"a warp's fade, followed frame by frame, its hold seen or not", test_warp_fade_watch},
-        .expectation = {},
-    },
-    {
-        .input = {"location banner match", test_location_banner},
-        .expectation = {},
-    },
-    {
-        .input = {"indoors", test_indoors},
-        .expectation = {},
-    },
-    {
-        .input = {"location banner showing", test_location_banner_showing},
-        .expectation = {},
-    },
-    {
-        .input = {"a Pokemon Center is its floor in a room, not a yellow plaza", test_pokemon_center_on_screen},
-        .expectation = {},
-    },
-    {
-        .input = {"a step scrolls the view; moving scenery does not", test_view_shift},
-        .expectation = {},
-    },
-    {
-        .input = {"pixel change row/col coverage separates steps from bumps and flashes", test_pixel_change_coverage},
-        .expectation = {},
-    },
-    {
-        .input = {"the console's steps north scroll the view", test_view_shift_frames},
-        .expectation = {},
-    },
-    {
-        .input = {"a tap read still near a step's change keeps its frames", test_still_tap_frames},
-        .expectation = {},
-    },
-    {
-        .input = {"a wild battle on an open leg's taps, placed by its screen events", test_leg_battle_place},
-        .expectation = {},
-    },
-    {
-        .input = {"a row's trainers leave out those an earlier row beat", test_row_trainers},
-        .expectation = {},
-    },
-    {
-        .input = {"StillAfterFadeWatcher early-exits still overworld and ignores battle intro animation", test_still_after_fade_watcher},
-        .expectation = {},
-    },
+    {.name = "a turn is a D-pad tap too short to step", .input = {test_route_turn_tap}, .expectation = {}},
+    {.name = "indoors() under the evening tint", .input = {test_indoors_any_light}, .expectation = {}},
+    {.name = "out of a door needs its fade", .input = {test_door_fade}, .expectation = {}},
+    {.name = "a fade is uniform, dark or white; a dim floor is none (lab-B, 2026-11-08)", .input = {test_fade_of}, .expectation = {}},
+    {.name = "a warp's fade, followed frame by frame, its hold seen or not", .input = {test_warp_fade_watch}, .expectation = {}},
+    {.name = "location banner match", .input = {test_location_banner}, .expectation = {}},
+    {.name = "indoors", .input = {test_indoors}, .expectation = {}},
+    {.name = "location banner showing", .input = {test_location_banner_showing}, .expectation = {}},
+    {.name = "a Pokemon Center is its floor in a room, not a yellow plaza", .input = {test_pokemon_center_on_screen}, .expectation = {}},
+    {.name = "a step scrolls the view; moving scenery does not", .input = {test_view_shift}, .expectation = {}},
+    {.name = "pixel change row/col coverage separates steps from bumps and flashes", .input = {test_pixel_change_coverage}, .expectation = {}},
+    {.name = "the console's steps north scroll the view", .input = {test_view_shift_frames}, .expectation = {}},
+    {.name = "a tap read still near a step's change keeps its frames", .input = {test_still_tap_frames}, .expectation = {}},
+    {.name = "a wild battle on an open leg's taps, placed by its screen events", .input = {test_leg_battle_place}, .expectation = {}},
+    {.name = "a row's trainers leave out those an earlier row beat", .input = {test_row_trainers}, .expectation = {}},
+    {.name = "StillAfterFadeWatcher early-exits still overworld and ignores battle intro animation", .input = {test_still_after_fade_watcher}, .expectation = {}},
 };
 
 void add_tests_AutoStory_Walk(UnitTestDatabase& database){

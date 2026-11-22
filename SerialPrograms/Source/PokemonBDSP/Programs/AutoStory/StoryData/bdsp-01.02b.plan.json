@@ -18,7 +18,7 @@
       {
         "id": "below_barry",
         "action": "legs",
-        "why": "south 1 around the guide, east 3 to Barry's column, north 2 to below Barry",
+        "why": "not planned: south 1 around the guide, east 3 to Barry's column, north 2 to below Barry",
         "args": {
           "legs": [
             {

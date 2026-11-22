@@ -26,7 +26,7 @@
       {
         "id": "west_to_the_field_edge",
         "action": "legs",
-        "why": "until the field's edge stops us",
+        "why": "not planned: until the field's edge stops us",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -59,7 +59,7 @@
       {
         "id": "below_her_column",
         "action": "legs",
-        "why": "4 taps east to her column (westedge batch 2026-11-08)",
+        "why": "not planned: 4 taps east to her column (westedge batch 2026-11-08)",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -73,7 +73,7 @@
       {
         "id": "up_to_the_old_woman",
         "action": "legs",
-        "why": "north until she stops us",
+        "why": "not planned: north until she stops us",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -120,7 +120,7 @@
       {
         "id": "below_the_old_man",
         "action": "legs",
-        "why": "a tile west",
+        "why": "not planned: a tile west",
         "args": {
           "fight_wild": false,
           "legs": [

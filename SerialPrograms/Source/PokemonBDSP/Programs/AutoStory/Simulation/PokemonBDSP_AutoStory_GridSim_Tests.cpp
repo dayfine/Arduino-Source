@@ -900,23 +900,21 @@ UnitTestResult test_oreburgh_mine_hall_corridor(Logger& logger){
     return err.empty() ? UnitTestResult(true) : UnitTestResult(err);
 }
 
-struct AutoStoryGridSimInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryGridSimExpectation{
-};
-
 struct AutoStoryGridSimCase{
-    AutoStoryGridSimInput input;
-    AutoStoryGridSimExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_GridSim : public UnitTest{
 public:
     explicit Test_GridSim(AutoStoryGridSimCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Grid sim: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -935,58 +933,19 @@ private:
 
 
 const AutoStoryGridSimCase AUTO_STORY_GRID_SIM_CASES[] = {
-    {
-        .input = {"taps, holds, stick offsets, doors, people and trainers as measured", test_moves},
-        .expectation = {},
-    },
-    {
-        .input = {"the table's routes end on their targets", test_table_routes},
-        .expectation = {},
-    },
-    {
-        .input = {"a stick-tap turn misses the Sandgem Center and Jubilife School doors", test_door_routes},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03's old taps across Roark's room miss his rock from a row off (lab-B, 2026-11-08)", test_roarks_room_from_a_row_off},
-        .expectation = {},
-    },
-    {
-        .input = {"wandering NPC movement and deterministic seed behavior", test_wandering_npc_mechanics},
-        .expectation = {},
-    },
-    {
-        .input = {"wandering NPC collision stops player and opens dialogue", test_wandering_npc_collision_and_dialog},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03 above_the_mine paths through wanderer zone across seeds and start times", test_wandering_npc_routes_multi_seed},
-        .expectation = {},
-    },
-    {
-        .input = {"wandering NPC collision without avoid waits for clearance and resumes", test_wandering_npc_wait_clearance},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03 oreburgh_north paths straight up column 46 across seeds and start times", test_wandering_npc_oreburgh_north_multi_seed},
-        .expectation = {},
-    },
-    {
-        .input = {"check_at_wall safeguard rejects legs stalled well short of expected distance", test_wall_leg_check_at_wall_short_distance_safeguard},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", test_oreburgh_mine_hall_corridor},
-        .expectation = {},
-    },
-    {
-        .input = {"01.05, a part of a tile off, the old open walk west takes the Gate's warp (lab-B, 2026-11-08)", test_gate_walk_part_tile_off},
-        .expectation = {},
-    },
-    {
-        .input = {"01.11, the old woman from each tile Floaroma's banner stops us on (lab-B, 2026-11-08)", test_old_couple_from_each_arrival},
-        .expectation = {},
-    },
+    {.name = "taps, holds, stick offsets, doors, people and trainers as measured", .input = {test_moves}, .expectation = {}},
+    {.name = "the table's routes end on their targets", .input = {test_table_routes}, .expectation = {}},
+    {.name = "a stick-tap turn misses the Sandgem Center and Jubilife School doors", .input = {test_door_routes}, .expectation = {}},
+    {.name = "01.03's old taps across Roark's room miss his rock from a row off (lab-B, 2026-11-08)", .input = {test_roarks_room_from_a_row_off}, .expectation = {}},
+    {.name = "wandering NPC movement and deterministic seed behavior", .input = {test_wandering_npc_mechanics}, .expectation = {}},
+    {.name = "wandering NPC collision stops player and opens dialogue", .input = {test_wandering_npc_collision_and_dialog}, .expectation = {}},
+    {.name = "01.03 above_the_mine paths through wanderer zone across seeds and start times", .input = {test_wandering_npc_routes_multi_seed}, .expectation = {}},
+    {.name = "wandering NPC collision without avoid waits for clearance and resumes", .input = {test_wandering_npc_wait_clearance}, .expectation = {}},
+    {.name = "01.03 oreburgh_north paths straight up column 46 across seeds and start times", .input = {test_wandering_npc_oreburgh_north_multi_seed}, .expectation = {}},
+    {.name = "check_at_wall safeguard rejects legs stalled well short of expected distance", .input = {test_wall_leg_check_at_wall_short_distance_safeguard}, .expectation = {}},
+    {.name = "01.03, Oreburgh Mine B1F entrance hall corridor runs to and back", .input = {test_oreburgh_mine_hall_corridor}, .expectation = {}},
+    {.name = "01.05, a part of a tile off, the old open walk west takes the Gate's warp (lab-B, 2026-11-08)", .input = {test_gate_walk_part_tile_off}, .expectation = {}},
+    {.name = "01.11, the old woman from each tile Floaroma's banner stops us on (lab-B, 2026-11-08)", .input = {test_old_couple_from_each_arrival}, .expectation = {}},
 };
 
 void add_tests_AutoStory_GridSim(UnitTestDatabase& database){

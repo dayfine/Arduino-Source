@@ -53,7 +53,7 @@
       {
         "id": "onto_the_flute_tile",
         "action": "legs",
-        "why": "up onto (7, 4), then east onto the top of the stairs' mat (8, 4)",
+        "why": "not planned: up onto (7, 4), then east onto the top of the stairs' mat (8, 4)",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -228,7 +228,7 @@
       {
         "id": "off_barrys_mat",
         "action": "legs",
-        "why": "off the door's mat, which no route starts on",
+        "why": "not planned: off the door's mat, which no route starts on",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -295,7 +295,7 @@
       {
         "id": "off_barrys_west_wall",
         "action": "legs",
-        "why": "a tap east, clear of the west wall",
+        "why": "not planned: a tap east, clear of the west wall",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -351,7 +351,7 @@
       {
         "id": "up_to_barrys_back_wall",
         "action": "legs",
-        "why": "north to the room's back wall",
+        "why": "not planned: north to the room's back wall",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -437,7 +437,7 @@
       {
         "id": "below_barrys_warning",
         "action": "legs",
-        "why": "along row 12 to the foot of Twinleaf's exit (15, 12)",
+        "why": "not planned: along row 12 to the foot of Twinleaf's exit (15, 12)",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -461,7 +461,7 @@
       {
         "id": "barrys_warning",
         "action": "legs",
-        "why": "up Twinleaf's exit onto Route 201 until Barry's warning starts: its trigger is row 18 (14..19, 18), coord_event_0 of pret/pokediamond zone_event narc_0327 (Route201.json), 19 tiles north; no tap counting by the \"201\" banner (lab-B 2026-11-15)",
+        "why": "not planned: up Twinleaf's exit onto Route 201 until Barry's warning starts: its trigger is row 18 (14..19, 18), coord_event_0 of pret/pokediamond zone_event narc_0327 (Route201.json), 19 tiles north; no tap counting by the \"201\" banner (lab-B 2026-11-15)",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -502,7 +502,7 @@
       {
         "id": "away_from_barry",
         "action": "legs",
-        "why": "to (14, 16): row 18 west of the path is trees (r16) and (13, 17) is the 201 sign (probe-r201-sign), so clear both onto row 16",
+        "why": "not planned: to (14, 16): row 18 west of the path is trees (r16) and (13, 17) is the 201 sign (probe-r201-sign), so clear both onto row 16",
         "args": {
           "fight_wild": false,
           "legs": [

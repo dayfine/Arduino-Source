@@ -502,15 +502,15 @@ UnitTestResult old_walk_hands_moms_call_over(Logger& logger){
     return true;
 }
 
-struct FailureCaseInput{
-    std::function<UnitTestResult(Logger&)> body;
-};
-struct FailureCaseExpectation{
-};
 struct FailureCase{
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
     std::string name;
-    FailureCaseInput input;
-    FailureCaseExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryFailureCase : public UnitTest{
@@ -608,14 +608,14 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
 
 namespace{
 
-struct KnownFailingNamesInput{
-};
-struct KnownFailingNamesExpectation{
-};
 struct KnownFailingNamesCase{
+    struct Input{
+    };
+    struct Expectation{
+    };
     std::string name;
-    KnownFailingNamesInput input;
-    KnownFailingNamesExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryFailureCasesKnownFailing : public UnitTest{

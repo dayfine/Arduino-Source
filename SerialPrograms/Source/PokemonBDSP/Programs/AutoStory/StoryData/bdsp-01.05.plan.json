@@ -85,7 +85,7 @@
       {
         "id": "below_the_gates_mouth",
         "action": "legs",
-        "why": "south to row 17's wall, then west to column 2's",
+        "why": "not planned: south to row 17's wall, then west to column 2's",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -114,7 +114,7 @@
       {
         "id": "to_the_gates_row",
         "action": "legs",
-        "why": "taps up column 2 to the mouth's row 13",
+        "why": "not planned: taps up column 2 to the mouth's row 13",
         "args": {
           "fight_wild": false,
           "legs": [

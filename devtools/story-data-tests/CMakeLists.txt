@@ -1,4 +1,4 @@
-# Offline codec checks, no Qt application or controller initialization:
+# Offline S10 story checkpoint & grid story action tests, no Qt or controller initialization:
 # cmake -S devtools/story-data-tests -B build/story-data-tests
 # cmake --build build/story-data-tests -j4
 # ctest --test-dir build/story-data-tests --output-on-failure
@@ -7,53 +7,37 @@ project(StoryDataTests LANGUAGES CXX)
 enable_testing()
 get_filename_component(ROOT "../.." ABSOLUTE)
 set(STORY "${ROOT}/SerialPrograms/Source/Pokemon/AutoStory")
+set(MAPS "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Grid/Maps")
 add_executable(StoryDataTests
-    "${STORY}/Data/Pokemon_StoryStepJson.cpp"
-    "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/StoryWireCases.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StoryDataMain.cpp"
-    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.cpp"
-    "${STORY}/Pokemon_BuiltinStoryActions.cpp"
-    "${STORY}/Types/Pokemon_StoryActionArg.cpp"
-    "${STORY}/Types/Pokemon_StoryActionSpec.cpp"
-    "${STORY}/Types/Pokemon_StoryCheckpointMetadata.cpp"
-    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.cpp"
+    "${STORY}/Data/Pokemon_StoryCheckpointJson.cpp"
+    "${STORY}/Data/Pokemon_StoryCheckpointJson_Tests.cpp"
+    "${STORY}/Grid/Pokemon_GridStoryArgs.cpp"
+    "${STORY}/Grid/Pokemon_GridStoryActions.cpp"
+    "${STORY}/Grid/Pokemon_GridStoryActions_Tests.cpp"
+    "${STORY}/Testing/Pokemon_StoryFakeBackend.cpp"
+    "${ROOT}/SerialPrograms/Source/NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.cpp"
+    "${MAPS}/Pokemon_Direction.cpp"
+    "${MAPS}/Pokemon_Grid.cpp"
+    "${ROOT}/Common/Cpp/CancellableScope.cpp"
     "${ROOT}/Common/Cpp/Exceptions.cpp"
+    "${ROOT}/Common/Cpp/LifetimeSanitizer.cpp"
+    "${ROOT}/Common/Cpp/Concurrency/SpinLock.cpp"
     "${ROOT}/Common/Cpp/Json/JsonValue.cpp"
     "${ROOT}/Common/Cpp/Json/JsonObject.cpp"
     "${ROOT}/Common/Cpp/Json/JsonArray.cpp"
     "${ROOT}/Common/Cpp/Json/JsonTools.cpp"
     "${ROOT}/Common/Cpp/Filesystem/FileIO.cpp"
     "${ROOT}/Common/Cpp/Filesystem/FilePath.cpp"
+    "${ROOT}/Common/Cpp/Strings/StringTools.cpp"
     "${ROOT}/Common/Cpp/Strings/Unicode.cpp")
-# Reuse the Qt/controller-free support sources; each codec has its own test main.
-get_target_property(STORY_DATA_SOURCES StoryDataTests SOURCES)
-list(REMOVE_ITEM STORY_DATA_SOURCES
-    "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/StoryWireCases.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/StoryDataMain.cpp"
-    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.cpp")
-add_executable(AuthoredCheckpointTests ${STORY_DATA_SOURCES}
-    "${STORY}/Data/Pokemon_AuthoredCheckpointJson.cpp"
-    "${STORY}/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp")
-add_executable(StoryActionArgTests
-    "${STORY}/Types/Pokemon_StoryActionArg.cpp"
-    "${STORY}/Types/Pokemon_StoryActionSpec.cpp"
-    "${STORY}/Types/Pokemon_StoryActionArg_Tests.cpp"
-    "${ROOT}/Common/Cpp/Exceptions.cpp")
-
-foreach(TEST_TARGET IN ITEMS StoryDataTests AuthoredCheckpointTests StoryActionArgTests)
-target_include_directories(${TEST_TARGET} PRIVATE "${ROOT}" "${ROOT}/SerialPrograms/Source")
-target_compile_features(${TEST_TARGET} PRIVATE cxx_std_23)
-target_compile_definitions(${TEST_TARGET} PRIVATE PA_STORY_DATA_STANDALONE)
+target_include_directories(StoryDataTests PRIVATE "${ROOT}" "${ROOT}/SerialPrograms/Source")
+target_compile_features(StoryDataTests PRIVATE cxx_std_23)
 if(MSVC)
-    target_compile_definitions(${TEST_TARGET} PRIVATE _CRT_SECURE_NO_WARNINGS)
-    target_compile_options(${TEST_TARGET} PRIVATE /W4 /WX)
+    target_compile_definitions(StoryDataTests PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_compile_options(StoryDataTests PRIVATE /W4 /WX)
     set_property(SOURCE "${ROOT}/Common/Cpp/Filesystem/FileIO.cpp" APPEND PROPERTY COMPILE_OPTIONS /wd4505)
 else()
-    target_compile_options(${TEST_TARGET} PRIVATE -Wall -Wextra -Werror)
+    target_compile_options(StoryDataTests PRIVATE -Wall -Wextra -Werror)
 endif()
-endforeach()
 add_test(NAME StoryData COMMAND StoryDataTests)
-add_test(NAME AuthoredCheckpoint COMMAND AuthoredCheckpointTests)
-add_test(NAME StoryActionArg COMMAND StoryActionArgTests)

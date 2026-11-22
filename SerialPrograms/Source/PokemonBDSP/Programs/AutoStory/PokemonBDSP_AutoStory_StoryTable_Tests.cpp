@@ -661,23 +661,21 @@ UnitTestResult test_starter_rng_row_is_fatal(Logger&){
 }
 
 
-struct AutoStoryStoryTableInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryStoryTableExpectation{
-};
-
 struct AutoStoryStoryTableCase{
-    AutoStoryStoryTableInput input;
-    AutoStoryStoryTableExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryStoryTable : public UnitTest{
 public:
     explicit Test_AutoStoryStoryTable(AutoStoryStoryTableCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -696,62 +694,20 @@ private:
 
 
 const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
-    {
-        .input = {"Story table: rows lint, variants known", test_story_table_lints},
-        .expectation = {},
-    },
-    {
-        .input = {"Story table: each row starts where the last one ends", test_story_table_rows_join},
-        .expectation = {},
-    },
-    {
-        .input = {"00.04: the walk to the Poke Mart lady and back", test_mart_lady_walk},
-        .expectation = {},
-    },
-    {
-        .input = {"Route 204 North: the line into Floaroma", test_route204_north_line},
-        .expectation = {},
-    },
-    {
-        .input = {"01.10: line 5's recovery pins the wall nearest its goal (lab-B, 2026-11-08)", test_line_5_recovery_pins_the_wall_nearest_the_goal},
-        .expectation = {},
-    },
-    {
-        .input = {"Story table: no open leg ends before a door it walks toward (lab-B, 2026-11-08)", test_story_routes_stop_short_of_doors},
-        .expectation = {},
-    },
-    {
-        .input = {"Story table: every ROUTE step plans as Data/route_plans.golden.txt says", test_route_plans_golden},
-        .expectation = {},
-    },
-    {
-        .input = {"Story table: every route plans, and none runs along a wander zone", test_story_routes_keep_off_wander_zones},
-        .expectation = {},
-    },
-    {
-        .input = {"01.08: the walk below the Ravaged Path keeps off the youngster's row (lab-B, 2026-11-08)", test_ravaged_path_keeps_off_the_youngster},
-        .expectation = {},
-    },
-    {
-        .input = {"Starter RNG handoff: stops after 00.01 saved at the Verity Lakefront", test_plan_story_run_starter_rng},
-        .expectation = {},
-    },
-    {
-        .input = {"Run Starter RNG: 00.02 runs the starter_rng event", test_plan_story_run_in_program},
-        .expectation = {},
-    },
-    {
-        .input = {"Run Starter RNG: settings come from the story's options", test_starter_rng_settings},
-        .expectation = {},
-    },
-    {
-        .input = {"Run Starter RNG: what lets the story go on", test_starter_rng_failure},
-        .expectation = {},
-    },
-    {
-        .input = {"Run Starter RNG: a failed 00.02 ends the program", test_starter_rng_row_is_fatal},
-        .expectation = {},
-    },
+    {.name = "Story table: rows lint, variants known", .input = {test_story_table_lints}, .expectation = {}},
+    {.name = "Story table: each row starts where the last one ends", .input = {test_story_table_rows_join}, .expectation = {}},
+    {.name = "00.04: the walk to the Poke Mart lady and back", .input = {test_mart_lady_walk}, .expectation = {}},
+    {.name = "Route 204 North: the line into Floaroma", .input = {test_route204_north_line}, .expectation = {}},
+    {.name = "01.10: line 5's recovery pins the wall nearest its goal (lab-B, 2026-11-08)", .input = {test_line_5_recovery_pins_the_wall_nearest_the_goal}, .expectation = {}},
+    {.name = "Story table: no open leg ends before a door it walks toward (lab-B, 2026-11-08)", .input = {test_story_routes_stop_short_of_doors}, .expectation = {}},
+    {.name = "Story table: every ROUTE step plans as Data/route_plans.golden.txt says", .input = {test_route_plans_golden}, .expectation = {}},
+    {.name = "Story table: every route plans, and none runs along a wander zone", .input = {test_story_routes_keep_off_wander_zones}, .expectation = {}},
+    {.name = "01.08: the walk below the Ravaged Path keeps off the youngster's row (lab-B, 2026-11-08)", .input = {test_ravaged_path_keeps_off_the_youngster}, .expectation = {}},
+    {.name = "Starter RNG handoff: stops after 00.01 saved at the Verity Lakefront", .input = {test_plan_story_run_starter_rng}, .expectation = {}},
+    {.name = "Run Starter RNG: 00.02 runs the starter_rng event", .input = {test_plan_story_run_in_program}, .expectation = {}},
+    {.name = "Run Starter RNG: settings come from the story's options", .input = {test_starter_rng_settings}, .expectation = {}},
+    {.name = "Run Starter RNG: what lets the story go on", .input = {test_starter_rng_failure}, .expectation = {}},
+    {.name = "Run Starter RNG: a failed 00.02 ends the program", .input = {test_starter_rng_row_is_fatal}, .expectation = {}},
 };
 
 void add_tests_AutoStory_StoryTable(UnitTestDatabase& database){

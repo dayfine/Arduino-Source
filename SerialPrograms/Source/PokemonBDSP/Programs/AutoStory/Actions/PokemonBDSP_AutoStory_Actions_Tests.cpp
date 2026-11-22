@@ -870,23 +870,21 @@ UnitTestResult test_move_menu_screenshots(Logger& logger){
 }
 
 
-struct AutoStoryActionsInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryActionsExpectation{
-};
-
 struct AutoStoryActionsCase{
-    AutoStoryActionsInput input;
-    AutoStoryActionsExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryActions : public UnitTest{
 public:
     explicit Test_AutoStoryActions(AutoStoryActionsCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -905,90 +903,27 @@ private:
 
 
 const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
-    {
-        .input = {"new-game intro decisions", test_intro_decisions},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: the rival's name confirmed with A", test_intro_rival_confirm},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: B on unknown screens, then X for the menu", test_intro_before_menu},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: in control without the menu read", test_intro_in_control},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: BDSP or stop", test_intro_gate},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: language and look presses", test_intro_pick_moves},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: steps until the picks are made", test_intro_pick_steps},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: taken up only before the language pick", test_intro_restart},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: the language select through the language's load", test_language_select_visits},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: the name keyboard's limit", test_name_limit},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: capture file per language", test_language_tags},
-        .expectation = {},
-    },
-    {
-        .input = {"new-game intro: capture records what follows the look", test_after_look_burst},
-        .expectation = {},
-    },
-    {
-        .input = {"intro menu screenshots", test_intro_menu_screenshots},
-        .expectation = {},
-    },
-    {
-        .input = {"lit doorway screenshots", test_lit_doorway_screenshots},
-        .expectation = {},
-    },
-    {
-        .input = {"save screen location", test_save_screen_location},
-        .expectation = {},
-    },
-    {
-        .input = {"Pokemon Center inside", test_pokemon_center_inside},
-        .expectation = {},
-    },
-    {
-        .input = {"Pokemon Center inside: Oreburgh's counter, exit mat and doorstep", test_pokemon_center_counter},
-        .expectation = {},
-    },
-    {
-        .input = {"Jubilife School lamp", test_school_lamp},
-        .expectation = {},
-    },
-    {
-        .input = {"battle moves: the pick from names and PP", test_choose_move},
-        .expectation = {},
-    },
-    {
-        .input = {"battle moves: unreadable menu reads nothing", test_move_menu_unreadable},
-        .expectation = {},
-    },
-    {
-        .input = {"battle moves: move menu screenshots in each language", test_move_menu_screenshots},
-        .expectation = {},
-    },
+    {.name = "new-game intro decisions", .input = {test_intro_decisions}, .expectation = {}},
+    {.name = "new-game intro: the rival's name confirmed with A", .input = {test_intro_rival_confirm}, .expectation = {}},
+    {.name = "new-game intro: B on unknown screens, then X for the menu", .input = {test_intro_before_menu}, .expectation = {}},
+    {.name = "new-game intro: in control without the menu read", .input = {test_intro_in_control}, .expectation = {}},
+    {.name = "new-game intro: BDSP or stop", .input = {test_intro_gate}, .expectation = {}},
+    {.name = "new-game intro: language and look presses", .input = {test_intro_pick_moves}, .expectation = {}},
+    {.name = "new-game intro: steps until the picks are made", .input = {test_intro_pick_steps}, .expectation = {}},
+    {.name = "new-game intro: taken up only before the language pick", .input = {test_intro_restart}, .expectation = {}},
+    {.name = "new-game intro: the language select through the language's load", .input = {test_language_select_visits}, .expectation = {}},
+    {.name = "new-game intro: the name keyboard's limit", .input = {test_name_limit}, .expectation = {}},
+    {.name = "new-game intro: capture file per language", .input = {test_language_tags}, .expectation = {}},
+    {.name = "new-game intro: capture records what follows the look", .input = {test_after_look_burst}, .expectation = {}},
+    {.name = "intro menu screenshots", .input = {test_intro_menu_screenshots}, .expectation = {}},
+    {.name = "lit doorway screenshots", .input = {test_lit_doorway_screenshots}, .expectation = {}},
+    {.name = "save screen location", .input = {test_save_screen_location}, .expectation = {}},
+    {.name = "Pokemon Center inside", .input = {test_pokemon_center_inside}, .expectation = {}},
+    {.name = "Pokemon Center inside: Oreburgh's counter, exit mat and doorstep", .input = {test_pokemon_center_counter}, .expectation = {}},
+    {.name = "Jubilife School lamp", .input = {test_school_lamp}, .expectation = {}},
+    {.name = "battle moves: the pick from names and PP", .input = {test_choose_move}, .expectation = {}},
+    {.name = "battle moves: unreadable menu reads nothing", .input = {test_move_menu_unreadable}, .expectation = {}},
+    {.name = "battle moves: move menu screenshots in each language", .input = {test_move_menu_screenshots}, .expectation = {}},
 };
 
 void add_tests_AutoStory_Actions(UnitTestDatabase& database){

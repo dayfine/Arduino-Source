@@ -18,17 +18,17 @@ namespace PokemonBDSP{
 
 namespace{
 
-struct IndoorsInput{
-    uint32_t fill;
-    double dark_bottom;     //  how much of the screen's height, from the bottom, is black
-};
-struct IndoorsExpectation{
-    bool indoors;
-};
 struct IndoorsCase{
+    struct Input{
+        uint32_t fill;
+        double dark_bottom;     //  how much of the screen's height, from the bottom, is black
+    };
+    struct Expectation{
+        bool indoors;
+    };
     std::string name;
-    IndoorsInput input;
-    IndoorsExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_Indoors : public UnitTest{

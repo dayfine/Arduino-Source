@@ -92,7 +92,7 @@
       {
         "id": "up_to_barry",
         "action": "legs",
-        "why": "the door's column to the back wall, beside Barry",
+        "why": "not planned: the door's column to the back wall, beside Barry",
         "args": {
           "fight_wild": false,
           "legs": [

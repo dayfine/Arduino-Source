@@ -8,6 +8,7 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include <optional>
 #include <string>
@@ -160,25 +161,41 @@ UnitTestResult test_plan_robust_route_wander_zone(Logger&){
             const StoryWorld& world;
             TilePos from;
             TilePos goal;
-            std::string legs;
+            //  All equal-cost valid plans (e.g. symmetric north/south detours
+            //  whose priority-queue tie-break differs across STL implementations).
+            std::vector<std::string> legs;
         };
         const std::vector<ZoneCase> cases{
-            {.name = "south across the row", .world = room, .from = {3, 1}, .goal = {3, 3}, .legs = "south 2 (to wall) to (3, 3)"},
-            {.name = "north across the row", .world = room, .from = {3, 3}, .goal = {3, 1}, .legs = "north 2 (to wall) to (3, 1)"},
-            {.name = "east into the row's first tile", .world = room, .from = {1, 2}, .goal = {2, 2}, .legs = "east 1 (open) to (2, 2)"},
+            {.name = "south across the row", .world = room, .from = {3, 1}, .goal = {3, 3},
+                .legs = {"south 2 (to wall) to (3, 3)"}},
+            {.name = "north across the row", .world = room, .from = {3, 3}, .goal = {3, 1},
+                .legs = {"north 2 (to wall) to (3, 1)"}},
+            {.name = "east into the row's first tile", .world = room, .from = {1, 2}, .goal = {2, 2},
+                .legs = {"east 1 (open) to (2, 2)"}},
             {.name = "east along the row goes round it", .world = room, .from = {1, 2}, .goal = {5, 2},
-                .legs = "north 1 (to wall) to (1, 1); east 4 (to wall) to (5, 1); south 1 (open) to (5, 2)"},
+                .legs = {
+                    "north 1 (to wall) to (1, 1); east 4 (to wall) to (5, 1); south 1 (open) to (5, 2)",
+                    "south 1 (to wall) to (1, 3); east 4 (to wall) to (5, 3); north 1 (open) to (5, 2)",
+                }},
             {.name = "west along the row from inside it goes round", .world = room, .from = {3, 2}, .goal = {1, 2},
-                .legs = "north 1 (to wall) to (3, 1); west 2 (to wall) to (1, 1); south 1 (open) to (1, 2)"},
-            {.name = "east along the row from inside it goes round, north first", .world = room, .from = {3, 2}, .goal = {5, 2},
-                .legs = "north 1 (to wall) to (3, 1); east 2 (to wall) to (5, 1); south 1 (open) to (5, 2)"},
-            {.name = "no plan when the row is the only way", .world = corridor, .from = {1, 1}, .goal = {5, 1}, .legs = ""},
+                .legs = {
+                    "north 1 (to wall) to (3, 1); west 2 (to wall) to (1, 1); south 1 (open) to (1, 2)",
+                    "south 1 (to wall) to (3, 3); west 2 (to wall) to (1, 3); north 1 (open) to (1, 2)",
+                }},
+            {.name = "east along the row from inside it goes round", .world = room, .from = {3, 2}, .goal = {5, 2},
+                .legs = {
+                    "north 1 (to wall) to (3, 1); east 2 (to wall) to (5, 1); south 1 (open) to (5, 2)",
+                    "south 1 (to wall) to (3, 3); east 2 (to wall) to (5, 3); north 1 (open) to (5, 2)",
+                }},
+            {.name = "no plan when the row is the only way", .world = corridor, .from = {1, 1}, .goal = {5, 1},
+                .legs = {""}},
         };
         for (const ZoneCase& item : cases){
             const auto legs = plan_robust_route(item.world, {item.from}, [&](const TilePos& pos){ return pos == item.goal; }, exact);
             const std::string read = legs ? describe(*legs) : "";
-            if (read != item.legs){
-                return std::format("{}: planned \"{}\", expected \"{}\".", item.name, read, item.legs);
+            const bool matched = std::find(item.legs.begin(), item.legs.end(), read) != item.legs.end();
+            if (!matched){
+                return std::format("{}: planned \"{}\", expected \"{}\".", item.name, read, item.legs.front());
             }
         }
         return true;
@@ -187,23 +204,23 @@ UnitTestResult test_plan_robust_route_wander_zone(Logger&){
 
 //  November 5 mine report: credited taps need not establish physical pose.
 //  The two phases are explicit diagnostics, not inferred console timing.
-struct EncounterInput{
-    std::string name;
-    SimEncounterPhase phase;
-};
-struct EncounterExpectation{
-    TilePos end;
-    size_t battles = 1;
-    size_t credited = 5;
-};
 struct EncounterCase{
-    EncounterInput input;
-    EncounterExpectation expectation;
+    struct Input{
+        SimEncounterPhase phase;
+    };
+    struct Expectation{
+        TilePos end;
+        size_t battles = 1;
+        size_t credited = 5;
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 class Test_InterruptedMineTaps : public UnitTest{
 public:
     explicit Test_InterruptedMineTaps(EncounterCase scenario)
-        : UnitTest("PokemonBDSP::AutoStory - Encounter credits: " + scenario.input.name), m_case(std::move(scenario))
+        : UnitTest("PokemonBDSP::AutoStory - Encounter credits: " + scenario.name), m_case(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         StoryWorld mine;
@@ -229,25 +246,25 @@ private:
 //  Empty map name selects a synthetic corridor: ####### / #.....# / #######.
 //  Both possible starts (1,1)/(5,1) must share a safe wall ray. NPCs and
 //  warps on that ray or its wall invalidate it; ordinary terrain is unchanged.
-struct RecoveryGeometryInput{
-    std::string name;
-    std::string map = {};
-    std::vector<TilePos> from;
-    std::optional<Pokemon::TileBox> wander = {};
-    std::vector<TilePos> warps = {};
-};
-struct RecoveryGeometryExpectation{
-    std::optional<TilePos> anchor;
-    Direction direction = Direction::SOUTH;
-    size_t holds = 1;
-    std::optional<TilePos> free_tile = {};
-};
 struct RecoveryGeometryCase{
-    RecoveryGeometryInput input;
-    RecoveryGeometryExpectation expectation;
+    struct Input{
+        std::string map = {};
+        std::vector<TilePos> from;
+        std::optional<Pokemon::TileBox> wander = {};
+        std::vector<TilePos> warps = {};
+    };
+    struct Expectation{
+        std::optional<TilePos> anchor;
+        Direction direction = Direction::SOUTH;
+        size_t holds = 1;
+        std::optional<TilePos> free_tile = {};
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
-Pokemon::MapData recovery_map(const RecoveryGeometryInput& input){
+Pokemon::MapData recovery_map(const RecoveryGeometryCase::Input& input){
     Pokemon::MapData map;
     if (!input.map.empty()){
         return story_map(input.map);
@@ -272,7 +289,7 @@ Pokemon::MapData recovery_map(const RecoveryGeometryInput& input){
 class Test_RecoveryGeometry : public UnitTest{
 public:
     explicit Test_RecoveryGeometry(RecoveryGeometryCase scenario)
-        : UnitTest("PokemonBDSP::AutoStory - Recovery geometry: " + scenario.input.name), m_case(std::move(scenario))
+        : UnitTest("PokemonBDSP::AutoStory - Recovery geometry: " + scenario.name), m_case(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         const auto& expected = m_case.expectation;
@@ -326,23 +343,21 @@ UnitTestResult test_trainer_sight(Logger&){
 }
 
 
-struct RoutePlannerInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct RoutePlannerExpectation{
-};
-
 struct RoutePlannerCase{
-    RoutePlannerInput input;
-    RoutePlannerExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_RoutePlanner : public UnitTest{
 public:
     explicit Test_RoutePlanner(RoutePlannerCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Route planner: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Route planner: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -358,23 +373,23 @@ private:
 };
 
 const EncounterCase ENCOUNTER_CASES[] = {
-    {.input = {.name = "before movement", .phase = SimEncounterPhase::BEFORE_MOVEMENT},
+    {.name = "before movement", .input = {.phase = SimEncounterPhase::BEFORE_MOVEMENT},
         .expectation = {.end = {.x = 15, .y = 16}}},
-    {.input = {.name = "after movement", .phase = SimEncounterPhase::AFTER_MOVEMENT},
+    {.name = "after movement", .input = {.phase = SimEncounterPhase::AFTER_MOVEMENT},
         .expectation = {.end = {.x = 15, .y = 17}}},
 };
 
 const RecoveryGeometryCase GEOMETRY_CASES[] = {
-    {.input = {.name = "mine rows converge south", .map = "OreburghMine", .from = {{15, 15}, {15, 16}, {15, 17}}},
+    {.name = "mine rows converge south", .input = {.map = "OreburghMine", .from = {{15, 15}, {15, 16}, {15, 17}}},
         .expectation = {.anchor = TilePos{.x = 15, .y = 17}}},
-    {.input = {.name = "r55 tiles converge east", .map = "Route202", .from = {{27, 5}, {26, 5}}},
+    {.name = "r55 tiles converge east", .input = {.map = "Route202", .from = {{27, 5}, {26, 5}}},
         .expectation = {.anchor = TilePos{.x = 30, .y = 5}, .direction = Direction::EAST}},
-    {.input = {.name = "wandering area is unsafe", .from = {{1, 1}, {5, 1}},
+    {.name = "wandering area is unsafe", .input = {.from = {{1, 1}, {5, 1}},
             .wander = Pokemon::TileBox{.x0 = 2, .y0 = 1, .x1 = 4, .y1 = 1}},
         .expectation = {.anchor = std::nullopt, .free_tile = TilePos{.x = 3, .y = 1}}},
-    {.input = {.name = "warp crossings are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{3, 1}}},
+    {.name = "warp crossings are unsafe", .input = {.from = {{1, 1}, {5, 1}}, .warps = {{3, 1}}},
         .expectation = {.anchor = std::nullopt}},
-    {.input = {.name = "warps on blocked glyphs are unsafe", .from = {{1, 1}, {5, 1}}, .warps = {{0, 1}, {6, 1}}},
+    {.name = "warps on blocked glyphs are unsafe", .input = {.from = {{1, 1}, {5, 1}}, .warps = {{0, 1}, {6, 1}}},
         .expectation = {.anchor = std::nullopt}},
 };
 
@@ -382,26 +397,11 @@ const RecoveryGeometryCase GEOMETRY_CASES[] = {
 
 
 const RoutePlannerCase ROUTE_PLANNER_CASES[] = {
-    {
-        .input = {"walking until stopped", test_walk_to_wall},
-        .expectation = {},
-    },
-    {
-        .input = {"legs to walls around a pillar", test_plan_tile_route},
-        .expectation = {},
-    },
-    {
-        .input = {"robust plans", test_plan_robust_route},
-        .expectation = {},
-    },
-    {
-        .input = {"robust plans cross a wander zone, never along it", test_plan_robust_route_wander_zone},
-        .expectation = {},
-    },
-    {
-        .input = {"trainers' sight lines", test_trainer_sight},
-        .expectation = {},
-    },
+    {.name = "walking until stopped", .input = {test_walk_to_wall}, .expectation = {}},
+    {.name = "legs to walls around a pillar", .input = {test_plan_tile_route}, .expectation = {}},
+    {.name = "robust plans", .input = {test_plan_robust_route}, .expectation = {}},
+    {.name = "robust plans cross a wander zone, never along it", .input = {test_plan_robust_route_wander_zone}, .expectation = {}},
+    {.name = "trainers' sight lines", .input = {test_trainer_sight}, .expectation = {}},
 };
 
 void add_tests_AutoStory_RoutePlanner(UnitTestDatabase& database){

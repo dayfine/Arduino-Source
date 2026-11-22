@@ -592,24 +592,22 @@ UnitTestResult test_route_bench(Logger& logger){
 }
 
 
-struct RouteBenchInput{
-    std::string name;
-    UnitTestResult (*test)(Logger&);
-};
-
-struct RouteBenchExpectation{
-    std::string_view description;
-};
-
 struct RouteBenchCase{
-    RouteBenchInput input;
-    RouteBenchExpectation expectation;
+    struct Input{
+        UnitTestResult (*test)(Logger&);
+    };
+    struct Expectation{
+        std::string_view description;
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryRouteBench : public UnitTest{
 public:
     explicit Test_AutoStoryRouteBench(RouteBenchCase scenario)
-        : UnitTest("PokemonBDSP::AutoStory - Route bench: " + scenario.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Route bench: " + scenario.name)
         , m_case(std::move(scenario))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -626,7 +624,8 @@ private:
 
 const RouteBenchCase ROUTE_BENCH_CASES[] = {
     {
-        .input = {.name = "no route scores worse than Data/route_bench.golden.txt", .test = test_route_bench},
+        .name = "no route scores worse than Data/route_bench.golden.txt",
+        .input = {.test = test_route_bench},
         .expectation = {.description = "no story route strands; every route's verdict, times and ratios at least as good as the golden file's"},
     },
 };

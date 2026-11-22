@@ -73,7 +73,7 @@ bool consistent_with(
 );
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

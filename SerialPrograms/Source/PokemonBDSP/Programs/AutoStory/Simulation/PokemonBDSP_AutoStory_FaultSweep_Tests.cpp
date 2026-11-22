@@ -343,16 +343,16 @@ UnitTestResult sweep_fault(Logger& logger, FaultClass fault, const StoryCheckpoi
     return true;
 }
 
-struct FaultSweepInput{
-    FaultClass fault = FaultClass::SCENE_END_POSE;
-    std::string row = {};
-};
-struct FaultSweepExpectation{
-};
 struct FaultSweepCase{
+    struct Input{
+        FaultClass fault = FaultClass::SCENE_END_POSE;
+        std::string row = {};
+    };
+    struct Expectation{
+    };
     std::string name;
-    FaultSweepInput input;
-    FaultSweepExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 const StoryCheckpoint& table_row(const std::string& id){

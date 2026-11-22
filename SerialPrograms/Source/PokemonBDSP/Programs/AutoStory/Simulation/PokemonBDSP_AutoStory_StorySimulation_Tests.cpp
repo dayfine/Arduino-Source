@@ -718,23 +718,21 @@ UnitTestResult test_no_text_reader(Logger&){
 }
 
 
-struct AutoStoryStorySimulationInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryStorySimulationExpectation{
-};
-
 struct AutoStoryStorySimulationCase{
-    AutoStoryStorySimulationInput input;
-    AutoStoryStorySimulationExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StorySimulation : public UnitTest{
 public:
     explicit Test_StorySimulation(AutoStoryStorySimulationCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Simulation: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Simulation: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -774,48 +772,18 @@ UnitTestResult test_authored_mine_stops(Logger&){
 
 
 const AutoStoryStorySimulationCase AUTO_STORY_STORY_SIMULATION_CASES[] = {
-    {.input = {.name = "01.03 authored mine executes through the real table", .body = test_authored_mine}, .expectation = {}},
-    {.input = {.name = "01.03 unconfirmed mine exit stops before healing", .body = test_authored_mine_stops}, .expectation = {}},
-    {
-        .input = {"00.00 to Floaroma, in order, each row E9-saved at end, English and Japanese", test_whole_table},
-        .expectation = {},
-    },
-    {
-        .input = {"start and end checkpoints", test_start_and_end},
-        .expectation = {},
-    },
-    {
-        .input = {"Run Starter RNG in AutoStory chains 00.02 into 00.03", test_run_starter_rng_in_story},
-        .expectation = {},
-    },
-    {
-        .input = {"a blackout in 00.04b's training resets to its save", test_training_blackout},
-        .expectation = {},
-    },
-    {
-        .input = {"a step that keeps failing stops after 3 attempts", test_gives_up_after_attempts},
-        .expectation = {},
-    },
-    {
-        .input = {"each start pose is where the row before ends; routes plan on the maps", test_poses_chain},
-        .expectation = {},
-    },
-    {
-        .input = {"legs that run off their map land on the next", test_legs_cross_maps},
-        .expectation = {},
-    },
-    {
-        .input = {"no text reader for the game's language", test_no_text_reader},
-        .expectation = {},
-    },
-    {
-        .input = {"no hand-written legs without a why", test_no_hand_written_legs},
-        .expectation = {},
-    },
-    {
-        .input = {"plans match the golden", test_golden_plans},
-        .expectation = {},
-    },
+    {.name = "01.03 authored mine executes through the real table", .input = {.body = test_authored_mine}, .expectation = {}},
+    {.name = "01.03 unconfirmed mine exit stops before healing", .input = {.body = test_authored_mine_stops}, .expectation = {}},
+    {.name = "00.00 to Floaroma, in order, each row E9-saved at end, English and Japanese", .input = {test_whole_table}, .expectation = {}},
+    {.name = "start and end checkpoints", .input = {test_start_and_end}, .expectation = {}},
+    {.name = "Run Starter RNG in AutoStory chains 00.02 into 00.03", .input = {test_run_starter_rng_in_story}, .expectation = {}},
+    {.name = "a blackout in 00.04b's training resets to its save", .input = {test_training_blackout}, .expectation = {}},
+    {.name = "a step that keeps failing stops after 3 attempts", .input = {test_gives_up_after_attempts}, .expectation = {}},
+    {.name = "each start pose is where the row before ends; routes plan on the maps", .input = {test_poses_chain}, .expectation = {}},
+    {.name = "legs that run off their map land on the next", .input = {test_legs_cross_maps}, .expectation = {}},
+    {.name = "no text reader for the game's language", .input = {test_no_text_reader}, .expectation = {}},
+    {.name = "no hand-written legs without a why", .input = {test_no_hand_written_legs}, .expectation = {}},
+    {.name = "plans match the golden", .input = {test_golden_plans}, .expectation = {}},
 };
 
 void add_tests_AutoStory_StorySimulation(UnitTestDatabase& database){

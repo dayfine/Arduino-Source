@@ -262,23 +262,21 @@ UnitTestResult test_intervening_step_keeps_start_wait(Logger& logger){
 }
 
 
-struct AutoStoryStoryActionsInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryStoryActionsExpectation{
-};
-
 struct AutoStoryStoryActionsCase{
-    AutoStoryStoryActionsInput input;
-    AutoStoryStoryActionsExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryStoryActions : public UnitTest{
 public:
     explicit Test_AutoStoryStoryActions(AutoStoryStoryActionsCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -297,30 +295,12 @@ private:
 
 
 const AutoStoryStoryActionsCase AUTO_STORY_STORY_ACTIONS_CASES[] = {
-    {
-        .input = {"Story actions: every step of every row parses through #648 read_story_checkpoint()", test_every_step_has_an_action},
-        .expectation = {},
-    },
-    {
-        .input = {"Story actions: every console and event action dispatches to its handler", test_dispatch_routes_every_action},
-        .expectation = {},
-    },
-    {
-        .input = {"Story actions: the steps the sim stubs from 00.00 to 01.11 all need the console", test_stubbed_steps_need_the_console},
-        .expectation = {},
-    },
-    {
-        .input = {"Story actions: scene starts retain the full guard until dialogue is observed", test_scene_start_waits},
-        .expectation = {},
-    },
-    {
-        .input = {"Story actions: a scene played by the preceding settle skips its start wait", test_seen_scene_skips_start_wait},
-        .expectation = {},
-    },
-    {
-        .input = {"Story actions: an intervening step invalidates a prior settle's dialogue", test_intervening_step_keeps_start_wait},
-        .expectation = {},
-    },
+    {.name = "Story actions: every step of every row parses through #648 read_story_checkpoint()", .input = {test_every_step_has_an_action}, .expectation = {}},
+    {.name = "Story actions: every console and event action dispatches to its handler", .input = {test_dispatch_routes_every_action}, .expectation = {}},
+    {.name = "Story actions: the steps the sim stubs from 00.00 to 01.11 all need the console", .input = {test_stubbed_steps_need_the_console}, .expectation = {}},
+    {.name = "Story actions: scene starts retain the full guard until dialogue is observed", .input = {test_scene_start_waits}, .expectation = {}},
+    {.name = "Story actions: a scene played by the preceding settle skips its start wait", .input = {test_seen_scene_skips_start_wait}, .expectation = {}},
+    {.name = "Story actions: an intervening step invalidates a prior settle's dialogue", .input = {test_intervening_step_keeps_start_wait}, .expectation = {}},
 };
 
 void add_tests_AutoStory_StoryActions(UnitTestDatabase& database){

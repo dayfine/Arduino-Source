@@ -100,7 +100,7 @@ public:
 void set_default_shiny_row(BdspRngFilterTable& table);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

@@ -636,23 +636,21 @@ UnitTestResult test_blocked_open_leg_overcount_does_not_localize_on_blocker(Logg
 }
 
 
-struct PlannedRouteInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct PlannedRouteExpectation{
-};
-
 struct PlannedRouteCase{
-    PlannedRouteInput input;
-    PlannedRouteExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_PlannedRoute : public UnitTest{
 public:
     explicit Test_PlannedRoute(PlannedRouteCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Planned route: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Planned route: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -671,42 +669,15 @@ private:
 
 
 const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
-    {
-        .input = {"a trainer on a wall leg, then on to the wall", test_wall_leg_trainer_on_the_way},
-        .expectation = {},
-    },
-    {
-        .input = {"a wall leg out of time needs the holding check", test_wall_leg_limit},
-        .expectation = {},
-    },
-    {
-        .input = {"a known trainer stops an open leg", test_open_leg_known_trainer},
-        .expectation = {},
-    },
-    {
-        .input = {"a person a tile ahead on a short leg is waited out", test_short_leg_waits_for_the_way},
-        .expectation = {},
-    },
-    {
-        .input = {"a short leg to a wall a tile short is a stop, not the wall", test_short_leg_a_tile_short_is_not_arrived},
-        .expectation = {},
-    },
-    {
-        .input = {"a wall leg that never moved plans from its start", test_never_moved_plans_from_the_start},
-        .expectation = {},
-    },
-    {
-        .input = {"a beaten trainer blocking on_to_wall replans around them", test_wall_leg_blocked_by_beaten_trainer},
-        .expectation = {},
-    },
-    {
-        .input = {"open leg skips turn tap when already facing or facing unknown", test_open_leg_turn_tap_facing_guard},
-        .expectation = {},
-    },
-    {
-        .input = {"blocked open leg does not localize against guessed runtime blocker", test_blocked_open_leg_overcount_does_not_localize_on_blocker},
-        .expectation = {},
-    },
+    {.name = "a trainer on a wall leg, then on to the wall", .input = {test_wall_leg_trainer_on_the_way}, .expectation = {}},
+    {.name = "a wall leg out of time needs the holding check", .input = {test_wall_leg_limit}, .expectation = {}},
+    {.name = "a known trainer stops an open leg", .input = {test_open_leg_known_trainer}, .expectation = {}},
+    {.name = "a person a tile ahead on a short leg is waited out", .input = {test_short_leg_waits_for_the_way}, .expectation = {}},
+    {.name = "a short leg to a wall a tile short is a stop, not the wall", .input = {test_short_leg_a_tile_short_is_not_arrived}, .expectation = {}},
+    {.name = "a wall leg that never moved plans from its start", .input = {test_never_moved_plans_from_the_start}, .expectation = {}},
+    {.name = "a beaten trainer blocking on_to_wall replans around them", .input = {test_wall_leg_blocked_by_beaten_trainer}, .expectation = {}},
+    {.name = "open leg skips turn tap when already facing or facing unknown", .input = {test_open_leg_turn_tap_facing_guard}, .expectation = {}},
+    {.name = "blocked open leg does not localize against guessed runtime blocker", .input = {test_blocked_open_leg_overcount_does_not_localize_on_blocker}, .expectation = {}},
 };
 
 void add_tests_AutoStory_PlannedRoute(UnitTestDatabase& database){

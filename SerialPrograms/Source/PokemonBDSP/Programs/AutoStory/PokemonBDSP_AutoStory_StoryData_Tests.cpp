@@ -23,24 +23,22 @@ namespace PokemonBDSP{
 
 namespace{
 
-struct StoryTableInput{
-    std::string_view extra_file;
-};
-
-struct StoryTableExpectation{
-    std::vector<std::string_view> ids;
-    std::string_view extra_file_id;
-    std::string_view extra_file_saves_in;
-};
-
 struct StoryTableCase{
+    struct Input{
+        std::string_view extra_file;
+    };
+    struct Expectation{
+        std::vector<std::string_view> ids;
+        std::string_view extra_file_id;
+        std::string_view extra_file_saves_in;
+    };
     std::string_view name;
-    StoryTableInput input;
-    StoryTableExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 UnitTestResult check_story_table_case(const StoryTableCase& test_case){
-    const StoryTableExpectation& expected = test_case.expectation;
+    const StoryTableCase::Expectation& expected = test_case.expectation;
     const auto& table = story_checkpoints();
     if (table.size() != expected.ids.size()){
         return std::format("Expected {} authored checkpoints, got {}", expected.ids.size(), table.size());
@@ -98,26 +96,24 @@ const StoryTableCase STORY_TABLE_CASES[] = {
 };
 
 
-struct CheckpointInput{
-    std::string_view id;
-};
-
-struct CheckpointExpectation{
-    std::string_view title;
-    StoryFailurePolicy on_failure = StoryFailurePolicy::RELOAD_AND_RETRY;
-    std::string_view saves_in;
-    std::vector<std::string_view> step_names;
-};
-
 struct CheckpointCase{
+    struct Input{
+        std::string_view id;
+    };
+    struct Expectation{
+        std::string_view title;
+        StoryFailurePolicy on_failure = StoryFailurePolicy::RELOAD_AND_RETRY;
+        std::string_view saves_in;
+        std::vector<std::string_view> step_names;
+    };
     std::string_view name;
-    CheckpointInput input;
-    CheckpointExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 UnitTestResult check_checkpoint_case(const CheckpointCase& test_case){
-    const CheckpointInput& input = test_case.input;
-    const CheckpointExpectation& expected = test_case.expectation;
+    const CheckpointCase::Input& input = test_case.input;
+    const CheckpointCase::Expectation& expected = test_case.expectation;
     const auto& table = story_checkpoints();
     auto it = std::find_if(table.begin(), table.end(), [&](const StoryCheckpoint& cp){
         return cp.id == input.id;
@@ -171,18 +167,16 @@ const CheckpointCase CHECKPOINT_CASES[] = {
 };
 
 
-struct EnvelopeInput{
-    void (*mutate)(JsonObject&) = nullptr;
-};
-
-struct EnvelopeExpectation{
-    bool rejected = false;
-};
-
 struct EnvelopeCase{
+    struct Input{
+        void (*mutate)(JsonObject&) = nullptr;
+    };
+    struct Expectation{
+        bool rejected = false;
+    };
     std::string_view name;
-    EnvelopeInput input;
-    EnvelopeExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 void extra(JsonObject& root){
@@ -305,19 +299,17 @@ struct DevFile{
     void (*mutate)(JsonObject&) = nullptr;
 };
 
-struct DevFileInput{
-    std::vector<DevFile> files;
-};
-
-struct DevFileExpectation{
-    bool rejected = false;
-    std::string summary = {};
-};
-
 struct DevFileCase{
+    struct Input{
+        std::vector<DevFile> files;
+    };
+    struct Expectation{
+        bool rejected = false;
+        std::string summary = {};
+    };
     std::string name;
-    DevFileInput input;
-    DevFileExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 void retitle(JsonObject& root){
@@ -332,7 +324,7 @@ void other_id(JsonObject& root){
     root.get_object_throw("checkpoint")["id"] = "00.99";
 }
 
-std::vector<Pokemon::StoryDevFile> dev_files_of(const DevFileInput& input){
+std::vector<Pokemon::StoryDevFile> dev_files_of(const DevFileCase::Input& input){
     std::vector<Pokemon::StoryDevFile> files;
     for (const DevFile& file : input.files){
         JsonValue document = authored_checkpoint_document(file.builtin);

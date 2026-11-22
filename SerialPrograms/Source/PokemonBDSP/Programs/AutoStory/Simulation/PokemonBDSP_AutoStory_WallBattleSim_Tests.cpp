@@ -45,17 +45,17 @@ using Pokemon::GridPose;
 using Pokemon::TilePos;
 
 
-struct WallBattleInput{
-    std::string name;
-    SimWildBattle battle;
-};
-struct WallBattleExpectation{
-    //  How the simulation notes the battle ended.
-    std::string ended;
-};
 struct WallBattleCase{
-    WallBattleInput input;
-    WallBattleExpectation expectation;
+    struct Input{
+        SimWildBattle battle;
+    };
+    struct Expectation{
+        //  How the simulation notes the battle ended.
+        std::string ended;
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 StoryWorld make_world(const std::vector<std::string>& rows){
@@ -111,7 +111,7 @@ WallBattleWalk walk_wall_battle(const std::string& leg, const SimWildBattle& bat
 class Test_WallBattleSim : public UnitTest{
 public:
     explicit Test_WallBattleSim(WallBattleCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Grid sim: a wild battle on a wall leg: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: a wild battle on a wall leg: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -136,11 +136,11 @@ private:
 };
 
 const WallBattleCase WALL_BATTLE_SIM_CASES[] = {
-    {.input = {.name = "the first Run works", .battle = {.run_refusals = 0}}, .expectation = {.ended = "run from"}},
-    {.input = {.name = "two refusals, then the third Run works", .battle = {.run_refusals = 2}}, .expectation = {.ended = "run from"}},
+    {.name = "the first Run works", .input = {.battle = {.run_refusals = 0}}, .expectation = {.ended = "run from"}},
+    {.name = "two refusals, then the third Run works", .input = {.battle = {.run_refusals = 2}}, .expectation = {.ended = "run from"}},
     //  console B, BDSP 01.03 run 2026-11-07: Onix's Bind in Oreburgh Mine
     //  refused nine Runs in 60 s and escape_wild_battle() gave up.
-    {.input = {.name = "bound: every Run refused", .battle = {.run_refusals = 20}}, .expectation = {.ended = "fought to its end"}},
+    {.name = "bound: every Run refused", .input = {.battle = {.run_refusals = 20}}, .expectation = {.ended = "fought to its end"}},
 };
 
 
@@ -219,17 +219,17 @@ const BdspStep& into_dawns_scene(){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "00.03 has no route into_dawns_scene with a run.");
 }
 
-struct SceneRunInput{
-    std::string name;
-    bool dawn = false;
-    bool battle = false;
-};
-struct SceneRunExpectation{
-    bool in_scene = false;
-};
 struct SceneRunCase{
-    SceneRunInput input;
-    SceneRunExpectation expectation;
+    struct Input{
+        bool dawn = false;
+        bool battle = false;
+    };
+    struct Expectation{
+        bool in_scene = false;
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 struct SceneRun{
@@ -241,7 +241,7 @@ struct SceneRun{
     std::string program_failure;
 };
 
-SceneRun run_into_dawns_scene(const SceneRunInput& input){
+SceneRun run_into_dawns_scene(const SceneRunCase::Input& input){
     const BdspStep& step = into_dawns_scene();
     const GridPose start{.map = "TwinleafTown", .tiles = {map_point("TwinleafTown", "house_doorstep")}, .facing = Direction::SOUTH};
     const GridPose& target = std::get<RouteStepArgs>(step.args).target;
@@ -301,13 +301,13 @@ std::string scene_run_error(const SceneRunCase& test_case, const SceneRun& run){
 class Test_SceneRunSim : public UnitTest{
 public:
     explicit Test_SceneRunSim(SceneRunCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Grid sim: 00.03's run into Sandgem: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Grid sim: 00.03's run into Sandgem: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         const SceneRun run = run_into_dawns_scene(m_case.input);
         const std::string status = run.failure ? std::format("{}", *run.failure) : std::string("ok");
-        logger.log(std::format("{}: \"{}\", ended {} tiles on.", m_case.input.name, status, run.run_tiles));
+        logger.log(std::format("{}: \"{}\", ended {} tiles on.", m_case.name, status, run.run_tiles));
         const std::string error = scene_run_error(m_case, run);
         return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
     }
@@ -317,10 +317,10 @@ private:
 };
 
 const SceneRunCase SCENE_RUN_SIM_CASES[] = {
-    {.input = {.name = "Dawn's scene stops it mid-run", .dawn = true, .battle = false}, .expectation = {.in_scene = true}},
-    {.input = {.name = "Dawn's scene stops it after a wild battle on the run", .dawn = true, .battle = true}, .expectation = {.in_scene = true}},
-    {.input = {.name = "no scene: the step fails at the cap", .dawn = false, .battle = false}, .expectation = {.in_scene = false}},
-    {.input = {.name = "a wild battle and no scene: the step fails at the cap", .dawn = false, .battle = true}, .expectation = {.in_scene = false}},
+    {.name = "Dawn's scene stops it mid-run", .input = {.dawn = true, .battle = false}, .expectation = {.in_scene = true}},
+    {.name = "Dawn's scene stops it after a wild battle on the run", .input = {.dawn = true, .battle = true}, .expectation = {.in_scene = true}},
+    {.name = "no scene: the step fails at the cap", .input = {.dawn = false, .battle = false}, .expectation = {.in_scene = false}},
+    {.name = "a wild battle and no scene: the step fails at the cap", .input = {.dawn = false, .battle = true}, .expectation = {.in_scene = false}},
 };
 
 } // namespace

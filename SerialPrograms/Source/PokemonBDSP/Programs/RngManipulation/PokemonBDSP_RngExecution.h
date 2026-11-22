@@ -10,12 +10,12 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <vector>
+#include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Time.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "PokemonBDSP_RngTimeline.h"
 
 namespace PokemonAutomation{
-    class Logger;
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
@@ -53,7 +53,7 @@ std::vector<PressSchedule> schedule_presses(
 bool wait_until_moment(ProControllerContext& context, Logger& logger, WallClock when);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

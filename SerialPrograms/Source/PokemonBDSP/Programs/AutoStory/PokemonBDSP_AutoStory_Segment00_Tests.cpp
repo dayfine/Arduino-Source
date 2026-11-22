@@ -198,23 +198,21 @@ UnitTestResult test_segment00_lines(Logger& logger){
 }
 
 
-struct Segment00Input{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct Segment00Expectation{
-};
-
 struct Segment00Case{
-    Segment00Input input;
-    Segment00Expectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_Segment00 : public UnitTest{
 public:
     explicit Test_Segment00(Segment00Case test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Segment 00: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Segment 00: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -233,10 +231,7 @@ private:
 
 
 const Segment00Case SEGMENT00_CASES[] = {
-    {
-        .input = {"the lines into each scene", test_segment00_lines},
-        .expectation = {},
-    },
+    {.name = "the lines into each scene", .input = {test_segment00_lines}, .expectation = {}},
 };
 
 void add_tests_AutoStory_Segment00(UnitTestDatabase& database){

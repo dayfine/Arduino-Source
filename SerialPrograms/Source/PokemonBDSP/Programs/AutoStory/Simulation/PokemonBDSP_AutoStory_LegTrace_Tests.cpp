@@ -141,21 +141,21 @@ UnitTestResult test_stable_trace(Logger& logger){
 }
 
 
-struct LegTraceInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-struct LegTraceExpectation{
-};
 struct LegTraceCase{
-    LegTraceInput input;
-    LegTraceExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryLegTrace : public UnitTest{
 public:
     explicit Test_AutoStoryLegTrace(LegTraceCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -171,8 +171,8 @@ private:
 };
 
 const LegTraceCase LEG_TRACE_CASES[] = {
-    {.input = {"Leg trace: 00.04 on the simulation writes leg_trace_00.04.golden.json", test_golden_trace}, .expectation = {}},
-    {.input = {"Leg trace: 00.04 on the simulation writes the same records every run", test_stable_trace}, .expectation = {}},
+    {.name = "Leg trace: 00.04 on the simulation writes leg_trace_00.04.golden.json", .input = {test_golden_trace}, .expectation = {}},
+    {.name = "Leg trace: 00.04 on the simulation writes the same records every run", .input = {test_stable_trace}, .expectation = {}},
 };
 
 } // namespace

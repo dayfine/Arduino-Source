@@ -21,23 +21,23 @@ namespace PokemonBDSP{
 
 namespace{
 
-struct ResourcesInput{
-    std::string name;
-    const std::vector<std::string_view>& (*paths)();
-};
-struct ResourcesExpectation{
-    //  The paths that may be missing; none, for a list a program loads.
-    size_t missing;
-};
 struct ResourcesCase{
-    ResourcesInput input;
-    ResourcesExpectation expectation;
+    struct Input{
+        const std::vector<std::string_view>& (*paths)();
+    };
+    struct Expectation{
+        //  The paths that may be missing; none, for a list a program loads.
+        size_t missing;
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryResources : public UnitTest{
 public:
     explicit Test_AutoStoryResources(ResourcesCase test_case)
-        : UnitTest(std::string("PokemonBDSP::AutoStoryResources - ") + test_case.input.name)
+        : UnitTest(std::string("PokemonBDSP::AutoStoryResources - ") + test_case.name)
         , m_case(test_case)
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -60,7 +60,7 @@ private:
 };
 
 const ResourcesCase RESOURCES_CASES[] = {
-    {.input = {"every file AutoStory loads is in Resources", autostory_resource_paths}, .expectation = {.missing = 0}},
+    {.name = "every file AutoStory loads is in Resources", .input = {autostory_resource_paths}, .expectation = {.missing = 0}},
 };
 
 } // namespace

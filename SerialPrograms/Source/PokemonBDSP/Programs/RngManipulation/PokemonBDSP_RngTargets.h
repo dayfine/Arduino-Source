@@ -9,6 +9,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <string_view>
 #include "Common/Cpp/Options/EnumDropdownDatabase.h"
 #include "Pokemon/Pokemon_BdspRng.h"
 #include "PokemonBDSP_RngTimeline.h"
@@ -32,8 +33,8 @@ enum class BdspRngTarget{
 
 
 struct BdspRngTargetInfo{
-    const char* slug;
-    const char* display_name;
+    std::string_view slug;
+    std::string_view display_name;
     Pokemon::BdspStaticTemplate pokemon;
     BdspTimelineContext timeline;
     uint8_t observation_npcs;
@@ -46,7 +47,7 @@ const BdspRngTargetInfo& bdsp_rng_target_info(BdspRngTarget target);
 const EnumDropdownDatabase<BdspRngTarget>& BdspRngTarget_Database();
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

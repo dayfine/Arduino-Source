@@ -92,6 +92,12 @@ template <typename ControllerContext>
 std::string run_screen_machine(
     VideoStream& stream, ControllerContext& context,
     const std::vector<ScreenState>& states, Milliseconds timeout, StepTrace& trace
+);
+
+template <typename ControllerContext>
+std::string run_screen_machine(
+    VideoStream& stream, ControllerContext& context,
+    const std::vector<ScreenState>& states, Milliseconds timeout, StepTrace& trace
 ){
     ScreenMachineChecks checks(trace);
     const WallClock deadline = current_time() + timeout;

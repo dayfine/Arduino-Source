@@ -350,23 +350,21 @@ UnitTestResult test_story_map_lookups(Logger&){
 }
 
 
-struct StoryMapsInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct StoryMapsExpectation{
-};
-
 struct StoryMapsCase{
-    StoryMapsInput input;
-    StoryMapsExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StoryMaps : public UnitTest{
 public:
     explicit Test_StoryMaps(StoryMapsCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Maps: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Maps: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -385,26 +383,11 @@ private:
 
 
 const StoryMapsCase STORY_MAPS_CASES[] = {
-    {
-        .input = {"the built-in JSON maps load", test_story_maps_load},
-        .expectation = {},
-    },
-    {
-        .input = {"points stand where they can", test_story_map_points},
-        .expectation = {},
-    },
-    {
-        .input = {"objects stand on open ground", test_story_map_objects},
-        .expectation = {},
-    },
-    {
-        .input = {"map_point() and map_region()", test_story_map_lookups},
-        .expectation = {},
-    },
-    {
-        .input = {"Route 202's regions are what the story computed", test_route202_regions},
-        .expectation = {},
-    },
+    {.name = "the built-in JSON maps load", .input = {test_story_maps_load}, .expectation = {}},
+    {.name = "points stand where they can", .input = {test_story_map_points}, .expectation = {}},
+    {.name = "objects stand on open ground", .input = {test_story_map_objects}, .expectation = {}},
+    {.name = "map_point() and map_region()", .input = {test_story_map_lookups}, .expectation = {}},
+    {.name = "Route 202's regions are what the story computed", .input = {test_route202_regions}, .expectation = {}},
 };
 
 void add_tests_AutoStory_Maps(UnitTestDatabase& database){

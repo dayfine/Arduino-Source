@@ -17,52 +17,23 @@ namespace PokemonBDSP{
 using namespace Pokemon;
 
 
-TargetSelectionResult select_target(const TargetSearchRequest& request){
-    TargetSelectionResult result;
+namespace{
 
-    if (!request.wanted){
-        result.failure_reason = "No filter was supplied, so nothing can be searched for.";
-        return result;
-    }
-
-    BdspStaticSearcher searcher(request.state, request.pokemon, 0);
-
-    //  How many advances the scene can spend between the press and the generation
-    uint64_t lowest_span = 0;
-    uint64_t highest_span = 0;
-    schedule_span_bounds(request.timeline, request.max_schedules, lowest_span, highest_span);
-
-    int64_t last_press = (int64_t)(request.first_press + request.window_advances);
-
-    //  One sweep, walking the RNG forward rather than jumping to each advance.
-    uint64_t scan_from = (uint64_t)std::max<int64_t>(
-        0, (int64_t)request.first_press + (int64_t)lowest_span + request.bias
-    );
-    uint64_t scan_to = (uint64_t)std::max<int64_t>(
-        0, last_press + (int64_t)highest_span + request.bias
-    );
-    std::map<uint64_t, BdspPokemonResult> wanted_targets;
-    for (const BdspRngHit& hit : searcher.scan(scan_from, scan_to, request.wanted)){
-        wanted_targets.emplace(hit.advances, hit.result);
-    }
-
-    result.advances_scanned = scan_to - scan_from + 1;
-    result.matches_found = wanted_targets.size();
-
-    if (wanted_targets.empty()){
-        result.failure_reason = "no matches found within "
-            + std::to_string(result.advances_scanned) + " advances.";
-        return result;
-    }
-
-    uint8_t press_step = request.npcs == 0 ? 1 : request.npcs;
+std::set<uint64_t> collect_candidate_presses(
+    const TargetSearchRequest& request,
+    const std::map<uint64_t, BdspPokemonResult>& wanted_targets,
+    uint64_t lowest_span,
+    uint64_t highest_span,
+    int64_t last_press
+){
+    const uint8_t press_step = request.npcs == 0 ? 1 : request.npcs;
     std::set<uint64_t> candidate_presses;
     for (const auto& item : wanted_targets){
-        int64_t lowest_press = std::max(
+        const int64_t lowest_press = std::max(
             press_for_advance(item.first, highest_span, request.bias),
             (int64_t)request.first_press
         );
-        int64_t highest_press = std::min(
+        const int64_t highest_press = std::min(
             press_for_advance(item.first, lowest_span, request.bias),
             last_press
         );
@@ -73,19 +44,28 @@ TargetSelectionResult select_target(const TargetSearchRequest& request){
             candidate_presses.insert((uint64_t)press);
         }
     }
+    return candidate_presses;
+}
 
-    double seconds_per_advance = request.tick_seconds / (double)press_step;
+bool pick_earliest_schedule(
+    const TargetSearchRequest& request,
+    const std::map<uint64_t, BdspPokemonResult>& wanted_targets,
+    const std::set<uint64_t>& candidate_presses,
+    TargetSelectionResult& result
+){
+    const uint8_t press_step = request.npcs == 0 ? 1 : request.npcs;
+    const double seconds_per_advance = request.tick_seconds / (double)press_step;
     bool found = false;
     double best_seconds = 0;
     for (uint64_t press : candidate_presses){
-        double press_at_seconds = (double)(press - request.first_press) * seconds_per_advance;
+        const double press_at_seconds = (double)(press - request.first_press) * seconds_per_advance;
         if (found && press_at_seconds >= best_seconds){
             break;
         }
         for (const PressSchedule& option : schedule_presses(
             request.state, request.timeline, request.timings, press, request.max_schedules
         )){
-            auto hit = wanted_targets.find(aimed_advance(press, option.span, request.bias));
+            const auto hit = wanted_targets.find(aimed_advance(press, option.span, request.bias));
             if (hit == wanted_targets.end()){
                 continue;
             }
@@ -100,7 +80,49 @@ TargetSelectionResult select_target(const TargetSearchRequest& request){
             break;
         }
     }
-    if (!found){
+    return found;
+}
+
+} // namespace
+
+TargetSelectionResult select_target(const TargetSearchRequest& request){
+    TargetSelectionResult result;
+    if (!request.wanted){
+        result.failure_reason = "No filter was supplied, so nothing can be searched for.";
+        return result;
+    }
+
+    BdspStaticSearcher searcher(request.state, request.pokemon, 0);
+    //  How many advances the scene can spend between the press and the generation
+    uint64_t lowest_span = 0;
+    uint64_t highest_span = 0;
+    schedule_span_bounds(request.timeline, request.max_schedules, lowest_span, highest_span);
+
+    const int64_t last_press = (int64_t)(request.first_press + request.window_advances);
+    //  One sweep, walking the RNG forward rather than jumping to each advance.
+    const uint64_t scan_from = (uint64_t)std::max<int64_t>(
+        0, (int64_t)request.first_press + (int64_t)lowest_span + request.bias
+    );
+    const uint64_t scan_to = (uint64_t)std::max<int64_t>(
+        0, last_press + (int64_t)highest_span + request.bias
+    );
+    std::map<uint64_t, BdspPokemonResult> wanted_targets;
+    for (const BdspRngHit& hit : searcher.scan(scan_from, scan_to, request.wanted)){
+        wanted_targets.emplace(hit.advances, hit.result);
+    }
+
+    result.advances_scanned = scan_to - scan_from + 1;
+    result.matches_found = wanted_targets.size();
+    if (wanted_targets.empty()){
+        result.failure_reason = "no matches found within "
+            + std::to_string(result.advances_scanned) + " advances.";
+        return result;
+    }
+
+    const std::set<uint64_t> candidate_presses = collect_candidate_presses(
+        request, wanted_targets, lowest_span, highest_span, last_press
+    );
+    if (!pick_earliest_schedule(request, wanted_targets, candidate_presses, result)){
         //  Around one advance in fifty is unreachable due to rapid blinks
         result.failure_reason = std::to_string(wanted_targets.size())
             + " matching advance(s) in range, but none reachable";
@@ -117,6 +139,6 @@ TargetSelectionResult select_target(const TargetSearchRequest& request){
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

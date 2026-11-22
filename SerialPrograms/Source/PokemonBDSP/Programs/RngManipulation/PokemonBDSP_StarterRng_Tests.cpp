@@ -60,7 +60,7 @@ const std::vector<StarterTableRow> STARTER_TABLE_ROWS = {
 
 UnitTestResult test_starter_tables(Logger&){
     for (const StarterTableRow& row : STARTER_TABLE_ROWS){
-        const std::string got_slug = starter_slug(row.starter);
+        const std::string got_slug(starter_slug(row.starter));
         if (got_slug != row.slug){
             return std::format("starter_slug mismatch: got {}, expected {}", got_slug, row.slug);
         }
@@ -176,106 +176,47 @@ UnitTestResult test_shiny_unsettled(Logger&){
     return true;
 }
 
+struct TransitionRow{
+    std::string label;
+    BdspStarterAttemptResult attempt;
+    uint64_t resets_used;
+    uint16_t max_resets;
+    bool stop;
+    StarterRngOutcome outcome;
+    uint64_t expected_advance;
+    std::string expected_reason;
+};
+
+std::vector<TransitionRow> make_transition_rows(){
+    BdspPokemonResult target{};
+    target.ec = 0x12345678;
+    target.pid = 0x87654321;
+    target.nature = 3;
+    return {
+        {"miss below max_resets continues", {.outcome = BdspAttemptOutcome::Missed, .shiny = false, .target = target, .target_advance = 1500}, 1, 3, false, StarterRngOutcome::ABANDONED, 1500, ""},
+        {"non-shiny hit stops with HIT", {.outcome = BdspAttemptOutcome::Hit, .shiny = false, .target = target, .target_advance = 1505}, 2, 3, true, StarterRngOutcome::HIT, 1505, ""},
+        {"shiny hit stops with SHINY", {.outcome = BdspAttemptOutcome::Hit, .shiny = true, .target = target, .target_advance = 2048}, 1, 0, true, StarterRngOutcome::SHINY, 2048, ""},
+        {"miss at max_resets stops with OUT_OF_RESETS", {.outcome = BdspAttemptOutcome::Missed, .shiny = false, .target = target, .target_advance = 1600}, 3, 3, true, StarterRngOutcome::OUT_OF_RESETS, 1600, ""},
+        {"abandoned at max_resets stops with ABANDONED", {.outcome = BdspAttemptOutcome::Abandoned, .shiny = false, .failure_reason = "no matching target within the allowed wait time"}, 1, 1, true, StarterRngOutcome::ABANDONED, 0, "no matching target within the allowed wait time"},
+    };
+}
+
 UnitTestResult test_attempt_loop_transitions(Logger&){
-    BdspPokemonResult sample_target{};
-    sample_target.ec = 0x12345678;
-    sample_target.pid = 0x87654321;
-    sample_target.nature = 3;
-
-    //  1. Miss when below max_resets continues the loop.
-    {
+    for (const TransitionRow& row : make_transition_rows()){
         StarterRngRunResult result;
-        BdspStarterAttemptResult miss{
-            .outcome = BdspAttemptOutcome::Missed,
-            .shiny = false,
-            .target = sample_target,
-            .target_advance = 1500,
-        };
-        if (resolve_starter_rng_step(miss, 1, 3, result)){
-            return "expected loop to continue on miss 1 of 3";
+        if (resolve_starter_rng_step(row.attempt, row.resets_used, row.max_resets, result) != row.stop){
+            return std::format("{}: unexpected stop flag", row.label);
         }
-        if (result.resets_used != 1 || result.target_advance != 1500){
-            return "expected resets_used = 1 and target_advance = 1500 after miss";
+        if (result.resets_used != row.resets_used || result.target_advance != row.expected_advance){
+            return std::format("{}: unexpected resets/advance", row.label);
+        }
+        if (row.stop && result.outcome != row.outcome){
+            return std::format("{}: unexpected outcome", row.label);
+        }
+        if (!row.expected_reason.empty() && result.last_failure_reason != row.expected_reason){
+            return std::format("{}: failure_reason not preserved", row.label);
         }
     }
-
-    //  2. Non-shiny hit stops with Outcome::HIT.
-    {
-        StarterRngRunResult result;
-        BdspStarterAttemptResult hit{
-            .outcome = BdspAttemptOutcome::Hit,
-            .shiny = false,
-            .target = sample_target,
-            .target_advance = 1505,
-        };
-        if (!resolve_starter_rng_step(hit, 2, 3, result)){
-            return "expected loop to terminate on non-shiny hit";
-        }
-        if (result.outcome != StarterRngOutcome::HIT
-            || result.resets_used != 2
-            || result.target_advance != 1505
-            || result.target.pid != sample_target.pid
-        ){
-            return "unexpected result fields on non-shiny hit";
-        }
-    }
-
-    //  3. Shiny hit stops with Outcome::SHINY.
-    {
-        StarterRngRunResult result;
-        BdspStarterAttemptResult shiny_hit{
-            .outcome = BdspAttemptOutcome::Hit,
-            .shiny = true,
-            .target = sample_target,
-            .target_advance = 2048,
-        };
-        if (!resolve_starter_rng_step(shiny_hit, 1, 0, result)){
-            return "expected loop to terminate on shiny hit";
-        }
-        if (result.outcome != StarterRngOutcome::SHINY
-            || result.resets_used != 1
-            || result.target_advance != 2048
-        ){
-            return "unexpected result fields on shiny hit";
-        }
-    }
-
-    //  4. Miss reaching max_resets stops with Outcome::OUT_OF_RESETS.
-    {
-        StarterRngRunResult result;
-        BdspStarterAttemptResult miss{
-            .outcome = BdspAttemptOutcome::Missed,
-            .shiny = false,
-            .target = sample_target,
-            .target_advance = 1600,
-        };
-        if (!resolve_starter_rng_step(miss, 3, 3, result)){
-            return "expected loop to terminate when resets_used == max_resets";
-        }
-        if (result.outcome != StarterRngOutcome::OUT_OF_RESETS || result.resets_used != 3){
-            return "expected OUT_OF_RESETS on miss at reset limit";
-        }
-    }
-
-    //  5. Abandoned attempt reaching max_resets stops with Outcome::ABANDONED and preserves reason.
-    {
-        StarterRngRunResult result;
-        BdspStarterAttemptResult abandoned{
-            .outcome = BdspAttemptOutcome::Abandoned,
-            .shiny = false,
-            .failure_reason = "no matching target within the allowed wait time",
-        };
-        if (!resolve_starter_rng_step(abandoned, 1, 1, result)){
-            return "expected loop to terminate on abandoned single attempt";
-        }
-        if (result.outcome != StarterRngOutcome::ABANDONED
-            || result.resets_used != 1
-            || result.last_failure_reason != "no matching target within the allowed wait time"
-        ){
-            return "expected ABANDONED with failure_reason preserved";
-        }
-    }
-
     return true;
 }
 
@@ -315,8 +256,14 @@ UnitTestResult test_default_shiny_row(Logger&){
 
 
 struct StarterRngTestCase{
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
     std::string name;
-    std::function<UnitTestResult(Logger&)> body;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_StarterRng : public UnitTest{
@@ -328,7 +275,7 @@ public:
 
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         try{
-            return m_case.body(logger);
+            return m_case.input.body(logger);
         }catch (Exception& e){
             return std::string(e.name()) + ": " + e.message();
         }
@@ -339,12 +286,12 @@ private:
 };
 
 const StarterRngTestCase STARTER_RNG_CASES[] = {
-    {"per-starter tables and timings", test_starter_tables},
-    {"bedroom skip buffer and landing math", test_skip_buffer_and_landing_math},
-    {"aim offset and calibration bias", test_aim_and_calibration},
-    {"attempt loop outcome resolution", test_attempt_loop_transitions},
-    {"default filter row is shiny of any nature", test_default_shiny_row},
-    {"a shiny that did not settle ends the loop unsettled", test_shiny_unsettled},
+    {.name = "per-starter tables and timings", .input = {.body = test_starter_tables}, .expectation = {}},
+    {.name = "bedroom skip buffer and landing math", .input = {.body = test_skip_buffer_and_landing_math}, .expectation = {}},
+    {.name = "aim offset and calibration bias", .input = {.body = test_aim_and_calibration}, .expectation = {}},
+    {.name = "attempt loop outcome resolution", .input = {.body = test_attempt_loop_transitions}, .expectation = {}},
+    {.name = "default filter row is shiny of any nature", .input = {.body = test_default_shiny_row}, .expectation = {}},
+    {.name = "a shiny that did not settle ends the loop unsettled", .input = {.body = test_shiny_unsettled}, .expectation = {}},
 };
 
 } // namespace
@@ -357,6 +304,6 @@ void add_tests_StarterRng(UnitTestDatabase& database){
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

@@ -97,7 +97,7 @@ public:
         : m_rule(rule)
     {}
 
-    SceneMove look(const ScreenEvents& events, WallClock now, bool player_still = false);
+    SceneMove look(const ScreenEvents& events, WallClock now, bool player_still);
 
     //  Whether the warp the rule asks for has shown (true without one).
     bool warped() const;

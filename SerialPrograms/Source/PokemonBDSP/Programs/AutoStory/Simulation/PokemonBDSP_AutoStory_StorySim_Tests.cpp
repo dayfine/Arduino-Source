@@ -373,23 +373,21 @@ UnitTestResult test_door_step_settle_kind(Logger&){
     return true;
 }
 
-struct AutoStoryStorySimInput{
-    std::string name;
-    std::function<UnitTestResult(Logger&)> body;
-};
-
-struct AutoStoryStorySimExpectation{
-};
-
 struct AutoStoryStorySimCase{
-    AutoStoryStorySimInput input;
-    AutoStoryStorySimExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_AutoStoryStorySim : public UnitTest{
 public:
     explicit Test_AutoStoryStorySim(AutoStoryStorySimCase test_case)
-        : UnitTest("PokemonBDSP::AutoStory - Story sim: " + test_case.input.name)
+        : UnitTest("PokemonBDSP::AutoStory - Story sim: " + test_case.name)
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
@@ -404,68 +402,63 @@ private:
     AutoStoryStorySimCase m_case;
 };
 
+UnitTestResult test_mine_dark_frame_not_mouth(Logger& logger){
+    SimExecutor executor(logger, {.fade = {}, .banner = {}, .dark = 1});
+    run_rows_on(executor, logger, {.from = "01.03", .to = "01.03"});
+    const SimRun& run = executor.result();
+    return run.missed_step == "01.03 into_the_coal_room" && run.error.empty() ? UnitTestResult(true)
+        : UnitTestResult(std::format("dark in '{}', failed in '{}': {}", run.missed_step, run.failed_step, run.error));
+}
+
+UnitTestResult test_mine_hall_19_south(Logger& logger){
+    return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("into_the_coal_room", Direction::SOUTH), "01.03 south_to_the_rock", "warp instead of a stop.");
+}
+
+UnitTestResult test_mine_hall_19_north(Logger& logger){
+    return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 north_to_the_centers_wall", "map_mismatch");
+}
+
+UnitTestResult test_mine_coal_room_crate_cut(Logger& logger){
+    return test_story_sim_step_failure(logger, "01.03", old_coal_room_crate_cut(), "01.03 to_roarks_corner", "short_leg: south 2 moved 1");
+}
+
+UnitTestResult test_row_01_02b_barry(Logger& logger){
+    return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
+}
+
+UnitTestResult test_row_00_04b_fade_in(Logger& logger){
+    return run_rows(logger, {.from = "00.04b", .to = "00.04b"});
+}
+
+UnitTestResult test_tap_through_banner_up(Logger& logger){
+    return test_tap_through_already(logger, true);
+}
+
+UnitTestResult test_tap_through_banner_gone(Logger& logger){
+    return test_tap_through_already(logger, false);
+}
+
 } // namespace
 
 const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
-    {.input = {"the maps' coord events are on open ground or doors", test_coord_events}, .expectation = {}},
-    {.input = {"detector misses from 00.00 to 01.11", test_story_sim_misses}, .expectation = {}},
-    {.input = {"a warp's fade on the sim's frames, through the door's and the taps' watches", test_sim_fade_frames}, .expectation = {}},
-    {.input = {"00.00 to 01.11: the whole table, from the new game to Floaroma", test_story_sim_whole_table}, .expectation = {}},
-    {.input = {"each row from 00.00 to 01.11 in isolation", test_story_sim_each_row}, .expectation = {}},
-    {.input = {"a dialog pops up before every step from 00.00 to 01.11", test_dialog_between_steps}, .expectation = {}},
-    {.input = {"01.02b, Barry's lines, then the Center past his doorstep (lab-B, 2026-11-08)", [](Logger& logger){
-        return run_rows(logger, {.from = "01.02b", .to = "01.02b"});
-    }}, .expectation = {}},
-    {.input = {"r75, out of the Oreburgh Gate", test_exit_gate}, .expectation = {}},
-    {.input = {"r81, out of the Ravaged Path", test_exit_ravaged_path}, .expectation = {}},
-    {.input = {"01.05, a tap step begun through the Gate's mouth, its banner up (lab-B, 2026-11-08)", [](Logger& logger){
-        return test_tap_through_already(logger, true);
-    }}, .expectation = {}},
-    {.input = {"01.05, a tap step begun through the Gate's mouth, its banner gone (lab-B, 2026-11-08)", [](Logger& logger){
-        return test_tap_through_already(logger, false);
-    }}, .expectation = {}},
-    {
-        .input = {"01.03, a dark frame 1.8 s down the mine's entrance hall is not its mouth (lab-B, 2026-11-08)", [](Logger& logger){
-            SimExecutor executor(logger, {.fade = {}, .banner = {}, .dark = 1});
-            run_rows_on(executor, logger, {.from = "01.03", .to = "01.03"});
-            const SimRun& run = executor.result();
-            return run.missed_step == "01.03 into_the_coal_room" && run.error.empty() ? UnitTestResult(true)
-                : UnitTestResult(std::format("dark in '{}', failed in '{}': {}", run.missed_step, run.failed_step, run.error));
-        }},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03, the Center's fade unseen, the heal goes on from the counter (lab-B, 2026-11-08)", test_heal_fade_unseen},
-        .expectation = {},
-    },
-    {
-        .input = {"00.04b, the walk to the nurse waits out the Center's fade-in (lab-B, 2026-11-10)", [](Logger& logger){
-            return run_rows(logger, {.from = "00.04b", .to = "00.04b"});
-        }},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03, counted 19 taps south leaves player in hall", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("into_the_coal_room", Direction::SOUTH), "01.03 south_to_the_rock", "warp instead of a stop.");
-        }},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03, counted 19 taps north leaves player in hall", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_mine_hall_19("out_of_the_mine", Direction::NORTH), "01.03 north_to_the_centers_wall", "map_mismatch");
-        }},
-        .expectation = {},
-    },
-    {
-        .input = {"01.03, cut corner through coal room crate at col 29", [](Logger& logger){
-            return test_story_sim_step_failure(logger, "01.03", old_coal_room_crate_cut(), "01.03 to_roarks_corner", "short_leg: south 2 moved 1");
-        }},
-        .expectation = {},
-    },
-    {
-        .input = {"plain door steps settle with DOOR while arrival-scene doors keep TALK", test_door_step_settle_kind},
-        .expectation = {},
-    },
+    {.name = "the maps' coord events are on open ground or doors", .input = {test_coord_events}, .expectation = {}},
+    {.name = "detector misses from 00.00 to 01.11", .input = {test_story_sim_misses}, .expectation = {}},
+    {.name = "a warp's fade on the sim's frames, through the door's and the taps' watches", .input = {test_sim_fade_frames}, .expectation = {}},
+    {.name = "00.00 to 01.11: the whole table, from the new game to Floaroma", .input = {test_story_sim_whole_table}, .expectation = {}},
+    {.name = "each row from 00.00 to 01.11 in isolation", .input = {test_story_sim_each_row}, .expectation = {}},
+    {.name = "a dialog pops up before every step from 00.00 to 01.11", .input = {test_dialog_between_steps}, .expectation = {}},
+    {.name = "01.02b, Barry's lines, then the Center past his doorstep (lab-B, 2026-11-08)", .input = {test_row_01_02b_barry}, .expectation = {}},
+    {.name = "r75, out of the Oreburgh Gate", .input = {test_exit_gate}, .expectation = {}},
+    {.name = "r81, out of the Ravaged Path", .input = {test_exit_ravaged_path}, .expectation = {}},
+    {.name = "01.05, a tap step begun through the Gate's mouth, its banner up (lab-B, 2026-11-08)", .input = {test_tap_through_banner_up}, .expectation = {}},
+    {.name = "01.05, a tap step begun through the Gate's mouth, its banner gone (lab-B, 2026-11-08)", .input = {test_tap_through_banner_gone}, .expectation = {}},
+    {.name = "01.03, a dark frame 1.8 s down the mine's entrance hall is not its mouth (lab-B, 2026-11-08)", .input = {test_mine_dark_frame_not_mouth}, .expectation = {}},
+    {.name = "01.03, the Center's fade unseen, the heal goes on from the counter (lab-B, 2026-11-08)", .input = {test_heal_fade_unseen}, .expectation = {}},
+    {.name = "00.04b, the walk to the nurse waits out the Center's fade-in (lab-B, 2026-11-10)", .input = {test_row_00_04b_fade_in}, .expectation = {}},
+    {.name = "01.03, counted 19 taps south leaves player in hall", .input = {test_mine_hall_19_south}, .expectation = {}},
+    {.name = "01.03, counted 19 taps north leaves player in hall", .input = {test_mine_hall_19_north}, .expectation = {}},
+    {.name = "01.03, cut corner through coal room crate at col 29", .input = {test_mine_coal_room_crate_cut}, .expectation = {}},
+    {.name = "plain door steps settle with DOOR while arrival-scene doors keep TALK", .input = {test_door_step_settle_kind}, .expectation = {}},
 };
 
 void add_tests_AutoStory_StorySim(UnitTestDatabase& database){

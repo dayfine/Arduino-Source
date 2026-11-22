@@ -161,6 +161,31 @@ std::string classify_intro_screen(ConsoleHandle* console, const ImageViewRGB32& 
     return "other";
 }
 
+namespace{
+
+IntroStep decide_unknown_intro_screen(const IntroProgress& progress){
+    //  The bedroom comes only after the rival is named. Before that, every unknown
+    //  screen (logos, the title, language, the appearance preview, cutscenes)
+    //  takes A, but only for so long before a screen only BDSP shows: past that
+    //  it is another game.
+    if (progress.rival_named){
+        return progress.b_presses < INTRO_B_BEFORE_X ? IntroStep::CLEAR_WITH_B : IntroStep::PROBE_FOR_MENU;
+    }
+    if (!progress.game_confirmed && progress.unconfirmed_for >= INTRO_TIME_BEFORE_BDSP){
+        return IntroStep::FAIL_NOT_BDSP;
+    }
+    //  Between the language pick and the look pick, an unknown screen is a fade or
+    //  a cutscene frame, and the look select can show for a frame before it reads
+    //  as one (A on that frame takes look 1). Wait there; the
+    //  professor's lines are read as dialog and take their A.
+    if (!progress.language_pending && progress.look_pending){
+        return IntroStep::WAIT;
+    }
+    return IntroStep::ADVANCE;
+}
+
+} // namespace
+
 IntroStep decide_intro_step(std::string_view screen, const IntroProgress& progress){
     if (screen == "user-select"){
         return IntroStep::SELECT_USER;
@@ -196,24 +221,7 @@ IntroStep decide_intro_step(std::string_view screen, const IntroProgress& progre
     if (screen == "dialog"){
         return progress.rival_named ? IntroStep::ADVANCE_WITH_B : IntroStep::ADVANCE;
     }
-    //  The bedroom comes only after the rival is named. Before that, every unknown
-    //  screen (logos, the title, language, the appearance preview, cutscenes)
-    //  takes A, but only for so long before a screen only BDSP shows: past that
-    //  it is another game.
-    if (progress.rival_named){
-        return progress.b_presses < INTRO_B_BEFORE_X ? IntroStep::CLEAR_WITH_B : IntroStep::PROBE_FOR_MENU;
-    }
-    if (!progress.game_confirmed && progress.unconfirmed_for >= INTRO_TIME_BEFORE_BDSP){
-        return IntroStep::FAIL_NOT_BDSP;
-    }
-    //  Between the language pick and the look pick, an unknown screen is a fade or
-    //  a cutscene frame, and the look select can show for a frame before it reads
-    //  as one (A on that frame takes look 1). Wait there; the
-    //  professor's lines are read as dialog and take their A.
-    if (!progress.language_pending && progress.look_pending){
-        return IntroStep::WAIT;
-    }
-    return IntroStep::ADVANCE;
+    return decide_unknown_intro_screen(progress);
 }
 bool intro_screen_confirms_bdsp(std::string_view screen){
     return screen == "dialog" || screen == "language-select" || screen == "look-select" || screen == "rival-list-tell" || screen == "rival-list-preset" || screen == "menu";

@@ -75,7 +75,7 @@
       {
         "id": "to_route_201",
         "action": "legs",
-        "why": "run west along the path until Route 201's banner",
+        "why": "not planned: run west along the path until Route 201's banner",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -124,7 +124,7 @@
       {
         "id": "to_the_signs_row",
         "action": "legs",
-        "why": "a tap north onto the border sign's row",
+        "why": "not planned: a tap north onto the border sign's row",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -323,7 +323,7 @@
       {
         "id": "into_the_east_corner",
         "action": "legs",
-        "why": "north, east and south to the walls, into the room's east corner",
+        "why": "not planned: north, east and south to the walls, into the room's east corner",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -392,7 +392,7 @@
       {
         "id": "to_twinleafs_west_wall",
         "action": "legs",
-        "why": "west along the row to the town's west wall",
+        "why": "not planned: west along the row to the town's west wall",
         "args": {
           "fight_wild": false,
           "legs": [
