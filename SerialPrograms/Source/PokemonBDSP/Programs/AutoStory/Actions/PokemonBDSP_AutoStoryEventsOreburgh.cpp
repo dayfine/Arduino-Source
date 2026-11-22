@@ -120,28 +120,28 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
     fail_step(stream, "Oreburgh Gym: did not reach Roark.");
 }
 
-constexpr Milliseconds MINE_PACE_STEP_HOLD = 160ms;
-constexpr Milliseconds MINE_PACE_STEP_WAIT = 700ms;
+constexpr Milliseconds MINE_PACE_STEP_HOLD = 600ms;
+constexpr Milliseconds MINE_PACE_STEP_WAIT = 400ms;
 constexpr Milliseconds MINE_ENCOUNTER_TIMEOUT = 120s;
 constexpr Milliseconds MINE_BATTLE_MENU_WAIT = 15s;
 constexpr Milliseconds MINE_COLUMN_WALK_LIMIT = 15000ms;
-constexpr Milliseconds MINE_CAVERN_STEP_HOLD = 1600ms;
-constexpr size_t MINE_TRAINING_BATTLES = 4;
+constexpr Milliseconds MINE_CAVERN_STEP_HOLD = 2400ms;
+constexpr size_t MINE_TRAINING_BATTLES = 5;
 
-//  Paces one D-pad tile right/left inside OreburghMineB1F's wide cavern
-//  (columns 12..13, staying aligned with the 3-tile exit at columns 11..13)
-//  until a wild battle opens.
-void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context, bool& stepped_east){
+//  Paces north/south along column 12 in OreburghMineB1F (between the two
+//  conveyor belts, well clear of both warps) until a wild battle opens.
+void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context){
     const auto deadline = current_time() + MINE_ENCOUNTER_TIMEOUT;
+    bool go_south = true;
     while (current_time() < deadline){
-        const DpadPosition dpad = stepped_east ? DPAD_LEFT : DPAD_RIGHT;
-        stepped_east = !stepped_east;
+        const double y = go_south ? -1.0 : 1.0;
+        go_south = !go_south;
         BlackScreenWatcher black;
         BattleMenuWatcher menu(BattleType::STANDARD, COLOR_YELLOW);
         BattleDialogWatcher dialog(COLOR_YELLOW);
         const int hit = run_until<ProControllerContext>(stream, context,
-            [dpad](ProControllerContext& ctx){
-                pbf_press_dpad(ctx, dpad, MINE_PACE_STEP_HOLD, MINE_PACE_STEP_WAIT);
+            [y](ProControllerContext& ctx){
+                pbf_move_left_joystick(ctx, {0, y}, MINE_PACE_STEP_HOLD, MINE_PACE_STEP_WAIT);
             }, {{black}, {menu}, {dialog}});
         if (hit >= 0){
             BattleMenuWatcher confirm(BattleType::STANDARD);
@@ -188,19 +188,14 @@ void train_in_oreburgh_mine(VideoStream& stream, ProControllerContext& context, 
     }
     confirm_battle_overworld(stream, context, "into Oreburgh Mine");
     walk_until(stream, context, run_from_wild_battle, {0, -1}, MINE_CAVERN_STEP_HOLD, "into Oreburgh Mine cavern");
-    bool stepped_east = false;
     for (size_t done = 0; done < battles; done++){
-        pace_for_mine_encounter(stream, context, stepped_east);
+        pace_for_mine_encounter(stream, context);
         fight_wild_battle(stream, context, "Oreburgh Mine training");
         if (in_pokemon_center(stream)){
             stream.log("[01.04] Fainted during Oreburgh Mine training; back at the Center with XP kept.", COLOR_ORANGE);
             walk_out_of_center(stream, context, "Oreburgh");
             return;
         }
-    }
-    if (stepped_east){
-        pbf_press_dpad(context, DPAD_LEFT, MINE_PACE_STEP_HOLD, MINE_PACE_STEP_WAIT);
-        context.wait_for_all_requests();
     }
     exit_mine_to_oreburgh_center(stream, context);
 }
