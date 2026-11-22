@@ -269,10 +269,10 @@ void start_or_stop_program(ProgramSession& program_session){
     std::string error;
     switch (program_session.current_state()){
     case ProgramState::STOPPED:
-        error = program_session.start_program();
+        error = program_session.start_program(ActionSource::UI, std::nullopt);
         break;
     case ProgramState::RUNNING:
-        error = program_session.stop_program();
+        error = program_session.stop_program(ActionSource::UI, std::nullopt);
         break;
     default:;
     }

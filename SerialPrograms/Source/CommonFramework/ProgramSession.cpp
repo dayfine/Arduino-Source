@@ -43,6 +43,20 @@ ProgramSession::RunningProgramScope::RunningProgramScope(ProgramSession& session
     }
     session.m_scope = &m_scope;
 }
+ProgramSession::RunningProgramScope::RunningProgramScope(ProgramSession& session, CancellableScope& parent)
+    : m_session(session)
+    , m_scope(parent)
+{
+    std::lock_guard<Mutex> lg(session.m_lock);
+    const ProgramState state = session.current_state();
+    if (state != ProgramState::STOPPED){
+        throw UserSetupError(session.m_logger, "Stop the program before checking it.");
+    }
+    if (session.m_scope != nullptr){
+        throw UserSetupError(session.m_logger, "The program is already running its start checks.");
+    }
+    session.m_scope = &m_scope;
+}
 ProgramSession::RunningProgramScope::~RunningProgramScope(){
     {
         std::lock_guard<Mutex> lg(m_session.m_lock);
@@ -94,6 +108,56 @@ void ProgramSession::join_program_thread() noexcept{
 
 const std::string& ProgramSession::identifier() const{
     return m_descriptor.identifier();
+}
+std::optional<std::vector<PrecheckSummary>> ProgramSession::Prechecks::summaries() const{
+    if (m_session.m_instance == nullptr){
+        return std::nullopt;
+    }
+    return m_session.m_instance->precheck_summaries();
+}
+PrecheckOnlyRun ProgramSession::Prechecks::run_only(
+    const JsonValue& candidate, CancellableScope& parent, const OptionsThreadCall& on_options_thread
+){
+    if (m_session.m_instance == nullptr){
+        throw InternalProgramError(&m_session.m_logger, PA_CURRENT_FUNCTION, "The program has no instance.");
+    }
+    RunningProgramScope running_scope(m_session, parent);
+
+    //  A local class has the access of this function: make_env() and
+    //  internal_run_prechecks().
+    class SessionTarget : public PrecheckOnlyTarget{
+    public:
+        explicit SessionTarget(ProgramSession& session) : m_session(session) {}
+        virtual JsonValue options() const override{
+            return m_session.m_instance->to_json();
+        }
+        virtual void load_options(const JsonValue& options) override{
+            m_session.m_instance->load_json(options);
+        }
+        virtual std::string check_validity() const override{
+            return m_session.m_instance->check_validity();
+        }
+        virtual std::optional<std::vector<PrecheckReport>> run_checks() override{
+            if (!m_session.m_instance->precheck_summaries()){
+                return std::nullopt;
+            }
+            const ProgramInfo program_info(
+                m_session.identifier(),
+                m_session.m_descriptor.category(),
+                m_session.m_descriptor.display_name(),
+                current_time()
+            );
+            std::unique_ptr<ProgramEnvironment> env = m_session.make_env(program_info);
+            return m_session.internal_run_prechecks(*env);
+        }
+    private:
+        ProgramSession& m_session;
+    };
+    SessionTarget target(m_session);
+    return run_prechecks_only(candidate, on_options_thread, target, m_session.m_logger);
+}
+std::optional<std::vector<PrecheckReport>> ProgramSession::internal_run_prechecks(ProgramEnvironment&){
+    return std::nullopt;
 }
 std::string ProgramSession::current_stats() const{
     std::lock_guard<Mutex> lg(m_lock);
@@ -177,6 +241,15 @@ void ProgramSession::set_state(ProgramState state){
     m_state.store(state, std::memory_order_relaxed);
     m_listeners.run_method(&Listener::state_change, state);
 }
+void ProgramSession::mark_started(ActionSource source, std::optional<std::string> request_id){
+    const WallClock now = current_time();
+    m_last_state_change.store(now, std::memory_order_relaxed);
+    m_transitions.started(source, std::move(request_id), now);
+}
+void ProgramSession::set_finished(){
+    m_transitions.finished(current_time());
+    set_state(ProgramState::STOPPED);
+}
 void ProgramSession::push_stats(){
     m_listeners.run_method(
         &Listener::stats_update,
@@ -185,6 +258,7 @@ void ProgramSession::push_stats(){
     );
 }
 void ProgramSession::push_error(const std::string& message){
+    m_transitions.error_reported();
     m_listeners.run_method(&Listener::error, message);
 }
 
@@ -227,7 +301,7 @@ void ProgramSession::update_historical_stats_with_current(){
 }
 
 
-std::string ProgramSession::start_program(){
+std::string ProgramSession::start_program(ActionSource source, std::optional<std::string> request_id){
     m_logger.log("Received Program Start Request");
     std::lock_guard<Mutex> lg(m_lock);
 
@@ -238,7 +312,7 @@ std::string ProgramSession::start_program(){
         return "Program is not ready.";
 
     case ProgramState::STOPPED:{
-        std::string error = check_validity();
+        std::string error = m_scope != nullptr ? "Program is running its start checks." : check_validity();
         if (!error.empty()){
             m_logger.log(error, COLOR_RED);
             return error;
@@ -249,7 +323,7 @@ std::string ProgramSession::start_program(){
 
         //  Now start the program.
         m_logger.log("Starting program...");
-        m_last_state_change.store(current_time(), std::memory_order_relaxed);
+        mark_started(source, std::move(request_id));
         set_state(ProgramState::RUNNING);
         m_program_thread = GlobalThreadPools::unlimited_realtime().dispatch_now_blocking(
             [this]{
@@ -284,7 +358,7 @@ std::string ProgramSession::start_program(){
         "Invalid State: " + std::to_string((int)state)
     );
 }
-std::string ProgramSession::stop_program(){
+std::string ProgramSession::stop_program(ActionSource source, std::optional<std::string> request_id){
     m_logger.log("Received Stop Request");
     {
         std::lock_guard<Mutex> lg(m_lock);
@@ -299,6 +373,7 @@ std::string ProgramSession::stop_program(){
             return "Program is already stopped.";
         case ProgramState::RUNNING:
             m_logger.log("Stopping program...");
+            m_transitions.stop_requested(source, std::move(request_id), current_time());
             set_state(ProgramState::STOPPING);
             break;
         case ProgramState::STOPPING:
@@ -449,7 +524,7 @@ void ProgramSession::run_program(){
         std::lock_guard<Mutex> lg(m_lock);
         push_stats();
         update_historical_stats_with_current();
-        set_state(ProgramState::STOPPED);
+        set_finished();
     }
 }
 

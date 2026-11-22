@@ -17,6 +17,7 @@ enum class ControllerInterface{
     SerialPABotBase2,
     TcpSysbotBase,
 //    UsbSysbotBase,
+    MgbaLink,   //  Developer mode only (fork lab tooling).
 };
 
 enum class ControllerPerformanceClass{

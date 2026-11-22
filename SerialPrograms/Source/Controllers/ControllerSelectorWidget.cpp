@@ -10,7 +10,9 @@
 #include <QMessageBox>
 #include "Common/Qt/NoWheelComboBox.h"
 #include "CommonFramework/Panels/ConsoleSettingsStretch.h"
+#include "CommonFramework/StaticGlobals.h"
 #include "Controllers/ControllerTypeStrings.h"
+#include "Controllers/MgbaLink/MgbaLink_SharedLink.h"
 #include "ControllerSelectorWidget.h"
 
 //#include <iostream>
@@ -21,6 +23,23 @@ namespace PokemonAutomation{
 
 template class RegisterUiStateQtWidget<ControllerSelectorWidget>;
 
+
+namespace{
+
+//  The interfaces the dropdown offers; mGBA Link only in Developer mode.
+std::vector<ControllerInterface> supported_interfaces(){
+    std::vector<ControllerInterface> interfaces{
+        ControllerInterface::SerialPABotBase2,
+        ControllerInterface::TcpSysbotBase,
+//        ControllerInterface::UsbSysbotBase,
+    };
+    if (STATIC_GLOBALS.DEVELOPER_MODE || MgbaLink::lab_opt_in()){
+        interfaces.emplace_back(ControllerInterface::MgbaLink);
+    }
+    return interfaces;
+}
+
+}  // namespace
 
 
 
@@ -81,12 +100,7 @@ ControllerSelectorWidget::ControllerSelectorWidget(
     m_dropdowns->addWidget(m_interface_dropdown);
 
 
-    //  Add all the supported interfaces.
-    {
-        m_interface_list.emplace_back(ControllerInterface::SerialPABotBase2);
-        m_interface_list.emplace_back(ControllerInterface::TcpSysbotBase);
-//        m_interface_list.emplace_back(ControllerInterface::UsbSysbotBase);
-    }
+    m_interface_list = supported_interfaces();
 
 
     for (ControllerInterface item : m_interface_list){

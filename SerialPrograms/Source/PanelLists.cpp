@@ -7,24 +7,11 @@
 #include <QStandardItemModel>
 #include <QVBoxLayout>
 #include "Common/Qt/NoWheelComboBox.h"
-#include "CommonFramework/StaticGlobals.h"
 #include "CommonFramework/PersistentSettings.h"
 #include "CommonFramework/ImageTypes/ImageRGB32_Qt.h"
 #include "CommonFramework/Windows/DpiScaler.h"
 #include "CommonFramework/Panels/UI/PanelListWidget.h"
-#include "ML/ML_Panels.h"
-#include "NintendoSwitch/NintendoSwitch_Panels.h"
-#include "VideoGames/PokemonSwSh/PokemonSwSh_Panels.h"
-#include "VideoGames/PokemonHome/PokemonHome_Panels.h"
-#include "PokemonBDSP/PokemonBDSP_Panels.h"
-#include "VideoGames/PokemonFRLG/PokemonFRLG_Panels.h"
-#include "VideoGames/PokemonLA/PokemonLA_Panels.h"
-#include "VideoGames/PokemonLGPE/PokemonLGPE_Panels.h"
-#include "VideoGames/PokemonRSE/PokemonRSE_Panels.h"
-#include "VideoGames/PokemonSV/PokemonSV_Panels.h"
-#include "VideoGames/PokemonLZA/PokemonLZA_Panels.h"
-#include "VideoGames/PokemonPokopia/PokemonPokopia_Panels.h"
-#include "VideoGames/ZeldaTotK/ZeldaTotK_Panels.h"
+#include "PanelCatalog.h"
 #include "PanelLists.h"
 
 //#include <iostream>
@@ -59,24 +46,8 @@ ProgramSelect::ProgramSelect(QWidget& parent, PanelHolder& holder)
     layout->addWidget(m_dropdown);
 
 
-    add(std::make_unique<NintendoSwitch::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonHome::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonLGPE::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonSwSh::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonBDSP::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonLA::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonSV::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonLZA::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonFRLG::PanelListFactory>());
-    add(std::make_unique<NintendoSwitch::PokemonPokopia::PanelListFactory>());
-    if (STATIC_GLOBALS.DEVELOPER_MODE){
-        add(std::make_unique<NintendoSwitch::PokemonRSE::PanelListFactory>());
-    }
-
-    add(std::make_unique<NintendoSwitch::ZeldaTotK::PanelListFactory>());
-
-    if (STATIC_GLOBALS.DEVELOPER_MODE){
-        add(std::make_unique<ML::PanelListFactory>());
+    for (std::unique_ptr<PanelListDescriptor>& list : make_all_panel_lists()){
+        add(std::move(list));
     }
 
 
@@ -118,8 +89,9 @@ void ProgramSelect::add(std::unique_ptr<PanelListDescriptor> list){
     m_lists.emplace_back(std::move(list));
     const PanelListDescriptor& back = *m_lists.back();
     if (!m_tab_map.emplace(back.name(), index).second){
+        const std::string name = back.name();
         m_lists.pop_back();
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Duplicate Category Name: " + back.name());
+        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Duplicate Category Name: " + name);
     }
     if (!back.enabled()){
         auto* model = qobject_cast<QStandardItemModel*>(m_dropdown->model());
@@ -149,6 +121,19 @@ void ProgramSelect::load_persistent_panel(){
     if (str != nullptr){
         m_active_list->set_panel(*str);
     }
+}
+
+std::string ProgramSelect::select_program(const std::string& identifier){
+    const std::optional<PanelMatch> match = find_panel(m_lists, identifier);
+    if (!match){
+        return "No program with identifier \"" + identifier + "\".";
+    }
+    if (m_locked){
+        return "A program is running.";
+    }
+    change_list((int)match->category_index);
+    m_active_list->set_panel(match->entry.display_name);
+    return "";
 }
 
 void ProgramSelect::change_list(int index){

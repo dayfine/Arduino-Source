@@ -110,6 +110,10 @@ void ConsoleProgramSession::internal_run_program(ProgramEnvironment& env){
     instance.program(lenv, *m_scope);
     lenv.console().wait_for_all_controllers();
 }
+std::optional<std::vector<PrecheckReport>> ConsoleProgramSession::internal_run_prechecks(ProgramEnvironment& env){
+    ConsoleProgramInstance& instance = static_cast<ConsoleProgramInstance&>(*m_instance);
+    return instance.run_prechecks(static_cast<ConsoleProgramEnvironment&>(env), *m_scope);
+}
 
 
 

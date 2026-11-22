@@ -107,6 +107,10 @@ std::string ConsoleSystemSession::status() const{
     std::lock_guard<Mutex> lg(m_lock);
     return m_status_text;
 }
+std::optional<WallClock> last_user_input(const ConsoleSystemSession& session){
+    std::lock_guard<Mutex> lg(session.m_lock);
+    return session.m_last_user_input;
+}
 
 
 JsonValue ConsoleSystemSession::to_json() const{
@@ -250,6 +254,9 @@ void ConsoleSystemSession::run_controller_input(ControllerInputState& state){
     }
 
 //    cout << "ConsoleSystemSession::run_controller_input()" << endl;
+    if (!state.is_neutral()){
+        m_last_user_input = current_time();
+    }
     for (ControllerEntry& controller : m_controllers){
         std::string error = controller.session.try_run<AbstractController>([&](AbstractController& controller){
             controller.run_controller_input(state);

@@ -86,6 +86,11 @@ void ConsoleProgramInstance::run_start_program_checks(
     ConsoleProgramEnvironment& lenv = dynamic_cast<ConsoleProgramEnvironment&>(env);
     start_program_feedback_check(ldescriptor, lenv.console());
 }
+std::optional<std::vector<PrecheckReport>> ConsoleProgramInstance::run_prechecks(
+    ConsoleProgramEnvironment&, CancellableScope&
+){
+    return std::nullopt;
+}
 void ConsoleProgramInstance::start_program_feedback_check(
     const ConsoleProgramDescriptor& descriptor,
     VideoStream& stream

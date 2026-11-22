@@ -7,6 +7,9 @@
 #ifndef PokemonAutomation_CommonFramework_ProgramDescriptor_H
 #define PokemonAutomation_CommonFramework_ProgramDescriptor_H
 
+#include <optional>
+#include <string>
+#include <vector>
 #include "Common/Cpp/Options/BatchOption.h"
 #include "CommonFramework/Notifications/EventNotificationOption.h"
 #include "PanelDescriptor.h"
@@ -28,6 +31,30 @@ enum class ProgramControllerClass{
 enum class AllowCommandsWhenRunning{
     DISABLE_COMMANDS,
     ENABLE_COMMANDS,
+};
+
+//  One check a program runs before it starts, as it is listed without
+//  running it: its stable name (e.g. "free_party_slots"), one line saying
+//  what the program needs, and whether the user can turn it off.
+struct PrecheckSummary{
+    std::string name;
+    std::string needs;
+    bool skippable = false;
+};
+
+//  How one precheck ended in a checks-only run.
+enum class PrecheckReportStatus{
+    PASSED,
+    FAILED,
+    SKIPPED,
+};
+
+//  What one precheck found in a checks-only run. On FAILED, the message
+//  tells the user what to fix.
+struct PrecheckReport{
+    std::string name = {};
+    PrecheckReportStatus status = PrecheckReportStatus::PASSED;
+    std::string message = {};
 };
 
 
@@ -86,6 +113,12 @@ public:
         const ProgramDescriptor& descriptor,
         ProgramEnvironment& env
     ){}
+
+    //  The program's prechecks in the order it runs them, or nothing when it
+    //  declares no precheck list. Never touches the console.
+    virtual std::optional<std::vector<PrecheckSummary>> precheck_summaries() const{
+        return std::nullopt;
+    }
 
 protected:
     BatchOption m_options;
