@@ -96,9 +96,10 @@ private:
     //  The overworld read since A at the PC, while the PC boots.
     size_t m_booting_reads = 0;
     bool m_transferred = false;
-    //  BOX_GRID box-switch state for WITHDRAW to box > 0:
-    //  0 = not started, 1..box = pressing RIGHT on header, box+1 = DOWN to grid, box+2 = done.
+    //  BOX_GRID box-switch state for WITHDRAW when switching boxes on the header.
     size_t m_box_switch_step = 0;
+    bool m_box_slide_wait = false;
+    bool m_tried_header_up = false;
     //  BOX_CHOOSER opens on BOX 1 each time the PC is entered.
     bool m_chooser_seen = false;
     size_t m_others_in_a_row = 0;
