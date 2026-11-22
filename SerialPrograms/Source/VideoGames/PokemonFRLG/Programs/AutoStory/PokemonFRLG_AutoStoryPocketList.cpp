@@ -42,16 +42,26 @@ PocketRead read_whole_pocket(PocketList& list){
         list.cursor_down();
         read.downs++;
     }
+    int same_in_a_row = 0;
     while (!end && reads.size() < MAX_POCKET_ROWS){
         list.cursor_down();
         read.downs++;
         std::optional<BagRow> row = list.read_shown(ITEM_LIST_ROWS - 1);
-        //  The same row again: the list stopped scrolling, its CANCEL unread.
+        //  Two consecutive identical bottom rows: the list stopped scrolling,
+        //  its CANCEL unread. Requiring two tolerates a single dropped DOWN
+        //  (e.g. Lorelei turn 11 re-read, 2026-11-22) without truncating the
+        //  pocket and wiping the remaining items.
         const bool same = row && row->item == reads.back().item && row->count == reads.back().count;
         if (row && row->item == "cancel"){
             read.saw_cancel = true;
         }
-        end = !row || row->item == "cancel" || same;
+        if (same){
+            same_in_a_row++;
+            end = same_in_a_row >= 2;
+            continue;
+        }
+        same_in_a_row = 0;
+        end = !row || row->item == "cancel";
         if (!end){
             reads.push_back(std::move(*row));
         }
