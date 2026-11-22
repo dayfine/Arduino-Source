@@ -27,6 +27,7 @@
 #include "PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_OverworldSimField.h"
 #include "PokemonFRLG_OverworldSpin.h"
+#include "PokemonFRLG_OverworldStepChecks.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -452,17 +453,14 @@ UnitTestResult test_short_leg_then_sign(){
         leg(Direction::SOUTH, 5, c.goal, true),
     };
     c.script.short_holds[1] = 2;
+    //  ViridianForest row 28 is plain safe ground, so the open leg is trusted
+    //  even with OpenLegCheck::REANCHOR: the sign stops the south hold at its
+    //  second read and places the player.
     const SimRun now = run_case(c);
-    if (!arrived(now, c.goal) || now.state.signs_read != 0){
-        return "Expected the player found at walls after the short leg, and the route walked:" + describe(now);
+    if (!arrived(now, c.goal) || now.state.signs_read != 2){
+        return "Expected the safe open leg trusted and the player placed by the sign at its second read:" + describe(now);
     }
-    SimCase trusted = c;
-    trusted.open_leg_check = OpenLegCheck::TRUST;
-    const SimRun blocked = run_case(trusted);
-    if (!arrived(blocked, c.goal) || blocked.state.signs_read != 2){
-        return "Expected the player placed by the sign at its second read without the check:" + describe(blocked);
-    }
-    SimCase unbounded = trusted;
+    SimCase unbounded = c;
     unbounded.rules.stop_if_blocked = false;
     const SimRun old = run_case(unbounded);
     if (!stopped_with(old, "Interrupted 6 times") || old.state.signs_read != 6){
@@ -530,15 +528,10 @@ UnitTestResult test_short_leg_unseen(){
         leg(Direction::SOUTH, 5, c.goal, true),
     };
     c.script.short_holds[1] = 1;
+    //  ViridianForest row 28 is plain safe ground, so the open leg is trusted.
     const SimRun now = run_case(c);
-    if (!arrived(now, c.goal)){
-        return "Expected the player found at walls after the short leg, and the route walked:" + describe(now);
-    }
-    SimCase trusted = c;
-    trusted.open_leg_check = OpenLegCheck::TRUST;
-    const SimRun old = run_case(trusted);
-    if (!old.failure.empty() || !(old.state.position == at("ViridianForest", 8, 33))){
-        return "Expected the walk claimed done on (8, 33) without the check:" + describe(old);
+    if (!now.failure.empty() || !(now.state.position == at("ViridianForest", 8, 33))){
+        return "Expected the safe open leg trusted and the walk claimed done on (8, 33):" + describe(now);
     }
     return true;
 }
@@ -1008,6 +1001,108 @@ UnitTestResult test_route6_to_vermilion_center(){
     return true;
 }
 
+
+UnitTestResult test_open_leg_safety_rules(){
+    //  1. Plain safe open leg on CeruleanCity (no grass, wild, special, or map boundary).
+    const MapPosition safe_start = at("CeruleanCity", 27, 2);
+    const RouteStep safe_step = leg(Direction::SOUTH, 15, at("CeruleanCity", 27, 17), false);
+    if (open_leg_needs_reanchor(maps(), safe_start, safe_step)){
+        return "Expected plain safe open leg on CeruleanCity to not need reanchor.";
+    }
+    const SimCase safe_case{.start = safe_start, .facing = Direction::SOUTH, .goal = at("CeruleanCity", 25, 17)};
+    const SimRun safe_run = run_case(safe_case);
+    if (!arrived(safe_run, safe_case.goal)){
+        return "Expected safe route to (25, 17) to arrive:" + describe(safe_run);
+    }
+    const bool reanchored_safe = std::any_of(safe_run.log.begin(), safe_run.log.end(), [](const std::string& line){
+        return line.find("finding the player at walls") != std::string::npos;
+    });
+    if (reanchored_safe){
+        return "Expected plain safe open leg to be trusted without reanchor:" + describe(safe_run);
+    }
+
+    //  2. Cave / WILD_REGION open leg (MtMoon_B2F).
+    const RouteStep cave_step = leg(Direction::EAST, 3, at("MtMoon_B2F", 11, 38), false);
+    if (!open_leg_needs_reanchor(maps(), at("MtMoon_B2F", 8, 38), cave_step)){
+        return "Expected cave/wild open leg on MtMoon_B2F to need reanchor.";
+    }
+
+    //  3. Grass open leg (synthetic map with TALL_GRASS).
+    const MapData grass_map = parse_map(R"({
+        "name": "GrassTest", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-21"},
+        "tiles": ["######", "#.~~.#", "######"]
+    })", "GrassTest");
+    const RouteStep grass_step = leg(Direction::EAST, 3, at("GrassTest", 4, 1), false);
+    if (!open_leg_needs_reanchor({grass_map}, at("GrassTest", 1, 1), grass_step)){
+        return "Expected grass open leg to need reanchor.";
+    }
+
+    //  4. Special tiles: warp (SilphCo_7F step_on warp), ledge, spin, surf.
+    const RouteStep warp_step = leg(Direction::WEST, 2, at("SilphCo_7F", 3, 4), false);
+    if (!open_leg_needs_reanchor(maps(), at("SilphCo_7F", 5, 4), warp_step)){
+        return "Expected open leg touching a warp tile to need reanchor.";
+    }
+    const MapData ledge_map = parse_map(R"({
+        "name": "LedgeTest", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-21"},
+        "tiles": ["#####", "#.#.#", "#.v.#", "#.#.#", "#####"]
+    })", "LedgeTest");
+    if (!open_leg_needs_reanchor({ledge_map}, at("LedgeTest", 2, 1), leg(Direction::SOUTH, 2, at("LedgeTest", 2, 3), false))){
+        return "Expected open leg crossing a ledge tile to need reanchor.";
+    }
+    const MapData spin_map = parse_map(R"({
+        "name": "SpinTest", "source": {"decomp_file": "", "revision": "test", "date": "2026-11-21"},
+        "tiles": ["######", "#.ro.#", "######"]
+    })", "SpinTest");
+    if (!open_leg_needs_reanchor({spin_map}, at("SpinTest", 1, 1), leg(Direction::EAST, 3, at("SpinTest", 4, 1), false))){
+        return "Expected open leg crossing a spin tile to need reanchor.";
+    }
+    RouteStep surf_step = leg(Direction::EAST, 2, at("Route24", 8, 18), false);
+    surf_step.surfing = true;
+    if (!open_leg_needs_reanchor(maps(), at("Route24", 6, 18), surf_step)){
+        return "Expected surfing open leg to need reanchor.";
+    }
+
+    //  5. Map boundary open leg.
+    const RouteStep boundary_step = leg(Direction::WEST, 50, at("Route24", 15, 11), false);
+    if (!open_leg_needs_reanchor(maps(), at("Route25", 41, 11), boundary_step)){
+        return "Expected map-boundary open leg to need reanchor.";
+    }
+    return true;
+}
+
+UnitTestResult test_cerulean_center_ledge(){
+    const MapPosition start = at("CeruleanCity", 27, 2);
+    const MapPosition above = at("CeruleanCity", 25, 17);
+    const MapPosition below = at("CeruleanCity", 25, 19);
+    const MapPosition nurse = at("CeruleanCity_PokemonCenter_1F", 7, 4);
+    const auto to_ledge = plan_overworld_route(maps(), start, RouteGoal{above, Direction::SOUTH}, default_route_costs(), Direction::SOUTH);
+    const auto to_nurse = plan_overworld_route(maps(), below, RouteGoal{nurse, Direction::NORTH}, default_route_costs(), Direction::SOUTH);
+    if (!to_ledge || !to_nurse){
+        return "Expected routes for Cerulean (25, 18) ledge to plan.";
+    }
+    OverworldSim sim(maps(), start, Direction::SOUTH);
+    OverworldSimWalker walker(sim);
+    const RoutePlanning p1{.maps = &maps(), .costs = default_route_costs(), .start = start, .label = "above_center_ledge"};
+    if (const std::string err = walker.run(*to_ledge, p1, Direction::SOUTH); !err.empty()){
+        return "above_center_ledge failed: " + err;
+    }
+    if (!(sim.state().position == above) || sim.state().facing != Direction::SOUTH){
+        return "Expected CeruleanCity (25, 17) facing south.";
+    }
+    sim.tap(Direction::SOUTH, MovementMechanics::TILE_TIME);
+    if (!(sim.state().position == below)){
+        return "Expected step south over (25, 18) ledge to land on (25, 19), got " + to_string(sim.state().position);
+    }
+    const RoutePlanning p2{.maps = &maps(), .costs = default_route_costs(), .start = below, .label = "cerulean_nurse"};
+    if (const std::string err = walker.run(*to_nurse, p2, Direction::SOUTH); !err.empty()){
+        return "cerulean_nurse failed: " + err;
+    }
+    if (!(sim.state().position == nurse) || sim.state().facing != Direction::NORTH){
+        return "Expected arrival at CeruleanCity_PokemonCenter_1F (7, 4) facing north.";
+    }
+    return true;
+}
+
 const OverworldSimCase OVERWORLD_SIM_CASES[] = {
     {.input = {"the forest's north gate: no fade or black read as a battle", test_forest_north_gate}, .expectation = {},},
     {.input = {"a battle on a leg onto a warp", test_battle_on_warp_leg}, .expectation = {},},
@@ -1037,6 +1132,8 @@ const OverworldSimCase OVERWORLD_SIM_CASES[] = {
     {.input = {"Cerulean Gym: the straight ways meet Luis and Diana", test_cerulean_gym_lines}, .expectation = {},},
     {.input = {"Cerulean: the Center to the rival's row and Nugget Bridge", test_cerulean_to_bridge}, .expectation = {},},
     {.input = {"Nugget Bridge: each trainer met on the step onto their row", test_nugget_bridge_legs}, .expectation = {},},    {.input = {"Route 6 into Vermilion's Pokemon Center, the crossing stalled or not", test_route6_to_vermilion_center}, .expectation = {}},
+    {.input = {"open leg safety rules: safe ground trusted, grass/cave/special/boundary reanchored", test_open_leg_safety_rules}, .expectation = {}},
+    {.input = {"05.08 Cerulean (25, 18) ledge hop to Pokemon Center", test_cerulean_center_ledge}, .expectation = {}},
 };
 
 //  A walk across a trainer's sight on the sim, with the trainers it says

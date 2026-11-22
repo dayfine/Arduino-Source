@@ -296,7 +296,10 @@ public:
             step.extra_cost += route_cost(m_costs, RouteCost::GRASS_TILE);
             step.wild = true;
         }
-        if (step.next.state.surfing){
+        if (is_tall_grass(m_maps[state.map], state.state.position)){
+            step.wild = true;
+        }
+        if (step.next.state.surfing || state.state.surfing){
             step.wild = true;
         }
         if (seen_by_trainer(step.next)){

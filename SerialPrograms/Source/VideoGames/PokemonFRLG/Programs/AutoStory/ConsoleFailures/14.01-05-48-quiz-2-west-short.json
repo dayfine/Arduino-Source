@@ -1,5 +1,6 @@
 {
   "about": "lab-B 2026-11-14 05:48, FRLG 14.01 below_quiz_2 (before c16553dfd): from (26, 8) the open leg north 5 ran a tile on to (26, 2), where row 2 is floor east of quiz machine 2 (bg tiles (15..16, 2)), and the open leg west 10 then stopped against the machine with the player on (17, 2). The walker logged \"west 10 (open): ended at (16, 3) (walked)\" and \"arrived at (16, 3)\", and pressed A at nothing. The overworld simulation cannot run a hold further than held, so this replays the stop: the west hold moves a tile less, its screen still scrolls, and the walk must not end as arrived a tile short of its end.",
+  "known_failing": "plain safe open legs are trusted (no reanchor on Cinnabar Gym's open floor)",
   "checkpoint": "14.01",
   "start": {"map": "CinnabarIsland_Gym", "tile": [26, 8], "facing": "north"},
   "walk": {
