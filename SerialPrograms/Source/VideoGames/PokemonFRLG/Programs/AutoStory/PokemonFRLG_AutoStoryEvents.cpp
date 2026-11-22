@@ -949,7 +949,7 @@ std::optional<StoryFailure> StoryExecutor::run_step(
     for (const std::string& flag : step.flags_after){
         state.flags.insert(flag);
     }
-    if (step.once_per_save && !state.changed_nothing){
+    if (step.once_per_save && state.changed_nothing){
         m_env.prepared.insert(prep_key);
     }
     return std::nullopt;
