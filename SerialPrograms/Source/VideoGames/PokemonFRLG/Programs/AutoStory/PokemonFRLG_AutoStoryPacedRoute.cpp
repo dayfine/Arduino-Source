@@ -36,6 +36,11 @@ std::vector<MapData> make_story_maps(bool silph_cleared){
     //  it does (10.01 goes north by the Cut tree), and 11.01 walks up to
     //  it from the east.
     flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
+    //  Route 24's Nugget Bridge Rocket (12, 15), gone once 05.05 beats him.
+    //  No route before 05.05 steps onto (12, 15) (they stay on column 11);
+    //  leaving him in makes 05.09's east leg treat (12, 15) as a wall and
+    //  overshoot onto column 12 into Camper Ethan (12, 19).
+    flags.insert("FLAG_HIDE_NUGGET_BRIDGE_ROCKET");
     if (silph_cleared){
         //  Giovanni's Rockets leave Silph Co. and Saffron City when he has
         //  lost on 11F (SilphCo_11F_EventScript_Giovanni sets both).
