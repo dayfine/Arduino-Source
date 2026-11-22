@@ -46,6 +46,10 @@ std::vector<MapData> make_story_maps(bool silph_cleared){
     //  09.02/beside_giovanni mark east 2 to (19, 5) as to_wall, so the wall-
     //  check tap steps east onto (20, 5) past Giovanni.
     flags.insert("FLAG_HIDE_SILPH_SCOPE");
+    //  Silph Co. 7F's Rival (2, 6), gone once 16.03 beats him. Leaving him in
+    //  makes 16.03b/to_lapras_guy bounce south 1 (to wall) -> (2, 5) off his
+    //  vacated tile and overshoot to the bottom wall at row 9.
+    flags.insert("FLAG_HIDE_SILPH_RIVAL");
     if (silph_cleared){
         //  Giovanni's Rockets leave Silph Co. and Saffron City when he has
         //  lost on 11F (SilphCo_11F_EventScript_Giovanni sets both).
