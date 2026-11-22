@@ -30,6 +30,7 @@
 #include "PokemonBDSP_AutoStoryBag.h"
 #include "PokemonBDSP_AutoStoryBattleMoves.h"
 #include "PokemonBDSP_AutoStoryTalkOver.h"
+#include "PokemonBDSP_AutoStoryWildBattle.h"
 #include "PokemonBDSP_AutoStoryBattle.h"
 
 namespace PokemonAutomation{
@@ -250,6 +251,9 @@ struct BestMoveBattle{
     //  After a faint the game shows the party: send out the next Pokemon.
     //  Without, a quiet two minutes is a timeout.
     bool switch_on_faint = false;
+    //  In wild training: if the lead faints and a backup switches in, flee
+    //  at the battle menu instead of fighting on with the backup.
+    bool flee_after_faint = false;
 };
 
 //  What a battle has done so far, across turns.
@@ -349,7 +353,8 @@ int wait_for_battle_screen(
 }
 
 //  Fights the battle on screen to its end and the overworld after it.
-void fight_with_best_move(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
+//  Returns false if the lead fainted and fled (flee_after_faint).
+bool fight_with_best_move(VideoStream& stream, ProControllerContext& context, const BestMoveBattle& battle, const std::string& label){
     stream.log("[AutoStory] Starting " + label + " battle...", COLOR_BLUE);
     // Preserve the existing early-game transition delay.
     pbf_wait(context, 5000ms);
@@ -358,10 +363,15 @@ void fight_with_best_move(VideoStream& stream, ProControllerContext& context, co
     while (true){
         const int ret = wait_for_battle_screen(stream, context, battle, progress, end_battle);
         if (ret == 0){
+            if (battle.flee_after_faint && progress.faint_switches > 0){
+                stream.log("[" + label + "] Lead fainted; running from wild battle to heal.", COLOR_ORANGE);
+                run_from_wild_battle(stream, context);
+                return false;
+            }
             take_turn(stream, context, battle, progress, label);
         }else if (ret == 1){
             finish_battle(stream, context, label, battle.battle_type == BattleType::STANDARD);
-            return;
+            return true;
         }else if (ret == 2){
             stream.log("[" + label + "] Declining move learning; preserving scripted move positions.");
             pbf_move_right_joystick(context, {0, -1}, 160ms, 840ms);
@@ -399,8 +409,13 @@ void fight_trainer(VideoStream& stream, ProControllerContext& context, const std
     fight_with_best_move(stream, context, {.battle_type = BattleType::TRAINER, .format = BattleFormat::SINGLES, .switch_on_faint = true}, label);
 }
 
-void fight_wild_battle(VideoStream& stream, ProControllerContext& context, const std::string& label){
-    fight_with_best_move(stream, context, {.battle_type = BattleType::STANDARD, .format = BattleFormat::SINGLES, .switch_on_faint = true}, label);
+bool fight_wild_battle(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    return fight_with_best_move(stream, context, {
+        .battle_type = BattleType::STANDARD,
+        .format = BattleFormat::SINGLES,
+        .switch_on_faint = true,
+        .flee_after_faint = true,
+    }, label);
 }
 
 
