@@ -22,7 +22,8 @@
         "args": {
           "items": [
             "potion",
-            "super-potion"
+            "super-potion",
+            "full-heal"
           ]
         }
       },
@@ -220,6 +221,21 @@
             }
           ],
           "fill_to": 5
+        }
+      },
+      {
+        "id": "buy_full_heals",
+        "action": "mart",
+        "why": "Full Heals up to 3 in the bag (Fuchsia Mart sells Full Heal for $600, no Antidote): cures Juggler Kirk's Poison Gas before Koga and Koga's Sludge/Smog poison during the fight",
+        "args": {
+          "map": "FuchsiaCity_Mart",
+          "items": [
+            {
+              "item": "full-heal",
+              "quantity": 3
+            }
+          ],
+          "fill_to": 3
         }
       },
       {
