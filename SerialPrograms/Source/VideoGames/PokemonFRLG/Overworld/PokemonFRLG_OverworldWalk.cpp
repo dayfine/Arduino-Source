@@ -221,26 +221,30 @@ MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed){
 }
 
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
+    const bool gba_clock = GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator;
+    const Milliseconds walk_tile = gba_clock ? Milliseconds(268) : TILE_TIME;
+    const Milliseconds run_tile = gba_clock ? Milliseconds(134) : RUN_TILE_TIME;
+    const Milliseconds surf_tile = gba_clock ? Milliseconds(134) : SURF_TILE_TIME;
     if (step.surfing && step.lands_after > 0 && step.tiles > 0){
         //  The surfed tiles, then the hop onto land and the walked ones
         //  (B isn't held on a leg that starts on the water), each hop or
         //  walked tile taken at walking pace, averaged and rounded up.
         const int walked = step.tiles - step.lands_after + 1;
-        const Milliseconds total = SURF_TILE_TIME * (step.lands_after - 1) + TILE_TIME * walked;
+        const Milliseconds total = surf_tile * (step.lands_after - 1) + walk_tile * walked;
         return (total + Milliseconds(step.tiles - 1)) / step.tiles;
     }
     if (step.surfing){
-        return SURF_TILE_TIME;
+        return surf_tile;
     }
     switch (step_speed(step, speed)){
     case MoveSpeed::RUN:
-        return RUN_TILE_TIME;
+        return run_tile;
     case MoveSpeed::BIKE:
         return BIKE_TILE_TIME;
     case MoveSpeed::WALK:
         break;
     }
-    return TILE_TIME;
+    return walk_tile;
 }
 
 bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction> facing){
