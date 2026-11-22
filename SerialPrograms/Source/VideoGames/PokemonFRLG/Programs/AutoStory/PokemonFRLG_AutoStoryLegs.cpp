@@ -32,6 +32,12 @@ bool land_on_spinner(const MapData& map, PlayerState& player, bool last, RouteSt
     return true;
 }
 
+bool has_connection(const MapData& map, Direction side){
+    return std::ranges::any_of(map.connections, [side](const MapConnection& connection){
+        return connection.side == side;
+    });
+}
+
 } // namespace
 
 std::optional<std::vector<RouteStep>> fixed_route(
@@ -73,9 +79,14 @@ std::optional<std::vector<RouteStep>> fixed_route(
         }
         //  Water ahead stops a hold as a wall does, until the player Surfs
         //  (stops_at()): 11.02's "south 1" down to Route 18's water finds
-        //  the row from a tile north of it too.
+        //  the row from a tile north of it too. A map edge with a connection
+        //  (Route 16 south to Route 17) is not a wall, even when the connected
+        //  map isn't loaded.
         const StepKind ahead = classify_step(*map, player, leg.direction);
-        step.to_wall = !step.spin_tiles && (ahead == StepKind::BLOCKED || ahead == StepKind::START_SURF);
+        const bool connects = !in_bounds(*map, player.position.next(leg.direction))
+            && has_connection(*map, leg.direction);
+        step.to_wall = !step.spin_tiles && !connects
+            && (ahead == StepKind::BLOCKED || ahead == StepKind::START_SURF);
         step.end = MapPosition{map->name, player.position};
         route.push_back(step);
     }
