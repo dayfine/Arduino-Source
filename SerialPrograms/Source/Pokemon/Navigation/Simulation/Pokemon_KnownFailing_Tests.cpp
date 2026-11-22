@@ -54,18 +54,18 @@ enum class BodyOutcome{
 
 struct KnownFailingCase{
     struct Input{
-        std::string test;
-        BodyOutcome body;
+        std::string test = {};
+        BodyOutcome body = BodyOutcome::PASSES;
     };
     struct Expectation{
-        bool passes;
-        std::string message;
-        std::vector<std::string> log;
+        bool passes = true;
+        std::string message = {};
+        std::vector<std::string> log = {};
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 const KnownFailingCase KNOWN_FAILING_CASES[] = {
@@ -149,15 +149,15 @@ private:
 
 struct StaleCase{
     struct Input{
-        std::set<std::string> tests;
+        std::set<std::string> tests = {};
     };
     struct Expectation{
-        std::vector<std::string> stale;
+        std::vector<std::string> stale = {};
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 const StaleCase STALE_CASES[] = {

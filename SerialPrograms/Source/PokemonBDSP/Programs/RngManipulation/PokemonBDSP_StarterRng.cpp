@@ -39,113 +39,45 @@ StarterRng_Descriptor::StarterRng_Descriptor()
 {}
 
 std::unique_ptr<StatsTracker> StarterRng_Descriptor::make_stats() const{
-    return std::unique_ptr<StatsTracker>(new Stats());
+    return std::make_unique<Stats>();
 }
 
 
 StarterRng::StarterRng()
     : m_aim(CALIBRATION_MIN_SAMPLES, CALIBRATION_THRESHOLD)
-    , LANGUAGE(
-        "<b>Game Language:</b>",
-        summary_nature_languages(),
-        LockMode::LOCK_WHILE_RUNNING, true
-    )
+    , LANGUAGE("<b>Game Language:</b>", summary_nature_languages(), LockMode::LOCK_WHILE_RUNNING, true)
     , START_POINT(
         "<b>Start point:</b><br>"
         "Where you have saved your game. Starting from the bedroom allows the possibility to skip advances quickly.",
-        {
-            {BdspStartPoint::Lakefront, "lakefront", "Verity Lakefront"},
-            {BdspStartPoint::Bedroom,   "bedroom",   "Bedroom"},
-        },
-        LockMode::LOCK_WHILE_RUNNING,
-        BdspStartPoint::Lakefront
+        {{BdspStartPoint::Lakefront, "lakefront", "Verity Lakefront"}, {BdspStartPoint::Bedroom, "bedroom", "Bedroom"}},
+        LockMode::LOCK_WHILE_RUNNING, BdspStartPoint::Lakefront
     )
     , STARTER(
         "<b>Starter:</b><br>",
-        {
-            {BdspStarter::Turtwig,  "turtwig",  "Turtwig"},
-            {BdspStarter::Chimchar, "chimchar", "Chimchar"},
-            {BdspStarter::Piplup,   "piplup",   "Piplup"},
-        },
-        LockMode::LOCK_WHILE_RUNNING,
-        BdspStarter::Turtwig
+        {{BdspStarter::Turtwig, "turtwig", "Turtwig"}, {BdspStarter::Chimchar, "chimchar", "Chimchar"}, {BdspStarter::Piplup, "piplup", "Piplup"}},
+        LockMode::LOCK_WHILE_RUNNING, BdspStarter::Turtwig
     )
     , FILTERS(
-        "<b>Stop Conditions:</b><br>"
-        "If the " + STRING_POKEMON + " matches any one of these filters, the program will "
-        "stop.<br>",
-        StatsHuntMiscFeatureFlags{
-            /*action*/ false, /*shiny*/ true, /*gender*/ true, /*nature*/ true
-        }
+        "<b>Stop Conditions:</b><br>If the " + STRING_POKEMON + " matches any one of these filters, the program will stop.<br>",
+        StatsHuntMiscFeatureFlags{/*action*/ false, /*shiny*/ true, /*gender*/ true, /*nature*/ true}
     )
     , COLLECTION_DISPLAY(true)
-    , MAX_RESETS(
-        "<b>Maximum resets:</b><br>"
-        "Set this to zero to keep going until a shiny is caught.",
-        LockMode::LOCK_WHILE_RUNNING,
-        0, 0, 1000
-    )
-    , MAX_TARGET_WAIT_MINUTES(
-        "<b>Wait at most (minutes) for a target:</b><br>"
-        "Time limit for waiting at Verity Lake. Rarer targets will require longer "
-        "wait times.",
-        LockMode::LOCK_WHILE_RUNNING,
-        30, 5, 1440
-    )
-    , MAX_SKIP_MINUTES(
-        "<b>Skip at most (minutes):</b><br>"
-        "Time limit for skipping advances in Twinleaf Town.",
-        LockMode::LOCK_WHILE_RUNNING,
-        30, 5, 1440
-    )
-    , AUTO_CALIBRATE(
-        "<b>Correct the timing automatically:</b><br>"
-        "Shift the target advances when several attempts miss.",
-        LockMode::LOCK_WHILE_RUNNING,
-        true
-    )
-    , USE_SOUND_DETECTION(
-        "<b>Use sound detection:</b>",
-        LockMode::LOCK_WHILE_RUNNING,
-        true
-    )
-    , TAKE_VIDEO(
-        "<b>Take Video:</b><br>"
-        "Record a video when the shiny is found.",
-        LockMode::LOCK_WHILE_RUNNING,
-        true
-    )
+    , MAX_RESETS("<b>Maximum resets:</b><br>Set this to zero to keep going until a shiny is caught.", LockMode::LOCK_WHILE_RUNNING, 0, 0, 1000)
+    , MAX_TARGET_WAIT_MINUTES("<b>Wait at most (minutes) for a target:</b><br>Time limit for waiting at Verity Lake. Rarer targets will require longer wait times.", LockMode::LOCK_WHILE_RUNNING, 30, 5, 1440)
+    , MAX_SKIP_MINUTES("<b>Skip at most (minutes):</b><br>Time limit for skipping advances in Twinleaf Town.", LockMode::LOCK_WHILE_RUNNING, 30, 5, 1440)
+    , AUTO_CALIBRATE("<b>Correct the timing automatically:</b><br>Shift the target advances when several attempts miss.", LockMode::LOCK_WHILE_RUNNING, true)
+    , USE_SOUND_DETECTION("<b>Use sound detection:</b>", LockMode::LOCK_WHILE_RUNNING, true)
+    , TAKE_VIDEO("<b>Take Video:</b><br>Record a video when the shiny is found.", LockMode::LOCK_WHILE_RUNNING, true)
     , GO_HOME_WHEN_DONE(false)
-    , NOTIFICATION_SHINY(
-        "Shiny Starter",
-        true, true, ImageAttachmentMode::JPG,
-        {"Notifs", "Showcase"}
-    )
-    , NOTIFICATIONS({
-        &NOTIFICATION_SHINY,
-        &NOTIFICATION_ERROR_RECOVERABLE,
-        &NOTIFICATION_ERROR_FATAL,
-    })
+    , NOTIFICATION_SHINY("Shiny Starter", true, true, ImageAttachmentMode::JPG, {"Notifs", "Showcase"})
+    , NOTIFICATIONS({&NOTIFICATION_SHINY, &NOTIFICATION_ERROR_RECOVERABLE, &NOTIFICATION_ERROR_FATAL})
 {
     set_default_shiny_row(FILTERS);
-
-    PA_ADD_OPTION(LANGUAGE);
-    PA_ADD_OPTION(PLAYER_MODEL);
-    PA_ADD_OPTION(START_POINT);
-    PA_ADD_OPTION(STARTER);
-    PA_ADD_OPTION(FILTERS);
-    PA_ADD_OPTION(COLLECTION_DISPLAY);
-    PA_ADD_OPTION(STATE_DISPLAY);
-    PA_ADD_OPTION(TARGET_DISPLAY);
-    PA_ADD_OPTION(MAX_RESETS);
-    PA_ADD_OPTION(MAX_TARGET_WAIT_MINUTES);
-    PA_ADD_OPTION(MAX_SKIP_MINUTES);
-    PA_ADD_OPTION(AUTO_CALIBRATE);
-    PA_ADD_OPTION(USE_SOUND_DETECTION);
-    PA_ADD_OPTION(TAKE_VIDEO);
-    PA_ADD_OPTION(GO_HOME_WHEN_DONE);
-    PA_ADD_OPTION(NOTIFICATIONS);
-
+    PA_ADD_OPTION(LANGUAGE); PA_ADD_OPTION(PLAYER_MODEL); PA_ADD_OPTION(START_POINT); PA_ADD_OPTION(STARTER);
+    PA_ADD_OPTION(FILTERS); PA_ADD_OPTION(COLLECTION_DISPLAY); PA_ADD_OPTION(STATE_DISPLAY); PA_ADD_OPTION(TARGET_DISPLAY);
+    PA_ADD_OPTION(MAX_RESETS); PA_ADD_OPTION(MAX_TARGET_WAIT_MINUTES); PA_ADD_OPTION(MAX_SKIP_MINUTES);
+    PA_ADD_OPTION(AUTO_CALIBRATE); PA_ADD_OPTION(USE_SOUND_DETECTION); PA_ADD_OPTION(TAKE_VIDEO);
+    PA_ADD_OPTION(GO_HOME_WHEN_DONE); PA_ADD_OPTION(NOTIFICATIONS);
     START_POINT.add_listener(*this);
     StarterRng::on_config_value_changed(this);
 }
@@ -202,6 +134,6 @@ void StarterRng::program(SingleSwitchProgramEnvironment& env, ProControllerConte
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

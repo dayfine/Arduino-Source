@@ -54,7 +54,7 @@ BdspRngFilterRow::BdspRngFilterRow(EditableTableOption& parent_table)
     PA_ADD_OPTION(iv_speed);
 }
 std::unique_ptr<EditableTableRow> BdspRngFilterRow::clone() const{
-    std::unique_ptr<BdspRngFilterRow> ret(new BdspRngFilterRow(parent()));
+    auto ret = std::make_unique<BdspRngFilterRow>(parent());
     ret->misc.set(misc);
     ret->height.set(height);
     ret->iv_hp.set(iv_hp);
@@ -215,6 +215,6 @@ StatsHuntAction BdspRngFilterSnapshot::get_action(
 }
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

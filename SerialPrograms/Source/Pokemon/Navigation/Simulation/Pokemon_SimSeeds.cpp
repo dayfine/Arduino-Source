@@ -37,7 +37,7 @@ SeedsResult run_seeds(
     for (uint32_t seed = 1; seed <= seeds; seed++){
         SeedRun run = run_one(seed);
         if (run.failure){
-            out.failures.push_back({"", std::format("seed {}", seed), std::move(*run.failure)});
+            out.failures.push_back({.step = "", .variant = std::format("seed {}", seed), .stopped = std::move(*run.failure)});
             continue;
         }
         for (const auto& [measure, value] : run.measures){
@@ -57,7 +57,4 @@ SeedsResult run_seeds(
 
 
 } // namespace Pokemon
-
-
-
 } // namespace PokemonAutomation

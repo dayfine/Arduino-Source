@@ -17,7 +17,7 @@ namespace PokemonBDSP{
 void add_tests_StarterRng(UnitTestDatabase& database);
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
 #endif

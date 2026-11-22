@@ -69,22 +69,25 @@ UnitTestResult expect_result(const UnitTestResult& actual, const std::vector<std
 
 struct SweepResultCase{
     struct Input{
-        std::string row;
-        std::string fault;
-        size_t variants;
-        std::vector<SweepFailure> failures;
+        std::string row = {};
+        std::string fault = {};
+        size_t variants = 0;
+        std::vector<SweepFailure> failures = {};
+    };
+    struct Expectation{
+        ResultExpectation result = {};
     };
 
-    std::string name;
-    Input input;
-    ResultExpectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 const SweepResultCase SWEEP_RESULT_CASES[] = {
     {
         .name = "no failures pass with one count line",
         .input = {.row = "01.05", .fault = "scene end pose", .variants = 4, .failures = {}},
-        .expectation = {.passes = true, .message = "", .log = {"Fault sweep 01.05 scene end pose: 4 variants, 0 fail."}},
+        .expectation = {.result = {.passes = true, .message = "", .log = {"Fault sweep 01.05 scene end pose: 4 variants, 0 fail."}}},
     },
     {
         .name = "failures fail with a table line each",
@@ -93,12 +96,14 @@ const SweepResultCase SWEEP_RESULT_CASES[] = {
             {.step = "", .variant = "seed 7", .stopped = "stopped in oak: no dialog."},
         }},
         .expectation = {
-            .passes = false,
-            .message = "2 of 3 variants fail 02.02:\n  below_oak tap 2: ended on Route1 (3, 4), not Route1 (3, 5).\n   seed 7: stopped in oak: no dialog.",
-            .log = {
-                "Fault sweep 02.02 lost tap: 3 variants, 2 fail.",
-                "| 02.02 | below_oak | lost tap | tap 2 | ended on Route1 (3, 4), not Route1 (3, 5). |",
-                "| 02.02 |  | lost tap | seed 7 | stopped in oak: no dialog. |",
+            .result = {
+                .passes = false,
+                .message = "2 of 3 variants fail 02.02:\n  below_oak tap 2: ended on Route1 (3, 4), not Route1 (3, 5).\n   seed 7: stopped in oak: no dialog.",
+                .log = {
+                    "Fault sweep 02.02 lost tap: 3 variants, 2 fail.",
+                    "| 02.02 | below_oak | lost tap | tap 2 | ended on Route1 (3, 4), not Route1 (3, 5). |",
+                    "| 02.02 |  | lost tap | seed 7 | stopped in oak: no dialog. |",
+                },
             },
         },
     },
@@ -114,7 +119,7 @@ public:
         LinesLogger logger;
         const SweepResultCase::Input& input = m_case.input;
         const UnitTestResult result = sweep_result(logger, input.row, input.fault, input.variants, input.failures);
-        return expect_result(result, logger.lines, m_case.expectation);
+        return expect_result(result, logger.lines, m_case.expectation.result);
     }
 
 private:
@@ -124,26 +129,26 @@ private:
 
 //  A variant's outcome in a fake sweep: why it failed, or nothing.
 struct FakeVariant{
-    std::string step;
-    std::string label;
-    std::optional<std::string> stopped;
+    std::string step = {};
+    std::string label = {};
+    std::optional<std::string> stopped = std::nullopt;
 };
 
 struct RunSweepCase{
     struct Input{
         //  Why the fake row fails clean, or nothing.
-        std::optional<std::string> clean_failure;
-        std::vector<FakeVariant> variants;
+        std::optional<std::string> clean_failure = std::nullopt;
+        std::vector<FakeVariant> variants = {};
     };
     struct Expectation{
-        ResultExpectation result;
+        ResultExpectation result = {};
         //  How many variants ran.
-        size_t ran;
+        size_t ran = 0;
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 const RunSweepCase RUN_SWEEP_CASES[] = {
@@ -208,17 +213,17 @@ private:
 
 struct VariantFailureCase{
     struct Input{
-        std::optional<std::string> failure;
-        std::string end;
-        std::string clean_end;
+        std::optional<std::string> failure = std::nullopt;
+        std::string end = {};
+        std::string clean_end = {};
     };
     struct Expectation{
-        std::optional<std::string> stopped;
+        std::optional<std::string> stopped = std::nullopt;
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 const VariantFailureCase VARIANT_FAILURE_CASES[] = {

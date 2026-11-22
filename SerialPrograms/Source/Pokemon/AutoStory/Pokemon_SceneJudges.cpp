@@ -26,7 +26,7 @@ std::string describe(const WarpSeen& seen){
     if (!seen.any()){
         return "nothing";
     }
-    std::string out = seen.fade == WarpFade::NONE ? "" : warp_fade_name(seen.fade);
+    std::string out = seen.fade == WarpFade::NONE ? "" : WARP_FADE_NAMES().get_string(seen.fade);
     if (!seen.banner.empty()){
         out += std::format("{}banner \"{}\"", out.empty() ? "" : ", ", seen.banner);
     }
@@ -34,7 +34,7 @@ std::string describe(const WarpSeen& seen){
 }
 
 
-SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
+SceneMove TalkOver::look(const ScreenEvents& events, WallClock now, bool player_still){
     if (events.has(ScreenEvent::BATTLE_STARTED)){
         m_quiet_since.reset();
         m_calm_since.reset();
@@ -51,7 +51,10 @@ SceneMove TalkOver::look(const ScreenEvents& events, WallClock now){
     //  ended the scene as it went down.
     const bool calm = !box && m_fade_showing == WarpFade::NONE &&
         events.has(ScreenEvent::PLAYER_CAN_MOVE) && warped();
-    const bool quiet = calm && events.has(m_rule.still);
+    const bool is_still = m_rule.still == StillSource::PLAYER
+        ? (player_still || events.has(ScreenEvent::SCREEN_STILL))
+        : events.has(ScreenEvent::SCREEN_STILL);
+    const bool quiet = calm && is_still;
     if (!calm){
         m_calm_since.reset();
     }else if (!m_calm_since.has_value()){
@@ -79,7 +82,7 @@ std::string TalkOver::describe() const{
     if (m_fade == WarpFade::NONE && !m_banner){
         return "no fade or banner";
     }
-    std::string out = m_fade == WarpFade::NONE ? "" : warp_fade_name(m_fade);
+    std::string out = m_fade == WarpFade::NONE ? "" : WARP_FADE_NAMES().get_string(m_fade);
     if (m_fade != WarpFade::NONE){
         out += m_fade_showing == WarpFade::NONE ? " back up" : " still down";
     }

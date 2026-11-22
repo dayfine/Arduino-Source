@@ -66,15 +66,15 @@ UnitTestResult test_mode(Logger&){
     return true;
 }
 
-//  A success is an ok Outcome and calls the program once.
+//  A success returns std::nullopt and calls the program once.
 UnitTestResult test_success(Logger& logger){
     int calls = 0;
-    const Outcome outcome = run_rng_handoff(logger, "Test RNG", [&]{
+    const std::optional<StoryFailure> failure = run_rng_handoff(logger, "Test RNG", [&]{
         calls++;
         return RngHandoffResult{.summary = "2 resets"};
     });
-    if (!outcome.succeeded()){
-        return "Expected an ok outcome";
+    if (failure){
+        return "Expected success";
     }
     if (calls != 1){
         return std::format("Expected 1 call, got {}", calls);

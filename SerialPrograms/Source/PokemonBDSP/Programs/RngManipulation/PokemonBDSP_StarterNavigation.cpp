@@ -4,6 +4,7 @@
  *
  */
 
+#include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -31,7 +32,7 @@ uint8_t starter_cursor_steps(BdspStarter starter){
     return 0;
 }
 
-const char* starter_slug(BdspStarter starter){
+std::string_view starter_slug(BdspStarter starter){
     switch (starter){
     case BdspStarter::Turtwig:  return "turtwig";
     case BdspStarter::Chimchar: return "chimchar";
@@ -121,34 +122,40 @@ static Milliseconds starly_press_to_select_ready(BdspStarter starter){
 }
 
 
-//  The whole blind button press sequence
-bool issue_starter_sequence(
-    ProControllerContext& context,
+namespace{
+
+struct StarterSequenceWaits{
+    Milliseconds before_starly = 0ms;
+    Milliseconds before_select = 0ms;
+    Milliseconds before_confirm = 0ms;
+};
+
+Milliseconds seconds_to_ms(double seconds){
+    return std::chrono::duration_cast<Milliseconds>(std::chrono::duration<double>(seconds));
+}
+
+bool compute_starter_waits(
     BdspStarter starter,
     double starly_seconds,
     double select_seconds,
     double confirm_seconds,
+    StarterSequenceWaits& waits,
     std::string& failure_reason
 ){
-    auto to_ms = [](double seconds){
-        return std::chrono::duration_cast<Milliseconds>(
-            std::chrono::duration<double>(seconds)
+    //  Where the run stands after each fixed stretch,
+    //  measured from the moment the briefcase press is completed.
+    const Milliseconds starly_at = seconds_to_ms(starly_seconds);
+    const Milliseconds select_at = seconds_to_ms(select_seconds);
+    const Milliseconds confirm_at = seconds_to_ms(confirm_seconds);
+    const Milliseconds after_dialog = BRIEFCASE_PRESS_TO_STARLY_READY;
+    const Milliseconds after_starly = starly_at + starly_press_to_select_ready(starter);
+    const Milliseconds after_select = select_at + SELECT_PRESS_TO_CONFIRM_READY;
+
+    auto too_tight = [&](std::string_view what, Milliseconds needed, Milliseconds have){
+        failure_reason = std::format(
+            "{} is scheduled {} ms before the navigation ahead of it can finish",
+            what, (needed - have).count()
         );
-    };
-
-    //  Where the run stands after each fixed stretch, 
-    //  measured from the moment the briefcase press is completed
-    Milliseconds starly_at = to_ms(starly_seconds);
-    Milliseconds select_at = to_ms(select_seconds);
-    Milliseconds confirm_at = to_ms(confirm_seconds);
-    Milliseconds after_dialog = BRIEFCASE_PRESS_TO_STARLY_READY;
-    Milliseconds after_starly = starly_at + starly_press_to_select_ready(starter);
-    Milliseconds after_select = select_at + SELECT_PRESS_TO_CONFIRM_READY;
-
-    auto too_tight = [&](const char* what, Milliseconds needed, Milliseconds have){
-        failure_reason = std::string(what) + " is scheduled "
-            + std::to_string((needed - have).count())
-            + " ms before the navigation ahead of it can finish";
         return false;
     };
     if (starly_at < after_dialog){
@@ -160,19 +167,36 @@ bool issue_starter_sequence(
     if (confirm_at < after_select){
         return too_tight("the confirming press", after_select, confirm_at);
     }
+    waits.before_starly = starly_at - after_dialog;
+    waits.before_select = select_at - after_starly;
+    waits.before_confirm = confirm_at - after_select;
+    return true;
+}
 
-    //  The briefcase press
+} // namespace
+
+//  The whole blind button press sequence
+bool issue_starter_sequence(
+    ProControllerContext& context,
+    BdspStarter starter,
+    double starly_seconds,
+    double select_seconds,
+    double confirm_seconds,
+    std::string& failure_reason
+){
+    StarterSequenceWaits waits;
+    if (!compute_starter_waits(starter, starly_seconds, select_seconds, confirm_seconds, waits, failure_reason)){
+        return false;
+    }
+
+    //  The briefcase press and past the briefcase dialogue
     pbf_press_button(context, BUTTON_A, 80ms, 0ms);
-
-    //  Past the briefcase dialogue
     pbf_wait(context, AFTER_BRIEFCASE);
     pbf_press_button(context, BUTTON_A, 100ms, 0ms);
 
-    //  The Starly press
-    pbf_wait(context, starly_at - after_dialog);
+    //  The Starly press, then open the briefcase and hover over the chosen ball
+    pbf_wait(context, waits.before_starly);
     pbf_press_button(context, BUTTON_A, 80ms, 0ms);
-
-    //  Open the briefcase and hover over the chosen ball
     pbf_wait(context, 5500ms);
     pbf_press_button(context, BUTTON_A, 100ms, 0ms);
     pbf_wait(context, 1200ms);
@@ -180,17 +204,13 @@ bool issue_starter_sequence(
         pbf_press_dpad(context, DPAD_RIGHT, 100ms, 600ms);
     }
 
-    //  The selecting press, then the cursor onto "Yes"
-    pbf_wait(context, select_at - after_starly);
+    //  The selecting press, cursor onto "Yes", confirming press, then battle start
+    pbf_wait(context, waits.before_select);
     pbf_press_button(context, BUTTON_A, 80ms, 0ms);
     pbf_wait(context, PROMPT_ANIMATION);
     pbf_press_dpad(context, DPAD_UP, 100ms, 200ms);
-
-    //  The confirming press
-    pbf_wait(context, confirm_at - after_select);
+    pbf_wait(context, waits.before_confirm);
     pbf_press_button(context, BUTTON_A, 80ms, 0ms);
-
-    //  battle start
     pbf_wait(context, 3000ms);
     pbf_press_button(context, BUTTON_A, 100ms, 0ms);
 
@@ -226,30 +246,21 @@ double seconds_to_move_to_starter(BdspStarter starter){
     ).count();
 }
 
-// kept as short as the prompt animation allows to avoid extra blinks from the starter
-double seconds_from_select_to_confirm(){
-    return std::chrono::duration_cast<std::chrono::duration<double>>(
-        SELECT_PRESS_TO_CONFIRM_READY + SCHEDULING_SLACK
-    ).count();
-}
-
-
-double seconds_to_pre_briefcase(){
-    return std::chrono::duration_cast<std::chrono::duration<double>>(
-        PRE_BRIEFCASE_DURATION
-    ).count();
-}
-
-
-double seconds_from_briefcase_to_starly_ready(){
-    return std::chrono::duration_cast<std::chrono::duration<double>>(
-        BRIEFCASE_PRESS_TO_STARLY_READY
-    ).count();
+//  Kept as short as the prompt animation allows to avoid extra blinks from the starter.
+StarterSceneDurations StarterSceneDurations::measured(){
+    auto to_seconds = [](Milliseconds duration){
+        return std::chrono::duration_cast<std::chrono::duration<double>>(duration).count();
+    };
+    return StarterSceneDurations{
+        .briefcase_to_starly_ready = to_seconds(BRIEFCASE_PRESS_TO_STARLY_READY),
+        .select_to_confirm = to_seconds(SELECT_PRESS_TO_CONFIRM_READY + SCHEDULING_SLACK),
+        .to_pre_briefcase = to_seconds(PRE_BRIEFCASE_DURATION),
+    };
 }
 
 
 
 
-}
-}
-}
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation

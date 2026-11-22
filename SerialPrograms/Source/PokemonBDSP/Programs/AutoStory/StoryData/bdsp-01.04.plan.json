@@ -1,24 +1,9 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
-    "events": [
-      {
-        "action": "gym_until_roark_beaten",
-        "declared_after": {
-          "facing": "north",
-          "map": "OreburghGym",
-          "tiles": [
-            [
-              5,
-              4
-            ]
-          ]
-        },
-        "id": "gym_until_roark_beaten",
-        "kind": "game_action",
-        "why": "west into the gym, up it to Roark; again from the Center after a loss"
-      }
-    ],
     "id": "01.04",
+    "title": "Oreburgh Gym",
     "start": {
       "facing": "south",
       "map": "OreburghCity",
@@ -33,15 +18,31 @@
         ]
       ]
     },
-    "title": "Oreburgh Gym"
+    "events": [
+      {
+        "id": "gym_until_roark_beaten",
+        "action": "gym_until_roark_beaten",
+        "why": "west into the gym, up it to Roark; again from the Center after a loss",
+        "args": {
+          "pose_after": {
+            "facing": "north",
+            "map": "OreburghGym",
+            "tiles": [
+              [
+                5,
+                4
+              ]
+            ]
+          }
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Oreburgh City"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "testing"
   }
 }

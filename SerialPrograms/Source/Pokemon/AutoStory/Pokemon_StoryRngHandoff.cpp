@@ -39,13 +39,13 @@ std::optional<std::string> run_rng_handoff_or_user_turn(
     return std::nullopt;
 }
 
-Outcome run_rng_handoff(Logger& logger, const std::string& program, const RngHandoffCall& call){
+std::optional<StoryFailure> run_rng_handoff(Logger& logger, const std::string& program, const RngHandoffCall& call){
     const std::optional<std::string> user_turn = run_rng_handoff_or_user_turn(logger, program, call);
     if (user_turn){
         //  A story action has no stop to give the user's turn to.
         throw_and_log<OperationFailedException>(logger, ErrorReportMode::SEND_ERROR_REPORT, *user_turn);
     }
-    return outcome_ok();
+    return std::nullopt;
 }
 
 std::string report_rng_handoff_stop(

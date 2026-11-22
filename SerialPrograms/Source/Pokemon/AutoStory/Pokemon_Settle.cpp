@@ -33,7 +33,7 @@ SettleRule settle_rule(SettleKind kind){
         return {.judge = {.warp = true}};
     case SettleKind::DOOR:
         return {
-            .judge = {.calm = DOOR_CALM, .quiet = DOOR_QUIET, .still = ScreenEvent::PLAYER_STILL},
+            .judge = {.calm = DOOR_CALM, .quiet = DOOR_QUIET, .still = StillSource::PLAYER},
             .look_every = Milliseconds(200),
         };
     }
@@ -72,9 +72,9 @@ SettleEnd run_settle(const SettleRule& rule, std::string_view label, SettleIO& i
         if (look.since.has_value() && *look.since < look.when){
             //  The screen showed these events from `since` on: the judge
             //  sees them then too, so their quiet counts from there.
-            judge.look(look.events, *look.since);
+            judge.look(look.events, *look.since, look.player_still);
         }
-        const SceneMove move = judge.look(look.events, look.when);
+        const SceneMove move = judge.look(look.events, look.when, look.player_still);
         switch (move){
         case SceneMove::DONE:
             io.log(std::format("[Settle] {}: over; {}.", label, judge.describe()));

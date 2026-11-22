@@ -1,0 +1,874 @@
+/*  BDSP AutoStory Walk Tests
+ *
+ *  From: https://github.com/PokemonAutomation/
+ *
+ */
+
+#include <algorithm>
+#include <cstdint>
+#include <format>
+#include <optional>
+#include <string>
+#include <vector>
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/ImageTypes/ImageRGB32.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStoryTrainerSight.h"
+#include "Utils/PokemonBDSP_AutoStoryIndoors.h"
+#include "Utils/PokemonBDSP_AutoStoryLegBattle.h"
+#include "Utils/PokemonBDSP_AutoStoryLocation.h"
+#include "Utils/PokemonBDSP_AutoStoryRouteWalk.h"
+#include "Utils/PokemonBDSP_AutoStoryWalk.h"
+#include "Actions/PokemonBDSP_AutoStoryTalks.h"
+#include "PokemonBDSP_AutoStoryPlaces.h"
+#include "PokemonBDSP_AutoStoryStepIO.h"
+#include "PokemonBDSP_AutoStoryWalkSteps.h"
+#include "PokemonBDSP_AutoStoryWalk_Tests.h"
+#include "Utils/PokemonBDSP_AutoStoryWalkResult.h"
+#include "Utils/PokemonBDSP_AutoStoryWalkScreen.h"
+
+namespace PokemonAutomation{
+namespace NintendoSwitch{
+namespace PokemonBDSP{
+
+
+namespace{
+
+//  A turn must not step: on the console D-pad taps of 40 to 80 ms only
+//  turned, a 160 ms D-pad tap stepped a whole tile, and a 100 ms stick tap
+//  stepped about 0.6 tile, off the tile grid (r49, r248a). So route_turn()
+//  taps the D-pad, once, for at most 80 ms.
+UnitTestResult test_route_turn_tap(Logger&){
+        constexpr Milliseconds LONGEST_TURN(80);
+        for (Pokemon::Direction direction : {Pokemon::Direction::NORTH, Pokemon::Direction::SOUTH, Pokemon::Direction::EAST, Pokemon::Direction::WEST}){
+            const RouteInput tap = route_turn_tap(direction);
+            const std::string name = std::string("turning ") + Pokemon::direction_name(direction);
+            if (tap.kind != RouteInputKind::DPAD){
+                return name + ": not a D-pad tap; a stick tap moves part of a tile.";
+            }
+            if (tap.direction != direction || tap.count != 1){
+                return name + ": expected one tap that way.";
+            }
+            if (tap.hold > LONGEST_TURN){
+                return name + ": a " + std::to_string(tap.hold.count()) + " ms tap; over 80 ms may step.";
+            }
+        }
+        if (ROUTE_TURN_TAP > LONGEST_TURN){
+            return "ROUTE_TURN_TAP is " + std::to_string(ROUTE_TURN_TAP.count()) + " ms; over 80 ms may step.";
+        }
+        return true;
+}
+
+//  WarpFadeWatch on synthetic frames 33 ms apart, each a brightness and a
+//  texture (stddev a channel). Two scenes differ here when their
+//  brightness does.
+struct FadeFrame{
+    double brightness;
+    double stddev;
+};
+struct WarpFadeCase{
+    std::string name;
+    WarpFadeRule rule;
+    std::vector<FadeFrame> frames;
+    //  The frame (1-based) the fade shows on, 0 for none, and how.
+    size_t seen_at;
+    WarpFade fade;
+};
+
+UnitTestResult test_warp_fade_watch(Logger&){
+    constexpr WarpFadeRule DOOR{.partial_dark = true, .dark_for = Milliseconds(50), .white_for = Milliseconds(60)};
+    constexpr WarpFadeRule TAP{};
+    constexpr FadeFrame STREET{104, 20};
+    constexpr FadeFrame ROOM{130, 20};
+    constexpr FadeFrame FALL{55, 10};
+    constexpr FadeFrame BLACK{7, 1};
+    const std::vector<WarpFadeCase> cases{
+        {.name = "a door's fade, its hold seen", .rule = DOOR, .frames = {STREET, FALL, BLACK, BLACK, BLACK, ROOM}, .seen_at = 4, .fade = WarpFade::BLACK},
+        {.name = "a tap's fade, its hold seen", .rule = TAP, .frames = {STREET, FALL, BLACK, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a short fade, its hold between two frames", .rule = TAP, .frames = {STREET, FALL, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a door's short fade, its hold between two frames", .rule = DOOR, .frames = {STREET, FALL, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a dip back to the same street", .rule = TAP, .frames = {STREET, FALL, STREET}, .seen_at = 0, .fade = WarpFade::NONE},
+        {.name = "a dim cave floor (46) is no fade", .rule = TAP, .frames = {STREET, {46, 20}, {46, 20}, {46, 20}}, .seen_at = 0, .fade = WarpFade::NONE},
+        {.name = "a cave mouth's dim fade (55)", .rule = TAP, .frames = {STREET, {80, 10}, {55, 1}, ROOM}, .seen_at = 3, .fade = WarpFade::BLACK},
+        {.name = "a cave exit's white, its hold between two frames", .rule = TAP, .frames = {STREET, {180, 10}, ROOM}, .seen_at = 3, .fade = WarpFade::WHITE},
+        {.name = "a cave exit's white", .rule = DOOR, .frames = {STREET, {250, 1}, {250, 1}, {250, 1}}, .seen_at = 4, .fade = WarpFade::WHITE},
+    };
+    for (const WarpFadeCase& item : cases){
+        WarpFadeWatch watch(item.rule, [](const Pokemon::TransitionSample& before, const Pokemon::TransitionSample& after){
+            return after.middle.average.r != before.middle.average.r ? Pokemon::SceneChange::DIFFERENT : Pokemon::SceneChange::SAME;
+        });
+        size_t seen_at = 0;
+        WarpFade fade = WarpFade::NONE;
+        for (size_t i = 0; i < item.frames.size() && seen_at == 0; i++){
+            const FadeFrame& frame = item.frames[i];
+            fade = watch.push({
+                .time = WallClock() + Milliseconds(33 * (int64_t)i),
+                .middle = ImageStats(FloatPixel(frame.brightness, frame.brightness, frame.brightness), FloatPixel(frame.stddev, frame.stddev, frame.stddev), 1),
+            });
+            seen_at = fade == WarpFade::NONE ? 0 : i + 1;
+        }
+        if (seen_at != item.seen_at || fade != item.fade){
+            return item.name + ": " + warp_fade_name(fade) + " at frame " + std::to_string(seen_at) + ", expected " +
+                warp_fade_name(item.fade) + " at " + std::to_string(item.seen_at) + ".";
+        }
+    }
+    return true;
+}
+
+//  indoors() decides when leave_door_south() is out: r257 walked on south
+//  past Sandgem's road into a house after leaving the Center, because the
+//  evening tint made the outside as warm as a room. Synthetic screens: the
+//  evening outside (warm all over), a room (warm, black along the bottom),
+//  a fade (black all over), and warm with a thin dark edge (a shadow).
+struct IndoorsCase{
+    std::string name;
+    uint32_t fill;
+    double dark_bottom;     //  how much of the screen's height, from the bottom, is black
+    bool indoors;
+};
+
+UnitTestResult test_indoors_any_light(Logger&){
+        const std::vector<IndoorsCase> cases{
+            {.name = "evening outside, orange all over", .fill = 0xffe0a040, .dark_bottom = 0, .indoors = false},
+            {.name = "a room: orange, black below its floor", .fill = 0xffe0a040, .dark_bottom = 0.10, .indoors = true},
+            {.name = "a fade: black all over", .fill = 0xff000000, .dark_bottom = 0, .indoors = false},
+            {.name = "a big room: orange, a narrow black band below its floor", .fill = 0xffe0a040, .dark_bottom = 0.015, .indoors = true},
+            {.name = "orange with a thin shadow at the bottom", .fill = 0xffe0a040, .dark_bottom = 0.01, .indoors = false},
+            {.name = "daytime grass", .fill = 0xff60b040, .dark_bottom = 0.10, .indoors = false},
+        };
+        for (const IndoorsCase& item : cases){
+            ImageRGB32 screen(1920, 1080);
+            const size_t dark_from = (size_t)(1080 * (1 - item.dark_bottom));
+            for (size_t y = 0; y < 1080; y++){
+                for (size_t x = 0; x < 1920; x++){
+                    screen.pixel(x, y) = y >= dark_from ? 0xff000000 : item.fill;
+                }
+            }
+            if (indoors(screen) != item.indoors){
+                return item.name + (item.indoors ? ": read as outside." : ": read as inside.");
+            }
+        }
+        return true;
+}
+
+//  door_fade_look(): out of a door is a dark look, then a bright one that is
+//  not a room. r259 turned round in Sandgem's lit Center, read "not a room"
+//  once at full brightness, and walked east inside it as if outside.
+struct DoorLook{
+    double brightness;
+    bool room;
+};
+struct DoorCase{
+    std::string name;
+    std::vector<DoorLook> looks;
+    //  The look (1-based) that reads out, or 0 for none.
+    size_t out_at;
+};
+
+UnitTestResult test_door_fade(Logger&){
+        const std::vector<DoorCase> cases{
+            {.name = "r259: a bright look in the Center that misses the room", .looks = {{458, true}, {440, false}, {457, true}}, .out_at = 0},
+            {.name = "the fade, then the town", .looks = {{458, true}, {300, true}, {60, false}, {310, false}}, .out_at = 4},
+            {.name = "the fade, then the room again", .looks = {{458, true}, {60, false}, {420, true}}, .out_at = 0},
+            {.name = "the fade, still dim", .looks = {{60, false}, {150, false}, {320, false}}, .out_at = 3},
+        };
+        for (const DoorCase& item : cases){
+            DoorFadeWatch watch;
+            size_t out_at = 0;
+            for (size_t i = 0; i < item.looks.size() && out_at == 0; i++){
+                if (door_fade_look(watch, item.looks[i].brightness, item.looks[i].room)){
+                    out_at = i + 1;
+                }
+            }
+            if (out_at != item.out_at){
+                return item.name + ": out at look " + std::to_string(out_at) + ", expected " + std::to_string(item.out_at) + ".";
+            }
+        }
+        return true;
+}
+
+//  A fade is uniform (fade_of(): the shared watchers' stddev test), dark or
+//  white; a floor is textured. The Oreburgh Gate's floor, about 46, is no
+//  fade: read as one, the tap into the Gate from Oreburgh, already
+//  through, waited 8 s for a banner gone (lab-B, 2026-11-08 15:31 to
+//  15:54). A cave mouth's dim fade (45 to 64 measured) is one. The stddevs
+//  are a model; the Gate's frames on the console are to check them.
+UnitTestResult test_fade_of(Logger&){
+    struct Case{
+        std::string name;
+        double brightness;
+        double stddev;
+        WarpFade fade;
+    };
+    const std::vector<Case> cases{
+        {.name = "inside the Gate, its floor", .brightness = 46, .stddev = 20, .fade = WarpFade::NONE},
+        {.name = "Oreburgh's street at night", .brightness = 88, .stddev = 20, .fade = WarpFade::NONE},
+        {.name = "a door's black", .brightness = 7, .stddev = 1, .fade = WarpFade::BLACK},
+        {.name = "a cave mouth's dim fade", .brightness = 64, .stddev = 2, .fade = WarpFade::BLACK},
+        {.name = "a grey screen, neither dark nor white", .brightness = 120, .stddev = 1, .fade = WarpFade::NONE},
+        {.name = "a cave exit's white", .brightness = 250, .stddev = 1, .fade = WarpFade::WHITE},
+        {.name = "a bright textured screen", .brightness = 250, .stddev = 20, .fade = WarpFade::NONE},
+    };
+    for (const Case& item : cases){
+        const ImageStats stats(FloatPixel(item.brightness, item.brightness, item.brightness), FloatPixel(item.stddev, item.stddev, item.stddev), 1);
+        const WarpFade fade = fade_of(stats);
+        if (fade != item.fade){
+            return item.name + ": " + warp_fade_name(fade) + ", expected " + warp_fade_name(item.fade) + ".";
+        }
+    }
+    return true;
+}
+
+
+UnitTestResult test_location_banner(Logger&){
+        struct Case{
+            std::string read;
+            std::string expected;
+            bool match;
+        };
+        const Case cases[] = {
+            {"sandgemtown",     "Sandgem Town",     true},
+            {"andgemltown",     "Sandgem Town",     true},     //  r109's OCR
+            {"Route 202",       "Route 202",        true},
+            {"route2o2",        "Route 202",        false},    //  a digit read as a letter is not trusted
+            {"route201",        "Route 202",        false},
+            {"jubilifecity",    "Sandgem Town",     false},
+            {"twinleaftown",    "Sandgem Town",     false},
+            {"",                "Sandgem Town",     false},
+        };
+        for (const Case& c : cases){
+            if (location_banner_matches(c.read, c.expected) != c.match){
+                return std::string("Banner \"") + c.read + "\" for " + c.expected +
+                    (c.match ? " should match." : " should not match.");
+            }
+        }
+        return true;
+}
+
+
+UnitTestResult test_indoors(Logger& logger){
+        struct Case{ std::string file; bool inside; };
+        const Case cases[] = {
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInsideUpper-20261030-r151a.png", true},
+            {"PokemonBDSP/AutoStory/SandgemCenterInside-20261030-053555.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolInside-20261030.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep2-20261030.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", false},
+            {"PokemonBDSP/AutoStory/SandgemCenterBelowSign-20261030-053527.png", false},
+            {"PokemonBDSP/AutoStory/SandgemMartDoorUpRight-20261030-023443.png", false},
+        };
+        for (const Case& c : cases){
+            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+            if (!Filesystem::is_regular_file(path)){
+                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            }
+            const bool inside = indoors(ImageRGB32(path));
+            logger.log(std::string(c.file) + ": " + (inside ? "indoors" : "outside"));
+            if (inside != c.inside){
+                return std::string(c.file) + ": expected " + (c.inside ? "indoors" : "outside") + ".";
+            }
+        }
+        return true;
+}
+
+
+UnitTestResult test_location_banner_showing(Logger& logger){
+        struct Case{ std::string file; bool banner; };
+        const Case cases[] = {
+            {"PokemonBDSP/AutoStory/JubilifeCenterDoorstep-20261030-c5.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeSchoolDoorstep-20261030.png", true},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c6.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInside-20261030-c4.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterInsideUpper-20261030-r151a.png", false},
+            {"PokemonBDSP/AutoStory/JubilifeCenterFrontDoor-20261030-q2.png", false},
+        };
+        for (const Case& c : cases){
+            const std::string path = UNIT_TEST_RESOURCE_PATH() + c.file;
+            if (!Filesystem::is_regular_file(path)){
+                return UnitTestResult(UnitTestResult::SKIPPED, "Screenshot not found: " + path);
+            }
+            const bool banner = location_banner_showing(ImageRGB32(path));
+            logger.log(std::string(c.file) + ": banner " + (banner ? "shows" : "none"));
+            if (banner != c.banner){
+                return std::string(c.file) + ": expected " + (c.banner ? "a banner" : "no banner") + ".";
+            }
+        }
+        return true;
+}
+
+
+
+//  walk_view_shift(): a step scrolls the whole view; scenery that moves on
+//  its own does not. Synthetic 384x216 screens of 8-pixel blocks in mixed
+//  colours, as grass and flowers are, with one change each.
+uint32_t scenery_at(int x, int y){
+    const uint32_t block = (uint32_t)((x >> 3) * 73856093u) ^ (uint32_t)((y >> 3) * 19349663u);
+    const uint32_t hashed = block * 2654435761u;
+    return 0xff000000 | (hashed & 0x00ffffff);
+}
+ImageRGB32 scenery(int shift_x, int shift_y){
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = scenery_at(x + shift_x + 1000, y + shift_y + 1000);
+        }
+    }
+    return screen;
+}
+//  A step north as the console's camera shows it: it looks down at the path
+//  at an angle, so rows near the bottom scroll further than rows near the
+//  top, here from 4 pixels at the top to 28 at the bottom.
+ImageRGB32 scenery_after_a_step_north(){
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        const int scroll = 4 + 24 * y / 216;
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = scenery_at(x + 1000, y - scroll + 1000);
+        }
+    }
+    return screen;
+}
+//  A step west as the console's camera shows it (lab-B 2026-11-21, 00.03
+//  into_dawns_scene west 7 open): 13-17 pixels on the 192x108 copy (26-34
+//  on the 384x216 synthetic screen), wider than 12 in the near bands.
+ImageRGB32 scenery_after_a_step_west(){
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        const int scroll = 26 + 8 * y / 216;
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = scenery_at(x - scroll + 1000, y + 1000);
+        }
+    }
+    return screen;
+}
+//  Each colour channel of the pixels in [x0, x1) x [y0, y1) times `scale`,
+//  or set to `fill` if given.
+void paint(ImageRGB32& screen, int x0, int y0, int x1, int y1, double scale, uint32_t fill = 0){
+    for (int y = y0; y < y1; y++){
+        for (int x = x0; x < x1; x++){
+            uint32_t p = screen.pixel(x, y);
+            if (fill != 0){
+                screen.pixel(x, y) = fill;
+                continue;
+            }
+            uint32_t out = 0xff000000;
+            for (int shift = 0; shift < 24; shift += 8){
+                out |= (uint32_t)(((p >> shift) & 0xff) * scale) << shift;
+            }
+            screen.pixel(x, y) = out;
+        }
+    }
+}
+
+//  01.03 Oreburgh Mine B1F (2026-11-21 05:03 / 05:14): cave south edge leaves
+//  only 2 active bands, and a narrow vertical corridor drops the far 2 bands
+//  to ~1.8x while all 4 bands still agree on the scroll direction.
+std::string check_cave_edge_scroll(){
+    ImageRGB32 cave_before = scenery(0, 0);
+    ImageRGB32 cave_after = scenery(24, 0);
+    paint(cave_before, /*x0=*/0, /*y0=*/108, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
+    paint(cave_after, /*x0=*/0, /*y0=*/108, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
+    const ViewShift cave_shift = walk_view_shift(cave_before, cave_after);
+    if (!cave_shift.scrolled()){
+        return std::format("a step east along a cave's south black edge: did not read as a scroll ({}).",
+            describe_view_shift(cave_shift));
+    }
+    const ViewShift corridor{.bands = {{
+        {.dx = 0, .dy = 7, .unshifted = 8.1, .shifted = 4.2},
+        {.dx = 1, .dy = 8, .unshifted = 9.3, .shifted = 5.2},
+        {.dx = 1, .dy = 10, .unshifted = 19.7, .shifted = 6.6},
+        {.dx = 1, .dy = 10, .unshifted = 17.8, .shifted = 5.5},
+    }}};
+    if (!corridor.scrolled()){
+        return std::format("a step north up a narrow cave corridor: did not read as a scroll ({}).",
+            describe_view_shift(corridor));
+    }
+    return "";
+}
+
+UnitTestResult test_view_shift(Logger&){
+        const ImageRGB32 before = scenery(0, 0);
+        struct Case{
+            std::string name;
+            ImageRGB32 after;
+            bool scrolled;
+        };
+        std::vector<Case> cases;
+        cases.push_back({"the same view", scenery(0, 0), false});
+        cases.push_back({"a step east: the view scrolls 16 pixels west", scenery(16, 0), true});
+        cases.push_back({"a step south", scenery(0, 12), true});
+        cases.push_back({"a step north, the near rows scrolling further", scenery_after_a_step_north(), true});
+        cases.push_back({"a step west, near rows scrolling 13-17 px on 192x108", scenery_after_a_step_west(), true});
+        {
+            //  r83, r84: a cloud's shadow over the top of the view.
+            ImageRGB32 shadow = scenery(0, 0);
+            paint(shadow, 0, 0, 384, 90, 0.6);
+            cases.push_back({"a cloud shadow over the top third", std::move(shadow), false});
+        }
+        {
+            //  Jubilife's TV screens, the mine's conveyors.
+            ImageRGB32 tv = scenery(0, 0);
+            paint(tv, 20, 20, 110, 80, 0, 0xffffffff);
+            cases.push_back({"a TV lights up in a corner", std::move(tv), false});
+        }
+        {
+            //  A turn changes only the player's sprite.
+            ImageRGB32 turned = scenery(0, 0);
+            paint(turned, 175, 75, 210, 150, 0, 0xffff4040);
+            cases.push_back({"the player turns", std::move(turned), false});
+        }
+        for (const Case& item : cases){
+            const ViewShift shift = walk_view_shift(before, item.after);
+            if (shift.scrolled() != item.scrolled){
+                return std::format("{}: {} ({}).",
+                    item.name, item.scrolled ? "did not read as a scroll" : "read as a scroll", describe_view_shift(shift));
+            }
+        }
+        const ViewShift east = walk_view_shift(before, scenery(16, 0));
+        for (const BandShift& band : east.bands){
+            if (band.dx != -8 || band.dy != 0){
+                return std::format("A 16-pixel scroll west read as {} on the half-size copy, expected (-8, 0) in every band.", describe_view_shift(east));
+            }
+        }
+        const std::string cave_err = check_cave_edge_scroll();
+        return cave_err.empty() ? UnitTestResult(true) : UnitTestResult(cave_err);
+}
+
+UnitTestResult test_pixel_change_coverage(Logger&){
+        const ImageRGB32 before = scenery(0, 0);
+        struct Case{
+            std::string name;
+            ImageRGB32 after;
+            bool scrolled;
+        };
+        std::vector<Case> cases;
+        cases.push_back({"identical view", scenery(0, 0), false});
+        cases.push_back({"step east", scenery(16, 0), true});
+        cases.push_back({"step south", scenery(0, 12), true});
+        cases.push_back({"step north with perspective", scenery_after_a_step_north(), true});
+        cases.push_back({"step west with perspective", scenery_after_a_step_west(), true});
+        {
+            ImageRGB32 shadow = scenery(0, 0);
+            paint(shadow, 0, 0, 384, 90, 0.6);
+            cases.push_back({"cloud shadow over top 42%", std::move(shadow), false});
+        }
+        {
+            ImageRGB32 tv = scenery(0, 0);
+            paint(tv, 20, 20, 110, 80, 0, 0xffffffff);
+            cases.push_back({"localized bright flash/TV", std::move(tv), false});
+        }
+        {
+            ImageRGB32 bump = scenery(0, 0);
+            paint(bump, 160, 65, 224, 155, 0, 0xffff4040);
+            cases.push_back({"bump/player sprite change only", std::move(bump), false});
+        }
+        for (const Case& item : cases){
+            const PixelChangeCoverage cov = walk_pixel_coverage(before, item.after);
+            if (cov.scrolled() != item.scrolled){
+                return std::format("{}: expected {}, got rows={:.2f} cols={:.2f} px={:.2f}.",
+                    item.name, item.scrolled ? "scrolled" : "still",
+                    cov.changed_rows, cov.changed_cols, cov.changed_pixels);
+            }
+        }
+        ImageRGB32 cave_before = scenery(0, 0);
+        ImageRGB32 cave_after = scenery(24, 0);
+        paint(cave_before, /*x0=*/0, /*y0=*/108, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
+        paint(cave_after, /*x0=*/0, /*y0=*/108, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
+        const PixelChangeCoverage cave_cov = walk_pixel_coverage(cave_before, cave_after);
+        if (!cave_cov.scrolled()){
+            return std::format("cave south black edge step: expected scrolled, got rows={:.2f} cols={:.2f}.",
+                cave_cov.changed_rows, cave_cov.changed_cols);
+        }
+        return true;
+}
+
+//  walk_view_shift() on the console's frames around D-pad taps.
+struct ViewShiftFramesTestCase{
+    std::string name;
+    struct Input{
+        std::string before;
+        std::string after;
+    };
+    Input input;
+    struct Expectation{
+        bool scrolled;
+    };
+    Expectation expectation;
+};
+
+const ViewShiftFramesTestCase VIEW_SHIFT_FRAMES_CASES[] = {
+    //  00.01 below_barrys_warning (2026-11-15): one shift for the whole view
+    //  lined up these steps only 1.94 and 1.69 times better than none, so
+    //  north 18 counted 3 steps.
+    {
+        "a step north up Twinleaf's path",
+        {
+            .before = "PokemonBDSP/AutoStory/TwinleafPathNorth-20261115-chunk4-before.png",
+            .after = "PokemonBDSP/AutoStory/TwinleafPathNorth-20261115-chunk4-after.png",
+        },
+        {.scrolled = true},
+    },
+    {
+        "the next step north, more distant scenery in view",
+        {
+            .before = "PokemonBDSP/AutoStory/TwinleafPathNorth-20261115-chunk5-before.png",
+            .after = "PokemonBDSP/AutoStory/TwinleafPathNorth-20261115-chunk5-after.png",
+        },
+        {.scrolled = true},
+    },
+};
+
+UnitTestResult test_view_shift_frames(Logger& logger){
+        for (const ViewShiftFramesTestCase& item : VIEW_SHIFT_FRAMES_CASES){
+            for (const std::string& file : {item.input.before, item.input.after}){
+                if (!Filesystem::is_regular_file(UNIT_TEST_RESOURCE_PATH() + file)){
+                    return UnitTestResult(UnitTestResult::SKIPPED, std::format("Screenshot not found: {}{}", UNIT_TEST_RESOURCE_PATH(), file));
+                }
+            }
+            const ViewShift shift = walk_view_shift(
+                ImageRGB32(UNIT_TEST_RESOURCE_PATH() + item.input.before),
+                ImageRGB32(UNIT_TEST_RESOURCE_PATH() + item.input.after)
+            );
+            logger.log(std::format("{}: {}", item.name, describe_view_shift(shift)));
+            if (shift.scrolled() != item.expectation.scrolled){
+                return std::format("{}: {} ({}).",
+                    item.name, item.expectation.scrolled ? "did not read as a scroll" : "read as a scroll", describe_view_shift(shift));
+            }
+        }
+        return true;
+}
+
+//  StillTapFrames: a tap read as still whose change is near the walk's
+//  steps saves its frames, at most `max_pairs` a walk.
+struct StillTapFramesTestCase{
+    std::string name;
+    struct Input{
+        size_t max_pairs;
+        std::vector<TapChunk> taps;
+    };
+    Input input;
+    struct Expectation{
+        std::vector<size_t> saved_chunks;
+    };
+    Expectation expectation;
+};
+
+//  A tap of a walk whose steps changed the screen by 40.
+TapChunk tap_of(size_t chunk, double change, bool moved){
+    return {.chunk = chunk, .change = change, .largest = 40, .moved = moved};
+}
+
+std::vector<StillTapFramesTestCase> still_tap_frames_cases(){
+    return {
+        {
+            "a still tap with 60% of a step's change is saved",
+            {.max_pairs = 10, .taps = {tap_of(1, 40, true), tap_of(2, 24, false)}},
+            {.saved_chunks = {2}},
+        },
+        {
+            "a bump well under a step's change is not",
+            {.max_pairs = 10, .taps = {tap_of(1, 40, true), tap_of(2, 13, false)}},
+            {.saved_chunks = {}},
+        },
+        {
+            "a moved tap is not",
+            {.max_pairs = 10, .taps = {tap_of(1, 40, true)}},
+            {.saved_chunks = {}},
+        },
+        {
+            "no more than max_pairs a walk",
+            {.max_pairs = 2, .taps = {tap_of(1, 40, false), tap_of(2, 40, false), tap_of(3, 40, false)}},
+            {.saved_chunks = {1, 2}},
+        },
+    };
+}
+
+//  The chunks whose frames StillTapFrames saved, through a fake save hook.
+std::vector<size_t> still_tap_frames_saved(const StillTapFramesTestCase::Input& input){
+    const ImageRGB32 frame(16, 9);
+    std::vector<size_t> saved;
+    StillTapFrames frames(
+        [&saved](const ImageViewRGB32&, const ImageViewRGB32&, size_t chunk){
+            saved.push_back(chunk);
+        },
+        input.max_pairs
+    );
+    for (const TapChunk& tap : input.taps){
+        frames.keep_if_suspect(tap, frame, frame);
+    }
+    return saved;
+}
+
+UnitTestResult test_still_tap_frames(Logger&){
+    for (const StillTapFramesTestCase& item : still_tap_frames_cases()){
+        const std::vector<size_t> saved = still_tap_frames_saved(item.input);
+        if (saved != item.expectation.saved_chunks){
+            return std::format("{}: saved {} pair(s), expected {}.", item.name, saved.size(), item.expectation.saved_chunks.size());
+        }
+    }
+    return true;
+}
+
+//  pokemon_center_on_screen(): the Center's warm floor in a room. r79 read
+//  Jubilife's yellow plaza as a Center and called a won battle lost.
+UnitTestResult test_pokemon_center_on_screen(Logger&){
+    constexpr uint32_t FLOOR = 0xfff0c860;      //  the Center's warm yellow
+    constexpr uint32_t WALL = 0xffe08030;       //  its orange back wall
+    constexpr uint32_t GRASS = 0xff60b040;
+    struct Case{
+        std::string name;
+        uint32_t top;
+        uint32_t bottom;
+        double dark_bottom;     //  how much of the screen's height, from the bottom, is black
+        bool center;
+    };
+    const std::vector<Case> cases{
+        {"a Center: wall over floor, black below it", WALL, FLOOR, 0.15, true},
+        {"Jubilife's plaza: yellow paving, no black edge", FLOOR, FLOOR, 0, false},
+        {"a street: grass over yellow paving", GRASS, FLOOR, 0, false},
+        {"a grey gym in a room", 0xff808080, 0xff909090, 0.15, false},
+    };
+    for (const Case& item : cases){
+        ImageRGB32 screen(1920, 1080);
+        const size_t dark_from = (size_t)(1080 * (1 - item.dark_bottom));
+        for (size_t y = 0; y < 1080; y++){
+            for (size_t x = 0; x < 1920; x++){
+                screen.pixel(x, y) = y >= dark_from ? 0xff000000 : y < 540 ? item.top : item.bottom;
+            }
+        }
+        if (pokemon_center_on_screen(screen) != item.center){
+            return item.name + (item.center ? ": not read as a Center." : ": read as a Center.");
+        }
+    }
+    return true;
+}
+
+//  01.02's walk east beats the Youngster above Route 203's row 18; the rows
+//  after it, from saves made since, do not meet him again.
+UnitTestResult test_row_trainers(Logger&){
+    const StoryWorld* world = story_plan_world("Route203", "JubilifeCity");
+    if (world == nullptr){
+        return std::string("no world joins Route 203 and Jubilife");
+    }
+    const auto has_youngster = [world](const std::string& row){
+        const std::vector<TrainerSight> sights = row_trainers(*world, row);
+        return std::any_of(sights.begin(), sights.end(), [](const TrainerSight& sight){
+            return sight.name == "Youngster (above row 18)";
+        });
+    };
+    if (!has_youngster("01.02")){
+        return std::string("01.02 fights the Youngster: he must be on its trainers");
+    }
+    if (has_youngster("01.06")){
+        return std::string("01.06 starts from a save after 01.02 beat the Youngster");
+    }
+    return true;
+}
+
+struct AutoStoryWalkCase{
+    struct Input{
+        std::function<UnitTestResult(Logger&)> body;
+    };
+    struct Expectation{
+    };
+    std::string name;
+    Input input;
+    Expectation expectation;
+};
+
+//  place_leg_battle() on synthetic walks of 10 taps, their events recorded
+//  as record_tap_battle() records the console's.
+struct LegBattleCase{
+    std::string name;
+    size_t battles;
+    size_t tap;             //  the tap (from 1) that set the battle off
+    size_t moved_after;     //  taps that moved after it was run from
+    bool settled;           //  false: a white fade with no battle yet
+    std::optional<TileSpan> expected;
+};
+UnitTestResult test_leg_battle_place(Logger& logger){
+    const LegBattleCase CASES[] = {
+        {"mid-leg, the taps went on", 1, 3, 7, true, TileSpan{9, 10}},
+        {"seen after the hold", 1, 6, 0, true, TileSpan{5, 7}},
+        {"on the first tap", 1, 1, 0, true, TileSpan{0, 2}},
+        {"before the walk", 1, 0, 0, true, TileSpan{0, 1}},
+        {"two battles", 2, 3, 0, true, std::nullopt},
+        {"unsettled: a white fade, no battle yet", 1, 4, 0, false, std::nullopt},
+    };
+    for (const LegBattleCase& item : CASES){
+        WalkResult walk{.stop = WalkStop::LIMIT, .walked = Milliseconds(8000), .wild_battles = item.battles};
+        walk.moved_after_battle = item.moved_after;
+        walk.events.record({}, walk.started);
+        if (item.settled){
+            record_tap_battle(walk, item.tap);
+        }else{
+            walk.events.record({ScreenEvent::FADE_WHITE}, walk.started + Milliseconds(800 * (item.tap - 1) + 500));
+        }
+        const LegBattlePlace place = place_leg_battle(walk, 10);
+        logger.log(leg_battle_line(item.name, walk, place));
+        const bool same = place.moved.has_value() == item.expected.has_value() &&
+            (!place.moved || (place.moved->min == item.expected->min && place.moved->max == item.expected->max));
+        if (!same){
+            return item.name + ": " + leg_battle_line(item.name, walk, place);
+        }
+    }
+    return true;
+}
+
+//  Textured 384x216 synthetic screen centered at `base` brightness with +/-20
+//  checkerboard contrast so stddev_sum (~60) is above uniform fade thresholds.
+ImageRGB32 textured_overworld_frame(uint8_t base){
+    const uint8_t lo = base > 20 ? (uint8_t)(base - 20) : 0;
+    const uint8_t hi = base < 235 ? (uint8_t)(base + 20) : 255;
+    const uint32_t dark = 0xff000000 | ((uint32_t)lo << 16) | ((uint32_t)lo << 8) | lo;
+    const uint32_t light = 0xff000000 | ((uint32_t)hi << 16) | ((uint32_t)hi << 8) | hi;
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = (((x >> 3) + (y >> 3)) & 1) == 0 ? dark : light;
+        }
+    }
+    return screen;
+}
+
+ImageRGB32 solid_frame(uint32_t color){
+    ImageRGB32 screen(384, 216);
+    for (int y = 0; y < 216; y++){
+        for (int x = 0; x < 384; x++){
+            screen.pixel(x, y) = color;
+        }
+    }
+    return screen;
+}
+
+//  Feeds `frames` to a fresh StillAfterFadeWatcher and returns the timestamp
+//  (in ms from t0) it first fired at, or nullopt if it never fired.
+std::optional<int> still_watcher_fires_at(const std::vector<std::pair<int, ImageRGB32>>& frames){
+    const WallClock t0 = WallClock();
+    StillAfterFadeWatcher watcher;
+    for (const auto& [ms, frame] : frames){
+        if (watcher.process_frame(frame, t0 + Milliseconds(ms))){
+            return ms;
+        }
+    }
+    return std::nullopt;
+}
+
+std::vector<std::pair<int, ImageRGB32>> still_frames_every_200ms(const ImageRGB32& frame, int max_ms){
+    std::vector<std::pair<int, ImageRGB32>> out;
+    for (int ms = 0; ms <= max_ms; ms += 200){
+        out.emplace_back(ms, frame.copy());
+    }
+    return out;
+}
+
+std::string check_still_watcher_edge_cases(const ImageRGB32& bright){
+    std::vector<std::pair<int, ImageRGB32>> fade_in;
+    fade_in.emplace_back(0, solid_frame(0xff070707));
+    fade_in.emplace_back(200, solid_frame(0xff070707));
+    fade_in.emplace_back(400, textured_overworld_frame(25));
+    fade_in.emplace_back(600, textured_overworld_frame(50));
+    for (int ms = 800; ms <= 1800; ms += 200){
+        fade_in.emplace_back(ms, textured_overworld_frame(80));
+    }
+    if (still_watcher_fires_at(fade_in) != 1800){
+        return "dark fade-in did not fire 1000 ms after brightness settled.";
+    }
+    std::vector<std::pair<int, ImageRGB32>> two_frame_stall;
+    two_frame_stall.emplace_back(0, bright.copy());
+    two_frame_stall.emplace_back(1200, bright.copy());
+    two_frame_stall.emplace_back(1400, bright.copy());
+    if (still_watcher_fires_at(two_frame_stall) != 1400){
+        return "2-frame stall did not wait for MIN_STILL_FRAMES.";
+    }
+    return "";
+}
+
+//  StillAfterFadeWatcher: early-exit after a real warp clears its black fade,
+//  while never cutting short a cave wild battle's animated 3D intro.
+UnitTestResult test_still_after_fade_watcher(Logger&){
+    const ImageRGB32 bright = textured_overworld_frame(140);
+    if (still_watcher_fires_at(still_frames_every_200ms(bright, 1200)) != 1000){
+        return "bright still overworld did not fire at 1000 ms.";
+    }
+    if (still_watcher_fires_at(still_frames_every_200ms(textured_overworld_frame(46), 1200)) != 1000){
+        return "dark cave floor did not fire at 1000 ms.";
+    }
+    const std::string edge_err = check_still_watcher_edge_cases(bright);
+    if (!edge_err.empty()){
+        return edge_err;
+    }
+    std::vector<std::pair<int, ImageRGB32>> battle_intro;
+    for (int i = 0; i <= 30; i++){
+        battle_intro.emplace_back(i * 200, scenery(i * 16, i * 6));
+    }
+    if (still_watcher_fires_at(battle_intro).has_value()){
+        return "animated battle intro false-triggered stillness watcher.";
+    }
+    std::vector<std::pair<int, ImageRGB32>> with_banner;
+    for (int i = 0; i <= 6; i++){
+        ImageRGB32 frame = scenery(0, 0);
+        paint(frame, /*x0=*/0, /*y0=*/0, /*x1=*/384, /*y1=*/36, /*scale=*/0, i % 2 == 0 ? 0xffffffff : 0xff202020);
+        with_banner.emplace_back(i * 200, std::move(frame));
+    }
+    if (still_watcher_fires_at(with_banner) != 1000){
+        return "top banner animation blocked early exit at 1000 ms.";
+    }
+    return true;
+}
+
+class Test_AutoStoryWalk : public UnitTest{
+public:
+    explicit Test_AutoStoryWalk(AutoStoryWalkCase test_case)
+        : UnitTest("PokemonBDSP::AutoStory - " + test_case.name)
+        , m_case(std::move(test_case))
+    {}
+    virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
+        try{
+            return m_case.input.body(logger);
+        }catch (Exception& e){
+            return std::string(e.name()) + ": " + e.message();
+        }
+    }
+
+private:
+    AutoStoryWalkCase m_case;
+};
+
+} // namespace
+
+
+const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
+    {.name = "a turn is a D-pad tap too short to step", .input = {test_route_turn_tap}, .expectation = {}},
+    {.name = "indoors() under the evening tint", .input = {test_indoors_any_light}, .expectation = {}},
+    {.name = "out of a door needs its fade", .input = {test_door_fade}, .expectation = {}},
+    {.name = "a fade is uniform, dark or white; a dim floor is none (lab-B, 2026-11-08)", .input = {test_fade_of}, .expectation = {}},
+    {.name = "a warp's fade, followed frame by frame, its hold seen or not", .input = {test_warp_fade_watch}, .expectation = {}},
+    {.name = "location banner match", .input = {test_location_banner}, .expectation = {}},
+    {.name = "indoors", .input = {test_indoors}, .expectation = {}},
+    {.name = "location banner showing", .input = {test_location_banner_showing}, .expectation = {}},
+    {.name = "a Pokemon Center is its floor in a room, not a yellow plaza", .input = {test_pokemon_center_on_screen}, .expectation = {}},
+    {.name = "a step scrolls the view; moving scenery does not", .input = {test_view_shift}, .expectation = {}},
+    {.name = "pixel change row/col coverage separates steps from bumps and flashes", .input = {test_pixel_change_coverage}, .expectation = {}},
+    {.name = "the console's steps north scroll the view", .input = {test_view_shift_frames}, .expectation = {}},
+    {.name = "a tap read still near a step's change keeps its frames", .input = {test_still_tap_frames}, .expectation = {}},
+    {.name = "a wild battle on an open leg's taps, placed by its screen events", .input = {test_leg_battle_place}, .expectation = {}},
+    {.name = "a row's trainers leave out those an earlier row beat", .input = {test_row_trainers}, .expectation = {}},
+    {.name = "StillAfterFadeWatcher early-exits still overworld and ignores battle intro animation", .input = {test_still_after_fade_watcher}, .expectation = {}},
+};
+
+void add_tests_AutoStory_Walk(UnitTestDatabase& database){
+    for (const auto& item : AUTO_STORY_WALK_CASES){
+        database.add<Test_AutoStoryWalk>(item);
+    }
+}
+
+
+} // namespace PokemonBDSP
+} // namespace NintendoSwitch
+} // namespace PokemonAutomation
