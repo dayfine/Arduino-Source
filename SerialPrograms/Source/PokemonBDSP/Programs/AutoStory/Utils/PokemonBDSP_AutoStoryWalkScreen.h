@@ -79,15 +79,15 @@ ViewShift walk_view_shift(const ImageViewRGB32& before, const ImageViewRGB32& af
 //  Each band's shift and how much better than none it lines up, for logs.
 std::string describe_view_shift(const ViewShift& shift);
 
-//  How widely pixel changes spread across rows and columns on a 192x108 copy.
-//  A camera scroll moves scenery across both most rows and most columns
-//  (measured 52%-100% across overworld and dark caves on lab-B); a bump,
-//  passing NPC, cloud shadow or localized flash stays below 20% in at least
-//  one axis.
+//  How widely pixel changes spread across lit rows and columns on a 192x108
+//  copy, excluding pure-black void pixels (r+g+b < 45 in both frames, as in
+//  dark cave corridors like Oreburgh Mine). A camera scroll moves scenery
+//  across both most lit rows and most lit columns; a bump, passing NPC, cloud
+//  shadow or localized flash stays narrow in at least one axis.
 struct PixelChangeCoverage{
-    double changed_rows = 0;    //  fraction of rows with >= 25% changed pixels
-    double changed_cols = 0;    //  fraction of cols with >= 25% changed pixels
-    double changed_pixels = 0;  //  fraction of all pixels with |dR|+|dG|+|dB| > 36
+    double changed_rows = 0;    //  fraction of lit rows with >= 25% lit pixels changed
+    double changed_cols = 0;    //  fraction of lit cols with >= 25% lit pixels changed
+    double changed_pixels = 0;  //  fraction of lit pixels with |dR|+|dG|+|dB| > 36
 
     bool scrolled() const;
 };
