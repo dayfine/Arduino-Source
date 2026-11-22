@@ -294,8 +294,9 @@ and declarations are enforced; untouched legacy declarations are grandfathered.
 - `test-case`: new/changed native `*_Tests.cpp` UnitTest classes take one aggregate case.
   That case has exactly three fields, in order: `name`, `input` and `expectation`.
   The name labels the case and is not part of what the code under test is given,
-  so it is its own field and never inside the input; `input` and `expectation` are
-  local structs (nested in the case is fine). A named C-array, `std::array`, or
+  so it is its own field and never inside the input; `input` and `expectation` have
+  types nested in the case struct and named `Input` and `Expectation` (separate
+  top-level input/expectation structs are reported). A named C-array, `std::array`, or
   `std::vector` table contains designated `.name` / `.input` / `.expectation` rows
   and is consumed by a range-for for registration. Compare expected and observed values.
 
