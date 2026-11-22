@@ -230,6 +230,8 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 include(cmake/EmbedTextFiles.cmake)
 pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/Grid/Maps/TestMaps
     Pokemon/Navigation/Grid/Maps/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
+pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/Grid/Planning/GateTestMaps
+    Pokemon/Navigation/Grid/Planning/Pokemon_NavigationGateTestMaps.h PokemonAutomation::Pokemon navigation_gate_test_map_json)
 
 
 # Create binary target

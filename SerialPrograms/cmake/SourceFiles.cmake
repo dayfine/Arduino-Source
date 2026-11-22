@@ -1561,9 +1561,16 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_RuntimeMap.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_RuntimeMap_Tests.cpp
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_RuntimeMap_Tests.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.cpp
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_GatedPlanner.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_GatedTypes.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_Gates_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_Gates_Tests.h
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_LegPlanner.h
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_LegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_LegPlanner_Tests.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_NavigationGateTestMaps.h
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner.h
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner_Tests.h

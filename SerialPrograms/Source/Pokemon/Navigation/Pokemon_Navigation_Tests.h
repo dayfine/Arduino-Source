@@ -16,6 +16,7 @@
 #include "Grid/Maps/Pokemon_MapData_Tests.h"
 #include "Grid/Maps/Pokemon_MoveMechanics_Tests.h"
 #include "Grid/Maps/Pokemon_RuntimeMap_Tests.h"
+#include "Grid/Planning/Pokemon_Gates_Tests.h"
 #include "Grid/Planning/Pokemon_LegPlanner_Tests.h"
 #include "Grid/Planning/Pokemon_RobustLegPlanner_Tests.h"
 #include "Grid/Planning/Pokemon_RouteScorer_Tests.h"
@@ -32,6 +33,7 @@ inline void add_tests_Navigation(UnitTestDatabase& database){
     add_tests_MapData(database);
     add_tests_MoveMechanics(database);
     add_tests_RuntimeMap(database);
+    add_tests_Gates(database);
     add_tests_LegPlanner(database);
     add_tests_RobustLegPlanner(database);
     add_tests_RouteScorer(database);
