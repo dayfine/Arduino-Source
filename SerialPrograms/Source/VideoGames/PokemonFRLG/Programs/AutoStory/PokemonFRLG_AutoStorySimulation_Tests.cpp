@@ -567,12 +567,9 @@ UnitTestResult test_oddish_walks(){
     StoryPose at = *story_pose(Pokemon::pose_of(*row->start));
     OverworldSim sim(maps_bridge_beaten(), MapPosition{at.map, at.tile}, *at.facing);
     const std::map<std::string, MapPosition> ends{
-        {"mart_clerk", {"CeruleanCity_Mart", {4, 3}}},
-        {"above_oddish_patch", {"Route24", {3, 13}}},
-        {"oddish_patch", {"Route24", {3, 19}}},
-        {"oddish_patch_cliff", {"Route24", {3, 19}}},
-        {"nugget_bridge_top", {"Route24", {11, 13}}},
-        {"cerulean_center_wall", {"CeruleanCity", {22, 15}}},
+        {"mart_clerk", {"CeruleanCity_Mart", {4, 3}}}, {"above_oddish_patch", {"Route24", {3, 13}}},
+        {"oddish_patch", {"Route24", {3, 19}}}, {"oddish_patch_cliff", {"Route24", {3, 19}}},
+        {"nugget_bridge_top", {"Route24", {11, 13}}}, {"cerulean_center_wall", {"CeruleanCity", {22, 15}}},
         {"cerulean_nurse", {"CeruleanCity_PokemonCenter_1F", {7, 4}}},
     };
     for (const StoryStep& step : row->steps){
