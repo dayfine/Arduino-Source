@@ -877,6 +877,39 @@ private:
     AutoStoryWalkCase m_case;
 };
 
+//  Oreburgh Mine exit (lab-B, 2026-11-22 11:41/11:50, 01.03/12 out_of_the_mine):
+//  a cave wild battle's white flash turns LOCATION_BANNER_WHITE bright white too,
+//  which false-triggered LocationBannerWatcher in non-English runs where OCR is
+//  skipped. Full-screen white flashes and blank top-left streaks must be rejected,
+//  while a white top-left banner with dark text over overworld scenery matches.
+UnitTestResult test_location_banner_rejects_white_flash(Logger&){
+    ImageRGB32 white_flash(384, 216);
+    white_flash.fill(0xffffffff);
+    if (location_banner_showing(white_flash)){
+        return "full-screen white flash misread as a location banner.";
+    }
+    ImageRGB32 streak_only = scenery(0, 0);
+    for (size_t y = 4; y < 22; y++){
+        for (size_t x = 8; x < 160; x++){
+            streak_only.pixel(x, y) = 0xfffafafa;
+        }
+    }
+    if (location_banner_showing(streak_only)){
+        return "blank white top-left patch without text misread as a location banner.";
+    }
+    ImageRGB32 banner = streak_only.copy();
+    for (size_t y = 8; y < 18; y++){
+        for (size_t x = 60; x < 120; x += 4){
+            banner.pixel(x, y) = 0xff282828;
+            banner.pixel(x + 1, y) = 0xff282828;
+        }
+    }
+    if (!location_banner_showing(banner)){
+        return "real top-left banner with dark text over scenery was not detected.";
+    }
+    return true;
+}
+
 } // namespace
 
 
@@ -889,6 +922,7 @@ const AutoStoryWalkCase AUTO_STORY_WALK_CASES[] = {
     {.name = "location banner match", .input = {test_location_banner}, .expectation = {}},
     {.name = "indoors", .input = {test_indoors}, .expectation = {}},
     {.name = "location banner showing", .input = {test_location_banner_showing}, .expectation = {}},
+    {.name = "location banner rejects white flashes and blank patches", .input = {test_location_banner_rejects_white_flash}, .expectation = {}},
     {.name = "a Pokemon Center is its floor in a room, not a yellow plaza", .input = {test_pokemon_center_on_screen}, .expectation = {}},
     {.name = "a step scrolls the view; moving scenery does not", .input = {test_view_shift}, .expectation = {}},
     {.name = "pixel change row/col coverage separates steps from bumps and flashes", .input = {test_pixel_change_coverage}, .expectation = {}},
