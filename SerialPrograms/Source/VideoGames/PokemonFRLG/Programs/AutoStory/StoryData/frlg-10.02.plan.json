@@ -18,7 +18,25 @@
       {
         "id": "tower_2f_east_of_rival",
         "action": "route",
-        "why": "out of the Center's door (6, 5), east to the Tower's door (18, 6), up 1F to its stairs (18, 9), and on 2F from its stairs (18, 10) up column 18 to (17, 6), a tile east of the trigger (16, 6) below the rival (16, 5); the other trigger (17, 5) is north of it",
+        "why": "out of the Center's door (6, 5), east to the Tower's door (18, 6), up 1F to its stairs (18, 9), and on 2F from its stairs (18, 10) up column 18 to (18, 6), keeping off the rival's upper trigger (17, 5)",
+        "args": {
+          "target": {
+            "map": "PokemonTower_2F",
+            "tiles": [
+              [
+                18,
+                6
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "step_east_of_rival",
+        "action": "route",
+        "why": "one step west from (18, 6) onto (17, 6), a tile east of the rival's lower trigger (16, 6), without touching the upper trigger (17, 5)",
         "args": {
           "target": {
             "map": "PokemonTower_2F",
