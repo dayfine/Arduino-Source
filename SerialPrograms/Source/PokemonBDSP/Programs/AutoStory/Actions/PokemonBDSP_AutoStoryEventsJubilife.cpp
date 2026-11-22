@@ -14,6 +14,9 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStoryRoutePlanner.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryPlaces.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryRouteTiming.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryRouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryWalkDpad.h"
@@ -80,6 +83,23 @@ void return_below_home(VideoStream& stream, ProControllerContext& context, Direc
     turn_to(stream, context, facing, Direction::NORTH);
 }
 
+//  The walk onto the row below a wanderer can end a row low: on 00.05b's
+//  east 8 to (55, 34), Dawn grazed school_kid_m_5 (51, 33..35) and BDSP's
+//  collider slid her onto row 35 (lab-B 2026-11-22), so every round asked
+//  row 35 and mart_clown on (55, 33) never answered. Down to the wall
+//  `wall_tiles` below the row and as many back up puts us on the row again
+//  from either.
+void back_onto_row(VideoStream& stream, ProControllerContext& context, size_t wall_tiles, const std::string& name, Direction& facing){
+    turn_to(stream, context, facing, Direction::SOUTH);
+    const WalkResult down = walk_tiles_dpad(stream, context, run_from_wild_battle, route_stick(Direction::SOUTH),
+        wall_tiles + 1, std::format("Down to the wall below {}'s row", name));
+    turn_to(stream, context, facing, Direction::NORTH);
+    const WalkResult up = walk_tiles_dpad(stream, context, run_from_wild_battle, route_stick(Direction::NORTH),
+        wall_tiles, std::format("Back up to the row below {}", name));
+    stream.log(std::format("[Talk] {}: back onto the row from the wall {} tiles below it: {} tiles down, {} up.",
+        name, wall_tiles, down.moved_chunks, up.moved_chunks));
+}
+
 std::optional<Pokemon::StoryFailure> finish_wanderer_talk(
     VideoStream& stream, ProControllerContext& context, Direction& facing,
     int at, size_t round, const std::string& name
@@ -90,7 +110,7 @@ std::optional<Pokemon::StoryFailure> finish_wanderer_talk(
     return std::nullopt;
 }
 
-std::optional<Pokemon::StoryFailure> talk_to_wanderer(StoryEnv& console, BdspRunState&, const BdspStep& step){
+std::optional<Pokemon::StoryFailure> talk_to_wanderer(StoryEnv& console, BdspRunState& state, const BdspStep& step){
     VideoStream& stream = console.env.console;
     ProControllerContext& context = console.context;
     const std::string label = std::format("Along the row below {}", step.name);
@@ -107,8 +127,14 @@ std::optional<Pokemon::StoryFailure> talk_to_wanderer(StoryEnv& console, BdspRun
         return finish_wanderer_talk(stream, context, facing, 0, 1, step.name);
     }
     const int targets[] = {1, 0, -1, 0};
+    const std::optional<size_t> anchor = wanderer_row_anchor(state.pose);
     int at = 0;
     for (size_t round = 0; round < 6; round++){
+        //  A first round in vain may have asked from a row low: back onto
+        //  the row by the wall below it, where the map has one close.
+        if (round == 1 && anchor && at == 0){
+            back_onto_row(stream, context, *anchor, step.name, facing);
+        }
         for (int target : targets){
             if (at != target){
                 const int move = target > at ? 1 : -1;
@@ -129,6 +155,30 @@ std::optional<Pokemon::StoryFailure> talk_to_wanderer(StoryEnv& console, BdspRun
 
 } // namespace
 
+
+std::optional<size_t> wanderer_row_anchor(const Pokemon::GridPose& pose){
+    if (pose.tiles.size() != 1){
+        return std::nullopt;
+    }
+    const StoryWorld* world = story_plan_world(pose.map, pose.map);
+    if (world == nullptr){
+        return std::nullopt;
+    }
+    const Pokemon::TilePos start = story_to_world(*world, pose.map, pose.tiles[0]);
+    const WallHit wall = slide_to_wall(*world, start, Direction::SOUTH);
+    if (!wall.anchored || wall.tiles == 0 || wall.tiles > WANDERER_ANCHOR_MOST_TILES){
+        return std::nullopt;
+    }
+    //  Someone wandering onto the column would stop the walk short of it.
+    Pokemon::TilePos at = start;
+    for (size_t i = 0; i < wall.tiles; i++){
+        at = at.next(Direction::SOUTH);
+        if (wandering_hazard(*world, at)){
+            return std::nullopt;
+        }
+    }
+    return wall.tiles;
+}
 
 void add_jubilife_events(StoryEvents& events){
     events.emplace("talk_to_wanderer", talk_to_wanderer);

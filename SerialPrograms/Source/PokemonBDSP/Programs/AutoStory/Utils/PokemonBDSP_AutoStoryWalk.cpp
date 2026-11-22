@@ -293,27 +293,33 @@ bool PixelChangeCoverage::scrolled() const{
 PixelChangeCoverage walk_pixel_coverage(const ImageViewRGB32& before, const ImageViewRGB32& after){
     const ImageRGB32 a = before.scale_to(VIEW_WIDTH, VIEW_HEIGHT);
     const ImageRGB32 b = after.scale_to(VIEW_WIDTH, VIEW_HEIGHT);
-    constexpr int PIXEL_SUM_DELTA = 36;
-    std::array<int, VIEW_WIDTH> col_hits{};
-    int changed_rows = 0;
-    size_t changed_pixels = 0;
+    constexpr int PIXEL_SUM_DELTA = 36, VOID_RGB_SUM = 45;
+    std::array<int, VIEW_WIDTH> col_hits{}, col_lit{};
+    int changed_rows = 0, lit_rows = 0;
+    size_t changed_pixels = 0, lit_pixels = 0;
     for (int y = 0; y < VIEW_HEIGHT; y++){
-        int row_hits = 0;
+        int row_hits = 0, row_lit = 0;
         for (int x = 0; x < VIEW_WIDTH; x++){
-            const uint32_t p = a.pixel(x, y), q = b.pixel(x, y);
-            const int d = std::abs((int)((p >> 16) & 0xff) - (int)((q >> 16) & 0xff))
-                + std::abs((int)((p >> 8) & 0xff) - (int)((q >> 8) & 0xff))
-                + std::abs((int)(p & 0xff) - (int)(q & 0xff));
+            const Color p(a.pixel(x, y)), q(b.pixel(x, y));
+            if (p.red() + p.green() + p.blue() < VOID_RGB_SUM && q.red() + q.green() + q.blue() < VOID_RGB_SUM){
+                continue;
+            }
+            lit_pixels++; row_lit++; col_lit[(size_t)x]++;
+            const int d = std::abs((int)p.red() - (int)q.red()) + std::abs((int)p.green() - (int)q.green()) + std::abs((int)p.blue() - (int)q.blue());
             if (d > PIXEL_SUM_DELTA){
-                changed_pixels++;
-                row_hits++;
-                col_hits[(size_t)x]++;
+                changed_pixels++; row_hits++; col_hits[(size_t)x]++;
             }
         }
-        changed_rows += row_hits >= VIEW_WIDTH / 4 ? 1 : 0;
+        lit_rows += row_lit >= VIEW_WIDTH / 4 ? 1 : 0;
+        changed_rows += row_lit >= VIEW_WIDTH / 4 && row_hits * 4 >= row_lit ? 1 : 0;
     }
-    const int changed_cols = (int)std::count_if(col_hits.begin(), col_hits.end(), [](int n){ return n >= VIEW_HEIGHT / 4; });
-    return {(double)changed_rows / VIEW_HEIGHT, (double)changed_cols / VIEW_WIDTH, (double)changed_pixels / (VIEW_WIDTH * VIEW_HEIGHT)};
+    int changed_cols = 0, lit_cols = 0;
+    for (size_t x = 0; x < VIEW_WIDTH; x++){
+        lit_cols += col_lit[x] >= VIEW_HEIGHT / 8 ? 1 : 0;
+        changed_cols += col_lit[x] >= VIEW_HEIGHT / 8 && col_hits[x] * 4 >= col_lit[x] ? 1 : 0;
+    }
+    return {lit_rows > 0 ? (double)changed_rows / lit_rows : 0.0, lit_cols > 0 ? (double)changed_cols / lit_cols : 0.0,
+        lit_pixels > 0 ? (double)changed_pixels / lit_pixels : 0.0};
 }
 
 bool tap_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, double line){

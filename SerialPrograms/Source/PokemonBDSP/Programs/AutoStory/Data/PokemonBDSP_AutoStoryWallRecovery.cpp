@@ -157,7 +157,16 @@ std::optional<std::vector<PlannedLeg>> plan_recovered_route(
             best_cost = cost;
         }
     }
-    return best;
+    if (best){
+        return best;
+    }
+    //  No wall brings every start to one tile first: 00.05c's walk east
+    //  along Jubilife's row 22, blocked by someone at (48, 22), stood on
+    //  (46, 22) or (47, 22), whose only walls are past a wanderer's range,
+    //  a person, a door or that someone (lab-B 2026-11-22: "no plan"). The
+    //  robust planner keeps the starts as one set and brings them together
+    //  at a wall on the way.
+    return plan_robust_route(world, from, goal, costs);
 }
 
 } // namespace PokemonBDSP

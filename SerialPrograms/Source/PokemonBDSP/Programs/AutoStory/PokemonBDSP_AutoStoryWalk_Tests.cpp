@@ -439,6 +439,42 @@ UnitTestResult test_view_shift(Logger&){
         return cave_err.empty() ? UnitTestResult(true) : UnitTestResult(cave_err);
 }
 
+//  01.03 Oreburgh Mine bottom corridor (lab-B 2026-11-22): top 25% and bottom
+//  32% are pure black cave void (~57% total), leaving a 43% lit corridor in
+//  the middle. A 1-tile scroll must still read as moved, a bump with only
+//  player sprite animation as still, and an all-black fade frame as zero.
+std::string check_dark_cave_corridor_coverage(){
+    auto mask_corridor = [](ImageRGB32& frame){
+        paint(frame, /*x0=*/0, /*y0=*/0, /*x1=*/384, /*y1=*/54, /*scale=*/0, /*fill=*/0xff000000);
+        paint(frame, /*x0=*/0, /*y0=*/147, /*x1=*/384, /*y1=*/216, /*scale=*/0, /*fill=*/0xff000000);
+    };
+    ImageRGB32 corridor_before = scenery(0, 0);
+    ImageRGB32 corridor_step = scenery(24, 0);
+    ImageRGB32 corridor_bump = scenery(0, 0);
+    paint(corridor_bump, /*x0=*/160, /*y0=*/70, /*x1=*/224, /*y1=*/140, /*scale=*/0, /*fill=*/0xffff4040);
+    mask_corridor(corridor_before);
+    mask_corridor(corridor_step);
+    mask_corridor(corridor_bump);
+    const PixelChangeCoverage step_cov = walk_pixel_coverage(corridor_before, corridor_step);
+    if (!step_cov.scrolled()){
+        return std::format("dark cave corridor step: expected scrolled, got rows={:.2f} cols={:.2f} px={:.2f}.",
+            step_cov.changed_rows, step_cov.changed_cols, step_cov.changed_pixels);
+    }
+    const PixelChangeCoverage bump_cov = walk_pixel_coverage(corridor_before, corridor_bump);
+    if (bump_cov.scrolled()){
+        return std::format("dark cave corridor bump: expected still, got rows={:.2f} cols={:.2f} px={:.2f}.",
+            bump_cov.changed_rows, bump_cov.changed_cols, bump_cov.changed_pixels);
+    }
+    ImageRGB32 all_black(384, 216);
+    all_black.fill(0xff000000);
+    const PixelChangeCoverage black_cov = walk_pixel_coverage(all_black, all_black);
+    if (black_cov.scrolled() || black_cov.changed_rows != 0 || black_cov.changed_cols != 0 || black_cov.changed_pixels != 0){
+        return std::format("all-black fade frame: expected zero coverage, got rows={:.2f} cols={:.2f} px={:.2f}.",
+            black_cov.changed_rows, black_cov.changed_cols, black_cov.changed_pixels);
+    }
+    return "";
+}
+
 UnitTestResult test_pixel_change_coverage(Logger&){
         const ImageRGB32 before = scenery(0, 0);
         struct Case{
@@ -484,7 +520,8 @@ UnitTestResult test_pixel_change_coverage(Logger&){
             return std::format("cave south black edge step: expected scrolled, got rows={:.2f} cols={:.2f}.",
                 cave_cov.changed_rows, cave_cov.changed_cols);
         }
-        return true;
+        const std::string corridor_err = check_dark_cave_corridor_coverage();
+        return corridor_err.empty() ? UnitTestResult(true) : UnitTestResult(corridor_err);
 }
 
 //  walk_view_shift() on the console's frames around D-pad taps.

@@ -95,9 +95,9 @@
         }
       },
       {
-        "id": "to_the_route_203_street",
+        "id": "below_the_route_203_street",
         "action": "route",
-        "why": "up the main road and east along the street",
+        "why": "up the main road to row 24 and east along it, two rows below the street: at night ace_trainer_m_1 stands on the street at (48, 22), off his DS range (45..47, 21), and stopped the walk east along row 22 three times out of three (lab-B 2026-11-22)",
         "args": {
           "fight_wild": false,
           "target": {
@@ -105,12 +105,30 @@
             "map": "JubilifeCity",
             "tiles": [
               [
-                58,
-                22
+                56,
+                24
               ]
             ]
           },
           "variant": "line"
+        }
+      },
+      {
+        "id": "to_the_route_203_street",
+        "action": "legs",
+        "why": "not planned: up onto the street east of him, then east to (58, 22), facing east for 01.01",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ]
         }
       }
     ],

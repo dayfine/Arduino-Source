@@ -230,6 +230,31 @@ UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logge
     return true;
 }
 
+//  A replan from two tiles no wall brings together on its own: 00.05c's
+//  walk east along Jubilife's row 22, stopped by someone the map lacks at
+//  (48, 22) after 2 of its 13 taps, from (46, 22) or (47, 22) (lab-B
+//  2026-11-22: "no plan" with the route and the default costs).
+UnitTestResult test_blocked_street_replans(Logger& logger){
+    StoryWorld world = *story_plan_world("JubilifeCity", "JubilifeCity");
+    world.uncover(story_to_world(world, "JubilifeCity", /*local=*/{48, 22}));
+    const std::vector<TilePos> from{
+        story_to_world(world, "JubilifeCity", /*local=*/{46, 22}),
+        story_to_world(world, "JubilifeCity", /*local=*/{47, 22}),
+    };
+    const TilePos goal = story_to_world(world, "JubilifeCity", /*local=*/{58, 22});
+    const auto legs = plan_recovered_route(world, from, [&](const TilePos& pos){ return pos == goal; }, *story_route_costs("line"));
+    if (!legs || legs->empty()){
+        return "no plan from (46..47, 22) with (48, 22) taken.";
+    }
+    for (const PlannedLeg& planned : *legs){
+        logger.log(std::format("00.05c blocked street: {}", to_string(planned)));
+    }
+    if (legs->back().after != std::vector<TilePos>{goal}){
+        return std::format("the plan ends on {}, not on (58, 22) alone.", to_string(legs->back()));
+    }
+    return true;
+}
+
 //  plan_story_run() with Starter RNG handoff (E9): stops after 00.01 with
 //  handoff_saves_in = 00.02's saves_in ("Verity Lakefront"), ending at
 //  VerityLakefront (17, 14) facing north.
@@ -699,6 +724,7 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     {.name = "00.04: the walk to the Poke Mart lady and back", .input = {test_mart_lady_walk}, .expectation = {}},
     {.name = "Route 204 North: the line into Floaroma", .input = {test_route204_north_line}, .expectation = {}},
     {.name = "01.10: line 5's recovery pins the wall nearest its goal (lab-B, 2026-11-08)", .input = {test_line_5_recovery_pins_the_wall_nearest_the_goal}, .expectation = {}},
+    {.name = "00.05c: a replan from two tiles of a blocked street (lab-B, 2026-11-22)", .input = {test_blocked_street_replans}, .expectation = {}},
     {.name = "Story table: no open leg ends before a door it walks toward (lab-B, 2026-11-08)", .input = {test_story_routes_stop_short_of_doors}, .expectation = {}},
     {.name = "Story table: every ROUTE step plans as Data/route_plans.golden.txt says", .input = {test_route_plans_golden}, .expectation = {}},
     {.name = "Story table: every route plans, and none runs along a wander zone", .input = {test_story_routes_keep_off_wander_zones}, .expectation = {}},

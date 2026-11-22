@@ -281,7 +281,8 @@ public:
     virtual bool run_until_map(Direction, Milliseconds, const std::string&, const std::string&) override{
         return false;
     }
-    virtual WarpSeen run_into_door(Direction, bool, const Pokemon::DoorApproachPlan&, const std::string&) override{
+    virtual WarpSeen run_into_door(Direction, bool, const Pokemon::DoorApproachPlan& plan, const std::string&) override{
+        door = plan;
         return m_seen;
     }
     virtual std::optional<size_t> tap_to_banner(Direction, const std::string&, size_t) override{
@@ -291,6 +292,9 @@ public:
         m_recorded = kind;
         return false;
     }
+
+    //  The plan of the last run into a door.
+    std::optional<Pokemon::DoorApproachPlan> door;
 
 private:
     StubDoorRouteIO m_route;
@@ -368,6 +372,50 @@ UnitTestResult test_door_step_settle_kind(Logger&){
         if (!err.empty()){
             return err;
         }
+    }
+    return true;
+}
+
+//  A door step out of a map with no story map (an interior) holds the
+//  D-pad for its declared door_tiles, not the 12 s fallback that ran on a
+//  tile past the Trainers' School's door onto (40, 42) (lab-B 2026-11-22).
+UnitTestResult test_unmapped_exit_bounded(Logger&){
+    const auto [cp, step] = find_checkpoint_step("00.05", "out_of_the_school");
+    if (cp == nullptr || step == nullptr){
+        return "missing step out_of_the_school in 00.05";
+    }
+    const size_t door_tiles = std::get<StepMoveArgs>(step->args).door_tiles;
+    if (door_tiles == 0){
+        return "00.05 out_of_the_school declares no door_tiles.";
+    }
+    std::optional<SettleKind> settled;
+    RecordingDoorStepIO io(WarpSeen{.fade = WarpFade::BLACK}, settled);
+    StoryWalkSteps walks(io);
+    walks.begin_attempt(cp->id, cp->steps);
+    BdspRunState state;
+    state.pose = GridPose{.map = "TrainersSchool", .tiles = {}};
+    walks.step(state, *step);
+    const Pokemon::DoorApproachPlan expected = bdsp_door_approach_plan({door_tiles}, Direction::SOUTH, {.can_run = true});
+    if (!io.door || *io.door != expected || io.door->drive_hold >= Pokemon::DoorApproachTiming().fallback_timeout){
+        return std::format("drive {} ms, expected {} ms for {} tiles.",
+            io.door ? io.door->drive_hold.count() : -1, expected.drive_hold.count(), door_tiles);
+    }
+    return true;
+}
+
+//  talk_to_wanderer()'s wall below the row: 2 tiles below mart_clown's
+//  row, onto the Center's planter at (55, 37); none close below
+//  company_clown's (15, 19), nor from tiles we are unsure of.
+UnitTestResult test_wanderer_row_anchor(Logger&){
+    const std::optional<size_t> mart = wanderer_row_anchor(GridPose{.map = "JubilifeCity", .tiles = {{55, 34}}});
+    if (mart != std::optional<size_t>(2)){
+        return std::format("below mart_clown: {} tiles, expected 2.", mart ? (int)*mart : -1);
+    }
+    if (wanderer_row_anchor(GridPose{.map = "JubilifeCity", .tiles = {{15, 19}}})){
+        return "below company_clown: expected no wall close below.";
+    }
+    if (wanderer_row_anchor(GridPose{.map = "JubilifeCity", .tiles = {{55, 34}, {55, 35}}})){
+        return "two possible tiles: expected no anchor.";
     }
     return true;
 }
@@ -469,6 +517,8 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     {.name = "01.03, cut corner through coal room crate at col 29", .input = {test_mine_coal_room_crate_cut}, .expectation = {}},
     {.name = "plain door steps settle with DOOR while arrival-scene doors keep TALK", .input = {test_door_step_settle_kind}, .expectation = {}},
     {.name = "00.00 to 01.11, delayed fade cancel does not overshoot doors or stairs (lab-B, 2026-11-21)", .input = {test_door_late_cancel_overshoot}, .expectation = {}},
+    {.name = "00.05, the run out of the unmapped Trainers' School holds for its door_tiles (lab-B, 2026-11-22)", .input = {test_unmapped_exit_bounded}, .expectation = {}},
+    {.name = "00.05b, talk_to_wanderer's wall below mart_clown's row (lab-B, 2026-11-22)", .input = {test_wanderer_row_anchor}, .expectation = {}},
 };
 
 void add_tests_AutoStory_StorySim(UnitTestDatabase& database){

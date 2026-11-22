@@ -70,6 +70,10 @@ struct StepMoveArgs{
     Pokemon::Direction direction = Pokemon::Direction::NORTH;
     std::string variant = {};
     std::vector<Pokemon::StoryLeg> legs = {};
+    //  A door step's tiles to the way through, for a map with no story map
+    //  to count them on (an interior). 0: count them on the map, or hold
+    //  the long fallback when there is none.
+    size_t door_tiles = 0;
 };
 
 struct SceneStepArgs{
