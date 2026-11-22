@@ -16,9 +16,104 @@
     },
     "events": [
       {
+        "id": "escape_rope_heal",
+        "action": "use_item",
+        "why": "out of Silph Co. from 7F to heal HP and Surf PP before 11F's Rocket and Giovanni: 16.03's Rival can leave the lead at 2% HP with 0 healing items and ~1 Surf PP left; the bag has 4 Escape Ropes and only 2 more are needed (16.06, 18.02b)",
+        "args": {
+          "item": "escape-rope",
+          "pose_after": {
+            "map": "SaffronCity",
+            "tiles": [
+              [
+                33,
+                31
+              ]
+            ],
+            "facing": "south"
+          }
+        }
+      },
+      {
+        "id": "fly_saffron",
+        "action": "fly",
+        "why": "the Pidgey flies to Saffron City's Pokemon Center heal spot (24, 39)",
+        "args": {
+          "town": "SaffronCity",
+          "species": "pidgey",
+          "pose_after": {
+            "map": "SaffronCity",
+            "tiles": [
+              [
+                24,
+                39
+              ]
+            ],
+            "facing": "south"
+          }
+        }
+      },
+      {
+        "id": "below_center_door",
+        "action": "route",
+        "why": "turn north to face Saffron's Center door (24, 38)",
+        "args": {
+          "target": {
+            "map": "SaffronCity",
+            "tiles": [
+              [
+                24,
+                39
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "saffron_nurse",
+        "action": "center_enter",
+        "why": "enter Saffron's Center and walk up to the nurse",
+        "args": {
+          "pose_after": {
+            "map": "SaffronCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
+      },
+      {
+        "id": "heal_saffron",
+        "action": "heal",
+        "why": "full HP and Surf PP before 11F's Rocket and Giovanni"
+      },
+      {
+        "id": "center_northeast_corner",
+        "action": "legs",
+        "why": "not planned: from the nurse to Saffron Center's east wall (14, 4) and north wall (14, 2) by legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse; west along row 4 is blocked by Woman 3 wandering (3..5, 3..5)",
+        "args": {
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 7
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
+      },
+      {
         "id": "to_left_wall",
         "action": "route",
-        "why": "from 7F's left rooms onto the pad (5, 8) to 11F's (2, 5), down its left wall (column 0) out of the sight of the Rocket at (2, 19), who looks up column 2",
+        "why": "out of Saffron's Center, back into Silph Co. 1F->2F->3F through the open door_2 onto 3F's pad (13, 14) to 7F (5, 4), onto 7F's pad (5, 8) to 11F (2, 5), and down its left wall (column 0) out of the sight of the Rocket at (2, 19)",
         "args": {
           "target": {
             "map": "SilphCo_11F",
@@ -187,7 +282,8 @@
       ]
     },
     "start_flags": [
-      "card_key_held"
+      "card_key_held",
+      "trainer_beaten:SilphCo_3F/rocket_m@25,9"
     ],
     "start_gates": {
       "opened": [
