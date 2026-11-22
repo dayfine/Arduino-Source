@@ -162,20 +162,23 @@ void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context,
 //  Walks north out of OreburghMineB1F back up column 46/47 to Oreburgh
 //  Pokemon Center, heals, and returns to the Center doorstep (47, 21).
 void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& context){
-    bool exited = false;
-    for (size_t tries = 0; tries < 4 && !exited; tries++){
-        const WalkResult out = walk_until(stream, context, run_from_wild_battle, {0, 1}, MINE_COLUMN_WALK_LIMIT, "north out of Oreburgh Mine");
-        exited = out.stop == WalkStop::TRANSITION;
+    //  Walking straight north up column 12 exits OreburghMineB1F onto column 46
+    //  and stops either at the exit fade (TRANSITION) or after continuing straight
+    //  up column 46 to Oreburgh Center's south wall (46, 21) (BLOCKED).
+    WalkStop stop = WalkStop::LIMIT;
+    for (size_t tries = 0; tries < 4 && stop != WalkStop::TRANSITION && stop != WalkStop::BLOCKED; tries++){
+        stop = walk_until(stream, context, run_from_wild_battle, {0, 1}, MINE_COLUMN_WALK_LIMIT, "north out of Oreburgh Mine").stop;
     }
-    if (!exited){
+    if (stop == WalkStop::TRANSITION){
+        confirm_battle_overworld(stream, context, "out of Oreburgh Mine");
+        const WalkResult north = walk_until_no_wild(stream, context, {0, 1}, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center");
+        if (north.stop == WalkStop::TRANSITION || in_pokemon_center(stream)){
+            confirm_battle_overworld(stream, context, "into Oreburgh Center");
+            heal_inside_pokemon_center(stream, context, "Oreburgh");
+            return;
+        }
+    }else if (stop != WalkStop::BLOCKED){
         fail_step(stream, "Oreburgh Mine training: could not exit back to Oreburgh City.");
-    }
-    confirm_battle_overworld(stream, context, "out of Oreburgh Mine");
-    const WalkResult north = walk_until_no_wild(stream, context, {0, 1}, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center");
-    if (north.stop == WalkStop::TRANSITION || in_pokemon_center(stream)){
-        confirm_battle_overworld(stream, context, "into Oreburgh Center");
-        heal_inside_pokemon_center(stream, context, "Oreburgh");
-        return;
     }
     dpad_tiles(stream, context, DPAD_RIGHT, 1, "below Oreburgh Center door");
     heal_at_pokemon_center(stream, context, "Oreburgh");
