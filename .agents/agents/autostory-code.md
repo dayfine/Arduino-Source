@@ -73,6 +73,16 @@ being restated.
   - A literal argument in a call of 3+ arguments gets a parameter comment:
     `pbf_press_button(context, BUTTON_A, /*hold=*/160ms, /*release=*/400ms)` (code health
     `param_comment`).
+  - **Self-review before push** against themes 13-26 of
+    `skills/cpp-style-review/references/user-review-themes.md` (`git show origin/agents:<path>`) and
+    fix what you find before review: (13) justify every helper, type and file; (14) checkpoint
+    vocabulary, no row/segment/authored; (15) enums + `EnumStringMap` over string literals; (16)
+    `MoveOnlyFunction` with aliases; (17) Detectors/Actions (+registry)/Data/Types/Testing/Options,
+    I/O apart from logic; (18) small headers, public first, helpers in an unnamed namespace, no long
+    in-class methods; (19) group many members into structs or tables; (20) short contract comments,
+    no redundant ones; (21) `/*name=*/` literal args, default args over overloads, durations in
+    `Seconds`/`Milliseconds`; (22) braced initializer tables, designated fields; (24) edits go to
+    the PR that owns the file.
 - **Commit early, finish in one turn.** Commit and push as soon as the scoped checks pass; CI runs the
   full build and tests after the push. Then, in the foreground and without ending the turn:
   verify → commit → push → open the PR → confirm the PR's file list. Never end with an unpushed commit.
