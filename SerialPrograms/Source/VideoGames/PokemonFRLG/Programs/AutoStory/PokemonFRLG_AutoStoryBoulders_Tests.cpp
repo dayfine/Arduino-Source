@@ -594,6 +594,62 @@ UnitTestResult test_reader_sees_a_walk_and_a_still_screen(){
     return true;
 }
 
+//  Draws a GBA white dialog box (e.g. "REPEL's effect wore off...") over
+//  rows 7..9 (y = 116..158) of a 240x160 screen.
+ImageRGB32 with_dialog_box(ImageRGB32 image){
+    for (size_t y = 116; y < 158; y++){
+        for (size_t x = 8; x < 232; x++){
+            image.pixel(x, y) = 0xfff8f8f8;
+        }
+    }
+    return image;
+}
+
+//  19.04b push_east_row17 (2026-11-22): step 30 onto (12, 17) wears off
+//  Repel and opens "REPEL's effect wore off..." (MSGBOX_SIGN) at the bottom
+//  of the screen; the next push tap's D-pad RIGHT dismisses that box without
+//  scrolling the map. The walk tap that opened the box must still read as
+//  scrolled, and the tap that closed the box (or a battle flash) must read as
+//  nothing moved so press_for() clears the interrupt and retries the push.
+UnitTestResult test_reader_handles_dialog_box_and_battle_flash(){
+    const ImageFloatBox game(0, 0, 1, 1);
+    const ImageRGB32 at_rest = cave_screen(/*scroll_x=*/0, /*boulder_x=*/128, /*boulder_y=*/72);
+    const ImageRGB32 walked_with_box = with_dialog_box(
+        cave_screen(/*scroll_x=*/16, /*boulder_x=*/128, /*boulder_y=*/72)
+    );
+    const BoulderPressRead walk_read = read_boulder_press(at_rest, walked_with_box, game, Direction::EAST);
+    if (!walk_read.scrolled){
+        return "a walk east that opened a dialog box did not read as scrolled.";
+    }
+    const ImageRGB32 still_with_box = with_dialog_box(
+        cave_screen(/*scroll_x=*/0, /*boulder_x=*/128, /*boulder_y=*/72)
+    );
+    const BoulderPressRead close_east = read_boulder_press(still_with_box, at_rest, game, Direction::EAST);
+    if (close_east.scrolled || close_east.boulder_moved){
+        return std::format(
+            "closing a dialog box on a still screen read as scrolled {}, boulder_moved {}.",
+            close_east.scrolled, close_east.boulder_moved
+        );
+    }
+    const BoulderPressRead close_south = read_boulder_press(still_with_box, at_rest, game, Direction::SOUTH);
+    if (close_south.scrolled || close_south.boulder_moved){
+        return std::format(
+            "closing a dialog box facing south read as scrolled {}, boulder_moved {}.",
+            close_south.scrolled, close_south.boulder_moved
+        );
+    }
+    ImageRGB32 flash(240, 160);
+    flash.fill(0xff101010);
+    const BoulderPressRead battle_flash = read_boulder_press(at_rest, flash, game, Direction::EAST);
+    if (battle_flash.scrolled || battle_flash.boulder_moved){
+        return std::format(
+            "a battle flash read as scrolled {}, boulder_moved {}.",
+            battle_flash.scrolled, battle_flash.boulder_moved
+        );
+    }
+    return true;
+}
+
 const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
     {
         .input = {.name = "19.04b's one-tile push south from (7, 17) on the sim", .body = test_one_tile_push_on_sim},
@@ -650,6 +706,10 @@ const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
     {
         .input = {.name = "the reader on a step and on a still screen", .body = test_reader_sees_a_walk_and_a_still_screen},
         .expectation = {.description = "a scroll, then nothing"},
+    },
+    {
+        .input = {.name = "the reader on a dialog box opening/closing and a battle flash", .body = test_reader_handles_dialog_box_and_battle_flash},
+        .expectation = {.description = "walk with dialog box scrolls; closing dialog box or battle flash reads as nothing"},
     },
     {
         .input = {.name = "a push_boulder step on the sim", .body = test_push_boulder_step_on_sim},
