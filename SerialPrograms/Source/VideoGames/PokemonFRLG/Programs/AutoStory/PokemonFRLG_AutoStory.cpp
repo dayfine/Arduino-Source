@@ -125,6 +125,10 @@ const std::string TAKE_MASTER_BALL_TEXT =
     "<b>Take the Master Ball:</b><br>On by default. After Giovanni on Silph Co.'s 11F, talk to the president for the "
     "Master Ball (16.05b). Off, or with the checks on SPEEDRUN, skips it.";
 
+const std::string NUGGET_FARM_COUNT_TEXT =
+    "<b>Nugget Bridge farm count:</b><br>How many Nuggets to farm by losing to the Nugget Bridge Rocket (05.04). "
+    "0 skips farming and the lead PC swap.";
+
 // code-health: allow function_lines -- a flat list of the program's options, each one line of its own; splitting it hides which belong
 AutoStory::AutoStory()
     : RUN(checkpoint_database(), Pokemon::FireRedLeafGreenLanguages_Database())
@@ -165,6 +169,7 @@ AutoStory::AutoStory()
     , RUN_STARTER_RNG(RUN_STARTER_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , RUN_GIFT_RNG(RUN_GIFT_RNG_TEXT, LockMode::LOCK_WHILE_RUNNING, false)
     , TAKE_MASTER_BALL(TAKE_MASTER_BALL_TEXT, LockMode::LOCK_WHILE_RUNNING, true)
+    , NUGGET_FARM_COUNT(NUGGET_FARM_COUNT_TEXT, LockMode::LOCK_WHILE_RUNNING, 10, 0, 99)
     , FIELD_MOVE_USERS(false, FIELD_MOVE_USERS_TEXT, LockMode::LOCK_WHILE_RUNNING, "", "fly=3:pidgey")
     , NOTIFICATION_SHINY("Shiny found", true, true, ImageAttachmentMode::JPG, {"Notifs", "Showcase"})
     , NOTIFICATION_STATUS_UPDATE("Status Update", true, false, std::chrono::seconds(3600))
@@ -181,6 +186,7 @@ AutoStory::AutoStory()
     PA_ADD_OPTION(RUN_STARTER_RNG);
     PA_ADD_OPTION(RUN_GIFT_RNG);
     PA_ADD_OPTION(TAKE_MASTER_BALL);
+    PA_ADD_OPTION(NUGGET_FARM_COUNT);
     PA_ADD_OPTION(RNG_PLAN);
     PA_ADD_OPTION(FIELD_MOVE_USERS);
     PA_ADD_OPTION(NOTIFICATIONS);
@@ -806,6 +812,7 @@ void AutoStory::program(SingleSwitchProgramEnvironment& env, ProControllerContex
     story.player_gender = PLAYER_GENDER;
     story.player_name = player_name;
     story.take_master_ball = TAKE_MASTER_BALL;
+    story.nugget_farm_count = NUGGET_FARM_COUNT;
     const bool at_gift_rng = plan.stop == StoryHandoff::GIFT_RNG && plan.rows.empty();
     prepare_start(env, checkpoints, first, story, at_gift_rng);
     story.language = RUN.language();

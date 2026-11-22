@@ -26,6 +26,15 @@
         "why": "7 Poke Balls for the Oddish"
       },
       {
+        "id": "above_oddish_patch",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route24", "tiles": [[3, 13]]}
+        },
+        "why": "north over Nugget Bridge with 2-tile connection margin, then west to the cliff wall above the grass"
+      },
+      {
         "id": "oddish_patch",
         "kind": "route",
         "action": "run",

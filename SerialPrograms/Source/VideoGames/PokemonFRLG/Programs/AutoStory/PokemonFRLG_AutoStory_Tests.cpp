@@ -31,6 +31,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTileRules.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
+#include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStartMenuOpening.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryGenderMenu.h"
@@ -41,6 +42,7 @@
 #include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryPlanGolden.h"
+#include "PokemonFRLG_AutoStoryPlanGolden06.h"
 #include "PokemonFRLG_AutoStoryPlanGolden10.h"
 #include "PokemonFRLG_AutoStoryPlanGolden11.h"
 #include "PokemonFRLG_AutoStoryPlanGolden12.h"
@@ -454,8 +456,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `plans`.
 UnitTestResult chain_story_routes(StoryPlans& plans){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 98 || checkpoints[0].start){
-        return "Expected 98 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 100 || checkpoints[0].start){
+        return "Expected 100 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     walk_state() = WalkGates{};
@@ -499,6 +501,7 @@ UnitTestResult test_golden_plans(){
     }
     const std::vector<std::string>& actual = plans.golden;
     std::vector<std::string_view> golden(std::begin(FRLG_PLAN_GOLDEN), std::end(FRLG_PLAN_GOLDEN));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_06), std::end(FRLG_PLAN_GOLDEN_06));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_10), std::end(FRLG_PLAN_GOLDEN_10));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_11), std::end(FRLG_PLAN_GOLDEN_11));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12), std::end(FRLG_PLAN_GOLDEN_12));
@@ -553,10 +556,8 @@ const AllowedRevisit ALLOWED_REVISITS[] = {
     {"02.02", "below_oak", CONSOLE_VERIFIED_REVISIT},
     {"02.03", "mart_clerk", CONSOLE_VERIFIED_REVISIT},
     {"04.02", "before_salesman", CONSOLE_VERIFIED_REVISIT},
-    {"05.01", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
+    {"05.02c", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
     {"05.03", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
-    {"05.05", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
-    {"05.05", "ready_for_rocket", CONSOLE_VERIFIED_REVISIT},
     {"06.01", "off_2f", CONSOLE_VERIFIED_REVISIT},
     {"06.01", "vermilion_nurse", CONSOLE_VERIFIED_REVISIT},
     {"06.02", "above_gym_tree", CONSOLE_VERIFIED_REVISIT},
@@ -1304,7 +1305,7 @@ UnitTestResult check_trigger(const TriggerCase& c){
 //  Bridge (VAR_MAP_SCENE_ROUTE24 0), each from the tile below.
 UnitTestResult test_cerulean_triggers(){
     const TriggerCase CASES[] = {
-        {.checkpoint = "05.04", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
+        {.checkpoint = "05.02c", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
         {.checkpoint = "05.05", .step = "rocket_trigger", .map = "Route24", .y = 15, .x0 = 10, .x1 = 11, .onto_x = 11},
     };
     for (const TriggerCase& c : CASES){
@@ -1315,13 +1316,13 @@ UnitTestResult test_cerulean_triggers(){
     return true;
 }
 
-//  05.05 steps beside Nugget Bridge's five trainers from the south, one
+//  05.03 steps beside Nugget Bridge's five trainers from the south, one
 //  step at a time, each battle right after its step: Cale, Ali, Timmy,
 //  Reli and Ethan, by where they stand.
 UnitTestResult test_nugget_bridge_order(){
-    const StoryCheckpoint* checkpoint = find_checkpoint("05.05");
+    const StoryCheckpoint* checkpoint = find_checkpoint("05.03");
     if (checkpoint == nullptr){
-        return "No checkpoint 05.05.";
+        return "No checkpoint 05.03.";
     }
     const std::vector<StoryStep>& steps = checkpoint->steps;
     std::string met;
@@ -1812,6 +1813,29 @@ UnitTestResult test_option_presses(){
     return true;
 }
 
+//  Nugget Bridge farm count option: 0 skips via nugget_farm_skipped, > 0 overrides the step count.
+UnitTestResult test_nugget_farm_option(){
+    if (!StoryExecutor::nugget_farm_skipped(0)){
+        return "nugget_farm_skipped should hold when nugget_farm_count is 0.";
+    }
+    if (StoryExecutor::nugget_farm_skipped(1) || StoryExecutor::nugget_farm_skipped(10)){
+        return "nugget_farm_skipped should not hold when nugget_farm_count > 0.";
+    }
+    if (StoryExecutor::effective_nugget_farm_count(0, 10) != 0){
+        return "effective_nugget_farm_count(0, 10) should be 0.";
+    }
+    if (StoryExecutor::effective_nugget_farm_count(10, 10) != 10){
+        return "effective_nugget_farm_count(10, 10) should be 10.";
+    }
+    if (StoryExecutor::effective_nugget_farm_count(3, 10) != 3){
+        return "effective_nugget_farm_count(3, 10) should be 3.";
+    }
+    if (StoryExecutor::effective_nugget_farm_count(25, 10) != 25){
+        return "effective_nugget_farm_count(25, 10) should be 25.";
+    }
+    return true;
+}
+
 const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "every route plans, and checkpoints chain", .body = test_routes_and_chain},
@@ -1920,6 +1944,10 @@ const AutoStoryTestCase AUTO_STORY_CASES[] = {
     {
         .input = {.name = "Nugget Bridge: its five trainers, south to north", .body = test_nugget_bridge_order},
         .expectation = {.description = "verifies the Nugget Bridge trainers' order"},
+    },
+    {
+        .input = {.name = "Nugget Bridge farm option: skip on 0, custom count when > 0", .body = test_nugget_farm_option},
+        .expectation = {.description = "verifies nugget_farm_skipped and effective_nugget_farm_count"},
     },
 };
 

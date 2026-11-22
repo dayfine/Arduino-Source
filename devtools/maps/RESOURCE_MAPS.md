@@ -37,9 +37,11 @@ The duplicate FRLG builder and Python tests are removed. The battle data in
 `Programs/AutoStory/BattleData` is cut to what the program reads (each species'
 types, each move's type, whether it does damage and its PP, and the type
 chart) and has no generator here; a battle's foes come from its step in the
-checkpoint's plan. Map-builder tests already live
-beside their source in PokemonSimulation. Native game tests remain here.
-The shared Sinnoh decomp CLI remains a separate consumer migration.
+checkpoint's plan. Map-builder tests already live beside their source in PokemonSimulation. Native
+game tests remain here. The legacy `devtools/maps` Python helpers (decomp,
+overlay, `leg_trace`, `leg_replay`) have been retired in favor of
+PokemonSimulation (`pokesim.maps.*`); this directory retains only the pinned
+resource lock (`map-resources.lock.json`) and this guide.
 
 Native map, story, transition and recovery tests must run from this tree without
 the old map directory before adopting this handoff in the owning chain. This
