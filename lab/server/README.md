@@ -1,5 +1,28 @@
 # pa-lab console daemon (`lab/server`)
 
+## Next task — report the run outcome through MCP
+
+Have the app publish a structured result with the terminal transition for one program, starting
+with BDSP AutoStory. Carry the original Start request ID, whether the run passed, failed, or was
+cancelled, and the checkpoint and reason when available. Surface it through `next_events` so
+clients can determine the result from MCP. Reuse `program.last_outcome` and the existing
+`start_check_failed` result. Keep pre-Start refusals distinct from outcomes after Start.
+
+Acceptance: native and fake-app HTTP tests cover ordinary success, a checkpoint failure, and
+cancellation. Then verify the result and Start correlation on a short live console-B run.
+[Fork #748](https://github.com/dayfine/Arduino-Source/pull/748) has merged. It adds
+`payload.start_request_id` to tracked Stop events and reports screenshot timing. Use that same
+live session to compare capture latency and frame drops with and without MCP screenshots.
+
+### Current status (2026-11-21)
+
+The console-B BDSP pilot used the local lab build `cefea4514` and `serve --actions`. The client
+acquired and released the lease, took screenshots, read the program contract, sent controller
+inputs, and started AutoStory. An exact Start retry returned the stored result and `soak-check`
+found no mismatches. The game failed inside checkpoint `00.03`; MCP observed the Stop and the
+app log provided the checkpoint and reason. The full soak still needs user takeover and a daemon
+restart during a pending request. Live verification of #748 is pending.
+
 The local server designed in `docs/design/Agent-Integration.md` (fork #131, branch
 `design/agent-integration`). Slice 0: the version-1 contracts, golden examples and a parser.
 Slice 2: the attach-only read server ([below](#slice-2-the-attach-only-read-server)). Slice 3: the
@@ -10,28 +33,24 @@ tickets and events in SQLite. Slice 5a: leased `run_program` and `stop_program`
 [preflight split](#preflight-split) (server side built) replaced Slice 5b's `preflight_program` with a
 server preflight inside `run_program`. Slice 6 (save facts) is a design
 ([below](#slice-6-save-facts-design-not-built)).
-All are served only by `serve --actions`, which nothing is wired to yet.
+The control actions are served by `serve --actions`. The stdio setup serves read-only status.
 
 New here? Start with [GUIDE.md](GUIDE.md), the user guide (what you can do with pa-lab today).
 The feature map, slice numbers and PRs live here, not in the guide.
 
 ## Feature map
 
-Moved here from the user guide (2026-11-18), with the slices and PRs. **merged, unused** = code
-and unit tests merged on `agents`, never used end to end: served only by `serve --actions`, which
-no session is configured for, and the console-B soak has not been run.
-
 | Feature | State | Where |
 |---|---|---|
 | `console_status`, `console://B/state`, `console://B/save` | in use (`.mcp.json`, read-only); the save resource always `unknown` | [stdio mode](#read-only-stdio-mode-mcpjson), #528 |
-| User hold (`Lab/hold`) | in use: app (lab build, #608), lab scripts and the status read (#609); the `user` lease in the control plane is merged, unused | [GUIDE.md](GUIDE.md#your-hold) |
-| `shot`, `game_open`, `ensure_game`, `describe_program` | merged, unused; `ensure_game` always `game_unknown` (no game detector in the app) | Slice 2, #504 |
-| Leases, request records, events | merged, unused | Slice 3 |
-| `run_program`, `stop_program` | merged, unused | Slice 5a, #592, channel adapter #611 |
-| Options on `run_program`, `cfr_batch` | merged, unused | Slice 5b, #600 |
-| Server preflight in `run_program` (`preflight_program` and its token removed) | merged, unused; every program answers `prechecks_unsupported`. The app's `preflight` command (#601, #616) is unused, to be removed in a later app PR | [preflight split](#preflight-split), plan step 1 |
-| Program start checks | the declaring mechanism is merged (#504, #511, #512); no program declares a list. The server side reads `program.last_outcome` and emits `program_failed` / `start_check_failed`; no app writes it yet. FRLG RNG runs free party slots and black border inside the program at Start (`run_precheck()`, #485 and branch `upstream/frlg-free-party-slots`), not as a reported result; FRLG AutoStory's list was a design note (#488, closed) | [preflight split](#preflight-split) |
-| Console-B soak | `soak-check` merged; the soak has not been run | [Slice 5 acceptance](#slice-5-acceptance-the-console-b-soak) |
+| User hold (`Lab/hold`) | app, scripts, and status support are in use; MCP takeover remains to be exercised live | [GUIDE.md](GUIDE.md#your-hold), #608, #609 |
+| `shot`, `game_open`, `ensure_game`, `describe_program` | pilot exercised `shot` and `describe_program`; `ensure_game` returns `game_unknown` until the app can identify the active game | Slice 2, #504; shot timings in #748 |
+| Leases, request records, events | acquire, release, exact Start retry, and Stop observation verified in the pilot | Slice 3; Stop correlation in #748 |
+| `run_program`, `stop_program` | the pilot used `run_program` and observed the program ending on its own; live `stop_program` remains to be exercised | Slice 5a, #592, channel adapter #611 |
+| Options on `run_program`, `cfr_batch` | both exercised in the pilot | Slice 5b, #600 |
+| Server preflight inside `run_program` | merged and exercised with BDSP; the superseded app `preflight` command (#601, #616) is slated for removal | [Preflight split](#preflight-split) |
+| Program start checks | the local pilot build declares and reports BDSP AutoStory's game-screen and save-location checks. FRLG RNG's existing checks still need structured reporting | [Preflight split](#preflight-split) |
+| Console-B soak | pilot audit clean; user takeover and a restart during a pending request still need live coverage | [Slice 5 acceptance](#slice-5-acceptance-the-console-b-soak) |
 | Save facts, `no_save`, save-screen reads | designed | [Slice 6](#slice-6-save-facts-design-not-built), #621 |
 | Run records | designed; needs the app's run ids (#116) | Slice 6e |
 | Server runs the lab app (launch the right build with the lab profile, crash handling, no second copy) | planned, not designed here | Slice 7, `docs/design/Agent-Integration.md` on `design/agent-integration` |
@@ -40,19 +59,12 @@ no session is configured for, and the console-B soak has not been run.
 
 ## Plan order
 
-Changed 2026-11-18 by the [preflight split](#preflight-split): the next step is
-programs reporting their start checks, ahead of the Slice 6 save facts.
-
-1. **Preflight split, server side.** Built: `run_program` runs the server preflight and Start in
-   one request; `preflight_program`, the token and the option restore are gone. Contract changes
-   listed [below](#contracts-the-split-changed).
-2. **Programs report their start checks as a run result.** The app reports a start check's
-   failure as the run's outcome (`start_check_failed`, the check's name, message, evidence);
-   `describe_program` lists the checks. FRLG RNG first (`black_border`, `free_party_slots`, from
-   its existing `run_precheck()`), then AutoStory's `game_screen`. This is what lets
-   `run_program` start anything.
-3. **Switch on and soak.** Server config and a session on `serve --actions`; the console-B soak;
-   then the user's decision, one program family at a time.
+1. **Report terminal run outcomes.** See [the next task](#next-task--report-the-run-outcome-through-mcp).
+2. **Identify the active game before Start.** Hook the app's observed title into `ensure_game` so
+   callers can distinguish a matching title, a mismatch, and `game_unknown`.
+3. **Finish the console-B soak.** Cover live Stop, user takeover, and daemon restart during a
+   pending request. Roll out to one program family at a time, starting with the existing FRLG RNG
+   start checks after BDSP.
 4. **Slice 6, save facts** (6a-6c as designed); 6d becomes the server preflight's save check
    (`save_mismatch`), not a program start check; 6e run records after #116.
 5. **Slice 7** (the server runs the lab app), then **Slice 8** (local worker, optional).
@@ -434,8 +446,8 @@ above.
 `preflight_program`, its token and the option restore are gone; the option checks moved into
 `run_program`, and `cfr_batch` stays. This section is the history of Slice 5b as first merged.
 
-Served with the 5a tools by `serve --actions`; still not wired to anything, and `.mcp.json` stays
-read-only. Each call is one request record on the same `begin_action` / inbox / settle path as 5a
+Served with the 5a tools by `serve --actions`. Each call is one request record on the same
+`begin_action` / inbox / settle path as 5a
 (an exact retry gets the stored record; a pending earlier action on the console refuses the next).
 
 ```text
@@ -522,8 +534,8 @@ until a program overrides its prechecks every preflight is `prechecks_unsupporte
 **Known gaps.** `state.json` is rewritten every 500 ms, so an option edit in the last half second
 before a run is not seen by the token. The `set` echoes in the start's
 journal are not compared with what was sent (the preflight already refused clamped or disabled
-values). The channel's owner token is still not claimed (a claimed channel is refused), and the
-console-B soak (every mutation has exactly one record) is still to run; steps below.
+values). A claimed channel is refused. The console-B pilot and remaining soak cases are listed in
+[current status](#current-status-2026-11-21).
 
 ### Slice 5 acceptance: the console-B soak
 
@@ -531,8 +543,8 @@ Slice 5 is accepted when, over a real run on console B, every mutation has exact
 each inbox request the daemon wrote has one `actions` row, each `requests` row has one terminal
 event, and each UI Start/Stop shows up once. Run it yourself during a run you are making anyway:
 
-1. Use a lab build with #608 (the user hold) and a program that reports its start checks (plan
-   step 2). Do it within a day of the run: `disk_gc.sh` prunes
+1. Use a lab build with #608 (the user hold) and a program that reports its start checks.
+   Do it within a day of the run: `disk_gc.sh` prunes
    `Lab/done/` and `Lab/outbox/`.
 2. Note the start, with milliseconds like the stored times (a `T0` without them would leave out
    the rows of its own second): `T0=$(date -u +%Y-%m-%dT%H:%M:%S.000Z)` and
@@ -564,9 +576,9 @@ event, and each UI Start/Stop shows up once. Run it yourself during a run you ar
 ## Preflight split
 
 Decided 2026-11-18 on the user guide review (#659). It replaces Slice 5b's `preflight_program`.
-User page: [GUIDE.md](GUIDE.md#run-programs). **Server side built** (plan step 1): `run_program`,
-the contracts below, and the `program_failed` event from `program.last_outcome`. The app side
-(plan step 2: programs that report start checks and write `last_outcome`) is not.
+User page: [GUIDE.md](GUIDE.md#run-programs). The server implements `run_program`, the contracts
+below, and the `program_failed` event from `program.last_outcome`. The local BDSP pilot build
+declares its start checks and writes `last_outcome` when a start check fails.
 
 **Why.** Slice 5b ran the program's prechecks on the app's worker without starting the program,
 then restored the user's options, and gave a token good for one start within 120 s. But most
