@@ -296,7 +296,7 @@ public:
         if (is_tall_grass(m_maps[step.next.map], step.next.state.position)){
             step.extra_cost += route_cost(m_costs, RouteCost::GRASS_TILE);
         }
-        step.wild = wild(step.next);
+        step.wild = wild(step.next) || wild(state);
         if (seen_by_trainer(step.next)){
             step.extra_cost += route_cost(m_costs, RouteCost::SIGHT_TILE);
         }

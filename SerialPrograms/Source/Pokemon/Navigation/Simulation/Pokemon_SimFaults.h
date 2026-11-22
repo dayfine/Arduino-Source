@@ -120,7 +120,7 @@ struct SimWandererBlock{
     TilePos tile;
     std::optional<int> clear_after_waits = 1;
     Milliseconds from_time{0};
-    std::optional<Milliseconds> until_time;
+    std::optional<Milliseconds> until_time = std::nullopt;
 };
 
 //  Tracks a set of SimWandererBlock entries against a sim clock and wait

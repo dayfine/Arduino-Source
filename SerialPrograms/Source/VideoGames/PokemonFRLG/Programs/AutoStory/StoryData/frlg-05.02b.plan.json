@@ -1,0 +1,125 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "05.02b",
+    "title": "Cerulean Gym: Beat Misty, return to Center, teach Water Pulse",
+    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "gym_below_luis",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[9, 13]]}
+        },
+        "why": "into the Gym, up column 9 to row 13, short of Luis"
+      },
+      {
+        "id": "gym_west_walkway",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[4, 13]], "facing": "west"}
+        },
+        "why": "west to the wall (4, 13)"
+      },
+      {
+        "id": "below_misty_platform",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[12, 7]], "facing": "west"}
+        },
+        "why": "north to the wall at (12, 7) on Misty's row"
+      },
+      {
+        "id": "below_misty_taps",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 3}]
+        },
+        "why": "not planned: tap west 3 to (9, 7) below Misty's platform so beside_misty starts from a known tile"
+      },
+      {
+        "id": "beside_misty",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[9, 6]], "facing": "west"}
+        },
+        "why": "up onto (9, 6), facing Misty (8, 6)"
+      },
+      {
+        "id": "challenge_misty",
+        "kind": "talk",
+        "why": "Misty's speech"
+      },
+      {
+        "id": "misty",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LEADER_MISTY",
+          "foes": ["staryu", "starmie"]
+        },
+        "declared_after": {"map": "CeruleanCity_Gym", "tiles": [[9, 6]], "facing": "west"},
+        "why": "Staryu and Starmie, with Bite; CASCADE BADGE and TM03"
+      },
+      {
+        "id": "gym_way_out",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[9, 13]], "facing": "east"}
+        },
+        "why": "back round the pool to (9, 13)"
+      },
+      {
+        "id": "cerulean_nurse_2",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "out of the Gym, to the Center"
+      },
+      {
+        "id": "heal_cerulean_2",
+        "kind": "heal",
+        "why": "full HP"
+      },
+      {
+        "id": "teach_water_pulse",
+        "kind": "game_action",
+        "action": "teach",
+        "args": {
+          "item": "tm03",
+          "move": "water-pulse",
+          "slot": 1,
+          "keep": ["withdraw", "water-gun", "bubble", "bite", "mega-kick", "dig", "surf"]
+        },
+        "why": "TM03 Water Pulse in place of Tackle"
+      },
+      {
+        "id": "below_rival",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[23, 7]], "facing": "north"}
+        },
+        "why": "north to below the Cerulean rival trigger"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Cerulean 05.02b: beat Misty at Lv19 with Bite, heal at Center, and teach Water Pulse."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

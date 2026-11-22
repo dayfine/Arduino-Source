@@ -294,7 +294,7 @@ BikeTap console_bike_tap(
     }
     const VideoSnapshot after = console.video().snapshot();
     if (before && after && tap_scroll_change(before, after, GameSettings::instance().GAME_BOX) > WALL_TAP_MOVED_RMSD){
-        return BikeTap{.moved = true};
+        return BikeTap{.moved = true, .interrupt = std::nullopt};
     }
     const bool late = Pokemon::clear_late_interrupts(console, context, interrupts, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0;
     return BikeTap{.moved = false, .interrupt = std::nullopt, .cleared_late = late};

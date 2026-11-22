@@ -99,8 +99,7 @@ const std::set<std::string, std::less<>>& legs_before_2026_11_15(){
         "03.01/forest_east", "03.01/forest_exit", "04.01/below_colton_line", "04.01/past_ben",
         "04.01/above_james_line", "04.01/save_spot", "04.05/mt_moon_1f", "04.05/b2f_south",
         "04.05/below_miguel_trigger", "04.05/below_helix_fossil", "04.06/above_city_ledge",
-        "05.01/gym_west_walkway", "05.01/below_misty_platform", "05.02/gym_way_out", "05.05/below_ali_line",
-        "05.05/below_timmy_line", "05.05/below_reli_line", "05.05/below_ethan_line", "05.06/west_of_dan",
+        "05.06/west_of_dan",
         "05.06/round_dan", "05.06/west_of_nob_line", "05.06/below_haley_line", "05.07/beside_bill",
         "05.07/around_bill", "05.10/round_keigo_and_elijah", "06.01/past_the_cabins", "06.01/round_the_sailor",
         "06.02/west_of_dwayne_line", "06.02/east_of_baily_line", "06.02/below_tucker_line",
@@ -177,7 +176,7 @@ UnitTestResult test_legs_need_a_reason(){
 //  they are split.
 const std::set<std::string, std::less<>>& bosses_sharing_before_2026_11_16(){
     static const std::set<std::string, std::less<>> BOSSES{
-        "01.06/rival_battle", "03.02/brock", "05.02/misty", "06.01/rival_ss_anne", "09.02/giovanni",
+        "01.06/rival_battle", "03.02/brock", "05.02b/misty", "06.01/rival_ss_anne", "09.02/giovanni",
         "16.03/rival", "16.05/giovanni", "20.01/lorelei", "20.02/bruno", "20.03/agatha", "20.04/lance",
     };
     return BOSSES;

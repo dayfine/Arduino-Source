@@ -1,0 +1,53 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "05.02c",
+    "title": "Cerulean: Beat Rival, return to Center",
+    "start": {"map": "CeruleanCity", "tiles": [[23, 7]], "facing": "north"},
+    "events": [
+      {
+        "id": "rival_trigger",
+        "kind": "step",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (23, 6), the middle trigger"
+      },
+      {
+        "id": "rival_cerulean",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_RIVAL_CERULEAN_BULBASAUR",
+          "foes": ["pidgeotto", "abra", "rattata", "bulbasaur"]
+        },
+        "declared_after": {"map": "CeruleanCity", "tiles": [[23, 6]], "facing": "south"},
+        "why": "beat Cerulean rival"
+      },
+      {
+        "id": "cerulean_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "heal after Rival before Nugget Bridge"
+      },
+      {
+        "id": "heal_cerulean",
+        "kind": "heal",
+        "why": "full HP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Cerulean 05.02c: beat the Cerulean Rival and return to Cerulean Center."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

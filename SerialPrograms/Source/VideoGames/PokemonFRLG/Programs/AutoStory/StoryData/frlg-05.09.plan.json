@@ -26,6 +26,15 @@
         "why": "7 Poke Balls for the Oddish"
       },
       {
+        "id": "above_oddish_patch",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route24", "tiles": [[3, 13]]}
+        },
+        "why": "north over Nugget Bridge with 2-tile connection margin, then west to the cliff wall above the grass"
+      },
+      {
         "id": "oddish_patch",
         "kind": "route",
         "action": "run",
@@ -49,13 +58,31 @@
         "why": "wild battles until an Oddish, then Poke Balls; any other species is run from"
       },
       {
+        "id": "above_center_ledge",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[25, 17]], "facing": "south"}
+        },
+        "why": "back over the bridge and south to above Cerulean's Pokemon Center ledge (25, 18)"
+      },
+      {
+        "id": "center_ledge_hop",
+        "kind": "step",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "CeruleanCity", "tiles": [[25, 19]], "facing": "south"},
+        "why": "down the ledge (25, 18) behind the Pokemon Center"
+      },
+      {
         "id": "cerulean_nurse",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
         },
-        "why": "back over the bridge to the Center"
+        "why": "into the Pokemon Center"
       },
       {
         "id": "heal_cerulean",

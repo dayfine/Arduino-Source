@@ -66,7 +66,7 @@ private:
     const RobustRouteOps& m_ops;
 };
 
-Pokemon::RobustLegCosts to_robust_leg_costs(const RouteCosts& costs, bool forbid_along_wander){
+Pokemon::RobustLegCosts to_robust_leg_costs(const RouteCosts& costs){
     Pokemon::RobustLegCosts robust;
     robust.per_tile = route_cost(costs, RouteCost::TILE);
     robust.per_wild_tile = route_cost(costs, RouteCost::GRASS_TILE);
@@ -76,7 +76,7 @@ Pokemon::RobustLegCosts to_robust_leg_costs(const RouteCosts& costs, bool forbid
     robust.per_open_wild_tile = route_cost(costs, RouteCost::OPEN_WILD_STOP);
     robust.open_error = 1;
     robust.open_error_per = 5;
-    robust.forbid_along_wander = forbid_along_wander;
+    robust.forbid_along_wander = true;
     return robust;
 }
 
@@ -88,7 +88,7 @@ std::optional<RouteStep> walk_robust_leg(
 ){
     const PlayerState start = current;
     int tiles = 0;
-    bool wild = false;
+    bool wild = is_tall_grass(map, start.position) || start.surfing;
     for (size_t i = 0; i < rleg.tiles; i++){
         const std::optional<PlayerState> next = ops.walk_step(current, rleg.direction);
         if (!next){
@@ -190,17 +190,13 @@ std::optional<std::vector<RouteStep>> plan_robust_route_on(
     const std::function<bool(const RobustState&)> at_goal = [&](const RobustState& player){
         return player.state.position == goal.position.point;
     };
-    for (bool forbid_along_wander : {true, false}){
-        const auto legs = Pokemon::plan_robust_legs(
-            robust_model, {RobustState{first}}, at_goal, to_robust_leg_costs(costs, forbid_along_wander)
-        );
-        if (legs){
-            if (auto route = robust_legs_to_route(map, ops, first, *legs, goal, start_facing)){
-                return route;
-            }
-        }
+    const auto legs = Pokemon::plan_robust_legs(
+        robust_model, {RobustState{first}}, at_goal, to_robust_leg_costs(costs)
+    );
+    if (!legs){
+        return std::nullopt;
     }
-    return std::nullopt;
+    return robust_legs_to_route(map, ops, first, *legs, goal, start_facing);
 }
 
 
