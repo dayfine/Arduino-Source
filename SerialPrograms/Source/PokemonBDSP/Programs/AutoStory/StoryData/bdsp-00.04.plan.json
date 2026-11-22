@@ -275,14 +275,14 @@
             "tiles": [
               [
                 6,
-                8
+                7
               ]
             ]
           }
         },
         "id": "beside_mom",
         "kind": "route",
-        "why": "west of Mom at (7, 8)"
+        "why": "west of Mom at (7, 7)"
       },
       {
         "id": "mom",
