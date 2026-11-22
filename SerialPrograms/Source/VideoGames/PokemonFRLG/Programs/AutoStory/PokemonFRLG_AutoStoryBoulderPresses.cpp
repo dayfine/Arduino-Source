@@ -13,8 +13,11 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryBoulderPresses.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementStepPresses.h"
+#include "PokemonFRLG_AutoStoryBagUse.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
 #include "PokemonFRLG_AutoStoryQuietOverworld.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
@@ -69,10 +72,15 @@ std::optional<std::string> use_strength(ConsoleHandle& console, ProControllerCon
     return std::nullopt;
 }
 
-ConsoleBoulderPresses::ConsoleBoulderPresses(ConsoleHandle& console, ProControllerContext& context, PlayerGender player)
+ConsoleBoulderPresses::ConsoleBoulderPresses(
+    ConsoleHandle& console, ProControllerContext& context,
+    PlayerGender player, Supplies& supplies, Language language
+)
     : m_console(console)
     , m_context(context)
     , m_player(player)
+    , m_supplies(supplies)
+    , m_language(language)
 {}
 
 BoulderPressRead ConsoleBoulderPresses::press(Direction direction){
@@ -122,8 +130,22 @@ BoulderInterrupt ConsoleBoulderPresses::clear_interrupt(){
         wait_out_battle_exit(m_console, m_context);
         settle = wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
     }else if (settle.showing.has(ScreenEvent::DIALOG_BOX) || settle.showing.has(ScreenEvent::CHOICE_BOX)){
+        bool wore_off = false;
+        if (const VideoSnapshot frame = m_console.video().snapshot()){
+            wore_off = repel_wore_off_shows(m_language, frame);
+        }
         m_console.log("Boulder: a box stopped the push; closing it.", COLOR_ORANGE);
         mash_until_overworld(m_console, m_context, BOX_TIMEOUT);
+        if (wore_off){
+            ConsoleItemUseActions bag(m_console, m_context, m_language, m_supplies.repel_menu);
+            const ItemUseEnd end = m_supplies.repel.empty()
+                ? use_strongest_repel(m_console.logger(), bag)
+                : renew_repel(m_console.logger(), bag, m_supplies.repel);
+            m_console.log("Boulder: another Repel after the last wore off: " + item_use_end_name(end) + ".");
+            if (end == ItemUseEnd::USED){
+                m_supplies.counts_read = false;
+            }
+        }
         settle = wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
     }
     const bool quiet = quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);

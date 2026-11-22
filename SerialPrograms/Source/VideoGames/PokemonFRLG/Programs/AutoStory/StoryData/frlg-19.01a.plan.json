@@ -73,7 +73,7 @@
       {
         "id": "buy_potions_and_status_heals",
         "action": "mart",
-        "why": "the errand's whole list at one Mart: Lavender stocks the Super Potion (700), the Antidote (100) and the Parlyz Heal (200), so no second Mart is visited (this row once flew back to Viridian's Mart for the status heals alone). The bag at 17.04b holds potion x3 and super-potion x0 (console B, 2026-11-15 22:10) against PokeGuy's potion x4, superpotion x4 at the Route 22 rival and his antidote x1, parlyzheal x2 for the League (PokemonSimulation docs/battles/pokeguy-conditions.md; user's decision 2026-11-15); recovery_items() cures PSN and PAR with them. 11,000 in all from the ~$51,000 the save holds, so nothing is sold; if_affordable cuts a line to what a smaller purse covers",
+        "why": "the errand's whole list at one Mart: Lavender stocks the Super Potion (700), the Antidote (100), the Parlyz Heal (200), and the Super Repel (500), so no second Mart is visited (this row once flew back to Viridian's Mart for the status heals alone). The bag at 17.04b holds potion x3 and super-potion x0 (console B, 2026-11-15 22:10) against PokeGuy's potion x4, superpotion x4 at the Route 22 rival and his antidote x1, parlyzheal x2 for the League (PokemonSimulation docs/battles/pokeguy-conditions.md; user's decision 2026-11-15); recovery_items() cures PSN and PAR with them, and super-repel x4 covers Route 23 (19.03) and Victory Road (19.04-19.04d). 13,000 in all from the ~$51,000 the save holds, so nothing is sold; if_affordable cuts a line to what a smaller purse covers",
         "args": {
           "map": "LavenderTown_Mart",
           "items": [
@@ -88,6 +88,10 @@
             {
               "item": "parlyz-heal",
               "quantity": 2
+            },
+            {
+              "item": "super-repel",
+              "quantity": 4
             }
           ],
           "if_affordable": true

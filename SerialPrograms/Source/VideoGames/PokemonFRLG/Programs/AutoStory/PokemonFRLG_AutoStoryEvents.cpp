@@ -463,7 +463,7 @@ std::optional<StoryFailure> push_boulder(StoryEnv& env, FrlgRunState& state, con
             return frlg_failure("boulder_push", *failure);
         }
     }
-    ConsoleBoulderPresses presses(env.console, env.context, env.player_gender);
+    ConsoleBoulderPresses presses(env.console, env.context, env.player_gender, env.supplies, env.language);
     return boulder_push_outcome(step, story_maps(), push_boulder_tiles(direction, tiles, presses), state);
 }
 
