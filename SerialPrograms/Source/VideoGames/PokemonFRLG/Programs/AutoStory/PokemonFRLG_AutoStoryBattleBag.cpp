@@ -108,10 +108,10 @@ bool ConsoleBattleBag::use_row(const Supplies& supplies, int row, int shown, con
         m_console.log(std::format("Bag: cursor to the top, then to row {}.", row + 1));
     }
     for (int c = from; c < row; c++){
-        pbf_press_dpad(m_context, DPAD_DOWN, /*hold=*/160ms, /*release=*/240ms);
+        pbf_press_dpad(m_context, DPAD_DOWN, /*hold=*/100ms, /*release=*/300ms);
     }
     for (int c = row; c < from; c++){
-        pbf_press_dpad(m_context, DPAD_UP, /*hold=*/160ms, /*release=*/240ms);
+        pbf_press_dpad(m_context, DPAD_UP, /*hold=*/100ms, /*release=*/300ms);
     }
     //  Used or not, the bag keeps the cursor here; a used-up item's row
     //  goes, and the row below it moves up under the cursor.

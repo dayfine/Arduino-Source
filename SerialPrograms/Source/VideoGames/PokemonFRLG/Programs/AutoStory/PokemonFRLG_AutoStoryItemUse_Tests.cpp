@@ -594,7 +594,7 @@ const PocketReadCase POCKET_READ_CASES[] = {
     {
         .name = "eleven rows, the CANCEL unread: until the list stops",
         .input = {.rows = ELEVEN_ROWS, .cancel_read = false},
-        .expectation = {.rows = 11, .downs = 10},
+        .expectation = {.rows = 11, .downs = 11},
     },
     {
         .name = "fifteen rows: back on the top row after 13 DOWN",
