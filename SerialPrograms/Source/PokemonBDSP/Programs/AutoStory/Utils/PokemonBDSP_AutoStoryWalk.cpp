@@ -688,11 +688,10 @@ private:
             ? !tap_chunk_moved(*m_before.frame, *after.frame, change)
             : change < WALK_BLOCKED_CHANGE;
         if (!still){
-            //  A quiet tap and then a moving one: the first moved too. What
-            //  blocks a tap still blocks the next; the view barely changed
-            //  while the president walked off (r67: "east 2 moved 1", and
-            //  the console showed both tiles walked).
-            m_result.moved_chunks += 1 + (m_spec.input == WalkInput::TAPS ? m_unchanged : 0);
+            //  Mid-leg, a quiet tap followed by a moving one moved too (r67).
+            //  Do not credit a leading still tap (moved_chunks == 0): when
+            //  facing was unknown, the first 160 ms tap can turn in place.
+            m_result.moved_chunks += 1 + (m_spec.input == WalkInput::TAPS && m_result.moved_chunks > 0 ? m_unchanged : 0);
         }else if (m_unchanged == 0){
             m_before_still = m_before;
         }

@@ -650,14 +650,21 @@ LegNext RouteWalker::open_leg(LegWalk& walk){
     if (walk.result.wild_battles > 0){
         return interrupted_open_leg(walk);
     }
-    //  Taps that moved nothing: someone stands in the way (the Youngster
-    //  below the Ravaged Path wanders across the row under the cliff, r239a,
-    //  r240a). Two still taps end the walk, so the tiles moved are the taps
-    //  less those two. Wait once for them to move on and tap the rest (r246a
-    //  lost 20 s per block on three waits); someone who stays is talked to,
-    //  put on the map, and the leg planned again from the tile we stand on,
-    //  which the taps give exactly.
+    //  Unknown facing can turn in place on tap 1 (LIMIT with moved < tiles);
+    //  finish the missing tiles or fall through to the blocked wait below.
     size_t moved = std::min(leg.tiles, walk.result.moved_chunks + walk.turn_moved);
+    if (walk.result.stop == WalkStop::LIMIT && moved < leg.tiles){
+        const WalkResult finish = m_io.walk_taps(leg.direction, leg.tiles - moved, std::format("{}: finish", walk.label));
+        moved = std::min(leg.tiles, moved + finish.moved_chunks);
+        walk.result.stop = finish.stop == WalkStop::LIMIT && moved < leg.tiles ? WalkStop::BLOCKED : finish.stop;
+        walk.result.walked += finish.walked;
+        walk.result.wild_battles += finish.wild_battles;
+        walk.result.moved_chunks += finish.moved_chunks;
+        if (finish.wild_battles > 0){
+            walk.result.events.clear();
+            return interrupted_open_leg(walk);
+        }
+    }
     if (walk.result.stop == WalkStop::BLOCKED && moved < leg.tiles){
         m_io.note("[Route] " + walk.label + ": blocked after " + std::to_string(moved) + " of " +
             std::to_string(leg.tiles) + " tiles; waiting for the way to clear.", RouteNote::WARNING);
