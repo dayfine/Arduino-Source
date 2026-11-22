@@ -113,7 +113,7 @@ struct PlanInput{
     bool wraps = false;
     std::vector<TilePos> from;
     TilePos goal;
-    RobustLegCosts costs;
+    RobustLegCosts costs = {};
 };
 struct PlanExpectation{
     std::string_view legs;  //  as describe() writes them
@@ -305,7 +305,7 @@ struct CostInput{
     std::vector<std::string_view> rows;
     TilePos from;
     Legs legs;
-    RobustLegCosts costs;
+    RobustLegCosts costs = {};
 };
 struct CostExpectation{
     long long cost = 0;

@@ -80,12 +80,12 @@ struct RoutePlanning{
     //  The run reads them through the gates, which each OPEN_GATE or
     //  PRESS_SWITCH step it walks changes.
     const std::vector<MapData>* maps = nullptr;
-    Pokemon::GateState gates;
+    Pokemon::GateState gates = {};
     RouteCosts costs = default_route_costs();
-    std::optional<MapPosition> start;
+    std::optional<MapPosition> start = std::nullopt;
     std::string label = "Route";
     //  The checkpoint the route belongs to, for its [Leg] records.
-    std::string checkpoint;
+    std::string checkpoint = {};
     WallCheck wall_check = WallCheck::TAP;
     OpenLegCheck open_leg_check = OpenLegCheck::REANCHOR;
     //  Where the run pauses before each leg (breakpoints, LEGS mode). None:

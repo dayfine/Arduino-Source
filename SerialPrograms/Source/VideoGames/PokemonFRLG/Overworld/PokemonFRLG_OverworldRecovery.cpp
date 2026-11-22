@@ -612,7 +612,7 @@ private:
         on.end = step.end;
         std::vector<StopCandidate> candidates;
         for (const MapPosition& tile : leg_tiles(*maps(), step.end, on)){
-            candidates.push_back(StopCandidate{.player = tile});
+            candidates.push_back(StopCandidate{.player = tile, .trainer = std::nullopt});
         }
         if (m_next + 1 < m_plan.size()){
             m_next++;

@@ -220,8 +220,8 @@ UnitTestResult test_reanchor_avoids_sight_via_wanderer(){
     step.facing_after = Direction::SOUTH;
     step.end = {"ReanchorWander", {3, 4}};
     const std::vector<StopCandidate> candidates{
-        StopCandidate{.player = {"ReanchorWander", {3, 2}}},
-        StopCandidate{.player = {"ReanchorWander", {3, 3}}},
+        StopCandidate{.player = {"ReanchorWander", {3, 2}}, .trainer = std::nullopt},
+        StopCandidate{.player = {"ReanchorWander", {3, 3}}, .trainer = std::nullopt},
     };
     const std::optional<Reanchor> anchor = plan_reanchor(maps, candidates, step, default_route_costs());
     if (!anchor || anchor->in_sight){

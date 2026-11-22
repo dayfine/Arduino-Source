@@ -469,6 +469,40 @@ StopWorlds stop_worlds(const std::vector<MapData>& maps, const std::vector<StopC
     return out;
 }
 
+struct ReanchorSearch{
+    const std::vector<MapData>& maps;
+    const std::vector<MapData>& clear_of_trainers;
+    const StopWorlds& stop;
+    const RouteStep& step;
+    const RouteCosts& costs;
+    std::optional<Direction> end_facing;
+};
+
+std::optional<Reanchor> best_reanchor(const ReanchorSearch& search, bool allow_wanderers){
+    std::optional<Reanchor> best;
+    int best_cost = 0;
+    const bool has_trainers = !search.stop.trainers.empty();
+    for (const Found& at : find_player(search.stop.worlds, search.stop.positions, search.step.surfing, allow_wanderers)){
+        const Direction facing = at.holds.empty() ? search.step.direction : at.holds.back().direction;
+        //  The way back keeps clear of every trainer who may stand in it if
+        //  it can, and must walk the same whether they do or not.
+        std::optional<std::vector<RouteStep>> back = plan_overworld_route(search.clear_of_trainers, at.at, RouteGoal{search.step.end, search.end_facing}, search.costs, facing);
+        if (!back && has_trainers){
+            back = plan_overworld_route(search.maps, at.at, RouteGoal{search.step.end, search.end_facing}, search.costs, facing);
+        }
+        if (!back || (has_trainers && !walks_same_everywhere(search.stop.worlds, search.stop.positions, at.at, *back))){
+            continue;
+        }
+        Reanchor anchor{.holds = at.holds, .found = at.at, .back = std::move(*back), .in_sight = holds_in_sight(search.stop.worlds, search.stop.positions, at.holds)};
+        const int cost = reanchor_cost(anchor) + (anchor.in_sight ? IN_SIGHT_COST : 0);
+        if (!best || cost < best_cost){
+            best = std::move(anchor);
+            best_cost = cost;
+        }
+    }
+    return best;
+}
+
 } // namespace
 
 std::optional<Reanchor> plan_reanchor(
@@ -483,41 +517,23 @@ std::optional<Reanchor> plan_reanchor(
     }
 
     const StopWorlds stop = stop_worlds(maps, candidates);
-    const std::vector<std::vector<MapData>>& worlds = stop.worlds;
-    const std::vector<MapPosition>& trainers = stop.trainers;
-    const std::vector<Hypothesis>& positions = stop.positions;
 
     //  Of the ways found, the cheapest (reanchor_cost()): it keeps the most
     //  of what the leg walked. A wild battle every 10 to 14 tiles stopped
     //  every try of a leg whose way back started behind it (console B,
     //  2026-11-09, Rock Tunnel B1F row 37).
-    const std::vector<MapData> clear_of_trainers = with_trainers(maps, trainers);
-    const auto best_anchor = [&](bool allow_wanderers){
-        std::optional<Reanchor> best;
-        int best_cost = 0;
-        for (const Found& at : find_player(worlds, positions, step.surfing, allow_wanderers)){
-            const Direction facing = at.holds.empty() ? step.direction : at.holds.back().direction;
-            //  The way back keeps clear of every trainer who may stand in it if
-            //  it can, and must walk the same whether they do or not.
-            std::optional<std::vector<RouteStep>> back = plan_overworld_route(clear_of_trainers, at.at, RouteGoal{step.end, end_facing}, costs, facing);
-            if (!back && !trainers.empty()){
-                back = plan_overworld_route(maps, at.at, RouteGoal{step.end, end_facing}, costs, facing);
-            }
-            if (!back || (!trainers.empty() && !walks_same_everywhere(worlds, positions, at.at, *back))){
-                continue;
-            }
-            Reanchor anchor{.holds = at.holds, .found = at.at, .back = std::move(*back), .in_sight = holds_in_sight(worlds, positions, at.holds)};
-            const int cost = reanchor_cost(anchor) + (anchor.in_sight ? IN_SIGHT_COST : 0);
-            if (!best || cost < best_cost){
-                best = std::move(anchor);
-                best_cost = cost;
-            }
-        }
-        return best;
+    const std::vector<MapData> clear_of_trainers = with_trainers(maps, stop.trainers);
+    const ReanchorSearch search{
+        .maps = maps,
+        .clear_of_trainers = clear_of_trainers,
+        .stop = stop,
+        .step = step,
+        .costs = costs,
+        .end_facing = end_facing,
     };
-    std::optional<Reanchor> best = best_anchor(false);
+    std::optional<Reanchor> best = best_reanchor(search, false);
     if (!best || best->in_sight){
-        std::optional<Reanchor> fallback = best_anchor(true);
+        std::optional<Reanchor> fallback = best_reanchor(search, true);
         if (fallback && (!best || !fallback->in_sight)){
             return fallback;
         }
