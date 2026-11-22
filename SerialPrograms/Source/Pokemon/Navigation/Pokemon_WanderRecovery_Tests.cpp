@@ -37,19 +37,17 @@ struct StepOutcome{
     size_t waits_used = 0;
 };
 
-struct WanderRecoveryInput{
-    WanderWaitPolicy policy{};
-    std::vector<WanderStep> steps;
-};
-
-struct WanderRecoveryExpectation{
-    std::vector<StepOutcome> outcomes;
-};
-
 struct WanderRecoveryCase{
     std::string name;
-    WanderRecoveryInput input{};
-    WanderRecoveryExpectation expectation{};
+    struct Input{
+        WanderWaitPolicy policy{};
+        std::vector<WanderStep> steps;
+    };
+    struct Expectation{
+        std::vector<StepOutcome> outcomes;
+    };
+    Input input{};
+    Expectation expectation{};
 };
 
 
