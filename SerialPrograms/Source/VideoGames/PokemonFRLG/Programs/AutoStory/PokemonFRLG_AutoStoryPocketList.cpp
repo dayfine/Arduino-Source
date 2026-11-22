@@ -5,8 +5,10 @@
  */
 
 #include <algorithm>
+#include "CommonFramework/ImageTools/ImageDiff.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryPocketList.h"
 
 namespace PokemonAutomation{
@@ -47,7 +49,11 @@ PocketRead read_whole_pocket(PocketList& list){
         read.downs++;
         std::optional<BagRow> row = list.read_shown(ITEM_LIST_ROWS - 1);
         //  The same row again: the list stopped scrolling, its CANCEL unread.
-        const bool same = row && row->item == reads.back().item && row->count == reads.back().count;
+        //  Never stop on consecutive unrecognized rows (empty item name), such
+        //  as Key Items where multiple unknown rows all read as {"", -1}.
+        const bool same =
+            list.bottom_row_unchanged() ||
+            (row && !row->item.empty() && row->item == reads.back().item && row->count == reads.back().count);
         if (row && row->item == "cancel"){
             read.saw_cancel = true;
         }
@@ -94,12 +100,25 @@ public:
         return read_bag_row(m_console.logger(), m_language, m_screen, shown);
     }
     virtual void cursor_down() override{
+        m_prev_screen = std::move(m_screen);
         pbf_press_dpad(m_context, DPAD_DOWN, SCROLL_TAP, SCROLL_WAIT);
         m_screen = VideoSnapshot();
     }
     virtual void cursor_up() override{
+        m_prev_screen = VideoSnapshot();
         pbf_press_dpad(m_context, DPAD_UP, SCROLL_TAP, CURSOR_UP_WAIT);
         m_screen = VideoSnapshot();
+    }
+    virtual bool bottom_row_unchanged() const override{
+        if (!m_prev_screen || !m_screen){
+            return false;
+        }
+        const ImageFloatBox row_box = item_list_name_box(ITEM_LIST_ROWS - 1);
+        const ImageViewRGB32 prev_game = extract_box_reference(m_prev_screen, GameSettings::instance().GAME_BOX);
+        const ImageViewRGB32 cur_game = extract_box_reference(m_screen, GameSettings::instance().GAME_BOX);
+        const ImageViewRGB32 prev_row = extract_box_reference(prev_game, row_box);
+        const ImageViewRGB32 cur_row = extract_box_reference(cur_game, row_box);
+        return ImageMatch::pixel_RMSD(prev_row, cur_row) < 3.0;
     }
 
 private:
@@ -107,6 +126,7 @@ private:
     ProControllerContext& m_context;
     Language m_language;
     VideoSnapshot m_screen;
+    VideoSnapshot m_prev_screen;
 };
 
 } // namespace

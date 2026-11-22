@@ -37,6 +37,10 @@ public:
     virtual void cursor_down() = 0;
     //  UP: the cursor one row up.
     virtual void cursor_up() = 0;
+    //  True when the last cursor_down() did not move the bottom row on screen.
+    virtual bool bottom_row_unchanged() const{
+        return false;
+    }
 };
 
 //  A pocket read whole, and the DOWN presses it took (and the UP presses
