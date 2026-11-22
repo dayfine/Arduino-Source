@@ -151,6 +151,7 @@ std::vector<MapData> make_sweep_maps(bool silph_cleared){
     flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
     flags.insert("FLAG_HIDE_NUGGET_BRIDGE_ROCKET");
     flags.insert("FLAG_HIDE_SILPH_SCOPE");
+    flags.insert("FLAG_HIDE_SILPH_RIVAL");
     if (silph_cleared){
         flags.insert("FLAG_HIDE_SILPH_ROCKETS");
         flags.insert("FLAG_HIDE_SAFFRON_ROCKETS");
