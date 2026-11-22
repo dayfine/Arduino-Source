@@ -10,6 +10,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -112,7 +113,7 @@ public:
         const ImageFloatBox& box,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("BattleSelectionArrowWatcher", hold_duration, color, overlay, box)
+        : DetectorToFinder("BattleSelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, box)
     {}
     BattleSelectionArrowWatcher(
         Color color,
@@ -120,7 +121,7 @@ public:
         BattleMenuOption option,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("BattleSelectionArrowWatcher", hold_duration, color, overlay, box_for_option(option))
+        : DetectorToFinder("BattleSelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, box_for_option(option))
     {}
     BattleSelectionArrowWatcher(
         Color color,
@@ -128,7 +129,7 @@ public:
         SafariBattleMenuOption option,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("BattleSelectionArrowWatcher", hold_duration, color, overlay, box_for_option(option))
+        : DetectorToFinder("BattleSelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, box_for_option(option))
     {}
     BattleSelectionArrowWatcher(
         Color color,
@@ -136,7 +137,7 @@ public:
         BattleMoveOption option,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("BattleSelectionArrowWatcher", hold_duration, color, overlay, box_for_option(option))
+        : DetectorToFinder("BattleSelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, box_for_option(option))
     {}
     BattleSelectionArrowWatcher(
         Color color,
@@ -144,14 +145,14 @@ public:
         BattleConfirmationOption option,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("BattleSelectionArrowWatcher", hold_duration, color, overlay, box_for_option(option))
+        : DetectorToFinder("BattleSelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, box_for_option(option))
     {}
     BattleSelectionArrowWatcher(
         Color color,
         VideoOverlay* overlay,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("BattleSelectionArrowWatcher", hold_duration, color, overlay, BATTLE_MENU_ARROW_BOX)
+        : DetectorToFinder("BattleSelectionArrowWatcher", scale_emulator_duration(hold_duration), color, overlay, BATTLE_MENU_ARROW_BOX)
     {}
 };
 

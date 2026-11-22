@@ -117,7 +117,7 @@ public:
         //  FRLG walks by the D-pad: a launch never moves the stick.
     }
     virtual void wait(Milliseconds duration) override{
-        m_context.wait_for(duration);
+        m_context.wait_for(scale_emulator_duration(duration));
     }
     virtual Pokemon::Observation<GridPose> observe() override;
     virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{

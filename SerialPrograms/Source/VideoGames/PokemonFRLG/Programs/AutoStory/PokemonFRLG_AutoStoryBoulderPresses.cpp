@@ -111,9 +111,10 @@ bool ConsoleBoulderPresses::clear_interrupt(){
 
 VideoSnapshot ConsoleBoulderPresses::still_shot(){
     const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
+    const Milliseconds poll = scale_emulator_duration(BOULDER_STILL_POLL);
     VideoSnapshot last = m_console.video().snapshot();
-    for (int poll = 0; last && poll < BOULDER_STILL_POLLS; poll++){
-        m_context.wait_for(BOULDER_STILL_POLL);
+    for (int poll_index = 0; last && poll_index < BOULDER_STILL_POLLS; poll_index++){
+        m_context.wait_for(poll);
         VideoSnapshot now = m_console.video().snapshot();
         if (!now){
             break;

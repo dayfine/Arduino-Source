@@ -15,6 +15,7 @@
 #include "CommonFramework/Language.h"
 #include "CommonTools/VisualDetector.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
     class CancellableScope;
@@ -43,7 +44,7 @@ private:
 class BattleDialogWatcher : public DetectorToFinder<BattleDialogDetector>{
 public:
     BattleDialogWatcher(Color color)
-        : DetectorToFinder("BattleDialogWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("BattleDialogWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -71,7 +72,7 @@ private:
 class BattleMenuWatcher : public DetectorToFinder<BattleMenuDetector>{
 public:
     BattleMenuWatcher(Color color)
-        : DetectorToFinder("BattleMenuWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("BattleMenuWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -98,7 +99,7 @@ private:
 class AdvanceBattleDialogWatcher : public DetectorToFinder<AdvanceBattleDialogDetector>{
 public:
     AdvanceBattleDialogWatcher(Color color)
-        : DetectorToFinder("AdvanceBattleDialogWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("AdvanceBattleDialogWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -120,7 +121,7 @@ private:
 class BattleLearnDialogWatcher : public DetectorToFinder<BattleLearnDialogDetector>{
 public:
     BattleLearnDialogWatcher(Color color)
-        : DetectorToFinder("BattleLearnDialogWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("BattleLearnDialogWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -138,7 +139,7 @@ private:
 class BattleOutOfPpWatcher : public DetectorToFinder<BattleOutOfPpDetector>{
 public:
     BattleOutOfPpWatcher(Color color)
-        : DetectorToFinder("BattleOutOfPpWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("BattleOutOfPpWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -168,7 +169,7 @@ private:
 class BattleLevelUpWatcher : public DetectorToFinder<BattleLevelUpDetector>{
 public:
     BattleLevelUpWatcher(Color color, BattleLevelUpDialog dialog_type, Language language)
-        : DetectorToFinder("BattleLevelUpWatcher", std::chrono::milliseconds(250), color, dialog_type, language)
+        : DetectorToFinder("BattleLevelUpWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color, dialog_type, language)
     {}
 };
 

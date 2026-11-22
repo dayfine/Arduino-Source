@@ -10,6 +10,7 @@
 #include "optional"
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -52,7 +53,7 @@ public:
         VideoOverlay* overlay,
         std::chrono::milliseconds hold_duration = std::chrono::milliseconds(250)
     )
-        : DetectorToFinder("PokedexRegisteredWatcher", hold_duration, color, overlay)
+        : DetectorToFinder("PokedexRegisteredWatcher", scale_emulator_duration(hold_duration), color, overlay)
     {}
 };
 

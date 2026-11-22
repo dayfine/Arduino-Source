@@ -14,6 +14,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/VisualDetector.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
     class CancellableScope;
@@ -38,7 +39,7 @@ private:
 class LoadMenuWatcher : public DetectorToFinder<LoadMenuDetector>{
 public:
     LoadMenuWatcher(Color color)
-        : DetectorToFinder("LoadMenuWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("LoadMenuWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
