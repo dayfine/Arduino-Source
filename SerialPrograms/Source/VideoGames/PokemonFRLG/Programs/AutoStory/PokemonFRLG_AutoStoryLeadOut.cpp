@@ -76,7 +76,7 @@ std::optional<uint8_t> read_own_level(Logger& logger, Language language, const I
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
     const ImageRGB32 ready = preprocess_for_ocr(extract_box_reference(game, OWN_LEVEL_BOX));
     for (const OCR::TextColorRange& filter : DARK_TEXT_FILTERS()){
-        const ImageRGB32 bw = to_blackwhite_rgb32_range(ready, true, filter.mins, filter.maxs);
+        const ImageRGB32 bw = to_blackwhite_rgb32_range(ready, /*in_range_black=*/true, filter.mins, filter.maxs);
         const std::string text = OCR::ocr_read(language, bw, OCR::PageSegMode::SINGLE_LINE);
         int value = 0;
         bool any = false;

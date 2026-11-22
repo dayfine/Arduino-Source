@@ -228,7 +228,7 @@ bool forget_move(ConsoleHandle& console, ProControllerContext& context, size_t s
             break;
         }
         const size_t from = *cursor;
-        pbf_press_dpad(context, from < slot ? DPAD_DOWN : DPAD_UP, 160ms, 160ms);
+        pbf_press_dpad(context, from < slot ? DPAD_DOWN : DPAD_UP, /*hold=*/160ms, /*release=*/160ms);
         std::optional<size_t> next = read_move_list_cursor(console, context, from, 1000ms);
         if (next){
             cursor = next;

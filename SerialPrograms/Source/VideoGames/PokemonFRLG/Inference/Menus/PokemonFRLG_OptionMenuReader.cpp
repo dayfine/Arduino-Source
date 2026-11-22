@@ -64,7 +64,7 @@ public:
         if (!languages()[language]){
             return "";
         }
-        const ImageRGB32 ready = preprocess_for_ocr(image, 5, 1);
+        const ImageRGB32 ready = preprocess_for_ocr(image, /*blur_kernel_size=*/5, /*blur_passes=*/1);
         const OCR::StringMatchResult result = match_substring_from_image_multifiltered(
             &logger, language, ready, VALUE_TEXT_FILTERS(),
             m_max_log10p, MAX_LOG10P_SPREAD, 0.01, 0.50

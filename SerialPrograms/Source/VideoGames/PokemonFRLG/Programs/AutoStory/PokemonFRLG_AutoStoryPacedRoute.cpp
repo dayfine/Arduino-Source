@@ -65,6 +65,8 @@ const std::vector<MapData>& cleared_story_maps(){
     return maps;
 }
 
+} // namespace
+
 void place_viridian_old_man_at_8(std::vector<MapData>& maps){
     for (MapData& map : maps){
         if (map.name != "ViridianCity"){
@@ -78,11 +80,9 @@ void place_viridian_old_man_at_8(std::vector<MapData>& maps){
     }
 }
 
-} // namespace
-
 const std::vector<MapData>& run_story_maps(const std::set<std::string>& run_flags){
     const bool cleared = run_flags.contains(std::string(SILPH_CLEARED_FLAG));
-    const bool old_man_done = run_flags.contains("old_man_tutorial_done");
+    const bool old_man_done = run_flags.contains(std::string(OLD_MAN_TUTORIAL_DONE_FLAG));
     const std::vector<MapData>& base = cleared ? cleared_story_maps() : story_maps();
     const std::vector<TrainerMove> moved = moved_trainers(run_flags);
     const std::vector<BoulderMove> pushed = moved_boulders(run_flags);
@@ -92,7 +92,7 @@ const std::vector<MapData>& run_story_maps(const std::set<std::string>& run_flag
     //  One copy per set of trainers moved, kept while the program runs:
     //  callers hold references into it. `run_flags` is a set, so the key
     //  lists the moves in one order.
-    std::string key = std::string(cleared ? "cleared" : "all") + (old_man_done ? "|old_man_done" : "|old_man_8");
+    std::string key = std::format("{}|{}", cleared ? "cleared" : "all", old_man_done ? "old_man_done" : "old_man_8");
     for (const TrainerMove& move : moved){
         key += std::format("|{}={},{}", move.trainer, move.x, move.y);
     }
