@@ -477,8 +477,16 @@ Pokemon::DoorApproachPlan bdsp_door_approach_plan(
 }
 
 namespace{
-Pokemon::DoorApproachPlan door_run(const std::string& map_name, const GridPose& pose, Direction direction, bool can_run){
+//  The run through a door from `pose`: timed from the tiles to the door on
+//  the story map, or from the step's door_tiles on a map with none (an
+//  interior). With neither, the long fallback hold, which ran on past the
+//  door onto the far map once the fade's cancel came late (00.05's exit
+//  from the Trainers' School, lab-B 2026-11-22: one tile past (40, 41)).
+Pokemon::DoorApproachPlan door_run(const std::string& map_name, const GridPose& pose, Direction direction, bool can_run, size_t door_tiles){
     const BdspDoorApproachOptions options{.can_run = can_run, .ignore_early_dark = true};
+    if (door_tiles > 0){
+        return bdsp_door_approach_plan({door_tiles}, direction, options);
+    }
     try{
         const Pokemon::MapData& map = story_map(map_name);
         std::vector<size_t> distances;
@@ -751,7 +759,7 @@ std::optional<StoryFailure> StoryWalkSteps::step(BdspRunState& state, const Bdsp
             return std::nullopt;
         }
         const std::string banner = story_arrival_banner(state.pose.map, step.pose_after->map);
-        const Pokemon::DoorApproachPlan door = door_run(state.pose.map, state.pose, direction, m_can_run);
+        const Pokemon::DoorApproachPlan door = door_run(state.pose.map, state.pose, direction, m_can_run, args.door_tiles);
         WarpSeen seen = m_io.run_into_door(direction, m_can_run, door, banner);
         log(std::format("[{}] {}: {} through the door (drive {} ms, timeout {} ms, dark from {} ms): {}.", m_row, step.name,
             direction_name(direction), door.drive_hold.count(), door.fade_timeout.count(), door.dark_from.count(),

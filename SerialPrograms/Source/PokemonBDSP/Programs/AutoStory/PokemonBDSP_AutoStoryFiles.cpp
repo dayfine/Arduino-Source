@@ -135,6 +135,29 @@ const std::vector<std::string>& bdsp_action_names(){
     return names;
 }
 
+StepMoveArgs parse_step_move_args(const JsonObject& args){
+    Pokemon::reject_unknown_keys(args, {"direction", "variant", "legs", "door_tiles", "pose_after"});
+    StepMoveArgs parsed;
+    parsed.direction = Pokemon::read_direction(args.get_string_throw("direction"), "direction");
+    parsed.variant = read_string_default(args, "variant");
+    if (!is_known_step_variant(parsed.variant)){
+        throw ParseException(std::format("unknown step variant \"{}\"", parsed.variant));
+    }
+    if (args.get_value("door_tiles") != nullptr){
+        const int64_t door_tiles = args.get_integer_throw("door_tiles");
+        if (door_tiles <= 0){
+            throw ParseException("step \"door_tiles\" must be positive");
+        }
+        parsed.door_tiles = (size_t)door_tiles;
+    }
+    if (const JsonValue* legs_val = args.get_value("legs")){
+        parsed.legs = read_positive_legs(*legs_val, "legs");
+    }else if (parsed.variant == "or_legs"){
+        throw ParseException("step variant \"or_legs\" requires \"legs\"");
+    }
+    return parsed;
+}
+
 std::optional<BdspStepArgs> parse_walk_step_args(std::string_view action, const JsonObject& args){
     if (action == "route"){
         Pokemon::reject_unknown_keys(args, {"target", "fight_wild", "variant", "legs", "pose_after"});
@@ -164,19 +187,7 @@ std::optional<BdspStepArgs> parse_walk_step_args(std::string_view action, const 
         return parsed;
     }
     if (action == "step"){
-        Pokemon::reject_unknown_keys(args, {"direction", "variant", "legs", "pose_after"});
-        StepMoveArgs parsed;
-        parsed.direction = Pokemon::read_direction(args.get_string_throw("direction"), "direction");
-        parsed.variant = read_string_default(args, "variant");
-        if (!is_known_step_variant(parsed.variant)){
-            throw ParseException(std::format("unknown step variant \"{}\"", parsed.variant));
-        }
-        if (const JsonValue* legs_val = args.get_value("legs")){
-            parsed.legs = read_positive_legs(*legs_val, "legs");
-        }else if (parsed.variant == "or_legs"){
-            throw ParseException("step variant \"or_legs\" requires \"legs\"");
-        }
-        return parsed;
+        return parse_step_move_args(args);
     }
     return std::nullopt;
 }

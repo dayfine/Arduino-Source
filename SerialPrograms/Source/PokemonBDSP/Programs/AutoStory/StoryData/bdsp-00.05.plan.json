@@ -129,9 +129,10 @@
       {
         "id": "out_of_the_school",
         "action": "step",
-        "why": "straight down the door's column and out",
+        "why": "straight down the door's column and out: the School has no map, so door_tiles bounds the run (about 8 tiles from Barry's back wall to the door; a 12 s hold stepped a tile on past (40, 41) on lab-B 2026-11-22)",
         "args": {
           "direction": "south",
+          "door_tiles": 10,
           "pose_after": {
             "facing": "south",
             "map": "JubilifeCity",

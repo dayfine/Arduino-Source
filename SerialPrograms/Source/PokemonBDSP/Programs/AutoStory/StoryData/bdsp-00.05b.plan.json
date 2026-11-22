@@ -36,10 +36,27 @@
       },
       {
         "id": "presidents_trigger",
-        "action": "step",
-        "why": "the trigger (44..48, 40)",
+        "action": "legs",
+        "why": "not planned: north onto the trigger (44..48, 40) until his scene starts, from row 41 or a row low (00.05's save a tile past the School's door, lab-B 2026-11-22)",
         "args": {
-          "direction": "north"
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 2
+            }
+          ],
+          "variant": "to_dialogue",
+          "pose_after": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                46,
+                40
+              ]
+            ]
+          }
         }
       },
       {

@@ -1,4 +1,3 @@
-// code-health: allow header_symbols -- story event dispatch table and per-area event population functions
 /*  BDSP AutoStory - Events
  *
  *  From: https://github.com/PokemonAutomation/
@@ -43,6 +42,12 @@ void add_lake_events(StoryEvents& events);
 void add_sandgem_events(StoryEvents& events);
 //  Populates Jubilife-area story event handlers.
 void add_jubilife_events(StoryEvents& events);
+//  talk_to_wanderer()'s way back onto the row it asks from: the tiles south
+//  of `pose`'s one tile to a wall on its story map, when that wall is close
+//  (1 to WANDERER_ANCHOR_MOST_TILES tiles) and nobody can stand in the way;
+//  else nothing.
+inline constexpr size_t WANDERER_ANCHOR_MOST_TILES = 3;
+std::optional<size_t> wanderer_row_anchor(const Pokemon::GridPose& pose);
 //  Populates Oreburgh-area story event handlers.
 void add_oreburgh_events(StoryEvents& events);
 //  Populates Route 204-area story event handlers.
