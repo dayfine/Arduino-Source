@@ -201,6 +201,20 @@ MapData pokemon_center_room(const std::string& name, const Pokemon::WarpDestinat
         room.objects.push_back(std::move(gentleman));
 
         room.objects.push_back(object("youngster", Pokemon::ObjectKind::NPC, {14, 6}));
+    }else if (name == "SaffronCity_PokemonCenter_1F"){
+        //  pokefirered data/maps/SaffronCity_PokemonCenter_1F/map.json:
+        //  Woman 3 wanders (3..5, 3..5), Youngster wanders (9, 5..7), and
+        //  Gentleman sits at (14, 6). Row 4 east of the nurse and column 14
+        //  north are clear.
+        MapObject woman = object("woman_3", Pokemon::ObjectKind::NPC, {4, 4});
+        woman.wander = Pokemon::TileBox{.x0 = 3, .y0 = 3, .x1 = 5, .y1 = 5};
+        room.objects.push_back(std::move(woman));
+
+        MapObject youngster = object("youngster", Pokemon::ObjectKind::NPC, {9, 6});
+        youngster.wander = Pokemon::TileBox{.x0 = 9, .y0 = 5, .x1 = 9, .y1 = 7};
+        room.objects.push_back(std::move(youngster));
+
+        room.objects.push_back(object("gentleman", Pokemon::ObjectKind::NPC, {14, 6}));
     }
     return room;
 }
