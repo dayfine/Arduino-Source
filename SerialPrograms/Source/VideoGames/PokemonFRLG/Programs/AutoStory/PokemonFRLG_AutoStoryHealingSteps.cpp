@@ -64,6 +64,13 @@ std::optional<StoryFailure> heal(StoryEnv& env, const StoryStep& step, int max_h
     const std::optional<int> after = heal_to_full(
         env.supplies, max_hp, use, full_restore != nullptr && *full_restore ? "full-restore" : ""
     );
+    if (env.supplies.status == StatusCondition::POISON){
+        if (bag_count(env.supplies, "antidote") > 0){
+            use("antidote");
+        }else if (bag_count(env.supplies, "full-heal") > 0){
+            use("full-heal");
+        }
+    }
     const bool full = after && *after <= 0;
     env.console.log(std::format(
         "Story: {}: {} before, {} after; {} Potions, {} Super Potions, {} Full Restores left.",
@@ -93,6 +100,9 @@ std::optional<StoryFailure> check(StoryEnv& env, const StoryStep& step, int max_
     }
     if (*missing > 0){
         return frlg_failure("hp_not_full", std::format("{}: {} HP missing", step.name, *missing));
+    }
+    if (env.supplies.status != StatusCondition::NONE){
+        return frlg_failure("status_not_clear", std::format("{}: lead still has status condition", step.name));
     }
     env.console.log(std::format("Story: {}: the lead's HP is full.", step.name));
     return std::nullopt;
