@@ -480,6 +480,14 @@
         }
       },
       {
+        "id": "heal_before_koga",
+        "action": "heal_to_full",
+        "why": "heal any damage or poison from Tamer Edgar on east_column_to_wall or top_row_to_wall before saving west of Koga; a no-op if Edgar was not fought",
+        "args": {
+          "max_hp": 122
+        }
+      },
+      {
         "id": "check_full_hp",
         "action": "check_full_hp",
         "why": "Koga wants full HP (88.0% from full, 70.1% from pokeguy's 34/122): stop here, before 12.02's save, if any HP is missing or no battle measured the bar since the checkpoint loaded",
