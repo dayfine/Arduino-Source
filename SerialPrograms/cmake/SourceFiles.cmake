@@ -1577,6 +1577,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Inference/PokemonBDSP_VSSeekerReaction.h
     Source/PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkExtraction.cpp
     Source/PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkExtraction.h
+    Source/PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkExtraction_Tests.cpp
+    Source/PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkExtraction_Tests.h
     Source/PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkScenes.cpp
     Source/PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkScenes.h
     Source/PokemonBDSP/Inference/Rng/PokemonBDSP_EyeBlinkDetector.cpp
