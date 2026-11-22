@@ -216,7 +216,9 @@ UnitTestResult test_taps_in_grass_need_a_replan(){
     //  A replanner that goes east to the wall absorbs it.
     const ToyMap walled({".\"\"\"..#"});
     const RouteReplanner to_wall = [](const std::vector<TilePos>&){
-        return std::optional<std::vector<ScoredLeg>>({{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TO_WALL}});
+        return std::optional<std::vector<ScoredLeg>>(std::vector<ScoredLeg>{
+            {.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TO_WALL},
+        });
     };
     const RouteScore replanned = score(walled, {{0, 0}}, {5, 0}, taps, to_wall);
     if (replanned.replans != 3){
@@ -235,8 +237,10 @@ UnitTestResult test_recovery_back_through_the_grass_strands(){
     const ToyMap toy({"#\"\"\"\"...."});
     const std::vector<ScoredLeg> taps{{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}};
     const RouteReplanner back = [](const std::vector<TilePos>&){
-        return std::optional<std::vector<ScoredLeg>>({{.direction = Direction::WEST, .tiles = 4, .kind = ScoredLegKind::TO_WALL},
-            {.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}});
+        return std::optional<std::vector<ScoredLeg>>(std::vector<ScoredLeg>{
+            {.direction = Direction::WEST, .tiles = 4, .kind = ScoredLegKind::TO_WALL},
+            {.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS},
+        });
     };
     return all_of({expect(score(toy, {{1, 0}}, {6, 0}, taps, back), RouteVerdict::STRAND, "a recovery back through the grass")});
 }
@@ -249,8 +253,10 @@ UnitTestResult test_recovery_from_a_wall_out_of_the_grass_retries(){
     const ToyMap toy({"#.\"\"\"...."});
     const std::vector<ScoredLeg> taps{{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}};
     const RouteReplanner back = [](const std::vector<TilePos>&){
-        return std::optional<std::vector<ScoredLeg>>({{.direction = Direction::WEST, .tiles = 4, .kind = ScoredLegKind::TO_WALL},
-            {.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS}});
+        return std::optional<std::vector<ScoredLeg>>(std::vector<ScoredLeg>{
+            {.direction = Direction::WEST, .tiles = 4, .kind = ScoredLegKind::TO_WALL},
+            {.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TAPS},
+        });
     };
     return all_of({expect(score(toy, {{1, 0}}, {6, 0}, taps, back), RouteVerdict::PASS, "a recovery from a wall out of the grass")});
 }
@@ -258,7 +264,9 @@ UnitTestResult test_recovery_from_a_wall_out_of_the_grass_retries(){
 UnitTestResult test_too_many_recoveries(){
     const ToyMap toy({".\"\"\"..#"});
     const RouteReplanner to_wall = [](const std::vector<TilePos>&){
-        return std::optional<std::vector<ScoredLeg>>({{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TO_WALL}});
+        return std::optional<std::vector<ScoredLeg>>(std::vector<ScoredLeg>{
+            {.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TO_WALL},
+        });
     };
     InterruptModel model = toy_model();
     model.max_recoveries = 0;
