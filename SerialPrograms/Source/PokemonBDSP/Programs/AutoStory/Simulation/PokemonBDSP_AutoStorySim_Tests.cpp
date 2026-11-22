@@ -281,7 +281,7 @@ public:
     virtual bool run_until_map(Direction, Milliseconds, const std::string&, const std::string&) override{
         return false;
     }
-    virtual WarpSeen run_into_door(Direction, bool, Milliseconds, Milliseconds, const std::string&) override{
+    virtual WarpSeen run_into_door(Direction, bool, const Pokemon::DoorApproachPlan&, const std::string&) override{
         return m_seen;
     }
     virtual std::optional<size_t> tap_to_banner(Direction, const std::string&, size_t) override{
@@ -437,6 +437,16 @@ UnitTestResult test_tap_through_banner_gone(Logger& logger){
     return test_tap_through_already(logger, false);
 }
 
+UnitTestResult test_door_late_cancel_overshoot(Logger& logger){
+    SimExecutor executor(logger, {}, {.door_cancel_delay = Milliseconds(4000)});
+    const SimRunReport report = run_rows_on(executor, logger, {.from = "00.00", .to = "01.11"});
+    if (!report.completed){
+        return std::format("00.00 to 01.11 failed under 4 s fade-cancel lag at {}: {}",
+            executor.result().failed_step, executor.result().error);
+    }
+    return true;
+}
+
 } // namespace
 
 const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
@@ -458,6 +468,7 @@ const AutoStoryStorySimCase AUTO_STORY_STORY_SIM_CASES[] = {
     {.name = "01.03, counted 19 taps north leaves player in hall", .input = {test_mine_hall_19_north}, .expectation = {}},
     {.name = "01.03, cut corner through coal room crate at col 29", .input = {test_mine_coal_room_crate_cut}, .expectation = {}},
     {.name = "plain door steps settle with DOOR while arrival-scene doors keep TALK", .input = {test_door_step_settle_kind}, .expectation = {}},
+    {.name = "00.00 to 01.11, delayed fade cancel does not overshoot doors or stairs (lab-B, 2026-11-21)", .input = {test_door_late_cancel_overshoot}, .expectation = {}},
 };
 
 void add_tests_AutoStory_StorySim(UnitTestDatabase& database){

@@ -32,6 +32,18 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
+//  Options for building BDSP's door approach plan.
+struct BdspDoorApproachOptions{
+    bool can_run = false;
+    bool ignore_early_dark = true;
+};
+//  Builds BDSP's door approach plan for a set of candidate tile distances.
+Pokemon::DoorApproachPlan bdsp_door_approach_plan(
+    const std::vector<size_t>& tile_distances,
+    Pokemon::Direction direction,
+    const BdspDoorApproachOptions& options
+);
+
 //  A Pokemon Center visit (Pokemon::run_center_visit()) on a StoryStepIO:
 //  the doors are runs north in and south out, running with `run`, and the
 //  settles are the step IO's, so the inside's fade-in is waited out before
@@ -45,10 +57,18 @@ public:
     {}
 
     virtual WarpSeen walk_in() override{
-        return m_io.run_into_door(Pokemon::Direction::NORTH, m_run);
+        return m_io.run_into_door(
+            Pokemon::Direction::NORTH,
+            m_run,
+            bdsp_door_approach_plan({1, 2}, Pokemon::Direction::NORTH, {.can_run = m_run, .ignore_early_dark = false})
+        );
     }
     virtual WarpSeen walk_out() override{
-        return m_io.run_into_door(Pokemon::Direction::SOUTH, m_run);
+        return m_io.run_into_door(
+            Pokemon::Direction::SOUTH,
+            m_run,
+            bdsp_door_approach_plan({6, 8}, Pokemon::Direction::SOUTH, {.can_run = m_run, .ignore_early_dark = false})
+        );
     }
     virtual void settle(SettleKind kind, std::string_view label) override{
         m_io.settle(BUTTON_B, std::string(label), kind, "");
@@ -128,7 +148,7 @@ private:
     std::optional<Pokemon::StoryFailure> tap_to_banner(const Pokemon::GridPose& from, const BdspStep& step);
     bool through_already(const BdspStep& step);
     SettleKind door_settle_kind(const BdspStep& step) const;
-    WarpSeen door_from_beside(const BdspStep& step, const WarpSeen& seen, Milliseconds timeout, const std::string& banner);
+    WarpSeen door_from_beside(const BdspStep& step, const WarpSeen& seen, const Pokemon::DoorApproachPlan& door, const std::string& banner);
     void turn(Pokemon::Direction direction);
     void log(const std::string& text);
 

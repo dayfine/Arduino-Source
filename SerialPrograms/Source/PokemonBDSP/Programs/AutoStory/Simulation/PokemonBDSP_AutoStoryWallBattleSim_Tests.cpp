@@ -165,7 +165,7 @@ public:
         unsupported("a run onto " + map);
         return false;
     }
-    virtual WarpSeen run_into_door(Direction, bool, Milliseconds, Milliseconds, const std::string&) override{
+    virtual WarpSeen run_into_door(Direction, bool, const Pokemon::DoorApproachPlan&, const std::string&) override{
         unsupported("a run into a door");
         return {};
     }

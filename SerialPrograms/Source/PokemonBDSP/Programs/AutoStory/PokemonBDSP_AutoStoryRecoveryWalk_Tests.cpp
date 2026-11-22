@@ -90,7 +90,7 @@ public:
     virtual void fight(const std::string&) override{ throw GridSimFailure{"unexpected trainer"}; }
     virtual void walk_until_stopped(Direction, size_t, const std::string&) override{ throw GridSimFailure{"unexpected blind hold"}; }
     virtual bool run_until_map(Direction, Milliseconds, const std::string&, const std::string&) override{ throw GridSimFailure{"unexpected banner walk"}; }
-    virtual WarpSeen run_into_door(Direction, bool, Milliseconds = Milliseconds(12000), Milliseconds = Milliseconds(0), const std::string& = "") override{ throw GridSimFailure{"unexpected door"}; }
+    virtual WarpSeen run_into_door(Direction, bool, const Pokemon::DoorApproachPlan& = {}, const std::string& = "") override{ throw GridSimFailure{"unexpected door"}; }
     virtual std::optional<size_t> tap_to_banner(Direction, const std::string&, size_t) override{ throw GridSimFailure{"unexpected banner"}; }
     virtual bool settle(Button, const std::string&, SettleKind, const std::string&) override{ throw GridSimFailure{"unexpected scene"}; }
 private:

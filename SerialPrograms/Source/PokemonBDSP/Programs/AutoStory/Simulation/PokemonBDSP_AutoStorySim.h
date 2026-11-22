@@ -142,6 +142,10 @@ struct SimWorldKnobs{
     bool slow_fade_in = false;
     std::vector<SimStillTaps> still_taps = {};
     std::map<std::string, SimCenterDoors> centers = {};
+    //  Simulated video-capture lag delaying fade cancellation during run_into_door():
+    //  any drive hold continuing past (warp_time + SIM_DOOR_FADE_DURATION) walks
+    //  the player further in `direction` on the destination map (lab-B 2026-11-21).
+    Milliseconds door_cancel_delay = Milliseconds(0);
 };
 
 namespace detail{
@@ -183,6 +187,7 @@ private:
 
 constexpr size_t SIM_BANNER_TILES = 3;
 constexpr Milliseconds SIM_FALSE_DARK = Milliseconds(1800);
+constexpr Milliseconds SIM_DOOR_FADE_DURATION = Milliseconds(1500);
 constexpr double SIM_FLOOR = 104;
 constexpr double SIM_DOOR_FADE = 7;
 constexpr double SIM_DIM_FADE = 55;
@@ -233,18 +238,27 @@ public:
     }
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string&) override;
-    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
-        Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override{
+    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run,
+        const Pokemon::DoorApproachPlan& plan = {}, const std::string& banner = "") override{
         m_route.check_fade_in(std::format("{}: run into the door", m_step));
         const SimPace pace = run ? SimPace::RUN : SimPace::WALK;
-        if (false_dark() && dark_from <= detail::SIM_FALSE_DARK && detail::SIM_FALSE_DARK < timeout){
+        const Milliseconds drive = std::min(plan.drive_hold, plan.fade_timeout);
+        if (false_dark() && plan.dark_from <= detail::SIM_FALSE_DARK && detail::SIM_FALSE_DARK < plan.fade_timeout){
             m_sim.hold(direction, detail::SIM_FALSE_DARK, pace);
             return {.fade = WarpFade::BLACK};
         }
-        if (m_sim.hold(direction, timeout, pace).stop != SimStop::WARP){
+        const SimMove move = m_sim.hold(direction, drive, pace);
+        if (move.stop != SimStop::WARP){
             return {};
         }
         const WarpSeen seen = door_fade(banner);
+        if (m_knobs.door_cancel_delay > Milliseconds(0)){
+            const Milliseconds held_until = std::min(drive, move.time + m_knobs.door_cancel_delay);
+            const Milliseconds far_loads = move.time + detail::SIM_DOOR_FADE_DURATION;
+            if (held_until > far_loads && m_far_side()){
+                m_sim.hold(direction, held_until - far_loads, pace);
+            }
+        }
         m_misses.fading_in = seen.any();
         return seen;
     }
