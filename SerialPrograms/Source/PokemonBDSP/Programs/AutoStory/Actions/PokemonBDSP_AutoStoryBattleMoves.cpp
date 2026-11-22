@@ -328,8 +328,13 @@ size_t choose_move(const std::vector<MoveSlot>& slots){
         }
         // A move that might be either counts below any attack known for
         // sure, and an earlier one first: slot 1 is an attack for every
-        // starter.
-        const int score = known ? known->power * 2 + (std::string_view(known->type) != "normal" ? 1 : 0) : 1;
+        // starter. Prefer Fighting (Mach Punch) over tied Fire (Ember) so
+        // Monferno uses Mach Punch against Oreburgh Gym's Rock types.
+        const int score = known
+            ? known->power * 2
+                + (std::string_view(known->type) != "normal" ? 1 : 0)
+                + (std::string_view(known->type) == "fighting" ? 1 : 0)
+            : 1;
         if (score > best_score){
             best_score = score;
             best = i;
