@@ -73,9 +73,15 @@
       {
         "id": "buy_x_items",
         "action": "mart",
-        "why": "pokeguy 1:02:42: 6 X Speeds, 21 X Specials, 5 X Accuracies and 2 Guard Specs (15,600 of his 15,694), X Special first; the money measured at the Celadon save on console B (19,862 on the trainer card, 2026-11-11), which buys the whole list",
+        "why": "pokeguy 1:02:42: 6 X Speeds, 21 X Specials, 5 X Accuracies and 2 Guard Specs (15,600 of his 15,694), X Special first; sells 1 Nugget (+5,000) so a fresh save that arrives slightly under 15,600 (15,534 on 2026-11-22) still buys both Guard Specs",
         "args": {
           "map": "CeladonCity_DepartmentStore_5F",
+          "sell": [
+            {
+              "item": "nugget",
+              "quantity": 1
+            }
+          ],
           "items": [
             {
               "item": "x-special",

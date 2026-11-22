@@ -111,7 +111,9 @@ std::string walk_league_row(
         if (step.name == until){
             return "";
         }
-        if (step.action != "route" && step.action != "legs" && step.action != "step"){
+        if (step.action != "route" && step.action != "legs" && step.action != "step"
+            && step.action != "fly" && step.action != "lift_floor"
+        ){
             continue;
         }
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){

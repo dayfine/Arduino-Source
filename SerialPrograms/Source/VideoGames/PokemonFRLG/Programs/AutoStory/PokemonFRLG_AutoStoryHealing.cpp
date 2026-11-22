@@ -169,7 +169,7 @@ int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string
 }
 
 int fill_shortfall(const Supplies& supplies, int target, const std::string& item){
-    return std::max(0, target - item_count(supplies, item));
+    return std::max(0, target - bag_count(supplies, item));
 }
 
 
