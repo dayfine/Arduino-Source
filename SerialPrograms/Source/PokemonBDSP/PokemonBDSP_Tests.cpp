@@ -33,6 +33,7 @@
 #include "Programs/AutoStory/Utils/PokemonBDSP_AutoStoryIndoors_Tests.h"
 #include "Programs/AutoStory/Simulation/PokemonBDSP_AutoStoryWallBattleSim_Tests.h"
 #include "Programs/RngManipulation/PokemonBDSP_StarterRng_Tests.h"
+#include "Inference/Rng/PokemonBDSP_BlinkExtraction_Tests.h"
 #include "PokemonBDSP_Tests.h"
 
 namespace PokemonAutomation{
@@ -70,6 +71,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_AutoStory_FaultSweep(database);
     add_tests_AutoStory_StoryActions(database);
     add_tests_StarterRng(database);
+    add_tests_BlinkExtraction(database);
 }
 
 
