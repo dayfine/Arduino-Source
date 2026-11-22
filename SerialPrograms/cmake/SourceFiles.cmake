@@ -1536,12 +1536,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
-    Source/Pokemon/Navigation/Pokemon_Direction.cpp
-    Source/Pokemon/Navigation/Pokemon_Direction.h
-    Source/Pokemon/Navigation/Pokemon_GateState.cpp
-    Source/Pokemon/Navigation/Pokemon_GateState.h
-    Source/Pokemon/Navigation/Pokemon_Grid.cpp
-    Source/Pokemon/Navigation/Pokemon_Grid.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_GateState.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
