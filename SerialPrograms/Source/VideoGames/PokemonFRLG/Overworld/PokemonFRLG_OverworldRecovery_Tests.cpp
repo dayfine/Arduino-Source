@@ -953,7 +953,48 @@ UnitTestResult test_grass_in_sight(){
     return expect_logged(script.logs, {"Robin (3, 1) (stopped by a trainer, now at (3, 2))"});
 }
 
+//  A tapped leg to a wall interrupted mid-leg by a transient message (such as
+//  "REPEL's effect wore off..." on 14.01/40 below_quiz_5): holds on to the wall
+//  rather than failing as a hold interrupted right away again. If the player was
+//  already at the wall when the message fired, the hold moves nothing and still
+//  completes; if a sign speaks on the hold, it fails on the second stop.
+UnitTestResult test_tapped_wall_leg_interrupted(){
+    const std::vector<MapData> maps{parse_map(TEST_CORRIDOR_JSON, "Corridor")};
+    RouteStep wall = walk(Direction::EAST, 6, {"Corridor", {7, 1}});
+    wall.to_wall = true;
+    wall.tapped = true;
+    const RoutePlanning planning{.maps = &maps, .costs = default_route_costs(), .start = MapPosition{"Corridor", {1, 1}}, .label = "Route", .wall_check = WallCheck::SKIP};
+
+    ScriptedRoute mid;
+    mid.ends[0] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{3, 4}};
+    if (mid.run({wall}, &planning) || mid.walked.size() != 2 || mid.walked[1].tapped){
+        return std::format("Mid-leg interrupt: expected fallback hold to wall, walked {} (tapped={}): {}",
+            mid.walked.size(), mid.walked.size() > 1 ? mid.walked[1].tapped : true, mid.failure);
+    }
+
+    ScriptedRoute at_wall;
+    at_wall.ends[0] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{4, 5}};
+    at_wall.ends[1] = no_movement();
+    if (at_wall.run({wall}, &planning) || at_wall.walked.size() != 2){
+        return std::format("At-wall interrupt: expected unmoved bump hold to pass, walked {}: {}",
+            at_wall.walked.size(), at_wall.failure);
+    }
+
+    ScriptedRoute persistent;
+    persistent.ends[0] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{0, 1}};
+    persistent.ends[1] = StepOutcome{.end = StepEnd::STOPPED, .walked = WalkedTiles{0, 0}};
+    if (!persistent.run({wall}, &planning) || persistent.walked.size() != 2){
+        return std::format("Persistent interrupt: expected failure on follow-up hold, walked {} (failed={})",
+            persistent.walked.size(), !persistent.failure.empty());
+    }
+    return true;
+}
+
 const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
+    {
+        .input = {.name = "tapped leg to a wall interrupted mid-leg", .body = test_tapped_wall_leg_interrupted},
+        .expectation = {.description = "falls back to holding to the wall after a transient interrupt on a tapped to_wall leg"},
+    },
     {
         .input = {.name = "stop, recover, resume", .body = test_stop_recover_resume},
         .expectation = {.description = "verifies full stop, recovery reanchor, and resume sequence"},
