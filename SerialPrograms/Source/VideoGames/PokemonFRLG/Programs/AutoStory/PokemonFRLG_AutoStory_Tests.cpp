@@ -558,8 +558,6 @@ const AllowedRevisit ALLOWED_REVISITS[] = {
     {"04.02", "before_salesman", CONSOLE_VERIFIED_REVISIT},
     {"05.02c", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
     {"05.03", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
-    {"05.08", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
-    {"05.09", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
     {"06.01", "off_2f", CONSOLE_VERIFIED_REVISIT},
     {"06.01", "vermilion_nurse", CONSOLE_VERIFIED_REVISIT},
     {"06.02", "above_gym_tree", CONSOLE_VERIFIED_REVISIT},

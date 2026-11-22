@@ -25,22 +25,22 @@
         "why": "down the ledge (27, 1)"
       },
       {
-        "id": "cerulean_house_wall",
+        "id": "above_center_ledge",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[28, 8]], "facing": "south"}
+          "target": {"map": "CeruleanCity", "tiles": [[25, 17]], "facing": "south"}
         },
-        "why": "align to the fence and house north wall after the ledge"
+        "why": "south and west to above Cerulean's Pokemon Center ledge (25, 18)"
       },
       {
-        "id": "cerulean_center_wall",
-        "kind": "route",
-        "action": "run",
+        "id": "center_ledge_hop",
+        "kind": "step",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[22, 15]], "facing": "south"}
+          "direction": "south"
         },
-        "why": "align to the Pokemon Center north wall before looping west to the door"
+        "declared_after": {"map": "CeruleanCity", "tiles": [[25, 19]], "facing": "south"},
+        "why": "down the ledge (25, 18) behind the Pokemon Center"
       },
       {
         "id": "cerulean_nurse",
@@ -49,7 +49,7 @@
         "args": {
           "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
         },
-        "why": "into the city to the Pokemon Center"
+        "why": "into the Pokemon Center"
       },
       {
         "id": "heal_cerulean",
