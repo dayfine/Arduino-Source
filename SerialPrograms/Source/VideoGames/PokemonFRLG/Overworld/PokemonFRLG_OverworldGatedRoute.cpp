@@ -8,8 +8,8 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_GateState.h"
-#include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
 
 namespace PokemonAutomation{

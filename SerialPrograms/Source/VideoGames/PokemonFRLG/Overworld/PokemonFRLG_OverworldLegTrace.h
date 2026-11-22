@@ -30,7 +30,7 @@
 #include <functional>
 #include <optional>
 #include <string>
-#include "Pokemon/Navigation/Pokemon_LegTrace.h"
+#include "Pokemon/Navigation/Grid/Trace/Pokemon_LegTrace.h"
 #include "PokemonFRLG_OverworldRouteSteps.h"
 
 namespace PokemonAutomation{

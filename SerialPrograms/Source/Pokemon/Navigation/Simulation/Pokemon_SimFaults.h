@@ -3,11 +3,12 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The faults the games' overworld simulations inject, shared by BDSP's
- *  and FRLG's: the classes of failure the consoles showed, and a counter
- *  per class that says which of a fault's chances to fault. A chance is
- *  each time the sim reaches a point where the game could fail that way
- *  (a tap, a warp, a step's end); a test names the chances it faults by
- *  number, from 1 in the order the sim reaches them.
+ *  and FRLG's: the classes of failure the consoles showed, a counter per
+ *  class that says which of a fault's chances to fault, and wandering-NPC
+ *  tile blocks. A chance is each time the sim reaches a point where the
+ *  game could fail that way (a tap, a warp, a step's end); a test names
+ *  the chances it faults by number, from 1 in the order the sim reaches
+ *  them.
  *
  *  How a class is injected is each game's (its sim's knobs and its fault
  *  sweep); a game may inject only some of the classes.
@@ -24,7 +25,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -116,8 +117,8 @@ private:
 //  blocking; when `until_time` is set, it also clears once the sim clock
 //  reaches `until_time`.
 struct SimWandererBlock{
-    std::string map;
-    TilePos tile;
+    std::string map = {};
+    TilePos tile = {};
     std::optional<int> clear_after_waits = 1;
     Milliseconds from_time{0};
     std::optional<Milliseconds> until_time = std::nullopt;

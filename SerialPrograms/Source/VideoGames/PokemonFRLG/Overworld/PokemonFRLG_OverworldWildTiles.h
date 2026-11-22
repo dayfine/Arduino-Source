@@ -11,8 +11,8 @@
 #define PokemonAutomation_PokemonFRLG_OverworldWildTiles_H
 
 #include <string_view>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
-#include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h"
 #include "PokemonFRLG_OverworldTiles.h"
 
 namespace PokemonAutomation{

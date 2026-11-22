@@ -37,7 +37,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryCapture.h"

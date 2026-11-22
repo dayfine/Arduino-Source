@@ -41,19 +41,7 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
-#include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
-#include "Pokemon/Navigation/Pokemon_Gates_Tests.h"
-#include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h"
-#include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
-#include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
-#include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
-#include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
-#include "Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h"
-#include "Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h"
-#include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
+#include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"
@@ -71,26 +59,6 @@ namespace ComputerPrograms{
 
 
 
-
-namespace{
-
-void add_navigation_tests(UnitTestDatabase& ret){
-    Pokemon::add_tests_LegPlanner(ret);
-    Pokemon::add_tests_RobustLegPlanner(ret);
-    Pokemon::add_tests_LegWalker(ret);
-    Pokemon::add_tests_WallRecovery(ret);
-    Pokemon::add_tests_WanderRecovery(ret);
-    Pokemon::add_tests_MapData(ret);
-    Pokemon::add_tests_ConnectedMaps(ret);
-    Pokemon::add_tests_Gates(ret);
-    Pokemon::add_tests_MoveMechanics(ret);
-    Pokemon::add_tests_RuntimeMap(ret);
-    Pokemon::add_tests_RouteLog(ret);
-    Pokemon::add_tests_SimFaults(ret);
-    Pokemon::add_tests_SimGolden(ret);
-}
-
-} // namespace
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
@@ -115,7 +83,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     OCR::add_tests(ret);
     add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
-    add_navigation_tests(ret);
+    Pokemon::add_tests_Navigation(ret);
     Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);

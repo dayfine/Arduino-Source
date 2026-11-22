@@ -5,6 +5,35 @@ games (BDSP and FRLG today). This file is the guide for changing the
 planner and the walker. The goal is a planner that gets smarter by learning
 game rules, not by learning individual routes.
 
+## Layout
+
+- `Grid/Maps/` — Grid coordinates and directions (`Pokemon_Grid`,
+  `Pokemon_Direction`), tile/feature/gate/movement definitions
+  (`Pokemon_MapTiles`, `Pokemon_MapFeatures`, `Pokemon_MapGates`,
+  `Pokemon_MoveMechanics`), JSON map and runtime map loaders
+  (`Pokemon_MapData`, `Pokemon_RuntimeMap`), multi-map stitching
+  (`Pokemon_ConnectedMaps`), gate bitmask state (`Pokemon_GateState`), and
+  embedded test fixtures (`TestMaps/`).
+- `Grid/Planning/` — Deterministic and belief-set leg planners
+  (`Pokemon_LegPlanner`, `Pokemon_RobustLegPlanner`), route cost scoring
+  (`Pokemon_RouteScorer`), gated/key/switch planning (`Pokemon_GatedTypes`,
+  `Pokemon_GateTiles`, `Pokemon_GatedPlanner`), wall and wanderer recovery
+  (`Pokemon_WallRecovery`, `Pokemon_WanderRecovery`), and gate test fixtures
+  (`GateTestMaps/`).
+- `Grid/Trace/` — Canonical `[Route]` log formatting (`Pokemon_RouteLogTypes`,
+  `Pokemon_RouteLogLegs`, `Pokemon_RouteLog`), structured `[Leg]` JSON tracing
+  (`Pokemon_LegTrace`), and console failure replay (`Pokemon_LegReplay`).
+- `Grid/Walker/` — Console/inference leg execution (`Pokemon_LegTypes`,
+  `Pokemon_LegWalker`: `LegInterrupt`, `LegMover`, `WatchAlong`, `walk_leg`,
+  `clear_late_interrupts`).
+- `Simulation/` — Shared simulation test infrastructure: fault classes,
+  occurrence counters, and wandering-NPC blocks (`Pokemon_SimFaults`), golden
+  file checking (`Pokemon_SimGolden`), seeded Monte Carlo runner
+  (`Pokemon_SimSeeds`), fault sweep runner (`Pokemon_SimSweep`), and
+  known-failing ledger (`Pokemon_KnownFailing`).
+- `Pokemon_Navigation_Tests.h` — Single entry point (`add_tests_Navigation()`)
+  registering every shared Navigation and Simulation unit test suite.
+
 ## The rule
 
 The planner knows the game's rules. A checkpoint gives only map data and a

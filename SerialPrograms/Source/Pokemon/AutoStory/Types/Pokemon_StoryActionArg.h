@@ -21,7 +21,7 @@
 #include <string>
 #include <variant>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "Pokemon_GridPose.h"
 
 namespace PokemonAutomation{

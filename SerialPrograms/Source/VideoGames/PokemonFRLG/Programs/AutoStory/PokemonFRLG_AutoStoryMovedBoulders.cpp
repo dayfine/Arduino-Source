@@ -9,7 +9,7 @@
 #include <format>
 #include <optional>
 #include "Common/Cpp/Exceptions.h"
-#include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldTiles.h"
 #include "PokemonFRLG_AutoStoryMovedBoulders.h"

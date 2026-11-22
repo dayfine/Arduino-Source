@@ -26,7 +26,7 @@
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStorySave.h"
 
 namespace PokemonAutomation{

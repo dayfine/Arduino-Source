@@ -21,7 +21,7 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/Json/JsonValue.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_LegReplay.h"
+#include "Pokemon/Navigation/Grid/Trace/Pokemon_LegReplay.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryCheckpoints.h"
 #include "PokemonFRLG_AutoStoryConsoleFailureData.h"

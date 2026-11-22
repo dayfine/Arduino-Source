@@ -15,8 +15,8 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_GatedTypes.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedTypes.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "PokemonFRLG_AutoStoryPoses.h"

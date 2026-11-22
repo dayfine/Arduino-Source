@@ -22,7 +22,7 @@
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 
 namespace PokemonAutomation{

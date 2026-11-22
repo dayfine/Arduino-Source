@@ -21,7 +21,7 @@
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "Pokemon_StoryPoseConcept.h"
 #include "Pokemon_ZonePose.h"
 

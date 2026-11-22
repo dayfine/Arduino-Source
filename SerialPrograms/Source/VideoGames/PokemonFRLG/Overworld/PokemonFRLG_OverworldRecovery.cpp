@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <format>
 #include <utility>
-#include "Pokemon/Navigation/Pokemon_WanderRecovery.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery.h"
 #include "PokemonFRLG_OverworldBikeTaps.h"
 #include "PokemonFRLG_OverworldHeldInPlace.h"
 #include "PokemonFRLG_MovementMechanics.h"

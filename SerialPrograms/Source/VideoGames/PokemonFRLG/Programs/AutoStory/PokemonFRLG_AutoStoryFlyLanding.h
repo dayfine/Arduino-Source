@@ -31,7 +31,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "Pokemon/AutoStory/Pokemon_InterruptHandlers.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
-#include "Pokemon/Navigation/Pokemon_Direction.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

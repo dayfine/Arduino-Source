@@ -15,7 +15,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/Navigation/Pokemon_GateState.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h"
 #include "PokemonFRLG_OverworldMap.h"
 
 namespace PokemonAutomation{

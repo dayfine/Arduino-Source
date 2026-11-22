@@ -12,11 +12,11 @@
 #include <unordered_map>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_ConnectedMaps.h"
-#include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
-#include "Pokemon/Navigation/Pokemon_GateTiles.h"
-#include "Pokemon/Navigation/Pokemon_LegPlanner.h"
-#include "Pokemon/Navigation/Pokemon_WanderRules.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_ConnectedMaps.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedPlanner.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_LegPlanner.h"
+#include "PokemonFRLG_WanderRules.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldObjects.h"
@@ -603,7 +603,7 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
         step.connection_steps.push_back(c);
     }
     if (!step.tapped && step.action == RouteAction::WALK && !step.surfing && !step.warps && !step.to_wall && !step.spin_tiles && step.connection_steps.empty()){
-        if (Pokemon::leg_touches_wander_box(tiles, [&](const MapPosition& pos){
+        if (leg_touches_wander_box(tiles, [&](const MapPosition& pos){
             const int idx = find_map(maps, pos.map);
             return idx >= 0 ? &maps[idx] : nullptr;
         })){
