@@ -686,15 +686,29 @@ private:
         const RouteStep& step, const StepOutcome& outcome,
         const std::optional<MapPosition>& start, const std::optional<TrainerCrossing>& crossing
     ){
-        if (outcome.end == StepEnd::STOPPED && outcome.blocked && step.tapped){
-            //  A tap that showed no step may have stepped unseen; the player
-            //  is somewhere on the leg, and its wall ends a hold wherever
-            //  they are. Held, not tapped again: a tap at the wall would
-            //  show no step once more (14.01's taps legs in Cinnabar Gym,
-            //  the unseen step sweep, 2026-11-14). Before the wild battles'
+        if (outcome.end == StepEnd::STOPPED && step.tapped){
+            if (!outcome.blocked && crossing && !step.wild && maps() != nullptr){
+                const WalkedTiles walked = outcome.walked.value_or(whole_leg(step));
+                const std::vector<StopCandidate> candidates = stop_candidates(*maps(), start, step, walked);
+                if (candidates.size() == 1 && candidates[0].trainer){
+                    return rejoin(step, candidates, walked);
+                }
+            }
+            //  A tap that showed no step may have stepped unseen, or a transient
+            //  interrupt (such as "REPEL's effect wore off...") stopped the taps
+            //  part-way; the player is somewhere on the leg, and its wall ends a
+            //  hold wherever they are. Held, not tapped again: a tap at the wall
+            //  would show no step once more (14.01's taps legs in Cinnabar Gym,
+            //  the unseen step sweep, 2026-11-14), and if a sign speaks ahead
+            //  the hold falls into after_blocked(). Before the wild battles'
             //  walk again, which would tap it again: a blocked tap is no
             //  battle (10.04's Pokemon Tower taps legs).
-            m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "a tap showed no step; holding to the wall");
+            m_lines.end(
+                step, std::nullopt, EndBasis::UNKNOWN,
+                outcome.blocked
+                    ? "a tap showed no step; holding to the wall"
+                    : "a tap was interrupted; holding to the wall"
+            );
             m_plan[m_next].tapped = false;
             m_held_again = true;
             return true;
