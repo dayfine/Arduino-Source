@@ -211,7 +211,7 @@ class StartCheckOutcomeTests(ServerPreflightTest):
     def test_the_golden_app_state_gives_the_golden_event_payload(self):
         app = golden('app_state', 'start_check_failed')
         want = golden('event', 'program_failed_start_check')
-        got = control.start_check_failure(copy.deepcopy(app))
+        got = control.terminal_event(copy.deepcopy(app))
         self.assertEqual((got['payload'], got['request_id']), (want['payload'], want['request_id']))
 
 

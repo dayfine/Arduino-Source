@@ -74,9 +74,32 @@ Follow a pending request, or wait for the next event (run started, run ended, yo
 #### `run_program`
 
 Checks the console and the options, then starts the selected program with them, in one call.
-Presses nothing when it refuses. Needs the lease. The program then runs its own start checks; a
-failed one ends the run with a named result (`start_check_failed`). Every program refuses today:
-none reports start checks yet. **Built, needs the HTTP mode with actions (not set up yet).**
+Presses nothing when it refuses. Needs the lease. The program then runs its own start checks. A
+failed check ends the run with a named result (`start_check_failed`). The BDSP AutoStory pilot
+build reports those checks. Use HTTP mode with `--actions`.
+
+#### Follow a run to its result
+
+With the updated pa-lab server and a lab build that publishes results, read the latest cursor
+from `next_events` before Start. Keep the `request_id` you send to `run_program`, then poll
+`next_events`, advancing `after_seq` to each response's `next_after_seq`. Look for a terminal
+event with that original `request_id`, even when a separate request stops the run.
+
+| Event | What happened |
+|---|---|
+| `program_finished`, verdict `passed` | The program completed. |
+| `program_finished`, verdict `stopped`, reason `cancelled` | The run was cancelled. |
+| `program_failed`, verdict `failed` | The run failed. Read the checkpoint and exception message when present. |
+| `program_failed`, verdict `start_check_failed` | The program started and failed one of its own checks. Read the check name and message. |
+
+A completed `run_program` request confirms Start. A `stopped` event reports the transition.
+Look for the terminal event to learn how the run ended. A refusal before Start is returned by
+`run_program` itself.
+
+For more context, use `console_status` to read the latest log lines and see whether a failure
+frame exists. `shot` returns a fresh image of the current screen. An earlier failure frame or
+video clip may be unavailable. Structured results passed offline tests with the BDSP AutoStory
+pilot build and are awaiting live Console B verification.
 
 #### `stop_program`
 

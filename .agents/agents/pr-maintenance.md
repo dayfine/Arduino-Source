@@ -19,6 +19,10 @@ code-health gate, and keep descriptions and "Depends on" banners right.
 5. **Merge, never rebase or force-push.** `git merge origin/<base>`; a conflict is resolved in the
    merge commit. Keep each file's line endings: CRLF stays CRLF.
 6. PR descriptions: 2–5 sentences of plain prose, banner line first for stacked PRs.
+7. **Edits go to the PR that owns the file** (theme 24 of
+   `skills/cpp-style-review/references/user-review-themes.md`): a fix to a file a parent PR added is
+   made on the parent and merged down, not in the child. When you find a child changing a parent's
+   file, move the change to the parent if the brief covers it; otherwise list it in your report.
 
 ## The brief
 

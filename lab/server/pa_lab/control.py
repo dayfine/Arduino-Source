@@ -53,19 +53,23 @@ class Refused(Exception):
         self.refusal = dict(code=code, message=message, **extra)
 
 
-def start_check_failure(app: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """The `program_failed` event a stop carries when the app wrote a start check's failure with it
-    (`program.last_outcome`, written with the stop transition and cleared at the next start):
-    {'payload', 'request_id', 'at'}, or None. The app writes both in one state.json, so the outcome is
-    read only with a new stop transition and each is reported once."""
-    outcome = app['program'].get('last_outcome')
-    if not isinstance(outcome, dict) or outcome.get('outcome') != 'start_check_failed':
+def terminal_event(app: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """The outcome published by the app, correlated to the original Start."""
+    program = app['program']
+    if program['state'] != 'stopped':
         return None
-    payload = {'run_id': outcome['run_id'], 'verdict': 'start_check_failed', 'checkpoint': None,
-               'check': outcome['check'], 'message': outcome['message']}
-    if isinstance(outcome.get('evidence'), dict):
-        payload['evidence'] = outcome['evidence']
-    return {'payload': payload, 'request_id': outcome['request_id'], 'at': outcome['at']}
+    outcome = program.get('terminal_outcome') or program.get('last_outcome')
+    if outcome is None:
+        return None
+    verdict = outcome['outcome']
+    failed = verdict in ('failed', 'start_check_failed')
+    payload = {'run_id': outcome['run_id'], 'verdict': verdict, 'checkpoint': outcome.get('checkpoint')}
+    if verdict == 'cancelled':
+        payload.update(verdict='stopped', reason='cancelled')
+    if failed:
+        payload.update({key: outcome[key] for key in ('check', 'message', 'evidence') if key in outcome})
+    return {'type': 'program_failed' if failed else 'program_finished', 'payload': payload,
+            'request_id': outcome['request_id'], 'at': outcome['at']}
 
 
 class Retention:
@@ -165,11 +169,13 @@ class ControlPlane:
         return record
 
     def next_events(self, client_id: str, console: str, after_seq: Any, timeout_s: Any = 0,
-                    limit: Any = DEFAULT_PAGE) -> Dict[str, Any]:
+                    limit: Any = DEFAULT_PAGE, *,
+                    refresh: Optional[Callable[[], Any]] = None) -> Dict[str, Any]:
         """Events with seq > after_seq, oldest first, waiting up to timeout_s (<= 60) for one.
 
         `after_seq` is also the client's confirmed position: compaction keeps everything after it,
         so a client that lost a response asks again with the same cursor and loses nothing.
+        When supplied, refresh observes the live app throughout the wait.
         """
         self._check_console(console)
         after_seq = self._int_arg('after_seq', after_seq, 0, None)
@@ -192,8 +198,12 @@ class ControlPlane:
                               field='after_seq', evidence={'compacted_through': compacted})
             conn.execute('INSERT OR REPLACE INTO cursors (client_id, console, after_seq, seen_at) VALUES (?, ?, ?, ?)',
                          (client_id, console, after_seq, self._stamp()))
-        deadline = time.monotonic() + timeout_s
+        next_refresh = time.monotonic()
+        deadline = next_refresh + timeout_s
         while True:
+            if refresh is not None and time.monotonic() >= next_refresh:
+                refresh()
+                next_refresh = time.monotonic() + POLL_S
             rows = self.db.read().execute(
                 'SELECT * FROM events WHERE console = ? AND seq > ? ORDER BY seq LIMIT ?',
                 (console, after_seq, limit)).fetchall()
@@ -439,10 +449,8 @@ class ControlPlane:
 
         - a new UI transition, or a hold that is on, revokes any agent lease and installs the user
           lease (no timeout); a hold that is gone ends nothing: only `release_user` does;
-        - a new stop transition is a `stopped` event with its source; when the app wrote a start
-          check's failure with it (`program.last_outcome`, the preflight split), also a
-          `program_failed` event (`verdict: start_check_failed`), under the request id of the
-          run_program that started the run;
+        - a new stop transition emits `stopped` with its source. Once the app completes the stop,
+          its published outcome emits a terminal event under the original Start request id;
         - a running lease ends (back to agent_idle with a fresh TTL) when its run's stop is
           reported or its app instance is gone.
         """
@@ -452,8 +460,13 @@ class ControlPlane:
         key = None if transition is None else _transition_key(instance, transition)
         with self._writing() as conn:
             self._expire_due(conn, console)
-            seen = conn.execute('SELECT transition_key FROM observations WHERE console = ?', (console,)).fetchone()
+            seen = conn.execute('SELECT transition_key, program_state FROM observations WHERE console = ?',
+                                (console,)).fetchone()
             new = transition is not None and (seen is None or seen['transition_key'] != key)
+            outcome = None
+            if transition is not None and transition['action'] == 'stop':
+                if new or seen['program_state'] in ('running', 'stopping'):
+                    outcome = terminal_event(app)
             row = self._lease_row(conn, console)
             if row['state'] == 'agent_running':
                 if instance != row['run_instance_id']:
@@ -462,15 +475,19 @@ class ControlPlane:
                     self._end_run(conn, console, row, 'run_ended', instance)
             if new:
                 if transition['action'] == 'stop':
-                    self._append(conn, 'stopped', console, {'source': transition['source'],
-                                                            'run_id': app['program']['run_id']},
+                    payload = {'source': transition['source'], 'run_id': app['program']['run_id']}
+                    start_request_id = row['run_request_id'] if row['run_instance_id'] == instance else None
+                    if outcome is not None and outcome['request_id'] is not None:
+                        start_request_id = outcome['request_id']
+                    if start_request_id is not None:
+                        payload['start_request_id'] = start_request_id
+                    self._append(conn, 'stopped', console, payload,
                                  instance_id=instance, request_id=transition['request_id'], at=transition['at'])
-                    failure = start_check_failure(app)
-                    if failure is not None:
-                        self._append(conn, 'program_failed', console, failure['payload'], instance_id=instance,
-                                     request_id=failure['request_id'], at=failure['at'])
                 if transition['source'] == 'ui':
                     self._take_over(conn, console, transition['at'], 'ui_takeover', instance)
+            if outcome is not None:
+                self._append(conn, outcome['type'], console, outcome['payload'], instance_id=instance,
+                             request_id=outcome['request_id'], at=outcome['at'])
             self._apply_hold(conn, console, hold, instance)
             conn.execute('INSERT OR REPLACE INTO observations (console, instance_id, transition_key, program_state, '
                          'observed_at) VALUES (?, ?, ?, ?, ?)',

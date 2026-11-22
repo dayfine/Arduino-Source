@@ -485,8 +485,7 @@ def _page_order(obj, path, ctx):
 
 # ---- version-1 specs ----------------------------------------------------------------------------
 
-# program.last_outcome.outcome: only a start check's failure so far (the preflight split, step 2).
-RUN_OUTCOMES = ('start_check_failed',)
+# program.last_outcome reports the existing start-check failure.
 PROGRAM_STATES = ('stopped', 'running', 'stopping', 'not_ready', 'no_program')
 TRANSITION_SOURCES = ('ui', 'lab', 'program', 'error')
 CONSOLES = Enum('B')
@@ -526,13 +525,20 @@ APP_STATE = Obj([
         F('last_outcome', Nullable(Obj([
             F('run_id', Nullable(Str())),
             F('request_id', Nullable(Uuid()), doc="the run_program request that started the run; null for a UI Start"),
-            F('outcome', Enum(*RUN_OUTCOMES)),
+            F('outcome', Enum('start_check_failed')),
             F('check', Str(), doc='the start check that failed'),
             F('message', Str(), doc='one line for the user'),
             F('evidence', AnyObject(), required=False),
             F('at', Timestamp()),
-        ])), required=False, doc='how the run the last stop ended came out; written with that stop transition, '
-                                 'null after the next start; absent from older apps'),
+        ])), required=False, doc='a start-check failure, published with its stop transition'),
+        F('terminal_outcome', Obj([
+            F('run_id', Nullable(Str())),
+            F('request_id', Nullable(Uuid()), doc='the original Start request; null for a UI Start'),
+            F('outcome', Enum('passed', 'failed', 'cancelled')),
+            F('checkpoint', Str(), required=False),
+            F('message', Str(), required=False, doc='the failure reason when available'),
+            F('at', Timestamp()),
+        ]), required=False, doc='the run result, published with its stop transition'),
     ])),
     F('controller', Obj([
         F('state', Enum('ready', 'not_connected', 'no_console'),
@@ -667,8 +673,10 @@ REFUSAL_DOC = Obj([
 
 EVENT_PAYLOADS: Dict[str, Spec] = {
     'program_finished': Obj([F('run_id', Nullable(Str())), F('verdict', Enum('passed', 'failed', 'stopped')),
-                             F('checkpoint', Nullable(Str()))]),
-    'stopped': Obj([F('source', Enum(*TRANSITION_SOURCES)), F('run_id', Nullable(Str()), required=False)]),
+                             F('checkpoint', Nullable(Str())),
+                             F('reason', Enum('cancelled'), required=False)]),
+    'stopped': Obj([F('source', Enum(*TRANSITION_SOURCES)), F('run_id', Nullable(Str()), required=False),
+                    F('start_request_id', Uuid(), required=False, doc='the MCP request that started this run')]),
     'video_lost': Obj([F('last_frame_seq', Nullable(Int(minimum=0)))]),
     'save': Obj([F('save', Document('save_resource'))]),
     'lease_changed': Obj([F('old', LEASE), F('new', LEASE)]),

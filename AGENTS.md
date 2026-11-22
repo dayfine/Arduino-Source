@@ -284,9 +284,11 @@ See [pokemon_sv/PR_WORKFLOW.md](pokemon_sv/PR_WORKFLOW.md). In short:
     #648: `save_checkpoint` is declared first; the internal templates go after `run_checkpoints`.
   - **Test-only code lives under `Testing/`.** #648: `FakeBackend`.
   - **Stored callables are `MoveOnlyFunction`,** not `std::function` (merges with the
-    `MoveOnlyFunction` seam above). #648: `StoryArgKind::read`.
+    `MoveOnlyFunction` seam above), with a named alias per signature (T16). #648: `StoryArgKind::read`.
   - **Enum <-> string via `EnumStringMap`, and an enum is named for what it describes.**
-    #648: `StoryPhase` with hand-written name/read; the phase is a testing status.
+    #648: `StoryPhase` with hand-written name/read; the phase is a testing status. A string literal
+    compared or switched on (action name, menu reading, failure code) becomes an enum or a named
+    constant (T15).
   - **Printing via `std::formatter<T>`; equality via `operator== = default`** (see Construction,
     `= default`). #648: `pose_text`.
 - **Match the repo's style:**
@@ -413,6 +415,7 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
 - **Initialize every scalar**, using default member initializers (TotW #61, #146, #182).
   Example: `DpadPosition last_dir = DPAD_NONE;`.
 - **Designated initializers** for aggregates and option structs, not just tests (TotW #172).
+  A table built by repeated `emplace`/`push_back` is one braced initializer (T22).
 - **`= default` / `= delete`** for special members, not empty bodies or private
   declarations (TotW #131, #143).
 - **`explicit`** on single-argument and converting constructors (TotW #142).
@@ -450,8 +453,8 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   input, use a default argument with a real value, `std::optional<T>` by value or `const T*`,
   not `const std::optional<T>&` or `= ""` (TotW #163).
 - **No top-level `const` on by-value parameters in declarations** (TotW #109).
-- **File-local helpers go in an unnamed `namespace{`**, not `static` and not the header
-  (TotW #186).
+- **File-local helpers go in an unnamed `namespace{`** at the top of the .cpp, not `static` and
+  not the header (TotW #186, T18).
 - **Overloads only when every overload means the same thing**
   (`move_cursor_to_option(..., BattleMenuOption / BattleMoveOption)`) (TotW #148).
 - **Default arguments over overloads.** When one overload's parameters are the other's plus more,
@@ -484,7 +487,8 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
 - **No mutable globals or config knobs.** Pass options down in a struct
   (TotW #45, #52, #103). Example to fix: `extern bool g_stop_at_first_failure;` set from
   the program's option (bdsp/event-sandgem-center).
-- **Durations are `std::chrono` / `Milliseconds` with literals** (`160ms`), never bare ints.
+- **Durations are `std::chrono` / `Milliseconds` with literals** (`160ms`), never bare ints,
+  in the unit a reader thinks in (`Seconds` for long waits, T21).
   Deadlines are `WallClock`.
 - **No reader/writer locks.** Use the `Mutex` wrapper; contention is not an issue here
   (TotW #197).
@@ -496,6 +500,36 @@ so keep it where it clearly pays off. `std::string_view` is the exception (see S
   `PokemonBDSP_AutoStoryTools.h`. No commented-out code, no `// ----` banners.
 - **Test the contract through the seam, not internals** (TotW #135). Each case's inputs
   are visible in its row, with no shared mutable fixture (TotW #122).
+
+### From the user's reviews
+
+Themes 13-26 of [user-review-themes.md](skills/cpp-style-review/references/user-review-themes.md)
+(the user's quotes, Nov 2026; `T<n>` above and below) add these. Self-review against them before push;
+reviewers cite the number.
+
+- **Justify every piece (T13):** a helper, type or file used once is inlined at its caller; two types
+  for one concept merge; a knob nobody varies is a constant (see Simplicity above).
+- **One name per concept (T14):** AutoStory says checkpoint, event/step, action, arg, backend,
+  screen; never row, segment, authored, slug, `make`, head. Names carry their unit or kind
+  (`_index`, `_ms`, `Level`, `Status`); name a compound condition (`only_lost_to_boss`).
+- **One place per kind (T17):** `Detectors/` (one per file), `Actions/` plus one registry file
+  listing every action, `Data/` (JSON and file I/O only), `Types/`, `Testing/`, `Options/`. Parsing
+  stays apart from logic; a module registers its tests through its own `add_tests_*` header.
+- **Small headers (T18):** no `extern`; expose a factory, implement in the .cpp; no method body of
+  more than a few lines inside the class; a method that uses no state is a free function; template
+  parameters don't leak into unrelated APIs.
+- **Group state (T19):** many parallel members or flags become structs, a table, or per-phase objects.
+- **Call sites (T21):** every literal argument in a call of 3+ arguments gets `/*name=*/`; an output
+  parameter, when unavoidable, goes last; one argument group per line when a call wraps.
+- **Library idioms (T25):** `std::format`, a join over repeated `+=`, multi-line raw strings, one
+  print/equality pattern for all types (see Types, names and comments).
+- **Layout nits (T26):** a blank line between functions; `if (auto x = ...; cond){` init-statements.
+- **The change goes in the PR that owns the file (T24):** see [Where PRs live](#where-prs-live).
+- TODO (code_health owner): the lint candidates the user asked for (`char*`/`char[]`, an overload
+  where a default argument works, header symbol count, `+` string concat, output parameter not last)
+  exist as `char_pointer`, `overload_prefix`, `header_symbols`, `string_concat`, `out_param_order`;
+  still open: `overload_prefix` catches only strict-prefix pairs in headers, and the last two are
+  advisory on the fork.
 
 ### Checkable
 

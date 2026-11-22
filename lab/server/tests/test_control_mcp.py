@@ -8,9 +8,10 @@ import time
 import unittest
 import uuid
 
-from pa_lab import control, db, lab_reader, mcp_server, timestamps
+from pa_lab import contracts, control, db, lab_reader, mcp_server, timestamps
 from tests.control_fixtures import temp_db_path
 from tests.fake_lab import FakeApp, FakeLab, golden
+from tests.test_actions import ActionTest, PANEL
 from tests.test_mcp_server import TOKEN, Client, WallClock
 
 
@@ -96,6 +97,83 @@ class ControlServerTest(unittest.TestCase):
                 result = self.client.tool(name, **arguments)
                 self.assertTrue(result['isError'])
                 self.assertEqual(result['structuredContent']['refusal']['code'], case['expectation'])
+
+
+class TerminalOutcomeMcpTest(ActionTest):
+    def setUp(self):
+        super().setUp()
+        server = mcp_server.make_server(0, TOKEN, {'B': self.reader},
+                                        control_plane=self.plane, actions=self.actions)
+        worker = threading.Thread(target=server.serve_forever, kwargs={'poll_interval': 0.01})
+        worker.start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(worker.join)
+        self.addCleanup(server.shutdown)
+        self.client = Client(server.server_address[1])
+        self.client.initialize()
+        acquired = self.client.tool('acquire_console', console='B', request_id=str(uuid.uuid4()), owner='agent')
+        self.token = acquired['structuredContent']['result']['lease_token']
+        self.request = str(uuid.uuid4())
+
+    def start(self):
+        result = self.client.tool('run_program', console='B', request_id=self.request,
+                                  lease_token=self.token, panel=PANEL, options={})
+        self.assertFalse(result['isError'], result)
+        self.assertEqual(result['structuredContent']['status'], 'completed')
+        return result['structuredContent']
+
+    def publish_outcome(self, verdict, **details):
+        at = timestamps.format(self.clock.now())
+        self.lab.update_state(**{'program.state': 'stopped', 'written_at': at,
+                                 'program.terminal_outcome': dict(details, outcome=verdict, run_id=None,
+                                                                  request_id=self.request, at=at)})
+
+    def event_page(self, after_seq=0, timeout_s=0):
+        return self.client.tool('next_events', console='B', after_seq=after_seq,
+                                timeout_s=timeout_s)['structuredContent']
+
+    @staticmethod
+    def terminal_events(page):
+        return [event for event in page['events'] if event['type'] in ('program_finished', 'program_failed')]
+
+    def expect_outcome(self, kind, payload):
+        events = self.terminal_events(self.event_page())
+        self.assertEqual(len(events), 1, events)
+        event = events[0]
+        contracts.validate('event', event)
+        self.assertEqual((event['type'], event['request_id'], event['payload']), (kind, self.request, payload))
+
+    def test_fast_pass_correlates_even_before_the_start_reply(self):
+        def finish(app):
+            app.transition('stop', 'program')
+            self.publish_outcome('passed', checkpoint='01.11')
+
+        self.app.after['start'] = finish
+        record = self.start()
+        self.assertIsNotNone(record['result']['ended'])
+        self.expect_outcome('program_finished', {'run_id': None, 'verdict': 'passed', 'checkpoint': '01.11'})
+
+    def test_failure_reports_the_checkpoint_and_reason_without_media(self):
+        self.start()
+        self.app.transition('stop', 'error')
+        self.publish_outcome('failed', checkpoint='00.03', message="Dawn's scene did not trigger.")
+        self.expect_outcome('program_failed', {'run_id': None, 'verdict': 'failed', 'checkpoint': '00.03',
+                                               'message': "Dawn's scene did not trigger."})
+
+    def test_cancel_is_observed_after_stopping_with_the_same_transition(self):
+        self.start()
+        self.app.transition('stop', 'ui', state='stopping')
+        stopping_page = self.event_page()
+        self.assertEqual(self.terminal_events(stopping_page), [])
+        publish = threading.Timer(0.05, self.publish_outcome, args=('cancelled',))
+        publish.start()
+        try:
+            stopped_page = self.event_page(stopping_page['next_after_seq'], timeout_s=2)
+        finally:
+            publish.join()
+        self.assertEqual(len(self.terminal_events(stopped_page)), 1)
+        self.expect_outcome('program_finished', {'run_id': None, 'verdict': 'stopped',
+                                                 'checkpoint': None, 'reason': 'cancelled'})
 
 
 if __name__ == '__main__':

@@ -611,17 +611,20 @@ def template_order(path, parsed, changed):
 
 
 def structures(parsed):
-    """Local aggregate definitions and their directly declared fields."""
+    """Local aggregate definitions by qualified name (`Case::Input`) and their directly
+    declared fields; a field type naming a struct nested in the owner resolves to it."""
     found = {}
     for statement, enclosing in scopes(parsed):
+        owner = '::'.join(name for kind, name in enclosing if kind == 'class')
         match = re.match(r'struct\s+(\w+)\b', statement.text)
         if match and statement.end == '{':
-            found[match.group(1)] = {}
+            found[(owner + '::' if owner else '') + match.group(1)] = {}
         elif enclosing and enclosing[-1][0] == 'class':
-            fields = found.get(enclosing[-1][1])
+            fields = found.get(owner)
             field = field_declaration(statement)
             if fields is not None and field:
-                fields[field.group(2)] = field.group(1)
+                nested = owner + '::' + field.group(1)
+                fields[field.group(2)] = nested if nested in found else field.group(1)
     return found
 
 
@@ -655,13 +658,15 @@ def case_type(test_name, parsed):
 CASE_FIELDS = ('name', 'input', 'expectation')
 
 
-def valid_case_fields(fields, definitions):
-    """name (not a local struct), then input and expectation local structs; no name in the input."""
+def valid_case_fields(case, definitions):
+    """name (not a local struct), then nested Input and Expectation structs; no name in the input."""
+    fields = definitions.get(case, {})
     if list(fields) != list(CASE_FIELDS):
         return False
     if fields['name'] in definitions:
         return False
-    if any(fields[part] not in definitions for part in ('input', 'expectation')):
+    expected = {'input': f'{case}::Input', 'expectation': f'{case}::Expectation'}
+    if any(fields[part] != target or target not in definitions for part, target in expected.items()):
         return False
     return 'name' not in definitions[fields['input']]
 
@@ -708,12 +713,11 @@ def native_cases(path, code, parsed, changed):
         if not edited:
             continue
         case = case_type(test.group(1), parsed)
-        fields = definitions.get(case, {})
-        if not case or not valid_case_fields(fields, definitions) or not case_table(case, code):
+        if not case or not valid_case_fields(case, definitions) or not case_table(case, code):
             errors.append(Finding(path, statement.line,
                 'test-case: construct each UnitTest from one case struct with name, input and expectation '
-                'fields (input and expectation structs, the name outside the input); register a named '
-                'table of designated cases in a range-for'))
+                'fields (nested Input and Expectation structs, the name outside the input); register a '
+                'named table of designated cases in a range-for'))
     return errors
 
 
