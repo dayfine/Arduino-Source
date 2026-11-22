@@ -48,7 +48,4 @@ std::vector<std::string> KnownFailing::stale(const std::set<std::string>& names)
 
 
 } // namespace Pokemon
-
-
-
 } // namespace PokemonAutomation

@@ -10,8 +10,8 @@
 #include <utility>
 #include "Common/Cpp/Color.h"
 #include "Common/Cpp/Exceptions.h"
-#include "Pokemon/Navigation/Pokemon_LegTrace.h"
-#include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/Navigation/Grid/Trace/Pokemon_LegTrace.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"

@@ -20,7 +20,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_LegTrace.h"
+#include "Pokemon/Navigation/Grid/Trace/Pokemon_LegTrace.h"
 #include "PokemonBDSP_AutoStory_LegTrace_Tests.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 

@@ -16,7 +16,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
-#include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_KnownFailing.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimSweep.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"

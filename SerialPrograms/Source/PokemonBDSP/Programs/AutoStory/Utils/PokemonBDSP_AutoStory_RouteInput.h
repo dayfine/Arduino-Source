@@ -14,7 +14,7 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
-#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

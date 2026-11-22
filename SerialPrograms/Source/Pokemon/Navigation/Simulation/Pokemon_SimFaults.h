@@ -3,11 +3,12 @@
  *  From: https://github.com/PokemonAutomation/
  *
  *  The faults the games' overworld simulations inject, shared by BDSP's
- *  and FRLG's: the classes of failure the consoles showed, and a counter
- *  per class that says which of a fault's chances to fault. A chance is
- *  each time the sim reaches a point where the game could fail that way
- *  (a tap, a warp, a step's end); a test names the chances it faults by
- *  number, from 1 in the order the sim reaches them.
+ *  and FRLG's: the classes of failure the consoles showed, a counter per
+ *  class that says which of a fault's chances to fault, and wandering-NPC
+ *  tile blocks. A chance is each time the sim reaches a point where the
+ *  game could fail that way (a tap, a warp, a step's end); a test names
+ *  the chances it faults by number, from 1 in the order the sim reaches
+ *  them.
  *
  *  How a class is injected is each game's (its sim's knobs and its fault
  *  sweep); a game may inject only some of the classes.
@@ -18,9 +19,13 @@
 #define PokemonAutomation_Pokemon_SimFaults_H
 
 #include <map>
+#include <optional>
 #include <set>
+#include <string>
 #include <string_view>
 #include <vector>
+#include "Common/Cpp/Time.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -103,6 +108,44 @@ public:
 
 private:
     std::map<FaultClass, FaultOccurrences> m_classes;
+};
+
+
+//  Fault injection: a wandering NPC standing on `tile` of `map`, blocking
+//  steps onto it. When `clear_after_waits` is set (default 1), the NPC
+//  steps out of the way once on_wait() has been called that many times after
+//  blocking; when `until_time` is set, it also clears once the sim clock
+//  reaches `until_time`.
+struct SimWandererBlock{
+    std::string map = {};
+    TilePos tile = {};
+    std::optional<int> clear_after_waits = 1;
+    Milliseconds from_time{0};
+    std::optional<Milliseconds> until_time = std::nullopt;
+};
+
+//  Tracks a set of SimWandererBlock entries against a sim clock and wait
+//  calls, recording which blocks have been hit so on_wait() only decrements
+//  blocks that actually blocked a step.
+class SimWandererBlocks{
+public:
+    SimWandererBlocks() = default;
+    explicit SimWandererBlocks(std::vector<SimWandererBlock> blocks);
+
+    //  Returns true if any active block covers `(map, tile)` at `now`,
+    //  recording it as hit.
+    bool blocks(std::string_view map, const TilePos& tile, Milliseconds now);
+
+    //  Advances wait counters for all blocks that have been hit.
+    void on_wait();
+
+    const std::vector<SimWandererBlock>& entries() const{
+        return m_blocks;
+    }
+
+private:
+    std::vector<SimWandererBlock> m_blocks;
+    std::set<size_t> m_hit;
 };
 
 

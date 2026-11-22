@@ -44,6 +44,14 @@ std::optional<Direction> ledge_direction(TileKind tile){
     case TileKind::CLOSED_SOUTH:
     case TileKind::CLOSED_WEST:
     case TileKind::CLOSED_EAST:
+    case TileKind::SPIN_NORTH:
+    case TileKind::SPIN_SOUTH:
+    case TileKind::SPIN_WEST:
+    case TileKind::SPIN_EAST:
+    case TileKind::STOP_SPIN:
+    case TileKind::FALL_HOLE:
+    case TileKind::STRENGTH_BUTTON:
+    case TileKind::GATE:
         return std::nullopt;
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Unknown TileKind.");

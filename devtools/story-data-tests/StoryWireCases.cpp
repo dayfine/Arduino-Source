@@ -29,7 +29,7 @@
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpointMetadata.h"
-#include "Pokemon/Navigation/Pokemon_Direction.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h"
 #include "StoryWireCases.h"
 
 namespace PokemonAutomation{

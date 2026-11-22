@@ -51,8 +51,5 @@ private:
 
 
 } // namespace Pokemon
-
-
-
 } // namespace PokemonAutomation
 #endif

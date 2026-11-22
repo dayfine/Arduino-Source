@@ -23,7 +23,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/Navigation/Pokemon_RouteScorer.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_RouteScorer.h"
 #include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_WallRecovery.h"

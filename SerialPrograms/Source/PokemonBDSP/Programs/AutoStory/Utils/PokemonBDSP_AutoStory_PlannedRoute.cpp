@@ -10,7 +10,7 @@
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/GlobalAutoPaths.h"
-#include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog.h"
 #include "Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"

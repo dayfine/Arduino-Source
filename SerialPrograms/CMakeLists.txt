@@ -228,8 +228,10 @@ add_library(SerialProgramsLib STATIC ${CORE_LIBRARY_SOURCES} ${LIBRARY_SOURCES})
 
 # Data files built into the program (see cmake/EmbedTextFiles.cmake).
 include(cmake/EmbedTextFiles.cmake)
-pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/TestMaps
-    Pokemon/Navigation/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
+pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/Grid/Maps/TestMaps
+    Pokemon/Navigation/Grid/Maps/Pokemon_NavigationTestMaps.h PokemonAutomation::Pokemon navigation_test_map_json)
+pa_embed_text_files(SerialProgramsLib Source/Pokemon/Navigation/Grid/Planning/GateTestMaps
+    Pokemon/Navigation/Grid/Planning/Pokemon_NavigationGateTestMaps.h PokemonAutomation::Pokemon navigation_gate_test_map_json)
 # Prepared data is validated by the shared publisher tooling. No source-map
 # fallback or network download is performed during configuration.
 set(POKESIM_TOOLS_SOURCE "$ENV{POKESIM_TOOLS_SOURCE}" CACHE PATH "Pinned PokemonSimulation tools checkout")

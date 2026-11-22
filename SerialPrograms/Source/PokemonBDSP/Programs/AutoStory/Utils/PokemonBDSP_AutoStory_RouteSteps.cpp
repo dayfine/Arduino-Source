@@ -7,7 +7,7 @@
 #include <algorithm>
 #include <format>
 #include "Common/Cpp/Exceptions.h"
-#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP_AutoStory_RouteSteps.h"
 #include "PokemonBDSP_AutoStory_RouteTiming.h"

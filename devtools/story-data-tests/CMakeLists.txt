@@ -12,12 +12,12 @@ add_executable(StoryDataTests
     "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StoryWireCases.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StoryDataMain.cpp"
-    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Direction.cpp"
+    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.cpp"
     "${STORY}/Pokemon_BuiltinStoryActions.cpp"
     "${STORY}/Types/Pokemon_StoryActionArg.cpp"
     "${STORY}/Types/Pokemon_StoryActionSpec.cpp"
     "${STORY}/Types/Pokemon_StoryCheckpointMetadata.cpp"
-    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Grid.cpp"
+    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.cpp"
     "${ROOT}/Common/Cpp/Exceptions.cpp"
     "${ROOT}/Common/Cpp/Json/JsonValue.cpp"
     "${ROOT}/Common/Cpp/Json/JsonObject.cpp"
@@ -32,7 +32,7 @@ list(REMOVE_ITEM STORY_DATA_SOURCES
     "${STORY}/Data/Pokemon_StoryStepJson_Tests.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StoryWireCases.cpp"
     "${CMAKE_CURRENT_SOURCE_DIR}/StoryDataMain.cpp"
-    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Pokemon_Direction.cpp")
+    "${ROOT}/SerialPrograms/Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.cpp")
 add_executable(AuthoredCheckpointTests ${STORY_DATA_SOURCES}
     "${STORY}/Data/Pokemon_AuthoredCheckpointJson.cpp"
     "${STORY}/Data/Pokemon_AuthoredCheckpointJson_Tests.cpp")

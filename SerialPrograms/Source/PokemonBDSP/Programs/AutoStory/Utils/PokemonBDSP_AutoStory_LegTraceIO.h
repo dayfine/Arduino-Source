@@ -19,7 +19,7 @@
 #include <functional>
 #include <string>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_LegTrace.h"
+#include "Pokemon/Navigation/Grid/Trace/Pokemon_LegTrace.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_WalkResult.h"
 

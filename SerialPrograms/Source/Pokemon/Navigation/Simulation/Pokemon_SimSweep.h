@@ -31,9 +31,9 @@ namespace Pokemon{
 //  ("" for one over the whole row), what was injected, and how the row
 //  stopped or where it ended instead.
 struct SweepFailure{
-    std::string step;
-    std::string variant;
-    std::string stopped;
+    std::string step = {};
+    std::string variant = {};
+    std::string stopped = {};
 };
 
 //  The sweep of class `fault` (its name for logs) over row `row`: passes
@@ -49,9 +49,9 @@ UnitTestResult sweep_result(
 //  it injected, giving why the row failed with it (variant_failure()) or
 //  nothing.
 struct SweepVariant{
-    std::string step;
-    std::string label;
-    std::function<std::optional<std::string>()> run;
+    std::string step = {};
+    std::string label = {};
+    std::function<std::optional<std::string>()> run = {};
 };
 
 //  Runs every variant of class `fault` over row `row`; sweep_result() of
@@ -73,8 +73,5 @@ std::optional<std::string> variant_failure(const std::optional<std::string>& fai
 
 
 } // namespace Pokemon
-
-
-
 } // namespace PokemonAutomation
 #endif
