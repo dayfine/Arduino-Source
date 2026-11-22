@@ -1,5 +1,8 @@
 # AutoStory unification plan (2026-11-08)
 
+> [!NOTE]
+> **Historical snapshot.** Superseded by [SHARED_CORE.md](SHARED_CORE.md) as the single source of truth for the active AutoStory core & navigation seam stack, and [`docs/design/AutoStory-Reusability-Audit.md`](https://github.com/dayfine/Arduino-Source/blob/docs/autostory-reusability-audit/docs/design/AutoStory-Reusability-Audit.md) (PR #783) for post-`core-adopt` deduplication.
+
 Plan for the next sessions, agreed with the user on 2026-11-08. It is the
 single handoff for a clean session: read this, then
 `CodingAgentContext/AgentProgramFramework.md` (fork PR #253, merged into fork
