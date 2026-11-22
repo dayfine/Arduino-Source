@@ -60,6 +60,9 @@ enum class TalkOverWatch{
 struct TalkOverSpec{
     //  Pressed while a box shows: B, or A for lines that give an item.
     Button next = BUTTON_B;
+    //  Pressed while no box shows: B by default (never talks to an NPC), or A
+    //  after wild battles so post-battle evolution / move-learning is not cancelled.
+    Button clear = BUTTON_B;
     SettleRule settle = {};
     TalkOverWatch watch = TalkOverWatch::SCENE;
     //  The expected map's banner name for TalkOverRule::warp ("" for a fade only).

@@ -14,6 +14,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStoryScreenEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryWalkScreen.h"
+#include "PokemonBDSP_AutoStoryTalks.h"
 #include "PokemonBDSP_AutoStoryWildBattle.h"
 #include "PokemonBDSP_AutoStoryTalkOver.h"
 
@@ -76,7 +77,9 @@ public:
         if (move == SceneMove::NEXT){
             m_saw_dialogue = true;
         }
-        const Button button = move == SceneMove::NEXT ? m_spec.next : BUTTON_B;
+        const Button clear_button = m_spec.clear == BUTTON_A && in_pokemon_center(m_stream)
+            ? BUTTON_B : m_spec.clear;
+        const Button button = move == SceneMove::NEXT ? m_spec.next : clear_button;
         if (!m_spec.settle.judge.warp || wait <= Milliseconds(0)){
             pbf_press_button(m_context, button, TALK_OVER_HOLD, wait);
             return;

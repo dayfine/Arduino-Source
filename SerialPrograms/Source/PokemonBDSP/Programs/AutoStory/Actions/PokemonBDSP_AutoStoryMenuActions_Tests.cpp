@@ -811,6 +811,7 @@ UnitTestResult test_choose_move(Logger&){
         {"Water Gun out of PP", {{"pound", 35}, {"growl", 40}, {"water-gun", 0}, {"charm", 20}}, 1},
         {"slot 1 unread at 38 PP: a status move", {{"", 38}, {"", 40}, {"", 20}}, 3},
         {"Growl unread, Tackle read", {{"", 40}, {"tackle", 35}}, 2},
+        {"Scratch, Leer, Ember and Mach Punch", {{"scratch", 35}, {"leer", 30}, {"ember", 25}, {"mach-punch", 30}}, 4},
     };
     for (const Case& c : cases){
         const size_t best = choose_move(c.slots);

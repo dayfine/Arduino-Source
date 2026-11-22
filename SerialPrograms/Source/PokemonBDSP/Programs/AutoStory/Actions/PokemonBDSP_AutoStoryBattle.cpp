@@ -295,20 +295,28 @@ void take_turn(
 }
 
 //  The battle has ended: its text to the overworld, which must stay
-//  dialogue-free for four seconds.
-void finish_battle(VideoStream& stream, ProControllerContext& context, const std::string& label){
+//  dialogue-free for four seconds. For wild battles (`allow_evolution`), press
+//  A so post-battle evolution (e.g. Chimchar -> Monferno + Mach Punch at Lv 14)
+//  is not cancelled; in a Pokemon Center after a whiteout, TalkOver falls back
+//  to B so Nurse Joy is not re-triggered.
+void finish_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, bool allow_evolution){
     stream.log("[AutoStory] " + label + " battle complete.", COLOR_GREEN);
     OverworldWatcher overworld;
+    const Button button = allow_evolution ? BUTTON_A : BUTTON_B;
     const int cleanup_ret = run_until<ProControllerContext>(stream, context,
-        [](ProControllerContext& ctx){
-            pbf_mash_button(ctx, BUTTON_B, 120000ms);
+        [button](ProControllerContext& ctx){
+            pbf_mash_button(ctx, button, 120000ms);
         }, {{overworld}});
     if (cleanup_ret != 0){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
             label + ": Post-battle cleanup timed out.", stream);
     }
     context.wait_for_all_requests();
-    confirm_battle_overworld(stream, context, label + " cleanup");
+    if (allow_evolution){
+        talk_over(stream, context, label + " cleanup", {.next = BUTTON_A, .clear = BUTTON_A});
+    }else{
+        confirm_battle_overworld(stream, context, label + " cleanup");
+    }
 }
 
 //  B through the battle's text until its menu, its end, or a move-learning
@@ -352,7 +360,7 @@ void fight_with_best_move(VideoStream& stream, ProControllerContext& context, co
         if (ret == 0){
             take_turn(stream, context, battle, progress, label);
         }else if (ret == 1){
-            finish_battle(stream, context, label);
+            finish_battle(stream, context, label, battle.battle_type == BattleType::STANDARD);
             return;
         }else if (ret == 2){
             stream.log("[" + label + "] Declining move learning; preserving scripted move positions.");
