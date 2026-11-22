@@ -14,7 +14,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
-#include "Pokemon/Navigation/Pokemon_Direction.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h"
 #include "PokemonFRLG_MovementTurnPresses.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldWalkMoves.h"

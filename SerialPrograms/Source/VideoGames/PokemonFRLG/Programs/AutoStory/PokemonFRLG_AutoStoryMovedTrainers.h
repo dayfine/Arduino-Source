@@ -14,7 +14,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteSteps.h"
 
 

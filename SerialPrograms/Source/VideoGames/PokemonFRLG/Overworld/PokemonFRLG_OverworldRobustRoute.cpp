@@ -5,7 +5,7 @@
  */
 
 #include <tuple>
-#include "Pokemon/Navigation/Pokemon_RobustLegPlanner.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner.h"
 #include "PokemonFRLG_OverworldObjects.h"
 #include "PokemonFRLG_OverworldRobustRoute.h"
 #include "PokemonFRLG_OverworldWildTiles.h"

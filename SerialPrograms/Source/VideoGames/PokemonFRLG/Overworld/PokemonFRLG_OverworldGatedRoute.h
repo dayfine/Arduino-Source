@@ -18,7 +18,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_GatedTypes.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedTypes.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{

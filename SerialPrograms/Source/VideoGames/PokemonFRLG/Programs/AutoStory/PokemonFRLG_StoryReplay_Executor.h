@@ -9,7 +9,7 @@
 #include <utility>
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
-#include "Pokemon/Navigation/Pokemon_GatedTypes.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedTypes.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"

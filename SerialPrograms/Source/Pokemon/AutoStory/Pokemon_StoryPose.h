@@ -17,8 +17,8 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/MoveOnlyFunction.h"
-#include "Pokemon/Navigation/Pokemon_GatedTypes.h"
-#include "Pokemon/Navigation/Pokemon_GateState.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedTypes.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h"
 #include "Pokemon_StoryLog.h"
 
 namespace PokemonAutomation{

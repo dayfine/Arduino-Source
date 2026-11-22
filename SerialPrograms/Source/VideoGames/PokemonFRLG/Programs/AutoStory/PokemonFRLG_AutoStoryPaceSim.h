@@ -17,7 +17,7 @@
 #include <string>
 #include <string_view>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 

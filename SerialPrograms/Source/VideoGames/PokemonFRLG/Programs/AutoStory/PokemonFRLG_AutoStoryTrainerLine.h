@@ -16,7 +16,7 @@
 #include "Common/Cpp/Time.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
 
 namespace PokemonAutomation{

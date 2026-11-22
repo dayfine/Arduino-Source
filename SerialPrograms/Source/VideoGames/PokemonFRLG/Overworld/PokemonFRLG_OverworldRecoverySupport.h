@@ -14,7 +14,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_RouteLog.h"
+#include "Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog.h"
 #include "PokemonFRLG_OverworldLegTrace.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRecovery.h"

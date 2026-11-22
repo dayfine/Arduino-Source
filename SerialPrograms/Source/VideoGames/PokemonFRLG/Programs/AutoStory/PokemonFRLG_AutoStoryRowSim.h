@@ -21,7 +21,7 @@
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
-#include "Pokemon/Navigation/Pokemon_GatedTypes.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedTypes.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"

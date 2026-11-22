@@ -11,7 +11,7 @@
 #define PokemonAutomation_PokemonFRLG_OverworldRouteRevisits_H
 
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_GateState.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h"
 #include "PokemonFRLG_OverworldRoute.h"
 
 namespace PokemonAutomation{

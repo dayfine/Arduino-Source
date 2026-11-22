@@ -11,7 +11,7 @@
 #include <algorithm>
 #include <format>
 #include <utility>
-#include "Pokemon/Navigation/Pokemon_GateTiles.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_GateTiles.h"
 #include "PokemonFRLG_CodedRooms.h"
 #include "PokemonFRLG_FlyMap.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"

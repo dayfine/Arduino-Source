@@ -17,7 +17,7 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
-#include "Pokemon/Navigation/Pokemon_LegWalker.h"
+#include "Pokemon/Navigation/Grid/Walker/Pokemon_LegWalker.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "PokemonFRLG_OverworldRoute.h"

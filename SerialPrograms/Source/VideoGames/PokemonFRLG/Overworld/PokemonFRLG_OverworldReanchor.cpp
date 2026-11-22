@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include <format>
-#include "Pokemon/Navigation/Pokemon_WallRecovery.h"
-#include "Pokemon/Navigation/Pokemon_WanderRules.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_WallRecovery.h"
+#include "PokemonFRLG_WanderRules.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldResume.h"
 
@@ -161,7 +161,7 @@ bool person_on_the_way(
             if (stationary_object_at(*map, tiles[c].point) != nullptr){
                 return true;
             }
-            if (c + 1 == tiles.size() && Pokemon::wander_object_at(*map, tiles[c].point) != nullptr){
+            if (c + 1 == tiles.size() && wander_object_at(*map, tiles[c].point) != nullptr){
                 return true;
             }
         }

@@ -5,7 +5,7 @@
  */
 
 #include <format>
-#include "Pokemon/Navigation/Pokemon_WanderRules.h"
+#include "PokemonFRLG_WanderRules.h"
 #include "PokemonFRLG_OverworldHeldInPlace.h"
 #include "PokemonFRLG_OverworldRecoverySupport.h"
 
@@ -54,7 +54,7 @@ Pokemon::RouteLogLeg route_log_leg(const RouteStep& step){
 }
 
 bool leg_tiles_touch_wander_box(const std::vector<MapData>& maps, const std::vector<MapPosition>& tiles){
-    return Pokemon::leg_touches_wander_box(tiles, [&](const MapPosition& pos){
+    return leg_touches_wander_box(tiles, [&](const MapPosition& pos){
         return map_named(maps, pos.map);
     });
 }

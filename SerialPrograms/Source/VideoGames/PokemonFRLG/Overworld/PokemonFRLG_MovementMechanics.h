@@ -32,7 +32,7 @@
 
 #include <cstddef>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics.h"
 #include "PokemonFRLG_MovementStepPresses.h"
 #include "PokemonFRLG_MovementTurnPresses.h"
 
