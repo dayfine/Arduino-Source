@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include "PokemonBDSP_BlinkExtraction.h"
 
@@ -193,6 +194,62 @@ std::vector<BlinkEvent> group_blinks(
     return events;
 }
 
+namespace{
+
+struct TimeInterval{
+    double start;
+    double end;
+};
+
+std::vector<TimeInterval> find_frame_stalls(
+    const std::vector<BlinkMatchSample>& samples,
+    WallClock origin_time,
+    double max_frame_gap_seconds
+){
+    std::vector<TimeInterval> stalls;
+    if (samples.size() < 2 || !(max_frame_gap_seconds > 0)){
+        return stalls;
+    }
+    if (origin_time == WallClock::min()){
+        origin_time = samples[0].timestamp;
+    }
+    for (size_t i = 1; i < samples.size(); i++){
+        double prev = std::chrono::duration<double>(samples[i - 1].timestamp - origin_time).count();
+        double curr = std::chrono::duration<double>(samples[i].timestamp - origin_time).count();
+        if (curr - prev > max_frame_gap_seconds){
+            stalls.emplace_back(TimeInterval{prev, curr});
+        }
+    }
+    return stalls;
+}
+
+} // namespace
+
+void mark_uncertain_blink_types(
+    const std::vector<BlinkMatchSample>& samples, WallClock origin_time,
+    const BlinkStallGuardConfig& config, std::vector<BlinkEvent>& events
+){
+    if (events.empty() || !(config.double_blink_seconds > 0)){
+        return;
+    }
+    std::vector<TimeInterval> stalls = find_frame_stalls(samples, origin_time, config.max_frame_gap_seconds);
+    if (stalls.empty()){
+        return;
+    }
+    size_t stall_idx = 0;
+    for (BlinkEvent& event : events){
+        if (event.type != BlinkType::Single){
+            continue;
+        }
+        while (stall_idx < stalls.size() && stalls[stall_idx].end <= event.seconds - config.double_blink_seconds){
+            stall_idx++;
+        }
+        if (stall_idx < stalls.size() && stalls[stall_idx].start < event.seconds + config.double_blink_seconds){
+            event.type.reset();
+        }
+    }
+}
+
 
 TickFit fit_tick_period(
     const std::vector<BlinkEvent>& events, double lowest_seconds, double highest_seconds
@@ -291,7 +348,7 @@ bool build_samples(
 
     struct Placed{
         uint64_t tick;
-        BlinkType type;
+        std::optional<BlinkType> type;
     };
     std::vector<std::vector<Placed>> placed(streams.size());
     uint64_t last_tick = 0;

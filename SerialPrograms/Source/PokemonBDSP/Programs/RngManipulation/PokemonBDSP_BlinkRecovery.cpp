@@ -8,10 +8,13 @@
 #include <chrono>
 #include <cmath>
 #include <format>
+#include <utility>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/Recording/StreamHistoryOption.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceSession.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -25,6 +28,29 @@ namespace PokemonBDSP{
 
 using namespace Pokemon;
 using namespace std::chrono_literals;
+
+namespace{
+
+void warn_blink_capture_health(SingleSwitchProgramEnvironment& env){
+    if (GlobalSettings::instance().STREAM_HISTORY->enabled()){
+        env.log(
+            "Stream History is enabled; periodic frame encoding can stall capture and slow blink recovery.",
+            COLOR_ORANGE
+        );
+    }
+    double fps = env.console.video().fps_source();
+    if (fps > 0 && fps < 28.0){
+        env.log(
+            std::format(
+                "Capture is running at {:.1f} fps (below 28 fps); frame drops can hide double blinks.",
+                fps
+            ),
+            COLOR_ORANGE
+        );
+    }
+}
+
+} // namespace
 
 
 std::vector<ImageRGB32> load_eye_templates(
@@ -145,8 +171,11 @@ std::vector<std::vector<BlinkEvent>> build_blink_streams(
     WallClock origin
 ){
     std::vector<std::vector<BlinkEvent>> streams;
+    streams.reserve(matches.size());
     for (size_t c = 0; c < matches.size(); c++){
-        streams.emplace_back(group_blinks(extract_blinks(matches[c], thresholds[c], origin)));
+        std::vector<BlinkEvent> events = group_blinks(extract_blinks(matches[c], thresholds[c], origin));
+        mark_uncertain_blink_types(matches[c], origin, BlinkStallGuardConfig{}, events);
+        streams.emplace_back(std::move(events));
     }
     return streams;
 }
@@ -459,6 +488,7 @@ BlinkRecovery recover_state_from_blinks(
     const BlinkRecoveryConfig& config,
     BlinkSampleLog* sample_log
 ){
+    warn_blink_capture_health(env);
     BlinkRecovery ret;
     BlinkSampleLog no_log;
     BlinkSampleLog& log = sample_log != nullptr ? *sample_log : no_log;
