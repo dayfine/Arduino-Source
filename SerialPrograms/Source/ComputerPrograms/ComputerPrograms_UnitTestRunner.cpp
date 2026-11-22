@@ -39,8 +39,8 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
-#include "Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h"
-#include "Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner_Tests.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
 #include "VideoGames/PokemonLA/PokemonLA_Tests.h"

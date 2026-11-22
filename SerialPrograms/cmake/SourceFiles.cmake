@@ -1536,19 +1536,19 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
-    Source/Pokemon/Navigation/Pokemon_Direction.cpp
-    Source/Pokemon/Navigation/Pokemon_Direction.h
-    Source/Pokemon/Navigation/Pokemon_GateState.cpp
-    Source/Pokemon/Navigation/Pokemon_GateState.h
-    Source/Pokemon/Navigation/Pokemon_Grid.cpp
-    Source/Pokemon/Navigation/Pokemon_Grid.h
-    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner.h
-    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.cpp
-    Source/Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h
-    Source/Pokemon/Navigation/Pokemon_WanderRecovery.cpp
-    Source/Pokemon/Navigation/Pokemon_WanderRecovery.h
-    Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.cpp
-    Source/Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_GateState.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner_Tests.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery.cpp
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery.h
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery_Tests.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp
