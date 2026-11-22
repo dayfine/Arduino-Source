@@ -22,6 +22,8 @@
 #include "Grid/Planning/Pokemon_RouteScorer_Tests.h"
 #include "Grid/Planning/Pokemon_WallRecovery_Tests.h"
 #include "Grid/Planning/Pokemon_WanderRecovery_Tests.h"
+#include "Grid/Trace/Pokemon_LegTrace_Tests.h"
+#include "Grid/Trace/Pokemon_RouteLog_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -39,6 +41,8 @@ inline void add_tests_Navigation(UnitTestDatabase& database){
     add_tests_RouteScorer(database);
     add_tests_WallRecovery(database);
     add_tests_WanderRecovery(database);
+    add_tests_RouteLog(database);
+    add_tests_LegTrace(database);
 }
 
 

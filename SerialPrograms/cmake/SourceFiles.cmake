@@ -1585,6 +1585,18 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery.h
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery_Tests.cpp
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery_Tests.h
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_LegReplay.cpp
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_LegReplay.h
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_LegTrace.cpp
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_LegTrace.h
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_LegTrace_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_LegTrace_Tests.h
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog.cpp
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog.h
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLogLegs.h
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLogTypes.h
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog_Tests.h
     Source/Pokemon/Navigation/Pokemon_Navigation_Tests.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
