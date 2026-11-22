@@ -834,18 +834,18 @@ std::optional<StoryFailure> StoryWalkSteps::mash(BdspRunState& state, const Bdsp
     m_scene_open = false;
     const SceneStepArgs& args = std::get<SceneStepArgs>(step.args);
     const bool already_played = std::exchange(m_scene_start_already_played, false);
+    const bool cross_world_warp = step.pose_after && step.pose_after->map != state.pose.map &&
+        story_plan_world(state.pose.map, step.pose_after->map) == nullptr;
     if (already_played){
         m_route.note(std::format(
             "{}: dialogue was played by the previous step; skipping the opening-line wait.", label_of(step)
         ), RouteNote::STATUS);
-    }else if (!m_route.dialog_within(SCENE_START_WAIT, COLOR_CYAN)){
+    }else if (!cross_world_warp && !m_route.dialog_within(SCENE_START_WAIT, COLOR_CYAN)){
         m_route.note(std::format(
             "{}: no line within {} ms; the step before may already have played it.",
             label_of(step), SCENE_START_WAIT.count()
         ), RouteNote::WARNING);
     }
-    const bool cross_world_warp = step.pose_after && step.pose_after->map != state.pose.map &&
-        story_plan_world(state.pose.map, step.pose_after->map) == nullptr;
     m_previous_settle_saw_dialogue = m_io.settle(
         args.press_a ? BUTTON_A : BUTTON_B, label_of(step),
         cross_world_warp ? SettleKind::AFTER_WARP : SettleKind::TALK, ""
