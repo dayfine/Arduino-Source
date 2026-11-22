@@ -36,11 +36,12 @@
       {
         "id": "magikarp_from_box",
         "action": "pc",
-        "why": "the shiny Magikarp (Gift RNG at 00.12b, put in BOX 1 at 04.04) rides into the League with the team for the Hall of Fame (user, 2026-11-16): WITHDRAW, found by reading each cell's species in BOX 1. protect: its party slot is never sent into a battle. A full party refuses the withdrawal and stops the row: which member goes to the box is the user's call",
+        "why": "the shiny Magikarp (Gift RNG at 00.12b, put in BOX 1 at 04.04) rides into the League with the team for the Hall of Fame (user, 2026-11-16): WITHDRAW, found by reading each cell's species in BOX 1. if_present: skipped when Gift RNG didn't run (mirroring 04.04's deposit). protect: its party slot is never sent into a battle. A full party refuses the withdrawal and stops the row: which member goes to the box is the user's call",
         "args": {
           "do": "withdraw",
           "species": "magikarp",
           "box": 1,
+          "if_present": true,
           "protect": true
         }
       },

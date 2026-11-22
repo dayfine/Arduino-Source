@@ -116,7 +116,7 @@ FrlgArgMap pc_args(const PcTransfer& transfer){
     FrlgArgMap args = {
         {"do", std::string("withdraw")},
         {"box", int64_t(transfer.box + 1)},
-        {"if_present", false},
+        {"if_present", transfer.if_missing == PcMissing::SKIP},
         {"protect", transfer.protect},
     };
     if (transfer.species){
@@ -152,6 +152,10 @@ std::optional<PcTransfer> pc_transfer_of(const FrlgArgMap& args){
     transfer.action = PcAction::WITHDRAW;
     const bool* protect = game_arg<bool>(args, "protect");
     transfer.protect = protect != nullptr && *protect;
+    const bool* if_present = game_arg<bool>(args, "if_present");
+    if (if_present != nullptr && *if_present){
+        transfer.if_missing = PcMissing::SKIP;
+    }
     const std::string* species = game_arg<std::string>(args, "species");
     const bool has_slot = args.contains("slot");
     //  A slot or a species, not both.
@@ -326,6 +330,7 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
     }
     if (view.on_box_header){
         m_tried_header_up = false;
+        m_search_slot = 0;
         if (view.box){
             if (*view.box == m_transfer.box){
                 m_box_switch_step = m_transfer.box + 1;
@@ -349,6 +354,7 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
         if (*view.box == m_transfer.box){
             m_box_switch_step = m_transfer.box + 1;
         }else{
+            m_search_slot = 0;
             if (m_tried_header_up){
                 return {PcPress::FAIL, std::format("the PC shows box {}, not box {}", *view.box + 1, m_transfer.box + 1)};
             }
@@ -377,6 +383,11 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
             return {PcPress::A};
         }
         if (++m_search_slot >= BOX_SLOTS){
+            if (m_transfer.if_missing == PcMissing::SKIP){
+                m_transferred = true;
+                m_skipped = true;
+                return {PcPress::B};
+            }
             return {PcPress::FAIL, std::format("no {} in box {}", *m_transfer.species, m_transfer.box + 1)};
         }
     }
@@ -469,6 +480,10 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
         const PcView view = actions.read_view();
         const PcDecision decision = dialog.next(view);
         if (decision.press == PcPress::DONE){
+            if (dialog.skipped()){
+                logger.log(std::format("PC: skipped \"{}\": not in box {}.", name, transfer.box + 1));
+                return {PcEnd::SKIPPED, ""};
+            }
             logger.log("PC: \"" + name + "\" done.");
             if (transfer.action == PcAction::WITHDRAW){
                 //  A withdrawal joins the party at its end.

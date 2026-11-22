@@ -76,6 +76,10 @@ public:
     bool transferred() const{
         return m_transferred;
     }
+    //  Whether a withdrawal with if_present skipped because the species was absent.
+    bool skipped() const{
+        return m_skipped;
+    }
 
 private:
     PcDecision on_overworld();
@@ -96,6 +100,7 @@ private:
     //  The overworld read since A at the PC, while the PC boots.
     size_t m_booting_reads = 0;
     bool m_transferred = false;
+    bool m_skipped = false;
     //  BOX_GRID box-switch state for WITHDRAW when switching boxes on the header.
     size_t m_box_switch_step = 0;
     bool m_box_slide_wait = false;

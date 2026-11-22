@@ -419,6 +419,15 @@ const std::vector<PcCase> PC_CASES = {
         .box1_after = "pidgey",
     },
     {
+        .name = "skip a species the box hasn't got, when told to",
+        .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true, .if_missing = PcMissing::SKIP},
+        .party = {{.species = "blastoise"}},
+        .box1 = {"pidgey"},
+        .end = PcEnd::SKIPPED,
+        .party_after = "blastoise",
+        .box1_after = "pidgey",
+    },
+    {
         .name = "refuse to withdraw a species into a full party",
         .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true},
         .party = {{.species = "a"}, {.species = "b"}, {.species = "c"}, {.species = "d"}, {.species = "e"}, {.species = "f"}},
@@ -624,6 +633,19 @@ UnitTestResult test_pc_dialog_screens(){
             .views = std::vector<PcView>(PC_BOOT_READS + 1, PcView{.screen = PcScreen::OVERWORLD}), .press = PcPress::FAIL},
         {.name = "the box chooser after a move, unread", .transfer = {.action = PcAction::DEPOSIT, .box = 2},
             .views = {{.screen = PcScreen::BOX_CHOOSER}, {.screen = PcScreen::BOX_CHOOSER}}, .press = PcPress::FAIL},
+        {.name = "species search resets to slot 0 after switching from box 2 to box 1",
+            .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp"},
+            .views = {
+                {.screen = PcScreen::BOX_GRID, .cursor = 0, .occupied = false},
+                {.screen = PcScreen::BOX_GRID, .cursor = 1, .box = 1, .occupied = false},
+                {.screen = PcScreen::BOX_GRID, .box = 1, .on_box_header = true},
+                {.screen = PcScreen::BOX_GRID, .box = 0, .on_box_header = true},
+                {.screen = PcScreen::BOX_GRID, .box = 0, .on_box_header = true},
+                {.screen = PcScreen::BOX_GRID, .cursor = 2, .box = 0, .occupied = false},
+                {.screen = PcScreen::BOX_GRID, .cursor = 1, .box = 0, .occupied = false},
+                {.screen = PcScreen::BOX_GRID, .cursor = 0, .box = 0, .occupied = true, .species = "magikarp"},
+            },
+            .press = PcPress::A},
     };
     for (const Case& item : cases){
         PcStorageDialog dialog(item.transfer);
@@ -647,6 +669,7 @@ UnitTestResult test_pc_args(){
         {.action = PcAction::WITHDRAW, .box = 13, .box_slot = 29},
         {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0, .if_missing = PcMissing::SKIP},
         {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true},
+        {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true, .if_missing = PcMissing::SKIP},
     };
     for (size_t c = 0; c < transfers.size(); c++){
         const PcTransfer& transfer = transfers[c];
