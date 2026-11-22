@@ -5,10 +5,15 @@
  */
 
 #include <format>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
+#include "CommonTools/Images/ImageFilter.h"
+#include "CommonTools/OCR/OCR_Routines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_BoxCellReader.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
@@ -56,8 +61,44 @@ bool settled(const PcView& view, bool transferred){
     if (view.screen == PcScreen::OTHER){
         return false;
     }
-    const bool box_screen = view.screen == PcScreen::BOX_GRID || view.screen == PcScreen::PARTY_PANEL;
-    return transferred || !box_screen || view.cursor.has_value();
+    if (view.screen == PcScreen::BOX_GRID){
+        return transferred || view.cursor.has_value() || view.on_box_header;
+    }
+    if (view.screen == PcScreen::PARTY_PANEL){
+        return transferred || view.cursor.has_value();
+    }
+    return true;
+}
+
+std::optional<size_t> read_box_grid_number(Logger& logger, Language language, const ImageViewRGB32& screen){
+    if (language == Language::None){
+        return std::nullopt;
+    }
+    //  "BOX1".."BOX14" pure white text in the box title banner. Threshold first
+    //  before blurring so the wallpaper behind the 1px strokes does not dim them.
+    const ImageFloatBox title_box(142.0 / 240.0, 22.0 / 160.0, 46.0 / 240.0, 13.0 / 160.0);
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const ImageRGB32 bw = to_blackwhite_rgb32_range(
+        extract_box_reference(game, title_box), true, combine_rgb(235, 235, 235), combine_rgb(255, 255, 255)
+    );
+    const ImageRGB32 ready = preprocess_for_ocr(bw, 5, 1);
+    const std::string text = OCR::ocr_read(language, ready, OCR::PageSegMode::SINGLE_LINE);
+    int value = 0;
+    bool any = false;
+    for (char ch : text){
+        if (ch >= '0' && ch <= '9'){
+            any = true;
+            value = value * 10 + (ch - '0');
+            if (value > int(BOX_COUNT)){
+                break;
+            }
+        }
+    }
+    if (any && value >= 1 && size_t(value) <= BOX_COUNT){
+        logger.log(std::format("PC: box header read box {}.", value));
+        return size_t(value - 1);
+    }
+    return std::nullopt;
 }
 
 } // namespace
@@ -173,16 +214,10 @@ PcStorageDialog::PcStorageDialog(const PcTransfer& transfer)
 {}
 
 PcDecision PcStorageDialog::next(const PcView& view){
-    if (m_transfer.action == PcAction::WITHDRAW && !m_transferred && view.screen == PcScreen::BOX_GRID
-        && m_box_switch_step > 0 && m_box_switch_step <= m_transfer.box + 1
-    ){
+    if (m_box_slide_wait){
+        m_box_slide_wait = false;
         m_others_in_a_row = 0;
-        if (m_box_switch_step <= m_transfer.box){
-            m_box_switch_step++;
-            return {PcPress::RIGHT};
-        }
-        m_box_switch_step++;
-        return {PcPress::DOWN};
+        return {PcPress::WAIT};
     }
     //  A fade, or a box screen still drawing its hand: wait for the screen,
     //  as long as a PC screen change takes, and press nothing into it.
@@ -289,19 +324,49 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
     if (m_transfer.action != PcAction::WITHDRAW){
         return {PcPress::FAIL, "the box grid opened for a deposit"};
     }
-    if (view.box && *view.box != m_transfer.box){
-        return {PcPress::FAIL, std::format("the PC shows box {}, not box {}", *view.box + 1, m_transfer.box + 1)};
+    if (view.on_box_header){
+        m_tried_header_up = false;
+        if (view.box){
+            if (*view.box == m_transfer.box){
+                m_box_switch_step = m_transfer.box + 1;
+                return {PcPress::DOWN};
+            }
+            const size_t right = (m_transfer.box + BOX_COUNT - *view.box) % BOX_COUNT;
+            m_box_slide_wait = true;
+            return {right <= BOX_COUNT / 2 ? PcPress::RIGHT : PcPress::LEFT};
+        }
+        if (m_box_switch_step > 0 && m_box_switch_step <= m_transfer.box){
+            m_box_switch_step++;
+            m_box_slide_wait = true;
+            return {PcPress::RIGHT};
+        }
+        return {PcPress::DOWN};
     }
     if (!view.cursor || *view.cursor >= BOX_SLOTS){
         return {PcPress::FAIL, "the hand wasn't read on the box"};
     }
-    if (m_transfer.box > 0 && m_box_switch_step == 0){
+    if (view.box){
+        if (*view.box == m_transfer.box){
+            m_box_switch_step = m_transfer.box + 1;
+        }else{
+            if (m_tried_header_up){
+                return {PcPress::FAIL, std::format("the PC shows box {}, not box {}", *view.box + 1, m_transfer.box + 1)};
+            }
+            if (*view.cursor >= BOX_COLUMNS){
+                return {PcPress::UP};
+            }
+            m_tried_header_up = true;
+            return {PcPress::UP};
+        }
+    }
+    if (!view.box && m_transfer.box > 0 && m_box_switch_step == 0){
         if (*view.cursor >= BOX_COLUMNS){
             return {PcPress::UP};
         }
         m_box_switch_step = 1;
         return {PcPress::UP};
     }
+    m_tried_header_up = false;
     //  A species: each cell the hand reaches is read, its Pokemon taken if
     //  it is the one, else the hand goes on to the next cell.
     if (m_transfer.species && *view.cursor == m_search_slot){
@@ -465,6 +530,9 @@ PcView ConsolePcStorageActions::read_view(){
         return {};
     }
     PcView view = read_pc_screen(m_console, screen);
+    if (view.screen == PcScreen::BOX_GRID && (view.on_box_header || (view.cursor && *view.cursor != 2))){
+        view.box = read_box_grid_number(m_console.logger(), m_language, screen);
+    }
     if (view.screen == PcScreen::BOX_GRID && view.occupied != false){
         const std::string species = BoxCellReader().read_name(m_console, m_language, screen);
         if (!species.empty()){
