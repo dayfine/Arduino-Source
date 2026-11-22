@@ -425,8 +425,10 @@ class LabMcp:
                     raise control.Refused('invalid_arguments', 'unknown argument', field=unknown[0])
                 if 'after_seq' not in args:
                     raise control.Refused('invalid_arguments', 'required', field='after_seq')
+                reader = self.consoles.get(console) if isinstance(console, str) else None
                 result = self.control.next_events(client, console, args['after_seq'], args.get('timeout_s', 0),
-                                                  args.get('limit', control.DEFAULT_PAGE))
+                                                  args.get('limit', control.DEFAULT_PAGE),
+                                                  refresh=reader.console_state if reader is not None else None)
             elif name == 'request_status':
                 if set(args) != {'request_id'} or request_id is None:
                     raise control.Refused('invalid_arguments', 'expects request_id', field='request_id')

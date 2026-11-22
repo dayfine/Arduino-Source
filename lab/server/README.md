@@ -171,6 +171,14 @@ New in `state.json`: `written_at` (heartbeat), `instance.{id,pid,profile}`, `pan
 `video.{state,frame_seq,captured_at,signal}`, `observation.{game,screen}`.
 `legacy.legacy_view()` is the mapping as code; `tests/test_contracts.py` checks the three twins.
 
+When a run stops, the app can publish `program.terminal_outcome` with `passed`, `failed`,
+or `cancelled`, the original Start request ID, and the checkpoint and failure reason when
+available. Start-check failures keep their existing `program.last_outcome` field. Use
+`next_events` to read the result under the original Start request ID. A pass yields
+`program_finished` with verdict `passed`. Cancellation yields `program_finished` with
+verdict `stopped` and reason `cancelled`. Failures yield `program_failed` with verdict
+`failed` or `start_check_failed`. Screenshots, video, and logs can provide extra detail.
+
 ## What Slice 1 (the app writer) must produce
 
 - `Lab/state.json` replaced atomically (write beside, then rename) whenever the legacy file is
