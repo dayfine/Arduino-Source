@@ -194,6 +194,60 @@ std::vector<BlinkEvent> group_blinks(
 }
 
 
+static std::vector<std::pair<double, double>> find_sample_stall_windows(
+    const std::vector<BlinkMatchSample>& samples,
+    double origin_seconds,
+    double max_frame_gap_seconds
+){
+    std::vector<std::pair<double, double>> stalls;
+    for (size_t i = 1; i < samples.size(); i++){
+        const double prev = std::chrono::duration_cast<std::chrono::duration<double>>(
+            samples[i - 1].timestamp.time_since_epoch()
+        ).count() - origin_seconds;
+        const double curr = std::chrono::duration_cast<std::chrono::duration<double>>(
+            samples[i].timestamp.time_since_epoch()
+        ).count() - origin_seconds;
+        if (curr - prev > max_frame_gap_seconds){
+            stalls.emplace_back(prev, curr);
+        }
+    }
+    return stalls;
+}
+
+void mark_uncertain_blink_types(
+    const std::vector<BlinkMatchSample>& samples,
+    const BlinkTypeGuardConfig& config,
+    std::vector<BlinkEvent>& events
+){
+    if (samples.size() < 2 || events.empty() || !(config.max_frame_gap_seconds > 0)){
+        return;
+    }
+    WallClock origin_time = config.origin == WallClock::min() ? samples[0].timestamp : config.origin;
+    const double origin = std::chrono::duration_cast<std::chrono::duration<double>>(
+        origin_time.time_since_epoch()
+    ).count();
+
+    const std::vector<std::pair<double, double>> stalls =
+        find_sample_stall_windows(samples, origin, config.max_frame_gap_seconds);
+    if (stalls.empty()){
+        return;
+    }
+    for (BlinkEvent& event : events){
+        if (event.type != BlinkType::Single){
+            continue;
+        }
+        const double window_start = event.seconds;
+        const double window_end = event.seconds + config.double_blink_seconds;
+        for (const auto& [stall_start, stall_end] : stalls){
+            if (stall_end >= window_start && stall_start <= window_end){
+                event.type_confident = false;
+                break;
+            }
+        }
+    }
+}
+
+
 TickFit fit_tick_period(
     const std::vector<BlinkEvent>& events, double lowest_seconds, double highest_seconds
 ){
@@ -291,7 +345,7 @@ bool build_samples(
 
     struct Placed{
         uint64_t tick;
-        BlinkType type;
+        std::optional<BlinkType> type;
     };
     std::vector<std::vector<Placed>> placed(streams.size());
     uint64_t last_tick = 0;
@@ -308,7 +362,7 @@ bool build_samples(
                     "double-blink grouping is wrong.";
                 return false;
             }
-            placed[s].emplace_back(Placed{tick, streams[s][c].type});
+            placed[s].emplace_back(Placed{tick, streams[s][c].type_confident ? std::optional<BlinkType>(streams[s][c].type) : std::nullopt});
             last_tick = std::max(last_tick, tick);
         }
     }

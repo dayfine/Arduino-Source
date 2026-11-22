@@ -35,6 +35,7 @@ struct BlinkRecoveryConfig{
     uint8_t npcs = 2;
     size_t min_rolls_to_try = 44;
     size_t confirmation_events = 6;
+    size_t max_confirmation_failures = 3;
     size_t window_events = 52; // chosen for redundancy
     size_t max_failed_windows = 3;
     Seconds liveness_timeout = std::chrono::seconds(3600); // in case blinks are never arriving
@@ -68,6 +69,50 @@ struct BlinkSceneConfig{
     Seconds attempt_timeout = std::chrono::seconds(10);
     size_t press_retries = 10;
     Button retry_button = BUTTON_A;
+};
+
+
+//  Tracks provisional RNG state confirmation across blink solves. Once a
+//  candidate exists, window trimming is paused so the earliest blink stays
+//  pinned; if confirmation fails repeatedly (e.g. a noisy blink arrived),
+//  the candidate is dropped so sliding-window trimming resumes immediately.
+enum class BlinkConfirmationOutcome{
+    PENDING,
+    CONFIRMED,
+    CHANGED,
+    DROPPED,
+};
+
+class BlinkConfirmationTracker{
+public:
+    explicit BlinkConfirmationTracker(size_t max_failures = 3)
+        : m_max_failures(max_failures)
+    {}
+
+    bool has_candidate() const{
+        return m_have_candidate;
+    }
+    size_t candidate_events() const{
+        return m_candidate_events;
+    }
+    const Pokemon::Xorshift128State& candidate() const{
+        return m_candidate;
+    }
+
+    //  Records a failed solve attempt. Returns DROPPED if an active candidate
+    //  exceeded `max_failures` and was cleared so trimming can resume.
+    BlinkConfirmationOutcome on_solve_failed();
+
+    //  Records a solved state. Returns PENDING on the first candidate, CHANGED
+    //  if the state differed from the active candidate, or CONFIRMED on match.
+    BlinkConfirmationOutcome on_solve_succeeded(const Pokemon::Xorshift128State& state, size_t events);
+
+private:
+    size_t m_max_failures = 3;
+    bool m_have_candidate = false;
+    Pokemon::Xorshift128State m_candidate;
+    size_t m_candidate_events = 0;
+    size_t m_failed_confirmations = 0;
 };
 
 

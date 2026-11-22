@@ -7,10 +7,13 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <format>
 #include "Common/Cpp/PrettyPrint.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/GlobalAutoPaths.h"
+#include "CommonFramework/GlobalSettingsPanel.h"
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
+#include "CommonFramework/Recording/StreamHistoryOption.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceSession.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -24,6 +27,62 @@ namespace PokemonBDSP{
 
 using namespace Pokemon;
 using namespace std::chrono_literals;
+
+
+BlinkConfirmationOutcome BlinkConfirmationTracker::on_solve_failed(){
+    if (!m_have_candidate){
+        return BlinkConfirmationOutcome::PENDING;
+    }
+    m_failed_confirmations++;
+    if (m_max_failures > 0 && m_failed_confirmations >= m_max_failures){
+        m_have_candidate = false;
+        m_candidate_events = 0;
+        m_failed_confirmations = 0;
+        return BlinkConfirmationOutcome::DROPPED;
+    }
+    return BlinkConfirmationOutcome::PENDING;
+}
+
+BlinkConfirmationOutcome BlinkConfirmationTracker::on_solve_succeeded(
+    const Pokemon::Xorshift128State& state,
+    size_t events
+){
+    m_failed_confirmations = 0;
+    if (!m_have_candidate){
+        m_have_candidate = true;
+        m_candidate = state;
+        m_candidate_events = events;
+        return BlinkConfirmationOutcome::PENDING;
+    }
+    if (state != m_candidate){
+        m_candidate = state;
+        m_candidate_events = events;
+        return BlinkConfirmationOutcome::CHANGED;
+    }
+    return BlinkConfirmationOutcome::CONFIRMED;
+}
+
+
+namespace{
+
+void warn_blink_capture_health(SingleSwitchProgramEnvironment& env){
+    if (GlobalSettings::instance().STREAM_HISTORY->enabled()){
+        env.log(
+            "Stream History is enabled; its background JPEG encoding can stall "
+            "blink capture frames. Consider disabling Stream History for RNG.",
+            COLOR_ORANGE
+        );
+    }
+    const double fps = env.console.video().fps_source();
+    if (fps > 0 && fps < 28.0){
+        env.log(
+            std::format("Capture FPS is low ({:.1f} fps); blink recovery works best at 30+ fps.", fps),
+            COLOR_ORANGE
+        );
+    }
+}
+
+} // namespace
 
 
 std::vector<ImageRGB32> load_eye_templates(
@@ -144,10 +203,38 @@ std::vector<std::vector<BlinkEvent>> build_blink_streams(
     WallClock origin
 ){
     std::vector<std::vector<BlinkEvent>> streams;
+    BlinkTypeGuardConfig guard;
+    guard.origin = origin;
     for (size_t c = 0; c < matches.size(); c++){
-        streams.emplace_back(group_blinks(extract_blinks(matches[c], thresholds[c], origin)));
+        std::vector<BlinkEvent> events = group_blinks(extract_blinks(matches[c], thresholds[c], origin));
+        mark_uncertain_blink_types(matches[c], guard, events);
+        streams.emplace_back(std::move(events));
     }
     return streams;
+}
+
+static BlinkSolveResult solve_across_slot_rotations(
+    const std::vector<std::vector<BlinkEvent>>& streams,
+    double period_seconds,
+    std::vector<uint8_t>& winning_slots
+){
+    std::vector<uint8_t> slots(streams.size());
+    for (uint8_t c = 0; c < (uint8_t)streams.size(); c++){
+        slots[c] = c;
+    }
+    for (size_t attempt = 0; attempt < streams.size(); attempt++){
+        std::vector<BlinkSample> samples;
+        std::string failure;
+        if (build_samples(streams, slots, period_seconds, samples, failure)){
+            BlinkSolveResult attempt_result = solve_state_from_samples(samples, nullptr);
+            if (attempt_result.success){
+                winning_slots = std::move(slots);
+                return attempt_result;
+            }
+        }
+        std::rotate(slots.begin(), slots.begin() + 1, slots.end());
+    }
+    return BlinkSolveResult{};
 }
 
 //  If enough samples have been collected, 
@@ -192,6 +279,7 @@ BlinkRecovery recover_state_from_blinks(
     const BlinkRecoveryConfig& config
 ){
     BlinkRecovery ret;
+    warn_blink_capture_health(env);
 
     size_t give_up_after = config.max_failed_windows * config.window_events;
     size_t failed_solves = 0;
@@ -201,9 +289,7 @@ BlinkRecovery recover_state_from_blinks(
     std::vector<double> estimated_thresholds(watchers.size(), -1);
     std::vector<size_t> estimated_from(watchers.size(), 0);
 
-    bool have_candidate = false;
-    Xorshift128State candidate;
-    size_t candidate_events = 0;
+    BlinkConfirmationTracker confirmation(config.max_confirmation_failures);
     std::vector<WallClock> newest_blink(watchers.size(), WallClock::min());
 
     WallClock next_nudge = current_time() + config.keep_awake_interval;
@@ -274,7 +360,7 @@ BlinkRecovery recover_state_from_blinks(
         display.set_progress(events, config.min_rolls_to_try + config.confirmation_events);
 
         //  don't trim if there is a candidate (the solution is pinned to the earliest blink)
-        if (!have_candidate){
+        if (!confirmation.has_candidate()){
             trim_to_window(watchers, streams, origin, config.window_events / streams.size());
         }
 
@@ -303,7 +389,7 @@ BlinkRecovery recover_state_from_blinks(
         if (!(fit.period_seconds > 0)){
             continue;
         }
-        if (have_candidate && events < candidate_events + config.confirmation_events){
+        if (confirmation.has_candidate() && events < confirmation.candidate_events() + config.confirmation_events){
             continue;
         }
 
@@ -311,28 +397,20 @@ BlinkRecovery recover_state_from_blinks(
             continue;
         }
 
-        std::vector<uint8_t> slots(streams.size());
-        for (uint8_t c = 0; c < (uint8_t)streams.size(); c++){
-            slots[c] = c;
-        }
-        BlinkSolveResult solved;
         std::vector<uint8_t> winning_slots;
-        for (size_t attempt = 0; attempt < streams.size(); attempt++){
-            std::vector<BlinkSample> samples;
-            std::string failure;
-            if (build_samples(streams, slots, fit.period_seconds, samples, failure)){
-                BlinkSolveResult attempt_result = solve_state_from_samples(samples, nullptr);
-                if (attempt_result.success){
-                    solved = attempt_result;
-                    winning_slots = slots;
-                    break;
-                }
-            }
-            std::rotate(slots.begin(), slots.begin() + 1, slots.end());
-        }
+        const BlinkSolveResult solved =
+            solve_across_slot_rotations(streams, fit.period_seconds, winning_slots);
         if (!solved.success){
             failed_solves++;
-            env.log(std::to_string(events) + " rolls seen, no solution yet.");
+            if (confirmation.on_solve_failed() == BlinkConfirmationOutcome::DROPPED){
+                std::fill(frozen_thresholds.begin(), frozen_thresholds.end(), -1);
+                env.log(
+                    "Provisional RNG state failed to confirm; resuming sliding-window search.",
+                    COLOR_ORANGE
+                );
+            }else{
+                env.log(std::to_string(events) + " rolls seen, no solution yet.");
+            }
             continue;
         }
         failed_solves = 0;
@@ -346,23 +424,19 @@ BlinkRecovery recover_state_from_blinks(
             }
             env.log("Thresholds fixed so that blink numbering stops moving: " + report + ".");
         }
-        if (!have_candidate){
+        const BlinkConfirmationOutcome outcome = confirmation.on_solve_succeeded(solved.state, events);
+        if (outcome == BlinkConfirmationOutcome::PENDING){
             env.log("Provisional state " + solved.state.to_string() + " from "
                 + std::to_string(events) + " rolls. Collecting "
                 + std::to_string(config.confirmation_events) + " more to confirm.");
-            have_candidate = true;
-            candidate = solved.state;
-            candidate_events = events;
             continue;
         }
-        if (solved.state != candidate){
+        if (outcome == BlinkConfirmationOutcome::CHANGED){
             env.log(
                 "The RNG state changed as more blinks arrived, so the earlier one was "
                 "wrong. Continuing.",
                 COLOR_ORANGE
             );
-            candidate = solved.state;
-            candidate_events = events;
             continue;
         }
 

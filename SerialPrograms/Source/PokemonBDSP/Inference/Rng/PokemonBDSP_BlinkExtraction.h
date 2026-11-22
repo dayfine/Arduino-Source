@@ -28,6 +28,9 @@ struct Blink{
 struct BlinkEvent{
     double seconds = 0;
     BlinkType type = BlinkType::Single;
+    //  False when a capture stall occurred inside the double-blink window, so
+    //  a missed second dip cannot poison bit 0 in the state solver.
+    bool type_confident = true;
 };
 
 struct TickFit{
@@ -50,6 +53,22 @@ std::vector<Blink> extract_blinks(
 std::vector<BlinkEvent> group_blinks(
     const std::vector<Blink>& blinks,
     double double_blink_seconds = 0.55
+);
+
+struct BlinkTypeGuardConfig{
+    WallClock origin = WallClock::min();
+    double double_blink_seconds = 0.55;
+    double max_frame_gap_seconds = 0.065;
+};
+
+//  Clears `type_confident` on any Single blink whose double-blink window
+//  [seconds, seconds + double_blink_seconds] saw an adjacent sample gap longer
+//  than `max_frame_gap_seconds` (so the second dip of a Double could have been
+//  missed during a capture/CPU stall).
+void mark_uncertain_blink_types(
+    const std::vector<BlinkMatchSample>& samples,
+    const BlinkTypeGuardConfig& config,
+    std::vector<BlinkEvent>& events
 );
 
 //  The NPC tick is nominally 1.017 s but measures 1.0197 s on real hardware
