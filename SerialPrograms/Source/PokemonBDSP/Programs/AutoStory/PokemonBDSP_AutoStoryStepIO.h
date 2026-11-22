@@ -22,6 +22,7 @@
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
+#include "Pokemon/AutoStory/Pokemon_DoorApproach.h"
 #include "Pokemon/AutoStory/Pokemon_Settle.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryRouteIO.h"
@@ -90,14 +91,15 @@ public:
     //  Runs `direction` on the D-pad until the location banner of `map` (a
     //  JSON map's name) shows, for at most `limit`. Returns whether it showed.
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string& label) = 0;
-    //  Holds the D-pad toward a door (running with `run`) for `timeout` until
-    //  its fade (DOOR_FADE_RULE), `banner` (a map's banner name, "" for
-    //  none) reads, or a line shows. A dark screen in the first `dark_from`
-    //  of running is not the door's fade, and a wild battle on the way is
-    //  fled, the run going on for the time left. Returns what it saw of the
-    //  warp: the fade or the banner, either one alone (#268 slice 1).
-    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
-        Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") = 0;
+    //  Drives the D-pad toward a door (running with `run`) for `plan.drive_hold`,
+    //  then releases and waits out the rest of `plan.fade_timeout`, stopping as
+    //  soon as its fade (DOOR_FADE_RULE), `banner` (a map's banner name, "" for
+    //  none) reads, or a line shows. A dark screen in the first `plan.dark_from`
+    //  of running is not the door's fade, and a wild battle on the way is fled,
+    //  the run going on for the time left. Returns what it saw of the warp: the
+    //  fade or the banner, either one alone (#268 slice 1).
+    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run,
+        const Pokemon::DoorApproachPlan& plan = {}, const std::string& banner = "") = 0;
     //  D-pad taps `direction` one at a time, each looked at, toward a door
     //  or cave mouth, until its fade (TAP_FADE_RULE: uniform, so a dim cave
     //  floor is none) or the location banner of `map` (a JSON map's name), for at
@@ -124,8 +126,8 @@ public:
     virtual void fight(const std::string& trainer) override;
     virtual void walk_until_stopped(Pokemon::Direction direction, size_t tiles, const std::string& label) override;
     virtual bool run_until_map(Pokemon::Direction direction, Milliseconds limit, const std::string& map, const std::string& label) override;
-    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run, Milliseconds timeout = Milliseconds(12000),
-        Milliseconds dark_from = Milliseconds(0), const std::string& banner = "") override;
+    virtual WarpSeen run_into_door(Pokemon::Direction direction, bool run,
+        const Pokemon::DoorApproachPlan& plan = {}, const std::string& banner = "") override;
     virtual std::optional<size_t> tap_to_banner(Pokemon::Direction direction, const std::string& map, size_t max_taps) override;
     virtual bool settle(Button button, const std::string& label, SettleKind kind, const std::string& banner) override;
 

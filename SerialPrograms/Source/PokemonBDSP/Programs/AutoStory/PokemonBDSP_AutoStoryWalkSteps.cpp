@@ -391,7 +391,7 @@ std::optional<StoryFailure> StoryWalkSteps::tap_to_banner(const GridPose& from, 
 //  (00.03: from (5, 10) east onto the mat (6, 10), then south). A tap onto
 //  the tile that is itself the way through ends it. `seen` itself for
 //  another variant, or when the run saw the warp.
-WarpSeen StoryWalkSteps::door_from_beside(const BdspStep& step, const WarpSeen& seen, Milliseconds timeout, const std::string& banner){
+WarpSeen StoryWalkSteps::door_from_beside(const BdspStep& step, const WarpSeen& seen, const Pokemon::DoorApproachPlan& door, const std::string& banner){
     const StepMoveArgs& args = std::get<StepMoveArgs>(step.args);
     if (seen.any() || args.variant != "or_legs"){
         return seen;
@@ -406,7 +406,9 @@ WarpSeen StoryWalkSteps::door_from_beside(const BdspStep& step, const WarpSeen& 
         }
     }
     const Direction direction = args.direction;
-    const WarpSeen again = m_io.run_into_door(direction, m_can_run, timeout, Milliseconds(0), banner);
+    Pokemon::DoorApproachPlan retry = door;
+    retry.dark_from = Milliseconds(0);
+    const WarpSeen again = m_io.run_into_door(direction, m_can_run, retry, banner);
     log(std::format("[{}] {}: {} through the door again: {}.", m_row, step.name,
         direction_name(direction), again.any() ? describe(again) : "nothing yet"));
     return again;
@@ -440,38 +442,53 @@ SettleKind StoryWalkSteps::door_settle_kind(const BdspStep& step) const{
 }
 
 namespace{
-//  A run into a door: how long to hold, and for how long of it a dark screen
-//  is not yet the door's fade (run_into_door()).
-struct DoorRun{
-    Milliseconds timeout;
-    Milliseconds dark_from;
-};
 //  Dark before this share of the run's time to the door is not the door:
 //  lab-B 2026-11-08 09:27:33 read dark at 1.8 s of the 4050 ms run down the
 //  mine's entrance hall (3250 ms to the mouth), stopped there, and the next
 //  step walked on through the mouth.
 constexpr double DOOR_DARK_FROM_SHARE = 0.85;
-//  The shortest hold: the one-tile step onto the mine's warp faded 3.35 s
-//  after its hold began (lab-B 2026-11-07 12:19 and 12:27); a 1500 ms hold
+//  The shortest fade watch: the one-tile step onto the mine's warp faded 3.35 s
+//  after its hold began (lab-B 2026-11-07 12:19 and 12:27); a 1500 ms watch
 //  gave up just before the fade (2026-11-08 09:27:16) and settle() pressed B
 //  15 s before it called the overworld calm.
 constexpr Milliseconds DOOR_MIN_HOLD = 4500ms;
-DoorRun door_run(const std::string& map_name, const GridPose& pose, Direction direction, bool can_run){
+//  Margin added on top of the farthest candidate tile's travel time before
+//  releasing the D-pad automatically, so a delayed fade cancel (capture lag)
+//  cannot keep holding past the ~1.5 s warp fade onto the far map.
+constexpr Milliseconds DOOR_DRIVE_MARGIN = 500ms;
+} // namespace
+
+Pokemon::DoorApproachPlan bdsp_door_approach_plan(
+    const std::vector<size_t>& tile_distances,
+    Direction direction,
+    const BdspDoorApproachOptions& options
+){
+    const Milliseconds per_tile = route_ms_per_tile(direction, options.can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
+    const Pokemon::DoorApproachTiming timing{
+        .start_delay = ROUTE_START_DELAY,
+        .per_tile = per_tile,
+        .drive_margin = DOOR_DRIVE_MARGIN,
+        .fade_margin = 800ms,
+        .min_fade_wait = DOOR_MIN_HOLD,
+        .fallback_timeout = 12000ms,
+        .dark_from_share = options.ignore_early_dark ? DOOR_DARK_FROM_SHARE : 0.0,
+    };
+    return Pokemon::plan_door_approach(tile_distances, timing);
+}
+
+namespace{
+Pokemon::DoorApproachPlan door_run(const std::string& map_name, const GridPose& pose, Direction direction, bool can_run){
+    const BdspDoorApproachOptions options{.can_run = can_run, .ignore_early_dark = true};
     try{
         const Pokemon::MapData& map = story_map(map_name);
-        if (!pose.tiles.empty()){
-            const size_t tiles = Pokemon::tiles_to_door(map, pose.tiles.front(), direction);
-            if (tiles > 0){
-                const Milliseconds per_tile = route_ms_per_tile(direction, can_run ? MoveSpeed::RUN : MoveSpeed::WALK);
-                const Milliseconds to_door = ROUTE_START_DELAY + per_tile * (int64_t)tiles;
-                return {
-                    .timeout = std::max(DOOR_MIN_HOLD, to_door + 800ms),
-                    .dark_from = std::chrono::duration_cast<Milliseconds>(to_door * DOOR_DARK_FROM_SHARE),
-                };
-            }
+        std::vector<size_t> distances;
+        distances.reserve(pose.tiles.size());
+        for (const TilePos& tile : pose.tiles){
+            distances.push_back(Pokemon::tiles_to_door(map, tile, direction));
         }
+        return bdsp_door_approach_plan(distances, direction, options);
     }catch (...){}
-    return {.timeout = 12000ms, .dark_from = 0ms};
+    return bdsp_door_approach_plan({}, direction, options);
 }
 enum class CountedEndPolicy{ EXACT, ONE_SHORT };
 std::vector<TilePos> counted_ends(const std::vector<TilePos>& starts, const Pokemon::StoryLeg& leg, CountedEndPolicy policy){
@@ -734,11 +751,12 @@ std::optional<StoryFailure> StoryWalkSteps::step(BdspRunState& state, const Bdsp
             return std::nullopt;
         }
         const std::string banner = story_arrival_banner(state.pose.map, step.pose_after->map);
-        const DoorRun door = door_run(state.pose.map, state.pose, direction, m_can_run);
-        WarpSeen seen = m_io.run_into_door(direction, m_can_run, door.timeout, door.dark_from, banner);
-        log(std::format("[{}] {}: {} through the door (timeout {} ms, dark from {} ms): {}.", m_row, step.name,
-            direction_name(direction), door.timeout.count(), door.dark_from.count(), seen.any() ? describe(seen) : "nothing yet"));
-        seen = door_from_beside(step, seen, door.timeout, banner);
+        const Pokemon::DoorApproachPlan door = door_run(state.pose.map, state.pose, direction, m_can_run);
+        WarpSeen seen = m_io.run_into_door(direction, m_can_run, door, banner);
+        log(std::format("[{}] {}: {} through the door (drive {} ms, timeout {} ms, dark from {} ms): {}.", m_row, step.name,
+            direction_name(direction), door.drive_hold.count(), door.fade_timeout.count(), door.dark_from.count(),
+            seen.any() ? describe(seen) : "nothing yet"));
+        seen = door_from_beside(step, seen, door, banner);
         const SettleKind settle_kind = seen.any() ? door_settle_kind(step) : SettleKind::AFTER_WARP;
         m_previous_settle_saw_dialogue = m_io.settle(BUTTON_B, label_of(step), settle_kind, banner);
         return std::nullopt;

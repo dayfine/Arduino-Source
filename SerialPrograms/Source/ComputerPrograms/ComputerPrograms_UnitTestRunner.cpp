@@ -41,6 +41,7 @@
 
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_DoorApproach_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_Interrupts_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h"
 #include "Pokemon/AutoStory/Pokemon_Settle_Tests.h"
@@ -67,6 +68,24 @@ namespace ComputerPrograms{
 
 
 
+namespace{
+
+void add_pokemon_autostory_tests(UnitTestDatabase& ret){
+    Pokemon::add_tests_Navigation(ret);
+    Pokemon::add_tests_AutoStory(ret);
+    Pokemon::add_tests_CenterVisit(ret);
+    Pokemon::add_tests_DoorApproach(ret);
+    Pokemon::add_tests_Interrupts(ret);
+    Pokemon::add_tests_SceneJudges(ret);
+    Pokemon::add_tests_Settle(ret);
+    Pokemon::add_tests_StoryInterrupts(ret);
+    Pokemon::add_tests_StoryLaunch(ret);
+    Pokemon::add_tests_StoryRngHandoff(ret);
+    Pokemon::add_tests_Transitions(ret);
+}
+
+} // namespace
+
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
     add_tests_QtEventThreadPool(ret, GlobalThreadPools::computation_normal());
@@ -90,16 +109,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     OCR::add_tests(ret);
     add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
-    Pokemon::add_tests_Navigation(ret);
-    Pokemon::add_tests_AutoStory(ret);
-    Pokemon::add_tests_CenterVisit(ret);
-    Pokemon::add_tests_Interrupts(ret);
-    Pokemon::add_tests_SceneJudges(ret);
-    Pokemon::add_tests_Settle(ret);
-    Pokemon::add_tests_StoryInterrupts(ret);
-    Pokemon::add_tests_StoryLaunch(ret);
-    Pokemon::add_tests_StoryRngHandoff(ret);
-    Pokemon::add_tests_Transitions(ret);
+    add_pokemon_autostory_tests(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_HomeTileReader(ret);

@@ -95,8 +95,8 @@ struct DoorHoldEnd{
     std::string banner;
 };
 
-DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, bool run, Milliseconds hold, Milliseconds dark_from, const std::string& banner){
-    DoorFadeFrom fade(current_time() + dark_from);
+DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, DpadPosition dpad, bool run, const Pokemon::DoorApproachPlan& plan, const std::string& banner){
+    DoorFadeFrom fade(current_time() + plan.dark_from);
     ShortDialogWatcher dialog(COLOR_YELLOW);
     BattleMenuWatcher battle(BattleType::STANDARD, COLOR_YELLOW);
     LocationBannerWatcher far_banner(banner);
@@ -104,11 +104,18 @@ DoorHoldEnd hold_into_door(VideoStream& stream, ProControllerContext& context, D
     if (!banner.empty()){
         watchers.emplace_back(far_banner);
     }
+    const Milliseconds drive = std::min(plan.drive_hold, plan.fade_timeout);
+    const Milliseconds wait = plan.fade_timeout - drive;
     const int ret = run_until<ProControllerContext>(stream, context, [&](ProControllerContext& context){
-        if (run){
-            ssf_press_button(context, BUTTON_B, 0ms, hold, 0ms);
+        if (drive > 0ms){
+            if (run){
+                ssf_press_button(context, BUTTON_B, 0ms, drive, 0ms);
+            }
+            pbf_press_dpad(context, dpad, drive, 0ms);
         }
-        pbf_press_dpad(context, dpad, hold, 0ms);
+        if (wait > 0ms){
+            pbf_wait(context, wait);
+        }
     }, watchers);
     return {
         .ret = ret,
@@ -167,22 +174,27 @@ bool door_fade_was_battle(VideoStream& stream, ProControllerContext& context, co
 //  only the running counts, up to the battle's fade.
 //  The far map's banner `banner` shows after the fade, so it ends the run
 //  only when the fade went unseen (#268 slice 1).
-WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run, Milliseconds timeout, Milliseconds dark_from, const std::string& banner){
-    Milliseconds left = timeout;
+WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direction direction, bool run, const Pokemon::DoorApproachPlan& plan, const std::string& banner){
+    Pokemon::DoorApproachPlan remaining{
+        .drive_hold = std::min(plan.drive_hold, plan.fade_timeout),
+        .fade_timeout = plan.fade_timeout,
+        .dark_from = plan.dark_from,
+    };
     for (size_t battles = 0;; battles++){
         const WallClock start = current_time();
-        const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, left, dark_from, banner);
-        const bool battle_fade = end.ret == 0 && end.fade == WarpFade::BLACK && dark_from > 0ms &&
+        const DoorHoldEnd end = hold_into_door(stream, context, dpad_toward(direction), run, remaining, banner);
+        const bool battle_fade = end.ret == 0 && end.fade == WarpFade::BLACK && remaining.dark_from > 0ms &&
             door_fade_was_battle(stream, context, banner);
         if (end.ret == 2 || battle_fade){
             const WallClock stopped = std::min(end.went_dark, current_time());
             const Milliseconds ran = std::chrono::duration_cast<Milliseconds>(stopped - start) - ROUTE_START_DELAY;
-            const Milliseconds counted = std::clamp(ran, 0ms, left);
-            left -= counted;
-            dark_from -= std::min(dark_from, counted);
+            const Milliseconds counted = std::clamp(ran, 0ms, remaining.fade_timeout);
+            remaining.fade_timeout -= counted;
+            remaining.drive_hold = std::min(remaining.fade_timeout, remaining.drive_hold - std::min(remaining.drive_hold, counted));
+            remaining.dark_from -= std::min(remaining.dark_from, counted);
             stream.log(std::format("[Story] run_into_door: wild battle after {} ms of running; fleeing.", counted.count()));
             run_from_wild_battle(stream, context);
-            if (battles < DOOR_RUN_BATTLES && left > 0ms){
+            if (battles < DOOR_RUN_BATTLES && remaining.fade_timeout > 0ms){
                 continue;
             }
             return {};
@@ -196,7 +208,7 @@ WarpSeen run_into_door(VideoStream& stream, ProControllerContext& context, Direc
         }else if (end.went_dark != WallClock::max()){
             //  Dark only before dark_from: early, or the door's fade itself.
             stream.log(std::format("[Story] run_into_door: timed out; dark {} ms in, before dark_from {} ms.",
-                std::chrono::duration_cast<Milliseconds>(end.went_dark - start).count(), dark_from.count()));
+                std::chrono::duration_cast<Milliseconds>(end.went_dark - start).count(), remaining.dark_from.count()));
         }else{
             stream.log("[Story] run_into_door: timed out without detecting fade.");
         }
@@ -340,8 +352,8 @@ bool ConsoleStoryStepIO::run_until_map(Direction direction, Milliseconds limit, 
     return walk.stop == WalkStop::ARRIVED;
 }
 
-WarpSeen ConsoleStoryStepIO::run_into_door(Direction direction, bool run, Milliseconds timeout, Milliseconds dark_from, const std::string& banner){
-    return PokemonBDSP::run_into_door(m_stream, m_context, direction, run, timeout, dark_from, banner);
+WarpSeen ConsoleStoryStepIO::run_into_door(Direction direction, bool run, const Pokemon::DoorApproachPlan& plan, const std::string& banner){
+    return PokemonBDSP::run_into_door(m_stream, m_context, direction, run, plan, banner);
 }
 
 //  A held walk can carry on past a fade that goes unseen: out of the Gym it
