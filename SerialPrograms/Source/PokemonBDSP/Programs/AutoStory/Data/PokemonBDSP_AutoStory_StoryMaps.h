@@ -15,7 +15,7 @@
 
 #include <string>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonBDSP_AutoStory_StoryMapNames.h"
 #include "PokemonBDSP_AutoStory_StoryWorld.h"
 

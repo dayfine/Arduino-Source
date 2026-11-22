@@ -7,7 +7,6 @@
 #include <format>
 #include <utility>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 
 namespace PokemonAutomation{
@@ -82,17 +81,18 @@ public:
             m_beat_start += m_scene[m_beat].length;
             m_beat++;
         }
-        ScreenEvents look{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL, ScreenEvent::PLAYER_STILL};
+        ScreenEvents look{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL};
+        bool player_still = true;
         if (m_beat < m_scene.size()){
             const SimBeat& shown = m_scene[m_beat];
             look = {};
             look.set(ScreenEvent::DIALOG_BOX, shown.line);
             look.set(ScreenEvent::PLAYER_CAN_MOVE, shown.overworld);
             look.set(ScreenEvent::SCREEN_STILL, !shown.moving);
-            look.set(ScreenEvent::PLAYER_STILL, !shown.at_player);
+            player_still = !shown.at_player;
             look.merge(fade_events(shown.fade));
         }
-        return {look, m_now};
+        return {.events = look, .when = m_now, .player_still = player_still};
     }
     //  Either press closes a line; nothing else answers one.
     virtual void press(SceneMove, Milliseconds wait) override{

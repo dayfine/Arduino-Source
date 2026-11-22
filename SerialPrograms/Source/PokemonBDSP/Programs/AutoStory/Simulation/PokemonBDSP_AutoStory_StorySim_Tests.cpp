@@ -2,26 +2,6 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  Rows of the story table run as the program runs them (the segment
- *  runner, make_story_segment()), with the program's own walking steps
- *  (StoryWalkSteps: ROUTE, LEGS, STEP, TALK, MASH) on the grid simulation.
- *  After each walking step the simulated player must stand, on the grid,
- *  on a tile the table gives; a step through a door must have warped.
- *
- *  Events, battles, shops and saves are stubs: a dialogue they open is
- *  closed, and the table's pose_after puts the player where they end. A
- *  heal checks that a walk north from where we stand enters a door. A scene
- *  starts when the player steps onto one of the maps' coord events while
- *  its story variable holds (story_vars()). Rooms with no
- *  map (the Trainers' School) are passed over. Each row must start where
- *  the row before left the player.
- *
- *  A tap or hold through a door or cave mouth stops on its tile, as the
- *  console stops at the fade; a hold that does not see the fade goes on
- *  onto the step's pose_after and on along it, and a location banner reads
- *  only a few tiles into its map (SIM_BANNER_TILES). The exit tests run
- *  r75's and r81's old open-ended walks that way.
- *
  */
 
 #include <algorithm>
@@ -36,22 +16,21 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
+#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_CoordEvents.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WalkRules.h"
-#include "PokemonBDSP_AutoStory_GridSim.h"
-#include "PokemonBDSP_AutoStory_LegTrace_Tests.h"
-#include "PokemonBDSP_AutoStory_OldStorySteps.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Resources.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryStepIO.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
-#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_Resources.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
+#include "PokemonBDSP_AutoStory_GridSim.h"
+#include "PokemonBDSP_AutoStory_LegTrace_Tests.h"
+#include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
 #include "PokemonBDSP_AutoStory_StorySim_Tests.h"
 
@@ -64,14 +43,10 @@ namespace{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
-using Pokemon::Outcome;
-using Pokemon::Pose;
-using Pokemon::RunState;
-using Pokemon::StoryStep;
-using Pokemon::StoryStepKind;
+using Pokemon::GridPose;
 using Pokemon::TilePos;
 
-UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const StoryStep& old_step, const SimMisses& misses, const Pose& overshoot){
+UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const BdspStep& old_step, const SimMisses& misses, const GridPose& overshoot){
     SimExecutor executor(logger, misses);
     const std::vector<StoryCheckpoint> rows = table_with(row_id, old_step);
     run_rows_on(executor, logger, {.from = row_id, .to = row_id}, rows);
@@ -79,7 +54,7 @@ UnitTestResult run_exit_test(Logger& logger, const std::string& row_id, const St
     logger.log(std::format("The old {}: {}, ended on {}.", old_step.name, run.error, end_of(run)));
     if (run.failed_step != row_id + " " + old_step.name || !ends_on(run, overshoot)){
         return std::format("the old {} should end on {} and fail there; it ended on {}: {}",
-            old_step.name, Pokemon::to_string(overshoot), end_of(run), run.error.empty() ? "no failure" : run.error);
+            old_step.name, format_grid_pose(overshoot), end_of(run), run.error.empty() ? "no failure" : run.error);
     }
     SimExecutor clean(logger);
     if (!run_rows_on(clean, logger, {.from = row_id, .to = row_id}).completed){
@@ -130,7 +105,7 @@ std::string miss(Logger& logger, const SimRun& clean, bool fade, size_t index){
     SimMisses misses;
     (fade ? misses.fade : misses.banner) = index - (fade ? start.fades : start.banners);
     SimExecutor executor(logger, misses);
-    const Pokemon::SegmentReport report = run_rows_on(executor, logger,
+    const SimRunReport report = run_rows_on(executor, logger,
         {.from = start.row, .to = clean.rows[std::min(k + 1, clean.rows.size() - 1)].row});
     const SimRun& run = executor.result();
     const std::string what = std::format("{} {}", fade ? "fade" : "banner", index);
@@ -143,7 +118,7 @@ std::string miss(Logger& logger, const SimRun& clean, bool fade, size_t index){
 }
 
 UnitTestResult test_story_sim_misses(Logger& logger){
-    Pokemon::SegmentRange range{.from = "00.00", .to = "01.11"};
+    SimRunRange range{.from = "00.00", .to = "01.11"};
     SimExecutor clean(logger);
     if (!run_rows_on(clean, logger, range).completed){
         return "the run fails without misses: " + clean.result().error;
@@ -163,11 +138,8 @@ UnitTestResult test_story_sim_misses(Logger& logger){
     return unseen.empty() ? UnitTestResult(true) : UnitTestResult(out);
 }
 
-//  Someone talks to the player before every step (SimWorldKnobs::
-//  dialog_before): cleared between steps, the whole table still passes;
-//  left up, as before the executor looked, the first walk fails on it.
 UnitTestResult test_dialog_between_steps(Logger& logger){
-    const Pokemon::SegmentRange range{.from = "00.00", .to = "01.11"};
+    const SimRunRange range{.from = "00.00", .to = "01.11"};
     const auto always = [](const std::string&, const std::string&){
         return true;
     };
@@ -205,11 +177,6 @@ UnitTestResult test_exit_ravaged_path(Logger& logger){
     return run_exit_test(logger, "01.09", r81_old_cave_exit(), SimMisses{.fade = 0, .banner = std::nullopt}, r81_below_the_mouth());
 }
 
-//  lab-B 2026-11-08 15:31 to 15:54: 01.05's walk to the tile beside the
-//  Oreburgh Gate's mouth slid onto the warp, and the tap step after it began
-//  inside the Gate. With its banner up, the step ends there with no tap and
-//  no fade (the clean run's fade into the Gate is not seen); with it gone,
-//  it fails a few taps on, not across the Gate.
 UnitTestResult test_tap_through_already(Logger& logger, bool banner){
     const std::vector<StoryCheckpoint> rows = table_with("01.05", old_tap_into_the_gate());
     SimExecutor clean(logger);
@@ -225,7 +192,7 @@ UnitTestResult test_tap_through_already(Logger& logger, bool banner){
         run.failed_step, end_of(run), through.misses().fades, clean.misses().fades, run.error.empty() ? "no failure" : run.error));
 }
 
-UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const StoryStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){
+UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& row, const BdspStep& old_step, const std::string& expected_failed_step, const std::string& expected_error){
     SimExecutor executor(logger);
     const std::vector<StoryCheckpoint> rows = table_with(row, old_step);
     run_rows_on(executor, logger, {.from = row, .to = row}, rows);
@@ -237,8 +204,6 @@ UnitTestResult test_story_sim_step_failure(Logger& logger, const std::string& ro
     return true;
 }
 
-//  lab-B 2026-11-08: 01.03's run into Oreburgh's Center saw no fade and went
-//  on to the nurse's counter. The heal must find it is inside and go on.
 UnitTestResult test_heal_fade_unseen(Logger& logger){
     SimExecutor clean(logger);
     run_rows_on(clean, logger, {.from = "01.03", .to = "01.03"});
@@ -253,11 +218,6 @@ UnitTestResult test_heal_fade_unseen(Logger& logger){
     return "no fade in 01.03 heal_oreburgh to miss: the heal never ran into its door.";
 }
 
-//  The sim's frames of a warp's fade through the program's own watches
-//  (sim_watch_fade()): a door's black, a cave mouth's dim fade and a cave
-//  exit's white, each with its hold seen and unseen. Only on a floor as
-//  dark as the fall (a street at night, 88) is a fade whose hold went unseen
-//  still missed: no frame shows the scene before it.
 UnitTestResult test_sim_fade_frames(Logger&){
     struct FadeCase{
         std::string_view name;
@@ -347,35 +307,41 @@ struct DoorSettleCase{
     SettleKind expected;
 };
 
-std::string check_door_settle_case(const DoorSettleCase& item){
+std::pair<const StoryCheckpoint*, const BdspStep*> find_checkpoint_step(
+    const std::string& row_id, const std::string& step_name
+){
     for (const StoryCheckpoint& cp : story_checkpoints()){
-        if (cp.id != item.row){
+        if (cp.id != row_id){
             continue;
         }
-        for (const StoryStep& step : cp.steps){
-            if (step.name != item.step){
-                continue;
+        for (const BdspStep& step : cp.steps){
+            if (step.name == step_name){
+                return {&cp, &step};
             }
-            std::optional<SettleKind> got;
-            RecordingDoorStepIO io(item.seen, got);
-            StoryWalkSteps walks(io);
-            walks.begin_attempt(cp.id, cp.steps);
-            RunState state;
-            state.pose = Pokemon::tile_pose(item.from_map, {{0, 0}});
-            walks.step(state, step);
-            if (got != item.expected){
-                return std::format("{} {}: expected SettleKind {}, got {}.",
-                    item.row, item.step, (int)item.expected, got ? (int)*got : -1);
-            }
-            return "";
         }
     }
-    return std::format("missing step {} in {}", item.step, item.row);
+    return {nullptr, nullptr};
 }
 
-//  Map-changing door STEP settle kinds: plain doors settle with SettleKind::DOOR
-//  once a warp is seen (and AFTER_WARP when unseen), while doors with arrival
-//  cutscenes keep SettleKind::TALK.
+std::string check_door_settle_case(const DoorSettleCase& item){
+    const auto [cp, step] = find_checkpoint_step(item.row, item.step);
+    if (cp == nullptr || step == nullptr){
+        return std::format("missing step {} in {}", item.step, item.row);
+    }
+    std::optional<SettleKind> got;
+    RecordingDoorStepIO io(item.seen, got);
+    StoryWalkSteps walks(io);
+    walks.begin_attempt(cp->id, cp->steps);
+    BdspRunState state;
+    state.pose = GridPose{.map = item.from_map, .tiles = {{0, 0}}};
+    walks.step(state, *step);
+    if (got != item.expected){
+        return std::format("{} {}: expected SettleKind {}, got {}.",
+            item.row, item.step, (int)item.expected, got ? (int)*got : -1);
+    }
+    return "";
+}
+
 UnitTestResult test_door_step_settle_kind(Logger&){
     const WarpSeen faded{.fade = WarpFade::BLACK};
     const std::vector<DoorSettleCase> cases = {

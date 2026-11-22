@@ -16,11 +16,7 @@
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "Simulation/PokemonBDSP_AutoStory_GridSim.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -38,7 +34,6 @@ using namespace std::chrono_literals;
 using Pokemon::Direction;
 using Pokemon::TilePos;
 using Pokemon::GridPose;
-using Pokemon::story_arg;
 
 //  A wild battle in the recovery walk itself, on its first input of the
 //  kind: one the console cannot tell from a battle before that input began
@@ -106,24 +101,23 @@ private:
 //  Roark (18, 29), as 01.03 walked it before its end was clipped to his
 //  rock and the wall: nine counted legs, the last one 9 tiles west along
 //  an open row, which is what these recovery cases need.
-const Pokemon::StoryStep& mine_step(){
-    static const Pokemon::StoryStep step = []{
-        Pokemon::StoryStep step;
-        step.kind = Pokemon::StoryStepKind::LEGS;
-        step.name = "below_roark";
-        step.args["legs"] = std::vector<Pokemon::StoryLeg>{
-            {.direction = Direction::EAST,  .tiles = 1},
-            {.direction = Direction::SOUTH, .tiles = 2},
-            {.direction = Direction::WEST,  .tiles = 1},
-            {.direction = Direction::SOUTH, .tiles = 5},
-            {.direction = Direction::EAST,  .tiles = 14},
-            {.direction = Direction::SOUTH, .tiles = 10},
-            {.direction = Direction::WEST,  .tiles = 2},
-            {.direction = Direction::SOUTH, .tiles = 3},
-            {.direction = Direction::WEST,  .tiles = 9},
-        };
-        return step;
-    }();
+const BdspStep& mine_step(){
+    static const std::vector<Pokemon::StoryLeg> legs = {
+        {.direction = Direction::EAST,  .tiles = 1},
+        {.direction = Direction::SOUTH, .tiles = 2},
+        {.direction = Direction::WEST,  .tiles = 1},
+        {.direction = Direction::SOUTH, .tiles = 5},
+        {.direction = Direction::EAST,  .tiles = 14},
+        {.direction = Direction::SOUTH, .tiles = 10},
+        {.direction = Direction::WEST,  .tiles = 2},
+        {.direction = Direction::SOUTH, .tiles = 3},
+        {.direction = Direction::WEST,  .tiles = 9},
+    };
+    static const BdspStep step{
+        .name = "below_roark",
+        .action = "legs",
+        .args = LegsStepArgs{.legs = legs},
+    };
     return step;
 }
 
@@ -168,13 +162,12 @@ public:
         RecoveryStepIO io(route);
         StoryWalkSteps walks(io);
         walks.begin_attempt("01.03");
-        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 9}}, Direction::SOUTH), .flags = {}};
+        BdspRunState state{.pose = GridPose{.map = "OreburghMine", .tiles = {{15, 9}}, .facing = Direction::SOUTH}};
         std::string failure;
-        std::optional<Pokemon::Pose> declared;
         try{
-            const auto outcome = walks.legs(state, mine_step());
-            failure = outcome.failure;
-            declared = outcome.pose;
+            if (const std::optional<Pokemon::StoryFailure> err = walks.legs(state, mine_step())){
+                failure = err->code;
+            }
         }catch (const GridSimFailure& error){
             failure = error.message;
         }
@@ -183,8 +176,8 @@ public:
                 : UnitTestResult("Expected " + m_case.expectation.failure + ", got " + failure);
         }
         const auto end = story_to_local(*world, "OreburghMine", nearest_tile(sim.player().pos));
-        if (!failure.empty() || !end || *end != m_case.expectation.end || !declared
-            || Pokemon::facing_of(*declared) != sim.player().facing || sim.player().facing != m_case.expectation.facing){
+        if (!failure.empty() || !end || *end != m_case.expectation.end
+            || state.pose.facing != sim.player().facing || sim.player().facing != m_case.expectation.facing){
             return "Expected below Roark (18,29), got " + to_string(sim.player().pos) + ": " + failure;
         }
         return true;
@@ -242,10 +235,12 @@ public:
         RecoveryStepIO io(route);
         StoryWalkSteps walks(io);
         walks.begin_attempt("01.03");
-        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 9}}, Direction::SOUTH), .flags = {}};
+        BdspRunState state{.pose = GridPose{.map = "OreburghMine", .tiles = {{15, 9}}, .facing = Direction::SOUTH}};
         std::string failure;
         try{
-            failure = walks.legs(state, mine_step()).failure;
+            if (const std::optional<Pokemon::StoryFailure> err = walks.legs(state, mine_step())){
+                failure = err->code;
+            }
         }catch (const GridSimFailure& error){
             failure = error.message;
         }
@@ -305,9 +300,9 @@ private:
     GridSim& m_sim;
 };
 
-const Pokemon::StoryStep& story_step(std::string_view row, std::string_view name){
-    for (const Pokemon::StoryCheckpoint& checkpoint : story_checkpoints()){
-        for (const Pokemon::StoryStep& step : checkpoint.steps){
+const BdspStep& story_step(std::string_view row, std::string_view name){
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        for (const BdspStep& step : checkpoint.steps){
             if (checkpoint.id == row && step.name == name){
                 return step;
             }
@@ -346,25 +341,27 @@ public:
         WallStepIO io(route, sim);
         StoryWalkSteps walks(io);
         walks.begin_attempt("01.03");
-        Pokemon::RunState state{.pose = Pokemon::tile_pose("OreburghMine", {{15, 9}}, Direction::SOUTH), .flags = {}};
+        BdspRunState state{.pose = GridPose{.map = "OreburghMine", .tiles = {{15, 9}}, .facing = Direction::SOUTH}};
         std::string failure;
         try{
             for (std::string_view name : {"to_roarks_corner", "beside_roarks_rock"}){
-                const Pokemon::StoryStep& step = story_step("01.03", name);
-                failure = walks.legs(state, step).failure;
+                const BdspStep& step = story_step("01.03", name);
+                if (const std::optional<Pokemon::StoryFailure> err = walks.legs(state, step)){
+                    failure = err->code;
+                }
                 const auto end = story_to_local(world, "OreburghMine", nearest_tile(sim.player().pos));
                 logger.log(std::format("{} ended at {}.", name, to_string(sim.player().pos)));
-                const Pokemon::TileDeclared& declared = std::get<Pokemon::TileDeclared>(*step.pose_after);
+                const GridPose& declared = *step.pose_after;
                 const std::vector<TilePos>& tiles = declared.tiles;
                 const bool on_tile = end && std::find(tiles.begin(), tiles.end(), *end) != tiles.end();
                 if (failure.empty() && (!on_tile || declared.facing != sim.player().facing)){
                     failure = std::format("{} ended at {} facing {}, not on {}.", name, to_string(sim.player().pos),
-                        direction_name(sim.player().facing), Pokemon::to_string(Pokemon::pose_of(*step.pose_after)));
+                        direction_name(sim.player().facing), format_grid_pose(*step.pose_after));
                 }
                 if (!failure.empty()){
                     break;
                 }
-                state.pose = Pokemon::pose_of(*step.pose_after);
+                state.pose = *step.pose_after;
             }
         }catch (const GridSimFailure& error){
             failure = error.message;
@@ -452,43 +449,35 @@ std::pair<std::string, TilePos> warp_north(GridSim& sim, const std::string& map,
 
 //  A LEGS step on Oreburgh City, after which the player stands on one of
 //  `end` facing `facing` (nowhere said if `end` is empty).
-Pokemon::StoryStep city_legs(std::string_view name, std::vector<Pokemon::StoryLeg> legs, std::string_view variant,
+BdspStep city_legs(std::string_view name, std::vector<Pokemon::StoryLeg> legs, std::string_view variant,
     std::vector<TilePos> end = {}, Direction facing = Direction::NORTH
 ){
-    Pokemon::StoryStep out;
-    out.kind = Pokemon::StoryStepKind::LEGS;
-    out.name = name;
-    out.action = variant;
-    out.args["legs"] = std::move(legs);
-    out.args["fight_wild"] = false;
+    BdspStep out{
+        .name = std::string(name),
+        .action = "legs",
+        .args = LegsStepArgs{.legs = std::move(legs), .fight_wild = false, .variant = std::string(variant)},
+    };
     if (!end.empty()){
-        out.pose_after = Pokemon::TileDeclared{.map = "OreburghCity", .tiles = std::move(end), .facing = facing};
+        out.pose_after = GridPose{.map = "OreburghCity", .tiles = std::move(end), .facing = facing};
     }
     return out;
 }
-//  A planned route on Oreburgh City to `target`, facing `facing`.
-Pokemon::StoryStep city_route(std::string_view name, TilePos target, Direction facing){
-    Pokemon::StoryStep out;
-    out.kind = Pokemon::StoryStepKind::ROUTE;
-    out.name = name;
-    out.action = "town";
+BdspStep city_route(std::string_view name, TilePos target, Direction facing){
     const GridPose gp{.map = "OreburghCity", .tiles = {target}, .facing = facing};
-    out.args["target"] = gp;
-    out.args["fight_wild"] = false;
-    out.pose_after = Pokemon::TileDeclared{.map = gp.map, .tiles = gp.tiles, .facing = gp.facing};
-    return out;
+    return BdspStep{
+        .name = std::string(name),
+        .action = "route",
+        .args = RouteStepArgs{.target = gp, .fight_wild = false, .variant = "town"},
+        .pose_after = gp,
+    };
 }
 
-using CitySteps = std::pair<Pokemon::Pose, std::vector<Pokemon::StoryStep>>;
+using CitySteps = std::pair<GridPose, std::vector<BdspStep>>;
 
-//  01.03 out of the mine as the table had it before lab-B 2026-11-08: from
-//  the city's (45, 59) north against the mine's sign (45, 56), a route to
-//  below the Center's door (47, 21), a tap south, the walls east and north
-//  of (48, 22), and a tap west.
 CitySteps old_steps_out_of_the_mine(){
-    Pokemon::StoryStep route = city_route("below_the_centers_door_again", {47, 21}, Direction::NORTH);
+    BdspStep route = city_route("below_the_centers_door_again", {47, 21}, Direction::NORTH);
     route.pose_after.reset();
-    return {Pokemon::tile_pose("OreburghCity", {TilePos{45, 59}, TilePos{45, 58}}, Direction::NORTH), {
+    return {GridPose{.map = "OreburghCity", .tiles = {TilePos{45, 59}, TilePos{45, 58}}, .facing = Direction::NORTH}, {
         city_legs("up_to_the_mines_sign", {{.direction = Direction::NORTH, .tiles = 3}}, "to_wall", {{45, 57}}),
         route,
         city_legs("south_of_the_centers_door", {{.direction = Direction::SOUTH, .tiles = 1}}, ""),
@@ -497,13 +486,9 @@ CitySteps old_steps_out_of_the_mine(){
         city_legs("below_the_centers_door_lined_up", {{.direction = Direction::WEST, .tiles = 1}}, "", {{47, 21}}),
     }};
 }
-//  01.03 out of the mine as the table had it at lab-B 2026-11-08 13:50: pin
-//  the column against the walls east of the mine, route to the street west
-//  of the door, (44, 22), and line up against the walls east and north of
-//  (48, 22). Its route goes round the Hiker's rows west of column 46.
 CitySteps previous_steps_out_of_the_mine(){
-    return {Pokemon::tile_pose("OreburghCity", {TilePos{46, 59}, TilePos{45, 59}, TilePos{47, 59}, TilePos{46, 58}, TilePos{45, 58}, TilePos{47, 58}},
-        Direction::NORTH), {
+    return {GridPose{.map = "OreburghCity", .tiles = {TilePos{46, 59}, TilePos{45, 59}, TilePos{47, 59}, TilePos{46, 58}, TilePos{45, 58}, TilePos{47, 58}},
+        .facing = Direction::NORTH}, {
         city_legs("off_the_mines_warp_tiles", {{.direction = Direction::NORTH, .tiles = 1}}, ""),
         city_legs("east_of_the_mine", {{.direction = Direction::EAST, .tiles = 4}}, "to_wall", {{48, 58}, {49, 57}}, Direction::EAST),
         city_legs("north_of_row_58", {{.direction = Direction::NORTH, .tiles = 1}}, ""),
@@ -515,20 +500,18 @@ CitySteps previous_steps_out_of_the_mine(){
         city_legs("below_the_centers_door_lined_up", {{.direction = Direction::WEST, .tiles = 1}}, "", {{47, 21}}),
     }};
 }
-//  The table's 01.03 steps out of the mine, from where it has us on the
-//  city to below the Center's door.
 CitySteps table_steps_out_of_the_mine(){
-    std::vector<Pokemon::StoryStep> steps;
-    for (const Pokemon::StoryCheckpoint& checkpoint : story_checkpoints()){
+    std::vector<BdspStep> steps;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
         bool on = false;
-        for (const Pokemon::StoryStep& step : checkpoint.steps){
+        for (const BdspStep& step : checkpoint.steps){
             on = checkpoint.id == "01.03" && step.name != "heal_oreburgh" && (on || step.name == "out_of_the_mine");
             if (on && step.name != "out_of_the_mine"){
                 steps.push_back(step);
             }
         }
     }
-    return {Pokemon::pose_of(*story_step("01.03", "out_of_the_mine").pose_after), steps};
+    return {*story_step("01.03", "out_of_the_mine").pose_after, steps};
 }
 
 //  OvershootingRouteIO that keeps where each walk and tap left the player.
@@ -572,16 +555,18 @@ bool went_west_of_column_46(const StoryWorld& city, const std::vector<SimPos>& t
     });
 }
 std::string walk_city_steps(StoryWalkSteps& walks, TracingRouteIO& route, const CitySteps& steps, Logger& logger){
-    Pokemon::RunState state{.pose = steps.first, .flags = {}};
+    BdspRunState state{.pose = steps.first};
     std::string ends;
-    for (const Pokemon::StoryStep& step : steps.second){
-        const Pokemon::Outcome outcome = step.kind == Pokemon::StoryStepKind::ROUTE ? walks.route(state, step) : walks.legs(state, step);
+    for (const BdspStep& step : steps.second){
+        const std::optional<Pokemon::StoryFailure> err = step.action == "route" ? walks.route(state, step) : walks.legs(state, step);
         route.mark();
         ends += std::format(" {} {}", step.name, to_string(route.trail().back()));
-        if (!outcome.succeeded()){
-            return step.name + ": " + Pokemon::to_string(outcome);
+        if (err){
+            return std::format("{}: {}", step.name, *err);
         }
-        state.pose = step.pose_after ? Pokemon::pose_of(*step.pose_after) : outcome.pose ? *outcome.pose : state.pose;
+        if (step.pose_after){
+            state.pose = *step.pose_after;
+        }
     }
     logger.log("   " + ends);
     return "";
@@ -825,6 +810,36 @@ struct LineSevenCase{
     LineSevenExpectation expectation;
 };
 
+std::string run_line_7_steps(
+    Logger& logger, StoryWalkSteps& walks, GridSim& sim, BdspRunState& state, std::optional<GridPose>& last
+){
+    bool after_line_6 = false;
+    for (const StoryCheckpoint& checkpoint : story_checkpoints()){
+        if (checkpoint.id != "01.10"){
+            continue;
+        }
+        for (const BdspStep& step : checkpoint.steps){
+            const bool walks_here = after_line_6 && (step.action == "route" || step.action == "legs");
+            after_line_6 |= step.name == "line_6";
+            if (!walks_here){
+                continue;
+            }
+            const std::optional<Pokemon::StoryFailure> err =
+                step.action == "route" ? walks.route(state, step) : walks.legs(state, step);
+            if (err){
+                return err->code;
+            }
+            last = step.pose_after ? step.pose_after
+                : step.action == "route" ? std::optional<GridPose>(std::get<RouteStepArgs>(step.args).target) : last;
+            if (step.pose_after){
+                state.pose = *step.pose_after;
+            }
+            logger.log(std::format("01.10 {} ended at {}.", step.name, to_string(sim.player().pos)));
+        }
+    }
+    return "";
+}
+
 UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger, const LineSevenInput& input){
     const StoryWorld& world = *story_plan_world("Route204North", "FloaromaTown");
     GridSim sim({.world = &world}, story_to_world(world, "Route204North", {11, 12}), Direction::WEST, true);
@@ -834,26 +849,11 @@ UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger, const LineSev
     BannerStepIO io(route, sim, battle);
     StoryWalkSteps walks(io);
     walks.begin_attempt("01.10");
-    Pokemon::RunState state{.pose = Pokemon::tile_pose("Route204North", {{11, 12}}, Direction::WEST), .flags = {}};
+    BdspRunState state{.pose = GridPose{.map = "Route204North", .tiles = {{11, 12}}, .facing = Direction::WEST}};
     std::string failure;
-    std::optional<Pokemon::Pose> last;
+    std::optional<GridPose> last;
     try{
-        bool after_line_6 = false;
-        for (const Pokemon::StoryCheckpoint& checkpoint : story_checkpoints()){
-            for (const Pokemon::StoryStep& step : checkpoint.id == "01.10" ? checkpoint.steps : std::vector<Pokemon::StoryStep>{}){
-                const bool walks_here = after_line_6 && (step.kind == Pokemon::StoryStepKind::ROUTE || step.kind == Pokemon::StoryStepKind::LEGS);
-                after_line_6 |= step.name == "line_6";
-                if (!walks_here || !failure.empty()){
-                    continue;
-                }
-                const Pokemon::Outcome outcome = step.kind == Pokemon::StoryStepKind::ROUTE ? walks.route(state, step) : walks.legs(state, step);
-                failure = outcome.failure;
-                last = step.pose_after ? Pokemon::pose_of(*step.pose_after)
-                    : step.args.contains("target") ? Pokemon::pose_of(story_arg<GridPose>(step.args, "target")) : last;
-                state.pose = outcome.pose ? *outcome.pose : *last;
-                logger.log(std::format("01.10 {} ended at {}.", step.name, to_string(sim.player().pos)));
-            }
-        }
+        failure = run_line_7_steps(logger, walks, sim, state, last);
     }catch (const GridSimFailure& error){
         failure = error.message;
     }
@@ -863,10 +863,10 @@ UnitTestResult test_line_7_battle_reaches_floaroma(Logger& logger, const LineSev
     if (!failure.empty() || !last){
         return "01.10 after line 6: " + (failure.empty() ? std::string("no walk") : failure);
     }
-    const std::vector<TilePos> tiles = Pokemon::tiles_of(*last);
+    const std::vector<TilePos>& tiles = last->tiles;
     const auto end = story_to_local(world, last->map, nearest_tile(sim.player().pos));
     if (!end || std::find(tiles.begin(), tiles.end(), *end) == tiles.end()){
-        return std::format("01.10 ended at {}, not on {}.", to_string(sim.player().pos), Pokemon::to_string(*last));
+        return std::format("01.10 ended at {}, not on {}.", to_string(sim.player().pos), format_grid_pose(*last));
     }
     if (last->map != "FloaromaTown"){
         return "01.10 ends on " + last->map + ", not in Floaroma.";

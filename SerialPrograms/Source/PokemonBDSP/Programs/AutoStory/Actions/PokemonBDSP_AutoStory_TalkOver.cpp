@@ -32,7 +32,8 @@ public:
     virtual Pokemon::SettleLook look() override{
         m_context.wait_for_all_requests();
         const WallClock now = current_time();
-        return {m_eyes.observe(m_stream.video().snapshot(), now), now};
+        const ScreenEvents events = m_eyes.observe(m_stream.video().snapshot(), now);
+        return {.events = events, .when = now, .player_still = m_eyes.player_still()};
     }
     virtual void press(SceneMove move, Milliseconds wait) override{
         if (move == SceneMove::NEXT){

@@ -27,8 +27,6 @@
 #include "Utils/PokemonBDSP_AutoStory_RouteIO.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteTiming.h"
 #include "Utils/PokemonBDSP_AutoStory_WalkResult.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
@@ -45,9 +43,6 @@ namespace{
 using namespace std::chrono_literals;
 using Pokemon::Direction;
 using Pokemon::GridPose;
-using Pokemon::Pose;
-using Pokemon::StoryStep;
-using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
 
@@ -303,45 +298,36 @@ UnitTestResult test_jubilife_center_kids(Logger&){
 //  One ROUTE step of the story table, from where the steps before it end.
 struct StoryRoute{
     std::string name;
-    Pose from;
-    Pose goal;
+    GridPose from;
+    GridPose goal;
     std::string costs;
 };
 
-//  Every ROUTE step whose start the table knows: a row's start, a ROUTE's
-//  target or a step's pose_after. Steps after any other step start
-//  unknown and are left out.
-void add_story_route(const std::string& row, const StoryStep& step, std::optional<Pose>& at, std::vector<StoryRoute>& routes){
-    if (step.kind == StoryStepKind::ROUTE){
-        const Pose goal = Pokemon::pose_of(Pokemon::story_arg<GridPose>(step.args, "target"));
+void add_story_route(const std::string& row, const BdspStep& step, std::optional<GridPose>& at, std::vector<StoryRoute>& routes){
+    if (step.action == "route"){
+        const RouteStepArgs& args = std::get<RouteStepArgs>(step.args);
         if (at){
-            routes.push_back({std::format("{} {}", row, step.name), *at, goal, step.action});
+            routes.push_back({std::format("{} {}", row, step.name), *at, args.target, args.variant});
         }
-        at = goal;
+        at = args.target;
     }else{
         at.reset();
     }
     if (step.pose_after){
-        at = Pokemon::pose_of(*step.pose_after);
+        at = *step.pose_after;
     }
 }
 std::vector<StoryRoute> story_routes(){
     std::vector<StoryRoute> routes;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        std::optional<Pose> at;
-        if (row.start){
-            at = Pokemon::pose_of(*row.start);
-        }
-        for (const StoryStep& step : row.steps){
+        std::optional<GridPose> at = row.start;
+        for (const BdspStep& step : row.steps){
             add_story_route(row.id, step, at, routes);
         }
     }
     return routes;
 }
 
-//  Walks `route` from each of its start tiles on the simulated console,
-//  every timed hold overshooting if `overshoot`. Returns the tiles walked
-//  from each start, or why it failed.
 std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vector<size_t>& walked){
     const StoryWorld* world = story_plan_world(route.from.map, route.goal.map);
     const std::optional<RobustPlanCosts> costs = story_route_costs(route.costs);
@@ -349,11 +335,11 @@ std::string sweep_story_route(const StoryRoute& route, bool overshoot, std::vect
         return route.name + ": no world or costs.";
     }
     std::vector<TilePos> targets;
-    for (const TilePos& pos : Pokemon::tiles_of(route.goal)){
+    for (const TilePos& pos : route.goal.tiles){
         targets.push_back(story_to_world(*world, route.goal.map, pos));
     }
     std::vector<TilePos> start;
-    for (const TilePos& pos : Pokemon::tiles_of(route.from)){
+    for (const TilePos& pos : route.from.tiles){
         start.push_back(story_to_world(*world, route.from.map, pos));
     }
     for (const TilePos& from : start){

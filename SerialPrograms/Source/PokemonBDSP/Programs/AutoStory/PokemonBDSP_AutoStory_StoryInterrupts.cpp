@@ -6,6 +6,7 @@
 
 #include <utility>
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP_AutoStory_StoryInterrupts.h"
 
 namespace PokemonAutomation{
@@ -14,20 +15,11 @@ namespace PokemonBDSP{
 
 using Pokemon::InterruptKind;
 using Pokemon::InterruptPose;
-using Pokemon::StoryStepKind;
 
 
-bool presses_through_text(StoryStepKind kind){
-    switch (kind){
-    case StoryStepKind::MASH:
-    case StoryStepKind::ANSWER:
-    case StoryStepKind::BATTLE:
-    case StoryStepKind::GAME:
-    case StoryStepKind::NEW_GAME:
-        return true;
-    default:
-        return false;
-    }
+bool presses_through_text(std::string_view action){
+    return action == "scene" || action == "answer" || action == "battle" ||
+        action == "new_game" || story_events().contains(std::string(action));
 }
 
 Pokemon::StoryInterrupts story_interrupts(Pokemon::ScreenLookFunction look, const StoryInterruptActions& actions){
@@ -37,16 +29,19 @@ Pokemon::StoryInterrupts story_interrupts(Pokemon::ScreenLookFunction look, cons
     out.handlers.add(InterruptKind::TRAINER_SIGHT, {.handle = actions.trainer, .pose = InterruptPose::UNCHANGED});
     out.handlers.add(InterruptKind::DIALOG, {.handle = actions.dialog, .pose = InterruptPose::UNCHANGED});
     out.handlers.add(InterruptKind::WARP, {.handle = actions.warp, .pose = InterruptPose::LOST});
-    for (StoryStepKind step : {StoryStepKind::MASH, StoryStepKind::ANSWER, StoryStepKind::BATTLE, StoryStepKind::GAME, StoryStepKind::NEW_GAME}){
-        out.handlers.starts_on(step, InterruptKind::DIALOG);
+    for (std::string_view action : {"scene", "answer", "battle", "new_game"}){
+        out.handlers.starts_on(std::string(action), InterruptKind::DIALOG);
     }
-    out.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::TRAINER_SIGHT);
+    out.handlers.starts_on("battle", InterruptKind::TRAINER_SIGHT);
     //  The story's wild battles (the Starly at the lake) are the step's.
-    out.handlers.starts_on(StoryStepKind::BATTLE, InterruptKind::WILD_ENCOUNTER);
-    out.handlers.starts_on(StoryStepKind::TRAIN, InterruptKind::WILD_ENCOUNTER);
-    for (StoryStepKind step : {StoryStepKind::GAME, StoryStepKind::NEW_GAME}){
-        for (InterruptKind kind : {InterruptKind::WILD_ENCOUNTER, InterruptKind::TRAINER_SIGHT, InterruptKind::WARP}){
-            out.handlers.starts_on(step, kind);
+    out.handlers.starts_on("battle", InterruptKind::WILD_ENCOUNTER);
+    out.handlers.starts_on("train", InterruptKind::WILD_ENCOUNTER);
+    for (InterruptKind kind : {InterruptKind::WILD_ENCOUNTER, InterruptKind::TRAINER_SIGHT, InterruptKind::WARP}){
+        out.handlers.starts_on("new_game", kind);
+    }
+    for (const auto& [name, unused] : story_events()){
+        for (InterruptKind kind : {InterruptKind::DIALOG, InterruptKind::WILD_ENCOUNTER, InterruptKind::TRAINER_SIGHT, InterruptKind::WARP}){
+            out.handlers.starts_on(name, kind);
         }
     }
     return out;

@@ -27,8 +27,6 @@
 #include "Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "Utils/PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
@@ -46,10 +44,6 @@ namespace{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
-using Pokemon::GridPose;
-using Pokemon::Pose;
-using Pokemon::StoryStep;
-using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
 

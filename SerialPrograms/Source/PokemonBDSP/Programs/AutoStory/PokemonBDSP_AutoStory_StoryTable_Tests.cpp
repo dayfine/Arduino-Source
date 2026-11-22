@@ -13,30 +13,27 @@
 #include <set>
 #include <string>
 #include <utility>
-#include <variant>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/FileIO.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "Data/PokemonBDSP_AutoStory_Maps.h"
 #include "Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "Data/PokemonBDSP_AutoStory_StoryMaps.h"
-#include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
-#include "Actions/PokemonBDSP_AutoStory_Events.h"
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
+#include "Data/PokemonBDSP_AutoStory_WallRecovery.h"
+#include "PokemonBDSP_AutoStory_StarterRng.h"
+#include "PokemonBDSP_AutoStory_StoryActions.h"
 #include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP_AutoStory_StoryPlaces.h"
-#include "PokemonBDSP_AutoStory_TableRoutes.h"
-#include "PokemonBDSP_AutoStory_StarterRng.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryTable_Tests.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
+#include "PokemonBDSP_AutoStory_TableRoutes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -46,27 +43,13 @@ namespace PokemonBDSP{
 namespace{
 
 using Pokemon::Direction;
-using Pokemon::StoryStepKind;
+using Pokemon::GridPose;
 using Pokemon::TilePos;
-using Pokemon::story_arg;
 
-//  The actions each kind does itself, besides the story's events.
-const std::map<StoryStepKind, std::set<std::string>>& built_in_actions(){
-    static const std::map<StoryStepKind, std::set<std::string>> actions{
-        {StoryStepKind::ROUTE, {"", "route", "town", "robust", "line", std::string(ROUTE_ONTO_TRIGGER), std::string(ROUTE_INTO_SCENE)}},
-        {StoryStepKind::LEGS, {"", "legs", "one_short_ok", "to_wall", "to_dialogue", "to_map", "counted_wall", "measured"}},
-        {StoryStepKind::STEP, {"", "face", "to_banner", "tap", "or_legs"}},        {StoryStepKind::MASH, {"", "a"}},
-        {StoryStepKind::BATTLE, {"", "fight", "doubles", "starter"}},
-        {StoryStepKind::TALK, {"", "talk_to_wanderer"}},
-        {StoryStepKind::SHOP, {"", "sandgem_potions"}},
-    };
-    return actions;
-}
 
-//  The table: unique ids in order, each row lints, and every step's variant
-//  is one its kind does or one of the story's events.
+//  The table: unique ids in order, each row has unique non-empty step names
+//  and known S11 actions.
 UnitTestResult test_story_table_lints(Logger&){
-    const StoryEvents& events = story_events();
     std::set<std::string> ids;
     std::string previous;
     for (const StoryCheckpoint& row : story_checkpoints()){
@@ -74,25 +57,23 @@ UnitTestResult test_story_table_lints(Logger&){
             return row.id + ": repeated or out of order.";
         }
         previous = row.id;
-        if ((row.on_failure == StoryFailure::RELOAD_AND_RETRY) == row.saves_in.empty()){
-            return row.id + ": a row names the map its start save is made in (saves_in) exactly when it saves first.";
+        if ((row.on_failure == StoryFailurePolicy::RELOAD_AND_RETRY) == row.saves_in.empty()){
+            return row.id + ": a row names the map its save is made in (saves_in) exactly when it retries.";
         }
-        const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(row);
-        if (!problems.empty()){
-            return row.id + ": " + problems[0];
+        if (row.steps.empty()){
+            return row.id + ": has no steps.";
         }
-        for (const Pokemon::StoryStep& step : row.steps){
-            const auto built_in = built_in_actions().find(step.kind);
-            const bool known = events.contains(step.action) ||
-                (step.kind != StoryStepKind::GAME && step.action.empty()) ||
-                (built_in != built_in_actions().end() && built_in->second.contains(step.action));
-            if (!known){
-                return std::format("{} {}: no event or {} way named \"{}\".",
-                    row.id, step.name, Pokemon::story_step_kind_name(step.kind), step.action);
+        std::set<std::string> step_names;
+        for (const BdspStep& step : row.steps){
+            if (step.name.empty() || !step_names.insert(step.name).second){
+                return std::format("{} {}: empty or duplicate step name.", row.id, step.name);
+            }
+            if (!is_known_bdsp_action(step.action)){
+                return std::format("{} {}: unknown action \"{}\".", row.id, step.name, step.action);
             }
         }
     }
-    if (!ids.contains("00.00") || !ids.contains("01.11") || story_checkpoints().front().on_failure != StoryFailure::STOP){
+    if (!ids.contains("00.00") || !ids.contains("01.11") || story_checkpoints().front().on_failure != StoryFailurePolicy::STOP){
         return "Expected 00.00 (which stops on a failure) to 01.11.";
     }
     return true;
@@ -100,16 +81,16 @@ UnitTestResult test_story_table_lints(Logger&){
 
 //  Where a row's last step says it leaves the player: the end of its scene,
 //  or where its route (or heal) goes. None for a step that does not say.
-std::optional<Pokemon::Pose> end_pose(const StoryCheckpoint& row){
+std::optional<GridPose> end_pose(const StoryCheckpoint& row){
     if (row.steps.empty()){
         return std::nullopt;
     }
-    const Pokemon::StoryStep& last = row.steps.back();
+    const BdspStep& last = row.steps.back();
     if (last.pose_after){
-        return Pokemon::pose_of(*last.pose_after);
+        return *last.pose_after;
     }
-    if (last.kind == StoryStepKind::ROUTE){
-        return Pokemon::pose_of(story_arg<Pokemon::GridPose>(last.args, "target"));
+    if (last.action == "route"){
+        return std::get<RouteStepArgs>(last.args).target;
     }
     return std::nullopt;
 }
@@ -120,19 +101,18 @@ std::optional<Pokemon::Pose> end_pose(const StoryCheckpoint& row){
 UnitTestResult test_story_table_rows_join(Logger&){
     const std::vector<StoryCheckpoint>& rows = story_checkpoints();
     for (size_t i = 1; i < rows.size(); i++){
-        const std::optional<Pokemon::Pose> end = end_pose(rows[i - 1]);
-        const std::optional<Pokemon::Pose> start = rows[i].start ? std::make_optional(Pokemon::pose_of(*rows[i].start)) : std::nullopt;
+        const std::optional<GridPose> end = end_pose(rows[i - 1]);
+        const std::optional<GridPose>& start = rows[i].start;
         if (!end || !start){
             continue;
         }
-        const std::vector<TilePos> ends = Pokemon::tiles_of(*end);
         bool joins = start->map == end->map;
-        for (const TilePos& pos : Pokemon::tiles_of(*start)){
-            joins = joins && std::find(ends.begin(), ends.end(), pos) != ends.end();
+        for (const TilePos& pos : start->tiles){
+            joins = joins && std::find(end->tiles.begin(), end->tiles.end(), pos) != end->tiles.end();
         }
         if (!joins){
             return std::format("{} starts at {}, but {} ends at {}.",
-                rows[i].id, Pokemon::to_string(*start), rows[i - 1].id, Pokemon::to_string(*end));
+                rows[i].id, format_grid_pose(*start), rows[i - 1].id, format_grid_pose(*end));
         }
     }
     return true;
@@ -140,18 +120,11 @@ UnitTestResult test_story_table_rows_join(Logger&){
 
 struct LadyLeg{
     Direction direction;
-    size_t tiles;           //  0: walk until the wall
-    TilePos end;            //  world tile
+    size_t tiles;
+    TilePos end;
     std::string name;
 };
 
-//  00.04c's Potions: the Mart lady's walk (mart_lady()) is walks until
-//  stopped, so on the map each leg ends at its wall: from a tile to three
-//  below the Center's door, a tap east and north to the Center's front,
-//  west to the Lab's sign, a row south and west to her grass's edge, north
-//  to the trees on her row (she stands east of there), back a row south and
-//  east to Route 201's sign, a row south and east to the trees east of the
-//  Mart, and north to the front row's end.
 std::string follow_mart_lady(const StoryWorld& maps, const std::vector<LadyLeg>& legs, TilePos at, Logger& logger){
     for (const LadyLeg& leg : legs){
         if (leg.tiles == 0){
@@ -163,7 +136,6 @@ std::string follow_mart_lady(const StoryWorld& maps, const std::vector<LadyLeg>&
             }
             at = *next;
         }
-        //  The tap east lands on whichever row we stood on.
         if (&leg != &legs.front() && !(at == leg.end)){
             return leg.name + ": ends at " + describe(maps, at) + ", not " + describe(maps, leg.end) + ".";
         }
@@ -189,7 +161,6 @@ UnitTestResult test_mart_lady_walk(Logger& logger){
         {Direction::EAST, 0, sandgem({29, 12}), "east to the trees east of the Mart"},
         {Direction::NORTH, 0, sandgem(map_point("SandgemTown", "front_row_east_end")), "north to the front row's end"},
     };
-    //  Out of the Center's door we stand a tile to three below it (r261).
     for (int below = 1; below <= 3; below++){
         const std::string error = follow_mart_lady(maps, legs, sandgem({17, 10 + below}), logger);
         if (!error.empty()){
@@ -199,10 +170,6 @@ UnitTestResult test_mart_lady_walk(Logger& logger){
     return true;
 }
 
-//  01.10 on Route 204's north half: the line a human walked (2026-10-31),
-//  corner to corner, from the Ravaged Path's exit into Floaroma. Each
-//  stretch must plan as the one straight tap leg the human took, on the map
-//  as it is: a detour here means the map or the line changed.
 UnitTestResult test_route204_north_line(Logger& logger){
     const StoryWorld& route = route204_north_maps();
     const std::vector<TilePos> waypoints = map_region("Route204North", "floaroma_waypoints");
@@ -241,12 +208,6 @@ UnitTestResult test_route204_north_line(Logger& logger){
     return true;
 }
 
-//  01.10's line 5, "north 10 (open)" to (19, 12), after Aroma Lady Taylor's
-//  battle (lab-B 2026-11-08 18:15:47): we may stand anywhere on (19, 12..20).
-//  Column 19 is open floor from row 7 to 13 below the wall on row 6, so north
-//  to that wall and 5 south reach the goal; the console's plan, "south 12 (to
-//  wall) to (19, 24), north 12 (open) to (19, 12)", pinned the wall with the
-//  fewest held tiles and walked back twice as far.
 UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logger){
     const StoryWorld& world = *story_plan_world("Route204North", "Route204North");
     std::vector<TilePos> from;
@@ -269,13 +230,13 @@ UnitTestResult test_line_5_recovery_pins_the_wall_nearest_the_goal(Logger& logge
     return true;
 }
 
-//  plan_story_run() with Starter RNG handoff: off leaves the range unchanged;
-//  on stops after 00.01 with a save at the Verity Lakefront (17, 14) facing
-//  north, where 00.02 and Starter RNG start; starting past 00.01 runs on.
+//  plan_story_run() with Starter RNG handoff (E9): stops after 00.01 with
+//  handoff_saves_in = 00.02's saves_in ("Verity Lakefront"), ending at
+//  VerityLakefront (17, 14) facing north.
 UnitTestResult test_plan_story_run_starter_rng(Logger&){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     const StoryRunPlan full = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::OFF});
-    if (full.stop != StoryHandoff::NONE || full.rows.size() != table.size()){
+    if (full.stop != StoryHandoff::NONE || full.rows.size() != table.size() || !full.handoff_saves_in.empty()){
         return "With Starter RNG handoff off, expected the full table with no stop.";
     }
     const StoryRunPlan handoff = plan_story_run(table, 0, table.size() - 1, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::STOP});
@@ -284,34 +245,19 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
     ){
         return "Expected a 00.00..01.11 run with Starter RNG handoff to stop after 00.01.";
     }
-    const StoryCheckpoint& lakefront_row = handoff.rows.back();
-    const std::vector<std::string> problems = Pokemon::lint_story_checkpoint(lakefront_row);
-    if (!problems.empty()){
-        return std::format("00.01 with Starter RNG handoff save: {}", problems[0]);
-    }
-    if (lakefront_row.steps.empty() || lakefront_row.steps.back().kind != StoryStepKind::SAVE ||
-        lakefront_row.steps.back().name != "save_for_starter_rng"
-    ){
-        return "Expected 00.01 with Starter RNG handoff to end with save_for_starter_rng.";
-    }
-    //  The save card is checked as every other start save is: it must name
-    //  00.02's map.
-    const auto saves_in = lakefront_row.steps.back().args.find(SAVES_IN_ARG);
-    const std::string* card = saves_in == lakefront_row.steps.back().args.end() ? nullptr : std::get_if<std::string>(&saves_in->second);
-    if (card == nullptr || *card != table[2].saves_in || table[2].saves_in.empty()){
+    if (handoff.handoff_saves_in != table[2].saves_in || table[2].saves_in.empty()){
         return std::format(
-            "Expected the handoff save to check the card for \"{}\", got \"{}\".",
-            table[2].saves_in, card == nullptr ? "" : *card
+            "Expected the E9 handoff end-save to check the card for \"{}\", got \"{}\".",
+            table[2].saves_in, handoff.handoff_saves_in
         );
     }
-    const std::optional<Pokemon::Pose> end = end_pose(lakefront_row);
-    const std::optional<Pokemon::Pose> next_start = table[2].start
-        ? std::make_optional(Pokemon::pose_of(*table[2].start))
-        : std::nullopt;
+    const StoryCheckpoint& lakefront_row = handoff.rows.back();
+    const std::optional<GridPose> end = end_pose(lakefront_row);
+    const std::optional<GridPose>& next_start = table[2].start;
     if (!end || !next_start || end->map != "VerityLakefront" ||
-        Pokemon::to_string(*end) != Pokemon::to_string(*next_start)
+        format_grid_pose(*end) != format_grid_pose(*next_start)
     ){
-        return "Expected 00.01's Starter RNG handoff save to end at 00.02's VerityLakefront (17, 14) start pose.";
+        return "Expected 00.01 to end at 00.02's VerityLakefront (17, 14) start pose.";
     }
     const StoryRunPlan from_0002 = plan_story_run(table, 2, 4, StoryHandoffs{.starter_rng = Pokemon::RngHandoffMode::STOP});
     if (from_0002.stop != StoryHandoff::NONE || from_0002.rows.size() != 3 || from_0002.rows.front().id != "00.02"){
@@ -320,12 +266,6 @@ UnitTestResult test_plan_story_run_starter_rng(Logger&){
     return true;
 }
 
-//  Why `planned` may slide into a door or a warp, or "": an open leg (not to
-//  a wall) that may end on the tile before one, walking toward it. A part of
-//  a tile too far takes the warp (lab-B 2026-11-08 15:31 to 15:54: 01.05's
-//  open walk west to (2, 13), beside the Oreburgh Gate's mouth, slid into
-//  the Gate, and the tap after it waited for a banner already gone). The
-//  maps draw every warp as a door tile, cave mouths too.
 std::string slides_into_door(const StoryWorld& world, const PlannedLeg& planned){
     if (planned.leg.ends_at_wall){
         return "";
@@ -340,25 +280,19 @@ std::string slides_into_door(const StoryWorld& world, const PlannedLeg& planned)
     return "";
 }
 
-//  A ROUTE step of the table from a known place: the world it plans on and
-//  its plan, or nothing if it finds none.
 struct PlannedStoryRoute{
-    std::string name;       //  "<row id> <step name>"
+    std::string name;
     const StoryWorld* world;
     std::vector<TilePos> from;
     std::optional<std::vector<PlannedLeg>> legs;
 };
 
-//  Every ROUTE step of the table that starts from a known place, planned as
-//  walk_route() plans it. Where a row's steps leave the player is followed
-//  from its start through each step's target or pose_after; a route from an
-//  unknown place is logged, not planned.
 std::vector<PlannedStoryRoute> plan_story_routes(Logger& logger){
     std::vector<PlannedStoryRoute> routes;
     for (const TableRoute& route : table_routes()){
         if (route.world == nullptr){
             logger.log(std::format("{} {}: not checked, from {}.", route.row, route.step->name,
-                route.from ? Pokemon::to_string(*route.from) : "nowhere known"));
+                route.from ? format_grid_pose(*route.from) : "nowhere known"));
             continue;
         }
         RouteStepPlan plan = plan_table_route(route);
@@ -367,9 +301,6 @@ std::vector<PlannedStoryRoute> plan_story_routes(Logger& logger){
     return routes;
 }
 
-//  No ROUTE step of the table plans an open leg that ends before a door it
-//  walks toward: a door is gone through by a step that runs or taps into it
-//  from where the route ends on a wall or off its line.
 UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
     std::vector<std::string> found;
     size_t checked = 0;
@@ -390,8 +321,6 @@ UnitTestResult test_story_routes_stop_short_of_doors(Logger& logger){
     return found.empty() ? UnitTestResult(true) : UnitTestResult("Open legs that end before a door they walk toward:" + out);
 }
 
-//  The tiles a planned leg walks over from `from`, `from` first: to the wall,
-//  or its tiles' worth of steps.
 std::vector<TilePos> walked_tiles(const StoryWorld& world, const TilePos& from, const TileLeg& leg){
     std::vector<TilePos> tiles{from};
     size_t walked = 0;
@@ -406,8 +335,6 @@ std::vector<TilePos> walked_tiles(const StoryWorld& world, const TilePos& from, 
     return tiles;
 }
 
-//  The most tiles of `zone` one leg of `legs` walks over, from any tile the
-//  player may be on, and that leg.
 std::pair<size_t, std::string> most_zone_tiles(
     const StoryWorld& world, std::vector<TilePos> from, const std::vector<PlannedLeg>& legs,
     const std::function<bool(const TilePos&)>& zone
@@ -426,8 +353,6 @@ std::pair<size_t, std::string> most_zone_tiles(
     return most;
 }
 
-//  Where a planned leg from `from` runs along a zone where someone wanders,
-//  or "": two zone tiles in a row on a straight leg are tiles of one zone.
 std::string along_wander_zone(const StoryWorld& world, const TilePos& from, const TileLeg& leg){
     const std::vector<TilePos> tiles = walked_tiles(world, from, leg);
     for (size_t i = 1; i < tiles.size(); i++){
@@ -438,9 +363,6 @@ std::string along_wander_zone(const StoryWorld& world, const TilePos& from, cons
     return "";
 }
 
-//  Every ROUTE step of the table from a known place has a plan, and no leg
-//  of it runs along a zone where someone wanders: plan_robust_route() never
-//  plans one, so a step with no other way finds no plan here.
 UnitTestResult test_story_routes_keep_off_wander_zones(Logger& logger){
     std::string out;
     for (const PlannedStoryRoute& route : plan_story_routes(logger)){
@@ -460,11 +382,6 @@ UnitTestResult test_story_routes_keep_off_wander_zones(Logger& logger){
     return out.empty() ? UnitTestResult(true) : UnitTestResult("ROUTE steps:" + out);
 }
 
-//  01.08's walk below the Ravaged Path keeps off the row Route 204 South's
-//  youngster_3 wanders, (12, 2) to (14, 2): on lab-B (2026-11-08) the plan
-//  "north 35 (to wall) to (13, 2), west 2 (to wall) to (11, 2)" walked along
-//  it, and he stopped the leg west twice. A leg may cross his row through
-//  one of his tiles, not walk two of them.
 UnitTestResult test_ravaged_path_keeps_off_the_youngster(Logger& logger){
     for (const PlannedStoryRoute& route : plan_story_routes(logger)){
         if (route.name != "01.08 below_the_ravaged_path"){
@@ -491,10 +408,6 @@ UnitTestResult test_ravaged_path_keeps_off_the_youngster(Logger& logger){
 }
 
 
-//  The route plan dump: every table ROUTE step's legs, in a golden file
-//  beside the story data, so a planner or table change shows its plans' diff
-//  in review.
-
 constexpr std::string_view ROUTE_PLANS_HEADER =
     "BDSP AutoStory: the legs each ROUTE step of the story table plans.\n"
     "Planned as the console's RouteWalker plans them: plan_recovered_route() on\n"
@@ -518,8 +431,6 @@ std::string tile_list(const StoryWorld& world, const std::vector<TilePos>& tiles
     return out;
 }
 
-//  plan_recovered_route()'s wall holds from several start tiles: the legs up
-//  to where the tiles the player may be on first become one.
 size_t localization_legs(const std::vector<TilePos>& start, const std::vector<PlannedLeg>& legs){
     if (start.size() < 2){
         return 0;
@@ -560,13 +471,13 @@ std::string dump_plan(const StoryWorld& world, const RouteStepPlan& plan){
 }
 
 std::string dump_route(const TableRoute& route){
-    const Pokemon::StoryStep& step = *route.step;
-    std::string out = std::format("== {} {} (costs: {})\n", route.row, step.name, step.action.empty() ? "route" : step.action);
-    out += "  from: " + (route.from ? Pokemon::to_string(*route.from) : std::string("unknown")) + "\n";
-    const Pokemon::Pose target = Pokemon::pose_of(story_arg<Pokemon::GridPose>(step.args, "target"));
-    out += "  target: " + Pokemon::to_string(target) + "\n";
+    const BdspStep& step = *route.step;
+    const RouteStepArgs& args = std::get<RouteStepArgs>(step.args);
+    std::string out = std::format("== {} {} (costs: {})\n", route.row, step.name, args.variant.empty() ? "route" : args.variant);
+    out += "  from: " + (route.from ? format_grid_pose(*route.from) : std::string("unknown")) + "\n";
+    out += "  target: " + format_grid_pose(args.target) + "\n";
     if (route.world == nullptr){
-        return out + (route.from && !Pokemon::tiles_of(*route.from).empty()
+        return out + (route.from && !route.from->tiles.empty()
             ? "  not planned: no story world joins the two maps\n"
             : "  not planned: the start is unknown (a LEGS or STEP step before it does not say where it ends)\n");
     }
@@ -581,7 +492,6 @@ std::string route_plans_text(){
     return out;
 }
 
-//  The golden file, in the Data folder beside this file's.
 std::string route_plans_golden_path(){
     // code-health: allow char_pointer -- std::getenv returns a const char pointer
     const char* path = std::getenv("PA_ROUTE_PLANS_GOLDEN");
@@ -593,14 +503,12 @@ std::string route_plans_golden_path(){
     return (slash == std::string::npos ? std::string() : self.substr(0, slash + 1)) + "Data/route_plans.golden.txt";
 }
 
-//  `text` without carriage returns or a byte order mark.
 std::string plain_lines(const std::string& text){
     std::string out = text.starts_with("\xef\xbb\xbf") ? text.substr(3) : text;
     std::erase(out, '\r');
     return out;
 }
 
-//  `text` split into the header and one block per "== " step line.
 std::vector<std::string> plan_blocks(const std::string& text){
     std::vector<std::string> blocks{""};
     size_t begin = 0;
@@ -616,7 +524,6 @@ std::vector<std::string> plan_blocks(const std::string& text){
     return blocks;
 }
 
-//  Each step whose block changed, as "-" (golden) and "+" (planned) blocks.
 std::string plan_differences(const std::string& golden, const std::string& planned){
     const std::vector<std::string> expected = plan_blocks(golden);
     const std::vector<std::string> actual = plan_blocks(planned);
@@ -632,7 +539,6 @@ std::string plan_differences(const std::string& golden, const std::string& plann
     return changed == 0 ? "" : std::format("{} block(s) differ, the first ones:{}", changed, out);
 }
 
-//  Every table ROUTE step plans the legs the golden file lists.
 UnitTestResult test_route_plans_golden(Logger& logger){
     const std::string path = route_plans_golden_path();
     const std::string planned = route_plans_text();
@@ -662,9 +568,6 @@ UnitTestResult test_route_plans_golden(Logger& logger){
         "and review the file's diff. " + differences;
 }
 
-//  plan_story_run() with Run Starter RNG in AutoStory: 00.02 runs the
-//  starter_rng event after its Verity Lakefront start save and ends where
-//  00.03 starts; the handoff stop is not taken.
 UnitTestResult test_plan_story_run_in_program(Logger&){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     const StoryRunPlan in_program = plan_story_run(
@@ -674,21 +577,14 @@ UnitTestResult test_plan_story_run_in_program(Logger&){
         return "With Run Starter RNG in AutoStory on, expected the full table with no handoff stop.";
     }
     const StoryCheckpoint& rng_row = in_program.rows[2];
-    const std::vector<std::string> rng_problems = Pokemon::lint_story_checkpoint(rng_row);
-    if (!rng_problems.empty()){
-        return std::format("00.02 with Run Starter RNG in AutoStory: {}", rng_problems[0]);
-    }
     if (rng_row.id != "00.02" || rng_row.saves_in != "Verity Lakefront" || rng_row.steps.size() != 1 ||
-        rng_row.steps[0].kind != StoryStepKind::GAME || rng_row.steps[0].action != "starter_rng" ||
-        !story_events().contains(rng_row.steps[0].action)
+        rng_row.steps[0].action != "starter_rng" || !story_events().contains(rng_row.steps[0].action)
     ){
-        return "Expected 00.02 with Run Starter RNG in AutoStory to run the starter_rng game event after its Verity Lakefront start save.";
+        return "Expected 00.02 with Run Starter RNG in AutoStory to run the starter_rng event.";
     }
-    const std::optional<Pokemon::Pose> rng_end = end_pose(rng_row);
-    const std::optional<Pokemon::Pose> row0003_start = table[3].start
-        ? std::make_optional(Pokemon::pose_of(*table[3].start))
-        : std::nullopt;
-    if (!rng_end || !row0003_start || Pokemon::to_string(*rng_end) != Pokemon::to_string(*row0003_start)){
+    const std::optional<GridPose> rng_end = end_pose(rng_row);
+    const std::optional<GridPose>& row0003_start = table[3].start;
+    if (!rng_end || !row0003_start || format_grid_pose(*rng_end) != format_grid_pose(*row0003_start)){
         return "Expected 00.02's starter_rng step to end at 00.03's VerityLakefront (17, 14..15) start pose.";
     }
     if (bdsp_starter_for_choice(StarterChoice::TURTWIG) != BdspStarter::Turtwig ||
@@ -700,10 +596,6 @@ UnitTestResult test_plan_story_run_in_program(Logger&){
     return true;
 }
 
-
-//  The Starter RNG run's settings: the player's model, the starter and the
-//  reset limit come from AutoStory's options, and the run ends where 00.03
-//  starts (Lakefront overworld, menu closed).
 UnitTestResult test_starter_rng_settings(Logger&){
     BdspRngFilterTable table("Filters", Pokemon::StatsHuntMiscFeatureFlags{false, true, true, true});
     set_default_shiny_row(table);
@@ -727,8 +619,6 @@ UnitTestResult test_starter_rng_settings(Logger&){
     return true;
 }
 
-//  What Starter RNG ending means for the story: a starter in hand and the
-//  game on the Lakefront lets it go on; anything else stops it with a reason.
 UnitTestResult test_starter_rng_failure(Logger&){
     StarterRngRunResult result;
     result.outcome = StarterRngOutcome::HIT;
@@ -754,8 +644,6 @@ UnitTestResult test_starter_rng_failure(Logger&){
     return true;
 }
 
-//  A failed Run Starter RNG ends the program: 00.02's row retry would rerun
-//  the whole reset loop. Without it no row is fatal on top of the table's.
 UnitTestResult test_starter_rng_row_is_fatal(Logger&){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     const StoryRunPlan in_program = plan_story_run(

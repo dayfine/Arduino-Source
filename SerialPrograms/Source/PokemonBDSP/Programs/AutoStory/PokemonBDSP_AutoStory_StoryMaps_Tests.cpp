@@ -28,7 +28,6 @@
 #include "Data/PokemonBDSP_AutoStory_TrainerSight.h"
 #include "Data/PokemonBDSP_AutoStory_WalkRules.h"
 #include "PokemonBDSP_AutoStory_StoryMaps_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 
 namespace PokemonAutomation{
@@ -39,7 +38,6 @@ namespace PokemonBDSP{
 namespace{
 
 using Pokemon::Direction;
-using Pokemon::StoryStep;
 using Pokemon::TileKind;
 using Pokemon::TilePos;
 
@@ -95,9 +93,9 @@ UnitTestResult test_route202_catch_grass(Logger& logger){
 }
 
 //  The table's step `name` in row `row`.
-const StoryStep& table_step(std::string_view row, std::string_view name){
+const BdspStep& table_step(std::string_view row, std::string_view name){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        for (const StoryStep& step : checkpoint.steps){
+        for (const BdspStep& step : checkpoint.steps){
             if (checkpoint.id == row && step.name == name){
                 return step;
             }
@@ -106,11 +104,6 @@ const StoryStep& table_step(std::string_view row, std::string_view name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No step " + std::string(name) + " in " + std::string(row));
 }
 
-//  00.04b's way to Sandgem's Pokemon Center from the road's last row,
-//  wherever on it the run in stopped (lab-B 2026-11-09 20:09: two columns
-//  short): west to the row's wall and south onto the Center's sign, the
-//  table's walls, then its taps round the sign to below the door, each
-//  open, the door straight north of where they end.
 UnitTestResult test_sandgem_center_approach(Logger& logger){
         const StoryWorld town = alone("SandgemTown");
         const TilePos sign = map_point("SandgemTown", "pokemon_center_sign");
@@ -120,10 +113,10 @@ UnitTestResult test_sandgem_center_approach(Logger& logger){
             return std::format("The Center's sign {} and door {} are not a sign and a door.",
                 Pokemon::to_string(sign), Pokemon::to_string(door));
         }
-        const StoryStep& walls = table_step("00.04b", "above_center_sign");
-        const StoryStep& taps = table_step("00.04b", "below_center_door");
-        const auto& walls_legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(walls.args, "legs");
-        const auto& taps_legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(taps.args, "legs");
+        const BdspStep& walls = table_step("00.04b", "above_center_sign");
+        const BdspStep& taps = table_step("00.04b", "below_center_door");
+        const std::vector<Pokemon::StoryLeg>& walls_legs = std::get<LegsStepArgs>(walls.args).legs;
+        const std::vector<Pokemon::StoryLeg>& taps_legs = std::get<LegsStepArgs>(taps.args).legs;
         const TilePos above_sign = sign.next(Direction::NORTH);
         for (TilePos start = entry; standable(town, start); start = start.next(Direction::WEST)){
             TilePos pos = start;

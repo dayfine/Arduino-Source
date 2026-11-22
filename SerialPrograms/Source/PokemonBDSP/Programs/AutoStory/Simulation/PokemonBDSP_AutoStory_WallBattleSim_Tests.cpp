@@ -18,8 +18,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
@@ -44,8 +42,6 @@ namespace{
 
 using Pokemon::Direction;
 using Pokemon::GridPose;
-using Pokemon::story_arg;
-using Pokemon::StoryStep;
 using Pokemon::TilePos;
 
 
@@ -211,29 +207,24 @@ std::vector<SimTrigger> dawns_triggers(const StoryWorld& world){
 }
 
 //  The table's 00.03 into_dawns_scene.
-const StoryStep& into_dawns_scene(){
+const BdspStep& into_dawns_scene(){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        for (const StoryStep& step : checkpoint.steps){
+        for (const BdspStep& step : checkpoint.steps){
             if (checkpoint.id == "00.03" && step.name == "into_dawns_scene" &&
-                step.args.contains("target") &&
-                step.args.contains("legs") &&
-                story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs").size() == 1){
+                step.action == "route" && std::get<RouteStepArgs>(step.args).legs.size() == 1){
                 return step;
             }
         }
     }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "00.03 has no ROUTE into_dawns_scene with a run.");
+    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "00.03 has no route into_dawns_scene with a run.");
 }
 
 struct SceneRunInput{
     std::string name;
-    //  Dawn's scene is armed.
     bool dawn = false;
-    //  A wild battle interrupts the run.
     bool battle = false;
 };
 struct SceneRunExpectation{
-    //  The step ends in Dawn's scene; else it fails as "no_dialogue".
     bool in_scene = false;
 };
 struct SceneRunCase{
@@ -241,31 +232,25 @@ struct SceneRunCase{
     SceneRunExpectation expectation;
 };
 
-//  How 00.03's into_dawns_scene went: its outcome, where it left the player,
-//  how many tiles east of the route's end, whether a dialogue is open,
-//  whether a wild battle was run from, and the failure the program would
-//  have stopped on instead of failing the step.
 struct SceneRun{
-    Pokemon::Outcome outcome;
+    std::optional<Pokemon::StoryFailure> failure;
     TilePos end;
     int run_tiles = 0;
     bool dialog = false;
     bool ran_from_battle = false;
     std::string program_failure;
 };
-//  00.03's into_dawns_scene from the house's doorstep, where the step before
-//  it leaves us, at the run's pace (Mom gave the shoes in 00.03): the route
-//  to Route 201's east edge, then the run east into Sandgem.
+
 SceneRun run_into_dawns_scene(const SceneRunInput& input){
-    const StoryStep& step = into_dawns_scene();
-    const Pokemon::Pose start = Pokemon::tile_pose("TwinleafTown", {map_point("TwinleafTown", "house_doorstep")}, Direction::SOUTH);
-    const GridPose& target = story_arg<GridPose>(step.args, "target");
+    const BdspStep& step = into_dawns_scene();
+    const GridPose start{.map = "TwinleafTown", .tiles = {map_point("TwinleafTown", "house_doorstep")}, .facing = Direction::SOUTH};
+    const GridPose& target = std::get<RouteStepArgs>(step.args).target;
     const StoryWorld& world = *story_plan_world(start.map, target.map);
     SimWorld sim_world{.world = &world, .trainers = story_trainers(world), .can_run = true};
     if (input.dawn){
         sim_world.triggers = dawns_triggers(world);
     }
-    GridSim sim(sim_world, story_to_world(world, start.map, Pokemon::tiles_of(start).front()), Direction::SOUTH, true);
+    GridSim sim(sim_world, story_to_world(world, start.map, start.tiles.front()), Direction::SOUTH, true);
     std::vector<std::string> notes;
     std::vector<SimWallEncounter> encounters;
     if (input.battle){
@@ -274,12 +259,11 @@ SceneRun run_into_dawns_scene(const SceneRunInput& input){
     GridSimRouteIO route_io(sim, notes, {}, std::move(encounters));
     RouteOnlyStepIO io(route_io);
     StoryWalkSteps walk(io);
-    //  A row after the shoes' row runs, as 00.03 does once Mom gave them.
     walk.begin_attempt("00.04");
-    Pokemon::RunState state{.pose = start, .flags = {}};
+    BdspRunState state{.pose = start};
     SceneRun out;
     try{
-        out.outcome = walk.route(state, step);
+        out.failure = walk.route(state, step);
     }catch (const GridSimFailure& e){
         out.program_failure = e.message;
     }
@@ -290,12 +274,10 @@ SceneRun run_into_dawns_scene(const SceneRunInput& input){
     return out;
 }
 
-//  Why `run` is not what `test_case` expects, or "".
 std::string scene_run_error(const SceneRunCase& test_case, const SceneRun& run){
     const StoryWorld& world = *story_plan_world("Route201", "SandgemTown");
     const std::optional<TilePos> sandgem = story_to_local(world, "SandgemTown", run.end);
-    const int cap = story_arg<std::vector<Pokemon::StoryLeg>>(into_dawns_scene().args, "legs").front().tiles;
-    //  The cap is timed at the slowest run; the sim runs faster, this far.
+    const int cap = std::get<RouteStepArgs>(into_dawns_scene().args).legs.front().tiles;
     const int most = (int)((route_limit_for_tiles(MoveSpeed::RUN, cap) - ROUTE_START_DELAY) / route_ms_per_tile(Direction::EAST, MoveSpeed::RUN));
     if (!run.program_failure.empty()){
         return "the program failed instead of the step: " + run.program_failure;
@@ -306,11 +288,12 @@ std::string scene_run_error(const SceneRunCase& test_case, const SceneRun& run){
     if (run.run_tiles < 0 || run.run_tiles > most){
         return std::format("the run went {} tiles past the route's end, outside its cap of {} ({} at the sim's pace).", run.run_tiles, cap, most);
     }
-    if (test_case.expectation.in_scene && (!run.outcome.succeeded() || !run.dialog || !sandgem || sandgem->x != 4)){
-        return std::format("\"{}\", ended at {}, not in Dawn's scene on Sandgem's column 4.", Pokemon::to_string(run.outcome), describe(world, run.end));
+    const std::string status = run.failure ? std::format("{}", *run.failure) : std::string("ok");
+    if (test_case.expectation.in_scene && (run.failure || !run.dialog || !sandgem || sandgem->x != 4)){
+        return std::format("\"{}\", ended at {}, not in Dawn's scene on Sandgem's column 4.", status, describe(world, run.end));
     }
-    if (!test_case.expectation.in_scene && run.outcome.failure != "no_dialogue"){
-        return std::format("expected the step to fail as no_dialogue; \"{}\".", Pokemon::to_string(run.outcome));
+    if (!test_case.expectation.in_scene && (!run.failure || run.failure->code != "no_dialogue")){
+        return std::format("expected the step to fail as no_dialogue; \"{}\".", status);
     }
     return "";
 }
@@ -323,7 +306,8 @@ public:
     {}
     virtual UnitTestResult run(Logger& logger, CancellableScope&) const override{
         const SceneRun run = run_into_dawns_scene(m_case.input);
-        logger.log(std::format("{}: \"{}\", ended {} tiles on.", m_case.input.name, Pokemon::to_string(run.outcome), run.run_tiles));
+        const std::string status = run.failure ? std::format("{}", *run.failure) : std::string("ok");
+        logger.log(std::format("{}: \"{}\", ended {} tiles on.", m_case.input.name, status, run.run_tiles));
         const std::string error = scene_run_error(m_case, run);
         return error.empty() ? UnitTestResult(true) : UnitTestResult(error);
     }

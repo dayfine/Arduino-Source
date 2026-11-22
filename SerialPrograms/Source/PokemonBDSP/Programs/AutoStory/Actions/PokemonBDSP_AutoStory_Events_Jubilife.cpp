@@ -80,17 +80,17 @@ void return_below_home(VideoStream& stream, ProControllerContext& context, Direc
     turn_to(stream, context, facing, Direction::NORTH);
 }
 
-Pokemon::Outcome finish_wanderer_talk(
+std::optional<Pokemon::StoryFailure> finish_wanderer_talk(
     VideoStream& stream, ProControllerContext& context, Direction& facing,
     int at, size_t round, const std::string& name
 ){
     stream.log(std::format("[Talk] {}: answered in round {}, {} tiles east of home.", name, round, at));
     finish_dialogue(stream, context, BUTTON_A, name);
     return_below_home(stream, context, facing, at, name);
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-Pokemon::Outcome talk_to_wanderer(StoryEnv& console, Pokemon::RunState&, const Pokemon::StoryStep& step){
+std::optional<Pokemon::StoryFailure> talk_to_wanderer(StoryEnv& console, BdspRunState&, const BdspStep& step){
     VideoStream& stream = console.env.console;
     ProControllerContext& context = console.context;
     const std::string label = std::format("Along the row below {}", step.name);

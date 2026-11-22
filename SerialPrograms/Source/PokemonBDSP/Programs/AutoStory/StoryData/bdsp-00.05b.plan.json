@@ -1,8 +1,24 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
+    "id": "00.05b",
+    "title": "Jubilife: the president and the clowns' coupons",
+    "start": {
+      "facing": "south",
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          40,
+          41
+        ]
+      ]
+    },
     "events": [
       {
-        "action": "town",
+        "id": "below_the_presidents_trigger",
+        "action": "route",
+        "why": "east along the School's row",
         "args": {
           "fight_wild": false,
           "target": {
@@ -14,36 +30,39 @@
                 41
               ]
             ]
-          }
-        },
-        "id": "below_the_presidents_trigger",
-        "kind": "route",
-        "why": "east along the School's row"
+          },
+          "variant": "town"
+        }
       },
       {
+        "id": "presidents_trigger",
+        "action": "step",
+        "why": "the trigger (44..48, 40)",
         "args": {
           "direction": "north"
-        },
-        "id": "presidents_trigger",
-        "kind": "step",
-        "why": "the trigger (44..48, 40)"
+        }
       },
       {
-        "declared_after": {
-          "facing": "north",
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              46,
-              40
-            ]
-          ]
-        },
         "id": "president_walks_up",
-        "kind": "scene",
-        "why": "he walks down to (46, 39) and sends us for the coupons"
+        "action": "scene",
+        "why": "he walks down to (46, 39) and sends us for the coupons",
+        "args": {
+          "pose_after": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                46,
+                40
+              ]
+            ]
+          }
+        }
       },
       {
+        "id": "past_the_president",
+        "action": "route",
+        "why": "east of his column",
         "args": {
           "fight_wild": false,
           "target": {
@@ -56,13 +75,12 @@
               ]
             ]
           }
-        },
-        "id": "past_the_president",
-        "kind": "route",
-        "why": "east of his column"
+        }
       },
       {
-        "action": "town",
+        "id": "below_the_mart_clown",
+        "action": "route",
+        "why": "up the road east of the Center",
         "args": {
           "fight_wild": false,
           "target": {
@@ -74,30 +92,31 @@
                 34
               ]
             ]
-          }
-        },
-        "id": "below_the_mart_clown",
-        "kind": "route",
-        "why": "up the road east of the Center"
+          },
+          "variant": "town"
+        }
       },
       {
-        "action": "talk_to_wanderer",
-        "declared_after": {
-          "facing": "north",
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              55,
-              34
-            ]
-          ]
-        },
         "id": "mart_clown",
-        "kind": "talk",
-        "why": "the clown by the Mart: 'Do Pokemon grow by defeating others?' Yes; Coupon 1"
+        "action": "talk_to_wanderer",
+        "why": "the clown by the Mart: 'Do Pokemon grow by defeating others?' Yes; Coupon 1",
+        "args": {
+          "pose_after": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                55,
+                34
+              ]
+            ]
+          }
+        }
       },
       {
-        "action": "town",
+        "id": "below_the_tv_clown",
+        "action": "route",
+        "why": "west and north to the TV station",
         "args": {
           "fight_wild": false,
           "target": {
@@ -109,35 +128,37 @@
                 17
               ]
             ]
-          }
-        },
-        "id": "below_the_tv_clown",
-        "kind": "route",
-        "why": "west and north to the TV station"
+          },
+          "variant": "town"
+        }
       },
       {
         "id": "tv_clown",
-        "kind": "talk",
+        "action": "talk",
         "why": "the clown below the TV station's door"
       },
       {
-        "action": "a",
-        "declared_after": {
-          "facing": "north",
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              36,
-              17
-            ]
-          ]
-        },
         "id": "tv_clowns_coupon",
-        "kind": "scene",
-        "why": "\"Can a Pokemon hold an item?\" Yes; Coupon 3"
+        "action": "scene",
+        "why": "\"Can a Pokemon hold an item?\" Yes; Coupon 3",
+        "args": {
+          "variant": "a",
+          "pose_after": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                36,
+                17
+              ]
+            ]
+          }
+        }
       },
       {
-        "action": "town",
+        "id": "below_the_company_clown",
+        "action": "route",
+        "why": "west along the long road, north beside the sign",
         "args": {
           "fight_wild": false,
           "target": {
@@ -149,49 +170,34 @@
                 19
               ]
             ]
-          }
-        },
-        "id": "below_the_company_clown",
-        "kind": "route",
-        "why": "west along the long road, north beside the sign"
+          },
+          "variant": "town"
+        }
       },
       {
-        "action": "talk_to_wanderer",
-        "declared_after": {
-          "facing": "north",
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              15,
-              19
-            ]
-          ]
-        },
         "id": "company_clown",
-        "kind": "talk",
-        "why": "the clown by the Poketch Company: 'Do moves have types?' Yes; Coupon 2"
+        "action": "talk_to_wanderer",
+        "why": "the clown by the Poketch Company: 'Do moves have types?' Yes; Coupon 2",
+        "args": {
+          "pose_after": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                15,
+                19
+              ]
+            ]
+          }
+        }
       }
     ],
-    "id": "00.05b",
-    "start": {
-      "facing": "south",
-      "map": "JubilifeCity",
-      "tiles": [
-        [
-          40,
-          41
-        ]
-      ]
-    },
-    "title": "Jubilife: the president and the clowns' coupons"
+    "metadata": {
+      "phase": "reproduction"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Jubilife City"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "reproduction"
   }
 }

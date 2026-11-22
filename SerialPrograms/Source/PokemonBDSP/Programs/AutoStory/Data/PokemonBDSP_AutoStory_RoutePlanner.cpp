@@ -9,7 +9,7 @@
 #include <format>
 #include "Common/Cpp/Exceptions.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
-#include "Pokemon/Navigation/Pokemon_RobustLegPlanner.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner.h"
 #include "PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP_AutoStory_TrainerSight.h"

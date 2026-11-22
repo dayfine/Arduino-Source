@@ -43,8 +43,12 @@ const EnumDropdownDatabase<StoryBreakpoints>& StoryBreakpoints_Database(){
 }
 
 
+std::string story_checkpoint_label(std::string_view id, std::string_view title){
+    return title.empty() ? std::string(id) : std::format("{} {}", id, title);
+}
+
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
-    return checkpoint.title.empty() ? checkpoint.id : std::format("{} {}", checkpoint.id, checkpoint.title);
+    return story_checkpoint_label(checkpoint.id, checkpoint.title);
 }
 
 
@@ -151,8 +155,8 @@ std::string StoryRunOptions::check_validity() const{
     return error;
 }
 
-SegmentPolicy StoryRunOptions::policy() const{
-    SegmentPolicy policy;
+StoryRunPolicy StoryRunOptions::policy() const{
+    StoryRunPolicy policy;
     policy.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT;
     policy.save_mode = SAVE_MODE;
     return policy;

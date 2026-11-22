@@ -18,16 +18,12 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryCheckpoint.h"
@@ -48,10 +44,6 @@ namespace{
 using namespace std::chrono_literals;
 using Pokemon::Direction;
 using Pokemon::GridPose;
-using Pokemon::story_arg;
-using Pokemon::Pose;
-using Pokemon::StoryStep;
-using Pokemon::StoryStepKind;
 using Pokemon::TileBox;
 using Pokemon::TilePos;
 
@@ -268,58 +260,61 @@ std::string walk_error(const SimRoute& route, const SimWalk& walk){
     return "";
 }
 
-std::vector<TilePos> world_tiles(const StoryWorld& world, const Pose& pose){
+std::vector<TilePos> world_tiles(const StoryWorld& world, const GridPose& pose){
     std::vector<TilePos> tiles;
-    for (const TilePos& pos : Pokemon::tiles_of(pose)){
+    for (const TilePos& pos : pose.tiles){
         tiles.push_back(story_to_world(world, pose.map, pos));
     }
     return tiles;
 }
 
-//  Where the table has the player after `step`, from `at`: a route's
-//  target, a walk's last tile, a step's next tile; a scene or an event's
-//  end is the table's pose_after, or unknown.
-std::optional<Pose> pose_after_step(const std::optional<Pose>& at, const StoryStep& step){
-    std::optional<Pose> next;
-    if (step.kind == StoryStepKind::ROUTE){
-        const GridPose& target = story_arg<GridPose>(step.args, "target");
-        next = Pokemon::pose_of(target);
-    }else if (at && step.kind == StoryStepKind::STEP){
-        const Direction direction = story_arg<Direction>(step.args, "direction");
-        std::vector<TilePos> tiles;
-        for (const TilePos& pos : Pokemon::tiles_of(*at)){
-            tiles.push_back(pos.next(direction));
-        }
-        next = Pokemon::tile_pose(at->map, tiles, direction);
-    }else if (at && step.kind == StoryStepKind::LEGS && (step.action.empty() || step.action == "legs" || step.action == "open")){
-        std::vector<TilePos> tiles = Pokemon::tiles_of(*at);
-        const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
-        for (const Pokemon::StoryLeg& leg : legs_list){
-            for (TilePos& pos : tiles){
-                for (int i = 0; i < leg.tiles; i++){
-                    pos = pos.next(leg.direction);
-                }
+std::vector<TilePos> advance_tiles(std::vector<TilePos> tiles, const std::vector<Pokemon::StoryLeg>& legs){
+    for (const Pokemon::StoryLeg& leg : legs){
+        for (TilePos& pos : tiles){
+            for (int i = 0; i < leg.tiles; i++){
+                pos = pos.next(leg.direction);
             }
         }
-        next = Pokemon::tile_pose(at->map, tiles, legs_list.back().direction);
-    }else if (step.kind != StoryStepKind::GAME && step.kind != StoryStepKind::SHOP &&
-        step.kind != StoryStepKind::MASH && step.kind != StoryStepKind::LEGS
+    }
+    return tiles;
+}
+
+std::optional<GridPose> pose_after_step(const std::optional<GridPose>& at, const BdspStep& step){
+    std::optional<GridPose> next;
+    if (step.action == "route"){
+        next = std::get<RouteStepArgs>(step.args).target;
+    }else if (at && step.action == "step"){
+        const Direction direction = std::get<StepMoveArgs>(step.args).direction;
+        std::vector<TilePos> tiles;
+        for (const TilePos& pos : at->tiles){
+            tiles.push_back(pos.next(direction));
+        }
+        next = GridPose{.map = at->map, .tiles = std::move(tiles), .facing = direction};
+    }else if (at && step.action == "legs"){
+        const LegsStepArgs& args = std::get<LegsStepArgs>(step.args);
+        if (args.variant.empty() || args.variant == "legs" || args.variant == "open"){
+            next = GridPose{
+                .map = at->map,
+                .tiles = advance_tiles(at->tiles, args.legs),
+                .facing = args.legs.back().direction,
+            };
+        }
+    }else if (step.action == "options" || step.action == "talk" || step.action == "answer" ||
+        step.action == "battle" || step.action == "train" || step.action == "heal" || step.action == "save"
     ){
         next = at;
     }
-    return step.pose_after ? std::optional<Pose>(Pokemon::pose_of(*step.pose_after)) : next;
+    return step.pose_after ? step.pose_after : next;
 }
 
-//  Every ROUTE step of the table that starts from a known pose, from its
-//  first and its last tile, at the pace ConsoleStory walks it.
 std::vector<SimRoute> table_routes(){
     std::vector<SimRoute> routes;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        std::optional<Pose> at = row.start ? std::optional<Pose>(Pokemon::pose_of(*row.start)) : std::nullopt;
+        std::optional<GridPose> at = row.start;
         bool shoes = row.id > std::string(RUNNING_SHOES_ROW);
-        for (const StoryStep& step : row.steps){
-            const GridPose* target_ptr = step.kind == StoryStepKind::ROUTE ? &story_arg<GridPose>(step.args, "target") : nullptr;
-            const StoryWorld* world = at && target_ptr ? story_plan_world(at->map, target_ptr->map) : nullptr;
+        for (const BdspStep& step : row.steps){
+            const RouteStepArgs* route_args = step.action == "route" ? &std::get<RouteStepArgs>(step.args) : nullptr;
+            const StoryWorld* world = at && route_args ? story_plan_world(at->map, route_args->target.map) : nullptr;
             const std::vector<TilePos> from = world ? world_tiles(*world, *at) : std::vector<TilePos>{};
             std::vector<TilePos> starts;
             if (!from.empty()){
@@ -330,7 +325,7 @@ std::vector<SimRoute> table_routes(){
             }
             for (const TilePos& start : starts){
                 routes.push_back({.label = row.id + " " + step.name, .world = world, .from = from, .start = start,
-                    .targets = world_tiles(*world, Pokemon::pose_of(*target_ptr)), .costs = *story_route_costs(step.action), .can_run = shoes});
+                    .targets = world_tiles(*world, route_args->target), .costs = *story_route_costs(route_args->variant), .can_run = shoes});
             }
             at = pose_after_step(at, step);
             shoes = shoes || (row.id == RUNNING_SHOES_ROW && step.name == RUNNING_SHOES_STEP);
@@ -465,8 +460,8 @@ private:
 //  Row `row`'s steps from `first` up to the one before `last`, and where
 //  the table has the player before `first`.
 struct TableSteps{
-    Pose start;
-    std::vector<StoryStep> steps;
+    GridPose start;
+    std::vector<BdspStep> steps;
 };
 std::optional<TableSteps> table_steps(const std::string& row, const std::string& first, const std::string& last){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
@@ -475,8 +470,8 @@ std::optional<TableSteps> table_steps(const std::string& row, const std::string&
         return std::nullopt;
     }
     std::optional<TableSteps> out;
-    std::optional<Pose> at = checkpoint->start ? std::optional<Pose>(Pokemon::pose_of(*checkpoint->start)) : std::nullopt;
-    for (const StoryStep& step : checkpoint->steps){
+    std::optional<GridPose> at = checkpoint->start;
+    for (const BdspStep& step : checkpoint->steps){
         if (step.name == last){
             return out;
         }
@@ -491,8 +486,6 @@ std::optional<TableSteps> table_steps(const std::string& row, const std::string&
     return std::nullopt;
 }
 
-//  Where each of `table`'s steps, walked on `sim` from wherever its player
-//  stands, left the player, and why the walk failed if it did.
 struct StepsWalk{
     std::vector<std::pair<std::string, SimPos>> ends;
     std::string failure;
@@ -504,18 +497,20 @@ StepsWalk walk_steps(GridSim& sim, const TableSteps& table){
     WalkStepsIO io(sim, route_io);
     StoryWalkSteps walk(io);
     walk.begin_attempt("01.03");
-    Pokemon::RunState state{.pose = table.start, .flags = {}};
+    BdspRunState state{.pose = table.start};
     try{
-        for (const StoryStep& step : table.steps){
-            const Pokemon::Outcome outcome = step.kind == StoryStepKind::ROUTE ? walk.route(state, step)
-                : step.kind == StoryStepKind::LEGS ? walk.legs(state, step)
-                : Pokemon::outcome_failed("not_a_walk", step.name);
+        for (const BdspStep& step : table.steps){
+            const std::optional<Pokemon::StoryFailure> err = step.action == "route" ? walk.route(state, step)
+                : step.action == "legs" ? walk.legs(state, step)
+                : std::optional<Pokemon::StoryFailure>(Pokemon::StoryFailure{.code = "not_a_walk", .detail = step.name});
             out.ends.emplace_back(step.name, sim.player().pos);
-            if (!outcome.succeeded()){
-                out.failure = step.name + ": " + Pokemon::to_string(outcome);
+            if (err){
+                out.failure = std::format("{}: {}", step.name, *err);
                 break;
             }
-            state.pose = step.pose_after ? Pokemon::pose_of(*step.pose_after) : outcome.pose ? *outcome.pose : state.pose;
+            if (step.pose_after){
+                state.pose = *step.pose_after;
+            }
         }
     }catch (const GridSimFailure& e){
         out.failure = e.message;
@@ -551,20 +546,26 @@ std::string walk_misses(const StoryWorld& world, const TableSteps& table, const 
 //  and onto his row from (15, 16), then west against the rock east of him
 //  and south against the wall.
 TableSteps old_taps_across_roarks_room(){
-    StoryStep taps;
-    taps.kind = StoryStepKind::LEGS;
-    taps.name = "above_roarks_row";
-    taps.action = "legs";
-    taps.args["legs"] = std::vector<Pokemon::StoryLeg>{
-        {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
-        {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
+    BdspStep taps{
+        .name = "above_roarks_row",
+        .action = "legs",
+        .args = LegsStepArgs{
+            .legs = {
+                {.direction = Direction::EAST, .tiles = 14}, {.direction = Direction::SOUTH, .tiles = 10},
+                {.direction = Direction::WEST, .tiles = 2}, {.direction = Direction::SOUTH, .tiles = 2},
+            },
+            .variant = "legs",
+        },
     };
-    StoryStep walls;
-    walls.kind = StoryStepKind::LEGS;
-    walls.name = "beside_roarks_rock";
-    walls.action = "to_wall";
-    walls.args["legs"] = std::vector<Pokemon::StoryLeg>{{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}};
-    return {Pokemon::tile_pose("OreburghMine", {TilePos{15, 16}}, Direction::SOUTH), {taps, walls}};
+    BdspStep walls{
+        .name = "beside_roarks_rock",
+        .action = "legs",
+        .args = LegsStepArgs{
+            .legs = {{.direction = Direction::WEST, .tiles = 7}, {.direction = Direction::SOUTH, .tiles = 1}},
+            .variant = "to_wall",
+        },
+    };
+    return {GridPose{.map = "OreburghMine", .tiles = {TilePos{15, 16}}, .facing = Direction::SOUTH}, {taps, walls}};
 }
 
 //  lab-B 2026-11-08 11:55: a wild battle on 01.03's counted taps through

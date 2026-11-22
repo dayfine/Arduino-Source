@@ -59,12 +59,14 @@ SettleRule settle_rule(SettleKind kind);
 
 //  One look at the screen: its events, and when it was taken.
 struct SettleLook{
-    ScreenEvents events;
-    WallClock when;
+    ScreenEvents events = {};
+    WallClock when = WallClock::min();
     //  Since when the screen has shown `events` unchanged, for a look that
     //  watches a span: a quiet that began early in it counts from then, not
     //  from `when`. None: from `when`.
     std::optional<WallClock> since = std::nullopt;
+    //  Whether the box around the player stayed still (StillSource::PLAYER).
+    bool player_still = false;
 };
 
 //  What run_settle() needs of a game: its looks and its presses.

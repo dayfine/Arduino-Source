@@ -38,17 +38,20 @@ const InterruptHandler* InterruptHandlerTable::find(InterruptKind kind) const{
     return iter == m_handlers.end() ? nullptr : &iter->second;
 }
 
-void InterruptHandlerTable::starts_on(StoryStepKind step, InterruptKind kind){
-    m_starts_on.emplace(step, kind);
+void InterruptHandlerTable::starts_on(std::string action, InterruptKind kind){
+    m_starts_on.emplace(std::move(action), kind);
 }
 
-bool InterruptHandlerTable::step_starts_on(StoryStepKind step, InterruptKind kind) const{
-    if (m_starts_on.contains({step, kind})){
+bool InterruptHandlerTable::action_starts_on(std::string_view action, InterruptKind kind) const{
+    const auto has = [&](InterruptKind target){
+        return m_starts_on.find(std::pair<std::string, InterruptKind>{std::string(action), target}) != m_starts_on.end();
+    };
+    if (has(kind)){
         return true;
     }
     return kind == InterruptKind::UNSETTLED && (
-        m_starts_on.contains({step, InterruptKind::WILD_ENCOUNTER}) ||
-        m_starts_on.contains({step, InterruptKind::TRAINER_SIGHT})
+        has(InterruptKind::WILD_ENCOUNTER) ||
+        has(InterruptKind::TRAINER_SIGHT)
     );
 }
 
@@ -82,11 +85,11 @@ bool may_open_a_battle(const ScreenLook& look, const InterruptVerdict& verdict){
 //  max_looks looks in all, or max_opening_looks while it may be a battle's
 //  opening; not again before a step that starts on it. `screen` is how the
 //  last look ended.
-InterruptVerdict settled_verdict(const StoryInterrupts& interrupts, StoryStepKind step, ScreenSettle& screen){
+InterruptVerdict settled_verdict(const StoryInterrupts& interrupts, std::string_view action, ScreenSettle& screen){
     ScreenLook look = interrupts.look(true);
     InterruptVerdict verdict = classify_interrupt(look.log, look.window, interrupts.knobs);
     const bool home = look.log.showing().has(ScreenEvent::SWITCH_HOME_MENU);
-    if (!home && !interrupts.handlers.step_starts_on(step, InterruptKind::UNSETTLED)){
+    if (!home && !interrupts.handlers.action_starts_on(action, InterruptKind::UNSETTLED)){
         for (size_t looks = 1; verdict.kind == InterruptKind::UNSETTLED; looks++){
             const size_t limit = may_open_a_battle(look, verdict) ? interrupts.max_opening_looks : interrupts.max_looks;
             if (looks >= limit){
@@ -98,6 +101,16 @@ InterruptVerdict settled_verdict(const StoryInterrupts& interrupts, StoryStepKin
     }
     screen = judge_settle(look);
     return verdict;
+}
+
+//  The handler's failure, if any. A handler drives the console, which it can
+//  lose: that is a failed step too, not an exception for the caller.
+std::optional<StoryFailure> run_handler(const InterruptHandler& handler, const InterruptVerdict& verdict){
+    try{
+        return handler.handle(verdict);
+    }catch (OperationFailedException& e){
+        return StoryFailure{.code = "operation_failed", .detail = e.message()};
+    }
 }
 
 } // namespace
@@ -144,52 +157,49 @@ std::string describe(const ScreenSettle& settle){
     if (is_settled(settle)){
         return std::format("settled overworld ({})", quiet);
     }
-    return std::format("{} showing ({})", describe(settle.showing), quiet);
+    return std::format("{} showing ({})", settle.showing, quiet);
 }
 
 
-//  The handler's outcome. A handler drives the console, which it can lose:
-//  that is a failed outcome too, not an exception for the executor's caller.
-Outcome run_handler(const InterruptHandler& handler, const InterruptVerdict& verdict, RunState& state){
-    try{
-        return handler.handle(verdict, state);
-    }catch (OperationFailedException& e){
-        return outcome_failed("operation_failed", e.message());
-    }
-}
-
-
-InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, const StoryStep& step, RunState& state){
+InterruptCheck clear_story_interrupt(
+    const StoryInterrupts& interrupts, std::string_view step_name, std::string_view action
+){
     InterruptCheck out;
-    out.verdict = settled_verdict(interrupts, step.kind, out.screen);
+    out.verdict = settled_verdict(interrupts, action, out.screen);
     if (on_home_menu(out.screen)){
         out.verdict = {};
-        out.outcome = outcome_game_not_running();
+        out.failure = game_not_running_failure();
         return out;
     }
     const InterruptKind kind = out.verdict.kind;
     if (kind == InterruptKind::NONE){
         return out;
     }
-    if (interrupts.handlers.step_starts_on(step.kind, kind)){
+    if (interrupts.handlers.action_starts_on(action, kind)){
         out.verdict = {};
         return out;
     }
     if (kind == InterruptKind::UNSETTLED){
-        out.outcome = outcome_failed("interrupt_unsettled", step.name);
+        out.failure = StoryFailure{.code = "interrupt_unsettled", .detail = std::string(step_name)};
         return out;
     }
     const InterruptHandler* handler = interrupts.handlers.find(kind);
     if (handler == nullptr || !handler->handle){
-        out.outcome = outcome_failed("unhandled_interrupt", std::format("{} before {}", interrupt_kind_name(kind), step.name));
+        out.failure = StoryFailure{
+            .code = "unhandled_interrupt",
+            .detail = std::format("{} before {}", interrupt_kind_name(kind), step_name),
+        };
         return out;
     }
-    const Outcome handled = run_handler(*handler, out.verdict, state);
-    if (!handled.succeeded()){
-        out.outcome = outcome_failed("interrupt_failed", std::format("{}: {}", interrupt_kind_name(kind), to_string(handled)));
+    const std::optional<StoryFailure> handled = run_handler(*handler, out.verdict);
+    if (handled){
+        out.failure = StoryFailure{
+            .code = "interrupt_failed",
+            .detail = std::format("{}: {}", interrupt_kind_name(kind), *handled),
+        };
         return out;
     }
-    apply_interrupt_pose(handler->pose, state.pose);
+    out.pose_lost = handler->pose == InterruptPose::LOST;
     return out;
 }
 

@@ -41,7 +41,7 @@ struct SimTrace{
 };
 SimTrace sim_leg_trace(Logger& logger, const std::string& row){
     SimExecutor executor(logger);
-    const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = row, .to = row});
+    const SimRunReport report = run_rows_on(executor, logger, {.from = row, .to = row});
     SimTrace out;
     if (!report.completed){
         out.error = "the row failed on the simulation: " + executor.result().error;

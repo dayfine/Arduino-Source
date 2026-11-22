@@ -13,17 +13,24 @@
 #include <cstddef>
 #include <functional>
 #include <map>
+#include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <utility>
 #include "Pokemon_Interrupts.h"
-#include "CommonTools/ScreenEvents/ScreenEvents.h"
-#include "Pokemon_StoryEvents.h"
-#include "Pokemon_StoryStepExecutor.h"
+#include "Pokemon_ScreenEventLog.h"
+#include "Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
+
+//  What clearing an interrupt did to the player's pose.
+enum class InterruptPose{
+    UNCHANGED,
+    LOST,
+};
 
 //  What a game saw of the screen between two steps: its timed events, and
 //  the span of them the classifier judges.
@@ -37,8 +44,8 @@ struct ScreenLook{
 using ScreenLookFunction = std::function<ScreenLook(bool fresh)>;
 
 //  Clears an interrupt a look found: flees or fights the battle, closes
-//  the dialog, waits out the warp.
-using InterruptAction = std::function<Outcome(const InterruptVerdict& verdict, RunState& state)>;
+//  the dialog, waits out the warp. Returns std::nullopt on success.
+using InterruptAction = std::function<std::optional<StoryFailure>(const InterruptVerdict& verdict)>;
 
 //  A row of an InterruptHandlerTable.
 struct InterruptHandler{
@@ -48,7 +55,7 @@ struct InterruptHandler{
 };
 
 
-//  A game's handlers by kind of interrupt, and the steps that start on one.
+//  A game's handlers by kind of interrupt, and the step actions that start on one.
 class InterruptHandlerTable{
 public:
     //  The handler for `kind`: one of WILD_ENCOUNTER, TRAINER_SIGHT,
@@ -58,15 +65,15 @@ public:
     //  The handler for `kind`; nullptr if there is none.
     const InterruptHandler* find(InterruptKind kind) const;
 
-    //  Steps of `step` start on `kind` showing: before one, it is the
-    //  step's to clear, not an interrupt. A step that starts on
+    //  Steps with `action` start on `kind` showing: before one, it is the
+    //  step's to clear, not an interrupt. An action that starts on
     //  WILD_ENCOUNTER or TRAINER_SIGHT starts on UNSETTLED too.
-    void starts_on(StoryStepKind step, InterruptKind kind);
-    bool step_starts_on(StoryStepKind step, InterruptKind kind) const;
+    void starts_on(std::string action, InterruptKind kind);
+    bool action_starts_on(std::string_view action, InterruptKind kind) const;
 
 private:
     std::map<InterruptKind, InterruptHandler> m_handlers;
-    std::set<std::pair<StoryStepKind, InterruptKind>> m_starts_on;
+    std::set<std::pair<std::string, InterruptKind>, std::less<>> m_starts_on;
 };
 
 

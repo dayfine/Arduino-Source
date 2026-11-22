@@ -21,8 +21,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryFakeBackend.h"
-#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Detect/PokemonBDSP_AutoStory_TitleDetector.h"
 #include "PokemonBDSP_AutoStory_Launch.h"
 #include "PokemonBDSP_AutoStory_Launch_Tests.h"
@@ -30,8 +29,6 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
-
-using Pokemon::GridPose;
 
 
 namespace{
@@ -58,8 +55,8 @@ enum class Screen{
     OVERWORLD,      //  the player in control
 };
 
-Pokemon::Observation<GridPose> look(Screen screen){
-    Pokemon::Observation<GridPose> observation;
+ScreenObservation look(Screen screen){
+    ScreenObservation observation;
     switch (screen){
     case Screen::HOME:
         observation.events = ScreenEvents{ScreenEvent::SWITCH_HOME_MENU};
@@ -183,11 +180,11 @@ std::string describe_inputs(const std::vector<std::string>& inputs){
 }
 
 UnitTestResult check_launch(const LaunchCase& test, CancellableScope& scope){
-    std::vector<Pokemon::Observation<GridPose>> looks;
+    std::vector<ScreenObservation> looks;
     for (Screen screen : test.input.screens){
         looks.push_back(look(screen));
     }
-    Pokemon::FakeStoryBackend<GridPose> backend({.looks = std::move(looks)}, scope);
+    Pokemon::FakeStoryBackend backend({.looks = std::move(looks)}, scope);
     std::vector<Pokemon::StoryLaunchPrompt> switch_prompts{{
         .name = "close software",
         .matches = [](const ScreenObservation& observation){
@@ -200,14 +197,14 @@ UnitTestResult check_launch(const LaunchCase& test, CancellableScope& scope){
     policy.tile_selected = [](const ScreenObservation&){
         return true;
     };
-    const Pokemon::Outcome outcome = Pokemon::launch_story_game(backend, policy, {});
-    if (test.expectation.failure.empty() && !outcome.succeeded()){
-        return std::format("expected success, got {}", Pokemon::to_string(outcome));
+    const std::optional<Pokemon::StoryFailure> failure = Pokemon::launch_story_game(backend, policy, {});
+    if (test.expectation.failure.empty() && failure){
+        return std::format("expected success, got {}", *failure);
     }
     if (!test.expectation.failure.empty()
-        && (outcome.failure != Pokemon::STORY_LAUNCH_FAILED || outcome.detail.find(test.expectation.failure) == std::string::npos)
+        && (!failure || failure->code != Pokemon::STORY_LAUNCH_FAILED || failure->detail.find(test.expectation.failure) == std::string::npos)
     ){
-        return std::format("expected a launch failure with \"{}\", got {}", test.expectation.failure, Pokemon::to_string(outcome));
+        return std::format("expected a launch failure with \"{}\", got {}", test.expectation.failure, failure ? std::format("{}", *failure) : std::string("success"));
     }
     const std::vector<std::string> expected = expected_inputs(test.expectation.inputs);
     if (backend.inputs() != expected){

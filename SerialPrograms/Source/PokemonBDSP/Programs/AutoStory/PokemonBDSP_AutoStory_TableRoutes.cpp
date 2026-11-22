@@ -19,30 +19,28 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-using Pokemon::StoryStepKind;
+using Pokemon::GridPose;
 using Pokemon::TilePos;
 
 
 namespace{
 
-using Pokemon::story_arg;
-
-std::optional<Pokemon::Pose> pose_after_step(const std::optional<Pokemon::Pose>& at, const Pokemon::StoryStep& step){
-    if (step.kind == StoryStepKind::ROUTE){
-        return Pokemon::pose_of(story_arg<Pokemon::GridPose>(step.args, "target"));
+std::optional<GridPose> pose_after_step(const std::optional<GridPose>& at, const BdspStep& step){
+    if (step.action == "route"){
+        return std::get<RouteStepArgs>(step.args).target;
     }
     if (step.pose_after){
-        return Pokemon::pose_of(*step.pose_after);
+        return *step.pose_after;
     }
-    return step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP ? std::nullopt : at;
+    return step.action == "legs" || step.action == "step" ? std::nullopt : at;
 }
 
-//  A ROUTE step after a "measured" LEGS step plans from the one tile the
+//  A route step after a "measured" legs step plans from the one tile the
 //  taps measured: one TableRoute for each tile of `at`.
-void add_measured_routes(std::vector<TableRoute>& routes, const std::string& row, const Pokemon::StoryStep& step, const Pokemon::Pose& at){
-    const Pokemon::Pose target = Pokemon::pose_of(story_arg<Pokemon::GridPose>(step.args, "target"));
-    for (const TilePos& pos : Pokemon::tiles_of(at)){
-        const Pokemon::Pose one = Pokemon::tile_pose(at.map, {pos}, Pokemon::facing_of(at));
+void add_measured_routes(std::vector<TableRoute>& routes, const std::string& row, const BdspStep& step, const GridPose& at){
+    const GridPose& target = std::get<RouteStepArgs>(step.args).target;
+    for (const TilePos& pos : at.tiles){
+        const GridPose one{.map = at.map, .tiles = {pos}, .facing = at.facing};
         routes.push_back({row, &step, one, story_plan_world(at.map, target.map)});
     }
 }
@@ -53,18 +51,18 @@ void add_measured_routes(std::vector<TableRoute>& routes, const std::string& row
 std::vector<TableRoute> table_routes(){
     std::vector<TableRoute> routes;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        std::optional<Pokemon::Pose> at = row.start ? std::optional<Pokemon::Pose>(Pokemon::pose_of(*row.start)) : std::nullopt;
+        std::optional<GridPose> at = row.start;
         bool measured = false;
-        for (const Pokemon::StoryStep& step : row.steps){
-            const bool known = at && !Pokemon::tiles_of(*at).empty();
-            if (step.kind == StoryStepKind::ROUTE && known && std::exchange(measured, false)){
+        for (const BdspStep& step : row.steps){
+            const bool known = at && !at->tiles.empty();
+            if (step.action == "route" && known && std::exchange(measured, false)){
                 add_measured_routes(routes, row.id, step, *at);
-            }else if (step.kind == StoryStepKind::ROUTE){
-                const Pokemon::Pose target = Pokemon::pose_of(story_arg<Pokemon::GridPose>(step.args, "target"));
+            }else if (step.action == "route"){
+                const GridPose& target = std::get<RouteStepArgs>(step.args).target;
                 routes.push_back({row.id, &step, at, known ? story_plan_world(at->map, target.map) : nullptr});
             }
             measured = false;
-            if (step.kind == StoryStepKind::LEGS && step.action == "measured" && known && !step.pose_after){
+            if (step.action == "legs" && std::get<LegsStepArgs>(step.args).variant == "measured" && known && !step.pose_after){
                 at = measured_ends(*at, step);
                 measured = at.has_value();
                 continue;
@@ -75,9 +73,9 @@ std::vector<TableRoute> table_routes(){
     return routes;
 }
 
-std::vector<TilePos> world_tiles(const StoryWorld& world, const Pokemon::Pose& pose){
+std::vector<TilePos> world_tiles(const StoryWorld& world, const GridPose& pose){
     std::vector<TilePos> tiles;
-    for (const TilePos& pos : Pokemon::tiles_of(pose)){
+    for (const TilePos& pos : pose.tiles){
         tiles.push_back(story_to_world(world, pose.map, pos));
     }
     return tiles;
@@ -85,14 +83,14 @@ std::vector<TilePos> world_tiles(const StoryWorld& world, const Pokemon::Pose& p
 
 RouteStepPlan plan_table_route(const TableRoute& route){
     const StoryWorld& world = *route.world;
-    const Pokemon::Pose target = Pokemon::pose_of(story_arg<Pokemon::GridPose>(route.step->args, "target"));
-    const std::vector<TilePos> targets = world_tiles(world, target);
+    const RouteStepArgs& args = std::get<RouteStepArgs>(route.step->args);
+    const std::vector<TilePos> targets = world_tiles(world, args.target);
     const auto goal = [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); };
-    RouteStepPlan plan{.start = world_tiles(world, *route.from)};
+    RouteStepPlan plan{.start = world_tiles(world, *route.from), .legs = {}};
     const MoveSpeed speed = route.row > std::string(RUNNING_SHOES_ROW) ? MoveSpeed::RUN : MoveSpeed::WALK;
     plan.legs = plan_fastest_route({
-        .world = world, .from = plan.start, .goal = goal, .costs = *story_route_costs(route.step->action), .speed = speed,
-        .goal_is_trigger = route.step->action == ROUTE_ONTO_TRIGGER,
+        .world = world, .from = plan.start, .goal = goal, .costs = *story_route_costs(args.variant), .speed = speed,
+        .goal_is_trigger = args.variant == ROUTE_ONTO_TRIGGER,
     });
     if (!plan.legs){
         plan.legs = plan_recovered_route(world, plan.start, goal, RobustPlanCosts());

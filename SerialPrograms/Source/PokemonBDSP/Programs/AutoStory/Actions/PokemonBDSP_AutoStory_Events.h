@@ -3,19 +3,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The story's steps that only BDSP has, by name: a step of the table whose
- *  variant names one of these runs it (story_game()). Some are the
- *  scripted scenes (the Azure Flute, the lake's briefcase, the starter,
- *  Dawn's catching tutorial and the catch); the rest do what the shared
- *  steps cannot, as they ran on the console: the Poke Mart lady's Potions
- *  and the stairs into Jubilife (00.04c, 00.04d), a clown who wanders
- *  (00.05b), the Gym's tries from the Pokemon Center (01.04) and Rock Smash
- *  (01.09). Each fails by throwing, with a screenshot; the executor turns
- *  that into a failed step (TableExecutor::run()).
- *
- *  They are in files by area: _Events_Lake (00.00 to 00.04), _Sandgem
- *  (00.04c, 00.04d), _Jubilife (00.05b), _Oreburgh (01.04) and _Route204
- *  (01.09).
+ *  The story's steps that only BDSP has, by name: each is registered as a
+ *  top-level S11 action in the story runner.
  *
  */
 
@@ -24,7 +13,9 @@
 
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryCheckpoint.h"
 
 namespace PokemonAutomation{
@@ -32,10 +23,10 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  Runs a step on the console. Returns where it left the player when it
-//  knows; throws OperationFailedException when it fails.
-using StoryEvent = std::function<Pokemon::Outcome(
-    StoryEnv& console, Pokemon::RunState& state, const Pokemon::StoryStep& step
+//  Runs a step on the console. Returns std::nullopt on success or a
+//  StoryFailure; throws OperationFailedException on console errors.
+using StoryEvent = std::function<std::optional<Pokemon::StoryFailure>(
+    StoryEnv& console, BdspRunState& state, const BdspStep& step
 )>;
 //  Map of story event names to their execution functions.
 using StoryEvents = std::map<std::string, StoryEvent>;

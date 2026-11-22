@@ -1,116 +1,9 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
-    "events": [
-      {
-        "action": "town",
-        "args": {
-          "fight_wild": false,
-          "target": {
-            "facing": "north",
-            "map": "JubilifeCity",
-            "tiles": [
-              [
-                52,
-                41
-              ]
-            ]
-          }
-        },
-        "id": "to_the_center",
-        "kind": "route",
-        "why": "below the Center's door (52, 40)"
-      },
-      {
-        "id": "heal_jubilife",
-        "kind": "heal",
-        "why": "in, the nurse, out onto the doorstep (r143a: check we are out)"
-      },
-      {
-        "action": "town",
-        "args": {
-          "fight_wild": false,
-          "target": {
-            "facing": "north",
-            "map": "JubilifeCity",
-            "tiles": [
-              [
-                40,
-                41
-              ]
-            ]
-          }
-        },
-        "id": "to_the_school",
-        "kind": "route",
-        "why": "below the School's door (40, 40)"
-      },
-      {
-        "args": {
-          "direction": "north"
-        },
-        "declared_after": {
-          "map": "TrainersSchool",
-          "tiles": []
-        },
-        "id": "into_the_school",
-        "kind": "step",
-        "why": "the School's door"
-      },
-      {
-        "action": "to_wall",
-        "args": {
-          "fight_wild": false,
-          "legs": [
-            {
-              "direction": "north",
-              "tiles": 10
-            }
-          ]
-        },
-        "declared_after": {
-          "facing": "west",
-          "map": "TrainersSchool",
-          "tiles": []
-        },
-        "id": "up_to_barry",
-        "kind": "legs",
-        "why": "the door's column to the back wall, beside Barry"
-      },
-      {
-        "id": "barry",
-        "kind": "talk",
-        "why": "Barry, west of us at the blackboard"
-      },
-      {
-        "action": "a",
-        "declared_after": {
-          "map": "TrainersSchool",
-          "tiles": []
-        },
-        "id": "barry_town_map",
-        "kind": "scene",
-        "why": "his lines to \"You obtained a Town Map!\", closed with A"
-      },
-      {
-        "args": {
-          "direction": "south"
-        },
-        "declared_after": {
-          "facing": "south",
-          "map": "JubilifeCity",
-          "tiles": [
-            [
-              40,
-              41
-            ]
-          ]
-        },
-        "id": "out_of_the_school",
-        "kind": "step",
-        "why": "straight down the door's column and out"
-      }
-    ],
     "id": "00.05",
+    "title": "Jubilife: the Center, the Trainers' School and the Town Map",
     "start": {
       "map": "JubilifeCity",
       "tiles": [
@@ -140,15 +33,124 @@
         ]
       ]
     },
-    "title": "Jubilife: the Center, the Trainers' School and the Town Map"
+    "events": [
+      {
+        "id": "to_the_center",
+        "action": "route",
+        "why": "below the Center's door (52, 40)",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                52,
+                41
+              ]
+            ]
+          },
+          "variant": "town"
+        }
+      },
+      {
+        "id": "heal_jubilife",
+        "action": "heal",
+        "why": "in, the nurse, out onto the doorstep (r143a: check we are out)"
+      },
+      {
+        "id": "to_the_school",
+        "action": "route",
+        "why": "below the School's door (40, 40)",
+        "args": {
+          "fight_wild": false,
+          "target": {
+            "facing": "north",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                40,
+                41
+              ]
+            ]
+          },
+          "variant": "town"
+        }
+      },
+      {
+        "id": "into_the_school",
+        "action": "step",
+        "why": "the School's door",
+        "args": {
+          "direction": "north",
+          "pose_after": {
+            "map": "TrainersSchool",
+            "tiles": []
+          }
+        }
+      },
+      {
+        "id": "up_to_barry",
+        "action": "legs",
+        "why": "the door's column to the back wall, beside Barry",
+        "args": {
+          "fight_wild": false,
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 10
+            }
+          ],
+          "variant": "to_wall",
+          "pose_after": {
+            "facing": "west",
+            "map": "TrainersSchool",
+            "tiles": []
+          }
+        }
+      },
+      {
+        "id": "barry",
+        "action": "talk",
+        "why": "Barry, west of us at the blackboard"
+      },
+      {
+        "id": "barry_town_map",
+        "action": "scene",
+        "why": "his lines to \"You obtained a Town Map!\", closed with A",
+        "args": {
+          "variant": "a",
+          "pose_after": {
+            "map": "TrainersSchool",
+            "tiles": []
+          }
+        }
+      },
+      {
+        "id": "out_of_the_school",
+        "action": "step",
+        "why": "straight down the door's column and out",
+        "args": {
+          "direction": "south",
+          "pose_after": {
+            "facing": "south",
+            "map": "JubilifeCity",
+            "tiles": [
+              [
+                40,
+                41
+              ]
+            ]
+          }
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "reproduction"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Jubilife City"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "reproduction"
   }
 }

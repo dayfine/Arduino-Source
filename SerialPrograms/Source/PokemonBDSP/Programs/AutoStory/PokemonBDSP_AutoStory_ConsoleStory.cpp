@@ -8,48 +8,25 @@
 #include <format>
 #include <string_view>
 #include <utility>
-#include <variant>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/PrettyPrint.h"
 #include "CommonFramework/Exceptions/FatalProgramException.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonFramework/GlobalAutoPaths.h"
-#include "CommonFramework/ImageTools/ImageStats.h"
-#include "CommonFramework/Globals.h"
-#include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
-#include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
-#include "NintendoSwitch/Commands/NintendoSwitch_Commands_Superscalar.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
-#include "Actions/PokemonBDSP_AutoStory_LitDoorway.h"
-#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
-#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_TrainerSight.h"
-#include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_OverworldDetector.h"
-#include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_PlanCosts.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Location.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_PlannedRoute.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Walk.h"
 #include "Actions/PokemonBDSP_AutoStory_Actions.h"
 #include "Actions/PokemonBDSP_AutoStory_Center.h"
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
+#include "Actions/PokemonBDSP_AutoStory_LitDoorway.h"
 #include "Actions/PokemonBDSP_AutoStory_NewGame.h"
 #include "Actions/PokemonBDSP_AutoStory_Settings.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkDpad.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkResult.h"
-#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_WalkScreen.h"
-#include "PokemonBDSP_AutoStory_StoryPlaces.h"
-#include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "Actions/PokemonBDSP_AutoStory_Talks.h"
-#include "PokemonBDSP_AutoStory_Walks.h"
 #include "Actions/PokemonBDSP_AutoStory_WildBattle.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_Indoors.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStory_RouteWalk.h"
 #include "PokemonBDSP_AutoStory_ConsoleStory.h"
 
 namespace PokemonAutomation{
@@ -58,19 +35,13 @@ namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
-using Pokemon::GridPose;
-using Pokemon::Outcome;
-using Pokemon::Pose;
-using Pokemon::RunState;
-using Pokemon::StoryStep;
-using Pokemon::TilePos;
-using Pokemon::story_arg;
+using Pokemon::StoryFailure;
 
 
 namespace{
 
 //  "to_catch_grass" as "to catch grass", for the logs.
-std::string label_of(const StoryStep& step){
+std::string label_of(const BdspStep& step){
     std::string label = step.name;
     std::replace(label.begin(), label.end(), '_', ' ');
     return label;
@@ -154,58 +125,95 @@ void save_failure_screenshot(VideoStream& stream, size_t attempt){
 } // namespace
 
 
-void ConsoleStepGuard::before_step(const StoryStep& step){
-    m_stream.log(std::format("[{}] {} {}: {}", m_checkpoint, Pokemon::story_step_kind_name(step.kind), step.name, step.why), COLOR_BLUE);
+void ConsoleStepGuard::before_step(const BdspStep& step){
+    m_stream.log(std::format("[{}] {} {}: {}", m_checkpoint, step.action, step.name, step.why), COLOR_BLUE);
 }
 
-bool ConsoleStepGuard::stops_on_failure(const StoryStep&) const{
+bool ConsoleStepGuard::stops_on_failure() const{
     return m_stop_rows.contains(m_checkpoint);
 }
 
-void ConsoleStepGuard::on_failure(const StoryStep&, const OperationFailedException& error){
-    //  Attempts are the segment's policy; this only counts them for the
+void ConsoleStepGuard::on_failure(const BdspStep&, const std::string& message){
+    //  Attempts are the engine's policy; this only counts them for the
     //  log line the lab's run watcher reads.
     const size_t attempt = m_failures[m_checkpoint]++;
-    m_stream.log(std::format("checkpoint_reattempt_loop: attempt {} failed: {}: {}", attempt, m_checkpoint, error.message()), COLOR_RED);
+    m_stream.log(std::format("checkpoint_reattempt_loop: attempt {} failed: {}: {}", attempt, m_checkpoint, message), COLOR_RED);
     save_failure_screenshot(m_stream, attempt);
 }
 
-void ConsoleStepGuard::on_interrupt(const StoryStep& step, const Pokemon::InterruptCheck& check){
-    const bool cleared = check.outcome.succeeded();
+void ConsoleStepGuard::on_interrupt(const BdspStep& step, const Pokemon::InterruptCheck& check){
+    const bool cleared = !check.failure;
     m_stream.log(std::format(
         "[{}] {}: before it, {}: {}", m_checkpoint, step.name,
-        Pokemon::interrupt_kind_name(check.verdict.kind), cleared ? "cleared" : Pokemon::to_string(check.outcome)
+        Pokemon::interrupt_kind_name(check.verdict.kind),
+        cleared ? std::string("cleared") : std::format("{}", *check.failure)
     ), cleared ? COLOR_ORANGE : COLOR_RED);
 }
 
-void ConsoleStepGuard::on_screen(const StoryStep& step, const Pokemon::ScreenSettle& screen){
+void ConsoleStepGuard::on_screen(const BdspStep& step, const Pokemon::ScreenSettle& screen){
     m_stream.log(std::format("[Screen] before {}: {}", step.name, describe(screen)));
 }
 
 
-//  The table and the guard are members, built after the base: it only
-//  keeps references to them until a step runs.
 ConsoleStory::ConsoleStory(StoryEnv& env)
-    : Pokemon::TableExecutor(m_no_table, m_guard)
-    , m_env(env)
+    : m_env(env)
     , m_io(env.env.console, env.context)
     , m_walks(m_io)
     , m_guard(env.env.console, m_checkpoint)
-    , m_backend(Pokemon::StoryBackendKind::CONSOLE, [&env](std::string_view line){ env.env.console.log(std::string(line)); }, env.context)
-    , m_steps(m_walks, console_actions(), m_backend)
+    , m_backend([&env](std::string_view line){ env.env.console.log(std::string(line), COLOR_BLUE); }, env.context)
     , m_look(env.env.console, env.context)
     , m_interrupts(story_interrupts([this](bool fresh){ return m_look.look(fresh); }, console_interrupt_actions()))
-{
-    set_interrupts(&m_interrupts);
+{}
+
+std::optional<StoryFailure> ConsoleStory::run_wrapped_step(
+    const BdspStep& step,
+    BdspRunState& state,
+    const std::function<std::optional<StoryFailure>()>& run_action
+){
+    const auto record_failure = [&](StoryFailure failure) -> StoryFailure{
+        if (m_guard.stops_on_failure()){
+            failure.repeats = true;
+        }else{
+            m_guard.on_failure(step, std::format("{}", failure));
+        }
+        return failure;
+    };
+    m_guard.before_step(step);
+    const Pokemon::InterruptCheck check = Pokemon::clear_story_interrupt(m_interrupts, step.name, step.action);
+    m_guard.on_screen(step, check.screen);
+    if (check.pose_lost){
+        state.pose = {};
+    }
+    if (check.verdict.kind != Pokemon::InterruptKind::NONE || check.failure){
+        m_guard.on_interrupt(step, check);
+    }
+    if (check.failure){
+        return record_failure(*check.failure);
+    }
+    try{
+        std::optional<StoryFailure> failure = run_action();
+        if (failure){
+            return record_failure(*failure);
+        }
+        return std::nullopt;
+    }catch (FatalProgramException&){
+        throw;
+    }catch (OperationFailedException& error){
+        if (m_guard.stops_on_failure()){
+            throw;
+        }
+        m_guard.on_failure(step, error.message());
+        return StoryFailure{.code = "operation_failed", .detail = error.message()};
+    }
 }
 
-StoryBoundActions ConsoleStory::console_actions(){
-    const auto method = [this](Outcome (ConsoleStory::*action)(RunState&, const StoryStep&)){
-        return [this, action](const StoryStep& step, RunState& state){
+BdspStoryHandlers ConsoleStory::console_handlers(){
+    const auto method = [this](std::optional<StoryFailure> (ConsoleStory::*action)(BdspRunState&, const BdspStep&)){
+        return [this, action](const BdspStep& step, BdspRunState& state){
             return (this->*action)(state, step);
         };
     };
-    return StoryBoundActions{
+    return BdspStoryHandlers{
         .new_game = method(&ConsoleStory::new_game),
         .options = method(&ConsoleStory::options),
         .answer = method(&ConsoleStory::answer),
@@ -213,10 +221,21 @@ StoryBoundActions ConsoleStory::console_actions(){
         .train = method(&ConsoleStory::train),
         .heal = method(&ConsoleStory::heal),
         .save = method(&ConsoleStory::save),
-        .event = [this](const std::string& name) -> StoryBoundAction{
-            return [this, event = story_events().at(name)](const StoryStep& step, RunState& state){
+        .event = [this](const std::string& name) -> BdspStepAction{
+            return [this, event = story_events().at(name)](const BdspStep& step, BdspRunState& state){
                 return event(m_env, state, step);
             };
+        },
+        .on_attempt_start = [this](const StoryCheckpoint& row){
+            m_checkpoint = row.id;
+        },
+        .wrap_step = [this](
+            const StoryCheckpoint&,
+            const BdspStep& step,
+            BdspRunState& state,
+            const std::function<std::optional<StoryFailure>()>& run_action
+        ){
+            return run_wrapped_step(step, state, run_action);
         },
     };
 }
@@ -225,91 +244,107 @@ StoryBoundActions ConsoleStory::console_actions(){
 //  warp's scene pressed through to the quiet overworld.
 StoryInterruptActions ConsoleStory::console_interrupt_actions(){
     const auto settle = [this](std::string label){
-        return [this, label](const Pokemon::InterruptVerdict&, RunState&){
+        return [this, label](const Pokemon::InterruptVerdict&) -> std::optional<StoryFailure>{
             m_io.settle(BUTTON_B, label, SettleKind::TALK, "");
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         };
     };
     return StoryInterruptActions{
-        .wild = [this](const Pokemon::InterruptVerdict&, RunState&){
+        .wild = [this](const Pokemon::InterruptVerdict&) -> std::optional<StoryFailure>{
             run_from_wild_battle(stream(), context());
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         },
-        .trainer = [this](const Pokemon::InterruptVerdict&, RunState&){
+        .trainer = [this](const Pokemon::InterruptVerdict&) -> std::optional<StoryFailure>{
             m_io.fight("");
-            return Pokemon::outcome_ok();
+            return std::nullopt;
         },
         .dialog = settle("a dialog between steps"),
         .warp = settle("a warp between steps"),
     };
 }
 
-void ConsoleStory::begin_attempt(const Pokemon::StoryCheckpoint& data){
-    m_checkpoint = data.id;
-    m_walks.begin_attempt(data.id, data.steps);
+std::vector<Pokemon::StoryCheckpoint> ConsoleStory::make_checkpoints(std::span<const StoryCheckpoint> rows){
+    return make_bdsp_engine_checkpoints(rows, m_walks, m_run_state, console_handlers());
 }
 
-Outcome ConsoleStory::run_action(const StoryStep& step, RunState& state){
-    return m_steps.act(step, state);
+std::optional<StoryFailure> ConsoleStory::save_checkpoint(const std::string& saves_in){
+    if (saves_in.empty()){
+        save_game(m_env.env, context());
+        return std::nullopt;
+    }
+    //  Check the save card before saving. With a map, save_game() throws only
+    //  when the card names another one, having backed out unsaved. That stops
+    //  the program: a reset would load an older save and run the next row from
+    //  wherever that is.
+    try{
+        save_game(m_env.env, context(), saves_in);
+    }catch (OperationFailedException& e){
+        throw FatalProgramException(
+            ErrorReportMode::NO_ERROR_REPORT,
+            std::format("[{}] Not at the checkpoint's expected map, so not saving: {}", m_checkpoint, e.message()),
+            stream()
+        );
+    }
+    return std::nullopt;
 }
 
-
-Outcome ConsoleStory::new_game(RunState&, const StoryStep&){
+std::optional<StoryFailure> ConsoleStory::new_game(BdspRunState&, const BdspStep&){
     play_new_game_intro(m_env.env, context(), m_env.intro_picks, m_env.player_name);
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-Outcome ConsoleStory::options(RunState&, const StoryStep&){
+std::optional<StoryFailure> ConsoleStory::options(BdspRunState&, const BdspStep&){
     verify_tutorial_settings(stream(), context());
     context().wait_for_all_requests();
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-Outcome ConsoleStory::answer(RunState&, const StoryStep& step){
+std::optional<StoryFailure> ConsoleStory::answer(BdspRunState&, const BdspStep& step){
     wait_for_dialogue(stream(), context(), label_of(step));
-    const bool yes = story_arg<bool>(step.args, "yes");
+    const bool yes = std::get<AnswerStepArgs>(step.args).yes;
     pbf_press_button(context(), yes ? BUTTON_A : BUTTON_B, 80ms, 1000ms);
     context().wait_for_all_requests();
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-Outcome ConsoleStory::battle(RunState&, const StoryStep& step){
+std::optional<StoryFailure> ConsoleStory::battle(BdspRunState&, const BdspStep& step){
+    const BattleStepArgs& args = std::get<BattleStepArgs>(step.args);
     //  "starter": the Starly battle at the lake (00.02). It opens on its own,
     //  with no talk, and the starter has no Poke Balls to throw; the scene
     //  goes on whoever wins.
-    if (step.action == "starter"){
+    if (args.variant == "starter"){
         fight_starly(stream(), context());
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     //  A loss sends us to a Pokemon Center, so ending on its floor means a
     //  loss - unless the floor check already passed where the battle began:
     //  Jubilife's yellow plaza reads as Center floor (63 %, r79 won Rowan's
     //  tag battle there and was called lost).
-    const bool may_lose = story_arg<bool>(step.args, "may_lose");
-    const bool center_before = !may_lose && in_pokemon_center(stream());
-    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, step.action == "doubles" ? BattleFormat::DOUBLES : BattleFormat::SINGLES)){
+    const bool center_before = !args.may_lose && in_pokemon_center(stream());
+    const BattleFormat format = args.variant == "doubles" ? BattleFormat::DOUBLES : BattleFormat::SINGLES;
+    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, format)){
         fail_step(stream(), label_of(step) + ": talked but did not battle.");
     }
     if (center_before){
         stream().log(label_of(step) + ": the floor read as a Center's before the battle too; no loss check here.", COLOR_ORANGE);
-    }else if (!may_lose && in_pokemon_center(stream())){
+    }else if (!args.may_lose && in_pokemon_center(stream())){
         fail_step(stream(), label_of(step) + ": lost the battle.");
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-Outcome ConsoleStory::train(RunState&, const StoryStep& step){
-    const int64_t battles = story_arg<int64_t>(step.args, "battles");
+std::optional<StoryFailure> ConsoleStory::train(BdspRunState&, const BdspStep& step){
+    const int64_t battles = std::get<TrainStepArgs>(step.args).battles;
     for (int64_t battle = 0; battle < battles; battle++){
         const std::string label = std::format("Training battle {}/{}", battle + 1, battles);
         route_status(stream(), label);
         battle_1_pokemon(stream(), context());
         fail_if_blacked_out(stream(), context(), label);
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
-Outcome ConsoleStory::heal(RunState&, const StoryStep& step){
+std::optional<StoryFailure> ConsoleStory::heal(BdspRunState&, const BdspStep& step){
     //  From the planned tile below the door, run in like any door, and out
     //  again to the tile below it. With no fade, the run can have gone on in
     //  to the counter (lab-B 2026-11-08, Oreburgh).
@@ -317,30 +352,10 @@ Outcome ConsoleStory::heal(RunState&, const StoryStep& step){
     return Pokemon::run_center_visit(std::format("[{}] {}", m_checkpoint, step.name), visit);
 }
 
-Outcome ConsoleStory::save(RunState&, const StoryStep& step){
-    const auto saves_in = step.args.find(SAVES_IN_ARG);
-    const std::string* map = saves_in == step.args.end() ? nullptr : std::get_if<std::string>(&saves_in->second);
-    if (map == nullptr || map->empty()){
-        save_game(m_env.env, context());
-        return Pokemon::outcome_ok();
-    }
-    //  A row's start save, its SAVES_IN_ARG the map the card must name. With
-    //  a map, save_game() throws only when the card names another one, having
-    //  backed out unsaved. That stops the program: a reset would load an
-    //  older save and run this row from wherever that is.
-    try{
-        save_game(m_env.env, context(), *map);
-    }catch (OperationFailedException& e){
-        throw FatalProgramException(
-            ErrorReportMode::NO_ERROR_REPORT,
-            std::format("[{}] Not at the checkpoint's start, so not saving: {}", m_checkpoint, e.message()),
-            stream()
-        );
-    }
-    return Pokemon::outcome_ok();
+std::optional<StoryFailure> ConsoleStory::save(BdspRunState&, const BdspStep& step){
+    const SaveStepArgs& args = std::get<SaveStepArgs>(step.args);
+    return save_checkpoint(args.saves_in);
 }
-
-
 
 
 

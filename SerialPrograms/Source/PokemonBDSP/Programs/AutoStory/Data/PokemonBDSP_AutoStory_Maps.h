@@ -22,7 +22,7 @@
 #include <string_view>
 #include <utility>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
 
 namespace PokemonAutomation{

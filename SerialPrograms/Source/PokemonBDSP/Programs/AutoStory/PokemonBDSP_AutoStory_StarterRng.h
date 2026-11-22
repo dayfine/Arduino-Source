@@ -18,7 +18,7 @@
 #include "Common/Cpp/Options/SimpleIntegerOption.h"
 #include "CommonFramework/Language.h"
 #include "CommonFramework/Notifications/EventNotificationOption.h"
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
 #include "PokemonBDSP/Options/PokemonBDSP_PlayerModelOption.h"
 #include "PokemonBDSP/Options/PokemonBDSP_RngFilter.h"
@@ -86,7 +86,7 @@ Pokemon::RngHandoffResult starter_rng_handoff_result(const StarterRngRunResult& 
 //  The action 00.02 runs. Throws a UserSetupError now if the filter table is
 //  empty. The action itself throws when Starter RNG fails, so that no row
 //  retry reruns the whole reset loop.
-std::function<Pokemon::Outcome()> make_starter_rng_hook(
+std::function<std::optional<Pokemon::StoryFailure>()> make_starter_rng_hook(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     StoryStarterRngOptions& options, const StoryStarterRngConfig& config,
     EventNotificationOption& error_notification

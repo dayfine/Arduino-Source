@@ -1,46 +1,62 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
+    "id": "00.04",
+    "title": "Home to Mom, then Dawn's catching tutorial on Route 202",
+    "start": {
+      "facing": "north",
+      "map": "RowansLab",
+      "tiles": [
+        [
+          7,
+          6
+        ]
+      ]
+    },
     "events": [
       {
-        "args": {
-          "direction": "south"
-        },
-        "declared_after": {
-          "facing": "north",
-          "map": "SandgemTown",
-          "tiles": [
-            [
-              26,
-              11
-            ],
-            [
-              27,
-              11
-            ],
-            [
-              28,
-              11
-            ],
-            [
-              26,
-              12
-            ],
-            [
-              27,
-              12
-            ],
-            [
-              28,
-              12
-            ]
-          ]
-        },
         "id": "out_of_the_lab",
-        "kind": "step",
-        "why": "out of the lab; Dawn's tour of Sandgem"
+        "action": "step",
+        "why": "out of the lab; Dawn's tour of Sandgem",
+        "args": {
+          "direction": "south",
+          "pose_after": {
+            "facing": "north",
+            "map": "SandgemTown",
+            "tiles": [
+              [
+                26,
+                11
+              ],
+              [
+                27,
+                11
+              ],
+              [
+                28,
+                11
+              ],
+              [
+                26,
+                12
+              ],
+              [
+                27,
+                12
+              ],
+              [
+                28,
+                12
+              ]
+            ]
+          }
+        }
       },
       {
-        "action": "town",
+        "id": "onto_the_path",
+        "action": "route",
+        "why": "to the east end of the path below the doors' row",
         "args": {
           "fight_wild": false,
           "target": {
@@ -52,14 +68,14 @@
                 12
               ]
             ]
-          }
-        },
-        "id": "onto_the_path",
-        "kind": "route",
-        "why": "to the east end of the path below the doors' row"
+          },
+          "variant": "town"
+        }
       },
       {
-        "action": "to_map",
+        "id": "to_route_201",
+        "action": "legs",
+        "why": "run west along the path until Route 201's banner",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -67,47 +83,48 @@
               "direction": "west",
               "tiles": 40
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "west",
-          "map": "Route201",
-          "tiles": [
-            [
-              57,
-              5
-            ],
-            [
-              58,
-              5
-            ],
-            [
-              59,
-              5
-            ],
-            [
-              60,
-              5
-            ],
-            [
-              61,
-              5
-            ],
-            [
-              62,
-              5
-            ],
-            [
-              63,
-              5
+          ],
+          "variant": "to_map",
+          "pose_after": {
+            "facing": "west",
+            "map": "Route201",
+            "tiles": [
+              [
+                57,
+                5
+              ],
+              [
+                58,
+                5
+              ],
+              [
+                59,
+                5
+              ],
+              [
+                60,
+                5
+              ],
+              [
+                61,
+                5
+              ],
+              [
+                62,
+                5
+              ],
+              [
+                63,
+                5
+              ]
             ]
-          ]
-        },
-        "id": "to_route_201",
-        "kind": "legs",
-        "why": "run west along the path until Route 201's banner"
+          }
+        }
       },
       {
+        "id": "to_the_signs_row",
+        "action": "legs",
+        "why": "a tap north onto the border sign's row",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -115,48 +132,47 @@
               "direction": "north",
               "tiles": 1
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "north",
-          "map": "Route201",
-          "tiles": [
-            [
-              57,
-              4
-            ],
-            [
-              58,
-              4
-            ],
-            [
-              59,
-              4
-            ],
-            [
-              60,
-              4
-            ],
-            [
-              61,
-              4
-            ],
-            [
-              62,
-              4
-            ],
-            [
-              63,
-              4
+          ],
+          "pose_after": {
+            "facing": "north",
+            "map": "Route201",
+            "tiles": [
+              [
+                57,
+                4
+              ],
+              [
+                58,
+                4
+              ],
+              [
+                59,
+                4
+              ],
+              [
+                60,
+                4
+              ],
+              [
+                61,
+                4
+              ],
+              [
+                62,
+                4
+              ],
+              [
+                63,
+                4
+              ]
             ]
-          ]
-        },
-        "id": "to_the_signs_row",
-        "kind": "legs",
-        "why": "a tap north onto the border sign's row"
+          }
+        }
       },
       {
-        "action": "line",
+        "id": "to_ledge_column",
+        "action": "route",
+        "why": "west to the border sign, a row south, west to ledge column 55",
         "args": {
           "fight_wild": false,
           "target": {
@@ -168,13 +184,14 @@
                 5
               ]
             ]
-          }
-        },
-        "id": "to_ledge_column",
-        "kind": "route",
-        "why": "west to the border sign, a row south, west to ledge column 55"
+          },
+          "variant": "line"
+        }
       },
       {
+        "id": "over_the_ledge",
+        "action": "route",
+        "why": "south over the ledge to the lower road",
         "args": {
           "fight_wild": false,
           "target": {
@@ -187,12 +204,12 @@
               ]
             ]
           }
-        },
-        "id": "over_the_ledge",
-        "kind": "route",
-        "why": "south over the ledge to the lower road"
+        }
       },
       {
+        "id": "along_route_201_road",
+        "action": "route",
+        "why": "west along Route 201's road to the Twinleaf path",
         "args": {
           "fight_wild": false,
           "target": {
@@ -205,13 +222,12 @@
               ]
             ]
           }
-        },
-        "id": "along_route_201_road",
-        "kind": "route",
-        "why": "west along Route 201's road to the Twinleaf path"
+        }
       },
       {
-        "action": "line",
+        "id": "into_twinleaf",
+        "action": "route",
+        "why": "south down column 15 into Twinleaf Town",
         "args": {
           "fight_wild": false,
           "target": {
@@ -223,14 +239,14 @@
                 22
               ]
             ]
-          }
-        },
-        "id": "into_twinleaf",
-        "kind": "route",
-        "why": "south down column 15 into Twinleaf Town"
+          },
+          "variant": "line"
+        }
       },
       {
-        "action": "line",
+        "id": "to_moms_doorstep",
+        "action": "route",
+        "why": "east to Mom's house doorstep",
         "args": {
           "fight_wild": false,
           "target": {
@@ -242,31 +258,32 @@
                 22
               ]
             ]
-          }
-        },
-        "id": "to_moms_doorstep",
-        "kind": "route",
-        "why": "east to Mom's house doorstep"
+          },
+          "variant": "line"
+        }
       },
       {
-        "args": {
-          "direction": "north"
-        },
-        "declared_after": {
-          "facing": "north",
-          "map": "PlayerHouse1F",
-          "tiles": [
-            [
-              6,
-              9
-            ]
-          ]
-        },
         "id": "into_the_house",
-        "kind": "step",
-        "why": "the house's door"
+        "action": "step",
+        "why": "the house's door",
+        "args": {
+          "direction": "north",
+          "pose_after": {
+            "facing": "north",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                6,
+                9
+              ]
+            ]
+          }
+        }
       },
       {
+        "id": "beside_mom",
+        "action": "route",
+        "why": "west of Mom at (7, 7)",
         "args": {
           "fight_wild": false,
           "target": {
@@ -279,33 +296,34 @@
               ]
             ]
           }
-        },
-        "id": "beside_mom",
-        "kind": "route",
-        "why": "west of Mom at (7, 7)"
+        }
       },
       {
         "id": "mom",
-        "kind": "talk",
+        "action": "talk",
         "why": "Mom"
       },
       {
-        "declared_after": {
-          "facing": "south",
-          "map": "PlayerHouse1F",
-          "tiles": [
-            [
-              7,
-              7
-            ]
-          ]
-        },
         "id": "mom_heals_us",
-        "kind": "scene",
-        "why": "Mom heals us; Barry's mom gives us his parcel"
+        "action": "scene",
+        "why": "Mom heals us; Barry's mom gives us his parcel",
+        "args": {
+          "pose_after": {
+            "facing": "south",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                7,
+                7
+              ]
+            ]
+          }
+        }
       },
       {
-        "action": "to_wall",
+        "id": "into_the_east_corner",
+        "action": "legs",
+        "why": "north, east and south to the walls, into the room's east corner",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -321,24 +339,24 @@
               "direction": "south",
               "tiles": 4
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "south",
-          "map": "PlayerHouse1F",
-          "tiles": [
-            [
-              11,
-              8
+          ],
+          "variant": "to_wall",
+          "pose_after": {
+            "facing": "south",
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                11,
+                8
+              ]
             ]
-          ]
-        },
-        "id": "into_the_east_corner",
-        "kind": "legs",
-        "why": "north, east and south to the walls, into the room's east corner"
+          }
+        }
       },
       {
-        "action": "trigger",
+        "id": "into_moms_call",
+        "action": "route",
+        "why": "round Mom and west along row 9 until her call stops us on (6, 9)",
         "args": {
           "fight_wild": false,
           "target": {
@@ -350,29 +368,31 @@
                 9
               ]
             ]
-          }
-        },
-        "id": "into_moms_call",
-        "kind": "route",
-        "why": "round Mom and west along row 9 until her call stops us on (6, 9)"
+          },
+          "variant": "trigger"
+        }
       },
       {
-        "declared_after": {
-          "facing": "east",
-          "map": "TwinleafTown",
-          "tiles": [
-            [
-              19,
-              22
-            ]
-          ]
-        },
         "id": "moms_hat",
-        "kind": "scene",
-        "why": "Mom's hat; she walks out with us"
+        "action": "scene",
+        "why": "Mom's hat; she walks out with us",
+        "args": {
+          "pose_after": {
+            "facing": "east",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                19,
+                22
+              ]
+            ]
+          }
+        }
       },
       {
-        "action": "to_wall",
+        "id": "to_twinleafs_west_wall",
+        "action": "legs",
+        "why": "west along the row to the town's west wall",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -380,27 +400,28 @@
               "direction": "west",
               "tiles": 16
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "west",
-          "map": "TwinleafTown",
-          "tiles": [
-            [
-              6,
-              22
-            ],
-            [
-              6,
-              23
+          ],
+          "variant": "to_wall",
+          "pose_after": {
+            "facing": "west",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                6,
+                22
+              ],
+              [
+                6,
+                23
+              ]
             ]
-          ]
-        },
-        "id": "to_twinleafs_west_wall",
-        "kind": "legs",
-        "why": "west along the row to the town's west wall"
+          }
+        }
       },
       {
+        "id": "short_of_the_catch_tutorial",
+        "action": "route",
+        "why": "through Sandgem onto Route 202, east of its trigger column",
         "args": {
           "fight_wild": false,
           "target": {
@@ -413,149 +434,132 @@
               ]
             ]
           }
-        },
-        "id": "short_of_the_catch_tutorial",
-        "kind": "route",
-        "why": "through Sandgem onto Route 202, east of its trigger column"
+        }
       },
       {
+        "id": "catch_tutorial_trigger",
+        "action": "step",
+        "why": "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0",
         "args": {
           "direction": "west"
-        },
-        "id": "catch_tutorial_trigger",
-        "kind": "step",
-        "why": "the trigger (21, 25..29), VAR_ROUTE_202_STATE 0"
+        }
       },
       {
-        "action": "catch_tutorial",
         "id": "catch_tutorial",
-        "kind": "game_action",
+        "action": "catch_tutorial",
         "why": "Dawn's catching tutorial"
       },
       {
-        "action": "catch_pokemon",
-        "declared_after": {
-          "map": "Route202",
-          "tiles": [
-            [
-              15,
-              25
-            ],
-            [
-              16,
-              25
-            ],
-            [
-              17,
-              25
-            ],
-            [
-              18,
-              25
-            ],
-            [
-              19,
-              25
-            ],
-            [
-              20,
-              25
-            ],
-            [
-              21,
-              25
-            ],
-            [
-              15,
-              26
-            ],
-            [
-              16,
-              26
-            ],
-            [
-              17,
-              26
-            ],
-            [
-              18,
-              26
-            ],
-            [
-              19,
-              26
-            ],
-            [
-              20,
-              26
-            ],
-            [
-              21,
-              26
-            ],
-            [
-              15,
-              27
-            ],
-            [
-              16,
-              27
-            ],
-            [
-              17,
-              27
-            ],
-            [
-              18,
-              27
-            ],
-            [
-              19,
-              27
-            ],
-            [
-              20,
-              27
-            ],
-            [
-              21,
-              27
-            ],
-            [
-              21,
-              28
-            ],
-            [
-              21,
-              29
-            ]
-          ]
-        },
         "id": "catch_pokemon",
-        "kind": "game_action",
-        "why": "a Pokemon of our own from the grass"
+        "action": "catch_pokemon",
+        "why": "a Pokemon of our own from the grass",
+        "args": {
+          "pose_after": {
+            "map": "Route202",
+            "tiles": [
+              [
+                15,
+                25
+              ],
+              [
+                16,
+                25
+              ],
+              [
+                17,
+                25
+              ],
+              [
+                18,
+                25
+              ],
+              [
+                19,
+                25
+              ],
+              [
+                20,
+                25
+              ],
+              [
+                21,
+                25
+              ],
+              [
+                15,
+                26
+              ],
+              [
+                16,
+                26
+              ],
+              [
+                17,
+                26
+              ],
+              [
+                18,
+                26
+              ],
+              [
+                19,
+                26
+              ],
+              [
+                20,
+                26
+              ],
+              [
+                21,
+                26
+              ],
+              [
+                15,
+                27
+              ],
+              [
+                16,
+                27
+              ],
+              [
+                17,
+                27
+              ],
+              [
+                18,
+                27
+              ],
+              [
+                19,
+                27
+              ],
+              [
+                20,
+                27
+              ],
+              [
+                21,
+                27
+              ],
+              [
+                21,
+                28
+              ],
+              [
+                21,
+                29
+              ]
+            ]
+          }
+        }
       }
     ],
-    "id": "00.04",
-    "start": {
-      "facing": "north",
-      "map": "RowansLab",
-      "tiles": [
-        [
-          7,
-          6
-        ]
-      ]
-    },
-    "title": "Home to Mom, then Dawn's catching tutorial on Route 202"
+    "metadata": {
+      "phase": "reproduction"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Sandgem Town"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "reproduction"
   }
 }

@@ -58,6 +58,12 @@ inline constexpr Milliseconds TALK_OVER_QUIET = Milliseconds(5000);
 //  `calm`): wanderers or grass can keep the screen from ever being still.
 inline constexpr Milliseconds TALK_OVER_CALM = Milliseconds(15000);
 
+//  What "still" means for a talk-over's quiet clock.
+enum class StillSource{
+    SCREEN,     //  Whole screen still (ScreenEvent::SCREEN_STILL).
+    PLAYER,     //  Only the box around the player still (SettleLook::player_still).
+};
+
 //  What ends a talk-over, besides the quiet.
 struct TalkOverRule{
     //  A map change must come first: a fade or the banner. Only the quiet
@@ -74,13 +80,13 @@ struct TalkOverRule{
     //  How long the overworld still and with no box ends it.
     Milliseconds quiet = TALK_OVER_QUIET;
     //  What still means: the whole screen, or only the box around the
-    //  player (PLAYER_STILL), so people walking about neither hold the
-    //  quiet up nor end it early.
-    ScreenEvent still = ScreenEvent::SCREEN_STILL;
+    //  player, so people walking about neither hold the quiet up nor end
+    //  it early.
+    StillSource still = StillSource::SCREEN;
 };
 
 //  When a talk or a scene is over, from looks alone. A look is a frame's
-//  events: DIALOG_BOX, PLAYER_CAN_MOVE, SCREEN_STILL (or the rule's `still`), a fade,
+//  events: DIALOG_BOX, PLAYER_CAN_MOVE, SCREEN_STILL (or `player_still`), a fade,
 //  LOCATION_BANNER (the expected map's) and BATTLE_STARTED are read.
 //  It is over only once every fade has come back up, no box shows, and
 //  the overworld has been quiet (or calm) since: a look that shows a fade
@@ -91,7 +97,7 @@ public:
         : m_rule(rule)
     {}
 
-    SceneMove look(const ScreenEvents& events, WallClock now);
+    SceneMove look(const ScreenEvents& events, WallClock now, bool player_still = false);
 
     //  Whether the warp the rule asks for has shown (true without one).
     bool warped() const;

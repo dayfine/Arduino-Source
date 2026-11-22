@@ -4,27 +4,21 @@
  *
  *  BDSP's interrupts between story steps (Pokemon_StoryInterrupts.h): a
  *  wild battle is run from, a trainer who saw us is fought, a dialog is
- *  pressed through, and a warp is waited out, the pose then lost. The
- *  console (ConsoleScreenLook and the executor's console actions) and the
- *  simulation bind the same table.
- *
- *  The steps that press through text (MASH, ANSWER, BATTLE, GAME,
- *  NEW_GAME) start on a dialog: one showing before them is theirs. A
- *  BATTLE and a GAME step start on a trainer's lines too, TRAIN on a wild
- *  battle, and a GAME step (a measured script) and NEW_GAME (the title
- *  screen) on anything.
+ *  pressed through, and a warp is waited out, the pose then lost.
  *
  */
 
 #ifndef PokemonAutomation_PokemonBDSP_AutoStory_StoryInterrupts_H
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryInterrupts_H
 
+#include <string_view>
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "Pokemon/AutoStory/Pokemon_ScreenEventLog.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStory_ScreenEvents.h"
 
@@ -42,12 +36,12 @@ struct StoryInterruptActions{
 };
 
 //  BDSP's interrupts: `look` judged with the shared knobs, `actions` for
-//  each kind, and the steps that start on one.
+//  each kind, and the step actions that start on one.
 Pokemon::StoryInterrupts story_interrupts(Pokemon::ScreenLookFunction look, const StoryInterruptActions& actions);
 
-//  Whether a step of `kind` presses through any text showing when it
-//  starts; a step of another kind is stopped by it (a walk, a talk).
-bool presses_through_text(Pokemon::StoryStepKind kind);
+//  Whether a step with `action` presses through any text showing when it
+//  starts; another action is stopped by it (a walk, a talk).
+bool presses_through_text(std::string_view action);
 
 
 //  How long the console looks at the screen before a step: a few frames,
@@ -55,9 +49,7 @@ bool presses_through_text(Pokemon::StoryStepKind kind);
 constexpr Milliseconds BETWEEN_STEPS_LOOK = Milliseconds(300);
 
 //  The console's look between steps: BDSP's screen events for
-//  BETWEEN_STEPS_LOOK, everything showing in it judged. The Switch's HOME
-//  menu comes first (SwitchHomeObserver): BDSP's detectors read it
-//  as a quiet overworld (lab-B 2026-11-09 15:31).
+//  BETWEEN_STEPS_LOOK, everything showing in it judged.
 class ConsoleScreenLook{
 public:
     ConsoleScreenLook(ConsoleHandle& console, ProControllerContext& context);

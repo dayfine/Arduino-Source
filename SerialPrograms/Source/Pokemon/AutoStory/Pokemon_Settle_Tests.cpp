@@ -27,12 +27,16 @@ namespace{
 using namespace std::chrono_literals;
 
 
+std::string_view still_source_name(StillSource source){
+    return source == StillSource::PLAYER ? "player still" : "screen still";
+}
+
 //  A rule's fields, for comparing and for messages.
 std::string describe(const SettleRule& rule){
     return std::format(
         "warp={} quiet={}ms calm={}ms still={} look={}ms cap={}ms",
         rule.judge.warp, rule.judge.quiet.count(), rule.judge.calm.count(),
-        screen_event_name(rule.judge.still), rule.look_every.count(), rule.cap.count()
+        still_source_name(rule.judge.still), rule.look_every.count(), rule.cap.count()
     );
 }
 
@@ -86,12 +90,17 @@ const RuleTestCase RULE_CASES[] = {
 };
 
 
+struct ScriptedLook{
+    ScreenEvents events = {};
+    bool player_still = false;
+};
+
 //  The screen a settle sees, a look per press: the script's looks in
 //  order, then its last one for good. Each press and each fled battle
 //  moves the clock on.
 class ScriptedSettleIO : public SettleIO{
 public:
-    ScriptedSettleIO(std::vector<ScreenEvents> looks, bool flee)
+    ScriptedSettleIO(std::vector<ScriptedLook> looks, bool flee)
         : m_looks(std::move(looks))
         , m_flee(flee)
     {}
@@ -99,7 +108,7 @@ public:
     virtual SettleLook look() override{
         const size_t index = m_next < m_looks.size() ? m_next : m_looks.size() - 1;
         m_next++;
-        return {m_looks[index], m_now};
+        return {.events = m_looks[index].events, .when = m_now, .player_still = m_looks[index].player_still};
     }
     virtual void press(SceneMove move, Milliseconds wait) override{
         m_presses += move == SceneMove::NEXT ? "N" : "B";
@@ -118,25 +127,25 @@ public:
     }
 
 private:
-    const std::vector<ScreenEvents> m_looks;
+    const std::vector<ScriptedLook> m_looks;
     const bool m_flee;
     size_t m_next = 0;
     WallClock m_now = WallClock();
     std::string m_presses;
 };
 
-const ScreenEvents QUIET{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL, ScreenEvent::PLAYER_STILL};
-const ScreenEvents BOX{ScreenEvent::DIALOG_BOX, ScreenEvent::SCREEN_STILL};
+const ScriptedLook QUIET{{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL}, true};
+const ScriptedLook BOX{{ScreenEvent::DIALOG_BOX, ScreenEvent::SCREEN_STILL}, false};
 //  The overworld with someone walking past: the screen moves, the player does not.
-const ScreenEvents PEOPLE_WALKING{ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::PLAYER_STILL};
+const ScriptedLook PEOPLE_WALKING{{ScreenEvent::PLAYER_CAN_MOVE}, true};
 //  A black frame as BDSP's eyes see it: no box, so "overworld", and still.
-const ScreenEvents FADED{ScreenEvent::FADE_BLACK, ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL, ScreenEvent::PLAYER_STILL};
-const ScreenEvents BATTLE{ScreenEvent::BATTLE_STARTED};
+const ScriptedLook FADED{{ScreenEvent::FADE_BLACK, ScreenEvent::PLAYER_CAN_MOVE, ScreenEvent::SCREEN_STILL}, true};
+const ScriptedLook BATTLE{{ScreenEvent::BATTLE_STARTED}, false};
 
-std::vector<ScreenEvents> repeat(const ScreenEvents& look, size_t count){
-    return std::vector<ScreenEvents>(count, look);
+std::vector<ScriptedLook> repeat(const ScriptedLook& look, size_t count){
+    return std::vector<ScriptedLook>(count, look);
 }
-std::vector<ScreenEvents> concat(std::vector<ScreenEvents> a, const std::vector<ScreenEvents>& b){
+std::vector<ScriptedLook> concat(std::vector<ScriptedLook> a, const std::vector<ScriptedLook>& b){
     a.insert(a.end(), b.begin(), b.end());
     return a;
 }
@@ -155,7 +164,7 @@ std::string_view result_name(SettleEnd::Result result){
 struct RunTestCase{
     struct Input{
         SettleRule rule;
-        std::vector<ScreenEvents> looks;
+        std::vector<ScriptedLook> looks;
         //  Whether a battle that starts is fled (a wild one).
         bool flee = true;
     };
@@ -267,7 +276,7 @@ const RunTestCase RUN_CASES[] = {
 //  A look of a game that only watches: its events, and how long they had
 //  shown unchanged when the look ended (none: not known).
 struct WatchedLook{
-    ScreenEvents events;
+    ScriptedLook screen;
     std::optional<Milliseconds> unchanged_for = std::nullopt;
 };
 
@@ -290,7 +299,7 @@ public:
         if (seen.unchanged_for.has_value()){
             since = m_now - *seen.unchanged_for;
         }
-        return {.events = seen.events, .when = m_now, .since = since};
+        return {.events = seen.screen.events, .when = m_now, .since = since, .player_still = seen.screen.player_still};
     }
     virtual void press(SceneMove, Milliseconds) override{}
     virtual bool flee_battle() override{

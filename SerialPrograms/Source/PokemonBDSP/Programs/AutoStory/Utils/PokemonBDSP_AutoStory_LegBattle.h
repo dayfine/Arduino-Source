@@ -19,7 +19,7 @@
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Pokemon/AutoStory/Pokemon_Interrupts.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_StoryWorld.h"
 #include "PokemonBDSP_AutoStory_Walk.h"
 #include "PokemonBDSP_AutoStory_WalkResult.h"

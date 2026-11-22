@@ -39,7 +39,7 @@ Pokemon::StoryLaunchPolicy bdsp_launch_policy(std::vector<Pokemon::StoryLaunchPr
 
 //  The game closed from HOME and launched again onto its save, by the
 //  shared launch on `console`. Fails as Pokemon::STORY_LAUNCH_FAILED.
-Pokemon::Outcome launch_bdsp_save(ConsoleHandle& console, ProControllerContext& context);
+std::optional<Pokemon::StoryFailure> launch_bdsp_save(ConsoleHandle& console, ProControllerContext& context);
 
 
 

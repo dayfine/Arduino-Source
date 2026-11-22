@@ -1,7 +1,24 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
+    "id": "00.01",
+    "title": "Bedroom to the Verity Lakefront",
+    "start": {
+      "facing": "north",
+      "map": "PlayerHouse2F",
+      "tiles": [
+        [
+          4,
+          6
+        ]
+      ]
+    },
     "events": [
       {
+        "id": "below_the_flute",
+        "action": "route",
+        "why": "below the Azure Flute's tile",
         "args": {
           "fight_wild": false,
           "target": {
@@ -14,28 +31,29 @@
               ]
             ]
           }
-        },
-        "id": "below_the_flute",
-        "kind": "route",
-        "why": "below the Azure Flute's tile"
+        }
       },
       {
-        "action": "azure_flute_if_there",
-        "declared_after": {
-          "facing": "north",
-          "map": "PlayerHouse2F",
-          "tiles": [
-            [
-              7,
-              5
-            ]
-          ]
-        },
         "id": "azure_flute_if_there",
-        "kind": "game_action",
-        "why": "take the Azure Flute if this save has one"
+        "action": "azure_flute_if_there",
+        "why": "take the Azure Flute if this save has one",
+        "args": {
+          "pose_after": {
+            "facing": "north",
+            "map": "PlayerHouse2F",
+            "tiles": [
+              [
+                7,
+                5
+              ]
+            ]
+          }
+        }
       },
       {
+        "id": "onto_the_flute_tile",
+        "action": "legs",
+        "why": "up onto (7, 4), then east onto the top of the stairs' mat (8, 4)",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -48,51 +66,53 @@
               "tiles": 1
             }
           ]
-        },
-        "id": "onto_the_flute_tile",
-        "kind": "legs",
-        "why": "up onto (7, 4), then east onto the top of the stairs' mat (8, 4)"
+        }
       },
       {
-        "args": {
-          "direction": "east"
-        },
-        "declared_after": {
-          "map": "PlayerHouse1F",
-          "tiles": [
-            [
-              10,
-              3
-            ],
-            [
-              10,
-              4
-            ]
-          ]
-        },
         "id": "down_the_stairs",
-        "kind": "step",
-        "why": "onto the stairs"
-      },
-      {
-        "declared_after": {
-          "map": "PlayerHouse1F",
-          "tiles": [
-            [
-              10,
-              3
-            ],
-            [
-              10,
-              4
+        "action": "step",
+        "why": "onto the stairs",
+        "args": {
+          "direction": "east",
+          "pose_after": {
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                10,
+                3
+              ],
+              [
+                10,
+                4
+              ]
             ]
-          ]
-        },
-        "id": "mom_calls",
-        "kind": "scene",
-        "why": "Mom calls the player over as they come down; we stay put"
+          }
+        }
       },
       {
+        "id": "mom_calls",
+        "action": "scene",
+        "why": "Mom calls the player over as they come down; we stay put",
+        "args": {
+          "pose_after": {
+            "map": "PlayerHouse1F",
+            "tiles": [
+              [
+                10,
+                3
+              ],
+              [
+                10,
+                4
+              ]
+            ]
+          }
+        }
+      },
+      {
+        "id": "above_the_door",
+        "action": "route",
+        "why": "past Mom at (7, 8) to above the door",
         "args": {
           "fight_wild": false,
           "target": {
@@ -105,30 +125,30 @@
               ]
             ]
           }
-        },
-        "id": "above_the_door",
-        "kind": "route",
-        "why": "past Mom at (7, 8) to above the door"
+        }
       },
       {
-        "args": {
-          "direction": "south"
-        },
-        "declared_after": {
-          "facing": "south",
-          "map": "TwinleafTown",
-          "tiles": [
-            [
-              20,
-              22
-            ]
-          ]
-        },
         "id": "out_of_the_house",
-        "kind": "step",
-        "why": "onto the door's tile (6, 10), and out"
+        "action": "step",
+        "why": "onto the door's tile (6, 10), and out",
+        "args": {
+          "direction": "south",
+          "pose_after": {
+            "facing": "south",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                20,
+                22
+              ]
+            ]
+          }
+        }
       },
       {
+        "id": "short_of_barrys_door",
+        "action": "route",
+        "why": "a tile east of Barry's doorstep",
         "args": {
           "fight_wild": false,
           "target": {
@@ -141,70 +161,74 @@
               ]
             ]
           }
-        },
-        "id": "short_of_barrys_door",
-        "kind": "route",
-        "why": "a tile east of Barry's doorstep"
+        }
       },
       {
+        "id": "barrys_door",
+        "action": "step",
+        "why": "the trigger on his doorstep (9, 12)",
         "args": {
           "direction": "west"
-        },
-        "id": "barrys_door",
-        "kind": "step",
-        "why": "the trigger on his doorstep (9, 12)"
+        }
       },
       {
-        "action": "a",
-        "declared_after": {
-          "facing": "north",
-          "map": "TwinleafTown",
-          "tiles": [
-            [
-              9,
-              13
-            ]
-          ]
-        },
         "id": "barry_bursts_out",
-        "kind": "scene",
-        "why": "Barry runs out, bumps into us and runs back in"
-      },
-      {
-        "action": "a",
-        "declared_after": {
-          "facing": "north",
-          "map": "TwinleafTown",
-          "tiles": [
-            [
-              9,
-              13
-            ]
-          ]
-        },
-        "id": "barry_goes_home",
-        "kind": "scene",
-        "why": "his second lines (Butters waited for two)"
-      },
-      {
+        "action": "scene",
+        "why": "Barry runs out, bumps into us and runs back in",
         "args": {
-          "direction": "north"
-        },
-        "declared_after": {
-          "facing": "north",
-          "map": "RivalHouse1F",
-          "tiles": [
-            [
-              6,
-              10
+          "variant": "a",
+          "pose_after": {
+            "facing": "north",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                9,
+                13
+              ]
             ]
-          ]
-        },
-        "id": "into_barrys_house",
-        "kind": "step",
-        "why": "past (9, 12) into his door"
+          }
+        }
       },
       {
+        "id": "barry_goes_home",
+        "action": "scene",
+        "why": "his second lines (Butters waited for two)",
+        "args": {
+          "variant": "a",
+          "pose_after": {
+            "facing": "north",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                9,
+                13
+              ]
+            ]
+          }
+        }
+      },
+      {
+        "id": "into_barrys_house",
+        "action": "step",
+        "why": "past (9, 12) into his door",
+        "args": {
+          "direction": "north",
+          "pose_after": {
+            "facing": "north",
+            "map": "RivalHouse1F",
+            "tiles": [
+              [
+                6,
+                10
+              ]
+            ]
+          }
+        }
+      },
+      {
+        "id": "off_barrys_mat",
+        "action": "legs",
+        "why": "off the door's mat, which no route starts on",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -213,12 +237,12 @@
               "tiles": 1
             }
           ]
-        },
-        "id": "off_barrys_mat",
-        "kind": "legs",
-        "why": "off the door's mat, which no route starts on"
+        }
       },
       {
+        "id": "below_barrys_stairs",
+        "action": "route",
+        "why": "past his mother at (4, 6) to the top of the stairs' mat",
         "args": {
           "fight_wild": false,
           "target": {
@@ -231,45 +255,47 @@
               ]
             ]
           }
-        },
-        "id": "below_barrys_stairs",
-        "kind": "route",
-        "why": "past his mother at (4, 6) to the top of the stairs' mat"
+        }
       },
       {
-        "args": {
-          "direction": "east"
-        },
-        "declared_after": {
-          "map": "RivalHouse2F",
-          "tiles": [
-            [
-              3,
-              4
-            ]
-          ]
-        },
         "id": "up_barrys_stairs",
-        "kind": "step",
-        "why": "onto the stairs"
-      },
-      {
-        "action": "a",
-        "declared_after": {
-          "facing": "north",
-          "map": "RivalHouse2F",
-          "tiles": [
-            [
-              3,
-              5
+        "action": "step",
+        "why": "onto the stairs",
+        "args": {
+          "direction": "east",
+          "pose_after": {
+            "map": "RivalHouse2F",
+            "tiles": [
+              [
+                3,
+                4
+              ]
             ]
-          ]
-        },
-        "id": "barry_runs_to_the_lake",
-        "kind": "scene",
-        "why": "Barry's lines; he runs off to the lake"
+          }
+        }
       },
       {
+        "id": "barry_runs_to_the_lake",
+        "action": "scene",
+        "why": "Barry's lines; he runs off to the lake",
+        "args": {
+          "variant": "a",
+          "pose_after": {
+            "facing": "north",
+            "map": "RivalHouse2F",
+            "tiles": [
+              [
+                3,
+                5
+              ]
+            ]
+          }
+        }
+      },
+      {
+        "id": "off_barrys_west_wall",
+        "action": "legs",
+        "why": "a tap east, clear of the west wall",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -277,56 +303,55 @@
               "direction": "east",
               "tiles": 1
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "north",
-          "map": "RivalHouse2F",
-          "tiles": [
-            [
-              3,
-              4
-            ],
-            [
-              4,
-              4
-            ],
-            [
-              5,
-              4
-            ],
-            [
-              3,
-              5
-            ],
-            [
-              4,
-              5
-            ],
-            [
-              5,
-              5
-            ],
-            [
-              3,
-              6
-            ],
-            [
-              4,
-              6
-            ],
-            [
-              5,
-              6
+          ],
+          "pose_after": {
+            "facing": "north",
+            "map": "RivalHouse2F",
+            "tiles": [
+              [
+                3,
+                4
+              ],
+              [
+                4,
+                4
+              ],
+              [
+                5,
+                4
+              ],
+              [
+                3,
+                5
+              ],
+              [
+                4,
+                5
+              ],
+              [
+                5,
+                5
+              ],
+              [
+                3,
+                6
+              ],
+              [
+                4,
+                6
+              ],
+              [
+                5,
+                6
+              ]
             ]
-          ]
-        },
-        "id": "off_barrys_west_wall",
-        "kind": "legs",
-        "why": "a tap east, clear of the west wall"
+          }
+        }
       },
       {
-        "action": "to_wall",
+        "id": "up_to_barrys_back_wall",
+        "action": "legs",
+        "why": "north to the room's back wall",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -334,48 +359,49 @@
               "direction": "north",
               "tiles": 3
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "north",
-          "map": "RivalHouse2F",
-          "tiles": [
-            [
-              3,
-              4
-            ],
-            [
-              4,
-              4
-            ],
-            [
-              5,
-              4
+          ],
+          "variant": "to_wall",
+          "pose_after": {
+            "facing": "north",
+            "map": "RivalHouse2F",
+            "tiles": [
+              [
+                3,
+                4
+              ],
+              [
+                4,
+                4
+              ],
+              [
+                5,
+                4
+              ]
             ]
-          ]
-        },
-        "id": "up_to_barrys_back_wall",
-        "kind": "legs",
-        "why": "north to the room's back wall"
+          }
+        }
       },
       {
-        "args": {
-          "direction": "west"
-        },
-        "declared_after": {
-          "map": "RivalHouse1F",
-          "tiles": [
-            [
-              2,
-              3
-            ]
-          ]
-        },
         "id": "down_barrys_stairs",
-        "kind": "step",
-        "why": "west along row 4 onto the stairs"
+        "action": "step",
+        "why": "west along row 4 onto the stairs",
+        "args": {
+          "direction": "west",
+          "pose_after": {
+            "map": "RivalHouse1F",
+            "tiles": [
+              [
+                2,
+                3
+              ]
+            ]
+          }
+        }
       },
       {
+        "id": "above_barrys_door",
+        "action": "route",
+        "why": "back to his door",
         "args": {
           "fight_wild": false,
           "target": {
@@ -388,30 +414,30 @@
               ]
             ]
           }
-        },
-        "id": "above_barrys_door",
-        "kind": "route",
-        "why": "back to his door"
+        }
       },
       {
-        "args": {
-          "direction": "south"
-        },
-        "declared_after": {
-          "facing": "south",
-          "map": "TwinleafTown",
-          "tiles": [
-            [
-              9,
-              12
-            ]
-          ]
-        },
         "id": "out_of_barrys_house",
-        "kind": "step",
-        "why": "out of his door"
+        "action": "step",
+        "why": "out of his door",
+        "args": {
+          "direction": "south",
+          "pose_after": {
+            "facing": "south",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                9,
+                12
+              ]
+            ]
+          }
+        }
       },
       {
+        "id": "below_barrys_warning",
+        "action": "legs",
+        "why": "along row 12 to the foot of Twinleaf's exit (15, 12)",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -419,24 +445,23 @@
               "direction": "east",
               "tiles": 6
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "east",
-          "map": "TwinleafTown",
-          "tiles": [
-            [
-              15,
-              12
+          ],
+          "pose_after": {
+            "facing": "east",
+            "map": "TwinleafTown",
+            "tiles": [
+              [
+                15,
+                12
+              ]
             ]
-          ]
-        },
-        "id": "below_barrys_warning",
-        "kind": "legs",
-        "why": "along row 12 to the foot of Twinleaf's exit (15, 12)"
+          }
+        }
       },
       {
-        "action": "to_dialogue",
+        "id": "barrys_warning",
+        "action": "legs",
+        "why": "up Twinleaf's exit onto Route 201 until Barry's warning starts: its trigger is row 18 (14..19, 18), coord_event_0 of pret/pokediamond zone_event narc_0327 (Route201.json), 19 tiles north; no tap counting by the \"201\" banner (lab-B 2026-11-15)",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -444,37 +469,40 @@
               "direction": "north",
               "tiles": 19
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "north",
-          "map": "Route201",
-          "tiles": [
-            [
-              15,
-              18
+          ],
+          "variant": "to_dialogue",
+          "pose_after": {
+            "facing": "north",
+            "map": "Route201",
+            "tiles": [
+              [
+                15,
+                18
+              ]
             ]
-          ]
-        },
-        "id": "barrys_warning",
-        "kind": "legs",
-        "why": "up Twinleaf's exit onto Route 201 until Barry's warning starts: its trigger is row 18 (14..19, 18), coord_event_0 of pret/pokediamond zone_event narc_0327 (Route201.json), 19 tiles north; no tap counting by the \"201\" banner (lab-B 2026-11-15)"
+          }
+        }
       },
       {
-        "declared_after": {
-          "map": "Route201",
-          "tiles": [
-            [
-              15,
-              18
-            ]
-          ]
-        },
         "id": "barry_warns_us",
-        "kind": "scene",
-        "why": "Barry's tall-grass warning; he then stands north of us at (15, 17)"
+        "action": "scene",
+        "why": "Barry's tall-grass warning; he then stands north of us at (15, 17)",
+        "args": {
+          "pose_after": {
+            "map": "Route201",
+            "tiles": [
+              [
+                15,
+                18
+              ]
+            ]
+          }
+        }
       },
       {
+        "id": "away_from_barry",
+        "action": "legs",
+        "why": "to (14, 16): row 18 west of the path is trees (r16) and (13, 17) is the 201 sign (probe-r201-sign), so clear both onto row 16",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -487,12 +515,12 @@
               "tiles": 2
             }
           ]
-        },
-        "id": "away_from_barry",
-        "kind": "legs",
-        "why": "to (14, 16): row 18 west of the path is trees (r16) and (13, 17) is the 201 sign (probe-r201-sign), so clear both onto row 16"
+        }
       },
       {
+        "id": "below_the_lake_entrance",
+        "action": "route",
+        "why": "west along Route 201's lower level to the Lakefront",
         "args": {
           "fight_wild": false,
           "target": {
@@ -505,32 +533,15 @@
               ]
             ]
           }
-        },
-        "id": "below_the_lake_entrance",
-        "kind": "route",
-        "why": "west along Route 201's lower level to the Lakefront"
+        }
       }
     ],
-    "id": "00.01",
-    "start": {
-      "facing": "north",
-      "map": "PlayerHouse2F",
-      "tiles": [
-        [
-          4,
-          6
-        ]
-      ]
-    },
-    "title": "Bedroom to the Verity Lakefront"
+    "metadata": {
+      "phase": "reproduction"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Twinleaf Town"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "reproduction"
   }
 }

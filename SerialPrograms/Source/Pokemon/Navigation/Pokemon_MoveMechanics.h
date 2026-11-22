@@ -12,7 +12,7 @@
 
 #include <optional>
 #include "Common/Cpp/Time.h"
-#include "Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

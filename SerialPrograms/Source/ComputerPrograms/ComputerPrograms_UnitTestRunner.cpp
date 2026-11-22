@@ -39,17 +39,25 @@
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_Interrupts_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_Settle_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h"
+#include "Pokemon/AutoStory/Pokemon_Transitions_Tests.h"
 #include "Pokemon/Navigation/Pokemon_ConnectedMaps_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner_Tests.h"
 #include "Pokemon/Navigation/Pokemon_LegWalker_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MapData_Tests.h"
 #include "Pokemon/Navigation/Pokemon_MoveMechanics_Tests.h"
-#include "Pokemon/Navigation/Pokemon_RobustLegPlanner_Tests.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RouteLog_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RouteScorer_Tests.h"
 #include "Pokemon/Navigation/Pokemon_RuntimeMap_Tests.h"
 #include "Pokemon/Navigation/Pokemon_WallRecovery_Tests.h"
-#include "Pokemon/Navigation/Pokemon_WanderRecovery_Tests.h"
+#include "Pokemon/Navigation/Grid/Planning/Pokemon_WanderRecovery_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_KnownFailing_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimFaults_Tests.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimGolden_Tests.h"
@@ -122,6 +130,14 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Kernels::add_tests(ret);
     add_tests_Navigation(ret);
     Pokemon::add_tests_AutoStory(ret);
+    Pokemon::add_tests_CenterVisit(ret);
+    Pokemon::add_tests_Interrupts(ret);
+    Pokemon::add_tests_SceneJudges(ret);
+    Pokemon::add_tests_Settle(ret);
+    Pokemon::add_tests_StoryInterrupts(ret);
+    Pokemon::add_tests_StoryLaunch(ret);
+    Pokemon::add_tests_StoryRngHandoff(ret);
+    Pokemon::add_tests_Transitions(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_HomeTileReader(ret);

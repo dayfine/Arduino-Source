@@ -13,7 +13,7 @@
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "Pokemon/Navigation/Pokemon_MoveMechanics.h"
 
 namespace PokemonAutomation{

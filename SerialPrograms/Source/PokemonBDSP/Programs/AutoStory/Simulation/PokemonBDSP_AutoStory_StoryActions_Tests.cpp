@@ -14,8 +14,10 @@
 #include "Common/Cpp/CancellableScope.h"
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Events.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryActions.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryData.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryWalkSteps.h"
 #include "PokemonBDSP_AutoStory_GridSim.h"
@@ -30,161 +32,101 @@ using namespace detail;
 
 namespace{
 
-using Pokemon::RunState;
-using Pokemon::StoryStep;
-using Pokemon::StoryStepKind;
+using Pokemon::StoryFailure;
 
 
-//  Every step the story runs: the table's, and each row's save at its start.
-std::vector<std::pair<std::string, StoryStep>> story_steps(){
-    std::vector<std::pair<std::string, StoryStep>> out;
+std::vector<std::pair<std::string, BdspStep>> story_steps(){
+    std::vector<std::pair<std::string, BdspStep>> out;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        for (const StoryStep& step : row.steps){
+        for (const BdspStep& step : row.steps){
             out.emplace_back(row.id, step);
         }
-        StoryStep save;
-        save.kind = StoryStepKind::SAVE;
-        save.name = "save";
-        save.args.emplace(SAVES_IN_ARG, row.saves_in);
-        out.emplace_back(row.id, std::move(save));
     }
     return out;
 }
 
-//  What ran a step before the table: the executors' own dispatch. An event
-//  named by the whole variant, whatever the kind; else the kind's method,
-//  which StoryWalkSteps does for the walking kinds, and the console (or
-//  the simulation's stand-in) for the others; else the base class's.
-std::string old_dispatch(const StoryStep& step){
-    const std::string kind = Pokemon::story_step_kind_name(step.kind);
-    if (story_events().contains(step.action)){
-        return "event " + step.action;
-    }
-    switch (step.kind){
-    case StoryStepKind::ROUTE:
-    case StoryStepKind::LEGS:
-    case StoryStepKind::STEP:
-    case StoryStepKind::TALK:
-    case StoryStepKind::MASH:
-        return std::format("walk {}", kind);
-    case StoryStepKind::NEW_GAME:
-    case StoryStepKind::OPTIONS:
-    case StoryStepKind::ANSWER:
-    case StoryStepKind::BATTLE:
-    case StoryStepKind::TRAIN:
-    case StoryStepKind::HEAL:
-    case StoryStepKind::SAVE:
-        return "console " + kind;
-    default:
-        return std::format("executor {}", kind);
-    }
+bool needs_console(const BdspStep& step){
+    return step.action != "route" && step.action != "legs" && step.action != "step" &&
+        step.action != "talk" && step.action != "scene";
 }
 
-//  The table's binding that names what it would run, as a failure.
-StoryBoundActions naming_actions(){
-    const auto named = [](StoryStepKind kind){
-        return [kind](const StoryStep&, RunState&){
-            return Pokemon::outcome_failed("console", Pokemon::story_step_kind_name(kind));
+BdspStoryHandlers naming_handlers(){
+    const auto named = [](std::string tag){
+        return [tag = std::move(tag)](const BdspStep&, BdspRunState&) -> std::optional<StoryFailure>{
+            return StoryFailure{.code = "console", .detail = tag};
         };
     };
-    return StoryBoundActions{
-        .new_game = named(StoryStepKind::NEW_GAME),
-        .options = named(StoryStepKind::OPTIONS),
-        .answer = named(StoryStepKind::ANSWER),
-        .battle = named(StoryStepKind::BATTLE),
-        .train = named(StoryStepKind::TRAIN),
-        .heal = named(StoryStepKind::HEAL),
-        .save = named(StoryStepKind::SAVE),
-        .event = [](const std::string& name) -> StoryBoundAction{
-            return [name](const StoryStep&, RunState&){
-                return Pokemon::outcome_failed("event", name);
+    return BdspStoryHandlers{
+        .new_game = named("new_game"),
+        .options = named("options"),
+        .answer = named("answer"),
+        .battle = named("battle"),
+        .train = named("train"),
+        .heal = named("heal"),
+        .save = named("save"),
+        .event = [](const std::string& name) -> BdspStepAction{
+            return [name](const BdspStep&, BdspRunState&) -> std::optional<StoryFailure>{
+                return StoryFailure{.code = "event", .detail = name};
             };
         },
     };
 }
 
-//  Whether `step` runs one of the binding's own actions, which need the
-//  console: an event, or a kind StoryWalkSteps does not do.
-bool needs_console(const StoryStep& step){
-    if (story_events().contains(step.action)){
-        return true;
-    }
-    switch (step.kind){
-    case StoryStepKind::ROUTE:
-    case StoryStepKind::LEGS:
-    case StoryStepKind::STEP:
-    case StoryStepKind::TALK:
-    case StoryStepKind::MASH:
-        return false;
-    default:
-        return true;
-    }
-}
-
-//  What `steps` runs for `step`, in old_dispatch()'s words. A walking step
-//  is not run: it would walk.
-std::string engine_dispatch(StoryEngineSteps& steps, const StoryStep& step){
-    const std::string kind = Pokemon::story_step_kind_name(step.kind);
-    if (!steps.check(step).empty()){
-        return std::format("executor {}", kind);
-    }
-    if (!needs_console(step)){
-        return std::format("walk {}", kind);
-    }
-    RunState state;
-    const Pokemon::Outcome outcome = steps.act(step, state);
-    if (outcome.failure == "unsupported_step"){
-        return std::format("executor {}", kind);
-    }
-    return std::format("{} {}", outcome.failure, outcome.detail);
-}
-
-
+//  Every embedded S10/S11 plan parses directly through #648's
+//  Pokemon::read_story_checkpoint() and every step has a known action.
 UnitTestResult test_every_step_has_an_action(Logger& logger){
-    SimExecutor sim(logger);
+    size_t plans = 0;
     size_t steps = 0;
-    for (const StoryCheckpoint& row : story_checkpoints()){
-        for (size_t c = 0; c < row.steps.size(); c++){
-            const StoryStep& step = row.steps[c];
-            const std::vector<std::string> problems = sim.steps().check(step);
-            if (!problems.empty()){
-                return std::format(
-                    "{} step {} {}: {} for {} '{}'",
-                    row.id, c + 1, step.name, problems.front(), Pokemon::story_step_kind_name(step.kind), step.action
-                );
+    Pokemon::StoryActions actions = make_bdsp_action_parsers([](BdspStep) -> Pokemon::StoryStepRun{
+        return [](Pokemon::StoryBackend&, Pokemon::RunState&) -> std::optional<StoryFailure>{
+            return std::nullopt;
+        };
+    });
+    for (const auto& [name, text] : bdsp_checkpoint_json()){
+        if (!name.ends_with(".plan")){
+            continue;
+        }
+        const Pokemon::StoryCheckpoint cp = Pokemon::read_story_checkpoint(parse_json(text), "bdsp", name, actions);
+        for (const Pokemon::StoryStep& step : cp.steps){
+            if (!is_known_bdsp_action(step.action)){
+                return std::format("{} {}: unknown action \"{}\".", cp.id, step.name, step.action);
             }
         }
-        steps += row.steps.size();
+        plans++;
+        steps += cp.steps.size();
     }
-    logger.log(std::format("{} rows, {} steps, each with an action.", story_checkpoints().size(), steps));
+    logger.log(std::format("{} plans, {} steps parsed directly through #648 read_story_checkpoint().", plans, steps));
     return true;
 }
 
-UnitTestResult test_table_runs_what_the_old_dispatch_ran(Logger& logger){
+UnitTestResult test_dispatch_routes_every_action(Logger& logger){
     GridSim sim({}, {0, 0}, Pokemon::Direction::NORTH, false);
     std::vector<std::string> notes;
     SimMisses misses;
     const SimWorldKnobs knobs;
     const std::string step_name;
-    SimStoryStepIO io(sim, notes, misses, knobs, step_name, []{ return false; }, [](const Pokemon::Pose&){});
+    SimStoryStepIO io(sim, notes, misses, knobs, step_name, []{ return false; }, [](const Pokemon::GridPose&){});
     StoryWalkSteps walks(io);
-    CancellableHolder<CancellableScope> scope;
-    StoryLogBackend backend(Pokemon::StoryBackendKind::SCRIPT, {}, scope);
-    StoryEngineSteps engine(walks, naming_actions(), backend);
+    const BdspStoryHandlers handlers = naming_handlers();
 
-    std::set<std::pair<StoryStepKind, std::string>> seen;
+    std::set<std::string> seen;
     for (const auto& [row, step] : story_steps()){
-        if (!seen.emplace(step.kind, step.action).second){
+        if (!seen.insert(step.action).second){
             continue;
         }
-        const std::string expected = old_dispatch(step);
-        const std::string actual = engine_dispatch(engine, step);
-        if (actual != expected){
-            return std::format("{} {} ({} \"{}\"): the engine runs \"{}\", the old dispatch ran \"{}\".",
-                row, step.name, Pokemon::story_step_kind_name(step.kind), step.action, actual, expected);
+        if (!needs_console(step)){
+            continue;
+        }
+        BdspRunState state;
+        const std::optional<StoryFailure> failure = run_bdsp_action(walks, handlers, step, state);
+        const std::string expected_code = story_events().contains(step.action) ? "event" : "console";
+        if (!failure || failure->code != expected_code || failure->detail != step.action){
+            return std::format("{} {} (\"{}\"): expected {}: {}, got {}.",
+                row, step.name, step.action, expected_code, step.action,
+                failure ? std::format("{}", *failure) : std::string("ok"));
         }
     }
-    logger.log(std::format("{} (kind, action) pairs run as before.", seen.size()));
+    logger.log(std::format("{} unique BDSP actions dispatched cleanly.", seen.size()));
     return true;
 }
 
@@ -202,7 +144,7 @@ UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
             }
             for (const std::string& stubbed : start.stubbed){
                 if (stubbed == step.name){
-                    return std::format("{} {}: stubbed, but the simulation plays its kind.", row, step.name);
+                    return std::format("{} {}: stubbed, but the simulation plays its action.", row, step.name);
                 }
             }
         }
@@ -213,13 +155,9 @@ UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
     return true;
 }
 
-//  Every authored scene keeps the full opening-line guard unless the
-//  preceding settle actually observed dialogue.
 UnitTestResult test_scene_start_waits(Logger& logger){
     constexpr std::string_view LAST_ROW = "01.11";
     constexpr size_t EXPECTED_SCENES = 23;
-    //  The default grid naturally plays Barry's doorway scene. The two
-    //  other measured doorway scenes are supplied by the test below.
     constexpr std::string_view DEFAULT_SKIP = "barry_goes_home";
     SimExecutor sim(logger);
     run_rows_on(sim, logger, {.from = "00.00", .to = std::string(LAST_ROW)});
@@ -229,7 +167,7 @@ UnitTestResult test_scene_start_waits(Logger& logger){
     size_t scenes = 0;
     size_t guarded = 0;
     for (const auto& [row, step] : story_steps()){
-        if (row > LAST_ROW || step.kind != StoryStepKind::MASH){
+        if (row > LAST_ROW || step.action != "scene"){
             continue;
         }
         const auto found = sim.misses().dialog_waits.find(step.name);
@@ -242,7 +180,6 @@ UnitTestResult test_scene_start_waits(Logger& logger){
             if (should_skip){
                 return std::format("{} {} repeated its opening-line guard after preceding dialogue.", row, step.name);
             }
-            //  Mirrors SCENE_START_WAIT in StoryWalkSteps.cpp.
             if (found->second != Milliseconds(15000)){
                 return std::format("{} {} waits {} ms for its opening line; expected the full 15000 ms guard.",
                     row, step.name, found->second.count());
@@ -261,8 +198,6 @@ UnitTestResult test_scene_start_waits(Logger& logger){
     return true;
 }
 
-//  Console B, 2026-11-15: these arrival scenes had already been played by
-//  the preceding settle, so their separate 15 s waits did no work.
 UnitTestResult test_seen_scene_skips_start_wait(Logger& logger){
     SimWorldKnobs knobs;
     knobs.scenes["down_the_stairs"] = {sim_line("Mom calls the player")};
@@ -286,11 +221,9 @@ UnitTestResult test_seen_scene_skips_start_wait(Logger& logger){
     return true;
 }
 
-//  Dialogue seen before an intervening TALK or BATTLE belongs to the step
-//  before that action, not to the following scene.
 UnitTestResult test_intervening_step_keeps_start_wait(Logger& logger){
-    const StoryStepKind intervening_kinds[] = {StoryStepKind::TALK, StoryStepKind::BATTLE};
-    for (StoryStepKind kind : intervening_kinds){
+    const std::string_view intervening_actions[] = {"talk", "battle"};
+    for (std::string_view action : intervening_actions){
         GridSim grid(
             {.world = story_plan_world("TwinleafTown", "TwinleafTown")},
             /*start=*/{0, 0}, Pokemon::Direction::NORTH, /*can_run=*/false
@@ -301,34 +234,32 @@ UnitTestResult test_intervening_step_keeps_start_wait(Logger& logger){
         SimWorldKnobs knobs;
         knobs.first_line[io_step] = Milliseconds(0);
         knobs.scenes[io_step] = {sim_line("the scene's line")};
-        SimStoryStepIO io(grid, notes, misses, knobs, io_step, []{ return false; }, [](const Pokemon::Pose&){});
+        SimStoryStepIO io(grid, notes, misses, knobs, io_step, []{ return false; }, [](const Pokemon::GridPose&){});
         StoryWalkSteps walks(io);
-        CancellableHolder<CancellableScope> scope;
-        StoryLogBackend backend(Pokemon::StoryBackendKind::SCRIPT, /*log=*/{}, scope);
-        StoryBoundActions actions = naming_actions();
-        actions.battle = [](const StoryStep&, RunState&){ return Pokemon::outcome_ok(); };
-        StoryEngineSteps engine(walks, actions, backend);
-        RunState state;
+        BdspStoryHandlers handlers = naming_handlers();
+        handlers.battle = [](const BdspStep&, BdspRunState&) -> std::optional<StoryFailure>{ return std::nullopt; };
+        BdspRunState state;
 
-        StoryStep preceding{.kind = StoryStepKind::MASH, .name = "preceding_scene"};
-        engine.act(preceding, state);
+        BdspStep preceding{.name = "preceding_scene", .action = "scene", .args = SceneStepArgs{}};
+        run_bdsp_action(walks, handlers, preceding, state);
         misses.dialog_waits.clear();
-        StoryStep intervening{.kind = kind, .name = "intervening_step"};
-        engine.act(intervening, state);
+        BdspStep intervening{.name = "intervening_step", .action = std::string(action), .args = PlainStepArgs{}};
+        if (action == "battle"){
+            intervening.args = BattleStepArgs{};
+        }
+        run_bdsp_action(walks, handlers, intervening, state);
         misses.dialog_waits.clear();
-        StoryStep following{.kind = StoryStepKind::MASH, .name = "following_scene"};
-        engine.act(following, state);
+        BdspStep following{.name = "following_scene", .action = "scene", .args = SceneStepArgs{}};
+        run_bdsp_action(walks, handlers, following, state);
 
         const auto found = misses.dialog_waits.find(io_step);
         if (found == misses.dialog_waits.end() || found->second != Milliseconds(15000)){
-            return std::format("A scene after {} did not keep its full opening-line guard.",
-                Pokemon::story_step_kind_name(kind));
+            return std::format("A scene after {} did not keep its full opening-line guard.", action);
         }
     }
-    logger.log("Scenes after TALK and BATTLE keep their full opening-line guard.");
+    logger.log("Scenes after talk and battle keep their full opening-line guard.");
     return true;
 }
-
 
 
 struct AutoStoryStoryActionsInput{
@@ -367,11 +298,11 @@ private:
 
 const AutoStoryStoryActionsCase AUTO_STORY_STORY_ACTIONS_CASES[] = {
     {
-        .input = {"Story actions: every step of every row has an action", test_every_step_has_an_action},
+        .input = {"Story actions: every step of every row parses through #648 read_story_checkpoint()", test_every_step_has_an_action},
         .expectation = {},
     },
     {
-        .input = {"Story actions: each (kind, action) runs what the executors' own dispatch ran", test_table_runs_what_the_old_dispatch_ran},
+        .input = {"Story actions: every console and event action dispatches to its handler", test_dispatch_routes_every_action},
         .expectation = {},
     },
     {

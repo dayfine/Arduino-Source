@@ -26,7 +26,7 @@ std::string_view place_name(CenterPlace place){
 } // namespace
 
 
-Outcome enter_center(std::string_view label, CenterVisitIO& io){
+std::optional<StoryFailure> enter_center(std::string_view label, CenterVisitIO& io){
     //  Every way in settles before the walk to the nurse: the inside can
     //  still be fading in whether or not the walk saw the fade. With no
     //  fade, the walk can have gone on in as far as the counter (BDSP lab-B
@@ -45,12 +45,12 @@ Outcome enter_center(std::string_view label, CenterVisitIO& io){
     const CenterPlace place = io.place();
     io.log(std::format("[Center] {}: in: {}; reads {}.", label, how, place_name(place)));
     if (place == CenterPlace::OUTSIDE){
-        return outcome_failed(std::string(CENTER_NOT_ENTERED), "not in a Pokemon Center after its door");
+        return StoryFailure{.code = std::string(CENTER_NOT_ENTERED), .detail = "not in a Pokemon Center after its door"};
     }
-    return outcome_ok();
+    return std::nullopt;
 }
 
-Outcome leave_center(std::string_view label, CenterVisitIO& io){
+std::optional<StoryFailure> leave_center(std::string_view label, CenterVisitIO& io){
     //  With no fade seen yet, the fade can still be to come: the settle
     //  waits for it, and fails when none shows.
     const WarpSeen seen = io.walk_out();
@@ -58,14 +58,14 @@ Outcome leave_center(std::string_view label, CenterVisitIO& io){
     const CenterPlace place = io.place();
     io.log(std::format("[Center] {}: out: {}; reads {}.", label, describe(seen), place_name(place)));
     if (place == CenterPlace::INSIDE){
-        return outcome_failed(std::string(CENTER_NOT_LEFT), "still inside the Pokemon Center after its door");
+        return StoryFailure{.code = std::string(CENTER_NOT_LEFT), .detail = "still inside the Pokemon Center after its door"};
     }
-    return outcome_ok();
+    return std::nullopt;
 }
 
-Outcome run_center_visit(std::string_view label, CenterVisitIO& io){
-    Outcome in = enter_center(label, io);
-    if (!in.succeeded()){
+std::optional<StoryFailure> run_center_visit(std::string_view label, CenterVisitIO& io){
+    std::optional<StoryFailure> in = enter_center(label, io);
+    if (in){
         return in;
     }
     io.heal();

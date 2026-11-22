@@ -15,7 +15,9 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
+#include "Pokemon/AutoStory/Pokemon_FadeProfiles.h"
 #include "Pokemon/AutoStory/Pokemon_SceneJudges.h"
+#include "Pokemon/AutoStory/Pokemon_ScreenEventLog.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "CommonTools/ScreenEvents/ScreenFades.h"
 
@@ -54,11 +56,13 @@ enum class WalkOrigin{ CURRENT_LEG, MAY_PRECEDE_LEG };
 //  How a screen's fade looks.
 using PokemonAutomation::WarpFade;
 //  "black fade", for the log.
-using PokemonAutomation::warp_fade_name;
+inline std::string warp_fade_name(WarpFade fade){
+    return PokemonAutomation::WARP_FADE_NAMES().get_string(fade);
+}
 //  A fade's most texture (the walk's black-screen watcher uses it too).
-using PokemonAutomation::FADE_MAX_STDDEV_SUM;
+inline constexpr double FADE_MAX_STDDEV_SUM = 10;
 //  A dark fade's brightest rgb sum (likewise).
-using PokemonAutomation::FADE_MAX_DARK_SUM;
+inline constexpr double FADE_MAX_DARK_SUM = 225;
 //  The fade a screen's middle shows, from its stats.
 using PokemonAutomation::fade_of;
 //  The fade a screen shows.

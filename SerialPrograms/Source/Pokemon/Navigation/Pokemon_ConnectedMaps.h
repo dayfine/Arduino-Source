@@ -18,7 +18,7 @@
 #include <optional>
 #include <string_view>
 #include <vector>
-#include "Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "Pokemon_MapData.h"
 
 namespace PokemonAutomation{

@@ -1,8 +1,24 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
+    "id": "01.01",
+    "title": "Jubilife to Barry",
+    "start": {
+      "facing": "east",
+      "map": "JubilifeCity",
+      "tiles": [
+        [
+          58,
+          22
+        ]
+      ]
+    },
     "events": [
       {
-        "action": "town",
+        "id": "west_of_barrys_trigger",
+        "action": "route",
+        "why": "east along the street onto Route 203",
         "args": {
           "fight_wild": false,
           "target": {
@@ -14,71 +30,55 @@
                 18
               ]
             ]
-          }
-        },
-        "id": "west_of_barrys_trigger",
-        "kind": "route",
-        "why": "east along the street onto Route 203"
+          },
+          "variant": "town"
+        }
       },
       {
+        "id": "barrys_trigger",
+        "action": "step",
+        "why": "the trigger (5, 17..20): Barry walks over",
         "args": {
           "direction": "east"
-        },
-        "id": "barrys_trigger",
-        "kind": "step",
-        "why": "the trigger (5, 17..20): Barry walks over"
+        }
       },
       {
-        "args": {
-          "may_lose": true
-        },
-        "declared_after": {
-          "facing": "east",
-          "map": "Route203",
-          "tiles": [
-            [
-              5,
-              17
-            ],
-            [
-              5,
-              18
-            ],
-            [
-              5,
-              19
-            ],
-            [
-              5,
-              20
-            ]
-          ]
-        },
         "id": "barry",
-        "kind": "battle",
-        "why": "Barry's battle; a loss goes on, as it did on the console"
+        "action": "battle",
+        "why": "Barry's battle; a loss goes on, as it did on the console",
+        "args": {
+          "may_lose": true,
+          "pose_after": {
+            "facing": "east",
+            "map": "Route203",
+            "tiles": [
+              [
+                5,
+                17
+              ],
+              [
+                5,
+                18
+              ],
+              [
+                5,
+                19
+              ],
+              [
+                5,
+                20
+              ]
+            ]
+          }
+        }
       }
     ],
-    "id": "01.01",
-    "start": {
-      "facing": "east",
-      "map": "JubilifeCity",
-      "tiles": [
-        [
-          58,
-          22
-        ]
-      ]
-    },
-    "title": "Jubilife to Barry"
+    "metadata": {
+      "phase": "reproduction"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Jubilife City"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "reproduction"
   }
 }

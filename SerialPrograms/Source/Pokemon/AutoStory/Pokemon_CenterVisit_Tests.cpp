@@ -109,8 +109,8 @@ public:
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         std::string calls;
         FakeCenterVisitIO io(m_case.input.in, m_case.input.places, m_case.input.out, calls);
-        const Outcome outcome = run_center_visit("Heal", io);
-        const std::string got = outcome.succeeded() ? "succeeded" : outcome.failure;
+        const std::optional<StoryFailure> failure = run_center_visit("Heal", io);
+        const std::string got = failure ? failure->code : "succeeded";
         const UnitTestResult result = expect_equal("outcome", got, m_case.expectation.failure.value_or("succeeded"));
         if (result.result != UnitTestResult::PASSED){
             return result;

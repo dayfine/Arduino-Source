@@ -14,7 +14,7 @@
 #include <optional>
 #include <string>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -23,9 +23,9 @@ namespace Pokemon{
 //  One of `tiles` of `map`, facing `facing` if set. As a target, any of the
 //  tiles will do.
 struct GridPose{
-    std::string map;
-    std::vector<TilePos> tiles;
-    std::optional<Direction> facing;
+    std::string map = {};
+    std::vector<TilePos> tiles = {};
+    std::optional<Direction> facing = std::nullopt;
 
     bool operator==(const GridPose& other) const = default;
 };

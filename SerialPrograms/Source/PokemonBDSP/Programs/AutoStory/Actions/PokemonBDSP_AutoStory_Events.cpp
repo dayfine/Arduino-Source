@@ -26,9 +26,9 @@ const StoryEvents& story_events(){
 }
 
 StoryEvent console_event(std::function<void(VideoStream& stream, ProControllerContext& context)> action){
-    return [action = std::move(action)](StoryEnv& console, Pokemon::RunState&, const Pokemon::StoryStep&){
+    return [action = std::move(action)](StoryEnv& console, BdspRunState&, const BdspStep&) -> std::optional<Pokemon::StoryFailure>{
         action(console.env.console, console.context);
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     };
 }
 

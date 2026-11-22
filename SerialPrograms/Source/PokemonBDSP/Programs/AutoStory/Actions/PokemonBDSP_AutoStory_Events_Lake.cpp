@@ -62,7 +62,7 @@ void starter_briefcase(VideoStream& stream, ProControllerContext& context){
 //  00.02: the starter from the program's option, in the briefcase: Turtwig
 //  is first, Chimchar a press right, Piplup two; ZL picks, then Up and ZL
 //  answer "this one?" with Yes.
-Pokemon::Outcome choose_starter(StoryEnv& console, Pokemon::RunState&, const Pokemon::StoryStep&){
+std::optional<Pokemon::StoryFailure> choose_starter(StoryEnv& console, BdspRunState&, const BdspStep&){
     VideoStream& stream = console.env.console;
     ProControllerContext& context = console.context;
     size_t rights = 0;
@@ -93,7 +93,7 @@ Pokemon::Outcome choose_starter(StoryEnv& console, Pokemon::RunState&, const Pok
     pbf_press_dpad(context, DPAD_UP, 80ms, 400ms);
     pbf_press_button(context, BUTTON_ZL, 80ms, 5000ms);
     context.wait_for_all_requests();
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 //  00.01: BDSP puts an Azure Flute on the bedroom floor at (7, 4) when the console
@@ -121,9 +121,12 @@ void azure_flute_if_there(VideoStream& stream, ProControllerContext& context){
 //  00.02 with Run Starter RNG in AutoStory: runs Starter RNG from the
 //  Verity Lakefront (17, 14) start save through the Starly battle and
 //  Rowan's scene, ending on the VerityLakefront overworld at (17, 14..15).
-Pokemon::Outcome starter_rng(StoryEnv& story, Pokemon::RunState&, const Pokemon::StoryStep&){
+std::optional<Pokemon::StoryFailure> starter_rng(StoryEnv& story, BdspRunState&, const BdspStep&){
     if (!story.run_starter_rng){
-        return Pokemon::outcome_failed("starter_rng_not_configured", "Starter RNG is not configured on StoryEnv.");
+        return Pokemon::StoryFailure{
+            .code = "starter_rng_not_configured",
+            .detail = "Starter RNG is not configured on StoryEnv.",
+        };
     }
     return story.run_starter_rng();
 }

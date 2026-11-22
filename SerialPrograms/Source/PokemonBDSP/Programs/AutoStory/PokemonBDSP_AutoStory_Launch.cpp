@@ -14,9 +14,7 @@
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_ScreenObservation.h"
 #include "Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h"
-#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Detect/PokemonBDSP_AutoStory_ScreenEvents.h"
 #include "Detect/PokemonBDSP_AutoStory_TitleDetector.h"
 #include "PokemonBDSP_AutoStory_Launch.h"
@@ -26,7 +24,6 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 using namespace std::chrono_literals;
-using Pokemon::GridPose;
 using Pokemon::StoryLaunchPolicy;
 using Pokemon::StoryLaunchPrompt;
 
@@ -46,7 +43,7 @@ constexpr std::string_view NO_LAUNCH_WALK = "a launch never walks";
 //  the boot's black, BDSP's screen events and its title (the Switch's
 //  prompts read the look's frame themselves).
 //  code-health: allow public_methods -- the StoryBackend interface; nothing to split
-class BdspLaunchBackend : public Pokemon::StoryBackend<GridPose>{
+class BdspLaunchBackend : public Pokemon::StoryBackend{
 public:
     BdspLaunchBackend(ConsoleHandle& console, ProControllerContext& context)
         : m_console(console)
@@ -56,17 +53,8 @@ public:
         , m_observer(BattleCue::WILD_MENU, "")
     {}
 
-    virtual Pokemon::StoryBackendKind kind() const override{
-        return Pokemon::StoryBackendKind::CONSOLE;
-    }
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override{
         pbf_press_button(m_context, button, hold, release);
-    }
-    virtual void tap(Pokemon::Direction) override{
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(NO_LAUNCH_WALK));
-    }
-    virtual void hold(Pokemon::Direction, Milliseconds, Pokemon::StoryPace) override{
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(NO_LAUNCH_WALK));
     }
     virtual void stick(double, Milliseconds, Milliseconds, Pokemon::StoryPace) override{
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(NO_LAUNCH_WALK));
@@ -74,10 +62,7 @@ public:
     virtual void wait(Milliseconds duration) override{
         m_context.wait_for(duration);
     }
-    virtual Pokemon::Observation<GridPose> observe() override;
-    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs&) override{
-        return Pokemon::outcome_failed("unsupported_step", "a launch fights no battle");
-    }
+    virtual ScreenObservation observe() override;
     virtual void log(std::string_view line) override{
         m_console.log(std::string(line), COLOR_BLUE);
     }
@@ -94,10 +79,10 @@ private:
     BdspScreenObserver m_observer;
 };
 
-Pokemon::Observation<GridPose> BdspLaunchBackend::observe(){
+ScreenObservation BdspLaunchBackend::observe(){
     m_context.wait_for_all_requests();
     VideoSnapshot frame = m_console.video().snapshot();
-    Pokemon::Observation<GridPose> look;
+    ScreenObservation look;
     if (frame && m_black.detect(*frame.frame)){
         //  The game booting or loading: never HOME, whose dark theme is
         //  dark too.
@@ -106,7 +91,7 @@ Pokemon::Observation<GridPose> BdspLaunchBackend::observe(){
         //  Alone: BDSP's detectors may read HOME's plain screen as quiet.
         look.events.set(ScreenEvent::SWITCH_HOME_MENU, true);
     }else if (frame){
-        static_cast<ScreenObservation&>(look) = Pokemon::screen_observation(m_observer.observe(frame, current_time()));
+        look.events = m_observer.observe(frame, current_time());
         if (title_screen_shown(*frame.frame)){
             look.readings[std::string(TITLE_READING)] = 1;
         }
@@ -146,7 +131,7 @@ StoryLaunchPolicy bdsp_launch_policy(std::vector<StoryLaunchPrompt> switch_promp
     return policy;
 }
 
-Pokemon::Outcome launch_bdsp_save(ConsoleHandle& console, ProControllerContext& context){
+std::optional<Pokemon::StoryFailure> launch_bdsp_save(ConsoleHandle& console, ProControllerContext& context){
     BdspLaunchBackend backend(console, context);
     const StoryLaunchPolicy policy = bdsp_launch_policy(Pokemon::switch_launch_prompts(console));
     const Pokemon::StoryLaunchRequest request{

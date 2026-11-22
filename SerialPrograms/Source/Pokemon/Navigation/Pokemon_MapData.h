@@ -45,7 +45,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Json/JsonValue.h"
-#include "Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "Pokemon_MapFeatures.h"
 
 namespace PokemonAutomation{

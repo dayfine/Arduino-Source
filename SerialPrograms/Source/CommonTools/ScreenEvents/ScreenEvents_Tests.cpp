@@ -2,19 +2,17 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The shared event vocabulary and the watcher form of an observer.
+ *  The shared event vocabulary, fades and the still-screen test.
  *
  */
 
 #include <format>
-#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
-#include "ScreenEventLog.h"
 #include "ScreenEventTypes.h"
 #include "ScreenFades.h"
 #include "ScreenEvents.h"
@@ -23,8 +21,6 @@
 namespace PokemonAutomation{
 
 namespace{
-
-using namespace std::chrono_literals;
 
 UnitTestResult expect_equal(const std::string& what, const std::string& got, const std::string& expected){
     if (got == expected){
@@ -45,13 +41,10 @@ UnitTestResult test_set_and_describe(){
     if (fade_in(events) != WarpFade::WHITE){
         return "fade_events(WHITE) did not give a white fade";
     }
-    if (ScreenEvents::from_bits(events.bits()) != events){
-        return "from_bits(bits()) is not the same set";
+    if (std::format("{}", ScreenEvents()) != "nothing"){
+        return "an empty set does not print as nothing";
     }
-    if (describe(ScreenEvents()) != "nothing"){
-        return "an empty set does not describe as nothing";
-    }
-    return expect_equal("describe()", describe(events), "white fade, player can move");
+    return expect_equal("std::format()", std::format("{}", events), "white fade, player can move");
 }
 
 //  A screen filled with one colour, or a checkerboard of two.
@@ -67,10 +60,10 @@ ImageRGB32 screen_of(uint32_t a, uint32_t b){
 
 UnitTestResult test_fade_of_screen(){
     struct Row{
-        std::string name;
-        uint32_t a;
-        uint32_t b;
-        WarpFade fade;
+        std::string name = {};
+        uint32_t a = 0;
+        uint32_t b = 0;
+        WarpFade fade = WarpFade::NONE;
     };
     const std::vector<Row> rows = {
         {"black", 0xff000000, 0xff000000, WarpFade::BLACK},
@@ -82,68 +75,46 @@ UnitTestResult test_fade_of_screen(){
     for (const Row& row : rows){
         const WarpFade got = fade_of_screen(screen_of(row.a, row.b));
         if (got != row.fade){
-            return std::format("{}: expected {}, got {}", row.name, warp_fade_name(row.fade), warp_fade_name(got));
+            return std::format("{}: expected {}, got {}", row.name, WARP_FADE_NAMES().get_string(row.fade), WARP_FADE_NAMES().get_string(got));
         }
     }
     return true;
 }
 
-//  Replays a fixed list of event sets, one per frame.
-class ScriptedObserver : public ScreenEventObserver{
-public:
-    explicit ScriptedObserver(std::vector<ScreenEvents> frames)
-        : m_frames(std::move(frames))
-    {}
-    virtual ScreenEvents observe(const VideoSnapshot&, WallClock) override{
-        return m_next < m_frames.size() ? m_frames[m_next++] : ScreenEvents();
+UnitTestResult test_same_screen(){
+    const WallClock now = WallClock::min();
+    const VideoSnapshot black(screen_of(0xff000000, 0xff000000), now);
+    const VideoSnapshot black_again(screen_of(0xff000000, 0xff000000), now);
+    const VideoSnapshot white(screen_of(0xffffffff, 0xffffffff), now);
+    ImageRGB32 small(32, 18);
+    small.fill(0xff000000);
+    const VideoSnapshot black_small(std::move(small), now);
+    if (!same_screen(black, black_again)){
+        return "two black frames are not the same screen";
     }
-    virtual void make_overlays(VideoOverlaySet&) const override{}
-
-private:
-    std::vector<ScreenEvents> m_frames;
-    size_t m_next = 0;
-};
-
-UnitTestResult test_watcher(){
-    ScriptedObserver observer({
-        {ScreenEvent::PLAYER_CAN_MOVE},
-        {ScreenEvent::FADE_BLACK},
-        {ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE},
-        {ScreenEvent::DIALOG_BOX},
-    });
-    ScreenEventWatcher watcher(observer, {ScreenEvent::LOCATION_BANNER});
-    const VideoSnapshot frame;
-    std::vector<bool> stops;
-    for (size_t c = 0; c < 4; c++){
-        stops.push_back(watcher.process_frame(frame));
+    if (same_screen(black, white)){
+        return "black and white frames are the same screen";
     }
-    if (stops != std::vector<bool>{false, false, true, false}){
-        return "the watcher did not stop exactly on the banner frame";
+    if (same_screen(black, black_small)){
+        return "frames of different sizes are the same screen";
     }
-    UnitTestResult result = expect_equal("seen()", describe(watcher.seen()),
-        "black fade, location banner, dialog box, player can move");
-    if (result.result != UnitTestResult::PASSED){
-        return result;
+    if (same_screen(black, VideoSnapshot())){
+        return "a missing frame is the same screen";
     }
-    result = expect_equal("stopped_on()", describe(watcher.stopped_on()), "location banner, player can move");
-    if (result.result != UnitTestResult::PASSED){
-        return result;
-    }
-    watcher.reset();
-    return expect_equal("seen() after reset()", describe(watcher.seen()), "nothing");
+    return true;
 }
 
 
 struct ScreenEventsCase{
     struct Input{
-        std::function<UnitTestResult()> body;
+        UnitTestResult (*body)() = nullptr;
     };
     struct Expectation{
     };
 
-    std::string name;
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_ScreenEvents : public UnitTest{
@@ -175,104 +146,15 @@ const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
         .expectation = {},
     },
     {
-        .name = "an observer as a watcher records and stops",
-        .input = {.body = test_watcher},
+        .name = "the same screen: equal frames of one size",
+        .input = {.body = test_same_screen},
         .expectation = {},
-    },
-};
-
-namespace{
-
-//  A stream of frames into a ScreenEventLog, and its describe() text.
-struct ScreenEventLogCase{
-    struct Frame{
-        int ms = 0;
-        std::vector<ScreenEvent> events;
-    };
-    struct Input{
-        size_t capacity = 0;
-        std::vector<Frame> frames;
-    };
-    struct Expectation{
-        //  describe() of the log, times from the first frame.
-        std::string text;
-        size_t dropped = 0;
-    };
-
-    std::string name;
-    Input input;
-    Expectation expectation;
-};
-
-class Test_ScreenEventLog : public UnitTest{
-public:
-    explicit Test_ScreenEventLog(ScreenEventLogCase test_case)
-        : UnitTest(std::format("CommonTools::ScreenEventLog - {}", test_case.name))
-        , m_case(std::move(test_case))
-    {}
-    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
-        ScreenEventLog log(m_case.input.capacity);
-        const WallClock origin = current_time();
-        for (const ScreenEventLogCase::Frame& frame : m_case.input.frames){
-            ScreenEvents events;
-            for (ScreenEvent event : frame.events){
-                events.set(event, true);
-            }
-            log.record(events, origin + Milliseconds(frame.ms));
-        }
-        if (log.dropped() != m_case.expectation.dropped){
-            return std::format("dropped(): expected {}, got {}", m_case.expectation.dropped, log.dropped());
-        }
-        return expect_equal("describe()", describe(log, origin), m_case.expectation.text);
-    }
-
-private:
-    ScreenEventLogCase m_case;
-};
-
-} // namespace
-
-const ScreenEventLogCase SCREEN_EVENT_LOG_CASES[] = {
-    {
-        .name = "no frames",
-        .input = {.capacity = 8, .frames = {}},
-        .expectation = {.text = "no changes", .dropped = 0},
-    },
-    {
-        .name = "the first frame's events all rise",
-        .input = {.capacity = 8, .frames = {{.ms = 0, .events = {ScreenEvent::DIALOG_BOX, ScreenEvent::SCREEN_STILL}}}},
-        .expectation = {.text = "+0 ms dialog box rose\n+0 ms screen still rose\n", .dropped = 0},
-    },
-    {
-        .name = "only changes are kept, rising and falling",
-        .input = {.capacity = 8, .frames = {
-            {.ms = 0, .events = {ScreenEvent::PLAYER_CAN_MOVE}},
-            {.ms = 100, .events = {ScreenEvent::PLAYER_CAN_MOVE}},
-            {.ms = 200, .events = {ScreenEvent::FADE_BLACK}},
-            {.ms = 900, .events = {}},
-        }},
-        .expectation = {
-            .text = "+0 ms player can move rose\n+200 ms black fade rose\n+200 ms player can move fell\n+900 ms black fade fell\n",
-            .dropped = 0,
-        },
-    },
-    {
-        .name = "the oldest changes drop past the capacity",
-        .input = {.capacity = 2, .frames = {
-            {.ms = 0, .events = {ScreenEvent::DIALOG_BOX}},
-            {.ms = 100, .events = {}},
-            {.ms = 200, .events = {ScreenEvent::CHOICE_BOX}},
-        }},
-        .expectation = {.text = "(1 older changes dropped)\n+100 ms dialog box fell\n+200 ms choice box rose\n", .dropped = 1},
     },
 };
 
 void add_tests_ScreenEvents(UnitTestDatabase& database){
     for (const auto& item : SCREEN_EVENTS_CASES){
         database.add<Test_ScreenEvents>(item);
-    }
-    for (const auto& item : SCREEN_EVENT_LOG_CASES){
-        database.add<Test_ScreenEventLog>(item);
     }
 }
 

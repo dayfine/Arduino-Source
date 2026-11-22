@@ -140,7 +140,7 @@ struct StarterRngHookState{
 } // namespace
 
 
-std::function<Pokemon::Outcome()> make_starter_rng_hook(
+std::function<std::optional<Pokemon::StoryFailure>()> make_starter_rng_hook(
     SingleSwitchProgramEnvironment& env, ProControllerContext& context,
     StoryStarterRngOptions& options, const StoryStarterRngConfig& config,
     EventNotificationOption& error_notification
@@ -152,7 +152,7 @@ std::function<Pokemon::Outcome()> make_starter_rng_hook(
         );
     }
     std::shared_ptr<StarterRngHookState> state = std::make_shared<StarterRngHookState>(options, config);
-    return [&env, &context, &options, &error_notification, state]() -> Pokemon::Outcome{
+    return [&env, &context, &options, &error_notification, state]() -> std::optional<Pokemon::StoryFailure>{
         uint64_t resets_logged = 0;
         StarterRngAttemptIO io;
         io.notification_shiny = &options.notification_shiny();

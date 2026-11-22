@@ -4,217 +4,204 @@
  *
  */
 
-#include <map>
-#include <optional>
+#include <memory>
 #include <utility>
 #include "Common/Cpp/Exceptions.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryActionRegistry.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryStepRunner.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Actions/PokemonBDSP_AutoStory_Events.h"
-#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
-#include "PokemonBDSP_AutoStory_StoryData.h"
 #include "PokemonBDSP_AutoStory_StoryActions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonBDSP{
 
-using Pokemon::GridPose;
-using Pokemon::Outcome;
-using Pokemon::RunState;
-using Pokemon::StoryStep;
-using Pokemon::StoryStepKind;
-
-using GameAction = Pokemon::StoryAction<GridPose>;
+using Pokemon::StoryFailure;
 
 
 namespace{
 
-//  `act` as the engine's handler: it runs the step the engine runs, with
-//  the step's own args.
-Pokemon::StoryActionHandler<GridPose> handler_of(StoryBoundAction act){
-    return [act = std::move(act)](Pokemon::StoryBackend<GridPose>&, const Pokemon::StoryActionCall& call, RunState& state){
-        return act(call.step, state);
-    };
-}
+//  Why the backend's inputs throw.
+inline constexpr std::string_view NO_BACKEND_INPUT =
+    "BDSP's story actions play through StoryStepIO, not the backend's inputs.";
 
-//  What a step of a kind BDSP has no action for does.
-Outcome unsupported(Pokemon::StoryBackend<GridPose>&, const Pokemon::StoryActionCall& call, RunState&){
-    return Pokemon::unsupported_step(call.step);
-}
-
-//  The variants a kind's action reads that have no spec of their own: they
-//  take the kind's default's args.
-const std::map<StoryStepKind, std::vector<std::string>>& variants_without_spec(){
-    static const std::map<StoryStepKind, std::vector<std::string>> variants{
-        {StoryStepKind::LEGS, {"measured"}},
-        {StoryStepKind::STEP, {"tap"}},
-    };
-    return variants;
-}
-
-//  Adds `act` for `kind`: first as the kind's default, `name`, which is the
-//  built-in action's name where there is one, so it takes the built-in's
-//  place (the engine's default is a kind's first action), with the args of
-//  the kind's first spec in bdsp_story_actions(); then for each of the
-//  kind's other specs and variants. A name that is also a story event stays
-//  the event's.
-void add_kind(std::vector<GameAction>& actions, StoryStepKind kind, std::string name, const StoryBoundAction& act){
-    const std::span<const Pokemon::StoryActionSpec> specs = bdsp_story_actions();
-    Pokemon::StoryActionSpec first{.kind = kind, .name = std::move(name), .args = {}};
-    if (const Pokemon::StoryActionSpec* spec = Pokemon::find_story_action(specs, kind, "")){
-        first.args = spec->args;
+std::optional<StoryFailure> call_handler(
+    const BdspStepAction& fn,
+    const BdspStep& step,
+    BdspRunState& state
+){
+    if (!fn){
+        return StoryFailure{.code = "unsupported_step", .detail = step.action};
     }
-    actions.push_back({.spec = first, .handler = handler_of(act)});
-    for (const Pokemon::StoryActionSpec& spec : specs){
-        if (spec.kind != kind || spec.name.empty() || spec.name == first.name || story_events().contains(spec.name)){
-            continue;
+    return fn(step, state);
+}
+
+std::optional<StoryFailure> dispatch_handler(
+    const BdspStoryHandlers& handlers,
+    const BdspStep& step,
+    BdspRunState& state
+){
+    if (step.action == "new_game"){
+        if (std::get<NewGameStepArgs>(step.args).skip_if_loaded && state.save_loaded){
+            return std::nullopt;
         }
-        actions.push_back({.spec = spec, .handler = handler_of(act)});
+        return call_handler(handlers.new_game, step, state);
     }
-    const auto variants = variants_without_spec().find(kind);
-    if (variants == variants_without_spec().end()){
-        return;
+    if (step.action == "options"){
+        return call_handler(handlers.options, step, state);
     }
-    for (const std::string& variant : variants->second){
-        actions.push_back({.spec = {.kind = kind, .name = variant, .args = first.args}, .handler = handler_of(act)});
+    if (step.action == "answer"){
+        return call_handler(handlers.answer, step, state);
     }
+    if (step.action == "battle"){
+        return call_handler(handlers.battle, step, state);
+    }
+    if (step.action == "train"){
+        return call_handler(handlers.train, step, state);
+    }
+    if (step.action == "heal"){
+        return call_handler(handlers.heal, step, state);
+    }
+    if (step.action == "save"){
+        return call_handler(handlers.save, step, state);
+    }
+    if (story_events().contains(step.action) && handlers.event){
+        return call_handler(handlers.event(step.action), step, state);
+    }
+    return StoryFailure{.code = "unsupported_step", .detail = step.action};
 }
 
-//  Each story event, for a step of any kind, with its spec's args if it has any.
-void add_events(std::vector<GameAction>& actions, const StoryBoundActions& bound){
-    for (const auto& item : story_events()){
-        std::vector<Pokemon::StoryArgSpec> args;
-        for (const Pokemon::StoryActionSpec& spec : bdsp_story_actions()){
-            if (spec.name == item.first && !spec.args.empty()){
-                args = spec.args;
-                break;
+std::optional<StoryFailure> dispatch_action(
+    StoryWalkSteps& walks,
+    const BdspStoryHandlers& handlers,
+    const BdspStep& step,
+    BdspRunState& state
+){
+    if (step.action == "route"){
+        return walks.route(state, step);
+    }
+    if (step.action == "legs"){
+        return walks.legs(state, step);
+    }
+    if (step.action == "step"){
+        return walks.step(state, step);
+    }
+    if (step.action == "talk"){
+        return walks.talk(state, step);
+    }
+    if (step.action == "scene"){
+        return walks.mash(state, step);
+    }
+    return dispatch_handler(handlers, step, state);
+}
+
+Pokemon::StoryStep make_engine_step(
+    std::shared_ptr<const StoryCheckpoint> row,
+    size_t index,
+    StoryWalkSteps& walks,
+    BdspRunState& run_state,
+    std::shared_ptr<const BdspStoryHandlers> shared_handlers
+){
+    const BdspStep& src_step = row->steps[index];
+    Pokemon::StoryStep step;
+    step.name = src_step.name;
+    step.why = src_step.why;
+    step.action = src_step.action;
+    step.run = [row = std::move(row), index, &walks, &run_state, shared_handlers = std::move(shared_handlers)](
+        Pokemon::StoryBackend&, Pokemon::RunState&
+    ) -> std::optional<StoryFailure>{
+        if (index == 0){
+            run_state.pose = row->start.value_or(Pokemon::GridPose{});
+            walks.begin_attempt(row->id, row->steps);
+            if (shared_handlers->on_attempt_start){
+                shared_handlers->on_attempt_start(*row);
             }
         }
-        const Pokemon::StoryActionHandler<GridPose> event = handler_of(bound.event(item.first));
-        for (int kind = 0; kind <= (int)StoryStepKind::GAME; kind++){
-            actions.push_back({.spec = {.kind = (StoryStepKind)kind, .name = item.first, .args = args}, .handler = event});
+        const BdspStep& current = row->steps[index];
+        const auto run_action = [&](){
+            return run_bdsp_action(walks, *shared_handlers, current, run_state);
+        };
+        if (shared_handlers->wrap_step){
+            return shared_handlers->wrap_step(*row, current, run_state, run_action);
         }
-    }
-}
-
-//  BDSP's story actions as the engine's game: the walking steps on
-//  `walks`, the rest `bound`'s.
-Pokemon::StoryGame<GridPose> story_game(StoryWalkSteps& walks, const StoryBoundActions& bound){
-    Pokemon::StoryGame<GridPose> game;
-    game.id = "bdsp";
-    std::vector<GameAction>& actions = game.actions;
-    //  A GAME step names its event: an unnamed one finds this.
-    actions.push_back({.spec = {.kind = StoryStepKind::GAME, .name = "", .args = {}}, .handler = &unsupported});
-
-    using WalkMethod = Outcome (StoryWalkSteps::*)(RunState&, const StoryStep&);
-    const auto walk = [&](StoryStepKind kind, std::string name, WalkMethod method){
-        add_kind(actions, kind, std::move(name), [&walks, method](const StoryStep& step, RunState& state){
-            return (walks.*method)(state, step);
-        });
+        return run_action();
     };
-    walk(StoryStepKind::ROUTE, "route", &StoryWalkSteps::route);
-    walk(StoryStepKind::LEGS, "legs", &StoryWalkSteps::legs);
-    walk(StoryStepKind::STEP, "face", &StoryWalkSteps::step);
-    walk(StoryStepKind::TALK, "talk", &StoryWalkSteps::talk);
-    walk(StoryStepKind::MASH, "mash", &StoryWalkSteps::mash);
-
-    add_kind(actions, StoryStepKind::NEW_GAME, "new_game", bound.new_game);
-    add_kind(actions, StoryStepKind::OPTIONS, "options", bound.options);
-    add_kind(actions, StoryStepKind::ANSWER, "answer", bound.answer);
-    add_kind(actions, StoryStepKind::BATTLE, "fight", bound.battle);
-    add_kind(actions, StoryStepKind::TRAIN, "train", bound.train);
-    add_kind(actions, StoryStepKind::HEAL, "heal", bound.heal);
-    add_kind(actions, StoryStepKind::SAVE, "save", bound.save);
-    //  A row's start save names the map its card must show (make_story_segment()).
-    actions.back().spec.args.push_back(Pokemon::StoryArgSpec{
-        .key = std::string(SAVES_IN_ARG), .type = Pokemon::StoryArgType::WORD, .required = false,
-        .fallback = std::nullopt, .why = "the map the save card must name; none saves anywhere",
-    });
-
-    //  No SHOP or READY of BDSP's own: the built-in ones would need the game's.
-    for (const Pokemon::StoryActionSpec& spec : Pokemon::builtin_story_actions()){
-        if (spec.kind == StoryStepKind::SHOP || spec.kind == StoryStepKind::READY){
-            actions.push_back({.spec = spec, .handler = &unsupported});
-        }
-    }
-    add_events(actions, bound);
-    return game;
+    return step;
 }
-
-//  Why the backend's inputs throw.
-inline constexpr std::string_view NO_BACKEND_INPUT = "BDSP's story actions play through StoryStepIO, not the backend's inputs.";
 
 } // namespace
 
 
-StoryLogBackend::StoryLogBackend(Pokemon::StoryBackendKind kind, std::function<void(std::string_view)> log, CancellableScope& scope)
-    : m_kind(kind)
-    , m_log(std::move(log))
+BdspLogBackend::BdspLogBackend(std::function<void(std::string_view)> log, CancellableScope& scope)
+    : m_log(std::move(log))
     , m_scope(scope)
 {}
 
-void StoryLogBackend::press(Button, Milliseconds, Milliseconds){
+void BdspLogBackend::press(Button, Milliseconds, Milliseconds){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(NO_BACKEND_INPUT));
 }
-void StoryLogBackend::tap(Pokemon::Direction){
+void BdspLogBackend::stick(double, Milliseconds, Milliseconds, Pokemon::StoryPace){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(NO_BACKEND_INPUT));
 }
-void StoryLogBackend::hold(Pokemon::Direction, Milliseconds, Pokemon::StoryPace){
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(NO_BACKEND_INPUT));
-}
-void StoryLogBackend::stick(double, Milliseconds, Milliseconds, Pokemon::StoryPace){
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(NO_BACKEND_INPUT));
-}
-void StoryLogBackend::wait(Milliseconds){
+void BdspLogBackend::wait(Milliseconds){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::string(NO_BACKEND_INPUT));
 }
 
-Pokemon::Observation<GridPose> StoryLogBackend::observe(){
+ScreenObservation BdspLogBackend::observe(){
     return {};
 }
 
-Outcome StoryLogBackend::battle(const Pokemon::StoryActionArgs&){
-    return Pokemon::outcome_failed("unsupported_step", "BDSP fights in its BATTLE action");
-}
-
-void StoryLogBackend::log(std::string_view line){
+void BdspLogBackend::log(std::string_view line){
     if (m_log){
         m_log(line);
     }
 }
 
-
-//  The game first: the registry and the runner keep references to it.
-struct StoryEngineSteps::Engine{
-    Engine(StoryWalkSteps& walk_steps, const StoryBoundActions& bound, Pokemon::StoryBackend<GridPose>& backend)
-        : walks(walk_steps)
-        , game(story_game(walk_steps, bound))
-        , registry(game)
-        , runner(registry, backend)
-    {}
-
-    StoryWalkSteps& walks;
-    Pokemon::StoryGame<GridPose> game;
-    Pokemon::StoryActionRegistry<GridPose> registry;
-    Pokemon::StoryStepRunner<GridPose> runner;
-};
-
-StoryEngineSteps::StoryEngineSteps(StoryWalkSteps& walks, const StoryBoundActions& bound, Pokemon::StoryBackend<GridPose>& backend)
-    : m_engine(std::make_unique<Engine>(walks, bound, backend))
-{}
-
-StoryEngineSteps::~StoryEngineSteps() = default;
-
-Outcome StoryEngineSteps::act(const StoryStep& step, RunState& state){
-    m_engine->walks.begin_step(step);
-    return m_engine->runner.act(step, state);
+bool is_known_bdsp_action(std::string_view action){
+    if (action == "route" || action == "legs" || action == "step" || action == "talk" || action == "scene" ||
+        action == "new_game" || action == "options" || action == "answer" || action == "battle" ||
+        action == "train" || action == "heal" || action == "save"
+    ){
+        return true;
+    }
+    return story_events().contains(std::string(action));
 }
 
-std::vector<std::string> StoryEngineSteps::check(const StoryStep& step) const{
-    return m_engine->registry.check(step);
+std::optional<StoryFailure> run_bdsp_action(
+    StoryWalkSteps& walks,
+    const BdspStoryHandlers& handlers,
+    const BdspStep& step,
+    BdspRunState& state
+){
+    begin_walk_step(walks, step);
+    std::optional<StoryFailure> failure = dispatch_action(walks, handlers, step, state);
+    if (!failure && step.pose_after){
+        state.pose = *step.pose_after;
+    }
+    return failure;
+}
+
+std::vector<Pokemon::StoryCheckpoint> make_bdsp_engine_checkpoints(
+    std::span<const StoryCheckpoint> rows,
+    StoryWalkSteps& walks,
+    BdspRunState& run_state,
+    BdspStoryHandlers handlers
+){
+    auto shared_handlers = std::make_shared<const BdspStoryHandlers>(std::move(handlers));
+    std::vector<Pokemon::StoryCheckpoint> out;
+    out.reserve(rows.size());
+
+    for (const StoryCheckpoint& src : rows){
+        auto row = std::make_shared<const StoryCheckpoint>(src);
+        Pokemon::StoryCheckpoint cp;
+        cp.id = row->id;
+        cp.title = row->title;
+        cp.steps.reserve(row->steps.size());
+        for (size_t i = 0; i < row->steps.size(); i++){
+            cp.steps.push_back(make_engine_step(row, i, walks, run_state, shared_handlers));
+        }
+        out.push_back(std::move(cp));
+    }
+
+    return out;
 }
 
 

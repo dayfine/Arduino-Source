@@ -12,8 +12,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryFiles.h"
-#include "Pokemon/AutoStory/Data/Pokemon_StoryStepJson.h"
 #include "PokemonBDSP_AutoStory_StoryData.h"
 #include "PokemonBDSP_AutoStory_StoryTable.h"
 #include "PokemonBDSP_AutoStory_StoryData_Tests.h"
@@ -25,14 +23,11 @@ namespace PokemonBDSP{
 
 namespace{
 
-//  The built-in story table, plus one checkpoint file kept out of it.
 struct StoryTableInput{
     std::string_view extra_file;
 };
 
 struct StoryTableExpectation{
-    //  Every built-in checkpoint id, in story order. 00.00 stops on failure
-    //  with no save; every other row reloads its save and retries.
     std::vector<std::string_view> ids;
     std::string_view extra_file_id;
     std::string_view extra_file_saves_in;
@@ -55,7 +50,7 @@ UnitTestResult check_story_table_case(const StoryTableCase& test_case){
             return std::format("Checkpoint index {} mismatch: expected {}, got {}", i, expected.ids[i], table[i].id);
         }
         const bool first = i == 0;
-        const StoryFailure policy = first ? StoryFailure::STOP : StoryFailure::RELOAD_AND_RETRY;
+        const StoryFailurePolicy policy = first ? StoryFailurePolicy::STOP : StoryFailurePolicy::RELOAD_AND_RETRY;
         if (table[i].on_failure != policy || table[i].saves_in.empty() != first){
             return std::format("{}: wrong on_failure or saves_in \"{}\"", table[i].id, table[i].saves_in);
         }
@@ -65,7 +60,7 @@ UnitTestResult check_story_table_case(const StoryTableCase& test_case){
     }
 
     const StoryCheckpoint extra = load_authored_checkpoint(test_case.input.extra_file);
-    if (extra.id != expected.extra_file_id || extra.on_failure != StoryFailure::RELOAD_AND_RETRY || extra.saves_in != expected.extra_file_saves_in){
+    if (extra.id != expected.extra_file_id || extra.on_failure != StoryFailurePolicy::RELOAD_AND_RETRY || extra.saves_in != expected.extra_file_saves_in){
         return std::format("Failed to load {} correctly", test_case.input.extra_file);
     }
     return true;
@@ -103,14 +98,13 @@ const StoryTableCase STORY_TABLE_CASES[] = {
 };
 
 
-//  One checkpoint of the built-in story table, as loaded from its file.
 struct CheckpointInput{
     std::string_view id;
 };
 
 struct CheckpointExpectation{
     std::string_view title;
-    StoryFailure on_failure = StoryFailure::RELOAD_AND_RETRY;
+    StoryFailurePolicy on_failure = StoryFailurePolicy::RELOAD_AND_RETRY;
     std::string_view saves_in;
     std::vector<std::string_view> step_names;
 };
@@ -177,7 +171,6 @@ const CheckpointCase CHECKPOINT_CASES[] = {
 };
 
 
-//  bdsp-00.01.plan with one change to its envelope (read_authored_checkpoint()).
 struct EnvelopeInput{
     void (*mutate)(JsonObject&) = nullptr;
 };
@@ -215,13 +208,13 @@ void stop_with_save(JsonObject& root){
 void bad_metadata_field(JsonObject& root){
     JsonObject meta;
     meta["unknown"] = "testing";
-    root["metadata"] = std::move(meta);
+    root.get_object_throw("checkpoint")["metadata"] = std::move(meta);
 }
 
 void bad_metadata_phase(JsonObject& root){
     JsonObject meta;
     meta["phase"] = "invalid";
-    root["metadata"] = std::move(meta);
+    root.get_object_throw("checkpoint")["metadata"] = std::move(meta);
 }
 
 UnitTestResult run_envelope_case(const EnvelopeCase& test_case){
@@ -306,10 +299,9 @@ const EnvelopeCase ENVELOPE_CASES[] = {
 };
 
 
-//  A dev file in place of a built-in checkpoint file (load_bdsp_story()).
 struct DevFile{
-    std::string file;               //  the dev file's name
-    std::string_view builtin;       //  the built-in file it starts from
+    std::string file;
+    std::string_view builtin;
     void (*mutate)(JsonObject&) = nullptr;
 };
 
@@ -319,7 +311,6 @@ struct DevFileInput{
 
 struct DevFileExpectation{
     bool rejected = false;
-    //  story_summary() of the story loaded.
     std::string summary = {};
 };
 
@@ -341,14 +332,6 @@ void other_id(JsonObject& root){
     root.get_object_throw("checkpoint")["id"] = "00.99";
 }
 
-void end_on_autosave(JsonObject& root){
-    root.get_object_throw("execution")["save"] = "autosave";
-}
-
-void reload_when_chained(JsonObject& root){
-    root.get_object_throw("execution")["reload_when_chained"] = true;
-}
-
 std::vector<Pokemon::StoryDevFile> dev_files_of(const DevFileInput& input){
     std::vector<Pokemon::StoryDevFile> files;
     for (const DevFile& file : input.files){
@@ -361,29 +344,27 @@ std::vector<Pokemon::StoryDevFile> dev_files_of(const DevFileInput& input){
     return files;
 }
 
-//  The loaded story in one line: 00.01's title, the dev_only rows, how
-//  many rows a user sees and the dev files used; or "not in id order".
-std::string story_summary(const Pokemon::StoryData<StoryCheckpoint>& story){
+std::string story_summary(const BdspStoryData& story){
     const bool in_id_order = std::is_sorted(story.checkpoints.begin(), story.checkpoints.end(),
         [](const StoryCheckpoint& a, const StoryCheckpoint& b){ return a.id < b.id; });
     if (!in_id_order){
         return "not in id order";
     }
     std::string title;
+    std::string dev_only;
     for (const StoryCheckpoint& row : story.checkpoints){
         if (row.id == "00.01"){
             title = row.title;
         }
-    }
-    std::string dev_only;
-    for (const std::string& id : story.dev_only){
-        dev_only += std::format(" {}", id);
+        if (row.dev_only){
+            dev_only += std::format(" {}", row.id);
+        }
     }
     std::string used;
     for (const auto& [name, path] : story.dev_files){
         used += std::format(" {}", name);
     }
-    const size_t user_rows = Pokemon::story_rows_for_mode(story, Pokemon::StoryRowsShown::USER).size();
+    const size_t user_rows = bdsp_rows_for_mode(story, false).size();
     return std::format("{} | dev_only{} | {} user rows | dev{}", title, dev_only, user_rows, used);
 }
 
@@ -436,14 +417,6 @@ const DevFileCase DEV_FILE_CASES[] = {
         .name = "Dev file: an out-of-order file's row stays in id order",
         .input = {.files = {{.file = "bdsp-mine-01.03.plan.json", .builtin = "bdsp-mine-01.03.plan"}}},
         .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev bdsp-mine-01.03.plan.json"},
-    },
-    {
-        .name = "Dev file: bdsp-mine-01.03 reloads after 01.02b, the row before it by id",
-        .input = {.files = {
-            {.file = "bdsp-01.02b.plan.json", .builtin = "bdsp-01.02b.plan", .mutate = end_on_autosave},
-            {.file = "bdsp-mine-01.03.plan.json", .builtin = "bdsp-mine-01.03.plan", .mutate = reload_when_chained},
-        }},
-        .expectation = {.summary = "Bedroom to the Verity Lakefront | dev_only | 23 user rows | dev bdsp-01.02b.plan.json bdsp-mine-01.03.plan.json"},
     },
     {
         .name = "Dev file: a dev_only row is not listed for a user",

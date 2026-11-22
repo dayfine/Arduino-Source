@@ -11,7 +11,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryTrainers_H
 
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonBDSP_AutoStory_TrainerSight.h"
 
 namespace PokemonAutomation{

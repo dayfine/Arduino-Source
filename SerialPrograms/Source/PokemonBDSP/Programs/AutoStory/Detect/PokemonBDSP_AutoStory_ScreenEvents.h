@@ -44,6 +44,10 @@ public:
 
     virtual ScreenEvents observe(const VideoSnapshot& frame, WallClock now) override;
     virtual void make_overlays(VideoOverlaySet& items) const override;
+    //  Whether the box around the player stayed still on the last frame.
+    bool player_still() const{
+        return m_player_still;
+    }
 
 private:
     BattleCue m_cue;
@@ -55,6 +59,7 @@ private:
     BlackScreenDetector m_black;
     LocationBannerReads m_reads;
     VideoSnapshot m_previous;
+    bool m_player_still = false;
 };
 
 

@@ -21,7 +21,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{

@@ -13,8 +13,8 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/ScreenMachine/ScreenMachine.h"
-#include "CommonTools/ScreenMachine/StepTrace.h"
+#include "PokemonBDSP_AutoStory_ScreenMachine.h"
+#include "PokemonBDSP_AutoStory_StepTrace.h"
 #include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h"
@@ -678,45 +678,45 @@ std::vector<ScreenState> intro_states(IntroRun& run){
     return {
         //  The player in control without the menu read, or capture mode's recording done.
         {"finished",
-            [&run](const ImageViewRGB32&){ return run.in_control || run.capture_done; }, nullptr,
+            [&run](const ImageViewRGB32&){ return run.in_control || run.capture_done; },
             [&run]{ run.trace.action(run.capture_done ? "Recording after the look done." : "X opened and B closed the menu from a still bedroom: the player is in control."); },
             {}, 1, true},
         {"user-select",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "user-select"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "user-select"); },
             [&run]{ act(run, "user-select"); }, {}, 3},
         {"home",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "home"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "home"); },
             [&run]{ act(run, "home"); }, {}, 1},
         {"player-keyboard",
-            [=, &run](const ImageViewRGB32& s){ return !run.progress.player_named && screen_is(s, "keyboard"); }, nullptr,
+            [=, &run](const ImageViewRGB32& s){ return !run.progress.player_named && screen_is(s, "keyboard"); },
             [&run]{ act(run, "keyboard"); }, {"finished", "dialog", "black", "other"}, 1},
         {"rival-keyboard",
-            [=, &run](const ImageViewRGB32& s){ return run.progress.player_named && screen_is(s, "keyboard"); }, nullptr,
+            [=, &run](const ImageViewRGB32& s){ return run.progress.player_named && screen_is(s, "keyboard"); },
             [&run]{ act(run, "keyboard"); }, {"rival-list-tell", "dialog", "black", "other"}, 3},
         {"language-select",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "language-select"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "language-select"); },
             [&run]{ act(run, "language-select"); }, {}, INTRO_LANGUAGE_SELECT_VISITS},
         {"look-select",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "look-select"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "look-select"); },
             [&run]{ act(run, "look-select"); }, {}, 10},
         {"rival-list-tell",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-tell"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-tell"); },
             [&run]{ act(run, "rival-list-tell"); }, {"rival-list-preset", "black", "other"}, 6},
         {"rival-list-preset",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-preset"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "rival-list-preset"); },
             [&run]{ act(run, "rival-list-preset"); }, {"dialog", "black", "other"}, 6},
         {"menu",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "menu"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "menu"); },
             [&run]{ act(run, "menu"); }, {}, 2, true},
         {"dialog",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "dialog"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "dialog"); },
             [&run]{ act(run, "dialog"); }, {}, 400},
         //  The boot is waited out before the machine starts; this is fades.
         {"black",
-            [=](const ImageViewRGB32& s){ return screen_is(s, "black"); }, nullptr,
+            [=](const ImageViewRGB32& s){ return screen_is(s, "black"); },
             [&run]{ act(run, "black"); }, {}, 300, false, 60},
         {"other",
-            [](const ImageViewRGB32&){ return true; }, nullptr,
+            [](const ImageViewRGB32&){ return true; },
             [&run]{ act(run, "other"); }, {}, 300, false, 60},
     };
 }

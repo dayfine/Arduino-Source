@@ -1,31 +1,47 @@
-﻿{
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "bdsp",
   "checkpoint": {
+    "id": "01.05",
+    "title": "Oreburgh to Route 203",
+    "start": {
+      "facing": "north",
+      "map": "OreburghGym",
+      "tiles": [
+        [
+          5,
+          4
+        ]
+      ]
+    },
     "events": [
       {
-        "action": "to_banner",
-        "args": {
-          "direction": "south"
-        },
-        "declared_after": {
-          "facing": "south",
-          "map": "OreburghCity",
-          "tiles": [
-            [
-              26,
-              21
-            ],
-            [
-              26,
-              22
-            ]
-          ]
-        },
         "id": "out_of_the_gym",
-        "kind": "step",
-        "why": "down the middle column (5, 4..23) and out of the door (5, 24)"
+        "action": "step",
+        "why": "down the middle column (5, 4..23) and out of the door (5, 24)",
+        "args": {
+          "direction": "south",
+          "variant": "to_banner",
+          "pose_after": {
+            "facing": "south",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                26,
+                21
+              ],
+              [
+                26,
+                22
+              ]
+            ]
+          }
+        }
       },
       {
-        "action": "town",
+        "id": "east_of_barrys_trigger",
+        "action": "route",
+        "why": "west along the street, north up the stairs west of the houses, west along the Gate's row",
         "args": {
           "fight_wild": false,
           "target": {
@@ -37,37 +53,39 @@
                 13
               ]
             ]
-          }
-        },
-        "id": "east_of_barrys_trigger",
-        "kind": "route",
-        "why": "west along the street, north up the stairs west of the houses, west along the Gate's row"
+          },
+          "variant": "town"
+        }
       },
       {
+        "id": "barrys_trigger",
+        "action": "step",
+        "why": "the trigger (6, 12..15)",
         "args": {
           "direction": "west"
-        },
-        "id": "barrys_trigger",
-        "kind": "step",
-        "why": "the trigger (6, 12..15)"
+        }
       },
       {
-        "declared_after": {
-          "facing": "east",
-          "map": "OreburghCity",
-          "tiles": [
-            [
-              5,
-              13
-            ]
-          ]
-        },
         "id": "barry_bumps_into_us",
-        "kind": "scene",
-        "why": "Barry runs into us, talks of Eterna, and leaves (assumed: the push)"
+        "action": "scene",
+        "why": "Barry runs into us, talks of Eterna, and leaves (assumed: the push)",
+        "args": {
+          "pose_after": {
+            "facing": "east",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                5,
+                13
+              ]
+            ]
+          }
+        }
       },
       {
-        "action": "to_wall",
+        "id": "below_the_gates_mouth",
+        "action": "legs",
+        "why": "south to row 17's wall, then west to column 2's",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -79,23 +97,24 @@
               "direction": "west",
               "tiles": 6
             }
-          ]
-        },
-        "declared_after": {
-          "facing": "west",
-          "map": "OreburghCity",
-          "tiles": [
-            [
-              2,
-              17
+          ],
+          "variant": "to_wall",
+          "pose_after": {
+            "facing": "west",
+            "map": "OreburghCity",
+            "tiles": [
+              [
+                2,
+                17
+              ]
             ]
-          ]
-        },
-        "id": "below_the_gates_mouth",
-        "kind": "legs",
-        "why": "south to row 17's wall, then west to column 2's"
+          }
+        }
       },
       {
+        "id": "to_the_gates_row",
+        "action": "legs",
+        "why": "taps up column 2 to the mouth's row 13",
         "args": {
           "fight_wild": false,
           "legs": [
@@ -104,34 +123,34 @@
               "tiles": 4
             }
           ]
-        },
-        "id": "to_the_gates_row",
-        "kind": "legs",
-        "why": "taps up column 2 to the mouth's row 13"
+        }
       },
       {
-        "args": {
-          "direction": "west"
-        },
-        "declared_after": {
-          "facing": "west",
-          "map": "OreburghGate",
-          "tiles": [
-            [
-              27,
-              22
-            ],
-            [
-              26,
-              22
-            ]
-          ]
-        },
         "id": "into_oreburgh_gate",
-        "kind": "step",
-        "why": "the Gate's mouth (1, 13)"
+        "action": "step",
+        "why": "the Gate's mouth (1, 13)",
+        "args": {
+          "direction": "west",
+          "pose_after": {
+            "facing": "west",
+            "map": "OreburghGate",
+            "tiles": [
+              [
+                27,
+                22
+              ],
+              [
+                26,
+                22
+              ]
+            ]
+          }
+        }
       },
       {
+        "id": "through_the_gate",
+        "action": "route",
+        "why": "west along row 22 to two tiles short of the west mouth's warp (3, 22)",
         "args": {
           "fight_wild": false,
           "target": {
@@ -144,51 +163,34 @@
               ]
             ]
           }
-        },
-        "id": "through_the_gate",
-        "kind": "route",
-        "why": "west along row 22 to two tiles short of the west mouth's warp (3, 22)"
+        }
       },
       {
-        "action": "to_banner",
-        "args": {
-          "direction": "west"
-        },
-        "declared_after": {
-          "facing": "west",
-          "map": "Route203",
-          "tiles": [
-            [
-              55,
-              9
-            ]
-          ]
-        },
         "id": "out_of_oreburgh_gate",
-        "kind": "step",
-        "why": "the west mouth (3, 22)"
+        "action": "step",
+        "why": "the west mouth (3, 22)",
+        "args": {
+          "direction": "west",
+          "variant": "to_banner",
+          "pose_after": {
+            "facing": "west",
+            "map": "Route203",
+            "tiles": [
+              [
+                55,
+                9
+              ]
+            ]
+          }
+        }
       }
     ],
-    "id": "01.05",
-    "start": {
-      "facing": "north",
-      "map": "OreburghGym",
-      "tiles": [
-        [
-          5,
-          4
-        ]
-      ]
-    },
-    "title": "Oreburgh to Route 203"
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "on_failure": "reload_and_retry",
     "saves_in": "Oreburgh City"
-  },
-  "format": "pokesim-authored-checkpoint/1",
-  "game": "bdsp",
-  "metadata": {
-    "phase": "testing"
   }
 }

@@ -2,17 +2,6 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  One case per failure console B showed in its events and perception
- *  (#268's design note, the planner note), run on the story simulation
- *  with the knobs that make it happen there (SimWorldKnobs, SimMisses):
- *  walks that slide on onto a warp, fades the walks' watchers miss or read
- *  as a battle, banners missed or gone, dim floors, late first lines and
- *  people who wander.
- *
- *  A case the program fails today is on known_failing() (the shared
- *  Pokemon_KnownFailing.h) with the change that is to fix it. Its test passes while the case still fails, and fails
- *  once the case passes: then take it off the list.
- *
  */
 
 #include <cstdint>
@@ -27,17 +16,14 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_KnownFailing.h"
 #include "Pokemon/Navigation/Simulation/Pokemon_SimSeeds.h"
+#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_Maps.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RobustRoute.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_RoutePlanner.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStory_WallRecovery.h"
-#include "PokemonBDSP/Programs/AutoStory/Actions/PokemonBDSP_AutoStory_Center.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStory_StoryPlaces.h"
 #include "PokemonBDSP_AutoStory_OldStorySteps.h"
 #include "PokemonBDSP_AutoStory_StorySim.h"
@@ -53,13 +39,8 @@ namespace{
 using namespace std::chrono_literals;
 using Pokemon::Direction;
 using Pokemon::GridPose;
-using Pokemon::Pose;
-using Pokemon::story_arg;
-using Pokemon::StoryStep;
-using Pokemon::StoryStepKind;
 using Pokemon::TilePos;
 
-//  Cases the program fails today, by case name, with what is to fix each.
 const Pokemon::KnownFailing& known_failing(){
     static const Pokemon::KnownFailing list({
         {"01.05 through_the_gate is one run west", "planner: goal kinds and ms costs (PLANNER_DESIGN.md)"},
@@ -69,20 +50,15 @@ const Pokemon::KnownFailing& known_failing(){
     return list;
 }
 
-//  Warps that give one signal only (#268 slice 1: door = fade or banner), so
-//  a miss there leaves nothing to go on: a fade and no banner (stairs, into
-//  a building, between the mine's floors), or a banner and no fade (an open
-//  border crossed by run_until_map()).
 const std::set<std::string> ONE_SIGNAL_STEPS{
     "00.01 down_the_stairs", "00.01 into_barrys_house", "00.01 up_barrys_stairs", "00.01 down_barrys_stairs",
     "00.04 into_the_house", "00.05 into_the_school", "01.03 into_the_coal_room", "01.03 up_to_the_hall",
     "00.04 to_route_201", "01.10 into_floaroma",
 };
 
-//  The table's step `name` in row `row`.
-const StoryStep& table_step(std::string_view row, std::string_view name){
+const BdspStep& table_step(std::string_view row, std::string_view name){
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        for (const StoryStep& step : checkpoint.steps){
+        for (const BdspStep& step : checkpoint.steps){
             if (checkpoint.id == row && step.name == name){
                 return step;
             }
@@ -91,32 +67,26 @@ const StoryStep& table_step(std::string_view row, std::string_view name){
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No step " + std::string(name) + " in " + std::string(row));
 }
 
-//  Runs rows `from` to `to` of `rows` with `misses` and `knobs`: "" if they
-//  all pass, else where and why the run stopped.
 std::string run_case(
     Logger& logger, const std::string& from, const std::string& to,
     SimMisses misses, SimWorldKnobs knobs, const std::vector<StoryCheckpoint>& rows = story_checkpoints()
 ){
     SimExecutor executor(logger, std::move(misses), std::move(knobs));
-    const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = from, .to = to}, rows);
+    const SimRunReport report = run_rows_on(executor, logger, {.from = from, .to = to}, rows);
     return report.completed ? "" : std::format("stopped in {}: {}", executor.result().failed_step, executor.result().error);
 }
 UnitTestResult passes(const std::string& stopped){
     return stopped.empty() ? UnitTestResult(true) : UnitTestResult(stopped);
 }
 
-//  The old 01.05 walk west along row 22 to the tile beside the west mouth's
-//  warp (3, 22), as before #269 stopped routes two short of warps.
-StoryStep old_walk_beside_the_west_mouth(){
-    StoryStep step = table_step("01.05", "through_the_gate");
-    step.args["target"] = GridPose{"OreburghGate", {{4, 22}}, Direction::WEST};
+BdspStep old_walk_beside_the_west_mouth(){
+    BdspStep step = table_step("01.05", "through_the_gate");
+    std::get<RouteStepArgs>(step.args).target = GridPose{.map = "OreburghGate", .tiles = {{4, 22}}, .facing = Direction::WEST};
     return step;
 }
 
-//  01.05's walk west through the Gate whose last open leg runs a tile on;
-//  the old walk's slides onto the west mouth's warp to Route 203.
 SimWorldKnobs gate_slide(SimFade fade, bool banner_up){
-    const Pose far = Pokemon::pose_of(*table_step("01.05", "out_of_oreburgh_gate").pose_after);
+    const GridPose far = *table_step("01.05", "out_of_oreburgh_gate").pose_after;
     return {.slides = {{.step = "through_the_gate", .direction = Direction::WEST, .tiles = 1,
         .far = far, .fade = fade, .banner_up = banner_up}}};
 }
@@ -125,13 +95,12 @@ UnitTestResult gate_old_walk_slides(Logger& logger, SimFade fade, bool banner_up
     return passes(run_case(logger, "01.05", "01.05", {.fade = {}, .banner = {}}, gate_slide(fade, banner_up), rows));
 }
 
-//  The planner's legs for 01.05's walk through the Gate: one run west
-//  along row 22 works on the console; at most a hold to find the row first.
 UnitTestResult gate_plan_one_run(Logger& logger){
     const StoryWorld* world = story_plan_world("OreburghGate", "OreburghGate");
     const std::vector<TilePos> from{story_to_world(*world, "OreburghGate", {27, 22}), story_to_world(*world, "OreburghGate", {26, 22})};
     const TilePos goal = story_to_world(*world, "OreburghGate", {5, 22});
-    const auto plan = plan_recovered_route(*world, from, [&](const TilePos& pos){ return pos == goal; }, *story_route_costs(table_step("01.05", "through_the_gate").action));
+    const std::string& variant = std::get<RouteStepArgs>(table_step("01.05", "through_the_gate").args).variant;
+    const auto plan = plan_recovered_route(*world, from, [&](const TilePos& pos){ return pos == goal; }, *story_route_costs(variant));
     if (!plan){
         return "no plan";
     }
@@ -143,15 +112,12 @@ UnitTestResult gate_plan_one_run(Logger& logger){
     return plan->size() <= 2 ? UnitTestResult(true) : UnitTestResult(std::format("{} legs: {}", plan->size(), legs));
 }
 
-//  What a single miss leaves out: a fade whole, a fade's hold, or a banner.
 enum class SingleMiss{
     FADE,
     HOLD,
     BANNER,
 };
 
-//  The run of the row the clean run's `index`th fade or banner (`rows`'
-//  counts) falls in, with that one missed as `kind` says; none if it passes.
 std::optional<SimRun> run_single_miss(Logger& logger, const std::vector<SimRun::RowStart>& rows, SingleMiss kind, size_t index){
     const bool fade = kind != SingleMiss::BANNER;
     size_t k = 0;
@@ -168,10 +134,6 @@ std::optional<SimRun> run_single_miss(Logger& logger, const std::vector<SimRun::
     return executor.result();
 }
 
-//  Each fade and each banner the clean run looks for, missed alone: the
-//  row it falls in must still pass, but for a miss in one of `skip`'s steps.
-//  A door step once accepted only its fade, so a missed fade there failed a
-//  real arrival (#268's Monte Carlo, 19/20 on 01.05).
 UnitTestResult every_single_miss(Logger& logger, const std::set<std::string>& skip){
     SimExecutor clean(logger);
     if (!run_rows_on(clean, logger, {.from = "00.00", .to = "01.11"}).completed){
@@ -199,10 +161,6 @@ UnitTestResult every_single_miss(Logger& logger, const std::set<std::string>& sk
     return failed.empty() ? UnitTestResult(true) : UnitTestResult(out);
 }
 
-//  Each fade the clean run looks for with only its hold unseen, a short
-//  fade between two frames (the door's watcher missed 13 of 35 fades on
-//  lab-B, 2026-11-08): the program's fade watch takes the scene after the
-//  fall, so every row passes, at every warp, ONE_SIGNAL_STEPS' too.
 UnitTestResult every_single_hold_miss(Logger& logger){
     SimExecutor clean(logger);
     if (!run_rows_on(clean, logger, {.from = "00.00", .to = "01.11"}).completed){
@@ -222,11 +180,6 @@ UnitTestResult every_single_hold_miss(Logger& logger){
     return failed.empty() ? UnitTestResult(true) : UnitTestResult(out);
 }
 
-//  Oreburgh's street at night (88, game clock 00:25; 104 by day, r74), the
-//  Gate's dim floor (46) and a cave mouth's dim fade (45 to 64): the tap
-//  steps judge their fades with fade_of(): uniform, so a textured floor
-//  is none. The old "brightness under 75" took the Gate's floor for a fade
-//  (lab-B 2026-11-08).
 UnitTestResult night_and_dim_floors(Logger& logger){
     SimWorldKnobs knobs{
         .floor = {{"OreburghCity", 88}, {"Route203", 88}, {"OreburghGate", 46}},
@@ -235,13 +188,11 @@ UnitTestResult night_and_dim_floors(Logger& logger){
     return passes(run_case(logger, "01.02", "01.05", {.fade = {}, .banner = {}}, knobs));
 }
 
-//  01.03: Roark's first line in the mine comes after the camera zooms in on
-//  us, some seconds after the A press (r98; the old event waited 8 s).
 UnitTestResult roark_speaks_late(Logger& logger){
     std::string talk;
     for (const StoryCheckpoint& row : story_checkpoints()){
-        for (const StoryStep& step : row.steps){
-            if (row.id == "01.03" && step.kind == StoryStepKind::TALK){
+        for (const BdspStep& step : row.steps){
+            if (row.id == "01.03" && step.action == "talk"){
                 talk = step.name;
             }
         }
@@ -249,9 +200,6 @@ UnitTestResult roark_speaks_late(Logger& logger){
     return passes(run_case(logger, "01.03", "01.03", {.fade = {}, .banner = {}}, {.first_line = {{talk, 7000ms}}}));
 }
 
-//  A MASH scene whose preceding step did not observe dialogue keeps the
-//  original 15 s opening-line watch. Both delays are therefore handled by
-//  the real mash/settle path, rather than silently walking on mid-scene.
 UnitTestResult mash_scene_speaks_late(Logger& logger){
     const Milliseconds delays[] = {7000ms, 9000ms};
     for (Milliseconds delay : delays){
@@ -266,11 +214,8 @@ UnitTestResult mash_scene_speaks_late(Logger& logger){
     return true;
 }
 
-//  How many seeds wanderers_move() runs.
 constexpr uint32_t WANDER_SEEDS = 8;
 
-//  `row` with everyone on its maps walking their wander boxes, seeds 1 to
-//  WANDER_SEEDS.
 UnitTestResult wanderers_move(Logger& logger, const std::string& row){
     const Pokemon::SeedsResult seeds = Pokemon::run_seeds(logger, std::format("{} wanderers", row), [&](uint32_t seed){
         const std::string stopped = run_case(logger, row, row, {.fade = {}, .banner = {}}, {.wander_seed = seed});
@@ -279,13 +224,6 @@ UnitTestResult wanderers_move(Logger& logger, const std::string& row){
     return Pokemon::sweep_result(logger, row, "wanderers", seeds.seeds, seeds.failures);
 }
 
-//  Roark's badge speech after the battle: four lines, the fanfare's pause
-//  with no box, then the badge's and the TM's lines (lab-B 2026-10-31 09:45
-//  and 2026-11-08 15:06: "no box for a moment" read as the end, and the
-//  Potion's menu opened under his next line). Then a scene: someone walks
-//  off with no box for 6 s before the last line, as Rowan does in r23 (the
-//  walk is a model, not measured after Roark). Played on the talk-over the
-//  battle's end runs (confirm_battle_overworld()).
 UnitTestResult roark_badge_speech(Logger& logger){
     const SimScene scene{
         sim_line("Roark: the battle's last line"),
@@ -303,12 +241,6 @@ UnitTestResult roark_badge_speech(Logger& logger){
     return passes(early);
 }
 
-//  The door's settle inside a Pokemon Center (SettleKind::DOOR; the
-//  heal's, lab-B 2026-11-10 00.04b and 2026-11-11 01:28, where the talk's
-//  5 s quiet took 18 s with visitors about). Visitors walking about, even
-//  right past the player, must not hold it up: over within 3 s of the fade
-//  back up. And it is never over while the fade still shows, however long
-//  the fade-in runs: a walk then goes nowhere.
 UnitTestResult center_inside_settles(Logger& logger){
     struct Inside{
         std::string_view what;
@@ -338,8 +270,6 @@ UnitTestResult center_inside_settles(Logger& logger){
     return true;
 }
 
-//  From the door mat, one held run north reaches the nurse's counter, even
-//  at walking pace: the counter is the wall that stops it, and A talks.
 UnitTestResult nurse_in_one_run(Logger&){
     const Milliseconds needed = ROUTE_START_DELAY + route_ms_per_tile(Direction::NORTH) * (int64_t)CENTER_MAT_TO_COUNTER_TILES;
     if (NURSE_RUN_HOLD < needed){
@@ -349,9 +279,6 @@ UnitTestResult nurse_in_one_run(Logger&){
     return true;
 }
 
-//  00.04b's heal at Sandgem's Center, the program's visit
-//  (run_center_visit()), with the Center's doors as `doors`: why the row
-//  stopped, or "".
 std::string sandgem_heal(Logger& logger, SimCenterDoors doors, bool slow_fade_in){
     SimWorldKnobs knobs;
     knobs.slow_fade_in = slow_fade_in;
@@ -359,8 +286,6 @@ std::string sandgem_heal(Logger& logger, SimCenterDoors doors, bool slow_fade_in
     return run_case(logger, "00.04b", "00.04b", {.fade = {}, .banner = {}}, std::move(knobs));
 }
 
-//  r143a: the run out of the Center stopped short of the door, on a fade
-//  that was not the door's: the visit fails heal_exit, not the next walk.
 UnitTestResult center_run_out_stays_inside(Logger& logger){
     const std::string stopped = sandgem_heal(logger, {.stays_inside = true}, false);
     if (stopped.find(Pokemon::CENTER_NOT_LEFT) == std::string::npos){
@@ -369,11 +294,6 @@ UnitTestResult center_run_out_stays_inside(Logger& logger){
     return true;
 }
 
-//  01.07: after the tag battle the screen fades back from the battle and
-//  the grunts run off before anyone speaks: a scene that opens with no box,
-//  6 s of people moving (Rowan's cutscene shape), then Rowan's and Dawn's
-//  lines, and Bebe walks over with hers. The lengths are a model: r80 saved
-//  over her lines.
 UnitTestResult grunts_run_off_before_rowan(Logger& logger){
     SimWorldKnobs knobs;
     knobs.scenes["galactic_grunts"] = {
@@ -389,11 +309,6 @@ UnitTestResult grunts_run_off_before_rowan(Logger& logger){
     return passes(run_case(logger, "01.07", "01.07", {.fade = {}, .banner = {}}, knobs));
 }
 
-//  00.03: Rowan's scene opens with no box: Rowan and Dawn walk back and
-//  stand a moment before his first line; after he leaves, Dawn's and
-//  Barry's lines, the fade home, and Mom walks over before she speaks
-//  (r23, r24, r31). The scene changes map, so only the quiet after the
-//  fade counts.
 UnitTestResult rowans_scene_opens_with_no_box(Logger& logger){
     SimWorldKnobs knobs;
     knobs.scenes["rowan_and_dawn"] = {
@@ -414,10 +329,6 @@ UnitTestResult rowans_scene_opens_with_no_box(Logger& logger){
     return passes(run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, knobs));
 }
 
-//  00.03: Mom's lines, a still moment, then the scene's closing fade
-//  (lab-B 2026-11-09 14:33). The scene once ended as the fade went down,
-//  and the next step's input landed in it: the talk-over must wait for the
-//  fade to come back up and for the quiet after it.
 UnitTestResult moms_scene_ends_with_a_fade(Logger& logger){
     SimWorldKnobs knobs;
     knobs.scenes["rowan_and_dawn"] = {
@@ -432,9 +343,6 @@ UnitTestResult moms_scene_ends_with_a_fade(Logger& logger){
     return passes(run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, knobs));
 }
 
-//  00.02: the Starly battle's opening is still playing when the battle
-//  step starts, right after choose_starter (lab-B 2026-11-09 run 3, event
-//  7): the battle step's, not interrupt_unsettled before it.
 UnitTestResult starly_opening_after_the_starter(Logger& logger){
     SimWorldKnobs knobs;
     knobs.battle_opening_before = [](const std::string& row, const std::string& step){
@@ -443,26 +351,17 @@ UnitTestResult starly_opening_after_the_starter(Logger& logger){
     return passes(run_case(logger, "00.02", "00.02", {.fade = {}, .banner = {}}, knobs));
 }
 
-//  00.04b: the run down Route 202's road into Sandgem stopped two columns
-//  west of the table's (29, 5), on (27, 5), and the counted walk on to
-//  the Center's door ended below its west wall: the heal ran north into
-//  the wall (lab-B 2026-11-09 20:09). The walk to the door must find its
-//  column on walls, wherever on the road's last row the run stopped.
 UnitTestResult sandgem_entry_two_columns_west(Logger& logger){
     SimWorldKnobs knobs;
-    knobs.lands["into_sandgem"] = Pokemon::tile_pose("SandgemTown", {TilePos{27, 5}}, Direction::SOUTH);
+    knobs.lands["into_sandgem"] = GridPose{.map = "SandgemTown", .tiles = {TilePos{27, 5}}, .facing = Direction::SOUTH};
     return passes(run_case(logger, "00.04b", "00.04b", {.fade = {}, .banner = {}}, std::move(knobs)));
 }
 
-//  00.03: Rowan's scene ends at home on (6, 8) beside Mom (lab-B
-//  2026-11-09, 7 of 7 runs). The way out holds south onto the door's tile
-//  (6, 10); from a column west, (5, 8), the hold stops on (5, 10) with no
-//  fade, and a tap east onto the mat goes out.
 UnitTestResult home_from_each_scene_end(Logger& logger){
     std::string failures;
     for (const TilePos& tile : {TilePos{6, 8}, TilePos{5, 8}}){
         SimWorldKnobs knobs;
-        knobs.lands["rowan_and_dawn"] = Pokemon::tile_pose("PlayerHouse1F", {tile}, Direction::EAST);
+        knobs.lands["rowan_and_dawn"] = GridPose{.map = "PlayerHouse1F", .tiles = {tile}, .facing = Direction::EAST};
         const std::string stopped = run_case(logger, "00.03", "00.03", {.fade = {}, .banner = {}}, std::move(knobs));
         if (!stopped.empty()){
             failures += std::format("\nfrom ({}, {}): {}", tile.x, tile.y, stopped);
@@ -471,31 +370,26 @@ UnitTestResult home_from_each_scene_end(Logger& logger){
     return passes(failures);
 }
 
-//  The table with row `id` cut to `step` alone, from `start`.
-std::vector<StoryCheckpoint> table_with_row(const std::string& id, const Pose& start, const StoryStep& step){
+std::vector<StoryCheckpoint> table_with_row(const std::string& id, const GridPose& start, const BdspStep& step){
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& checkpoint : rows){
         if (checkpoint.id == id){
-            checkpoint.start = Pokemon::TileDeclared{start.map, Pokemon::tiles_of(start), Pokemon::facing_of(start)};
+            checkpoint.start = start;
             checkpoint.steps = {step};
         }
     }
     return rows;
 }
-//  00.03: Rowan's trigger is the column (5, 14..16) on Route 201 (decomp),
-//  20 tiles east of the Lakefront's wall row 21 (Route 201's row 14). The
-//  step routes from where the lake's scene leaves us, or from a row or two
-//  lower (21..23), onto that row, then runs east until his scene stops the
-//  run on a tile of the column.
+
 UnitTestResult rowans_scene_from_each_start(Logger& logger){
-    const StoryStep& walk = table_step("00.03", "into_rowans_scene");
-    const Pose trigger = Pokemon::tile_pose("Route201", {TilePos{5, 14}, TilePos{5, 15}, TilePos{5, 16}}, Direction::EAST);
+    const BdspStep& walk = table_step("00.03", "into_rowans_scene");
+    const GridPose trigger{.map = "Route201", .tiles = {TilePos{5, 14}, TilePos{5, 15}, TilePos{5, 16}}, .facing = Direction::EAST};
     std::string failures;
     for (const TilePos& tile : {TilePos{17, 14}, TilePos{17, 15}, TilePos{20, 21}, TilePos{20, 22}, TilePos{20, 23}}){
-        const Pose start = Pokemon::tile_pose("VerityLakefront", {tile}, Direction::SOUTH);
+        const GridPose start{.map = "VerityLakefront", .tiles = {tile}, .facing = Direction::SOUTH};
         const std::vector<StoryCheckpoint> rows = table_with_row("00.03", start, walk);
         SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
-        const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.03", .to = "00.03"}, rows);
+        const SimRunReport report = run_rows_on(executor, logger, {.from = "00.03", .to = "00.03"}, rows);
         if (!report.completed){
             failures += std::format("\nfrom ({}, {}): stopped in {}: {}", tile.x, tile.y, executor.result().failed_step, executor.result().error);
         }else if (!ends_on(executor.result(), trigger)){
@@ -504,43 +398,34 @@ UnitTestResult rowans_scene_from_each_start(Logger& logger){
     }
     return passes(failures);
 }
-//  00.03: Dawn's scene starts on Sandgem's column 4 (rows 10..15, decomp),
-//  five tiles into the run east from Route 201's edge (Sandgem (-1, 12) is
-//  Route 201 (63, 5)). From the house's doorstep, the step routes to the
-//  edge and runs on until her scene stops it there (r35, r36: an exact
-//  tile and banner raced her scene).
+
 UnitTestResult dawns_scene_mid_run(Logger& logger){
-    const StoryStep& walk = table_step("00.03", "into_dawns_scene");
-    const Pose start = Pokemon::tile_pose("TwinleafTown", {map_point("TwinleafTown", "house_doorstep")}, Direction::SOUTH);
+    const BdspStep& walk = table_step("00.03", "into_dawns_scene");
+    const GridPose start{.map = "TwinleafTown", .tiles = {map_point("TwinleafTown", "house_doorstep")}, .facing = Direction::SOUTH};
     const std::vector<StoryCheckpoint> rows = table_with_row("00.03", start, walk);
     SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
-    const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.03", .to = "00.03"}, rows);
+    const SimRunReport report = run_rows_on(executor, logger, {.from = "00.03", .to = "00.03"}, rows);
     if (!report.completed){
         return std::format("stopped in {}: {}", executor.result().failed_step, executor.result().error);
     }
-    const Pose trigger = Pokemon::tile_pose("SandgemTown", {TilePos{4, 12}}, Direction::EAST);
+    const GridPose trigger{.map = "SandgemTown", .tiles = {TilePos{4, 12}}, .facing = Direction::EAST};
     if (!ends_on(executor.result(), trigger)){
         return std::format("the walk ended at {}, not on Dawn's trigger (4, 12).", end_of(executor.result()));
     }
     return true;
 }
 
-//  Route 201's grass, as the console met it: a wild battle on each of four
-//  passes of 10 tiles of row 5's grass (lab-B 2026-11-09 16:14). A battle
-//  each 8 grass tiles gives one on every such pass.
 SimWorldKnobs route_201_grass(){
     SimWorldKnobs knobs;
     knobs.grass.every = 8;
     return knobs;
 }
-//  00.04's steps from the east end of Sandgem's path down over Route 201's
-//  ledge: "to_route_201" through "over_the_ledge", less `skip`. The run
-//  west leaves us on one of seven tiles, as on the console.
-std::vector<StoryStep> ledge_walk(const std::set<std::string>& skip){
-    std::vector<StoryStep> steps;
+
+std::vector<BdspStep> ledge_walk(const std::set<std::string>& skip){
+    std::vector<BdspStep> steps;
     bool on = false;
     for (const StoryCheckpoint& checkpoint : story_checkpoints()){
-        for (const StoryStep& step : checkpoint.steps){
+        for (const BdspStep& step : checkpoint.steps){
             if (checkpoint.id != "00.04"){
                 continue;
             }
@@ -555,22 +440,18 @@ std::vector<StoryStep> ledge_walk(const std::set<std::string>& skip){
     }
     throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No over_the_ledge after to_route_201 in 00.04");
 }
-//  00.04 from the east end of Sandgem's path to below Route 201's ledge, a
-//  wild battle each 8 grass tiles: "" if it gets there, else where and why
-//  it stopped. Without `skip`, the table's walk.
+
 std::string ledge_walk_in_grass(Logger& logger, const std::set<std::string>& skip){
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& checkpoint : rows){
         if (checkpoint.id == "00.04"){
-            const GridPose target = story_arg<GridPose>(table_step("00.04", "onto_the_path").args, "target");
-            checkpoint.start = Pokemon::TileDeclared{target.map, target.tiles, target.facing};
+            checkpoint.start = std::get<RouteStepArgs>(table_step("00.04", "onto_the_path").args).target;
             checkpoint.steps = ledge_walk(skip);
         }
     }
     return run_case(logger, "00.04", "00.04", {.fade = {}, .banner = {}}, route_201_grass(), rows);
 }
 
-//  The scenes a run's walks fought as trainers', or "none".
 std::string fought(const SimRun& run){
     std::string out;
     for (const std::string& scene : run.scenes_fought){
@@ -578,12 +459,10 @@ std::string fought(const SimRun& run){
     }
     return out.empty() ? "none" : out;
 }
-//  00.04: Mom's call after her heal fires on (6, 9), above the mat
-//  (lab-B 2026-11-09 17:29). The walk into it ends in her call, which her
-//  hat scene's step plays to the fade out with her; no walk fights it.
+
 UnitTestResult moms_call_above_the_mat(Logger& logger){
     SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
-    const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.04", .to = "00.04"});
+    const SimRunReport report = run_rows_on(executor, logger, {.from = "00.04", .to = "00.04"});
     if (!report.completed){
         return std::format("stopped in {}: {}", executor.result().failed_step, executor.result().error);
     }
@@ -592,31 +471,27 @@ UnitTestResult moms_call_above_the_mat(Logger& logger){
     }
     return true;
 }
-//  00.04's old walk round Mom to (6, 9) and step onto the mat. On the
-//  console the walk fought her call, the step went out of the door and her
-//  hat scene saw no fade. A route before a step onto a scene's trigger now
-//  hands a scene that starts on the way to the scene's step, and the step
-//  onto the trigger is not taken.
+
 UnitTestResult old_walk_hands_moms_call_over(Logger& logger){
     std::vector<StoryCheckpoint> rows = story_checkpoints();
     for (StoryCheckpoint& checkpoint : rows){
         if (checkpoint.id != "00.04"){
             continue;
         }
-        std::vector<StoryStep> steps;
-        for (StoryStep& step : checkpoint.steps){
+        std::vector<BdspStep> steps;
+        for (BdspStep& step : checkpoint.steps){
             if (step.name != "into_moms_call"){
                 steps.push_back(std::move(step));
                 continue;
             }
-            for (StoryStep& old : old_round_mom_to_the_mat()){
+            for (BdspStep& old : old_round_mom_to_the_mat()){
                 steps.push_back(std::move(old));
             }
         }
         checkpoint.steps = std::move(steps);
     }
     SimExecutor executor(logger, {.fade = {}, .banner = {}}, {});
-    const Pokemon::SegmentReport report = run_rows_on(executor, logger, {.from = "00.04", .to = "00.04"}, rows);
+    const SimRunReport report = run_rows_on(executor, logger, {.from = "00.04", .to = "00.04"}, rows);
     const SimRun& run = executor.result();
     if (!report.completed){
         return std::format("stopped in {}: {}", run.failed_step, run.error);
@@ -630,10 +505,8 @@ UnitTestResult old_walk_hands_moms_call_over(Logger& logger){
 struct FailureCaseInput{
     std::function<UnitTestResult(Logger&)> body;
 };
-//  Whether a case is expected to fail is known_failing()'s, by name.
 struct FailureCaseExpectation{
 };
-//  `name`: the console failure, as known_failing() keys it.
 struct FailureCase{
     std::string name;
     FailureCaseInput input;
@@ -656,17 +529,13 @@ private:
     FailureCase m_case;
 };
 
-} // namespace
-
-//  00.01's walk up Twinleaf's exit toward Barry's warning, with the taps
-//  north the walker read still by the "201" banner (lab-B 2026-11-15, taps
-//  13 and 14 of north 18; the player moved on both): the row still passes,
-//  the run north ending on the warning's trigger row.
 UnitTestResult barrys_warning_with_still_taps(Logger& logger){
     SimWorldKnobs knobs;
     knobs.still_taps = {{.step = "below_barrys_warning", .direction = Direction::NORTH, .taps = {13, 14}}};
     return passes(run_case(logger, "00.01", "00.01", {.fade = {}, .banner = {}}, std::move(knobs)));
 }
+
+} // namespace
 
 const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.name = "01.05 through_the_gate's last leg runs a tile on (lab-B 2026-11-08 15:31)", .input = {[](Logger& logger){
@@ -726,18 +595,12 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.name = "00.04 to the ledge column with a wild battle on each pass through Route 201's grass (lab-B 2026-11-09 16:14)", .input = {[](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {}));
     }}, .expectation = {}},
-    //  It failed there with "too many plans" until replans crossed the
-    //  grass on legs to a wall (replan_costs(), 2026-11-09).
     {.name = "00.04 the old walk to the ledge column, west to row 5's wall through the grass, now passes", .input = {[](Logger& logger){
         return passes(ledge_walk_in_grass(logger, {"to_the_signs_row"}));
     }}, .expectation = {}},
-    //  00.05b below_the_mart_clown: school_kid_m_5 wanders across row 34;
-    //  tapping back to the wall behind resolves the stop without failing replan.
     {.name = "00.05b with Jubilife's people wandering (school_kid_m_5 on 51, 33..35)", .input = {[](Logger& logger){
         return wanderers_move(logger, "00.05b");
     }}, .expectation = {}},
-    //  01.02 by_the_gate: wild battle + trainer sightline on the same wall leg
-    //  must hand off to after_leg() rather than aborting wall recovery.
     {.name = "00.00 to 01.02 chained with wild battles every 8 grass tiles (wild battle + trainer on the same wall leg)", .input = {[](Logger& logger){
         return passes(run_case(logger, "00.00", "01.02", {.fade = {}, .banner = {}}, route_201_grass()));
     }}, .expectation = {}},
@@ -745,11 +608,8 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
 
 namespace{
 
-//  The console failure cases: AUTO_STORY_FAILURE_CASES.
 struct KnownFailingNamesInput{
 };
-//  Every known_failing() entry names one of them: one renamed would
-//  otherwise drop off the list and fail the suite.
 struct KnownFailingNamesExpectation{
 };
 struct KnownFailingNamesCase{

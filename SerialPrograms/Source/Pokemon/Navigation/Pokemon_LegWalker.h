@@ -33,7 +33,7 @@
 #include "CommonFramework/Exceptions/OperationFailedExceptionWithScreenshot.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
-#include "Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "Pokemon_LegTypes.h"
 
 namespace PokemonAutomation{

@@ -11,7 +11,7 @@
 
 #include <cstddef>
 #include <string>
-#include "Pokemon/Navigation/Pokemon_Grid.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonBDSP_AutoStory_RouteIO.h"
 #include "PokemonBDSP_AutoStory_RouteTiming.h"
 

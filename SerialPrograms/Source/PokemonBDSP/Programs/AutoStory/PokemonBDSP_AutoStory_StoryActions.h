@@ -2,28 +2,10 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  BDSP's story steps as the actions of the shared story engine
- *  (Pokemon/AutoStory/Engine/): one StoryGame, run by the engine's step
- *  runner (StoryEngineSteps), which the console (ConsoleStory) and the
- *  simulation (SimExecutor) each bind. The walking steps (ROUTE, LEGS,
- *  STEP, TALK, MASH) are the same code on both: StoryWalkSteps on the
- *  binding's StoryStepIO. The steps that need the console (the intro, the
- *  options, answers, battles, training, the Center, saves, and the story's
- *  events, story_events()) are the binding's own: played on the console,
- *  stood in for on the simulation.
- *
- *  An action is found by its step's kind and name, as the engine finds it;
- *  a story event's name finds its event for a step of any kind. A GAME
- *  step runs only the event its variant names, and BDSP has no SHOP or
- *  READY step: the engine's built-in ones fail as unsupported_step().
- *
- *  BDSP's actions drive the game through StoryStepIO, not through the
- *  engine backend's inputs yet: StoryLogBackend gives the runner the log,
- *  the scope and what it plays on. The engine has no step guard and no
- *  look between steps yet: the bindings run each step inside
- *  TableExecutor's (Pokemon_StoryActions.h), whose run_action() is
- *  StoryEngineSteps::act(). This header leaves out the engine's StoryGame,
- *  whose StoryAction would clash with that header's.
+ *  BDSP's story steps bound to the shared story engine (Pokemon_StoryEngine.h,
+ *  #648): walking steps (route, legs, step, talk, scene) run on StoryWalkSteps,
+ *  and console/event steps run through BdspStoryHandlers, which ConsoleStory
+ *  and SimExecutor each bind.
  *
  */
 
@@ -31,13 +13,16 @@
 #define PokemonAutomation_PokemonBDSP_AutoStory_StoryActions_H
 
 #include <functional>
-#include <memory>
+#include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/CancellableScope.h"
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
-#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "PokemonBDSP_AutoStory_StoryCheckpoint.h"
 #include "PokemonBDSP_AutoStory_StoryWalkSteps.h"
 
 namespace PokemonAutomation{
@@ -45,77 +30,80 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  Does `step`, from the run so far.
-using StoryBoundAction = std::function<Pokemon::Outcome(const Pokemon::StoryStep& step, Pokemon::RunState& state)>;
+//  Does one BDSP step, updating BDSP's own run state (S2).
+using BdspStepAction = std::function<std::optional<Pokemon::StoryFailure>(const BdspStep& step, BdspRunState& state)>;
 
-//  The actions a binding does its own way, one per kind that needs the
-//  console.
-struct StoryBoundActions{
-    StoryBoundAction new_game = {};
-    StoryBoundAction options = {};
-    StoryBoundAction answer = {};
-    StoryBoundAction battle = {};
-    StoryBoundAction train = {};
-    StoryBoundAction heal = {};
-    StoryBoundAction save = {};
+//  The actions and step lifecycle hooks a binding (ConsoleStory or SimExecutor)
+//  supplies when compiling BDSP checkpoints into #648 Pokemon::StoryCheckpoints.
+struct BdspStoryHandlers{
+    BdspStepAction new_game = {};
+    BdspStepAction options = {};
+    BdspStepAction answer = {};
+    BdspStepAction battle = {};
+    BdspStepAction train = {};
+    BdspStepAction heal = {};
+    BdspStepAction save = {};
     //  The action for the story event named `name` (story_events()).
-    std::function<StoryBoundAction(const std::string& name)> event = {};
+    std::function<BdspStepAction(const std::string& name)> event = {};
+
+    //  Optional hook called at the start of every checkpoint attempt (step 0),
+    //  after walks.begin_attempt() and run_state.pose initialization.
+    std::function<void(const StoryCheckpoint& row)> on_attempt_start = {};
+
+    //  Optional wrapper around each step's action execution (interrupt clearing,
+    //  guards, exception handling, simulation pose checks).
+    std::function<std::optional<Pokemon::StoryFailure>(
+        const StoryCheckpoint& row,
+        const BdspStep& step,
+        BdspRunState& state,
+        const std::function<std::optional<Pokemon::StoryFailure>()>& run_action
+    )> wrap_step = {};
 };
 
 
-//  The engine's backend for BDSP: the log, the scope and the kind. Its
-//  inputs throw InternalProgramError and observe() sees nothing: BDSP's
-//  actions play through StoryStepIO.
-//  code-health: allow public_methods -- these are the engine's StoryBackend overrides, which the engine fixes; none can move out
-class StoryLogBackend : public Pokemon::StoryBackend<Pokemon::GridPose>{
+//  The shared engine's StoryBackend for BDSP: routes log lines and cancellation
+//  scope. Controller input methods throw InternalProgramError because BDSP's
+//  actions drive the game through StoryStepIO.
+class BdspLogBackend : public Pokemon::StoryBackend{
 public:
     //  `scope` must outlive the backend.
-    StoryLogBackend(Pokemon::StoryBackendKind kind, std::function<void(std::string_view)> log, CancellableScope& scope);
+    BdspLogBackend(std::function<void(std::string_view)> log, CancellableScope& scope);
 
-    virtual Pokemon::StoryBackendKind kind() const override{
-        return m_kind;
-    }
     virtual void press(Button button, Milliseconds hold, Milliseconds release) override;
-    virtual void tap(Pokemon::Direction direction) override;
-    virtual void hold(Pokemon::Direction direction, Milliseconds duration, Pokemon::StoryPace pace) override;
     virtual void stick(double degrees, Milliseconds duration, Milliseconds release, Pokemon::StoryPace pace) override;
     virtual void wait(Milliseconds duration) override;
-    virtual Pokemon::Observation<Pokemon::GridPose> observe() override;
-    virtual Pokemon::Outcome battle(const Pokemon::StoryActionArgs& args) override;
+    virtual ScreenObservation observe() override;
     virtual void log(std::string_view line) override;
     virtual CancellableScope& scope() override{
         return m_scope;
     }
 
 private:
-    Pokemon::StoryBackendKind m_kind;
     std::function<void(std::string_view)> m_log;
     CancellableScope& m_scope;
 };
 
 
-//  BDSP's story actions on the engine: the walking steps on `walks`, the
-//  rest `bound`'s, run by the engine's step runner on `backend`. `walks`
-//  and `backend` must outlive it.
-class StoryEngineSteps{
-public:
-    StoryEngineSteps(StoryWalkSteps& walks, const StoryBoundActions& bound, Pokemon::StoryBackend<Pokemon::GridPose>& backend);
-    ~StoryEngineSteps();
-    StoryEngineSteps(const StoryEngineSteps&) = delete;
-    StoryEngineSteps& operator=(const StoryEngineSteps&) = delete;
+//  Whether `action` is a built-in BDSP action or a registered story_events() name.
+bool is_known_bdsp_action(std::string_view action);
 
-    //  `step`'s action (StoryStepRunner::act()): unsupported_step() for a
-    //  step with none.
-    Pokemon::Outcome act(const Pokemon::StoryStep& step, Pokemon::RunState& state);
+//  Dispatches one BDSP step on `walks` / `handlers` and applies `step.pose_after`
+//  to `state.pose` on success.
+std::optional<Pokemon::StoryFailure> run_bdsp_action(
+    StoryWalkSteps& walks,
+    const BdspStoryHandlers& handlers,
+    const BdspStep& step,
+    BdspRunState& state
+);
 
-    //  What is wrong with `step` before it runs (StoryActionRegistry::check()):
-    //  no action for it, or args that don't fit its action's.
-    std::vector<std::string> check(const Pokemon::StoryStep& step) const;
-
-private:
-    struct Engine;
-    std::unique_ptr<Engine> m_engine;
-};
+//  Compiles BDSP checkpoints into #648 Pokemon::StoryCheckpoints ready for
+//  Pokemon::run_checkpoints(). `walks` and `run_state` must outlive the run.
+std::vector<Pokemon::StoryCheckpoint> make_bdsp_engine_checkpoints(
+    std::span<const StoryCheckpoint> rows,
+    StoryWalkSteps& walks,
+    BdspRunState& run_state,
+    BdspStoryHandlers handlers
+);
 
 
 
