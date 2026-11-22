@@ -67,6 +67,7 @@ constexpr std::string_view MAP_NAMES[] = {
     "Route6",
     "VermilionCity",
     "VermilionCity_PokemonCenter_1F",
+    "VermilionCity_Mart",
     "SSAnne_Exterior",
     "SSAnne_1F_Corridor",
     "SSAnne_2F_Corridor",

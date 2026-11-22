@@ -144,9 +144,10 @@ std::set<std::string> read_note_keys(const JsonObject& execution, std::string_vi
 //  Checks the metadata's "postconditions": what the postcondition check
 //  after a run reads. "position" where the player ends, as a step's
 //  target; "items" the bag's counts by item; "flags" the game's flags
-//  that moved.
-void check_postconditions(const JsonObject& postconditions, std::string_view source){
-    only_fields(postconditions, {"position", "items", "flags"}, source);
+//  that moved; "poison_survival" the lead's overworld poison survival
+//  across `steps` with `max_hp` fallback.
+void check_postconditions(const JsonObject& postconditions, std::string_view source, StoryCheckpoint& checkpoint){
+    only_fields(postconditions, {"position", "items", "flags", "poison_survival"}, source);
     if (const JsonValue* position = postconditions.get_value("position")){
         const JsonObject& pose = position->to_object_throw(std::string(source));
         only_fields(pose, {"map", "tiles", "facing"}, source);
@@ -165,13 +166,26 @@ void check_postconditions(const JsonObject& postconditions, std::string_view sou
             flag.to_string_throw(std::string(source));
         }
     }
+    if (const JsonValue* poison = postconditions.get_value("poison_survival")){
+        const JsonObject& ps = poison->to_object_throw(std::string(source));
+        only_fields(ps, {"steps", "max_hp"}, source);
+        const int64_t steps = ps.get_integer_throw("steps", std::string(source));
+        const int64_t max_hp = ps.get_integer_throw("max_hp", std::string(source));
+        if (steps <= 0 || max_hp <= 0){
+            throw ParseException(std::format("{}: poison_survival steps and max_hp must be positive", source));
+        }
+        checkpoint.poison_survival = PoisonSurvivalPostcondition{
+            .steps = static_cast<int>(steps),
+            .max_hp = static_cast<int>(max_hp),
+        };
+    }
 }
 
 //  The file without its "metadata", which the shared reader doesn't take
 //  (yet): {"phase": testing, verification or reproduction}, how far the
 //  checkpoint is trusted to save (the engine's save policy reads it), and
 //  optionally "postconditions" (check_postconditions()).
-JsonValue without_metadata(const JsonValue& value, std::string_view source){
+JsonValue without_metadata(const JsonValue& value, std::string_view source, StoryCheckpoint& checkpoint){
     JsonObject stripped;
     for (const auto& [key, field] : value.to_object_throw(std::string(source))){
         if (key != "metadata"){
@@ -185,7 +199,7 @@ JsonValue without_metadata(const JsonValue& value, std::string_view source){
             }
         }
         if (const JsonValue* postconditions = metadata.get_value("postconditions")){
-            check_postconditions(postconditions->to_object_throw(std::string(source)), source);
+            check_postconditions(postconditions->to_object_throw(std::string(source)), source, checkpoint);
         }
         const std::string& phase = metadata.get_string_throw("phase", std::string(source));
         if (phase != "testing" && phase != "verification" && phase != "reproduction"){
@@ -224,7 +238,7 @@ Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, s
         note_keys = read_note_keys(execution, where);
     };
     static_cast<Pokemon::StoryCheckpoint&>(checkpoint) = Pokemon::read_authored_checkpoint(
-        without_metadata(value, source), "frlg", source, read_execution, story_action_specs()
+        without_metadata(value, source, checkpoint), "frlg", source, read_execution, story_action_specs()
     );
     checkpoint.verify = shared.verify;
     for (const std::string& key : note_keys){

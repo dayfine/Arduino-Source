@@ -373,6 +373,7 @@ bool arrived_without_fade(
     if (BlackScreenDetector(COLOR_RED).detect(later)){
         return false;
     }
+    const ImageViewRGB32 before_box = extract_box_reference(before, game);
     const ImageViewRGB32 now_box = extract_box_reference(now, game);
     const ImageViewRGB32 later_box = extract_box_reference(later, game);
     if (now_box.width() != later_box.width() || now_box.height() != later_box.height()){
@@ -383,11 +384,12 @@ bool arrived_without_fade(
     }
     //  A still screen is no proof of a warp: a wall stops the player as
     //  still, and water's waves make any scene after it look like another
-    //  one. The screen has to show a building's or a gate's map, with the
-    //  black below it (console B, 2026-11-14 20:27, 15.01: "east 9 (warp)"
+    //  one. Either the destination is a building or gate (black below
+    //  `later_box`), or the player exited one onto an outdoor map (black
+    //  below `before_box`). (console B, 2026-11-14 20:27, 15.01: "east 9 (warp)"
     //  held into Route 7's gate wall a row above its door was taken as the
     //  warp).
-    if (!black_below(later_box)){
+    if (!black_below(later_box) && !black_below(before_box)){
         return false;
     }
     return warp_left_scene(before, later, game, step.direction, step.tiles + step.warp_slack + 2);
@@ -442,6 +444,9 @@ void wait_out_fade(
         Pokemon::WatchAlong retry_fade(arrival);
         pbf_press_dpad(context, dpad(step.direction), STEP_TAP, STEP_TAP_RELEASE);
         if (wait_until(console, context, WARP_TIMEOUT, {retry_fade.watcher()}) >= 0){
+            return;
+        }
+        if (arrived_unseen(console, context, step, before)){
             return;
         }
     }
