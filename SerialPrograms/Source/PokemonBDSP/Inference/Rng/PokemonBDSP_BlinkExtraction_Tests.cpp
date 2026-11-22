@@ -8,7 +8,9 @@
 #include <chrono>
 #include <cmath>
 #include <format>
+#include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 #include "PokemonBDSP_BlinkExtraction.h"
@@ -53,12 +55,12 @@ Pokemon::Xorshift128State expected_first_blink_state(size_t ticks, uint8_t npcs)
     return expected.state();
 }
 
-std::string verify_tick_fit(const TickFit& fit, double expected_period){
+std::string verify_tick_fit(const TickFit& fit, double expected_period, double max_rms_ticks = MAX_TICK_FIT_RMS){
     if (std::abs(fit.period_seconds - expected_period) > PERIOD_TOLERANCE_SECONDS){
         return std::format("Expected period {:.4f}s (+/-{:.4f}s), got {:.4f}s.", expected_period, PERIOD_TOLERANCE_SECONDS, fit.period_seconds);
     }
-    if (fit.rms_ticks > MAX_TICK_FIT_RMS){
-        return std::format("Expected tick fit rms_ticks <= {:.4f}, got {:.4f}.", MAX_TICK_FIT_RMS, fit.rms_ticks);
+    if (fit.rms_ticks > max_rms_ticks){
+        return std::format("Expected tick fit rms_ticks <= {:.4f}, got {:.4f}.", max_rms_ticks, fit.rms_ticks);
     }
     return {};
 }
@@ -80,10 +82,11 @@ UnitTestResult verify_solve_result(const BlinkSolveResult& solved, bool expect_s
 }
 
 std::string solve_discrete_streams(
-    const std::vector<std::vector<BlinkEvent>>& streams, const std::vector<uint8_t>& stream_slots, BlinkSolveResult& solved_out
+    const std::vector<std::vector<BlinkEvent>>& streams, const std::vector<uint8_t>& stream_slots,
+    double max_rms_ticks, BlinkSolveResult& solved_out
 ){
     const TickFit fit = fit_tick_period(streams[0]);
-    std::string err = verify_tick_fit(fit, BDSP_NPC_TICK_SECONDS);
+    std::string err = verify_tick_fit(fit, BDSP_NPC_TICK_SECONDS, max_rms_ticks);
     if (!err.empty()){
         return err;
     }
@@ -136,7 +139,7 @@ public:
             return "Test setup failed: stream 0 had no Double blink to flip.";
         }
         BlinkSolveResult solved;
-        std::string err = solve_discrete_streams(streams, in.stream_slots, solved);
+        std::string err = solve_discrete_streams(streams, in.stream_slots, MAX_TICK_FIT_RMS, solved);
         if (!err.empty()){
             return err;
         }
@@ -242,32 +245,51 @@ std::vector<BlinkMatchSample> synthesize_match_stream(
     return samples;
 }
 
-std::string extract_grouped_blinks(const std::vector<BlinkMatchSample>& raw, bool use_auto_threshold, std::vector<BlinkEvent>& observed){
+std::string_view blink_type_label(std::optional<BlinkType> type){
+    return type.has_value() ? blink_type_name(*type) : "Uncertain";
+}
+
+struct ExtractOptions{
+    bool use_auto_threshold = true;
+    bool apply_stall_guard = true;
+};
+
+std::string extract_grouped_blinks(
+    const std::vector<BlinkMatchSample>& raw, ExtractOptions options, std::vector<BlinkEvent>& observed
+){
     //  Fixed threshold is used for ~20s schedules below auto_blink_threshold()'s 180s minimum.
-    const double threshold = use_auto_threshold ? auto_blink_threshold(raw) : GROUPING_THRESHOLD;
+    const double threshold = options.use_auto_threshold ? auto_blink_threshold(raw) : GROUPING_THRESHOLD;
     if (!(threshold > 0.0)){
         return std::format("auto_blink_threshold() returned {:.4f}.", threshold);
     }
     observed = group_blinks(extract_blinks(raw, threshold, WallClock{}));
+    if (options.apply_stall_guard){
+        mark_uncertain_blink_types(raw, WallClock{}, BlinkStallGuardConfig{}, observed);
+    }
     return {};
 }
 
-std::string verify_blink_events(
-    const std::vector<BlinkEvent>& truth, const std::vector<BlinkEvent>& observed, size_t expected_misclassified_doubles = 0
-){
+struct BlinkEventCounts{
+    size_t misclassified_doubles = 0;
+    size_t uncertain_types = 0;
+};
+
+std::string verify_blink_events(const std::vector<BlinkEvent>& truth, const std::vector<BlinkEvent>& observed, BlinkEventCounts expected = {}){
     if (observed.size() != truth.size()){
         return std::format("Expected {} grouped events, got {}.", truth.size(), observed.size());
     }
-    size_t misclassified = 0;
+    BlinkEventCounts got;
     for (size_t i = 0; i < truth.size(); i++){
-        if (truth[i].type == BlinkType::Double && observed[i].type == BlinkType::Single){
-            misclassified++;
+        if (!observed[i].type.has_value()){
+            got.uncertain_types++;
+        }else if (truth[i].type == BlinkType::Double && observed[i].type == BlinkType::Single){
+            got.misclassified_doubles++;
         }else if (truth[i].type != observed[i].type){
-            return std::format("Event {} misclassified: expected {}, got {}.", i, blink_type_name(truth[i].type), blink_type_name(observed[i].type));
+            return std::format("Event {} misclassified: expected {}, got {}.", i, blink_type_label(truth[i].type), blink_type_label(observed[i].type));
         }
     }
-    if (misclassified != expected_misclassified_doubles){
-        return std::format("Expected {} misclassified Double blinks, got {}.", expected_misclassified_doubles, misclassified);
+    if (got.misclassified_doubles != expected.misclassified_doubles || got.uncertain_types != expected.uncertain_types){
+        return std::format("Expected misclassified={}/uncertain={}, got {}/{}.", expected.misclassified_doubles, expected.uncertain_types, got.misclassified_doubles, got.uncertain_types);
     }
     return {};
 }
@@ -289,7 +311,11 @@ public:
         const auto& in = m_case.input;
         const double duration = in.truth.back().seconds + DOUBLE_BLINK_GAP_SECONDS + STREAM_TAIL_SECONDS;
         std::vector<BlinkEvent> observed;
-        std::string err = extract_grouped_blinks(synthesize_match_stream(in.truth, duration), in.use_auto_threshold, observed);
+        std::string err = extract_grouped_blinks(
+            synthesize_match_stream(in.truth, duration),
+            ExtractOptions{.use_auto_threshold = in.use_auto_threshold, .apply_stall_guard = true},
+            observed
+        );
         if (!err.empty()){
             return err;
         }
@@ -327,17 +353,26 @@ void add_signal_extraction_tests(UnitTestDatabase& database){
 }
 
 //=============================================================================
-//  Section 3: End-to-End Bug #2 Characterization (Signal -> Solver)
-//  Bridges Section 2 -> Section 1: a 95ms capture stall over one Double blink's
-//  2nd dip misclassifies it as Single and drives the solver to GF(2) failure.
+//  Section 3: End-to-End Bug #2 Frame-Stall Guard (Signal -> Solver)
+//  Bridges Section 2 -> Section 1: a 95ms capture stall over either dip of a
+//  Double blink misclassifies it as Single without the guard, while the guard
+//  clears bit 0 so the solver recovers the exact Xorshift128State.
 //=============================================================================
 
 constexpr double STALL_DURATION_SECONDS = 0.095;
+//  Dropping Dip 1 shifts one event by +0.250s (~0.246 ticks), raising 30-event RMS to ~0.065.
+constexpr double DIP1_SHIFT_MAX_TICK_FIT_RMS = 0.08;
 
-FrameStall stall_on_first_double_second_dip(const std::vector<BlinkEvent>& events, double duration){
+enum class DoubleDipTarget{
+    FirstDip,
+    SecondDip,
+};
+
+FrameStall stall_on_first_double_dip(const std::vector<BlinkEvent>& events, DoubleDipTarget target, double duration){
     for (const BlinkEvent& event : events){
         if (event.type == BlinkType::Double){
-            const double center = event.seconds + DOUBLE_BLINK_GAP_SECONDS;
+            const double offset = target == DoubleDipTarget::SecondDip ? DOUBLE_BLINK_GAP_SECONDS : 0.0;
+            const double center = event.seconds + offset;
             return FrameStall{center - duration * 0.5, center + duration * 0.5};
         }
     }
@@ -346,9 +381,9 @@ FrameStall stall_on_first_double_second_dip(const std::vector<BlinkEvent>& event
 
 struct FrameStallCase{
     std::string name;
-    struct Input{ size_t ticks; std::vector<uint8_t> stream_slots; double stall_duration_seconds; };
+    struct Input{ size_t ticks; std::vector<uint8_t> stream_slots; DoubleDipTarget dip_target; double stall_duration_seconds; bool apply_stall_guard; };
     Input input;
-    struct Expectation{ size_t misclassified_doubles; bool expect_solved; };
+    struct Expectation{ BlinkEventCounts stream0_counts; double max_rms_ticks; bool expect_solved; };
     Expectation expectation;
 };
 
@@ -364,23 +399,22 @@ public:
         std::vector<std::vector<BlinkEvent>> observed(npcs);
         for (size_t s = 0; s < npcs; s++){
             const std::vector<BlinkEvent> truth = truth_events_for_slot(in.ticks, npcs, in.stream_slots[s]);
-            const FrameStall stall = s == 0 ? stall_on_first_double_second_dip(truth, in.stall_duration_seconds) : FrameStall{};
-            std::string err = extract_grouped_blinks(synthesize_match_stream(truth, duration, stall), /*use_auto_threshold=*/true, observed[s]);
+            const FrameStall stall = s == 0 ? stall_on_first_double_dip(truth, in.dip_target, in.stall_duration_seconds) : FrameStall{};
+            const ExtractOptions options{.use_auto_threshold = true, .apply_stall_guard = in.apply_stall_guard};
+            std::string err = extract_grouped_blinks(synthesize_match_stream(truth, duration, stall), options, observed[s]);
             if (!err.empty()){
                 return std::format("Stream {}: {}", s, err);
             }
-            err = verify_blink_events(truth, observed[s], s == 0 ? m_case.expectation.misclassified_doubles : 0);
+            err = verify_blink_events(truth, observed[s], s == 0 ? m_case.expectation.stream0_counts : BlinkEventCounts{});
             if (!err.empty()){
                 return err;
             }
         }
         BlinkSolveResult solved;
-        std::string err = solve_discrete_streams(observed, in.stream_slots, solved);
-        if (!err.empty()){
-            return err;
-        }
-        //  PR 3 (Bug #2 fix) will flip expect_solved to true for exact recovery.
-        return verify_solve_result(solved, m_case.expectation.expect_solved, expected_first_blink_state(in.ticks, npcs));
+        std::string err = solve_discrete_streams(observed, in.stream_slots, m_case.expectation.max_rms_ticks, solved);
+        return err.empty()
+            ? verify_solve_result(solved, m_case.expectation.expect_solved, expected_first_blink_state(in.ticks, npcs))
+            : UnitTestResult(std::move(err));
     }
 
 private:
@@ -389,11 +423,21 @@ private:
 
 void add_bug2_characterization_tests(UnitTestDatabase& database){
     const FrameStallCase BUG2_CASES[] = {
-        {
-            .name = "95ms frame stall over Double blink 2nd dip causes GF(2) contradiction (Bug #2)",
-            .input = {.ticks = 240, .stream_slots = {0, 1}, .stall_duration_seconds = STALL_DURATION_SECONDS},
-            .expectation = {.misclassified_doubles = 1, .expect_solved = false},
-        },
+        {.name = "95ms stall on Double dip 2 without guard fails GF(2)",
+         .input = {.ticks = 240, .stream_slots = {0, 1}, .dip_target = DoubleDipTarget::SecondDip, .stall_duration_seconds = STALL_DURATION_SECONDS, .apply_stall_guard = false},
+         .expectation = {.stream0_counts = {.misclassified_doubles = 1, .uncertain_types = 0}, .max_rms_ticks = MAX_TICK_FIT_RMS, .expect_solved = false}},
+        {.name = "95ms stall on Double dip 2 with guard recovers exact state (2-NPC)",
+         .input = {.ticks = 240, .stream_slots = {0, 1}, .dip_target = DoubleDipTarget::SecondDip, .stall_duration_seconds = STALL_DURATION_SECONDS, .apply_stall_guard = true},
+         .expectation = {.stream0_counts = {.misclassified_doubles = 0, .uncertain_types = 1}, .max_rms_ticks = MAX_TICK_FIT_RMS, .expect_solved = true}},
+        {.name = "95ms stall on Double dip 1 without guard fails GF(2)",
+         .input = {.ticks = 240, .stream_slots = {0, 1}, .dip_target = DoubleDipTarget::FirstDip, .stall_duration_seconds = STALL_DURATION_SECONDS, .apply_stall_guard = false},
+         .expectation = {.stream0_counts = {.misclassified_doubles = 1, .uncertain_types = 0}, .max_rms_ticks = DIP1_SHIFT_MAX_TICK_FIT_RMS, .expect_solved = false}},
+        {.name = "95ms stall on Double dip 1 with guard recovers exact state (2-NPC)",
+         .input = {.ticks = 240, .stream_slots = {0, 1}, .dip_target = DoubleDipTarget::FirstDip, .stall_duration_seconds = STALL_DURATION_SECONDS, .apply_stall_guard = true},
+         .expectation = {.stream0_counts = {.misclassified_doubles = 0, .uncertain_types = 1}, .max_rms_ticks = DIP1_SHIFT_MAX_TICK_FIT_RMS, .expect_solved = true}},
+        {.name = "95ms stall on Double dip 2 with guard recovers exact state (1-NPC)",
+         .input = {.ticks = 420, .stream_slots = {0}, .dip_target = DoubleDipTarget::SecondDip, .stall_duration_seconds = STALL_DURATION_SECONDS, .apply_stall_guard = true},
+         .expectation = {.stream0_counts = {.misclassified_doubles = 0, .uncertain_types = 1}, .max_rms_ticks = MAX_TICK_FIT_RMS, .expect_solved = true}},
     };
     for (const FrameStallCase& scenario : BUG2_CASES){
         database.add<Test_FrameStallBug2>(scenario);

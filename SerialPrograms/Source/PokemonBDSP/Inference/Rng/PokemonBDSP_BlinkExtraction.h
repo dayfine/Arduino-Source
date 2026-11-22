@@ -8,6 +8,7 @@
 #define PokemonAutomation_PokemonBDSP_BlinkExtraction_H
 
 #include <stddef.h>
+#include <optional>
 #include <string>
 #include <vector>
 #include "PokemonBDSP/Programs/RngManipulation/PokemonBDSP_BlinkModel.h"
@@ -27,7 +28,10 @@ struct Blink{
 
 struct BlinkEvent{
     double seconds = 0;
-    BlinkType type = BlinkType::Single;
+    //  Empty when a capture stall overlapped the +/-double_blink_seconds window
+    //  around a Single blink (either dip of a Double may have been dropped), so
+    //  single vs. double cannot be trusted and bit 0 is omitted.
+    std::optional<BlinkType> type = BlinkType::Single;
 };
 
 struct TickFit{
@@ -46,10 +50,27 @@ std::vector<Blink> extract_blinks(
     WallClock origin = WallClock::min()
 );
 
+struct BlinkStallGuardConfig{
+    static constexpr double DEFAULT_DOUBLE_BLINK_SECONDS = 0.55;
+    double double_blink_seconds = DEFAULT_DOUBLE_BLINK_SECONDS;
+    double max_frame_gap_seconds = 0.065;
+};
+
 //  A second blink arriving within "double_blink_seconds" is the same roll
 std::vector<BlinkEvent> group_blinks(
     const std::vector<Blink>& blinks,
-    double double_blink_seconds = 0.55
+    double double_blink_seconds = BlinkStallGuardConfig::DEFAULT_DOUBLE_BLINK_SECONDS
+);
+
+//  Clear `event.type` on any Single blink whose symmetric +/-`double_blink_seconds`
+//  window overlapped a capture stall (adjacent samples further apart than
+//  `max_frame_gap_seconds`), since either dip of a Double blink may have been dropped.
+//  Precondition: `samples` and `events` are sorted in ascending time order.
+void mark_uncertain_blink_types(
+    const std::vector<BlinkMatchSample>& samples,
+    WallClock origin,
+    const BlinkStallGuardConfig& config,
+    std::vector<BlinkEvent>& events
 );
 
 //  The NPC tick is nominally 1.017 s but measures 1.0197 s on real hardware
