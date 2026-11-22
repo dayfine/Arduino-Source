@@ -163,27 +163,26 @@ void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context,
 //  Walks north out of OreburghMineB1F back up column 46/47 to Oreburgh
 //  Pokemon Center, heals, and returns to the Center doorstep (47, 21).
 void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& context){
-    //  Walking straight north up column 12 exits OreburghMineB1F onto column 46
-    //  and stops either at the exit fade (TRANSITION) or after continuing straight
-    //  up column 46 to Oreburgh Center's south wall (46, 21) (BLOCKED).
-    WalkStop stop = WalkStop::LIMIT;
+    //  Walk straight north across any mine floor warps until we either enter
+    //  Oreburgh Center directly (column 47) or hit its south wall at (46, 21).
     const JoystickPosition north_stick{0, 1};
-    for (size_t tries = 0; tries < 4 && stop != WalkStop::TRANSITION && stop != WalkStop::BLOCKED; tries++){
-        stop = walk_until(stream, context, run_from_wild_battle, north_stick, MINE_COLUMN_WALK_LIMIT, "north out of Oreburgh Mine").stop;
-    }
-    if (stop == WalkStop::TRANSITION){
-        confirm_battle_overworld(stream, context, "out of Oreburgh Mine");
-        const WalkResult north = walk_until_no_wild(stream, context, north_stick, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center");
-        if (north.stop == WalkStop::TRANSITION || in_pokemon_center(stream)){
-            confirm_battle_overworld(stream, context, "into Oreburgh Center");
-            heal_inside_pokemon_center(stream, context, "Oreburgh");
+    for (size_t legs = 0; legs < 6; legs++){
+        const WalkResult north = walk_until(stream, context, run_from_wild_battle, north_stick, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center");
+        if (north.stop == WalkStop::TRANSITION){
+            confirm_battle_overworld(stream, context, "north transition to Oreburgh Center");
+            if (in_pokemon_center(stream)){
+                heal_inside_pokemon_center(stream, context, "Oreburgh");
+                return;
+            }
+            continue;
+        }
+        if (north.stop == WalkStop::BLOCKED){
+            dpad_tiles(stream, context, DPAD_RIGHT, 1, "below Oreburgh Center door");
+            heal_at_pokemon_center(stream, context, "Oreburgh");
             return;
         }
-    }else if (stop != WalkStop::BLOCKED){
-        fail_step(stream, "Oreburgh Mine training: could not exit back to Oreburgh City.");
     }
-    dpad_tiles(stream, context, DPAD_RIGHT, 1, "below Oreburgh Center door");
-    heal_at_pokemon_center(stream, context, "Oreburgh");
+    fail_step(stream, "Oreburgh Mine training: could not reach Oreburgh Center.");
 }
 
 //  From Oreburgh Center doorstep (47, 21), walks straight south down column 46
