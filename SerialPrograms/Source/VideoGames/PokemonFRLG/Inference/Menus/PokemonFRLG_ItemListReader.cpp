@@ -86,6 +86,16 @@ constexpr std::pair<std::string_view, std::string_view> ENGLISH_ITEM_NAMES[] = {
     {"x-attack", "X Attack"},
     {"x-defend", "X Defend"},
     {"dire-hit", "Dire Hit"},
+    //  Celadon Department Store 4F (Wise Man Gifts) and Mail Glitch berries.
+    {"poke-doll", "Poke Doll"},
+    {"retro-mail", "Retro Mail"},
+    {"fire-stone", "Fire Stone"},
+    {"thunder-stone", "Thunderstone"},
+    {"water-stone", "Water Stone"},
+    {"leaf-stone", "Leaf Stone"},
+    {"berry-pouch", "Berry Pouch"},
+    {"oran-berry", "Oran Berry"},
+    {"sitrus-berry", "Sitrus Berry"},
     {"cancel", "Cancel"},
 };
 

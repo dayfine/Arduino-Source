@@ -1,0 +1,117 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "mg-02",
+    "title": "Catch Spearow on Route 16, collect Sitrus Berry on Route 6, trade for CH'DING in Vermilion",
+    "start": {"map": "CeladonCity", "tiles": [[39, 21]], "facing": "south"},
+    "events": [
+      {
+        "id": "to_route16_cut_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[41, 12]], "facing": "north"}
+        },
+        "why": "walk west out of Celadon City to below Route 16 Cut tree (41, 11)"
+      },
+      {
+        "id": "cut_route16_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "north"
+        },
+        "declared_after": {"map": "Route16", "tiles": [[41, 11]], "facing": "north"},
+        "why": "cut the Route 16 tree to access the north grass patch"
+      },
+      {
+        "id": "to_route16_grass",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route16", "tiles": [[35, 6]], "facing": "east"}
+        },
+        "why": "enter Route 16 grass (Spearow Lv 20-22, 30% encounter rate)"
+      },
+      {
+        "id": "catch_spearow",
+        "kind": "game_action",
+        "action": "capture",
+        "args": {
+          "species": "spearow",
+          "catches": 1,
+          "encounters": 50,
+          "balls": 10,
+          "pace": "east"
+        },
+        "why": "catch 1 Spearow (Lv 20-22) for the Vermilion CH'DING trade"
+      },
+      {
+        "id": "fly_vermilion",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "VermilionCity",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "VermilionCity", "tiles": [[15, 7]], "facing": "south"},
+        "why": "Fly to Vermilion City"
+      },
+      {
+        "id": "to_route6_sitrus_berry",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route6", "tiles": [[5, 6]], "facing": "north"}
+        },
+        "why": "walk north into Route 6 to face the hidden Sitrus Berry at (5, 5)"
+      },
+      {
+        "id": "pickup_sitrus_berry",
+        "kind": "talk",
+        "why": "pick up hidden Sitrus Berry at Route 6 (5, 5) (also creates Berry Pouch automatically)"
+      },
+      {
+        "id": "clear_berry_text",
+        "kind": "scene",
+        "declared_after": {"map": "Route6", "tiles": [[5, 6]], "facing": "north"},
+        "why": "clear hidden item message back to overworld"
+      },
+      {
+        "id": "to_vermilion_elyssa",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity_House2", "tiles": [[4, 5]], "facing": "north"}
+        },
+        "why": "return to Vermilion City, enter House 2 (19, 17), and stand facing Elyssa (4, 4)"
+      },
+      {
+        "id": "trade_chding",
+        "kind": "game_action",
+        "action": "ingame_trade",
+        "args": {
+          "species": "spearow",
+          "receive": "farfetchd"
+        },
+        "why": "trade Spearow to Elyssa for CH'DING (Farfetch'd, learns Knock Off at Lv 21)"
+      },
+      {
+        "id": "exit_vermilion_house2",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity", "tiles": [[19, 18]], "facing": "south"}
+        },
+        "why": "exit Vermilion House 2 onto Vermilion City (19, 18) and save"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

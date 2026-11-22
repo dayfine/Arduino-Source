@@ -1,0 +1,122 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "mg-03",
+    "title": "Trade Abra for MIMIEN on Route 2, buy Revives in Lavender Mart, heal at Lavender Center",
+    "start": {"map": "VermilionCity", "tiles": [[19, 18]], "facing": "south"},
+    "events": [
+      {
+        "id": "fly_pewter",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "PewterCity",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "PewterCity", "tiles": [[17, 26]], "facing": "south"},
+        "why": "Fly to Pewter City to reach Route 2 House via Cut"
+      },
+      {
+        "id": "to_route2_cut_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route2", "tiles": [[11, 12]], "facing": "south"}
+        },
+        "why": "walk south into Route 2 to north of Cut tree (11, 13)"
+      },
+      {
+        "id": "cut_route2_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {
+          "direction": "south"
+        },
+        "declared_after": {"map": "Route2", "tiles": [[11, 13]], "facing": "south"},
+        "why": "cut Route 2 tree (11, 13) to reach Route 2 House without Diglett's Cave"
+      },
+      {
+        "id": "to_route2_reyley",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route2_House", "tiles": [[7, 3]], "facing": "north"}
+        },
+        "why": "enter Route 2 House (17, 22) and walk to face Reyley (7, 2)"
+      },
+      {
+        "id": "trade_mimien",
+        "kind": "game_action",
+        "action": "ingame_trade",
+        "args": {
+          "species": "abra",
+          "receive": "mr-mime"
+        },
+        "why": "trade Abra to Reyley for MIMIEN (Mr. Mime, learns Recycle at Lv 33)"
+      },
+      {
+        "id": "exit_route2_house",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route2", "tiles": [[17, 23]], "facing": "south"}
+        },
+        "why": "exit Route 2 House outdoors so Fly can be used"
+      },
+      {
+        "id": "fly_lavender",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "LavenderTown",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "LavenderTown", "tiles": [[6, 6]], "facing": "south"},
+        "why": "Fly to Lavender Town"
+      },
+      {
+        "id": "to_lavender_mart",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "LavenderTown_Mart", "tiles": [[4, 3]], "facing": "west"}
+        },
+        "why": "enter Lavender Mart (20, 15) and face the clerk"
+      },
+      {
+        "id": "buy_revives",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "LavenderTown_Mart",
+          "items": [
+            {"item": "revive", "quantity": 2},
+            {"item": "escape-rope", "quantity": 1}
+          ]
+        },
+        "why": "buy 2 Revives for exact maxHP / 2 Berry HP setup on Route 8"
+      },
+      {
+        "id": "to_lavender_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "LavenderTown_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "walk to Lavender Pokemon Center nurse"
+      },
+      {
+        "id": "heal_lavender",
+        "kind": "heal",
+        "why": "full HP/PP before Pokemon Tower 5F switch-training"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

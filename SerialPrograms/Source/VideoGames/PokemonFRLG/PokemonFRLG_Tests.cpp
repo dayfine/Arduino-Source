@@ -79,6 +79,7 @@
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTable.h"
 #include "Programs/AutoStory/PokemonFRLG_AutoStoryTrashCans.h"
 #include "Programs/AutoStory/Data/Json_Tests.h"
+#include "Programs/MailGlitch/PokemonFRLG_MailGlitch_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_GiftRngAttempts_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanInputs_Tests.h"
 #include "Programs/RngManipulation/PokemonFRLG_RngPlanLog_Tests.h"
@@ -218,6 +219,7 @@ void add_tests(UnitTestDatabase& database){
     add_tests_Screens(database);
     add_tests_Overworld(database);
     add_tests_AutoStoryAll(database);
+    add_tests_MailGlitch(database);
     add_tests_NamingScreen(database);
     add_tests_RngPlanning(database);
 }

@@ -25,6 +25,7 @@
 #include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
+#include "VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchActions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -295,7 +296,7 @@ std::span<const Pokemon::StoryActionSpec> story_action_specs(){
         }){
             specs.push_back(std::move(spec));
         }
-        for (const std::vector<Pokemon::StoryActionSpec>& more : {field_action_specs(), healing_action_specs(), league_action_specs()}){
+        for (const std::vector<Pokemon::StoryActionSpec>& more : {field_action_specs(), healing_action_specs(), league_action_specs(), mail_glitch_action_specs()}){
             specs.insert(specs.end(), more.begin(), more.end());
         }
         return specs;

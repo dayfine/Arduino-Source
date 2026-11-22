@@ -46,6 +46,7 @@
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 #include "PokemonFRLG_AutoStoryTrashCans.h"
 #include "PokemonFRLG_AutoStoryViridianMart.h"
+#include "VideoGames/PokemonFRLG/Programs/MailGlitch/PokemonFRLG_MailGlitchActions.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -738,6 +739,9 @@ Outcome other_game_step(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!done){
         SlopeEnv slope{env.console, env.context, env.supplies, env.checks, env.language, env.counted_items};
         done = run_slope_step(slope, step);
+    }
+    if (!done){
+        done = run_mail_glitch_game_step(env, state, step);
     }
     if (done && done->succeeded() && !done->pose){
         //  Pacing leaves the player on either of its tiles.

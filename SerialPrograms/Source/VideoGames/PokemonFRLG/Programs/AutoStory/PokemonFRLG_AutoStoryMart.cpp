@@ -58,6 +58,12 @@ constexpr MartStockItem X_SPECIAL{"x-special", 350};
 constexpr MartStockItem X_ACCURACY{"x-accuracy", 950};
 constexpr MartStockItem GUARD_SPEC{"guard-spec", 700};
 constexpr MartStockItem DIRE_HIT{"dire-hit", 650};
+constexpr MartStockItem POKE_DOLL{"poke-doll", 1000};
+constexpr MartStockItem RETRO_MAIL{"retro-mail", 50};
+constexpr MartStockItem FIRE_STONE{"fire-stone", 2100};
+constexpr MartStockItem THUNDER_STONE{"thunder-stone", 2100};
+constexpr MartStockItem WATER_STONE{"water-stone", 2100};
+constexpr MartStockItem LEAF_STONE{"leaf-stone", 2100};
 
 //  Each Mart's `<map>_Items` list in pokefirered data/maps/<map>/scripts.inc.
 const std::map<std::string, std::vector<MartStockItem>, std::less<>>& mart_stocks(){
@@ -74,6 +80,8 @@ const std::map<std::string, std::vector<MartStockItem>, std::less<>>& mart_stock
         {"FuchsiaCity_Mart", {ULTRA_BALL, GREAT_BALL, SUPER_POTION, REVIVE, FULL_HEAL, MAX_REPEL}},
         {"SaffronCity_Mart", {GREAT_BALL, HYPER_POTION, REVIVE, FULL_HEAL, ESCAPE_ROPE, MAX_REPEL}},
         {"CinnabarIsland_Mart", {ULTRA_BALL, GREAT_BALL, HYPER_POTION, REVIVE, FULL_HEAL, ESCAPE_ROPE, MAX_REPEL}},
+        //  The 4F Wise Man Gifts clerk (CeladonCity_DepartmentStore_4F_Items).
+        {"CeladonCity_DepartmentStore_4F", {POKE_DOLL, RETRO_MAIL, FIRE_STONE, THUNDER_STONE, WATER_STONE, LEAF_STONE}},
         //  The X items clerk (CeladonCity_DepartmentStore_5F_XItems).
         {"CeladonCity_DepartmentStore_5F", {X_ATTACK, X_DEFEND, X_SPEED, X_SPECIAL, X_ACCURACY, GUARD_SPEC, DIRE_HIT}},
         {"IndigoPlateau_PokemonCenter_1F", {
