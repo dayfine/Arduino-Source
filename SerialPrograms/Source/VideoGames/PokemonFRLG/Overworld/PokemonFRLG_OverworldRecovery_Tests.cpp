@@ -475,6 +475,58 @@ UnitTestResult test_water_tap_against_rock(){
     return true;
 }
 
+//  A blocked tap on land while wandering NPCs or animated tiles change an
+//  edge band by more than WALL_TAP_MOVED_RMSD (Cerulean City west 13 across
+//  little_boy: bottom/right bands changed by 30-40 while standing still).
+//  tap_step_moved() must reject the blocked tap and still accept a 1-tile
+//  west scroll even with the same animated edge band.
+UnitTestResult test_tap_blocked_with_animated_edge(){
+    const ImageFloatBox game(0, 0, 1, 1);
+    const size_t tile = 16;
+    const size_t width = 15 * tile;
+    const size_t height = 10 * tile;
+    auto tile_color = [](size_t tx, size_t ty) -> uint32_t{
+        const uint32_t r = (uint32_t)(50 + ((tx * 37 + ty * 17) % 160));
+        const uint32_t g = (uint32_t)(60 + ((tx * 23 + ty * 41) % 150));
+        const uint32_t b = (uint32_t)(40 + ((tx * 53 + ty * 29) % 170));
+        return 0xff000000 | (r << 16) | (g << 8) | b;
+    };
+    auto draw_scene = [&](size_t origin_x, size_t npc_tx, size_t npc_ty){
+        ImageRGB32 img(width, height);
+        for (size_t y = 0; y < height; y++){
+            for (size_t x = 0; x < width; x++){
+                const size_t tx = x / tile + origin_x;
+                const size_t ty = y / tile;
+                uint32_t color = tile_color(tx, ty);
+                if (x / tile == npc_tx && y / tile == npc_ty){
+                    color = 0xffff2020;
+                }
+                //  Player sprite fixed at center tile (7, 4).
+                if (x / tile == 7 && y / tile == 4){
+                    color = 0xff2040ff;
+                }
+                img.pixel(x, y) = color;
+            }
+        }
+        return img;
+    };
+    const ImageRGB32 before = draw_scene(10, 12, 8);
+    //  Blocked tap: origin unchanged, NPC moved in bottom-right edge band.
+    const ImageRGB32 blocked = draw_scene(10, 13, 8);
+    if (tap_scroll_change(before, blocked, game) <= WALL_TAP_MOVED_RMSD){
+        return std::format("Expected animated edge band to exceed WALL_TAP_MOVED_RMSD, got {:.1f}.", tap_scroll_change(before, blocked, game));
+    }
+    if (tap_step_moved(before, blocked, game, Direction::WEST)){
+        return std::format("Blocked tap with animated edge band read as a step (change {:.1f}).", tap_scroll_change(before, blocked, game));
+    }
+    //  Real 1-tile step west: origin moves west (10 -> 9), NPC also moves.
+    const ImageRGB32 stepped = draw_scene(9, 13, 8);
+    if (!tap_step_moved(before, stepped, game, Direction::WEST)){
+        return "Real 1-tile step west with animated edge band read as no move.";
+    }
+    return true;
+}
+
 //  Landed behind a roof (console B, 2026-11-13 09:46, 12.03 land_beach):
 //  the walking sprite hides, but no water shows on the player's tile, as it
 //  does around a surfing player.
@@ -972,6 +1024,10 @@ const OverworldRecoveryTestCase OVERWORLD_RECOVERY_CASES[] = {
     {
         .input = {.name = "a tap against a rock on the water", .body = test_water_tap_against_rock},
         .expectation = {.description = "the water's animation is no step"},
+    },
+    {
+        .input = {.name = "a blocked tap with an animated edge band", .body = test_tap_blocked_with_animated_edge},
+        .expectation = {.description = "an NPC or animated tile in an edge band does not turn a blocked tap into a step"},
     },
     {
         .input = {.name = "landed behind a roof", .body = test_landed_behind_roof},
