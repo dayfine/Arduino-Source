@@ -81,9 +81,12 @@ void add_tests(){
         self.assertTrue(any('test-case' in m for m in self.messages(name_in_input, CPP)))
 
     def test_case_name_is_its_own_field_not_in_the_input(self):
-        name_in_input = '''struct Input{ std::string name; int value; };
-struct Expectation{ int value; };
-struct Case{ Input input; Expectation expectation; };
+        name_in_input = '''struct Case{
+    struct Input{ std::string name; int value; };
+    struct Expectation{ int value; };
+    Input input;
+    Expectation expectation;
+};
 class Test_Value : public UnitTest{
 public:
     explicit Test_Value(Case scenario) : UnitTest(scenario.input.name){}
@@ -94,7 +97,7 @@ void add_tests(){
 }
 '''
         self.assertTrue(any('test-case' in m for m in self.messages(name_in_input, CPP)))
-        both = name_in_input.replace('struct Case{ Input input;', 'struct Case{ std::string name; Input input;').replace(
+        both = name_in_input.replace('    Input input;', '    std::string name;\n    Input input;').replace(
             '{{.input = {.name = "one", ', '{{.name = "one", .input = {')
         self.assertTrue(any('test-case' in m for m in self.messages(both, CPP)))
         fixed = both.replace('struct Input{ std::string name; int value; };', 'struct Input{ int value; };')
@@ -112,9 +115,13 @@ template <typename T> T run(T value){ return value; }
         self.assertTrue(any('template-api-order' in m for m in self.messages(source)))
 
     def test_case_table_rejects_positional_rows(self):
-        source = '''struct Input{ int value; };
-struct Expectation{ int value; };
-struct Case{ std::string name; Input input; Expectation expectation; };
+        source = '''struct Case{
+    std::string name;
+    struct Input{ int value; };
+    struct Expectation{ int value; };
+    Input input;
+    Expectation expectation;
+};
 class Test_Value : public UnitTest{
 public:
     explicit Test_Value(Case scenario) : UnitTest(scenario.name){}
@@ -125,6 +132,84 @@ void add_tests(){
 }
 '''
         self.assertTrue(any('test-case' in m for m in self.messages(source, CPP)))
+
+    NESTED = '''struct ValueTestCase{
+    std::string name;
+    struct Input{ int value; };
+    struct Expectation{ int result; };
+    Input input;
+    Expectation expectation;
+};
+class Test_Value : public UnitTest{
+public:
+    explicit Test_Value(ValueTestCase scenario) : UnitTest(scenario.name){}
+};
+const ValueTestCase CASES[] = {
+    {
+        .name = "increment",
+        .input = {.value = 1},
+        .expectation = {.result = 2},
+    },
+};
+void add_tests(){
+    for (const ValueTestCase& scenario : CASES){
+        database.add<Test_Value>(scenario);
+    }
+}
+'''
+
+    def test_nested_case_form_passes(self):
+        self.assertFalse(any('test-case' in m for m in self.messages(self.NESTED, CPP)))
+
+    def test_top_level_input_and_expectation_structs_fail_for_a_changed_test(self):
+        old = ('struct ValueInput{ int value; };\n'
+               'struct ValueExpectation{ int result; };\n'
+               'struct ValueTestCase{ std::string name; ValueInput input; ValueExpectation expectation; };\n'
+               + self.NESTED[self.NESTED.index('class Test_Value'):])
+        new = old.replace('scenario.name', 'scenario.name /* changed */')
+        found = [m for m in self.messages(new, CPP, old) if 'test-case' in m]
+        self.assertEqual(1, len(found))
+        self.assertIn('nested', found[0])
+        self.assertFalse(any('test-case' in m for m in self.messages(old, CPP, old)))
+
+    def test_two_case_structs_with_their_own_nested_input_pass(self):
+        source = '''struct AlphaCase{
+    std::string name;
+    struct Input{ int value; };
+    struct Expectation{ int value; };
+    Input input;
+    Expectation expectation;
+};
+struct BetaCase{
+    std::string name;
+    struct Input{ int count; };
+    struct Expectation{ int count; };
+    Input input;
+    Expectation expectation;
+};
+class Test_Alpha : public UnitTest{
+public:
+    explicit Test_Alpha(AlphaCase scenario) : UnitTest(scenario.name){}
+};
+class Test_Beta : public UnitTest{
+public:
+    explicit Test_Beta(BetaCase scenario) : UnitTest(scenario.name){}
+};
+const AlphaCase ALPHA[] = {{.name = "a", .input = {.value = 1}, .expectation = {.value = 2}}};
+const BetaCase BETA[] = {{.name = "b", .input = {.count = 1}, .expectation = {.count = 2}}};
+void add_tests(){
+    for (const AlphaCase& scenario : ALPHA){ database.add<Test_Alpha>(scenario); }
+    for (const BetaCase& scenario : BETA){ database.add<Test_Beta>(scenario); }
+}
+'''
+        self.assertFalse(any('test-case' in m for m in self.messages(source, CPP)))
+        # Qualified names prevent BetaCase::Input from masking a forbidden name field in AlphaCase::Input.
+        bad_alpha = source.replace('struct Input{ int value; };', 'struct Input{ std::string name; int value; };')
+        self.assertEqual(1, sum('test-case' in m for m in self.messages(bad_alpha, CPP)))
+
+    def test_case_field_that_is_not_a_nested_struct_fails(self):
+        broken = self.NESTED.replace('Input input;', 'int input;')
+        self.assertTrue(any('test-case' in m for m in self.messages(broken, CPP)))
 
     def test_namespace_names_anonymous_nested_and_literal_braces(self):
         good = '''namespace Outer{
@@ -204,9 +289,13 @@ public:
 
 
     def test_constexpr_std_array_table_and_trailing_commas(self):
-        source = """struct Input{ int value; };
-struct Expectation{ int value; };
-struct Case{ std::string_view name; Input input; Expectation expectation; };
+        source = """struct Case{
+    std::string_view name;
+    struct Input{ int value; };
+    struct Expectation{ int value; };
+    Input input;
+    Expectation expectation;
+};
 class Test_Value : public UnitTest{
 public:
     explicit Test_Value(Case scenario) : UnitTest(scenario.name){}
