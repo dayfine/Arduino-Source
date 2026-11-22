@@ -158,7 +158,12 @@ UnitTestResult test_stubbed_steps_need_the_console(Logger& logger){
 UnitTestResult test_scene_start_waits(Logger& logger){
     constexpr std::string_view LAST_ROW = "01.11";
     constexpr size_t EXPECTED_SCENES = 23;
-    constexpr std::string_view DEFAULT_SKIP = "barry_goes_home";
+    constexpr std::array<std::string_view, 4> EXPECTED_SKIPS = {
+        "barry_goes_home",
+        "rowan_and_dawn",
+        "rowan_gives_pokedex",
+        "moms_hat",
+    };
     SimExecutor sim(logger);
     run_rows_on(sim, logger, {.from = "00.00", .to = std::string(LAST_ROW)});
     if (!sim.result().error.empty()){
@@ -171,14 +176,14 @@ UnitTestResult test_scene_start_waits(Logger& logger){
             continue;
         }
         const auto found = sim.misses().dialog_waits.find(step.name);
-        const bool should_skip = step.name == DEFAULT_SKIP;
+        const bool should_skip = std::find(EXPECTED_SKIPS.begin(), EXPECTED_SKIPS.end(), step.name) != EXPECTED_SKIPS.end();
         if (found == sim.misses().dialog_waits.end()){
             if (!should_skip){
                 return std::format("{} {} skipped its opening-line guard without preceding dialogue.", row, step.name);
             }
         }else{
             if (should_skip){
-                return std::format("{} {} repeated its opening-line guard after preceding dialogue.", row, step.name);
+                return std::format("{} {} repeated its opening-line guard after preceding dialogue or cross-world warp.", row, step.name);
             }
             if (found->second != Milliseconds(15000)){
                 return std::format("{} {} waits {} ms for its opening line; expected the full 15000 ms guard.",
@@ -191,8 +196,8 @@ UnitTestResult test_scene_start_waits(Logger& logger){
     if (scenes != EXPECTED_SCENES){
         return std::format("Audited {} scene steps through {}; expected {}.", scenes, LAST_ROW, EXPECTED_SCENES);
     }
-    if (guarded + 1 != scenes){
-        return std::format("{} of {} scenes kept the guard; expected one exact skip.", guarded, scenes);
+    if (guarded + EXPECTED_SKIPS.size() != scenes){
+        return std::format("{} of {} scenes kept the guard; expected {} skips.", guarded, scenes, EXPECTED_SKIPS.size());
     }
     logger.log(std::format("{} scene steps audited through {}; {} used the full opening-line guard.", scenes, LAST_ROW, guarded));
     return true;
