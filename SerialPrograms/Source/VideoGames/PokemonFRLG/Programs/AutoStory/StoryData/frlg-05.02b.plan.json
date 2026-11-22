@@ -29,9 +29,18 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CeruleanCity_Gym", "tiles": [[9, 7]], "facing": "west"}
+          "target": {"map": "CeruleanCity_Gym", "tiles": [[12, 7]], "facing": "west"}
         },
-        "why": "to (9, 7) below Misty's platform"
+        "why": "north to the wall at (12, 7) on Misty's row"
+      },
+      {
+        "id": "below_misty_taps",
+        "kind": "legs",
+        "action": "taps",
+        "args": {
+          "legs": [{"direction": "west", "tiles": 3}]
+        },
+        "why": "not planned: tap west 3 to (9, 7) below Misty's platform so beside_misty starts from a known tile"
       },
       {
         "id": "beside_misty",

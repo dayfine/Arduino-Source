@@ -484,16 +484,16 @@ UnitTestResult test_cerulean_entry_short(){
 //  end, whole or a tile short, the five trainers are met and beaten on
 //  the sim, each battle on the trainer's row.
 UnitTestResult test_nugget_bridge_short(){
-    const StoryCheckpoint* row = &checkpoint_row("05.05");
+    const StoryCheckpoint* row = &checkpoint_row("05.03");
     const auto walk = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "below_cale_line"; });
     if (walk == row->steps.end() || !walk->args.contains("target")){
-        return "No step 05.05/below_cale_line.";
+        return "No step 05.03/below_cale_line.";
     }
     for (int short_by : {0, 1}){
         StoryPose at = *story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(walk->args, "target")));
         OverworldSim sim(story_maps(), MapPosition{at.map, {at.tile.x, at.tile.y + short_by}}, Direction::NORTH);
         for (auto step = walk + 1; step != row->steps.end() && step->kind != StoryStepKind::READY; ++step){
-            const std::string failure = row_step_on_sim(sim, at, *step, "05.05");
+            const std::string failure = row_step_on_sim(sim, at, *step, "05.03");
             if (!failure.empty()){
                 return std::format("Walk {} tile(s) short: ", short_by) + failure;
             }
@@ -568,8 +568,11 @@ UnitTestResult test_oddish_walks(){
     OverworldSim sim(maps_bridge_beaten(), MapPosition{at.map, at.tile}, *at.facing);
     const std::map<std::string, MapPosition> ends{
         {"mart_clerk", {"CeruleanCity_Mart", {4, 3}}},
+        {"above_oddish_patch", {"Route24", {3, 13}}},
         {"oddish_patch", {"Route24", {3, 19}}},
         {"oddish_patch_cliff", {"Route24", {3, 19}}},
+        {"nugget_bridge_top", {"Route24", {11, 13}}},
+        {"cerulean_center_wall", {"CeruleanCity", {22, 15}}},
         {"cerulean_nurse", {"CeruleanCity_PokemonCenter_1F", {7, 4}}},
     };
     for (const StoryStep& step : row->steps){

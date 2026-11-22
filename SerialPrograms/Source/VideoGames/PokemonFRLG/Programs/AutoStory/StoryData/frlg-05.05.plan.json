@@ -11,7 +11,7 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "Route24", "tiles": [[11, 15]], "facing": "north"}
+          "target": {"map": "Route24", "tiles": [[11, 16]], "facing": "north"}
         },
         "why": "up Nugget Bridge to below the Rocket"
       },
