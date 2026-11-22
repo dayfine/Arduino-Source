@@ -179,3 +179,23 @@ If the goal is to shrink both lean branches cleanly **before** adding BDSP Gyms 
 4. **Phase 4 — Promote FRLG's Pure RPG Logic Before Scaling BDSP Past Gym 1**
    - Extract `PocketList`, `HealingPlanner`, `MartPlanner`, `PartyCache`, `MoveLearnPolicy`, and `BattlePolicy` / `BattleTrack` / `PlannedPolicy` into `Pokemon/AutoStory/` (with a pluggable damage-calc + UI adapter).
    - *Payoff:* avoids re-writing ~15–20k lines of battle/bag/healing/mart/party logic when BDSP moves past Gym 1 or when Emerald/HGSS AutoStory begins.
+
+---
+
+## 5. Sequencing Against Planned-but-Not-Done Work
+
+Mapping open issues and planned-but-not-done items from `SHARED_CORE.md`, `plza/UPSTREAM_PLAN.md`, and GitHub onto the candidates above shows where doing planned work **first** vs **after** extraction saves double effort:
+
+| Planned / Open Item | Source | Overlaps Candidate | Recommended Order |
+|---|---|---|---|
+| **Delete old runner & legacy adapters** (`E1` / `B5`: `StorySegments`, `StoryStepExecutor`, `TableExecutor`, `StoryRun`, `RunnerExecutor`) | `SHARED_CORE.md` (`E1`), migration design (`B5`) | **#3** (Step Dispatch / Executor / Table) | **Do BEFORE Phase 3** (right after `#772`/`#779` land). Deletes frozen old-runner glue so Phase 3 doesn't refactor throwaway code. |
+| **`K1`–`K2` (`#728` keyboard) + `E2` FRLG fit check (`#779` green) + `C1`–`C9` core freeze** | `SHARED_CORE.md` (`S17`, `E2`), `UPSTREAM_PLAN.md` | Base contract for **#3, #5, #6** | **Do FIRST.** Stabilizes `StoryEngine` signatures before layering new shared abstractions on top. *(No need to wait on PLZA game PRs `P1`–`P10`.)* |
+| **`#159` Shared overlay writer & run records** (drops BDSP's `AutoStoryOverlayLog`) + **`#160`** (grid-free route log) | GitHub `#159`, `#160` | **#3** (`OverlayLog`, `LegTraceIO`, `StepTrace`) | **Do WITH Phase 1.** Small, self-contained win that deletes BDSP's duplicate `OverlayLog` and locks the log/event shape before unifying trace IO. |
+| **`#154` (`map_mismatch` outcome)** + **`#163` (confirm row end-state & re-anchor)** + **`#164` (BDSP turn-tap check)** | GitHub `#154`, `#163`, `#164` | **#1** (`BeliefRouteRunner` & Re-anchoring) | **Extract Candidate #1 FIRST** (except `#164`, a small BDSP-only bugfix). Implementing `#154`/`#163` beforehand means writing re-anchoring and `map_mismatch` twice (BDSP `PlannedRoute` + FRLG `OverworldRecovery`). |
+| **`#162` (sim timing/placement variance)** + **`#203` / `#217` (BDSP sim pace, tap replay, map-crossing stall)** | GitHub `#162`, `#203`, `#217` | **#2** (`GridWorldSim` / `StoryRowSim`) | **Extract Candidate #2 FIRST for `#162`.** Variance injection lands once for both BDSP and FRLG; `#203`/`#217` then plug into `GridWorldSim`'s `MovementPhysics` hook instead of expanding a BDSP-only sim. |
+| **Postgame & feature programs:** `#780` (Legendary Catch), `#781` (Mail Glitch / Shiny Dex), `#146` (Sevii + Mewtwo), `#137+` (BDSP Gyms 2–8) | GitHub `#780`, `#781`, `#146`, `#137` | **#5 & #6** (`PocketList`, `PartyCache`, `HealingPlanner`, `BattlePolicy`) | **Extract Phase 4a (`PocketList` + `PartyCache` + `HealingPlanner`) BEFORE scaling these.** Prevents a third copy of Bag/Party scanning across `#780`, `#781`, and BDSP Gyms 2–8 (FRLG's `PocketList` is already active in `#785`). |
+
+### Combined Execution Sequence
+1. **Unblock & clean the base:** land `#728` (`K1`–`K2`), fix CI on `#741`/`#771`/`#779`, merge `#572`–`#771` + `#772`/`#779`, then run **`E1`/`B5` (delete old runner)** + **`#159`** + **Phase 1** (delete bypassed map & wall-recovery wrappers).
+2. **Nav & sim unification:** run **Phase 2** (`BeliefRouteRunner` + `GridWorldSim`), then land **`#154`, `#162`, `#163`** once in the shared layer.
+3. **RPG utilities before postgame / BDSP Gym 2+:** run **Phase 4a** (`PocketList`, `PartyCache`, `HealingPlanner`), then build **`#780`, `#781`, `#146`, `#137+`** on top of them, followed by **Phase 4b** (`BattlePolicy`/`PlannedPolicy`) when BDSP needs multi-turn battle planning.
