@@ -34,6 +34,7 @@
 #include "PokemonFRLG_AutoStoryBoulderPresses.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
@@ -1009,6 +1010,21 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     env.start_map = data.start ? Pokemon::grid_pose_of(*data.start).map : "";
     env.checkpoint = data.id;
     env.start_menu = data.menu;
+    if (data.poison_survival){
+        const PoisonSurvivalPostcondition cond = *data.poison_survival;
+        checkpoint.events.push_back(Pokemon::Event{
+            .name = "postcondition_poison_survival",
+            .act = [&env, cond](Pokemon::RunState&){
+                const Pokemon::Outcome outcome = check_poison_survival(cond.steps, cond.max_hp, env.supplies);
+                if (outcome.succeeded()){
+                    env.console.log("[Postcondition] poison_survival: passed.");
+                }else{
+                    env.console.log("[Postcondition] " + Pokemon::to_string(outcome), COLOR_RED);
+                }
+                return outcome;
+            },
+        });
+    }
     //  The Hall of Fame saves the game itself, so it is the row's save: a
     //  verify phase 1 try, which never saves, ends at the Champion's win
     //  before it (console B, 2026-11-17: the win's 60 s wait for a START

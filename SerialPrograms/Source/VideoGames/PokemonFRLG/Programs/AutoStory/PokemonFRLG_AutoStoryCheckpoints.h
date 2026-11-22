@@ -52,6 +52,17 @@ enum class StoryHandoff{
     GIFT_RNG,
 };
 
+//  Lead must survive `steps` of overworld poison damage (1 HP per 4 steps)
+//  at the end of a checkpoint, either by not being poisoned, by holding a
+//  cure (Antidote or Full Heal), or by having enough HP (`max_hp` fallback
+//  when the lead's summary stats were not read).
+struct PoisonSurvivalPostcondition{
+    int steps = 0;
+    int max_hp = 0;
+
+    bool operator==(const PoisonSurvivalPostcondition&) const = default;
+};
+
 //  A shared checkpoint with what FRLG adds to it.
 struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
     //  The healing items at its start, for a run that loads its save.
@@ -66,6 +77,8 @@ struct StoryCheckpoint : public Pokemon::StoryCheckpoint{
     StoryHandoff handoff = StoryHandoff::NONE;
     //  With GIFT_RNG: the gift Gift RNG takes there.
     PokemonFRLG_RngTarget gift = PokemonFRLG_RngTarget::magikarp;
+    //  Optional overworld poison survival postcondition at checkpoint end.
+    std::optional<PoisonSurvivalPostcondition> poison_survival = std::nullopt;
 };
 
 //  The pose the start check of `data` compares the loaded save with:

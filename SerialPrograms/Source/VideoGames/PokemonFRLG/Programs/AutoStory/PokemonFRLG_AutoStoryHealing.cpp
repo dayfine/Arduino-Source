@@ -81,6 +81,31 @@ void took_recovery_item(Supplies& supplies, const std::string& item){
     }
 }
 
+Pokemon::Outcome check_poison_survival(int steps, int fallback_max_hp, const Supplies& supplies){
+    if (supplies.status != StatusCondition::POISON){
+        return Pokemon::outcome_ok();
+    }
+    if (bag_count(supplies, "antidote") > 0 || bag_count(supplies, "full-heal") > 0){
+        return Pokemon::outcome_ok();
+    }
+    const int needed_hp = steps / 4 + 1;
+    const int max_hp = supplies.lead.stats && supplies.lead.stats->hp > 0 ? supplies.lead.stats->hp : fallback_max_hp;
+    const std::optional<int> missing = missing_hp(supplies, fallback_max_hp);
+    const int estimated_hp = missing
+        ? max_hp - *missing
+        : static_cast<int>(std::floor(supplies.hp_fill * max_hp));
+    if (estimated_hp < needed_hp || (!missing && supplies.hp_red)){
+        return Pokemon::outcome_failed(
+            "postconditions_failed",
+            std::format(
+                "poison_survival: lead is PSN with ~{}/{} HP and no Antidote (need >= {} HP for {} steps)",
+                std::max(0, estimated_hp), max_hp, needed_hp, steps
+            )
+        );
+    }
+    return Pokemon::outcome_ok();
+}
+
 std::optional<int> missing_hp(const Supplies& supplies, int fallback_max_hp){
     if (!supplies.measured_fill){
         return std::nullopt;
@@ -393,6 +418,55 @@ UnitTestResult test_cover_shortfall(){
     return true;
 }
 
+UnitTestResult test_poison_survival(){
+    //  Not poisoned: passes even at low HP with no Antidotes.
+    Supplies healthy;
+    measured_hp(healthy, 0.10);
+    if (!check_poison_survival(130, 55, healthy).succeeded()){
+        return "Not poisoned: expected ok.";
+    }
+
+    //  Poisoned with an Antidote or Full Heal: passes.
+    Supplies cured;
+    cured.status = StatusCondition::POISON;
+    cured.antidotes = 1;
+    measured_hp(cured, 0.10);
+    if (!check_poison_survival(130, 55, cured).succeeded()){
+        return "Poisoned with Antidote: expected ok.";
+    }
+    cured.antidotes = 0;
+    cured.full_heals = 1;
+    if (!check_poison_survival(130, 55, cured).succeeded()){
+        return "Poisoned with Full Heal: expected ok.";
+    }
+
+    //  Poisoned, no cure, low HP (< 33 HP for 130 steps): fails.
+    Supplies low;
+    low.status = StatusCondition::POISON;
+    measured_hp(low, 0.40);
+    const Pokemon::Outcome low_outcome = check_poison_survival(130, 55, low);
+    if (low_outcome.succeeded() || low_outcome.failure != "postconditions_failed"){
+        return "Poisoned at 40% of 55 HP with no Antidote: expected postconditions_failed.";
+    }
+
+    //  Poisoned, no cure, high HP (>= 33 HP): passes.
+    Supplies high;
+    high.status = StatusCondition::POISON;
+    measured_hp(high, 0.80);
+    if (!check_poison_survival(130, 55, high).succeeded()){
+        return "Poisoned at 80% of 55 HP: expected ok.";
+    }
+
+    //  Poisoned, no measured_fill, low hp_fill: fails.
+    Supplies unmeasured_low;
+    unmeasured_low.status = StatusCondition::POISON;
+    unmeasured_low.hp_fill = 0.50;
+    if (check_poison_survival(130, 55, unmeasured_low).succeeded()){
+        return "Poisoned with unmeasured 50% hp_fill: expected failure.";
+    }
+    return true;
+}
+
 } // namespace
 
 void add_tests_AutoStoryHealing(UnitTestDatabase& database){
@@ -404,6 +478,7 @@ void add_tests_AutoStoryHealing(UnitTestDatabase& database){
     database.add<Test_AutoStoryHealing>(HealingCase{"a Full Restore after Agatha, Potions without one", test_full_restore_after_agatha});
     database.add<Test_AutoStoryHealing>(HealingCase{"an Elixir after Lance: 10 PP each, at most full", test_elixir_after_lance});
     database.add<Test_AutoStoryHealing>(HealingCase{"a Hyper Potion for more than a Super Potion heals", test_hyper_potion});
+    database.add<Test_AutoStoryHealing>(HealingCase{"overworld poison survival postcondition", test_poison_survival});
 }
 
 
