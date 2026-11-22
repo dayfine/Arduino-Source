@@ -276,18 +276,18 @@ const GoldenCase GOLDEN_CASES[] = {
 };
 
 
-struct OutcomeInput{
-    ProgramOutcomeKind kind = ProgramOutcomeKind::START_CHECK_FAILED;
-    bool stopped_by_user = false;
-    bool restarted = false;
-};
-struct OutcomeExpectation{
-    std::string_view json = {};
-};
 struct OutcomeCase{
+    struct Input{
+        ProgramOutcomeKind kind = ProgramOutcomeKind::START_CHECK_FAILED;
+        bool stopped_by_user = false;
+        bool restarted = false;
+    };
+    struct Expectation{
+        std::string_view json = {};
+    };
     std::string name;
-    OutcomeInput input;
-    OutcomeExpectation expectation;
+    Input input;
+    Expectation expectation;
 };
 
 constexpr std::string_view CORRELATED_START_FAILURE = R"("last_transition": {
