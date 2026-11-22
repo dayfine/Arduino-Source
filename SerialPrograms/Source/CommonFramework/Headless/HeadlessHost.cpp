@@ -123,6 +123,9 @@ bool system_ready(GameConsole::ConsoleSystemSession& system){
             return false;
         }
     }
+    if (!system.video().snapshot()){
+        return false;
+    }
     return true;
 }
 
