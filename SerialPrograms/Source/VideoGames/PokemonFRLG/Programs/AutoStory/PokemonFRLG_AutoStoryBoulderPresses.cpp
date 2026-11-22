@@ -78,10 +78,30 @@ ConsoleBoulderPresses::ConsoleBoulderPresses(ConsoleHandle& console, ProControll
 BoulderPressRead ConsoleBoulderPresses::press(Direction direction){
     m_context.wait_for_all_requests();
     const VideoSnapshot before = m_console.video().snapshot();
+    if (!before){
+        m_console.log("Boulder: no shot of the screen before the tap: read as nothing moved.", COLOR_ORANGE);
+        return {};
+    }
+    //  Don't press D-pad into an open box (e.g. "REPEL's effect wore off..."
+    //  from the previous step: in FRLG, MSGBOX_SIGN closes on frame 1 of a
+    //  D-pad tap and the rest of the 66 ms hold can push the boulder in the
+    //  same tap while the box disappears) or into a battle/fade. Returning
+    //  empty lets press_for() call clear_interrupt() first and then tap cleanly.
+    FrlgScreenObserver observer;
+    const ScreenEvents showing = observer.observe(before, current_time());
+    if (showing.has(ScreenEvent::DIALOG_BOX)
+        || showing.has(ScreenEvent::CHOICE_BOX)
+        || showing.has(ScreenEvent::BATTLE_STARTED)
+        || showing.has(ScreenEvent::FADE_BLACK)
+        || showing.has(ScreenEvent::FADE_WHITE)
+    ){
+        m_console.log("Boulder: an interrupt is showing before the tap: clearing it instead of pressing.", COLOR_ORANGE);
+        return {};
+    }
     step_once(m_console, m_context, direction, direction, m_player);
     const VideoSnapshot after = still_shot();
-    if (!before || !after){
-        m_console.log("Boulder: no shot of the screen around the tap: read as nothing moved.", COLOR_ORANGE);
+    if (!after){
+        m_console.log("Boulder: no shot of the screen after the tap: read as nothing moved.", COLOR_ORANGE);
         return {};
     }
     const BoulderPressRead read = read_boulder_press(*before.frame, *after.frame, GameSettings::instance().GAME_BOX, direction);
