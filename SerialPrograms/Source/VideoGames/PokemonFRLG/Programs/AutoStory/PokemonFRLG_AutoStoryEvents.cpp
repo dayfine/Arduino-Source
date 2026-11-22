@@ -426,7 +426,9 @@ std::optional<std::optional<StoryFailure>> run_abilities(StoryEnv& env, FrlgRunS
     }
     StoryStep covered = step;
     if (covered.action == MART_ACTION && covered.args.contains("fill_to") && !env.supplies.counts_read){
-        read_bag_supplies(env, step_start_menu(covered.args));
+        if (const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language); !rows.empty()){
+            set_from_bag(env.supplies, rows);
+        }
     }
     if (fill_mart_to(env.console.logger(), env.supplies, covered)){
         state.changed_nothing = true;
