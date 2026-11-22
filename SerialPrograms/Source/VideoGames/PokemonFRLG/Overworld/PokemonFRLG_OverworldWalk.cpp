@@ -169,9 +169,7 @@ private:
 
 Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     Pokemon::LegSpec leg{step.direction, step.tiles + step.warp_slack, step.to_wall, tile_time(step, speed)};
-    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator){
-        leg.stalled_steps = step.connection_steps;
-    }
+    leg.stalled_steps = step.connection_steps;
     return leg;
 }
 
