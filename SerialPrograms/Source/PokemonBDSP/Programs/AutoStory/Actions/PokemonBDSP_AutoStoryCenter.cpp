@@ -449,6 +449,30 @@ void heal_at_pokemon_center(
     heal_inside_pokemon_center(stream, context, label);
 }
 
+namespace{
+
+//  Mid-room in a Pokemon Center shows no dark screen edges, so indoors() can
+//  read false before the exit mat (lab-B 2026-11-22 14:40). From Nurse Joy's
+//  counter, require the door's actual fade (WalkStop::TRANSITION).
+void exit_center_door_south(VideoStream& stream, ProControllerContext& context, const std::string& label){
+    pbf_mash_button(context, BUTTON_B, 2000ms);
+    context.wait_for_all_requests();
+    for (size_t tries = 0; tries < 5; tries++){
+        const WalkResult walk = walk_until_no_wild(stream, context, {0, -1}, 6000ms, label + ": out the door");
+        if (walk.stop == WalkStop::TRANSITION){
+            talk_over(stream, context, std::format("{}: outside the Center", label), {.settle = settle_rule(SettleKind::DOOR)});
+            return;
+        }
+        if (walk.stop == WalkStop::DIALOG){
+            pbf_mash_button(context, BUTTON_B, 2000ms);
+        }
+    }
+    OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
+        label + ": did not get back out.", stream);
+}
+
+} // namespace
+
 void heal_inside_pokemon_center(
     VideoStream& stream, ProControllerContext& context,
     const std::string& label
@@ -457,7 +481,7 @@ void heal_inside_pokemon_center(
     talk_to_nurse(stream, context, label);
     route_status(stream, label + ": healed; walking out.");
 
-    leave_door_south(stream, context, run_from_wild_battle, label + ": out the door");
+    exit_center_door_south(stream, context, label);
 }
 
 void talk_to_nurse(

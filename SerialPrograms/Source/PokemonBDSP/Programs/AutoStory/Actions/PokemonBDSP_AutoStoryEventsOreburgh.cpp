@@ -12,7 +12,6 @@
 #include <format>
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
-#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_BattleMenuDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
@@ -22,6 +21,7 @@
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryWalkResult.h"
 #include "PokemonBDSP_AutoStoryBattle.h"
+#include "PokemonBDSP_AutoStoryBattleMoves.h"
 #include "PokemonBDSP_AutoStoryCenter.h"
 #include "PokemonBDSP_AutoStoryTalks.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryWalks.h"
@@ -120,31 +120,35 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
     fail_step(stream, "Oreburgh Gym: did not reach Roark.");
 }
 
-constexpr Milliseconds MINE_PACE_STEP_HOLD = 450ms;
+constexpr Milliseconds MINE_PACE_STEP_HOLD = 400ms;
 constexpr Milliseconds MINE_PACE_STEP_WAIT = 400ms;
 constexpr Milliseconds MINE_ENCOUNTER_TIMEOUT = 120s;
-constexpr Milliseconds MINE_BATTLE_MENU_WAIT = 15s;
+constexpr Milliseconds MINE_BATTLE_MENU_WAIT = 20s;
 constexpr Milliseconds MINE_COLUMN_WALK_LIMIT = 15000ms;
-constexpr Milliseconds MINE_CAVERN_STEP_HOLD = 1200ms;
+constexpr Milliseconds MINE_CAVERN_STEP_HOLD = 1500ms;
 constexpr size_t MINE_TRAINING_BATTLES = 5;
+constexpr size_t MINE_MAX_PREP_TRIPS = 3;
 
 //  Paces north/south along column 12 in OreburghMineB1F (between the two
 //  conveyor belts, well clear of both warps) until a wild battle opens.
-//  `go_south` persists across encounters so battles interrupting a south
-//  walk do not drift into the south warp to OreburghMine.
+//  Does not watch BlackScreenWatcher: the cave ceiling above the north
+//  stairs fills the top of the frame with black void and false-triggers it.
+//  `go_south` persists across encounters to avoid drifting into either warp.
 void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context, bool& go_south){
     const auto deadline = current_time() + MINE_ENCOUNTER_TIMEOUT;
     while (current_time() < deadline){
         const double y = go_south ? -1.0 : 1.0;
         go_south = !go_south;
-        BlackScreenWatcher black;
         BattleMenuWatcher menu(BattleType::STANDARD, COLOR_YELLOW);
         BattleDialogWatcher dialog(COLOR_YELLOW);
         const int hit = run_until<ProControllerContext>(stream, context,
             [y](ProControllerContext& ctx){
                 pbf_move_left_joystick(ctx, {0, y}, MINE_PACE_STEP_HOLD, MINE_PACE_STEP_WAIT);
-            }, {{black}, {menu}, {dialog}});
-        if (hit >= 0){
+            }, {{menu}, {dialog}});
+        if (hit == 0){
+            return;
+        }
+        if (hit == 1){
             BattleMenuWatcher confirm(BattleType::STANDARD);
             if (wait_until(stream, context, MINE_BATTLE_MENU_WAIT, {{confirm}}) < 0){
                 fail_step(stream, "Oreburgh Mine training: battle menu did not appear.");
@@ -178,10 +182,11 @@ void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& con
 }
 
 //  From Oreburgh Center doorstep (47, 21), walks straight south down column 46
-//  into OreburghMineB1F, fights `battles` wild battles (allowing evolution and
-//  learning Mach Punch at Lv 14), and returns healed to (47, 21).
-void train_in_oreburgh_mine(VideoStream& stream, ProControllerContext& context, size_t battles){
-    stream.log(std::format("[01.04] Training in Oreburgh Mine ({} wild battles) before retrying Roark.", battles), COLOR_BLUE);
+//  into OreburghMineB1F, fights up to `battles` wild battles (allowing evolution
+//  and learning Mach Punch at Lv 14), and returns healed to (47, 21). Stops
+//  early once Mach Punch is observed on the move menu.
+bool train_in_oreburgh_mine(VideoStream& stream, ProControllerContext& context, size_t battles){
+    stream.log(std::format("[Oreburgh Mine] Training (up to {} wild battles).", battles), COLOR_BLUE);
     dpad_tiles(stream, context, DPAD_LEFT, 1, "column 46 to Oreburgh Mine");
     const WalkResult enter = walk_until_no_wild(stream, context, {0, -1}, MINE_COLUMN_WALK_LIMIT, "south into Oreburgh Mine");
     if (enter.stop != WalkStop::TRANSITION){
@@ -194,12 +199,33 @@ void train_in_oreburgh_mine(VideoStream& stream, ProControllerContext& context, 
         pace_for_mine_encounter(stream, context, go_south);
         fight_wild_battle(stream, context, "Oreburgh Mine training");
         if (in_pokemon_center(stream)){
-            stream.log("[01.04] Fainted during Oreburgh Mine training; back at the Center with XP kept.", COLOR_ORANGE);
+            stream.log("[Oreburgh Mine] Fainted during training; back at the Center with XP kept.", COLOR_ORANGE);
             walk_out_of_center(stream, context, "Oreburgh");
-            return;
+            return remembered_move_includes("mach-punch");
+        }
+        if (remembered_move_includes("mach-punch")){
+            stream.log("[Oreburgh Mine] Monferno has Mach Punch; heading back to heal.", COLOR_GREEN);
+            break;
         }
     }
     exit_mine_to_oreburgh_center(stream, context);
+    return remembered_move_includes("mach-punch");
+}
+
+//  01.03b: conditional pre-gym training for Chimchar so it enters 01.04 as
+//  Monferno with Mach Punch and saves at Oreburgh Center doorstep (47, 21).
+std::optional<Pokemon::StoryFailure> train_fire_starter_in_mine(StoryEnv& console, BdspRunState&, const BdspStep&){
+    if (console.starter != StarterChoice::CHIMCHAR){
+        console.env.console.log("[01.03b] Starter is not Chimchar; skipping Oreburgh Mine training.", COLOR_BLUE);
+        return std::nullopt;
+    }
+    clear_remembered_moves();
+    for (size_t trip = 0; trip < MINE_MAX_PREP_TRIPS; trip++){
+        if (train_in_oreburgh_mine(console.env.console, console.context, MINE_TRAINING_BATTLES)){
+            return std::nullopt;
+        }
+    }
+    return std::nullopt;
 }
 
 //  01.04: west along the row into the gym and up it to Roark, again from the Center after a loss.
@@ -230,6 +256,7 @@ void gym_until_roark_beaten(VideoStream& stream, ProControllerContext& context){
 
 
 void add_oreburgh_events(StoryEvents& events){
+    events.emplace("train_fire_starter_in_mine", train_fire_starter_in_mine);
     events.emplace("gym_until_roark_beaten", console_event(gym_until_roark_beaten));
 }
 

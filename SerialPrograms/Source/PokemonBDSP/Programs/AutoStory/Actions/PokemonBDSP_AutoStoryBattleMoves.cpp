@@ -50,10 +50,12 @@ const KnownMove KNOWN_MOVES[] = {
     {"water-gun", "water", 40, 25}, {"bubble", "water", 40, 30}, {"bubble-beam", "water", 65, 20},
     {"ember", "fire", 40, 25}, {"flame-wheel", "fire", 60, 25}, {"mach-punch", "fighting", 40, 30},
     {"absorb", "grass", 20, 25}, {"razor-leaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
+    {"thunder-shock", "electric", 40, 30}, {"spark", "electric", 65, 20},
     {"peck", "flying", 35, 35}, {"pluck", "flying", 60, 20}, {"wing-attack", "flying", 60, 35},
     {"metal-claw", "steel", 50, 35},
     {"growl", "normal", 0, 40}, {"leer", "normal", 0, 30}, {"tail-whip", "normal", 0, 30},
     {"withdraw", "water", 0, 40}, {"taunt", "dark", 0, 20}, {"charm", "fairy", 0, 20},
+    {"charge", "electric", 0, 20}, {"baby-doll-eyes", "fairy", 0, 30},
     {"curse", "ghost", 0, 10},
 };
 
@@ -288,18 +290,46 @@ std::string read_move_name(const ImageViewRGB32& screen, const ImageFloatBox& bu
     return read.results.begin()->second.token;
 }
 
-//  `slug` read in slot `i`, or what the slot read last time if this read
-//  failed.
-std::string remember_move(std::string slug, size_t i){
+std::array<std::string, 4>& remembered_move_cache(){
     static std::array<std::string, 4> last_read;
-    if (slug.empty()){
-        return last_read[i];
-    }
-    last_read[i] = slug;
-    return slug;
+    return last_read;
 }
 
 } // namespace
+
+
+void apply_remembered_moves(std::vector<MoveSlot>& slots, std::array<std::string, 4>& cache){
+    bool switched = false;
+    for (size_t i = 0; i < slots.size() && i < cache.size(); i++){
+        if (!slots[i].slug.empty() && !cache[i].empty() && slots[i].slug != cache[i]){
+            switched = true;
+            break;
+        }
+    }
+    if (switched){
+        cache.fill("");
+    }
+    for (size_t i = 0; i < slots.size() && i < cache.size(); i++){
+        if (slots[i].slug.empty()){
+            slots[i].slug = cache[i];
+        }else{
+            cache[i] = slots[i].slug;
+        }
+    }
+}
+
+void clear_remembered_moves(){
+    remembered_move_cache().fill("");
+}
+
+bool remembered_move_includes(std::string_view slug){
+    for (const std::string& cached : remembered_move_cache()){
+        if (cached == slug){
+            return true;
+        }
+    }
+    return false;
+}
 
 
 std::string MoveSlot::describe(size_t slot) const{
@@ -328,12 +358,15 @@ size_t choose_move(const std::vector<MoveSlot>& slots){
         }
         // A move that might be either counts below any attack known for
         // sure, and an earlier one first: slot 1 is an attack for every
-        // starter. Prefer Fighting (Mach Punch) over tied Fire (Ember) so
-        // Monferno uses Mach Punch against Oreburgh Gym's Rock types.
+        // starter. Prefer starter STAB over tied Normal, keep Electric tied
+        // with Normal so Shinx uses Tackle instead of Thunder Shock into
+        // Ground-type Oreburgh foes, and prefer Fighting (Mach Punch) over
+        // Fire (Ember).
+        const std::string_view type = known ? std::string_view(known->type) : std::string_view{};
         const int score = known
             ? known->power * 2
-                + (std::string_view(known->type) != "normal" ? 1 : 0)
-                + (std::string_view(known->type) == "fighting" ? 1 : 0)
+                + (type != "normal" && type != "electric" ? 1 : 0)
+                + (type == "fighting" ? 1 : 0)
             : 1;
         if (score > best_score){
             best_score = score;
@@ -362,8 +395,8 @@ size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
     Filesystem::create_directories(Filesystem::Path(folder));
     screen.save(folder + now_to_filestring() + "-" + label + ".png");
     std::vector<MoveSlot> slots = read_move_menu(screen, moves);
+    apply_remembered_moves(slots, remembered_move_cache());
     for (size_t i = 0; i < slots.size(); i++){
-        slots[i].slug = remember_move(std::move(slots[i].slug), i);
         stream.log("[" + label + "] Move " + std::to_string(i + 1) + ": " + slots[i].describe(i) + ".");
     }
     const size_t best = choose_move(slots);
