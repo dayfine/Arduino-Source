@@ -88,7 +88,7 @@ bool stops_past_end(const RouteStep& step, const std::vector<MapData>& maps){
     const TilePos ahead = here.next(step.direction);
     if (!in_bounds(map, ahead)){
         return !std::ranges::any_of(map.connections, [&](const MapConnection& connection){
-            return connection.side == step.direction;
+            return connection.side == step.direction && map_named(connection.to_map, maps) == nullptr;
         });
     }
     if (warps_on_step(map, ahead) || exit_mat(map, here) == step.direction

@@ -69,14 +69,13 @@
       {
         "id": "teach_surf",
         "action": "teach",
-        "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM; keep list: Bite, Water Pulse, Dig and Mega Kick stay and the one other move (Bubble or Water Gun) goes; fails if none or several are outside the list",
+        "why": "HM03 Surf in place of Water Pulse (after 04.06 Mega Kick, 05.02b Water Pulse and 06.02 Dig, the lead knows Water Pulse, Bite, Dig and Mega Kick; Surf upgrades Water Pulse and 13.03 Blizzard later replaces Dig), unless the lead knows it; an HM, so not a one-shot TM; keep list: Bite, Dig and Mega Kick stay and the one other move (Water Pulse) goes; fails if none or several are outside the list",
         "args": {
           "item": "hm03",
           "move": "surf",
           "slot": 1,
           "keep": [
             "bite",
-            "water-pulse",
             "dig",
             "mega-kick"
           ]
