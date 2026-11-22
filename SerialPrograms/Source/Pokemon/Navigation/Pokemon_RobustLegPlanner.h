@@ -315,11 +315,12 @@ std::optional<Stepped<typename Model::State>> step_tiles(const Model& model, typ
     return stepped;
 }
 
-//  step_tiles() for each count from 1 to `most`, in one walk: [n - 1] is
-//  step_tiles(model, from, direction, n).
+//  Prefixes for each count from 1 to `most`, in one walk: when `by_tiles` is
+//  true (a timed hold), counts tile distance (a ledge hop counts 2); when
+//  false (tapped), counts presses (a ledge hop is 1 tap).
 template <typename Model>
 std::vector<std::optional<Stepped<typename Model::State>>> step_prefixes(
-    const Model& model, typename Model::State from, Direction direction, int most
+    const Model& model, typename Model::State from, Direction direction, int most, bool by_tiles
 ){
     std::vector<std::optional<Stepped<typename Model::State>>> out;
     Stepped<typename Model::State> stepped{from};
@@ -336,7 +337,7 @@ std::vector<std::optional<Stepped<typename Model::State>>> step_prefixes(
             out.resize((size_t)most, last);
             break;
         }
-        travelled += (int)model.step_tiles(from, *next);
+        travelled += by_tiles ? (int)model.step_tiles(from, *next) : 1;
         stepped.wild += model.wild(*next) ? 1 : 0;
         const bool next_wander = model.wander(*next);
         if (next_wander){
@@ -442,7 +443,7 @@ std::optional<Expansion<typename Model::State>> open_leg(
     const bool held = costs.hold_open_legs && error > 0;
     for (const auto& place : spread){
         std::vector<State> ends;
-        const auto prefixes = step_prefixes(model, place, direction, tiles + error);
+        const auto prefixes = step_prefixes(model, place, direction, tiles + error, held);
         for (int n = std::max(1, tiles - error); n <= tiles + error; n++){
             const auto& stepped = prefixes[(size_t)n - 1];
             if (!stepped || (costs.forbid_along_wander && stepped->along_wander)){
