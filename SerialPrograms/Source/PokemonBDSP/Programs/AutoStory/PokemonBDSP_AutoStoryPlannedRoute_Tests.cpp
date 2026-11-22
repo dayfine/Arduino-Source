@@ -636,6 +636,36 @@ UnitTestResult test_blocked_open_leg_overcount_does_not_localize_on_blocker(Logg
 }
 
 
+//  Route 202 (lab-B, 2026-11-22 10:36-10:53, 00.04d north_to_jubilife): when
+//  facing is unknown, the first 160 ms tap can turn in place without stepping
+//  (LIMIT with moved < tiles). open_leg() must finish the missing tile(s), and
+//  if that also makes no progress on a 1-tile leg, treat the leg as blocked.
+UnitTestResult test_open_leg_short_limit_finishes_or_blocks(Logger&){
+    const StoryWorld hall = make_world({"########", "#......#", "########"});
+    Script turn_then_step{.steps = {
+        walk_step("3 taps: T: east 3 (open)", WalkStop::LIMIT, 2400ms, 2),
+        walk_step("1 taps: T: east 3 (open): finish", WalkStop::LIMIT, 800ms, 1),
+        answer_step("dialog within 500 ms", false),
+    }};
+    if (const std::string err = run_open_leg_facing(hall, std::nullopt, turn_then_step); !err.empty()){
+        return std::format("short limit top-up: {}", err);
+    }
+    const StoryWorld room = make_world({"######", "#....#", "#....#", "######"});
+    Script blocked_one{.steps = {
+        walk_step("1 taps: T: east 1 (open)", WalkStop::LIMIT, 800ms, 0),
+        walk_step("1 taps: T: east 1 (open): finish", WalkStop::LIMIT, 800ms, 0),
+        press_step("wait 2500 ms x1"),
+        walk_step("1 taps: T: east 1 (open): the rest", WalkStop::LIMIT, 800ms, 1),
+        answer_step("dialog within 500 ms", false),
+    }};
+    const ScriptedWalk walk = walk_script(room, /*from=*/{1, 1}, /*goal=*/{2, 1}, /*sights=*/{}, blocked_one);
+    if (!walk.failure.empty()){
+        return std::format("blocked 1-tile open leg: {}", walk.failure);
+    }
+    return true;
+}
+
+
 struct PlannedRouteCase{
     struct Input{
         std::function<UnitTestResult(Logger&)> body;
@@ -678,6 +708,7 @@ const PlannedRouteCase PLANNED_ROUTE_CASES[] = {
     {.name = "a beaten trainer blocking on_to_wall replans around them", .input = {test_wall_leg_blocked_by_beaten_trainer}, .expectation = {}},
     {.name = "open leg skips turn tap when already facing or facing unknown", .input = {test_open_leg_turn_tap_facing_guard}, .expectation = {}},
     {.name = "blocked open leg does not localize against guessed runtime blocker", .input = {test_blocked_open_leg_overcount_does_not_localize_on_blocker}, .expectation = {}},
+    {.name = "open leg short limit finishes missing tiles or waits when blocked", .input = {test_open_leg_short_limit_finishes_or_blocks}, .expectation = {}},
 };
 
 void add_tests_AutoStory_PlannedRoute(UnitTestDatabase& database){
