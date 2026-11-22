@@ -25,6 +25,24 @@
         "why": "down the ledge (27, 1)"
       },
       {
+        "id": "cerulean_house_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[28, 8]], "facing": "south"}
+        },
+        "why": "align to the fence and house north wall after the ledge"
+      },
+      {
+        "id": "cerulean_center_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[22, 15]], "facing": "south"}
+        },
+        "why": "align to the Pokemon Center north wall before looping west to the door"
+      },
+      {
         "id": "cerulean_nurse",
         "kind": "route",
         "action": "run",

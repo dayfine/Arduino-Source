@@ -42,6 +42,7 @@
 #include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
 #include "PokemonFRLG_AutoStoryPlanGolden.h"
+#include "PokemonFRLG_AutoStoryPlanGolden06.h"
 #include "PokemonFRLG_AutoStoryPlanGolden10.h"
 #include "PokemonFRLG_AutoStoryPlanGolden11.h"
 #include "PokemonFRLG_AutoStoryPlanGolden12.h"
@@ -455,8 +456,8 @@ UnitTestResult check_checkpoint(const StoryCheckpoint& checkpoint, StoryPose& po
 //  start: starts_after_unauthored_rows()), and adds the plans to `plans`.
 UnitTestResult chain_story_routes(StoryPlans& plans){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
-    if (checkpoints.size() != 98 || checkpoints[0].start){
-        return "Expected 98 checkpoints, the first from a new game.";
+    if (checkpoints.size() != 100 || checkpoints[0].start){
+        return "Expected 100 checkpoints, the first from a new game.";
     }
     StoryPose pose;
     walk_state() = WalkGates{};
@@ -500,6 +501,7 @@ UnitTestResult test_golden_plans(){
     }
     const std::vector<std::string>& actual = plans.golden;
     std::vector<std::string_view> golden(std::begin(FRLG_PLAN_GOLDEN), std::end(FRLG_PLAN_GOLDEN));
+    golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_06), std::end(FRLG_PLAN_GOLDEN_06));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_10), std::end(FRLG_PLAN_GOLDEN_10));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_11), std::end(FRLG_PLAN_GOLDEN_11));
     golden.insert(golden.end(), std::begin(FRLG_PLAN_GOLDEN_12), std::end(FRLG_PLAN_GOLDEN_12));
@@ -554,10 +556,8 @@ const AllowedRevisit ALLOWED_REVISITS[] = {
     {"02.02", "below_oak", CONSOLE_VERIFIED_REVISIT},
     {"02.03", "mart_clerk", CONSOLE_VERIFIED_REVISIT},
     {"04.02", "before_salesman", CONSOLE_VERIFIED_REVISIT},
-    {"05.01", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
+    {"05.02c", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
     {"05.03", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
-    {"05.05", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
-    {"05.05", "ready_for_rocket", CONSOLE_VERIFIED_REVISIT},
     {"05.08", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
     {"05.09", "cerulean_nurse", CONSOLE_VERIFIED_REVISIT},
     {"06.01", "off_2f", CONSOLE_VERIFIED_REVISIT},
@@ -1307,7 +1307,7 @@ UnitTestResult check_trigger(const TriggerCase& c){
 //  Bridge (VAR_MAP_SCENE_ROUTE24 0), each from the tile below.
 UnitTestResult test_cerulean_triggers(){
     const TriggerCase CASES[] = {
-        {.checkpoint = "05.04", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
+        {.checkpoint = "05.02c", .step = "rival_trigger", .map = "CeruleanCity", .y = 6, .x0 = 22, .x1 = 24, .onto_x = 23},
         {.checkpoint = "05.05", .step = "rocket_trigger", .map = "Route24", .y = 15, .x0 = 10, .x1 = 11, .onto_x = 11},
     };
     for (const TriggerCase& c : CASES){
@@ -1318,13 +1318,13 @@ UnitTestResult test_cerulean_triggers(){
     return true;
 }
 
-//  05.05 steps beside Nugget Bridge's five trainers from the south, one
+//  05.03 steps beside Nugget Bridge's five trainers from the south, one
 //  step at a time, each battle right after its step: Cale, Ali, Timmy,
 //  Reli and Ethan, by where they stand.
 UnitTestResult test_nugget_bridge_order(){
-    const StoryCheckpoint* checkpoint = find_checkpoint("05.05");
+    const StoryCheckpoint* checkpoint = find_checkpoint("05.03");
     if (checkpoint == nullptr){
-        return "No checkpoint 05.05.";
+        return "No checkpoint 05.03.";
     }
     const std::vector<StoryStep>& steps = checkpoint->steps;
     std::string met;
