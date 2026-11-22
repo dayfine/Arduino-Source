@@ -273,7 +273,7 @@ RouteEnd RouteWalker::run(std::vector<TilePos> from){
             next = walk_leg(legs[number - 1], number, legs.size());
         }
         if (next != LegNext::REPLAN){
-            return {next == LegNext::NEXT_LEG ? arrive() : m_from, m_warp, next == LegNext::SCENE};
+            return {next == LegNext::NEXT_LEG ? arrive() : m_from, m_warp, next == LegNext::SCENE, m_facing};
         }
     }
     detail::fail(m_io, m_plan.label + ": too many plans.");

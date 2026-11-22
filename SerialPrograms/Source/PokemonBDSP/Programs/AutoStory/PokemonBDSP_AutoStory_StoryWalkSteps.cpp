@@ -180,6 +180,7 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
     m_scene_open = false;
     m_previous_settle_saw_dialogue = false;
     m_scene_start_already_played = false;
+    m_actual_facing.reset();
     //  A route right before a scene, or before a plain step onto the scene's
     //  trigger (the decomp's tile, which the console may have elsewhere).
     const auto onto_trigger = [](const StoryStep& step){
@@ -207,11 +208,17 @@ void StoryWalkSteps::begin_attempt(const std::string& row, const std::vector<Sto
 void StoryWalkSteps::begin_step(const StoryStep& step){
     const bool previous_settle_saw_dialogue = std::exchange(m_previous_settle_saw_dialogue, false);
     m_scene_start_already_played = step.kind == Pokemon::StoryStepKind::MASH && previous_settle_saw_dialogue;
+    if (step.kind != Pokemon::StoryStepKind::ROUTE && step.kind != Pokemon::StoryStepKind::LEGS &&
+        step.kind != Pokemon::StoryStepKind::STEP && step.kind != Pokemon::StoryStepKind::TALK
+    ){
+        m_actual_facing.reset();
+    }
 }
 
 void StoryWalkSteps::turn(Direction direction){
     m_route.note(std::string("[Route] Turning ") + direction_name(direction) + ".", RouteNote::LOG);
     m_route.press(route_turn_tap(direction));
+    m_actual_facing = direction;
 }
 
 void StoryWalkSteps::log(const std::string& text){
@@ -244,12 +251,13 @@ Pose StoryWalkSteps::walk_to(const Pose& from, const Pose& goal, const StoryStep
     const RouteWalkPlan plan{
         [&](const TilePos& pos){ return std::find(targets.begin(), targets.end(), pos) != targets.end(); },
         label_of(step), {}, *costs, m_can_run ? MoveSpeed::RUN : MoveSpeed::WALK, m_scene_next.contains(step.name),
-        step.action == ROUTE_ONTO_TRIGGER, Pokemon::facing_of(from),
+        step.action == ROUTE_ONTO_TRIGGER, m_actual_facing ? m_actual_facing : Pokemon::facing_of(from),
     };
     RouteEnd end = walk_route_to_warp(m_route, *maps, start, trainers, plan);
     sights = std::move(trainers.sights);
     m_warp = std::move(end.warp);
     m_scene_open = end.scene;
+    m_actual_facing = (m_warp.any() || m_scene_open) ? std::nullopt : end.facing;
     std::vector<TilePos> local;
     for (const TilePos& pos : end.tiles){
         const std::optional<TilePos> tile = story_to_local(*maps, goal.map, pos);
@@ -532,13 +540,14 @@ Outcome StoryWalkSteps::tap_legs(const Pose& from, const StoryStep& step){
     const CountedEndPolicy policy = step.action == "one_short_ok" ? CountedEndPolicy::ONE_SHORT : CountedEndPolicy::EXACT;
     const bool one_short_ok = policy == CountedEndPolicy::ONE_SHORT;
     std::vector<TilePos> at = Pokemon::tiles_of(from);
-    std::optional<Direction> facing = Pokemon::facing_of(from);
+    std::optional<Direction> facing = m_actual_facing ? m_actual_facing : Pokemon::facing_of(from);
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
     for (auto leg = legs_list.begin(); leg != legs_list.end(); ++leg){
         if (facing && *facing != leg->direction){
             turn(leg->direction);
         }
         facing = leg->direction;
+        m_actual_facing = facing;
         const size_t tiles = (size_t)leg->tiles;
         const auto next = counted_ends(at, *leg, policy);
         m_legs.begin_leg({.direction = leg->direction, .tiles = tiles, .end_kind = Pokemon::LegEndKind::TILE,
@@ -579,12 +588,13 @@ Outcome StoryWalkSteps::measured_legs(const Pose& from, const StoryStep& step){
         return Pokemon::outcome_failed("measured", "no map or tiles: " + Pokemon::to_string(from));
     }
     const auto& legs_list = story_arg<std::vector<Pokemon::StoryLeg>>(step.args, "legs");
-    std::optional<Direction> facing = Pokemon::facing_of(from);
+    std::optional<Direction> facing = m_actual_facing ? m_actual_facing : Pokemon::facing_of(from);
     for (const Pokemon::StoryLeg& leg : legs_list){
         if (facing && *facing != leg.direction){
             turn(leg.direction);
         }
         facing = leg.direction;
+        m_actual_facing = facing;
         const size_t tiles = (size_t)leg.tiles;
         m_legs.begin_leg({.direction = leg.direction, .tiles = tiles, .end_kind = Pokemon::LegEndKind::TILE});
         const WalkResult walk = m_route.walk_taps(leg.direction, tiles, step.name);
@@ -659,12 +669,15 @@ Outcome StoryWalkSteps::legs(RunState& state, const StoryStep& step){
             m_io.walk_until_stopped(leg.direction, (size_t)leg.tiles, label_of(step));
             m_legs.end_leg({}, Pokemon::LegEndKnown::WALL);
         }
+        m_actual_facing = legs_list.empty() ? std::nullopt : std::optional<Direction>(legs_list.back().direction);
         return Pokemon::outcome_ok();
     }
     if (step.action == "to_map"){
+        m_actual_facing.reset();
         return leg_to_map(step);
     }
     if (step.action == "to_dialogue"){
+        m_actual_facing.reset();
         return run_to_dialogue(step);
     }
     if (step.action != "one_short_ok" && !step.action.empty() && step.action != "legs"){
@@ -678,6 +691,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     const Direction direction = story_arg<Direction>(step.args, "direction");
     if (step.action == "to_banner"){
         turn(direction);
+        m_actual_facing.reset();
         return tap_to_banner(state.pose, step);
     }
     if (step.action == "tap"){
@@ -687,6 +701,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
         if (walk.wild_battles > 0){
             return Pokemon::outcome_failed("interrupted_step", step.name);
         }
+        m_actual_facing.reset();
         m_previous_settle_saw_dialogue = m_io.settle(BUTTON_B, label_of(step), SettleKind::TALK, "");
         return Pokemon::outcome_ok();
     }
@@ -701,6 +716,7 @@ Outcome StoryWalkSteps::step(RunState& state, const StoryStep& step){
     //  A fade or the far map's banner is the way through, either one (#268
     //  slice 1); with neither yet, settle() waits for one.
     if (step.pose_after && Pokemon::grid_pose_of(*step.pose_after).map != state.pose.map){
+        m_actual_facing.reset();
         if (through_already(step)){
             m_previous_settle_saw_dialogue = m_io.settle(BUTTON_B, label_of(step), door_settle_kind(step), "");
             return Pokemon::outcome_ok();
@@ -727,10 +743,11 @@ Outcome StoryWalkSteps::one_step(const RunState& state, const StoryStep& step){
         return Pokemon::outcome_ok(state.pose);
     }
     const Direction direction = story_arg<Direction>(step.args, "direction");
-    const std::optional<Direction> facing = Pokemon::facing_of(state.pose);
+    const std::optional<Direction> facing = m_actual_facing ? m_actual_facing : Pokemon::facing_of(state.pose);
     if (facing && *facing != direction){
         turn(direction);
     }
+    m_actual_facing = direction;
     WalkResult walk = m_route.walk_taps(direction, 1, step.name);
     if (walk.wild_battles > 0){
         return Pokemon::outcome_failed("interrupted_step", step.name);

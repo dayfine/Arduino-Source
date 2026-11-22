@@ -562,11 +562,14 @@ std::string run_open_leg_facing(const StoryWorld& hall, std::optional<Direction>
     RouteTrainers trainers{{}, [](const std::string&){}};
     ScriptedRouteIO io(script);
     try{
-        walk_route(io, hall, {{1, 1}}, trainers, {
+        const RouteEnd end = walk_route_to_warp(io, hall, {{1, 1}}, trainers, {
             .goal = [](const TilePos& pos){ return pos == TilePos{4, 1}; },
             .label = "T", .avoid = {}, .costs = route_plan_costs(),
             .speed = MoveSpeed::WALK, .start_facing = start_facing,
         });
+        if (end.facing != Direction::EAST){
+            return "expected RouteEnd::facing to be east after an east leg.";
+        }
     }catch (const ScriptMismatch& e){
         return e.message;
     }catch (const RouteFailed& e){
