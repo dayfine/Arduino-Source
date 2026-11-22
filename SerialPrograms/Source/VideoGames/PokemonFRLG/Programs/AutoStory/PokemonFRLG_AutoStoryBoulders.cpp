@@ -49,7 +49,7 @@ namespace{
 
 BoulderPressRead press_for(Direction direction, bool (*wanted)(const BoulderPressRead&), BoulderPresses& presses){
     const BoulderPressRead read = presses.press(direction);
-    if (wanted(read) || read.scrolled || !presses.clear_interrupt()){
+    if (wanted(read) || read.scrolled || presses.clear_interrupt() == BoulderInterrupt::FAILED){
         return read;
     }
     return presses.press(direction);
@@ -61,6 +61,25 @@ bool pushed(const BoulderPressRead& read){
 
 bool walked(const BoulderPressRead& read){
     return read.scrolled;
+}
+
+//  Walks onto the tile the boulder just left. A wild battle cleared here
+//  means this step itself triggered the encounter (pushing a boulder walks
+//  in place and cannot trigger wild encounters), so the player is already
+//  on the tile — do not tap again or we would push the boulder an extra tile.
+bool walk_onto_vacated_tile(Direction direction, BoulderPresses& presses){
+    const BoulderPressRead read = presses.press(direction);
+    if (walked(read)){
+        return true;
+    }
+    const BoulderInterrupt cleared = presses.clear_interrupt();
+    if (cleared == BoulderInterrupt::WILD_BATTLE){
+        return true;
+    }
+    if (cleared == BoulderInterrupt::FAILED){
+        return false;
+    }
+    return walked(presses.press(direction));
 }
 
 }  // namespace
@@ -78,7 +97,7 @@ BoulderPush push_boulder_tiles(Direction direction, int64_t tiles, BoulderPresse
             push.failure = std::format("tile {} of {}: the tap to push moved nothing: the boulder is stuck, or Strength is off.", tile, tiles);
             return push;
         }
-        if (!walked(press_for(direction, walked, presses))){
+        if (!walk_onto_vacated_tile(direction, presses)){
             push.failure = std::format("tile {} of {}: the tap onto the tile the boulder left did not move the player.", tile, tiles);
             return push;
         }

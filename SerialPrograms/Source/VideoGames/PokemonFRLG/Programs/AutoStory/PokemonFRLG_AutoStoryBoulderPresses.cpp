@@ -109,12 +109,14 @@ BoulderPressRead ConsoleBoulderPresses::press(Direction direction){
     return read;
 }
 
-bool ConsoleBoulderPresses::clear_interrupt(){
+BoulderInterrupt ConsoleBoulderPresses::clear_interrupt(){
     m_context.wait_for_all_requests();
     ConsoleScreenLook eyes(m_console, m_context);
     const Pokemon::ScreenLookFunction look = [&eyes](bool fresh){ return eyes.look(fresh); };
     Pokemon::ScreenSettle settle = wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+    bool wild_battle = false;
     if (settle.showing.has(ScreenEvent::BATTLE_STARTED)){
+        wild_battle = true;
         m_console.log("Boulder: a wild battle stopped the push; running from it.", COLOR_ORANGE);
         flee_battle(m_console, m_context);
         wait_out_battle_exit(m_console, m_context);
@@ -125,8 +127,11 @@ bool ConsoleBoulderPresses::clear_interrupt(){
         settle = wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
     }
     const bool quiet = quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
-    m_console.log(std::format("Boulder: after the tap, {}{}.", Pokemon::describe(settle), quiet ? "; tapping again" : ""), quiet ? COLOR_BLACK : COLOR_RED);
-    return quiet;
+    m_console.log(std::format("Boulder: after the tap, {}{}.", Pokemon::describe(settle), quiet ? "; continuing" : ""), quiet ? COLOR_BLACK : COLOR_RED);
+    if (!quiet){
+        return BoulderInterrupt::FAILED;
+    }
+    return wild_battle ? BoulderInterrupt::WILD_BATTLE : BoulderInterrupt::CLEARED;
 }
 
 VideoSnapshot ConsoleBoulderPresses::still_shot(){

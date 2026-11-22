@@ -540,9 +540,11 @@ public:
         return {.scrolled = !(m_sim.state().position == from), .boulder_moved = false};
     }
 
-    bool clear_interrupt() override{
+    BoulderInterrupt clear_interrupt() override{
         const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(sim_screen_look(m_sim), MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
-        return quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
+        return quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET)
+            ? BoulderInterrupt::CLEARED
+            : BoulderInterrupt::FAILED;
     }
 
 private:

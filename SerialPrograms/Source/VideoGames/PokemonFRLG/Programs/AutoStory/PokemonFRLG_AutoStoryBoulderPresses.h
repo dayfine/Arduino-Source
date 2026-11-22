@@ -43,7 +43,7 @@ public:
     //  The settle rule: looks until the overworld is quiet for
     //  MovementMechanics::AFTER_BATTLE_QUIET; a battle that shows is run
     //  from, a box closed, and the overworld waited for again.
-    bool clear_interrupt() override;
+    BoulderInterrupt clear_interrupt() override;
 
 private:
     VideoSnapshot still_shot();
