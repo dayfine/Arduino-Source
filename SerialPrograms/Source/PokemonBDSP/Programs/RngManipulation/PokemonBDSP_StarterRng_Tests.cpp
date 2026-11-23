@@ -4,14 +4,21 @@
  *
  */
 
+#include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <format>
+#include <optional>
 #include <functional>
 #include <string>
 #include <string_view>
 #include <vector>
+#include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "PokemonBDSP_BlinkRecovery.h"
+#include "PokemonBDSP_BlinkSampleLog.h"
 #include "PokemonBDSP_RngAim.h"
 #include "PokemonBDSP_RngCalibration.h"
 #include "PokemonBDSP_StarterNavigation.h"
@@ -257,6 +264,59 @@ UnitTestResult test_default_shiny_row(Logger&){
 }
 
 
+size_t count_lines_starting(const std::string& text, std::string_view prefix){
+    size_t count = 0;
+    size_t start = 0;
+    while (start < text.size()){
+        size_t end = text.find('\n', start);
+        end = end == std::string::npos ? text.size() : end;
+        if (std::string_view(text).substr(start, end - start).starts_with(prefix)){
+            count++;
+        }
+        start = end + 1;
+    }
+    return count;
+}
+
+//  The recovery hands the log its whole sample window every poll, and the
+//  window overlaps the last one; replay needs every sample exactly once.
+UnitTestResult test_blink_log_writes_each_sample_once(Logger&){
+    Filesystem::create_directories(Filesystem::Path(DEBUG_PATH()));
+    const Filesystem::Path path = Filesystem::unique_temp_path(
+        Filesystem::Path(std::format("{}blink-sample-log-test.txt", DEBUG_PATH()))
+    );
+    const WallClock t0 = current_time();
+    auto at = [t0](int ms){
+        return t0 + std::chrono::milliseconds(ms);
+    };
+    {
+        BlinkSampleLog log(path.string());
+        if (!log.is_open()){
+            return std::format("could not open {}", path.string());
+        }
+        log.add_samples({{{at(0), 0.9}, {at(16), 0.9}, {at(33), 0.2}}, {{at(5), 0.8}}});
+        log.window(0, at(16));
+        log.add_samples({{{at(16), 0.9}, {at(33), 0.2}, {at(50), 0.9}}, {{at(5), 0.8}, {at(21), 0.8}}});
+        log.window(0, at(16));
+    }
+    std::string text;
+    const bool read = file_to_string(path.string(), text);
+    Filesystem::remove(path);
+    if (!read){
+        return std::format("could not read {}", path.string());
+    }
+    const size_t samples = count_lines_starting(text, "sample\t");
+    if (samples != 6){
+        return std::format("expected 6 sample lines, got {}", samples);
+    }
+    const size_t windows = count_lines_starting(text, "window\t");
+    if (windows != 1){
+        return std::format("expected the unmoved window once, got {}", windows);
+    }
+    return true;
+}
+
+
 struct StarterRngTestCase{
     struct Input{
         std::function<UnitTestResult(Logger&)> body;
@@ -322,6 +382,90 @@ UnitTestResult test_provisional_state_steps(Logger&){
     return true;
 }
 
+const double NPC_TICK_SECONDS = 1.0197;
+
+//  The blinks of `npcs` NPCs rolling from `start` once per tick, NPC c a
+//  tenth of a second after NPC c - 1, and one blink misread on the first NPC's
+//  first tick that did not blink.
+std::vector<std::vector<BlinkEvent>> npc_blinks_with_one_misread(
+    const Pokemon::Xorshift128State& start, size_t npcs, size_t ticks
+){
+    Pokemon::Xorshift128 rng(start);
+    std::vector<std::vector<BlinkEvent>> streams(npcs);
+    for (size_t tick = 0; tick < ticks; tick++){
+        for (size_t c = 0; c < npcs; c++){
+            const uint32_t roll = rng.next();
+            if (npc_blinks(roll)){
+                streams[c].emplace_back(BlinkEvent{(double)tick * NPC_TICK_SECONDS + 0.1 * (double)c, NPC_blink_type(roll)});
+            }
+        }
+    }
+    std::vector<BlinkEvent>& first_npc = streams[0];
+    for (size_t tick = 0; tick < first_npc.size(); tick++){
+        const double seconds = (double)tick * NPC_TICK_SECONDS;
+        if (first_npc[tick].seconds > seconds + 0.5){
+            first_npc.insert(first_npc.begin() + (std::ptrdiff_t)tick, BlinkEvent{seconds, BlinkType::Single});
+            break;
+        }
+    }
+    return streams;
+}
+
+//  The blinks the watchers hold: seen by `now`, not yet discarded.
+std::vector<std::vector<BlinkEvent>> held_blinks(
+    const std::vector<std::vector<BlinkEvent>>& blinks, double watched_from, double now
+){
+    std::vector<std::vector<BlinkEvent>> streams(blinks.size());
+    for (size_t c = 0; c < blinks.size(); c++){
+        for (const BlinkEvent& event : blinks[c]){
+            if (event.seconds >= watched_from && event.seconds <= now){
+                streams[c].emplace_back(event);
+            }
+        }
+    }
+    return streams;
+}
+
+//  A state first solved once the blink window has slid past a misread blink
+//  is confirmed against the same blinks (GamePilot's three-NPC golden run;
+//  lab-B 2026-11-23 run 8 held a state from 52 rolls). That pass used to slide
+//  the window again before the next solve, and by a different cutoff per NPC,
+//  so every later solve failed.
+UnitTestResult test_state_found_as_window_fills(Logger&){
+    const size_t ticks = 400;
+    BlinkRecoveryConfig config;
+    config.npcs = 3;
+    const std::vector<std::vector<BlinkEvent>> blinks = npc_blinks_with_one_misread(
+        Pokemon::Xorshift128State(0x12345678, 0x9abcdef0, 0x0fedcba9, 0x87654321), config.npcs, ticks
+    );
+    ProvisionalState provisional;
+    double watched_from = 0;
+    std::optional<Pokemon::Xorshift128State> found;
+    for (size_t tick = 0; tick < ticks; tick++){
+        const std::vector<std::vector<BlinkEvent>> streams = held_blinks(blinks, watched_from, (double)tick * NPC_TICK_SECONDS + 0.5);
+        if (std::any_of(streams.begin(), streams.end(), [](const std::vector<BlinkEvent>& stream){ return stream.empty(); })){
+            continue;
+        }
+        const BlinkWindowPass pass = solve_blink_window(streams, config, provisional);
+        watched_from = std::max(watched_from, pass.discard_before.value_or(watched_from));
+        switch (pass.step){
+        case ProvisionalStep::PROVISIONAL:
+            found = pass.solved.state;
+            break;
+        case ProvisionalStep::CHANGED:
+        case ProvisionalStep::DROPPED:
+            return std::format("tick {}: the provisional state was {}", tick, pass.step == ProvisionalStep::CHANGED ? "changed" : "dropped");
+        case ProvisionalStep::CONFIRMED:
+            return found.has_value() && pass.solved.state == *found
+                ? UnitTestResult(true)
+                : UnitTestResult(std::string("confirmed a state other than the provisional one"));
+        default:
+            break;
+        }
+    }
+    return std::format("no state confirmed in {} ticks (provisional held: {})", ticks, found.has_value());
+}
+
 const StarterRngTestCase STARTER_RNG_CASES[] = {
     {.name = "per-starter tables and timings", .input = {.body = test_starter_tables}, .expectation = {}},
     {.name = "bedroom skip buffer and landing math", .input = {.body = test_skip_buffer_and_landing_math}, .expectation = {}},
@@ -330,6 +474,8 @@ const StarterRngTestCase STARTER_RNG_CASES[] = {
     {.name = "default filter row is shiny of any nature", .input = {.body = test_default_shiny_row}, .expectation = {}},
     {.name = "a shiny that did not settle ends the loop unsettled", .input = {.body = test_shiny_unsettled}, .expectation = {}},
     {.name = "a provisional state that stops solving is dropped", .input = {.body = test_provisional_state_steps}, .expectation = {}},
+    {.name = "a state found as the blink window fills is confirmed", .input = {.body = test_state_found_as_window_fills}, .expectation = {}},
+    {.name = "blink log writes each sample once across overlapping polls", .input = {.body = test_blink_log_writes_each_sample_once}, .expectation = {}},
 };
 
 } // namespace

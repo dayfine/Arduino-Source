@@ -151,30 +151,45 @@ std::vector<std::vector<BlinkEvent>> build_blink_streams(
     return streams;
 }
 
-//  If enough samples have been collected, 
-//  drop old ones in case a misread is preventing a solution
-static void trim_to_window(
-    std::vector<std::unique_ptr<EyeBlinkWatcher>>& watchers,
+//  If enough samples have been collected, drop old ones in case a misread is
+//  preventing a solution. One cutoff for every stream: a stream cut later than
+//  another would read its dropped blinks as rolls that did not blink.
+static std::optional<double> window_start(
     const std::vector<std::vector<BlinkEvent>>& streams,
-    WallClock origin,
     size_t keep
 ){
-    for (size_t c = 0; c < streams.size(); c++){
-        if (streams[c].size() <= keep){
-            continue;
+    std::vector<double> seconds;
+    for (const std::vector<BlinkEvent>& stream : streams){
+        for (const BlinkEvent& event : stream){
+            seconds.emplace_back(event.seconds);
         }
-        //  A second before the oldest blink being kept, so its whole dip survives.
-        double seconds = streams[c][streams[c].size() - keep].seconds - 1.0;
-        watchers[c]->discard_before(
-            origin + std::chrono::duration_cast<WallDuration>(
-                std::chrono::duration<double>(seconds)
-            )
-        );
+    }
+    if (seconds.size() <= keep){
+        return std::nullopt;
+    }
+    std::vector<double>::iterator oldest_kept = seconds.end() - keep;
+    std::nth_element(seconds.begin(), oldest_kept, seconds.end());
+    //  A second before the oldest blink being kept, so its whole dip survives.
+    return *oldest_kept - 1.0;
+}
+
+static void discard_blinks_before(
+    WallClock origin,
+    double seconds,
+    std::vector<std::unique_ptr<EyeBlinkWatcher>>& watchers,
+    BlinkSampleLog& sample_log
+){
+    WallClock keep_from = origin + std::chrono::duration_cast<WallDuration>(
+        std::chrono::duration<double>(seconds)
+    );
+    for (size_t c = 0; c < watchers.size(); c++){
+        watchers[c]->discard_before(keep_from);
+        sample_log.window(c, keep_from);
     }
 }
 
 //  prevent the screen from dimming with the right joystick
-void keep_awake_if_due(ProControllerContext& context, WallClock& next, Seconds interval){
+static void keep_awake_if_due(ProControllerContext& context, WallClock& next, Seconds interval){
     if (current_time() < next){
         return;
     }
@@ -307,23 +322,153 @@ static bool report_provisional_step(
     }
 }
 
+//  Solves with each rotation of the NPC slots until one solves.
+static void solve_any_slot_order(
+    const std::vector<std::vector<BlinkEvent>>& streams,
+    BlinkWindowPass& pass
+){
+    std::vector<uint8_t> slots(streams.size());
+    for (uint8_t c = 0; c < (uint8_t)streams.size(); c++){
+        slots[c] = c;
+    }
+    for (size_t attempt = 0; attempt < streams.size(); attempt++){
+        std::vector<BlinkSample> samples;
+        std::string failure;
+        if (build_samples(streams, slots, pass.period_seconds, samples, failure)){
+            BlinkSolveResult attempt_result = solve_state_from_samples(samples, nullptr);
+            if (attempt_result.success){
+                pass.solved = attempt_result;
+                pass.slots = slots;
+                return;
+            }
+        }
+        std::rotate(slots.begin(), slots.begin() + 1, slots.end());
+    }
+}
+
+//  The solve of one pass, before the window slides.
+static BlinkWindowPass solve_window_once(
+    const std::vector<std::vector<BlinkEvent>>& streams,
+    const BlinkRecoveryConfig& config,
+    ProvisionalState& provisional
+){
+    BlinkWindowPass pass;
+    size_t events = 0;
+    const std::vector<BlinkEvent>* longest = &streams[0];
+    for (const std::vector<BlinkEvent>& stream : streams){
+        events += stream.size();
+        if (stream.size() > longest->size()){
+            longest = &stream;
+        }
+    }
+    if (longest->size() < 3){
+        return pass;
+    }
+    TickFit fit = fit_tick_period(*longest);
+    if (!(fit.period_seconds > 0)){
+        return pass;
+    }
+    if (provisional.held && events < provisional.events + config.confirmation_events){
+        return pass;
+    }
+    if (events < config.min_rolls_to_try){
+        return pass;
+    }
+    pass.attempted = true;
+    pass.period_seconds = fit.period_seconds;
+    solve_any_slot_order(streams, pass);
+    pass.step = update_provisional(
+        provisional, pass.solved.success, pass.solved.state, events, config.confirmation_events
+    );
+    return pass;
+}
+
+BlinkWindowPass solve_blink_window(
+    const std::vector<std::vector<BlinkEvent>>& streams,
+    const BlinkRecoveryConfig& config,
+    ProvisionalState& provisional
+){
+    BlinkWindowPass pass = solve_window_once(streams, config, provisional);
+    //  Not before the solve: a state found on this pass is pinned to its
+    //  oldest blink, and a later solve repeats it only from the same one.
+    if (!provisional.held){
+        pass.discard_before = window_start(streams, config.window_events);
+    }
+    return pass;
+}
+
+struct ThresholdEstimates{
+    std::vector<double> value;
+    std::vector<size_t> from;
+};
+
+//  Re-estimates a watcher's threshold whenever its sample count has moved by a
+//  quarter since the last estimate.
+static double estimated_threshold(
+    size_t watcher,
+    const std::vector<BlinkMatchSample>& samples,
+    ThresholdEstimates& estimates,
+    BlinkSampleLog& log
+){
+    size_t counted = estimates.from[watcher];
+    size_t held = samples.size();
+    if (estimates.value[watcher] <= 0
+        || held >= counted + counted / 4
+        || counted >= held + held / 4
+    ){
+        estimates.value[watcher] = auto_blink_threshold(samples);
+        estimates.from[watcher] = held;
+        log.threshold(watcher, "estimated", estimates.value[watcher], held);
+    }
+    return estimates.value[watcher];
+}
+
+//  Logs a solve that did not confirm; a confirmed state is logged once its
+//  clock is anchored.
+static void log_unconfirmed_pass(
+    const BlinkWindowPass& pass,
+    size_t events,
+    const std::vector<std::vector<BlinkEvent>>& streams,
+    WallClock origin,
+    BlinkSampleLog& log
+){
+    switch (pass.step){
+    case ProvisionalStep::KEEP_COLLECTING:
+        log.decision({.kind = "solve_failed", .rolls = events}, /*streams=*/{}, origin);
+        return;
+    case ProvisionalStep::DROPPED:
+        log.decision({.kind = "dropped", .rolls = events}, streams, origin);
+        return;
+    case ProvisionalStep::PROVISIONAL:
+        log.decision({.kind = "provisional", .rolls = events, .state = pass.solved.state}, streams, origin);
+        return;
+    case ProvisionalStep::CHANGED:
+        log.decision({.kind = "changed", .rolls = events, .state = pass.solved.state}, streams, origin);
+        return;
+    default:
+        return;
+    }
+}
+
 BlinkRecovery recover_state_from_blinks(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     std::vector<std::unique_ptr<EyeBlinkWatcher>>& watchers,
     std::vector<PeriodicInferenceCallback>& callbacks,
     BlinkCollectionDisplay& display,
-    const BlinkRecoveryConfig& config
+    const BlinkRecoveryConfig& config,
+    BlinkSampleLog* sample_log
 ){
     BlinkRecovery ret;
+    BlinkSampleLog no_log;
+    BlinkSampleLog& log = sample_log != nullptr ? *sample_log : no_log;
 
     size_t give_up_after = config.max_failed_windows * config.window_events;
     size_t failed_solves = 0;
 
     std::vector<double> frozen_thresholds(watchers.size(), -1);
 
-    std::vector<double> estimated_thresholds(watchers.size(), -1);
-    std::vector<size_t> estimated_from(watchers.size(), 0);
+    ThresholdEstimates estimates{std::vector<double>(watchers.size(), -1), std::vector<size_t>(watchers.size(), 0)};
 
     ProvisionalState provisional;
     size_t search_updates = 0;
@@ -342,11 +487,13 @@ BlinkRecovery recover_state_from_blinks(
         if (failed_solves >= give_up_after){
             ret.failure_reason = "no RNG state solved over "
                 + std::to_string(give_up_after) + " blinks";
+            log.decision({.kind = "gave_up", .note = ret.failure_reason}, /*streams=*/{}, /*origin=*/WallClock::min());
             return ret;
         }
         if (current_time() > deadline){
             ret.failure_reason = "no RNG state solved in "
                 + std::to_string(config.liveness_timeout.count() / 60) + " minutes";
+            log.decision({.kind = "gave_up", .note = ret.failure_reason}, /*streams=*/{}, /*origin=*/WallClock::min());
             return ret;
         }
         subcontext.wait_until(current_time() + config.poll_interval);
@@ -358,21 +505,13 @@ BlinkRecovery recover_state_from_blinks(
         if (!collect_blink_matches(watchers, matches, origin)){
             continue;
         }
+        log.add_samples(matches);
 
         std::vector<double> thresholds;
         for (size_t w = 0; w < watchers.size(); w++){
             double threshold = frozen_thresholds[w];
             if (threshold <= 0){
-                size_t counted = estimated_from[w];
-                size_t held = matches[w].size();
-                if (estimated_thresholds[w] <= 0
-                    || held >= counted + counted / 4
-                    || counted >= held + held / 4
-                ){
-                    estimated_thresholds[w] = auto_blink_threshold(matches[w]);
-                    estimated_from[w] = matches[w].size();
-                }
-                threshold = estimated_thresholds[w];
+                threshold = estimated_threshold(w, matches[w], estimates, log);
             }
             if (!(threshold > 0)){
                 display.set_note("Determining blink threshold...");
@@ -387,18 +526,10 @@ BlinkRecovery recover_state_from_blinks(
             build_blink_streams(matches, thresholds, origin);
 
         size_t events = 0;
-        const std::vector<BlinkEvent>* longest = &streams[0];
         for (const std::vector<BlinkEvent>& stream : streams){
             events += stream.size();
-            if (stream.size() > longest->size()){
-                longest = &stream;
-            }
         }
         display.set_progress(events, config.min_rolls_to_try + config.confirmation_events);
-        //  don't trim if there is a candidate (the solution is pinned to the earliest blink)
-        if (!provisional.held){
-            trim_to_window(watchers, streams, origin, config.window_events / streams.size());
-        }
 
         bool fresh = false; // count doesn't change once the window is full
         for (size_t w = 0; w < streams.size(); w++){
@@ -418,55 +549,26 @@ BlinkRecovery recover_state_from_blinks(
         }
         search_updates = report_fresh_progress(config, events, search_updates, provisional.held, provisional.events, env);
 
-        if (longest->size() < 3){
+        const BlinkWindowPass pass = solve_blink_window(streams, config, provisional);
+        if (pass.discard_before.has_value()){
+            discard_blinks_before(origin, *pass.discard_before, watchers, log);
+        }
+        if (!pass.attempted){
             continue;
         }
-
-        TickFit fit = fit_tick_period(*longest);
-        if (!(fit.period_seconds > 0)){
-            continue;
-        }
-        if (provisional.held && events < provisional.events + config.confirmation_events){
-            continue;
-        }
-
-        if (events < config.min_rolls_to_try){
-            continue;
-        }
-
-        std::vector<uint8_t> slots(streams.size());
-        for (uint8_t c = 0; c < (uint8_t)streams.size(); c++){
-            slots[c] = c;
-        }
-        BlinkSolveResult solved;
-        std::vector<uint8_t> winning_slots;
-        for (size_t attempt = 0; attempt < streams.size(); attempt++){
-            std::vector<BlinkSample> samples;
-            std::string failure;
-            if (build_samples(streams, slots, fit.period_seconds, samples, failure)){
-                BlinkSolveResult attempt_result = solve_state_from_samples(samples, nullptr);
-                if (attempt_result.success){
-                    solved = attempt_result;
-                    winning_slots = slots;
-                    break;
-                }
-            }
-            std::rotate(slots.begin(), slots.begin() + 1, slots.end());
-        }
-        failed_solves = solved.success ? 0 : failed_solves + 1;
-        if (solved.success && frozen_thresholds[0] <= 0){
+        failed_solves = pass.solved.success ? 0 : failed_solves + 1;
+        if (pass.solved.success && frozen_thresholds[0] <= 0){
             std::string report;
             for (size_t w = 0; w < watchers.size(); w++){
                 frozen_thresholds[w] = thresholds[w];
+                log.threshold(w, "frozen", thresholds[w], matches[w].size());
                 report += (report.empty() ? "" : ", ")
                     + watchers[w]->label() + " " + tostr_default(thresholds[w]);
             }
             env.log("Thresholds fixed so that blink numbering stops moving: " + report + ".");
         }
-        const ProvisionalStep step = update_provisional(
-            provisional, solved.success, solved.state, events, config.confirmation_events
-        );
-        if (!report_provisional_step(env, step, solved.state, events, config.confirmation_events)){
+        log_unconfirmed_pass(pass, events, streams, origin, log);
+        if (!report_provisional_step(env, pass.step, pass.solved.state, events, config.confirmation_events)){
             continue;
         }
 
@@ -474,10 +576,11 @@ BlinkRecovery recover_state_from_blinks(
         double anchor_seconds = 0;
         size_t anchor_stream = 0;
         if (!last_blink_anchor(
-            streams, winning_slots, fit.period_seconds,
+            streams, pass.slots, pass.period_seconds,
             anchor_advance, anchor_seconds, anchor_stream
         )){
             ret.failure_reason = "the RNG state was found but no blink could anchor the clock";
+            log.decision({.kind = "gave_up", .rolls = events, .state = pass.solved.state, .note = ret.failure_reason}, streams, origin);
             return ret;
         }
         ret.anchor_stream = anchor_stream;
@@ -485,13 +588,14 @@ BlinkRecovery recover_state_from_blinks(
         ret.clock.anchor_time = origin + std::chrono::duration_cast<WallDuration>(
             std::chrono::duration<double>(anchor_seconds)
         );
-        ret.clock.tick_seconds = fit.period_seconds;
+        ret.clock.tick_seconds = pass.period_seconds;
         ret.clock.npcs = config.npcs;
-        ret.state = solved.state;
+        ret.state = pass.solved.state;
         ret.events = events;
         ret.thresholds = frozen_thresholds;
-        ret.slots = winning_slots;
+        ret.slots = pass.slots;
         ret.success = true;
+        log.decision({.kind = "confirmed", .rolls = events, .state = pass.solved.state}, streams, origin);
         return ret;
     }
 }

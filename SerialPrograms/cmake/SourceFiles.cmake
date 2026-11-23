@@ -2146,6 +2146,8 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_BlinkModel.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_BlinkRecovery.cpp
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_BlinkRecovery.h
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_BlinkSampleLog.cpp
+    Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_BlinkSampleLog.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_IntroSeedFinder.cpp
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_IntroSeedFinder.h
     Source/PokemonBDSP/Programs/RngManipulation/PokemonBDSP_RngAim.cpp
