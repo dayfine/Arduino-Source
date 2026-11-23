@@ -38,36 +38,31 @@ main  (includes #572 -> #667 -> #648 -> #653 + #783)
 
 Game lean branches (all cleanly separated from shared code):
 - `plza/lean` ([#644](https://github.com/dayfine/Arduino-Source/pull/644)): bases on `#654` (`autostory/logic-tests`), 127 files.
-- `frlg/lean` ([#652](https://github.com/dayfine/Arduino-Source/pull/652)): `#779` (`frlg/core-adopt`) **MERGED**, `#807` (`frlg/layer0-adopt`) **MERGED**; retargeted onto `#800` (`autostory/readings-replay-door-seam`) — 706 files (`-229` shared files), **0 diff** in `Pokemon/AutoStory/` or `Pokemon/Navigation/`.
-- `bdsp/lean` ([#753](https://github.com/dayfine/Arduino-Source/pull/753)): `#772` (`bdsp/core-adopt`) **MERGED**, `#802` (`bdsp/layer0-adopt`) **MERGED**; retargeted onto `#800` (`autostory/readings-replay-door-seam`) — 305 files (`-229` shared files), **0 diff** in `Pokemon/AutoStory/` or `Pokemon/Navigation/`.
+- `frlg/lean` ([#652](https://github.com/dayfine/Arduino-Source/pull/652)): `#779` (`frlg/core-adopt`) **MERGED**, `#807` (`frlg/layer0-adopt`) **MERGED**; retargeted onto `#800` (`autostory/readings-replay-door-seam`) — 706 files (`-229` shared files), **0 diff** in `Pokemon/AutoStory/` or `Pokemon/Navigation/`. Phase 1 adoption PR [#812](https://github.com/dayfine/Arduino-Source/pull/812) (`frlg/phase1-adopt → frlg/lean`) open (CI running).
+- `bdsp/lean` ([#753](https://github.com/dayfine/Arduino-Source/pull/753)): `#772` (`bdsp/core-adopt`) **MERGED**, `#802` (`bdsp/layer0-adopt`) **MERGED**; retargeted onto `#800` (`autostory/readings-replay-door-seam`) — 305 files (`-229` shared files), **0 diff** in `Pokemon/AutoStory/` or `Pokemon/Navigation/`. Phase 1 adoption PR [#811](https://github.com/dayfine/Arduino-Source/pull/811) (`bdsp/phase1-adopt → bdsp/lean`, also fixing the 2 pre-existing Windows MSVC/Clang errors) open (CI running).
 
 ## What still needs to happen (resumable playbook)
 
-Both `frlg/lean` and `bdsp/lean` now sit cleanly on the identical `#800` shared chain with zero unextracted files in `Pokemon/AutoStory/` or `Pokemon/Navigation/`. Remaining work:
+Both `frlg/lean` and `bdsp/lean` sit cleanly on the identical `#800` shared chain with zero unextracted files in `Pokemon/AutoStory/` or `Pokemon/Navigation/`, and both Phase 1 adoption PRs (`#811`, `#812`) are open. Remaining work:
 
-### 1. BDSP lean hygiene (Windows MSVC + plan_lint prefix)
-- Open a small fix PR targeting `bdsp/lean` for the 2 pre-existing Windows MSVC errors:
-  - `PokemonBDSP_AutoStoryNewGame.cpp`: initialize missing `capture_tag` field.
-  - `PokemonBDSP_AutoStoryPlaces.cpp:106`: fix the MSVC compiler error/warning there.
-- (Optional) Migrate BDSP's `StoryData/bdsp-*.plan.json` `"not planned: "` prefixes to `"not_using_planner_route: "` (matching `#805` and FRLG).
+### 1. Land Phase 1 adoption PRs (`#811` & `#812`) and advance lean bases onto `#801`
+- **BDSP — [#811](https://github.com/dayfine/Arduino-Source/pull/811)** (`bdsp/phase1-adopt → bdsp/lean`): adopts `#801` (`Pokemon_AutoStoryResources`, `Pokemon_OverlayLog`, `Pokemon_MapPackLoader`), deletes `PokemonBDSP_AutoStoryOverlayLog.{h,cpp}` and local `crop()`, and fixes the 2 pre-existing Windows CI errors (`PokemonBDSP_AutoStoryPlaces.cpp:106` `C4456`, `PokemonBDSP_AutoStoryNewGame.cpp:369` `capture_tag` default initializer).
+- **FRLG — [#812](https://github.com/dayfine/Arduino-Source/pull/812)** (`frlg/phase1-adopt → frlg/lean`): adopts `#801` (`Pokemon_AutoStoryResources`, `Pokemon_OverlayLog` [#159], `Pokemon_MapPackLoader` in `PokemonFRLG_OverworldMaps.cpp`).
+- Once CI passes on `#811` and `#812`:
+  1. Merge `#811` into `bdsp/lean` and retarget `#753` (`bdsp/lean`) from `#800` → `#801`.
+  2. Merge `#812` into `frlg/lean` and retarget `#652` (`frlg/lean`) from `#800` → `#801`.
 
-### 2. FRLG lean hygiene
-- (Optional) Merge `origin/main` into `frlg/lean` to eliminate the 110 upstream `main` `C++ Code Health` findings when diffing against `frlg/lean`.
-- (Optional) Split stage 16 (`16.01`–`16.06b` Silph Co.) simulation test or increase its `STAGE_BUDGET` so slow Windows CI runners don't trip the 120s wall-clock limit.
+### 2. Optional lean hygiene
+- **BDSP:** migrate `StoryData/bdsp-*.plan.json` `"not planned: "` prefixes to `"not_using_planner_route: "` (matching `#805` and FRLG).
+- **FRLG:** optionally merge `origin/main` into `frlg/lean` to clear the 110 upstream `main` `C++ Code Health` findings; optionally split stage 16 (`16.01`–`16.06b` Silph Co.) sim test or raise its `STAGE_BUDGET` for slow Windows CI runners.
 
-### 3. Adopt Phase 1 (`#801`, `autostory/phase1-utils-seam`) on both `frlg/lean` and `bdsp/lean`
-- `#801` is `CLEAN` on top of `#800` and adds `Pokemon_AutoStoryResources`, `Pokemon_OverlayLog` (`#159`), and `Pokemon_MapPackLoader`.
-- For each game (`frlg/lean` and `bdsp/lean`):
-  1. Merge `#801` into a Phase 1 adoption PR (`frlg/phase1-adopt → frlg/lean`, `bdsp/phase1-adopt → bdsp/lean`).
-  2. Switch call sites to `#801` (`Pokemon_AutoStoryResources`, `Pokemon_OverlayLog`, `Pokemon_MapPackLoader`) and `#762`/`#764`/`#769` (`Pokemon/Navigation`), deleting bypassed game-local duplicate wrappers.
-  3. After each adoption PR merges, retarget `#652` (`frlg/lean`) and `#753` (`bdsp/lean`) from `#800` → `#801`.
-
-### 4. Phases 2–4 deduplication (see `docs/design/AutoStory-Reusability-Audit.md`)
+### 3. Remaining Phase 1 wrapper cleanup & Phases 2–4 deduplication (see `docs/design/AutoStory-Reusability-Audit.md`)
+- **Phase 1b:** delete remaining bypassed `#762`/`#764`/`#769` wrappers in BDSP/FRLG where applicable.
 - **Phase 2:** Extract shared `BeliefRouteRunner` + `GridWorldSim` onto the shared chain above `#801`, then adopt in FRLG & BDSP.
 - **Phase 3:** Extract shared `StoryStepRegistry` + `EmbeddedStoryFiles`.
 - **Phase 4:** Promote FRLG's bag/healing/mart/party/battle policies before expanding BDSP past Gym 1.
 
-### 5. Optional chain housekeeping (when ready)
+### 4. Optional chain housekeeping (when ready)
 - Decide whether to keep `#741 → #801` as separate stacked PRs on the shared chain or collapse slices (e.g., `#741..#771` navigation seam, `#795..#800` Layer 0 seam) before upstreaming.
 - Keep PR [#803](https://github.com/dayfine/Arduino-Source/pull/803) (`agents-seam-tracker-layer0 → agents`) **open** and update `autostory/SHARED_CORE.md` as each step above completes.
 
