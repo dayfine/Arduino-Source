@@ -6,8 +6,8 @@
 
 #include <algorithm>
 #include <string_view>
-#include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonValue.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_PokemonCenterRoom.h"
 
@@ -272,17 +272,7 @@ MapData parse_map(const std::string& json, const std::string& source){
 }
 
 MapData load_map(const std::string& name){
-    const std::string source = "Maps/" + name + ".json";
-    const std::vector<std::pair<std::string, std::string>>& files = overworld_map_json();
-    const auto file = std::find_if(files.begin(), files.end(), [&](const auto& item){ return item.first == name; });
-    if (file == files.end()){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, source + " is not built into the program.");
-    }
-    MapData map = parse_map(file->second, source);
-    if (map.name != name){
-        throw ParseException(source + ": name is \"" + map.name + "\", not \"" + name + "\".");
-    }
-    return map;
+    return Pokemon::load_embedded_map(overworld_map_json(), name, "Maps/");
 }
 
 std::vector<MapData> overworld_maps(const std::set<std::string>& set_flags){
@@ -294,16 +284,7 @@ std::vector<MapData> overworld_maps(const std::set<std::string>& set_flags){
 }
 
 TilePos map_point(const std::vector<MapData>& maps, const std::string& map, const std::string& point){
-    for (const MapData& data : maps){
-        if (data.name != map){
-            continue;
-        }
-        const auto iter = data.points.find(point);
-        if (iter != data.points.end()){
-            return iter->second;
-        }
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No point \"" + point + "\" on map " + map + ".");
+    return Pokemon::require_map_point(maps, map, point);
 }
 
 bool warp_keeps_bike(const std::string& map){
@@ -317,14 +298,7 @@ bool warp_keeps_bike(const std::string& map){
 }
 
 std::set<std::string> map_flag_set(const std::vector<MapData>& maps, const std::string& name){
-    std::set<std::string> flags;
-    for (const MapData& map : maps){
-        const auto iter = map.flag_sets.find(name);
-        if (iter != map.flag_sets.end()){
-            flags.insert(iter->second.begin(), iter->second.end());
-        }
-    }
-    return flags;
+    return Pokemon::collect_map_flag_set(maps, name);
 }
 
 

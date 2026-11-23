@@ -21,10 +21,12 @@
 #include "Engine/Pokemon_StoryVerifyRuns_Tests.h"
 #include "Grid/Pokemon_GridStoryActions_Tests.h"
 #include "Options/Pokemon_StoryRangeOptions_Tests.h"
+#include "Pokemon_AutoStoryResources_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon_CenterVisit_Tests.h"
 #include "Pokemon_FrameReplay_Tests.h"
 #include "Pokemon_Interrupts_Tests.h"
+#include "Pokemon_OverlayLog_Tests.h"
 #include "Pokemon_SceneJudges_Tests.h"
 #include "Pokemon_ScriptedReadings_Tests.h"
 #include "Pokemon_Settle_Tests.h"
@@ -63,6 +65,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StoryRngHandoff(database);
     add_tests_ScriptedReadings(database);
     add_tests_FrameReplay(database);
+    add_tests_AutoStoryResources(database);
+    add_tests_OverlayLog(database);
 }
 
 
