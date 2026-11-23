@@ -8,6 +8,7 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/VisualDetectors/FrozenImageDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
@@ -42,6 +43,15 @@ static Milliseconds starter_prompt_wait(Language language){
 //  After the Yes/No box shows: UP, then room for the confirming press.
 const Milliseconds UP_PRESS = 100ms;
 const Milliseconds AFTER_UP = 200ms;
+//  A selecting press can be lost: German, console B 2026-11-23 (twice), left
+//  the briefcase prompt on screen, fully typed out, for the whole 15 s after
+//  the press. The question it should bring up types out and gets its Yes/No
+//  box within 1452 ms (French), so dialog text that stays still this long with
+//  no Yes/No box means the game is still waiting for a press.
+const ImageFloatBox DIALOG_TEXT_BOX{0.20, 0.80, 0.55, 0.14};
+const Milliseconds LOST_PRESS_STILLNESS = 2000ms;
+const double DIALOG_STILL_RMSD = 5;
+const size_t MAX_SELECTING_PRESSES = 3;
 //  How long to keep watching for a late Yes/No box, only to log the delay.
 const Milliseconds PROMPT_MEASURE_LIMIT = 15000ms;
 const Milliseconds SCHEDULING_SLACK = 100ms;
@@ -239,6 +249,32 @@ bool compute_starter_waits(
 
 } // namespace
 
+//  Waits until `deadline` for the Yes/No box the selecting press brings up.
+//  While the dialog text stays still with no box, the press was lost: press A
+//  again, up to MAX_SELECTING_PRESSES presses in all.
+static bool wait_for_yes_no(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    WallClock select_done,
+    WallClock deadline,
+    SelectionArrowFinder& yes_no
+){
+    for (size_t presses = 1; presses < MAX_SELECTING_PRESSES; presses++){
+        FrozenImageDetector still_dialog(COLOR_CYAN, DIALOG_TEXT_BOX, LOST_PRESS_STILLNESS, DIALOG_STILL_RMSD);
+        const int ret = wait_until(env.console, context, deadline, {{yes_no}, {still_dialog}});
+        if (ret != 1){
+            return ret == 0;
+        }
+        env.log(std::format(
+            "No Yes/No box and no dialog change {} ms after the selecting press: pressing A again.",
+            std::chrono::duration_cast<Milliseconds>(current_time() - select_done).count()
+        ), COLOR_ORANGE);
+        pbf_press_button(context, BUTTON_A, /*hold=*/80ms, /*release=*/0ms);
+        context.wait_for_all_requests();
+    }
+    return wait_until(env.console, context, deadline, {{yes_no}}) == 0;
+}
+
 //  Waits for the Yes/No box the selecting press brings up, then UP onto "Yes".
 //  Returns false, with the reason, when the box shows too late for `confirm_time`.
 static bool move_to_yes_before(
@@ -250,7 +286,7 @@ static bool move_to_yes_before(
 ){
     SelectionArrowFinder yes_no(env.console, /*box=*/{0.50, 0.60, 0.35, 0.20}, COLOR_RED);
     const WallClock up_deadline = confirm_time - UP_PRESS - AFTER_UP;
-    if (wait_until(env.console, context, up_deadline, {{yes_no}}) == 0){
+    if (wait_for_yes_no(env, context, select_done, up_deadline, yes_no)){
         env.log(std::format(
             "The Yes/No box showed {} ms after the selecting press.",
             std::chrono::duration_cast<Milliseconds>(current_time() - select_done).count()
