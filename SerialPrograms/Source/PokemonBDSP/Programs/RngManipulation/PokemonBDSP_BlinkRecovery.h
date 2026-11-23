@@ -11,6 +11,7 @@
 #include <stdint.h>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include "Common/Cpp/Time.h"
@@ -120,6 +121,27 @@ ProvisionalStep update_provisional(
 );
 
 
+//  One solve over the blinks collected so far.
+struct BlinkWindowPass{
+    bool attempted = false;
+    ProvisionalStep step = ProvisionalStep::KEEP_COLLECTING;
+    BlinkSolveResult solved;
+    std::vector<uint8_t> slots;
+    double period_seconds = 0;
+    //  Seconds from the streams' origin before which every watcher may drop
+    //  its samples, so the window slides to the newest `window_events` blinks.
+    std::optional<double> discard_before;
+};
+//  Solves `streams` once and steps `provisional`. The window slides only after
+//  the solve and only while no state is held, so a state is confirmed against
+//  the same oldest blink it was solved from.
+BlinkWindowPass solve_blink_window(
+    const std::vector<std::vector<BlinkEvent>>& streams,
+    const BlinkRecoveryConfig& config,
+    ProvisionalState& provisional
+);
+
+
 bool collect_blink_matches(
     std::vector<std::unique_ptr<EyeBlinkWatcher>>& watchers,
     std::vector<std::vector<BlinkMatchSample>>& matches,
@@ -132,9 +154,6 @@ std::vector<std::vector<BlinkEvent>> build_blink_streams(
     const std::vector<double>& thresholds,
     WallClock origin
 );
-
-
-void keep_awake_if_due(ProControllerContext& context, WallClock& next, Seconds interval);
 
 
 BlinkRecovery recover_state_from_blinks(
