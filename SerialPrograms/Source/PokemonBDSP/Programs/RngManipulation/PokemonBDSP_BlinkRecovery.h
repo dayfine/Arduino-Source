@@ -23,6 +23,7 @@
 #include "PokemonBDSP/Inference/Rng/PokemonBDSP_BlinkExtraction.h"
 #include "PokemonBDSP/Inference/Rng/PokemonBDSP_EyeBlinkDetector.h"
 #include "PokemonBDSP_AdvanceClock.h"
+#include "PokemonBDSP_BlinkSampleLog.h"
 #include "PokemonBDSP_RngDisplays.h"
 
 namespace PokemonAutomation{
@@ -162,7 +163,8 @@ BlinkRecovery recover_state_from_blinks(
     std::vector<std::unique_ptr<EyeBlinkWatcher>>& watchers,
     std::vector<PeriodicInferenceCallback>& callbacks,
     BlinkCollectionDisplay& display,
-    const BlinkRecoveryConfig& config
+    const BlinkRecoveryConfig& config,
+    BlinkSampleLog* sample_log = nullptr
 );
 
 

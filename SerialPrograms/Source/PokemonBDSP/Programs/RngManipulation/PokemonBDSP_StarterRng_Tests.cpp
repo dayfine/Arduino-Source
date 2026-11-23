@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <format>
 #include <optional>
@@ -12,8 +13,12 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include "Common/Cpp/Filesystem/FileIO.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "PokemonBDSP_BlinkRecovery.h"
+#include "PokemonBDSP_BlinkSampleLog.h"
 #include "PokemonBDSP_RngAim.h"
 #include "PokemonBDSP_RngCalibration.h"
 #include "PokemonBDSP_StarterNavigation.h"
@@ -259,6 +264,59 @@ UnitTestResult test_default_shiny_row(Logger&){
 }
 
 
+size_t count_lines_starting(const std::string& text, std::string_view prefix){
+    size_t count = 0;
+    size_t start = 0;
+    while (start < text.size()){
+        size_t end = text.find('\n', start);
+        end = end == std::string::npos ? text.size() : end;
+        if (std::string_view(text).substr(start, end - start).starts_with(prefix)){
+            count++;
+        }
+        start = end + 1;
+    }
+    return count;
+}
+
+//  The recovery hands the log its whole sample window every poll, and the
+//  window overlaps the last one; replay needs every sample exactly once.
+UnitTestResult test_blink_log_writes_each_sample_once(Logger&){
+    Filesystem::create_directories(Filesystem::Path(DEBUG_PATH()));
+    const Filesystem::Path path = Filesystem::unique_temp_path(
+        Filesystem::Path(std::format("{}blink-sample-log-test.txt", DEBUG_PATH()))
+    );
+    const WallClock t0 = current_time();
+    auto at = [t0](int ms){
+        return t0 + std::chrono::milliseconds(ms);
+    };
+    {
+        BlinkSampleLog log(path.string());
+        if (!log.is_open()){
+            return std::format("could not open {}", path.string());
+        }
+        log.add_samples({{{at(0), 0.9}, {at(16), 0.9}, {at(33), 0.2}}, {{at(5), 0.8}}});
+        log.window(0, at(16));
+        log.add_samples({{{at(16), 0.9}, {at(33), 0.2}, {at(50), 0.9}}, {{at(5), 0.8}, {at(21), 0.8}}});
+        log.window(0, at(16));
+    }
+    std::string text;
+    const bool read = file_to_string(path.string(), text);
+    Filesystem::remove(path);
+    if (!read){
+        return std::format("could not read {}", path.string());
+    }
+    const size_t samples = count_lines_starting(text, "sample\t");
+    if (samples != 6){
+        return std::format("expected 6 sample lines, got {}", samples);
+    }
+    const size_t windows = count_lines_starting(text, "window\t");
+    if (windows != 1){
+        return std::format("expected the unmoved window once, got {}", windows);
+    }
+    return true;
+}
+
+
 struct StarterRngTestCase{
     struct Input{
         std::function<UnitTestResult(Logger&)> body;
@@ -417,6 +475,7 @@ const StarterRngTestCase STARTER_RNG_CASES[] = {
     {.name = "a shiny that did not settle ends the loop unsettled", .input = {.body = test_shiny_unsettled}, .expectation = {}},
     {.name = "a provisional state that stops solving is dropped", .input = {.body = test_provisional_state_steps}, .expectation = {}},
     {.name = "a state found as the blink window fills is confirmed", .input = {.body = test_state_found_as_window_fills}, .expectation = {}},
+    {.name = "blink log writes each sample once across overlapping polls", .input = {.body = test_blink_log_writes_each_sample_once}, .expectation = {}},
 };
 
 } // namespace
