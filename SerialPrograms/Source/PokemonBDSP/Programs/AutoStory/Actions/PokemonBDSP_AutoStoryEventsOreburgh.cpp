@@ -23,6 +23,7 @@
 #include "PokemonBDSP_AutoStoryBattle.h"
 #include "PokemonBDSP_AutoStoryBattleMoves.h"
 #include "PokemonBDSP_AutoStoryCenter.h"
+#include "PokemonBDSP_AutoStoryMenuActions.h"
 #include "PokemonBDSP_AutoStoryTalks.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryWalks.h"
 #include "PokemonBDSP_AutoStoryWildBattle.h"
@@ -126,8 +127,8 @@ constexpr Milliseconds MINE_ENCOUNTER_TIMEOUT = 120s;
 constexpr Milliseconds MINE_BATTLE_MENU_WAIT = 20s;
 constexpr Milliseconds MINE_COLUMN_WALK_LIMIT = 15000ms;
 constexpr Milliseconds MINE_CAVERN_STEP_HOLD = 1500ms;
-constexpr size_t MINE_TRAINING_BATTLES = 5;
-constexpr size_t MINE_MAX_PREP_TRIPS = 3;
+constexpr size_t MINE_TRAINING_BATTLES = 3;
+constexpr size_t MINE_MAX_PREP_TRIPS = 6;
 
 //  Paces north/south along column 12 in OreburghMineB1F (between the two
 //  conveyor belts, well clear of both warps) until a wild battle opens.
@@ -162,23 +163,26 @@ void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context,
 //  Walks north out of OreburghMineB1F back up column 46/47 to Oreburgh
 //  Pokemon Center, heals, and returns to the Center doorstep (47, 21).
 void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& context){
-    bool exited = false;
-    for (size_t tries = 0; tries < 4 && !exited; tries++){
-        const WalkResult out = walk_until(stream, context, run_from_wild_battle, {0, 1}, MINE_COLUMN_WALK_LIMIT, "north out of Oreburgh Mine");
-        exited = out.stop == WalkStop::TRANSITION;
+    //  Walk straight north across any mine floor warps until we either enter
+    //  Oreburgh Center directly (column 47) or hit its south wall at (46, 21).
+    const JoystickPosition north_stick{0, 1};
+    for (size_t legs = 0; legs < 6; legs++){
+        const WalkResult north = walk_until(stream, context, run_from_wild_battle, north_stick, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center");
+        if (north.stop == WalkStop::TRANSITION){
+            confirm_battle_overworld(stream, context, "north transition to Oreburgh Center");
+            if (in_pokemon_center(stream)){
+                heal_inside_pokemon_center(stream, context, "Oreburgh");
+                return;
+            }
+            continue;
+        }
+        if (north.stop == WalkStop::BLOCKED){
+            dpad_tiles(stream, context, DPAD_RIGHT, 1, "below Oreburgh Center door");
+            heal_at_pokemon_center(stream, context, "Oreburgh");
+            return;
+        }
     }
-    if (!exited){
-        fail_step(stream, "Oreburgh Mine training: could not exit back to Oreburgh City.");
-    }
-    confirm_battle_overworld(stream, context, "out of Oreburgh Mine");
-    const WalkResult north = walk_until_no_wild(stream, context, {0, 1}, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center");
-    if (north.stop == WalkStop::TRANSITION || in_pokemon_center(stream)){
-        confirm_battle_overworld(stream, context, "into Oreburgh Center");
-        heal_inside_pokemon_center(stream, context, "Oreburgh");
-        return;
-    }
-    dpad_tiles(stream, context, DPAD_RIGHT, 1, "below Oreburgh Center door");
-    heal_at_pokemon_center(stream, context, "Oreburgh");
+    fail_step(stream, "Oreburgh Mine training: could not reach Oreburgh Center.");
 }
 
 //  From Oreburgh Center doorstep (47, 21), walks straight south down column 46
@@ -197,11 +201,15 @@ bool train_in_oreburgh_mine(VideoStream& stream, ProControllerContext& context, 
     bool go_south = false;
     for (size_t done = 0; done < battles; done++){
         pace_for_mine_encounter(stream, context, go_south);
-        fight_wild_battle(stream, context, "Oreburgh Mine training");
+        const bool lead_ok = fight_wild_battle(stream, context, "Oreburgh Mine training");
         if (in_pokemon_center(stream)){
             stream.log("[Oreburgh Mine] Fainted during training; back at the Center with XP kept.", COLOR_ORANGE);
             walk_out_of_center(stream, context, "Oreburgh");
             return remembered_move_includes("mach-punch");
+        }
+        if (!lead_ok){
+            stream.log("[Oreburgh Mine] Lead fainted and fled; heading back to heal.", COLOR_ORANGE);
+            break;
         }
         if (remembered_move_includes("mach-punch")){
             stream.log("[Oreburgh Mine] Monferno has Mach Punch; heading back to heal.", COLOR_GREEN);
@@ -221,7 +229,9 @@ std::optional<Pokemon::StoryFailure> train_fire_starter_in_mine(StoryEnv& consol
     }
     clear_remembered_moves();
     for (size_t trip = 0; trip < MINE_MAX_PREP_TRIPS; trip++){
-        if (train_in_oreburgh_mine(console.env.console, console.context, MINE_TRAINING_BATTLES)){
+        const bool ready = train_in_oreburgh_mine(console.env.console, console.context, MINE_TRAINING_BATTLES);
+        save_game(console.env, console.context, "Oreburgh City");
+        if (ready){
             return std::nullopt;
         }
     }

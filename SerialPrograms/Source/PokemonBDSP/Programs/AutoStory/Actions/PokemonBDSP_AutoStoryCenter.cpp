@@ -15,6 +15,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/VisualDetectors/BlackScreenDetector.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStoryWalkRules.h"
@@ -451,24 +452,26 @@ void heal_at_pokemon_center(
 
 namespace{
 
-//  Mid-room in a Pokemon Center shows no dark screen edges, so indoors() can
-//  read false before the exit mat (lab-B 2026-11-22 14:40). From Nurse Joy's
-//  counter, require the door's actual fade (WalkStop::TRANSITION).
+//  Mid-room in a Pokemon Center shows no dark screen edges (so indoors() can
+//  read false before the mat) and stick-holding can miss the door fade between
+//  chunks and walk past the doorstep (lab-B 2026-11-22 14:40, 15:42). Step one
+//  D-pad tile south at a time while watching BlackScreenWatcher for the exit.
 void exit_center_door_south(VideoStream& stream, ProControllerContext& context, const std::string& label){
     pbf_mash_button(context, BUTTON_B, 2000ms);
     context.wait_for_all_requests();
-    for (size_t tries = 0; tries < 5; tries++){
-        const WalkResult walk = walk_until_no_wild(stream, context, {0, -1}, 6000ms, label + ": out the door");
-        if (walk.stop == WalkStop::TRANSITION){
+    for (size_t step = 0; step < 12; step++){
+        BlackScreenWatcher black;
+        const int hit = run_until<ProControllerContext>(stream, context,
+            [](ProControllerContext& ctx){
+                pbf_press_dpad(ctx, DPAD_DOWN, 160ms, 640ms);
+            }, {{black}});
+        if (hit == 0){
             talk_over(stream, context, std::format("{}: outside the Center", label), {.settle = settle_rule(SettleKind::DOOR)});
             return;
         }
-        if (walk.stop == WalkStop::DIALOG){
-            pbf_mash_button(context, BUTTON_B, 2000ms);
-        }
     }
     OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-        label + ": did not get back out.", stream);
+        std::format("{}: did not get back out.", label), stream);
 }
 
 } // namespace
