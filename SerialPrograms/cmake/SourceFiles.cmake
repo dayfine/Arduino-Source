@@ -1593,6 +1593,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
     Source/Pokemon/Options/Pokemon_StoryRunOptions.cpp
     Source/Pokemon/Options/Pokemon_StoryRunOptions.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryResources.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryResources.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryResources_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryResources_Tests.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.cpp
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h
     Source/Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson_Tests.cpp
@@ -1655,6 +1659,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.h
     Source/Pokemon/AutoStory/Pokemon_MapUtil.h
+    Source/Pokemon/AutoStory/Pokemon_OverlayLog.cpp
+    Source/Pokemon/AutoStory/Pokemon_OverlayLog.h
+    Source/Pokemon/AutoStory/Pokemon_OverlayLog_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_OverlayLog_Tests.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.cpp
@@ -1730,6 +1738,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapData_Tests.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapFeatures.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapGates.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader_Tests.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapTiles.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics_Tests.cpp
