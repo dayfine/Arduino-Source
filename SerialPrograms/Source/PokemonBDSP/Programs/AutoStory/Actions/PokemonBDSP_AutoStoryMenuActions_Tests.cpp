@@ -813,6 +813,10 @@ UnitTestResult test_choose_move(Logger&){
         {"Growl unread, Tackle read", {{"", 40}, {"tackle", 35}}, 2},
         {"Scratch, Leer, Ember and Mach Punch", {{"scratch", 35}, {"leer", 30}, {"ember", 25}, {"mach-punch", 30}}, 4},
         {"Shinx Tackle beats Thunder Shock", {{"tackle", 35}, {"leer", 30}, {"thunder-shock", 30}, {"charge", 20}}, 1},
+        //  BDSP Turtwig has Leafage in slot 3 (lab-B 2026-11-23, French: unread,
+        //  Tackle only, six losses to Roark).
+        {"Turtwig Tackle, Withdraw and Leafage", {{"tackle", 35}, {"withdraw", 40}, {"leafage", 40}}, 3},
+        {"Turtwig Leafage unread at 40 PP", {{"tackle", 35}, {"withdraw", 40}, {"", 40}}, 3},
     };
     for (const Case& c : cases){
         const size_t best = choose_move(c.slots);

@@ -49,7 +49,7 @@ const KnownMove KNOWN_MOVES[] = {
     {"quick-attack", "normal", 40, 30}, {"headbutt", "normal", 70, 15},
     {"water-gun", "water", 40, 25}, {"bubble", "water", 40, 30}, {"bubble-beam", "water", 65, 20},
     {"ember", "fire", 40, 25}, {"flame-wheel", "fire", 60, 25}, {"mach-punch", "fighting", 40, 30},
-    {"absorb", "grass", 20, 25}, {"razor-leaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
+    {"absorb", "grass", 20, 25}, {"leafage", "grass", 40, 40}, {"razor-leaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
     {"thunder-shock", "electric", 40, 30}, {"spark", "electric", 65, 20},
     {"peck", "flying", 35, 35}, {"pluck", "flying", 60, 20}, {"wing-attack", "flying", 60, 35},
     {"metal-claw", "steel", 50, 35},
@@ -70,11 +70,12 @@ const KnownMove* known_move(std::string_view slug){
 
 //  What each starter has in each slot as BDSP teaches it, learnt in this
 //  order up to level 13: slot 1 is a Normal attack, slot 2 a status move,
-//  slot 3 the starter's own-type attack, slot 4 either.
+//  slot 3 the starter's own-type attack, slot 4 either. BDSP Turtwig learns
+//  Leafage, not Absorb, in slot 3 (lab-B 2026-11-23).
 const std::vector<std::vector<std::string_view>> STARTER_SLOTS = {
     {"tackle", "scratch", "pound"},
     {"withdraw", "leer", "growl"},
-    {"absorb", "ember", "water-gun"},
+    {"leafage", "absorb", "ember", "water-gun"},
     {"razor-leaf", "taunt", "charm"},
 };
 
