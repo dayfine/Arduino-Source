@@ -80,6 +80,28 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     fail_step(stream, "Oreburgh: no column near the gym's door went in.");
 }
 
+enum class TopBattle{ ROARK, TRAINER, WHITEOUT };
+
+//  After a battle won from A on a blocked walk north. The entrance trainer
+//  can stand in the middle column and answer A too: a two-turn battle there
+//  was taken for Roark, and the run went on with no badge, so Jubilife's
+//  Galactic scene never came (lab-B 2026-11-22 22:23). Roark stands at the
+//  top: past him nothing walks on.
+TopBattle after_battle_at_the_top(VideoStream& stream, ProControllerContext& context){
+    if (in_pokemon_center(stream)){
+        return TopBattle::WHITEOUT;
+    }
+    const WalkResult beyond = walk_until_no_wild(stream, context, {0, 1}, 2000ms, "north past that battle");
+    if (beyond.stop == WalkStop::BLOCKED && beyond.moved_chunks <= 1){
+        return TopBattle::ROARK;
+    }
+    stream.log("[01.04] Walked on past that battle: a gym trainer, not Roark.", COLOR_ORANGE);
+    if (beyond.stop == WalkStop::DIALOG && talk_or_fight(stream, context, "Gym trainer") && in_pokemon_center(stream)){
+        return TopBattle::WHITEOUT;
+    }
+    return TopBattle::TRAINER;
+}
+
 //  Inside the Oreburgh Gym: straight up the middle, fighting the trainers
 //  who stop us, to Roark on the top tier. Returns whether Roark was beaten;
 //  false after a whiteout, which leaves us in the Pokemon Center.
@@ -116,7 +138,10 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
             //  His badge speech is over when talk_or_fight() returns: the
             //  battle ends with its speeches (confirm_battle_overworld()).
             if (talk_or_fight(stream, context, "Roark", TalkExpect::BATTLE)){
-                return !in_pokemon_center(stream);
+                const TopBattle top = after_battle_at_the_top(stream, context);
+                if (top != TopBattle::TRAINER){
+                    return top == TopBattle::ROARK;
+                }
             }
             continue;
         }
