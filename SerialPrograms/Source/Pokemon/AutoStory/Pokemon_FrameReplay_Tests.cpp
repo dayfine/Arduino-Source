@@ -152,24 +152,23 @@ UnitTestResult test_events_judged(){
 }
 
 
-struct FrameReplayInput{
-    std::string name;
-    std::function<UnitTestResult()> body;
-};
-
-//  The body checks its own expectations.
-struct FrameReplayExpectation{
-};
-
 struct FrameReplayCase{
-    FrameReplayInput input;
-    FrameReplayExpectation expectation;
+    struct Input{
+        std::function<UnitTestResult()> body;
+    };
+    //  The body checks its own expectations.
+    struct Expectation{
+    };
+
+    std::string name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_FrameReplay : public UnitTest{
 public:
     explicit Test_FrameReplay(FrameReplayCase test_case)
-        : UnitTest("Pokemon::FrameReplay - " + test_case.input.name)
+        : UnitTest("Pokemon::FrameReplay - " + test_case.name)
         , m_input(std::move(test_case.input))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -177,15 +176,15 @@ public:
     }
 
 private:
-    FrameReplayInput m_input;
+    FrameReplayCase::Input m_input;
 };
 
 const FrameReplayCase FRAME_REPLAY_CASES[] = {
-    {.input = {"the frame showing at a time", test_frame_at}, .expectation = {}},
-    {.input = {"a missing recording throws", test_missing_folder}, .expectation = {}},
-    {.input = {"the warp watcher sees a door's black", test_watcher_sees_fade}, .expectation = {}},
-    {.input = {"a warp watcher along the hold sees a black over before it ends", test_watcher_along_hold_sees_fade}, .expectation = {}},
-    {.input = {"the replayed events judged as a warp", test_events_judged}, .expectation = {}},
+    {.name = "the frame showing at a time", .input = {.body = test_frame_at}, .expectation = {}},
+    {.name = "a missing recording throws", .input = {.body = test_missing_folder}, .expectation = {}},
+    {.name = "the warp watcher sees a door's black", .input = {.body = test_watcher_sees_fade}, .expectation = {}},
+    {.name = "a warp watcher along the hold sees a black over before it ends", .input = {.body = test_watcher_along_hold_sees_fade}, .expectation = {}},
+    {.name = "the replayed events judged as a warp", .input = {.body = test_events_judged}, .expectation = {}},
 };
 
 } // namespace
