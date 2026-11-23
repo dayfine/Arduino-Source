@@ -4,31 +4,62 @@
   "checkpoint": {
     "id": "02.02",
     "title": "Oak's Parcel to the Pokedex",
-    "start": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"},
+    "start": {
+      "map": "ViridianCity_Mart",
+      "tiles": [
+        [
+          4,
+          3
+        ]
+      ],
+      "facing": "west"
+    },
     "events": [
       {
         "id": "below_oak",
-        "kind": "route",
+        "action": "route",
+        "why": "back down Route 1 to Oak",
         "args": {
-          "target": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "north"}
-        },
-        "why": "back down Route 1 to Oak"
+          "target": {
+            "map": "PalletTown_ProfessorOaksLab",
+            "tiles": [
+              [
+                6,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "give_parcel",
-        "kind": "talk",
+        "action": "talk",
         "why": "Oak takes the parcel"
       },
       {
         "id": "pokedex_scene",
-        "kind": "scene",
-        "declared_after": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "south"},
-        "why": "the rival comes in, Pokedexes from the desk; the player ends facing south (console B, 2026-11-01)"
+        "action": "scene",
+        "why": "the rival comes in, Pokedexes from the desk; the player ends facing south (console B, 2026-11-01)",
+        "args": {
+          "pose_after": {
+            "map": "PalletTown_ProfessorOaksLab",
+            "tiles": [
+              [
+                6,
+                4
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "before_pokedex"
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

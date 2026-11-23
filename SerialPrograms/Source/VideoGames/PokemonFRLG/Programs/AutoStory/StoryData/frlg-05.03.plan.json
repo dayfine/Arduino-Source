@@ -4,172 +4,309 @@
   "checkpoint": {
     "id": "05.03",
     "title": "Nugget Bridge: Beat 5 trainers, return to Center",
-    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "CeruleanCity_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "below_cale_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "onto Nugget Bridge below Cale's row",
         "args": {
-          "target": {"map": "Route24", "tiles": [[11, 32]], "facing": "north"}
-        },
-        "why": "onto Nugget Bridge below Cale's row"
+          "target": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                32
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cale_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 31), beside Cale",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (11, 31), beside Cale"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "bug_catcher_cale",
-        "kind": "battle",
+        "action": "battle",
+        "why": "trainer 1 on Nugget Bridge",
         "args": {
           "trainer": "TRAINER_BUG_CATCHER_CALE",
-          "foes": ["caterpie", "weedle", "metapod", "kakuna"]
-        },
-        "declared_after": {"map": "Route24", "tiles": [[11, 31]], "facing": "north"},
-        "why": "trainer 1 on Nugget Bridge"
+          "foes": [
+            "caterpie",
+            "weedle",
+            "metapod",
+            "kakuna"
+          ],
+          "pose_after": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                31
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_ali_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up to (11, 29)",
         "args": {
-          "target": {"map": "Route24", "tiles": [[11, 29]], "facing": "north"}
-        },
-        "why": "up to (11, 29)"
+          "target": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                29
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "ali_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 28), beside Ali",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (11, 28), beside Ali"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "lass_ali",
-        "kind": "battle",
+        "action": "battle",
+        "why": "trainer 2 on Nugget Bridge",
         "args": {
           "trainer": "TRAINER_LASS_ALI",
-          "foes": ["pidgey", "oddish", "bellsprout"]
-        },
-        "declared_after": {"map": "Route24", "tiles": [[11, 28]], "facing": "north"},
-        "why": "trainer 2 on Nugget Bridge"
+          "foes": [
+            "pidgey",
+            "oddish",
+            "bellsprout"
+          ],
+          "pose_after": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                28
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_timmy_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up to (11, 26)",
         "args": {
-          "target": {"map": "Route24", "tiles": [[11, 26]], "facing": "north"}
-        },
-        "why": "up to (11, 26)"
+          "target": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                26
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "timmy_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 25), beside Timmy",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (11, 25), beside Timmy"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "youngster_timmy",
-        "kind": "battle",
+        "action": "battle",
+        "why": "trainer 3 on Nugget Bridge",
         "args": {
           "trainer": "TRAINER_YOUNGSTER_TIMMY",
-          "foes": ["sandshrew", "ekans"]
-        },
-        "declared_after": {"map": "Route24", "tiles": [[11, 25]], "facing": "north"},
-        "why": "trainer 3 on Nugget Bridge"
+          "foes": [
+            "sandshrew",
+            "ekans"
+          ],
+          "pose_after": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                25
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_reli_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up to (11, 23)",
         "args": {
-          "target": {"map": "Route24", "tiles": [[11, 23]], "facing": "north"}
-        },
-        "why": "up to (11, 23)"
+          "target": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                23
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "reli_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 22), beside Reli",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (11, 22), beside Reli"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "lass_reli",
-        "kind": "battle",
+        "action": "battle",
+        "why": "trainer 4 on Nugget Bridge",
         "args": {
           "trainer": "TRAINER_LASS_RELI",
-          "foes": ["nidoran-m", "nidoran-f"]
-        },
-        "declared_after": {"map": "Route24", "tiles": [[11, 22]], "facing": "north"},
-        "why": "trainer 4 on Nugget Bridge"
+          "foes": [
+            "nidoran-m",
+            "nidoran-f"
+          ],
+          "pose_after": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                22
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_ethan_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up to (11, 20)",
         "args": {
-          "target": {"map": "Route24", "tiles": [[11, 20]], "facing": "north"}
-        },
-        "why": "up to (11, 20)"
+          "target": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                20
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "ethan_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 19), beside Ethan",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (11, 19), beside Ethan"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "camper_ethan",
-        "kind": "battle",
+        "action": "battle",
+        "why": "trainer 5 on Nugget Bridge",
         "args": {
           "trainer": "TRAINER_CAMPER_ETHAN",
-          "foes": ["mankey"]
-        },
-        "declared_after": {"map": "Route24", "tiles": [[11, 19]], "facing": "north"},
-        "why": "trainer 5 on Nugget Bridge"
+          "foes": [
+            "mankey"
+          ],
+          "pose_after": {
+            "map": "Route24",
+            "tiles": [
+              [
+                11,
+                19
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "cerulean_house_wall",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "south down column 23 to the wall at (23, 15) to absorb the Route24->CeruleanCity connection stall",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[23, 15]], "facing": "south"}
-        },
-        "why": "south down column 23 to the wall at (23, 15) to absorb the Route24->CeruleanCity connection stall"
+          "target": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                23,
+                15
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cerulean_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "heal at Cerulean Center after Nugget Bridge",
         "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "heal at Cerulean Center after Nugget Bridge"
+          "target": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_cerulean",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -179,6 +316,5 @@
         "Cerulean 05.03: beat 5 Nugget Bridge trainers and heal at Cerulean Center."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

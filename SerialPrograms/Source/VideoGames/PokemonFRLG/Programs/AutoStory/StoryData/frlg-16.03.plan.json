@@ -1,244 +1,242 @@
 {
-    "format": "pokesim-authored-checkpoint/1",
-    "game": "frlg",
-    "checkpoint": {
-        "id": "16.03",
-        "title": "Silph Co. 7F: the rival",
-        "start": {
-            "map": "SilphCo_5F",
-            "tiles": [
-                [
-                    21,
-                    21
-                ]
-            ],
-            "facing": "east"
-        },
-        "start_flags": [
-            "card_key_held",
-            "trainer_beaten:SilphCo_5F/rocket_m@9,21",
-            "trainer_at:SilphCo_5F/rocket_m@9,21=11,21"
-        ],
-        "events": [
-            {
-                "id": "teach_blizzard",
-                "kind": "game_action",
-                "action": "teach",
-                "args": {
-                    "item": "tm14",
-                    "move": "blizzard",
-                    "slot": 1,
-                    "keep": [
-                        "tackle",
-                        "withdraw",
-                        "tail-whip",
-                        "water-gun",
-                        "bubble",
-                        "bite",
-                        "mega-kick",
-                        "water-pulse",
-                        "surf"
-                    ]
-                },
-                "why": "TM14 Blizzard over Dig, as 13.03 teaches it (pokeguy's moves here: Surf, Water Pulse, Bite, Blizzard; the user approved the TM spend 2026-11-12), unless the lead knows it: console B's lead came to the rival with Dig (2026-11-15, run 6) and lost to Venusaur; PokemonSimulation's silph-rival sim of that entry (Lv43, 136/136) wins 35% by C2 with Dig and 99% with Blizzard. Keep list: every move the lead can know but Dig. 13.03 teaches it first, so this step finds it known; with neither Blizzard nor TM14 the step fails, as the plan picked TM14 up"
-            },
-            {
-                "id": "to_3f_trainer",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "SilphCo_3F",
-                        "tiles": [
-                            [
-                                22,
-                                9
-                            ]
-                        ],
-                        "facing": "south"
-                    }
-                },
-                "why": "through 5F's pads and 3F's hall to (22, 9), where the Rocket (25, 9) sees the player and fights (incidental; the leg ends on the tile he sees)"
-            },
-            {
-                "id": "to_3f_door",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "SilphCo_3F",
-                        "tiles": [
-                            [
-                                18,
-                                13
-                            ]
-                        ],
-                        "facing": "west"
-                    }
-                },
-                "why": "down 3F's east hall to the Card Key door (20..21, 12..13), a face-and-A at (22, 13) opens it, then through it to the wall",
-                "gates_after": {
-                    "opened": [
-                        "SilphCo_3F/door_2"
-                    ]
-                }
-            },
-            {
-                "id": "to_3f_pad_row",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "SilphCo_3F",
-                        "tiles": [
-                            [
-                                18,
-                                14
-                            ]
-                        ],
-                        "facing": "south"
-                    }
-                },
-                "why": "down a row, to the pad's row"
-            },
-            {
-                "id": "to_rival_trigger",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "SilphCo_7F",
-                        "tiles": [
-                            [
-                                3,
-                                4
-                            ]
-                        ],
-                        "facing": "west"
-                    }
-                },
-                "why": "3F's pad (13, 14) to 7F's (5, 4), west along row 4 to (3, 4), a tile east of the rival's trigger (2, 4)"
-            },
-            {
-                "id": "rival_trigger",
-                "kind": "step",
-                "args": {
-                    "direction": "west"
-                },
-                "declared_after": {
-                    "map": "SilphCo_7F",
-                    "tiles": [
-                        [
-                            2,
-                            4
-                        ]
-                    ],
-                    "facing": "south"
-                },
-                "why": "onto the trigger (2, 4) (SilphCo_7F_EventScript_RivalTriggerTop): the rival (2, 6) steps up to the player, who turns to face down"
-            },
-            {
-                "id": "rival",
-                "kind": "battle",
-                "args": {
-                    "trainer": "TRAINER_RIVAL_SILPH_BULBASAUR",
-                    "foes": [
-                        "pidgeot",
-                        "gyarados",
-                        "growlithe",
-                        "alakazam",
-                        "venusaur"
-                    ],
-                    "policy": "goal-based-setup",
-                    "setup_spa": 2,
-                    "setup_accuracy": 2,
-                    "setup_outspeed": true,
-                    "setup_guard_accuracy": true,
-                    "foe_threats": [
-                        [
-                            76,
-                            18,
-                            17,
-                            39,
-                            19,
-                            0,
-                            0
-                        ],
-                        [
-                            78,
-                            40,
-                            15,
-                            40,
-                            40,
-                            0,
-                            0
-                        ],
-                        [
-                            51,
-                            14,
-                            5,
-                            32,
-                            16,
-                            0,
-                            0
-                        ],
-                        [
-                            93,
-                            0,
-                            4,
-                            44,
-                            22,
-                            0,
-                            0
-                        ],
-                        [
-                            76,
-                            46,
-                            26,
-                            96,
-                            48,
-                            0,
-                            0
-                        ]
-                    ]
-                },
-                "declared_after": {
-                    "map": "SilphCo_7F",
-                    "tiles": [
-                        [
-                            2,
-                            4
-                        ]
-                    ],
-                    "facing": "south"
-                },
-                "why": "the rival (TRAINER_RIVAL_SILPH_BULBASAUR, for a Squirtle): Pidgeot Lv37, Gyarados Lv38, Growlithe Lv35, Alakazam Lv35, Venusaur Lv40, fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first; the doc's silph-rival row, pokeguy 1:28:54 to 1:30:09); foe_threats are the rows PokemonSimulation's planning_risk() gives for each foe leading against console B's entry (Lv43, 136/136, 2026-11-15 run 6); without the policy the lead attacked from turn 1, Venusaur slept it and the battle was lost (sim of that entry: 12% of 500); then he leaves (VAR_MAP_SCENE_SILPH_CO_7F 1)"
-            }
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "16.03",
+    "title": "Silph Co. 7F: the rival",
+    "start": {
+      "map": "SilphCo_5F",
+      "tiles": [
+        [
+          21,
+          21
         ]
+      ],
+      "facing": "east"
     },
-    "execution": {
-        "menu": "full",
-        "lead": "after_brock",
-        "notes": {
-            "checkpoint": [
-                "Starts beside 16.02's CARD KEY (the doors open to it from now on). The rival's fight is the same wherever the player crosses the trigger columns (2, 4) or (2, 5).",
-                "A boss battle is its own checkpoint (user, 2026-11-12): the rival's fight is all this row does beyond the walk up to him. It ends where his battle leaves the player, and saves there; 16.03b walks to the employee."
+    "events": [
+      {
+        "id": "teach_blizzard",
+        "action": "teach",
+        "why": "TM14 Blizzard over Mega Kick, as 13.03 teaches it (pokeguy's moves here: Surf, Water Pulse, Bite, Blizzard; the user approved the TM spend 2026-11-12), unless the lead knows it; keep list: every move the lead can know except Mega Kick/Dig. 13.03 teaches it first, so this step finds it known; with neither Blizzard nor TM14 the step fails, as the plan picked TM14 up",
+        "args": {
+          "item": "tm14",
+          "move": "blizzard",
+          "slot": 1,
+          "keep": [
+            "tackle",
+            "withdraw",
+            "tail-whip",
+            "water-gun",
+            "bubble",
+            "bite",
+            "water-pulse",
+            "surf"
+          ]
+        }
+      },
+      {
+        "id": "to_3f_trainer",
+        "action": "route",
+        "why": "through 5F's pads and 3F's hall to (22, 9), where the Rocket (25, 9) sees the player and fights (incidental; the leg ends on the tile he sees)",
+        "args": {
+          "target": {
+            "map": "SilphCo_3F",
+            "tiles": [
+              [
+                22,
+                9
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "to_3f_door",
+        "action": "route",
+        "why": "down 3F's east hall to the Card Key door (20..21, 12..13), a face-and-A at (22, 13) opens it, then through it to the wall",
+        "args": {
+          "target": {
+            "map": "SilphCo_3F",
+            "tiles": [
+              [
+                18,
+                13
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run",
+          "gates_after": {
+            "opened": [
+              "SilphCo_3F/door_2"
             ]
+          }
         }
-    },
+      },
+      {
+        "id": "to_3f_pad_row",
+        "action": "route",
+        "why": "down a row, to the pad's row",
+        "args": {
+          "target": {
+            "map": "SilphCo_3F",
+            "tiles": [
+              [
+                18,
+                14
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "to_rival_trigger",
+        "action": "route",
+        "why": "3F's pad (13, 14) to 7F's (5, 4), west along row 4 to (3, 4), a tile east of the rival's trigger (2, 4)",
+        "args": {
+          "target": {
+            "map": "SilphCo_7F",
+            "tiles": [
+              [
+                3,
+                4
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "rival_trigger",
+        "action": "step",
+        "why": "onto the trigger (2, 4) (SilphCo_7F_EventScript_RivalTriggerTop): the rival (2, 6) steps up to the player, who turns to face down",
+        "args": {
+          "direction": "west",
+          "pose_after": {
+            "map": "SilphCo_7F",
+            "tiles": [
+              [
+                2,
+                4
+              ]
+            ],
+            "facing": "south"
+          }
+        }
+      },
+      {
+        "id": "rival",
+        "action": "battle",
+        "why": "the rival (TRAINER_RIVAL_SILPH_BULBASAUR, for a Squirtle): Pidgeot Lv37, Gyarados Lv38, Growlithe Lv35, Alakazam Lv35, Venusaur Lv40, fought by pokeguy's policy C2 (goal-based-setup: Sp. Atk +2 and accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first; the doc's silph-rival row, pokeguy 1:28:54 to 1:30:09); foe_threats are the rows PokemonSimulation's planning_risk() gives for each foe leading against console B's entry (Lv43, 136/136, 2026-11-15 run 6); without the policy the lead attacked from turn 1, Venusaur slept it and the battle was lost (sim of that entry: 12% of 500); then he leaves (VAR_MAP_SCENE_SILPH_CO_7F 1)",
+        "args": {
+          "trainer": "TRAINER_RIVAL_SILPH_BULBASAUR",
+          "foes": [
+            "pidgeot",
+            "gyarados",
+            "growlithe",
+            "alakazam",
+            "venusaur"
+          ],
+          "policy": "goal-based-setup",
+          "setup_spa": 2,
+          "setup_accuracy": 2,
+          "setup_outspeed": true,
+          "setup_guard_accuracy": true,
+          "foe_threats": [
+            [
+              76,
+              18,
+              17,
+              39,
+              19,
+              0,
+              0
+            ],
+            [
+              78,
+              40,
+              15,
+              40,
+              40,
+              0,
+              0
+            ],
+            [
+              51,
+              14,
+              5,
+              32,
+              16,
+              0,
+              0
+            ],
+            [
+              93,
+              0,
+              4,
+              44,
+              22,
+              0,
+              0
+            ],
+            [
+              76,
+              46,
+              26,
+              96,
+              48,
+              0,
+              0
+            ]
+          ],
+          "pose_after": {
+            "map": "SilphCo_7F",
+            "tiles": [
+              [
+                2,
+                4
+              ]
+            ],
+            "facing": "south"
+          }
+        }
+      }
+    ],
     "metadata": {
-        "phase": "testing",
-        "postconditions": {
-            "position": {
-                "map": "SilphCo_7F",
-                "tiles": [
-                    [
-                        2,
-                        4
-                    ]
-                ],
-                "facing": "south"
-            }
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "SilphCo_7F",
+          "tiles": [
+            [
+              2,
+              4
+            ]
+          ],
+          "facing": "south"
         }
+      }
     }
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Starts beside 16.02's CARD KEY (the doors open to it from now on). The rival's fight is the same wherever the player crosses the trigger columns (2, 4) or (2, 5).",
+        "A boss battle is its own checkpoint (user, 2026-11-12): the rival's fight is all this row does beyond the walk up to him. It ends where his battle leaves the player, and saves there; 16.03b walks to the employee."
+      ]
+    },
+    "start_flags": [
+      "card_key_held",
+      "trainer_beaten:SilphCo_5F/rocket_m@9,21",
+      "trainer_at:SilphCo_5F/rocket_m@9,21=11,21"
+    ]
+  }
 }

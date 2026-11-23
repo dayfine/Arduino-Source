@@ -4,9 +4,7 @@
  *
  */
 
-#include <vector>
 #include "CommonFramework/Exceptions/OperationFailedException.h"
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryRoutePose.h"
 
 namespace PokemonAutomation{
@@ -14,31 +12,32 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-std::optional<MapPosition> route_start(const Pokemon::Pose& pose){
-    const std::vector<TilePos> tiles = Pokemon::tiles_of(pose);
-    if (tiles.size() != 1){
+std::optional<MapPosition> route_start(const std::optional<Pokemon::GridPose>& pose){
+    if (!pose || pose->map.empty() || pose->tiles.size() != 1){
         return std::nullopt;
     }
-    return MapPosition{pose.map, tiles[0]};
+    return MapPosition{pose->map, pose->tiles[0]};
 }
 
-Pokemon::Pose pose_after_failed_route(const RouteProgress& progress){
+std::optional<Pokemon::GridPose> pose_after_failed_route(const RouteProgress& progress){
     if (!progress.at){
-        return Pokemon::Pose{};
+        return std::nullopt;
     }
-    return Pokemon::tile_pose(progress.at->map, {progress.at->point}, std::nullopt);
+    return Pokemon::GridPose{
+        .map = progress.at->map,
+        .tiles = {progress.at->point},
+        .facing = std::nullopt,
+    };
 }
 
-void walk_keeping_state(Pokemon::RunState& state, const RouteProgress* progress, const std::function<void()>& walk){
+void walk_keeping_state(FrlgRunState& state, const RouteProgress* progress, const std::function<void()>& walk){
     try{
         walk();
     }catch (OperationFailedException&){
-        if (progress == nullptr){
-            state.pose = Pokemon::Pose{};
-            throw;
+        state.pose = progress != nullptr ? pose_after_failed_route(*progress) : std::nullopt;
+        if (progress != nullptr){
+            state.gates = progress->gates;
         }
-        state.pose = pose_after_failed_route(*progress);
-        state.gates = progress->gates;
         throw;
     }
 }

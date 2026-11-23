@@ -4,58 +4,158 @@
   "checkpoint": {
     "id": "03.01",
     "title": "Viridian Forest to Pewter Center",
-    "start": {"map": "ViridianForest", "tiles": [[29, 62]], "facing": "north"},
+    "start": {
+      "map": "ViridianForest",
+      "tiles": [
+        [
+          29,
+          62
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "forest_east",
-        "kind": "legs",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 wall-guided Viridian Forest legs; up the east side to (44, 43)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 4}, {"direction": "east", "tiles": 14}, {"direction": "north", "tiles": 15}],
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "east",
+              "tiles": 14
+            },
+            {
+              "direction": "north",
+              "tiles": 15
+            }
+          ],
           "fight_wild": true
-        },
-        "why": "up the east side to (44, 43)"
+        }
       },
       {
         "id": "forest_north",
-        "kind": "route",
+        "action": "route",
+        "why": "north part",
         "args": {
-          "target": {"map": "ViridianForest", "tiles": [[39, 25]]},
+          "target": {
+            "map": "ViridianForest",
+            "tiles": [
+              [
+                39,
+                25
+              ]
+            ]
+          },
           "fight_wild": true
-        },
-        "why": "north part"
+        }
       },
       {
         "id": "forest_exit",
-        "kind": "legs",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 wall-guided Viridian Forest legs; walls all the way to the gate's column",
         "args": {
-          "legs": [{"direction": "north", "tiles": 10}, {"direction": "west", "tiles": 12}, {"direction": "south", "tiles": 10}, {"direction": "west", "tiles": 6}, {"direction": "north", "tiles": 20}, {"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 10}, {"direction": "south", "tiles": 27}, {"direction": "west", "tiles": 8}, {"direction": "north", "tiles": 20}, {"direction": "east", "tiles": 1}],
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 10
+            },
+            {
+              "direction": "west",
+              "tiles": 12
+            },
+            {
+              "direction": "south",
+              "tiles": 10
+            },
+            {
+              "direction": "west",
+              "tiles": 6
+            },
+            {
+              "direction": "north",
+              "tiles": 20
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 10
+            },
+            {
+              "direction": "south",
+              "tiles": 27
+            },
+            {
+              "direction": "west",
+              "tiles": 8
+            },
+            {
+              "direction": "north",
+              "tiles": 20
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ],
           "fight_wild": true
-        },
-        "why": "walls all the way to the gate's column"
+        }
       },
       {
         "id": "forest_gate",
-        "kind": "route",
+        "action": "route",
+        "why": "north onto the exit, arriving on the gate's mat",
         "args": {
-          "target": {"map": "Route2_ViridianForest_NorthEntrance", "tiles": [[7, 10]], "facing": "north"},
+          "target": {
+            "map": "Route2_ViridianForest_NorthEntrance",
+            "tiles": [
+              [
+                7,
+                10
+              ]
+            ],
+            "facing": "north"
+          },
           "fight_wild": true
-        },
-        "why": "north onto the exit, arriving on the gate's mat"
+        }
       },
       {
         "id": "pewter_nurse",
-        "kind": "route",
+        "action": "route",
+        "why": "Route 2 north to Pewter's Center",
         "args": {
-          "target": {"map": "PewterCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "Route 2 north to Pewter's Center"
+          "target": {
+            "map": "PewterCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "heal_pewter",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -78,6 +178,5 @@
         "Out of the forest, wild battles are run from; trainers are still fought."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

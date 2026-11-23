@@ -4,183 +4,321 @@
   "checkpoint": {
     "id": "06.02",
     "title": "Vermilion Gym: Cut and Dig, the tree, Dwayne, Baily and Tucker, the trash cans",
-    "start": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "VermilionCity_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "teach_cut",
-        "kind": "game_action",
         "action": "teach",
+        "why": "HM01 Cut to the Oddish, second in the party, unless it knows it",
         "args": {
           "item": "hm01",
           "move": "cut",
           "slot": 2
-        },
-        "why": "HM01 Cut to the Oddish, second in the party, unless it knows it"
+        }
       },
       {
         "id": "teach_dig",
-        "kind": "game_action",
         "action": "teach",
+        "why": "TM28 Dig in place of Withdraw, for Lt. Surge, unless the lead knows it or there is no TM28; keep list: the damaging moves, Bite, Mega Kick and Surf, so the one other move (Withdraw) goes; fails if none or several are outside the list",
         "args": {
           "item": "tm28",
           "move": "dig",
           "slot": 1,
-          "keep": ["tackle", "bubble", "bite", "water-pulse", "mega-kick", "surf"]
-        },
-        "why": "TM28 Dig in place of Withdraw, for Lt. Surge, unless the lead knows it or there is no TM28; keep list: the damaging moves, Bite, Mega Kick and Surf, so the one other move (Withdraw) goes; fails if none or several are outside the list"
+          "keep": [
+            "tackle",
+            "bubble",
+            "bite",
+            "water-pulse",
+            "mega-kick",
+            "surf"
+          ]
+        }
       },
       {
         "id": "above_gym_tree",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the Center, south through the city to above the tree (19, 24)",
         "args": {
-          "target": {"map": "VermilionCity", "tiles": [[19, 23]], "facing": "south"}
-        },
-        "why": "out of the Center, south through the city to above the tree (19, 24)"
+          "target": {
+            "map": "VermilionCity",
+            "tiles": [
+              [
+                19,
+                23
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cut_gym_tree",
-        "kind": "game_action",
         "action": "cut_tree",
+        "why": "the Oddish cuts the tree; a step onto its tile",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "VermilionCity", "tiles": [[19, 24]], "facing": "south"},
-        "why": "the Oddish cuts the tree; a step onto its tile"
+          "direction": "south",
+          "pose_after": {
+            "map": "VermilionCity",
+            "tiles": [
+              [
+                19,
+                24
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "gym_door",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down into the yard and in by the gym's door (14, 25)",
         "args": {
-          "target": {"map": "VermilionCity_Gym", "tiles": [[5, 19]], "facing": "north"}
-        },
-        "why": "down into the yard and in by the gym's door (14, 25)"
+          "target": {
+            "map": "VermilionCity_Gym",
+            "tiles": [
+              [
+                5,
+                19
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "west_of_dwayne_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Vermilion Gym trainer-sight legs; up column 5 to the can (5, 14), east to (7, 15): out of Dwayne's and Baily's sight",
         "args": {
-          "legs": [{"direction": "north", "tiles": 4}, {"direction": "east", "tiles": 2}]
-        },
-        "why": "up column 5 to the can (5, 14), east to (7, 15): out of Dwayne's and Baily's sight"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "dwayne_sight",
-        "kind": "step",
-        "action": "trainer_wait",
+        "action": "step",
+        "why": "onto (8, 15), two below Dwayne (8, 13): he turns to the player and walks up to (8, 14)",
         "args": {
-          "direction": "east"
-        },
-        "why": "onto (8, 15), two below Dwayne (8, 13): he turns to the player and walks up to (8, 14)"
+          "direction": "east",
+          "variant": "trainer_wait"
+        }
       },
       {
         "id": "sailor_dwayne",
-        "kind": "battle",
+        "action": "battle",
+        "why": "two Pikachu, Lv21",
         "args": {
           "trainer": "TRAINER_SAILOR_DWAYNE",
-          "foes": ["pikachu", "pikachu"]
-        },
-        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[8, 15]], "facing": "east"},
-        "why": "two Pikachu, Lv21"
+          "foes": [
+            "pikachu",
+            "pikachu"
+          ],
+          "pose_after": {
+            "map": "VermilionCity_Gym",
+            "tiles": [
+              [
+                8,
+                15
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "east_of_baily_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Vermilion Gym trainer-sight legs; west along row 15 to (4, 15), up to (4, 13), west to (3, 13): out of Baily's sight",
         "args": {
-          "legs": [{"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 1}]
-        },
-        "why": "west along row 15 to (4, 15), up to (4, 13), west to (3, 13): out of Baily's sight"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 4
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "baily_sight",
-        "kind": "step",
-        "action": "trainer_wait",
+        "action": "step",
+        "why": "onto (2, 13), two below Baily (2, 11): he turns to the player and walks up to (2, 12)",
         "args": {
-          "direction": "west"
-        },
-        "why": "onto (2, 13), two below Baily (2, 11): he turns to the player and walks up to (2, 12)"
+          "direction": "west",
+          "variant": "trainer_wait"
+        }
       },
       {
         "id": "engineer_baily",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Voltorb and Magnemite, Lv21",
         "args": {
           "trainer": "TRAINER_ENGINEER_BAILY",
-          "foes": ["voltorb", "magnemite"]
-        },
-        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[2, 13]], "facing": "west"},
-        "why": "Voltorb and Magnemite, Lv21"
+          "foes": [
+            "voltorb",
+            "magnemite"
+          ],
+          "pose_after": {
+            "map": "VermilionCity_Gym",
+            "tiles": [
+              [
+                2,
+                13
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "below_tucker_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Vermilion Gym trainer-sight legs; east to (4, 13), up column 4 past Baily's row to (4, 9), east to (5, 9): below Tucker's line, not on it",
         "args": {
-          "legs": [{"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 4}, {"direction": "east", "tiles": 1}]
-        },
-        "why": "east to (4, 13), up column 4 past Baily's row to (4, 9), east to (5, 9): below Tucker's line, not on it"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "tucker_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (5, 8), in Tucker's line: he walks up to (6, 8)",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (5, 8), in Tucker's line: he walks up to (6, 8)"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "gentleman_tucker",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Pikachu, Lv23",
         "args": {
           "trainer": "TRAINER_GENTLEMAN_TUCKER",
-          "foes": ["pikachu"]
-        },
-        "declared_after": {"map": "VermilionCity_Gym", "tiles": [[5, 8]], "facing": "north"},
-        "why": "Pikachu, Lv23"
+          "foes": [
+            "pikachu"
+          ],
+          "pose_after": {
+            "map": "VermilionCity_Gym",
+            "tiles": [
+              [
+                5,
+                8
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "trash_cans",
-        "kind": "game_action",
         "action": "trash_cans",
         "why": "the cans until both locks open; a wrong second can resets them"
       },
       {
         "id": "below_gym_tree",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the gym, east to below the tree, grown back",
         "args": {
-          "target": {"map": "VermilionCity", "tiles": [[19, 25]], "facing": "north"}
-        },
-        "why": "out of the gym, east to below the tree, grown back"
+          "target": {
+            "map": "VermilionCity",
+            "tiles": [
+              [
+                19,
+                25
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cut_tree_out",
-        "kind": "game_action",
         "action": "cut_tree",
+        "why": "the tree again; a step onto its tile",
         "args": {
-          "direction": "north"
-        },
-        "declared_after": {"map": "VermilionCity", "tiles": [[19, 24]], "facing": "north"},
-        "why": "the tree again; a step onto its tile"
+          "direction": "north",
+          "pose_after": {
+            "map": "VermilionCity",
+            "tiles": [
+              [
+                19,
+                24
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "vermilion_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "north through the city to the Pokemon Center",
         "args": {
-          "target": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "north through the city to the Pokemon Center"
+          "target": {
+            "map": "VermilionCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_vermilion",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -194,6 +332,5 @@
         "The cans' stands, on rows 9, 11 and 13 above each, are clear of where the three stand after their battles. Leaving the gym puts them back where the map has them, beaten, and grows the tree back."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

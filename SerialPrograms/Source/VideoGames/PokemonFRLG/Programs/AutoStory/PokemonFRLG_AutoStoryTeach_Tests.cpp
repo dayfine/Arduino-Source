@@ -20,6 +20,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "PokemonFRLG_AutoStoryTable.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 #include "PokemonFRLG_AutoStoryTeachScreens.h"
 
@@ -441,7 +442,7 @@ UnitTestResult test_teach_by_species(){
 
 UnitTestResult test_teach_args(){
     const TeachPlan plan{.item = "hm03", .move = "surf", .member = 0, .forget_move = "tail-whip"};
-    const Pokemon::StoryActionArgs args = teach_args(plan);
+    const FrlgArgMap args = teach_args(plan);
     const std::optional<TeachPlan> back = teach_plan_of(args);
     if (!back || back->item != "hm03" || back->move != "surf" || back->member != 0 || back->forget_move != "tail-whip"){
         return "The Surf plan didn't read back from its args.";
@@ -466,7 +467,7 @@ UnitTestResult test_teach_args(){
     ){
         return "Expected exactly one of slot and species.";
     }
-    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+    const std::vector<std::pair<std::string, FrlgArgValue>> bad_args{
         {"item", std::string("potion")},
         {"item", std::string("tutors")},
         {"slot", int64_t(7)},
@@ -474,11 +475,51 @@ UnitTestResult test_teach_args(){
         {"move", std::string("")},
     };
     for (const auto& [key, value] : bad_args){
-        Pokemon::StoryActionArgs bad = args;
+        FrlgArgMap bad = args;
         bad[key] = value;
         if (teach_plan_of(bad)){
             return "Expected a bad " + key + " refused.";
         }
+    }
+    return true;
+}
+
+//  Walks every slot-1 teach step across story_checkpoints() in order from
+//  pre-Mega-Kick moves (tackle, withdraw, water-gun, bite) and verifies every
+//  keep list leaves a single move to forget and ends on the Elite Four set
+//  (surf, bite, blizzard, strength).
+UnitTestResult test_story_lead_teach_chain(){
+    std::vector<std::string> moves{"tackle", "withdraw", "water-gun", "bite"};
+    for (const StoryCheckpoint& row : story_checkpoints()){
+        for (const StoryStep& step : row.steps){
+            if (step.action != TEACH_ACTION){
+                continue;
+            }
+            const std::optional<TeachPlan> plan = teach_plan_of(step.args);
+            if (!plan){
+                return std::format("{}/{}: teach plan failed to parse.", row.id, step.name);
+            }
+            if (plan->member != 0 || !plan->species.empty()){
+                continue;
+            }
+            const TeachDecision decision = decide_teach(*plan, moves);
+            if (!decision.error.empty()){
+                return std::format("{}/{}: refused ({}).", row.id, step.name, decision.error);
+            }
+            if (decision.already_known){
+                continue;
+            }
+            if (decision.forget){
+                moves[*decision.forget] = plan->move;
+            }else{
+                moves.push_back(plan->move);
+            }
+        }
+    }
+    const std::set<std::string> got(moves.begin(), moves.end());
+    const std::set<std::string> want{"surf", "bite", "blizzard", "strength"};
+    if (got != want){
+        return "Lead teach chain did not end on surf, bite, blizzard, strength.";
     }
     return true;
 }
@@ -501,6 +542,10 @@ const AutoStoryTeachCase AUTO_STORY_TEACH_CASES[] = {
     },
     {
         .input = {"Fly to the Pidgey found by species", test_teach_by_species},
+        .expectation = {},
+    },
+    {
+        .input = {"story lead teach chain from 04.06 to 19.04", test_story_lead_teach_chain},
         .expectation = {},
     },
 };

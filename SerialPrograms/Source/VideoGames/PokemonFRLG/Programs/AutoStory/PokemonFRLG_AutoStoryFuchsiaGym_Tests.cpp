@@ -19,8 +19,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryLevelCheck.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -133,8 +131,8 @@ struct GymWalk{
 //  beaten.
 std::string gym_step_on_sim(const StoryStep& step, const std::string& id, GymWalk& walk){
     const bool center = step.action == CENTER_ENTER_VARIANT;
-    if (center || (step.kind == StoryStepKind::BATTLE && step.name == "koga")){
-        walk.at = *story_pose(Pokemon::pose_of(*step.pose_after));
+    if (center || (step.action == "battle" && step.name == "koga")){
+        walk.at = *story_pose(*step.pose_after);
         walk.gym_beaten = walk.gym_beaten || !center;
         walk.place();
         return "";
@@ -164,7 +162,7 @@ std::string row_on_sim(std::string_view id, GymWalk& walk){
 //  the walls cross, always stops the walk there: the worst case, which
 //  the console meets only when he looks that way.
 UnitTestResult test_gym_rows(){
-    GymWalk walk(*story_pose(Pokemon::pose_of(*checkpoint("12.01").start)));
+    GymWalk walk(*story_pose(*checkpoint("12.01").start));
     if (const std::string failure = row_on_sim("12.01", walk); !failure.empty()){
         return failure;
     }
@@ -175,7 +173,7 @@ UnitTestResult test_gym_rows(){
     if (walk.all_fought() != std::vector<std::string>{"rocker", "rocker", "man"}){
         return std::format("12.01: fought {} trainers, not Kayden, Kirk and Edgar.", walk.all_fought().size());
     }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("12.02").start));
+    const StoryPose next = *story_pose(*checkpoint("12.02").start);
     if (next.map != GYM || !(next.tile == west_of_koga.point)){
         return "12.02 doesn't start where 12.01 ends.";
     }
@@ -185,7 +183,7 @@ UnitTestResult test_gym_rows(){
     if (!(walk.sim->state().position == west_of_koga)){
         return std::format("12.02: ended on {}, not west of Koga where 12.02b starts.", to_string(walk.sim->state().position));
     }
-    const StoryPose after_koga = *story_pose(Pokemon::pose_of(*checkpoint("12.02b").start));
+    const StoryPose after_koga = *story_pose(*checkpoint("12.02b").start);
     if (after_koga.map != GYM || !(after_koga.tile == west_of_koga.point)){
         return "12.02b doesn't start where 12.02 ends.";
     }
@@ -286,7 +284,7 @@ public:
 UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id, std::string_view battle, unsigned pokeguy){
     std::optional<LevelCheck> check;
     for (const StoryStep& step : checkpoint(id).steps){
-        if (step.kind == StoryStepKind::BATTLE && step.name == battle){
+        if (step.action == "battle" && step.name == battle){
             break;
         }
         if (step.action == LEVEL_ACTION){
@@ -317,14 +315,11 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
 //  docs/battles/pokeguy-conditions.md, ### koga): 12.01's Mart step buys up
 //  to 5, whatever the Potions cover.
 UnitTestResult test_mart_fills_super_potions(){
-    const std::optional<Pokemon::StoryCheckpoint> row = checkpoint("12.01");
-    if (!row){
-        return "12.01 is missing.";
-    }
-    const auto step_it = std::find_if(row->steps.begin(), row->steps.end(), [](const Pokemon::StoryStep& step){
+    const StoryCheckpoint& row = checkpoint("12.01");
+    const auto step_it = std::find_if(row.steps.begin(), row.steps.end(), [](const StoryStep& step){
         return step.name == "buy_super_potions";
     });
-    if (step_it == row->steps.end()){
+    if (step_it == row.steps.end()){
         return "12.01 has no buy_super_potions step.";
     }
     struct Case{
@@ -338,8 +333,8 @@ UnitTestResult test_mart_fills_super_potions(){
         Supplies supplies;
         supplies.potions = test.potions;
         supplies.super_potions = test.super_potions;
-        Pokemon::StoryStep step = *step_it;
-        const std::optional<Pokemon::Outcome> done = fill_mart_to(logger, supplies, step);
+        StoryStep step = *step_it;
+        const bool done = fill_mart_to(logger, supplies, step);
         const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(step.args, "items");
         const size_t buys = done ? 0 : (items == nullptr || items->empty() ? 0 : items->at(0).quantity);
         if (buys != test.expected){
@@ -357,7 +352,7 @@ UnitTestResult test_12_02_goes_straight_to_koga(){
         if (step.name == "challenge_koga"){
             return true;
         }
-        if (step.action == MART_ACTION || !step.skip_if.empty() || step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+        if (step.action == MART_ACTION || !step.skip_if.empty() || step.action == "route" || step.action == "legs"){
             return std::format("12.02/{}: a Mart, a skipped or a walking step before Koga.", step.name);
         }
     }

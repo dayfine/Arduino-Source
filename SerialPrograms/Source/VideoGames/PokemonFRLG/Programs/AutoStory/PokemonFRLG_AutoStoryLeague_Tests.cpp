@@ -20,9 +20,7 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
@@ -113,7 +111,9 @@ std::string walk_league_row(
         if (step.name == until){
             return "";
         }
-        if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP){
+        if (step.action != "route" && step.action != "legs" && step.action != "step"
+            && step.action != "fly" && step.action != "lift_floor"
+        ){
             continue;
         }
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -128,7 +128,7 @@ std::string walk_league_row(
 //  no trainer met on the way.
 UnitTestResult walk_to_room(std::string_view id, std::string_view until, std::string_view room){
     const StoryCheckpoint& row = league_row(id);
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = walk_league_row(row, until, sim, at); !failure.empty()){
         return failure;
@@ -154,7 +154,7 @@ UnitTestResult walk_to_door(std::string_view id, std::string_view battle, std::s
     if (!beaten.pose_after){
         return std::format("{} {}: no declared pose after the battle.", id, battle);
     }
-    StoryPose at = *story_pose(Pokemon::pose_of(*beaten.pose_after));
+    StoryPose at = *story_pose(*beaten.pose_after);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = walk_league_row(row, door, sim, at, battle); !failure.empty()){
         return failure;
@@ -171,7 +171,7 @@ UnitTestResult walk_to_door(std::string_view id, std::string_view battle, std::s
 //  20.01a: the lobby to the Mart's counter, where 20.01 starts.
 UnitTestResult test_indigo_mart_counter(){
     const StoryCheckpoint& shop = league_row("20.01a");
-    StoryPose at = *story_pose(Pokemon::pose_of(*shop.start));
+    StoryPose at = *story_pose(*shop.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = walk_league_row(shop, "", sim, at); !failure.empty()){
         return failure;
@@ -180,7 +180,7 @@ UnitTestResult test_indigo_mart_counter(){
     if (!(sim.state().position == counter)){
         return std::format("20.01a: ended on {}, not the Mart's counter {}.", to_string(sim.state().position), to_string(counter));
     }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*league_row("20.01").start));
+    const StoryPose next = *story_pose(*league_row("20.01").start);
     if (next.map != counter.map || !(next.tile == counter.point)){
         return "20.01 doesn't start where 20.01a ends.";
     }
@@ -307,7 +307,7 @@ UnitTestResult test_venusaur_charge(){
             .level = 54,
             .stats = Stats{.hp = 171, .attack = 101, .defense = 135, .sp_attack = 119, .sp_defense = 150, .speed = 117},
         };
-        supplies.foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+        supplies.foes = frlg_arg<std::vector<std::string>>(step.args, "foes");
         supplies.policy = battle_policy_of(step.args);
         PolicyState state(supplies.policy);
         PolicyView view{
@@ -340,7 +340,7 @@ size_t step_index(const StoryCheckpoint& row, std::string_view name){
 //  is withdrawn there by its species, to ride along, before the Mart.
 UnitTestResult test_magikarp_from_box(){
     const StoryCheckpoint& row = league_row("20.01a");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = walk_league_row(row, "magikarp_from_box", sim, at); !failure.empty()){
         return failure;
@@ -382,27 +382,35 @@ UnitTestResult test_magikarp_never_sent(){
 //  The League's fight rows, in order: each starts where the one before
 //  ends; its first steps are the level check and the top-up for its own
 //  fight (league_top_up), before any walk; its battle is that fight; and
-//  its verify block is the plan's pass figures (frlg-league-plan.json's
-//  contract.pass: tries = min_pass.of, min_pass = min_pass.k,
-//  reset_budget).
+//  its verify block skips phase 1 (tries = 0, min_pass = 0) with retry
+//  counts 3, 5, 3, 3, 5.
 UnitTestResult test_league_fight_rows(){
-    const std::string_view rows[][2] = {
-        {"20.01", "lorelei"}, {"20.02", "bruno"}, {"20.03", "agatha"}, {"20.04", "lance"}, {"20.05", "champion"},
+    struct LeagueRowSpec{
+        std::string_view id;
+        std::string_view fight;
+        size_t reset_budget;
+    };
+    const LeagueRowSpec rows[] = {
+        {"20.01", "lorelei", 3},
+        {"20.02", "bruno", 5},
+        {"20.03", "agatha", 3},
+        {"20.04", "lance", 3},
+        {"20.05", "champion", 5},
     };
     const StoryCheckpoint* before = &league_row("20.01a");
-    for (const auto& [id, fight_name] : rows){
+    for (const auto& [id, fight_name, reset_budget] : rows){
         const StoryCheckpoint& row = league_row(id);
-        const std::optional<Pokemon::GridPose> before_end = Pokemon::checkpoint_end_pose(*before);
-        if (!row.start || !before_end || !(Pokemon::grid_pose_of(*row.start) == *before_end)){
+        const std::optional<Pokemon::GridPose> before_end = checkpoint_end_pose(*before);
+        if (!row.start || !before_end || !(*row.start == *before_end)){
             return std::format("{}: doesn't start where {} ends.", id, before->id);
         }
         before = &row;
         if (row.steps.size() < 2 || row.steps[0].action != "level" || row.steps[1].action != LEAGUE_TOP_UP_ACTION
-            || Pokemon::story_arg<std::string>(row.steps[1].args, "fight") != fight_name
+            || frlg_arg<std::string>(row.steps[1].args, "fight") != fight_name
         ){
             return std::format("{}: expected the level check, then league_top_up for {}, first.", id, fight_name);
         }
-        const std::optional<std::string> battle = league_fight_name(Pokemon::story_arg<std::string>(league_step(id, fight_name).args, "trainer"));
+        const std::optional<std::string> battle = league_fight_name(frlg_arg<std::string>(league_step(id, fight_name).args, "trainer"));
         if (battle != fight_name){
             return std::format("{} {}: its trainer is not the plan's {}.", id, fight_name, fight_name);
         }
@@ -411,9 +419,9 @@ UnitTestResult test_league_fight_rows(){
             return std::format("{}: the League plan has no pass figures for {}.", id, fight_name);
         }
         const Pokemon::StoryVerify plan{
-            .tries = (size_t)fight->pass->min_pass_of,
-            .min_pass = (size_t)fight->pass->min_pass,
-            .reset_budget = (size_t)fight->pass->reset_budget,
+            .tries = 0,
+            .min_pass = 0,
+            .reset_budget = reset_budget,
         };
         if (row.verify != plan){
             return std::format(

@@ -44,7 +44,7 @@ StartMenuContext start_menu_context(StartMenu menu){
     return StartMenuContext::STANDARD;
 }
 
-StartMenu step_start_menu(const Pokemon::StoryActionArgs& args){
+StartMenu step_start_menu(const FrlgArgMap& args){
     const bool* safari = game_arg<bool>(args, "safari");
     return safari != nullptr && *safari ? StartMenu::SAFARI : StartMenu::FULL;
 }

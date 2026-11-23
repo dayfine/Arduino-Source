@@ -7,9 +7,7 @@
 #include <algorithm>
 #include <format>
 #include <utility>
-#include <variant>
 #include "Pokemon_StoryPostconditionCheck.h"
-#include "Pokemon_StoryStepExecutor.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -35,16 +33,6 @@ PostconditionResult result(std::string what, PostconditionVerdict verdict, std::
 
 PostconditionResult not_read(std::string what){
     return result(std::move(what), PostconditionVerdict::NOT_CHECKED, "the game can't read it");
-}
-
-//  The first pose among a step's args (a route's target).
-std::optional<GridPose> pose_arg(const StoryStep& step){
-    for (const auto& [unused, value] : step.args){
-        if (const GridPose* pose = std::get_if<GridPose>(&value)){
-            return *pose;
-        }
-    }
-    return std::nullopt;
 }
 
 std::string tiles_text(const std::vector<TilePos>& tiles){
@@ -107,8 +95,13 @@ void check_facing(const GridPose& end, const ObservedState& observed, bool map_f
     ));
 }
 
-void check_position(const StoryCheckpoint& checkpoint, const ObservedState& observed, std::vector<PostconditionResult>& out){
-    const std::optional<GridPose> end = checkpoint_end_pose(checkpoint);
+void check_position(
+    const StoryPostconditions& postconditions,
+    const std::optional<GridPose>& fallback_end_pose,
+    const ObservedState& observed,
+    std::vector<PostconditionResult>& out
+){
+    const std::optional<GridPose>& end = postconditions.position ? postconditions.position : fallback_end_pose;
     if (!end){
         return;
     }
@@ -174,31 +167,17 @@ bool PostconditionReport::all_passed() const{
     return !results.empty() && count(PostconditionVerdict::PASSED) == results.size();
 }
 
-
-std::optional<GridPose> checkpoint_end_pose(const StoryCheckpoint& checkpoint){
-    if (checkpoint.postconditions.position){
-        return checkpoint.postconditions.position;
-    }
-    for (auto step = checkpoint.steps.rbegin(); step != checkpoint.steps.rend(); ++step){
-        if (step->pose_after){
-            return grid_pose_of(*step->pose_after);
-        }
-        if (std::optional<GridPose> target = pose_arg(*step)){
-            return target;
-        }
-        if (step->kind == StoryStepKind::LEGS){
-            return std::nullopt;
-        }
-    }
-    return std::nullopt;
-}
-
-PostconditionReport check_postconditions(const StoryCheckpoint& checkpoint, const ObservedState& observed){
+PostconditionReport check_postconditions(
+    std::string_view checkpoint_id,
+    const StoryPostconditions& postconditions,
+    const std::optional<GridPose>& fallback_end_pose,
+    const ObservedState& observed
+){
     PostconditionReport report;
-    report.checkpoint = checkpoint.id;
-    check_position(checkpoint, observed, report.results);
-    check_items(checkpoint.postconditions, observed, report.results);
-    check_flags(checkpoint.postconditions, observed, report.results);
+    report.checkpoint = std::string(checkpoint_id);
+    check_position(postconditions, fallback_end_pose, observed, report.results);
+    check_items(postconditions, observed, report.results);
+    check_flags(postconditions, observed, report.results);
     return report;
 }
 

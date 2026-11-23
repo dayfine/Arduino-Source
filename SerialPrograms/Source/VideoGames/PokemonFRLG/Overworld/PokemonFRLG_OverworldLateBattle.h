@@ -21,7 +21,7 @@
 #include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Pokemon_Interrupts.h"
-#include "CommonTools/ScreenEvents/ScreenEventLog.h"
+#include "Pokemon/AutoStory/Pokemon_ScreenEventLog.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldRoute.h"

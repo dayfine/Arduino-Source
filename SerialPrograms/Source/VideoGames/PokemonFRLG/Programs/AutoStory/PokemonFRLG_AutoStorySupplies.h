@@ -16,7 +16,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
+#include "Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryBattlePolicyData.h"

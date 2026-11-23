@@ -33,9 +33,8 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Time.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -104,9 +103,7 @@ struct SlopeMove{
 std::optional<SlopeMove> parse_slope_move(std::string_view words);
 //  A SLOPE_VARIANT step's moves, or nothing if it isn't one or a move
 //  doesn't parse.
-std::optional<std::vector<SlopeMove>> parse_slope_step(const Pokemon::StoryStep& step);
-//  SLOPE_VARIANT and its args.
-Pokemon::StoryActionSpec slope_action_spec();
+std::optional<std::vector<SlopeMove>> parse_slope_step(const StoryStep& step);
 
 //  One state of the controller, held for `hold`.
 struct SlopePress{
@@ -131,21 +128,26 @@ enum class SlopeSent{
 //  What `send` of SlopeCalls reports.
 struct SlopeSendResult{
     SlopeSent sent = SlopeSent::ALL;
-    //  BATTLE: the press under way when it started, from 0.
+    //  BATTLE or MESSAGE: the press under way when it started, from 0.
     size_t press = 0;
+    //  MESSAGE: game-time remaining in `press` when the dialog opened, if
+    //  it was cut short mid-press (used to resume a non-battle dialog during
+    //  a brake).
+    Milliseconds press_remaining = Milliseconds(0);
 };
 //  The console side of ride_slope(): `send` sends `presses` back to back,
-//  watching for a message (SlopeMessageGate) only when `message` is set,
-//  and for a battle; `fight` fights a battle that cut a batch short, back
-//  to the overworld, and tells whether it was won.
+//  watching for a message (SlopeMessageGate) when `message` is set, and for
+//  a battle; `fight` fights a battle that cut a batch short, back to the
+//  overworld, and tells whether it was won; `clear_dialog` dismisses an
+//  unexpected white dialog (e.g. "REPEL's effect wore off!" or a Biker's
+//  pre-battle line) while keeping B held, returning true if a battle starts.
 struct SlopeCalls{
     std::function<SlopeSendResult(const std::vector<SlopePress>& presses, bool message)> send;
     std::function<bool()> fight;
     std::function<void(const std::string& message)> log;
+    std::function<bool()> clear_dialog = {};
 };
 
-//  The most battles one ride goes on from.
-inline constexpr size_t SLOPE_MAX_BATTLES = 3;
 //  After a battle that cut `moves[move]` short ("if a Biker catches us,
 //  fight", user 2026-11-12): the ROLL to go on from, which pulls the player
 //  down the column they were caught in to a stop the moves know. Only

@@ -16,9 +16,8 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 #include "PokemonFRLG_AutoStorySupplies.h"
 
 namespace PokemonAutomation{
@@ -30,8 +29,6 @@ namespace PokemonFRLG{
 //  slugs). Without `found` it keeps them; with it, each must be one more
 //  than kept: the item was found since.
 inline const std::string COUNT_ITEMS_VARIANT = "count_items";
-//  COUNT_ITEMS_VARIANT and its args.
-Pokemon::StoryActionSpec count_items_action_spec();
 
 //  What a slope or count step needs from the story.
 struct SlopeEnv{
@@ -48,7 +45,7 @@ struct SlopeEnv{
 //  another step. A Biker who catches the player on the slope is fought,
 //  and the ride goes on from the stop the slope then pulls them to, where
 //  slope_resume_move() knows it; elsewhere the step fails.
-std::optional<Pokemon::Outcome> run_slope_step(SlopeEnv& env, const Pokemon::StoryStep& step);
+std::optional<std::optional<Pokemon::StoryFailure>> run_slope_step(SlopeEnv& env, const StoryStep& step);
 
 
 

@@ -149,10 +149,10 @@ BikeTap OverworldSimWalker::bike_tap(const RouteStep& step){
     const std::optional<SimSeen> seen = m_sim.hold(step.direction, BIKE_TAP, release, m_rules.bike_tap_period + BIKE_TAP_SETTLE, watchers(ints));
     if (seen){
         m_log.push_back("Bike: " + ints[seen->watcher].name + " on a tap of " + to_string(step) + ".");
-        return BikeTap{.moved = false, .interrupt = seen->watcher};
+        return BikeTap{.moved = false, .interrupt = seen->watcher, .cleared_late = false};
     }
     if (!(m_sim.state().position == before)){
-        return BikeTap{.moved = true};
+        return BikeTap{.moved = true, .interrupt = std::nullopt, .cleared_late = false};
     }
     return BikeTap{.moved = false, .interrupt = std::nullopt, .cleared_late = clear_late(ints, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0};
 }
@@ -181,7 +181,7 @@ BikeTap OverworldSimWalker::step_tap(const RouteStep& step, int tap){
     m_sim.tap(step.direction, STEP_TAP, STEP_TAP_RELEASE);
     m_sim.watch({}, step_tap_settle(step, tap));
     if (m_sim.reads_step_tap_as_step(before, turn_taps)){
-        return BikeTap{.moved = true};
+        return BikeTap{.moved = true, .interrupt = std::nullopt, .cleared_late = false};
     }
     return BikeTap{.moved = false, .interrupt = std::nullopt, .cleared_late = clear_late(interrupts(step), AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0};
 }

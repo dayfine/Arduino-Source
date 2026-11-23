@@ -22,12 +22,11 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonFRLG_AutoStoryMemberInfo.h"
 #include "PokemonFRLG_AutoStoryPartyRoster.h"
 #include "PokemonFRLG_AutoStoryStartMenu.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -67,13 +66,11 @@ struct FlyPlan{
 
 //  The fly step's choices, or nothing if `step` isn't one or names no town
 //  Fly goes to.
-std::optional<FlyPlan> parse_fly_step(const Pokemon::StoryStep& step);
+std::optional<FlyPlan> parse_fly_step(const StoryStep& step);
 //  The way a surf step faces the water, or nothing if it isn't one.
-std::optional<Pokemon::Direction> parse_surf_step(const Pokemon::StoryStep& step);
+std::optional<Pokemon::Direction> parse_surf_step(const StoryStep& step);
 //  Whether `step` is one of this file's steps.
-bool is_field_move_step(const Pokemon::StoryStep& step);
-//  This file's GAME actions and their args (field_action_specs()).
-std::vector<Pokemon::StoryActionSpec> field_move_specs();
+bool is_field_move_step(const StoryStep& step);
 
 //  On the console, a step of this file's; nothing for another step. The
 //  step ends on its pose_after, if it has one. A Fly naming a species opens
@@ -81,9 +78,9 @@ std::vector<Pokemon::StoryActionSpec> field_move_specs();
 //  (use_field_move()); `party` records that slot, so a later Fly opens
 //  only its menu. A Fly ends once the player has landed
 //  (judge_fly_landing()), or fails as fly_no_takeoff or fly_no_landing.
-std::optional<Pokemon::Outcome> run_field_move_step(
+std::optional<std::optional<Pokemon::StoryFailure>> run_field_move_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
-    const Pokemon::StoryStep& step, PartyCache& party
+    const StoryStep& step, PartyCache& party
 );
 
 

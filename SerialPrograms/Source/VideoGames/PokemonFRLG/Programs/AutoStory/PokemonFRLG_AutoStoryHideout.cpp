@@ -71,7 +71,7 @@ std::optional<size_t> floor_row(const std::vector<std::string>& menu, std::strin
 
 } // namespace
 
-std::optional<LiftRide> parse_lift_floor_step(const Pokemon::StoryStep& step){
+std::optional<LiftRide> parse_lift_floor_step(const StoryStep& step){
     if (step.action != LIFT_FLOOR_VARIANT){
         return std::nullopt;
     }
@@ -102,39 +102,8 @@ MenuPresses lift_menu_presses(const LiftRide& ride, size_t entries){
     return down <= up ? MenuPresses{Pokemon::Direction::SOUTH, down} : MenuPresses{Pokemon::Direction::NORTH, up};
 }
 
-bool is_hideout_step(const Pokemon::StoryStep& step){
+bool is_hideout_step(const StoryStep& step){
     return (step.action == POSTER_SWITCH_VARIANT && step.args.empty()) || parse_lift_floor_step(step).has_value();
-}
-
-std::vector<Pokemon::StoryActionSpec> field_action_specs(){
-    using Pokemon::StoryArgType;
-    using Pokemon::StoryStepKind;
-    std::vector<Pokemon::StoryActionSpec> specs{
-        {.kind = StoryStepKind::GAME, .name = POSTER_SWITCH_VARIANT, .args = {}},
-        {.kind = StoryStepKind::GAME, .name = LIFT_FLOOR_VARIANT, .args = {
-            required_arg("from", StoryArgType::WORD, "the floor the lift stands at, as the panel names it (B1F, B2F, B4F; 1F to 5F)"),
-            required_arg("to", StoryArgType::WORD, "the floor it rides to"),
-        }},
-        {.kind = StoryStepKind::GAME, .name = USE_ITEM_VARIANT, .args = {
-            required_arg("item", StoryArgType::WORD, "the item's slug, as read_item_list_name() names it"),
-            optional_arg("safari", StoryArgType::BOOLEAN, false, "in the Safari Zone, whose START menu has RETIRE on top"),
-            optional_arg("count", StoryArgType::INTEGER, int64_t(1), "how often to use it, as many as the bag has (a Rare Candy on the lead each)"),
-            optional_arg("if_any", StoryArgType::BOOLEAN, false, "skip the step, logged, if the bag has none left, instead of failing"),
-        }},
-        {.kind = StoryStepKind::GAME, .name = USE_REPEL_VARIANT, .args = {
-            optional_arg("safari", StoryArgType::BOOLEAN, false, "in the Safari Zone, whose START menu has RETIRE on top"),
-            optional_arg("if_any", StoryArgType::BOOLEAN, false, "skip the step, logged, if the bag has no Repel left, instead of failing"),
-        }},
-        {.kind = StoryStepKind::GAME, .name = RIDE_BIKE_VARIANT, .args = {}},
-        {.kind = StoryStepKind::GAME, .name = REGISTER_BIKE_VARIANT, .args = {}},
-    };
-    for (const std::string& center : {CENTER_ENTER_VARIANT, CENTER_EXIT_VARIANT}){
-        specs.push_back({.kind = StoryStepKind::GAME, .name = center, .args = {}});
-    }
-    for (Pokemon::StoryActionSpec& move : field_move_specs()){
-        specs.push_back(std::move(move));
-    }
-    return specs;
 }
 
 
@@ -188,38 +157,35 @@ void push_poster_switch(ConsoleHandle& console, ProControllerContext& context){
     mash_until_overworld(console, context, HIDEOUT_SCENE_TIMEOUT);
 }
 
-std::optional<Pokemon::Outcome> run_field_game_step(
+std::optional<std::optional<Pokemon::StoryFailure>> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
-    const Pokemon::StoryStep& step, PartyCache& party
+    const StoryStep& step, PartyCache& party
 ){
-    const auto done = [&step]{
-        return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
-    };
     if (const std::optional<LiftRide> ride = parse_lift_floor_step(step)){
         ride_lift(console, context, *ride, player);
-        return done();
+        return std::optional<Pokemon::StoryFailure>(std::nullopt);
     }
-    if (std::optional<Pokemon::Outcome> moved = run_field_move_step(console, context, language, player, step, party)){
+    if (std::optional<std::optional<Pokemon::StoryFailure>> moved = run_field_move_step(console, context, language, player, step, party)){
         return moved;
     }
     if (is_center_variant(step.action)){
         //  Both start facing north: at the door, or at the nurse.
         walk_room_legs(console, context, center_legs(step.action), Pokemon::Direction::NORTH, player);
-        return done();
+        return std::optional<Pokemon::StoryFailure>(std::nullopt);
     }
     if (step.action == POSTER_SWITCH_VARIANT){
         push_poster_switch(console, context);
-        return Pokemon::outcome_ok();
+        return std::optional<Pokemon::StoryFailure>(std::nullopt);
     }
-    if (const std::optional<Pokemon::Outcome> hall = run_hall_of_fame_step(console, context, step)){
-        return hall->succeeded() ? done() : *hall;
+    if (const std::optional<std::optional<Pokemon::StoryFailure>> hall = run_hall_of_fame_step(console, context, step)){
+        return hall;
     }
     if (!is_item_use_step(step)){
         return std::nullopt;
     }
     if (step.action == RIDE_BIKE_VARIANT){
         OverworldWalkSteps::get_on_bike(console, context, player);
-        return done();
+        return std::optional<Pokemon::StoryFailure>(std::nullopt);
     }
     ConsoleItemUseActions bag(console, context, language, step_start_menu(step.args));
     const ItemUseEnd end = step.action == REGISTER_BIKE_VARIANT ? register_item_in_bag(console.logger(), bag, "bicycle")
@@ -228,12 +194,12 @@ std::optional<Pokemon::Outcome> run_field_game_step(
     //  A Repel that lingered from before leaves one on: the step's purpose.
     const bool* if_any = game_arg<bool>(step.args, "if_any");
     if (!item_use_step_done(end, if_any != nullptr && *if_any)){
-        return Pokemon::outcome_failed(std::string("use_item_") + item_use_end_name(end), step.action);
+        return frlg_failure(std::string("use_item_") + item_use_end_name(end), step.action);
     }
     if (end == ItemUseEnd::NONE_LEFT){
         console.log(std::format("{}: none left in the bag; skipped (if_any).", step.name), COLOR_ORANGE);
     }
-    return done();
+    return std::optional<Pokemon::StoryFailure>(std::nullopt);
 }
 
 

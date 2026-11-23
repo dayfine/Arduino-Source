@@ -307,7 +307,7 @@ const Type* step_arg(const StoryStep& step, std::string_view key){
 //  buys, uses or counts. Nothing for a step that reads no item's name.
 std::vector<std::string> items_read_by(const StoryStep& step){
     std::vector<std::string> items;
-    if (step.kind == StoryStepKind::SHOP){
+    if (step.action == "shop"){
         if (const auto* lines = step_arg<std::vector<Pokemon::StoryItem>>(step, "items")){
             for (const MartOrder& order : viridian_mart_orders(*lines).value_or(std::vector<MartOrder>())){
                 items.emplace_back(order.item);

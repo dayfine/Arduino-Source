@@ -311,33 +311,38 @@ StartRead keep_console_start(
 }
 
 
-void add_start_check(
-    Pokemon::Checkpoint& checkpoint, const std::optional<Pokemon::Pose>& start, StartReader read,
-    std::function<void(const std::string& line)> log
+std::optional<Pokemon::StoryFailure> run_start_check(
+    const std::optional<Pokemon::GridPose>& start,
+    const StartReader& read,
+    const std::function<void(const std::string& line)>& log
 ){
     if (!start){
-        return;
+        return std::nullopt;
     }
-    checkpoint.start.push_back(Pokemon::condition("save_at_start_pose",
-        [read = std::move(read), log = std::move(log)](Pokemon::RunState&){
-            const StartRead found = read();
-            switch (found.found){
-            case StartFound::NOT_READ:
-                log("start pose not read: " + (found.detail.empty() ? "" : found.detail + "; ")
-                    + "going on from the save as the checkpoint's start.");
-                return true;
-            case StartFound::AT_START:
-                if (!found.detail.empty()){
-                    log("start pose matches: " + found.detail);
-                }
-                return true;
-            case StartFound::ELSEWHERE:
-                log("start pose mismatch: " + found.detail);
-                return false;
-            }
-            return false;
+    const StartRead found = read();
+    switch (found.found){
+    case StartFound::NOT_READ:
+        if (log){
+            log("start pose not read: " + (found.detail.empty() ? "" : found.detail + "; ")
+                + "going on from the save as the checkpoint's start.");
         }
-    ));
+        return std::nullopt;
+    case StartFound::AT_START:
+        if (log && !found.detail.empty()){
+            log("start pose matches: " + found.detail);
+        }
+        return std::nullopt;
+    case StartFound::ELSEWHERE:
+        if (log){
+            log("start pose mismatch: " + found.detail);
+        }
+        return Pokemon::StoryFailure{
+            .code = "start_failed",
+            .detail = found.detail,
+            .repeats = true,
+        };
+    }
+    return Pokemon::StoryFailure{.code = "start_failed", .detail = "unknown start read", .repeats = true};
 }
 
 

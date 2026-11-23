@@ -31,6 +31,10 @@ public:
     //  As WhiteDialogWatcher holds its dialog.
     static constexpr Milliseconds HOLD = Milliseconds(250);
 
+    explicit SlopeMessageGate(Milliseconds hold = HOLD)
+        : m_hold(hold)
+    {}
+
     bool opened(bool shows, WallClock now){
         if (!shows){
             m_clear_seen = true;
@@ -43,10 +47,11 @@ public:
         if (!m_since){
             m_since = now;
         }
-        return now - *m_since >= HOLD;
+        return now - *m_since >= m_hold;
     }
 
 private:
+    Milliseconds m_hold = HOLD;
     bool m_clear_seen = false;
     std::optional<WallClock> m_since = std::nullopt;
 };

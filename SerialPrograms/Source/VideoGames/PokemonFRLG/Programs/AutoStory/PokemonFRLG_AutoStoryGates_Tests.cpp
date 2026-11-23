@@ -20,7 +20,6 @@
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryPose.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -82,15 +81,15 @@ const std::vector<MapData>& scene_maps(){
 
 StoryStep route_step(const std::string& map, TilePos goal){
     StoryStep step;
-    step.kind = StoryStepKind::ROUTE;
+    step.action = "route";
     step.name = "cross";
     step.args["target"] = Pokemon::GridPose{map, {goal}, std::nullopt};
     return step;
 }
 
-Pokemon::RunState run_state(const Scene& scene, bool card_key){
-    Pokemon::RunState state;
-    state.pose = to_pose(StoryPose{std::string(scene.map), scene.start, Direction::EAST});
+FrlgRunState run_state(const Scene& scene, bool card_key){
+    FrlgRunState state;
+    state.pose = to_grid_pose(StoryPose{std::string(scene.map), scene.start, Direction::EAST});
     if (card_key){
         state.flags.insert("card_key_held");
     }
@@ -98,31 +97,31 @@ Pokemon::RunState run_state(const Scene& scene, bool card_key){
 }
 
 //  The step on StoryMapsSim over `maps`, from the start of the corridor.
-Pokemon::Outcome on_maps(const Scene& scene, bool card_key, Pokemon::RunState& state){
+std::optional<Pokemon::StoryFailure> on_maps(const Scene& scene, bool card_key, FrlgRunState& state){
     StorySimKnobs knobs;
     knobs.maps = &scene_maps();
     StoryMapsSim sim(knobs);
     state = run_state(scene, card_key);
-    return sim.run(route_step(std::string(scene.map), scene.goal), state);
+    return sim.run_step(route_step(std::string(scene.map), scene.goal), state);
 }
 
 
 //  A closed door stops a player without the Card Key: the story's sim does
 //  not walk through gates the run has not opened.
 UnitTestResult test_maps_sim_door_blocks(){
-    Pokemon::RunState state;
-    const Pokemon::Outcome outcome = on_maps(DOOR, false, state);
-    if (outcome.succeeded()){
+    FrlgRunState state;
+    const std::optional<Pokemon::StoryFailure> failure = on_maps(DOOR, false, state);
+    if (!failure){
         return "The row sim walked through a closed card-key door without the Card Key.";
     }
     return true;
 }
 
 UnitTestResult test_maps_sim_door_opens(){
-    Pokemon::RunState state;
-    const Pokemon::Outcome outcome = on_maps(DOOR, true, state);
-    if (!outcome.succeeded()){
-        return "The row sim did not open the door for a player with the Card Key: " + Pokemon::to_string(outcome);
+    FrlgRunState state;
+    const std::optional<Pokemon::StoryFailure> failure = on_maps(DOOR, true, state);
+    if (failure){
+        return "The row sim did not open the door for a player with the Card Key: " + failure->code;
     }
     if (!state.gates.opened.contains("SilphCo_5F/door_1")){
         return "The run's gates do not have the door open after the step.";
@@ -131,10 +130,10 @@ UnitTestResult test_maps_sim_door_opens(){
 }
 
 UnitTestResult test_maps_sim_statue_switch(){
-    Pokemon::RunState state;
-    const Pokemon::Outcome outcome = on_maps(STATUE, false, state);
-    if (!outcome.succeeded()){
-        return "The row sim did not press the statue for the barrier: " + Pokemon::to_string(outcome);
+    FrlgRunState state;
+    const std::optional<Pokemon::StoryFailure> failure = on_maps(STATUE, false, state);
+    if (failure){
+        return "The row sim did not press the statue for the barrier: " + failure->code;
     }
     if (!state.gates.switch_on("mansion")){
         return "The run's gates do not have the switch on after the step.";

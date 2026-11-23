@@ -186,6 +186,36 @@ MapData pokemon_center_room(const std::string& name, const Pokemon::WarpDestinat
             warp.to = outside;
         }
     }
+    if (name == "CinnabarIsland_PokemonCenter_1F"){
+        //  pokefirered data/maps/CinnabarIsland_PokemonCenter_1F/map.json:
+        //  Cooltrainer F wanders left-and-right on row 4 (blocking the way
+        //  west from the nurse to (0, 4)), Gentleman wanders around (9, 7),
+        //  and Youngster sits at (14, 6). Bill at (11, 5) is hidden by
+        //  FLAG_HIDE_CINNABAR_POKECENTER_BILL until after Blaine.
+        MapObject cooltrainer = object("cooltrainer_f", Pokemon::ObjectKind::NPC, {2, 4});
+        cooltrainer.wander = Pokemon::TileBox{.x0 = 1, .y0 = 4, .x1 = 3, .y1 = 4};
+        room.objects.push_back(std::move(cooltrainer));
+
+        MapObject gentleman = object("gentleman", Pokemon::ObjectKind::NPC, {9, 7});
+        gentleman.wander = Pokemon::TileBox{.x0 = 8, .y0 = 6, .x1 = 10, .y1 = 8};
+        room.objects.push_back(std::move(gentleman));
+
+        room.objects.push_back(object("youngster", Pokemon::ObjectKind::NPC, {14, 6}));
+    }else if (name == "SaffronCity_PokemonCenter_1F"){
+        //  pokefirered data/maps/SaffronCity_PokemonCenter_1F/map.json:
+        //  Woman 3 wanders (3..5, 3..5), Youngster wanders (9, 5..7), and
+        //  Gentleman sits at (14, 6). Row 4 east of the nurse and column 14
+        //  north are clear.
+        MapObject woman = object("woman_3", Pokemon::ObjectKind::NPC, {4, 4});
+        woman.wander = Pokemon::TileBox{.x0 = 3, .y0 = 3, .x1 = 5, .y1 = 5};
+        room.objects.push_back(std::move(woman));
+
+        MapObject youngster = object("youngster", Pokemon::ObjectKind::NPC, {9, 6});
+        youngster.wander = Pokemon::TileBox{.x0 = 9, .y0 = 5, .x1 = 9, .y1 = 7};
+        room.objects.push_back(std::move(youngster));
+
+        room.objects.push_back(object("gentleman", Pokemon::ObjectKind::NPC, {14, 6}));
+    }
     return room;
 }
 

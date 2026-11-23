@@ -1,112 +1,120 @@
 {
-    "format": "pokesim-authored-checkpoint/1",
-    "game": "frlg",
-    "checkpoint": {
-        "id": "13.03",
-        "title": "Pokemon Mansion B1F: the Elixir and TM14",
-        "start": {
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "13.03",
+    "title": "Pokemon Mansion B1F: the Elixir and TM14",
+    "start": {
+      "map": "PokemonMansion_B1F",
+      "tiles": [
+        [
+          34,
+          29
+        ]
+      ],
+      "facing": "west"
+    },
+    "events": [
+      {
+        "id": "to_elixir",
+        "action": "route",
+        "why": "B1F arrives with the switch on, which closes its north ((33-35, 20-21), (16, 28-30)): the route presses the statue it needs and walks up to (34, 5), beside the hidden ELIXIR on (35, 5)",
+        "args": {
+          "target": {
             "map": "PokemonMansion_B1F",
             "tiles": [
-                [
-                    34,
-                    29
-                ]
+              [
+                34,
+                5
+              ]
             ],
-            "facing": "west"
-        },
-        "events": [
-            {
-                "id": "to_elixir",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "PokemonMansion_B1F",
-                        "tiles": [
-                            [
-                                34,
-                                5
-                            ]
-                        ],
-                        "facing": "east"
-                    }
-                },
-                "why": "B1F arrives with the switch on, which closes its north ((33-35, 20-21), (16, 28-30)): the route presses the statue it needs and walks up to (34, 5), beside the hidden ELIXIR on (35, 5)",
-                "gates_after": {
-                    "switches": {
-                        "mansion": false
-                    }
-                }
-            },
-            {
-                "id": "hidden_elixir",
-                "kind": "talk",
-                "why": "the hidden ELIXIR on (35, 5) (pokeguy 1:20:06)"
-            },
-            {
-                "id": "to_tm14",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "PokemonMansion_B1F",
-                        "tiles": [
-                            [
-                                23,
-                                5
-                            ]
-                        ],
-                        "facing": "north"
-                    }
-                },
-                "why": "back along the north rooms to (23, 5), below the ball (23, 4)"
-            },
-            {
-                "id": "tm14",
-                "kind": "talk",
-                "why": "TM14 (pokeguy 1:20:15)"
-            },
-            {
-                "id": "teach_blizzard",
-                "kind": "game_action",
-                "action": "teach",
-                "args": {
-                    "item": "tm14",
-                    "move": "blizzard",
-                    "slot": 1,
-                    "keep": ["tackle", "withdraw", "tail-whip", "water-gun", "bubble", "bite", "mega-kick", "water-pulse", "surf"]
-                },
-                "why": "TM14 Blizzard over Dig (pokeguy, PokemonSimulation docs/progression/pokeguy-moves.md: Strength, Surf, Bite, Blizzard; the user approved the TM spend 2026-11-12), taught as soon as it is picked up; keep list: every move the lead can know but Dig, so the one other move (Dig) goes; fails if none or several are outside the list"
-            }
-        ],
-        "start_gates": {
+            "facing": "east"
+          },
+          "variant": "run",
+          "gates_after": {
             "switches": {
-                "mansion": true
+              "mansion": false
             }
+          }
         }
-    },
-    "execution": {
-        "menu": "full",
-        "notes": {
-            "checkpoint": [
-                "Starts on B1F (34, 29) where 13.02 ends, the switch on (start_gates). Ends below TM14's ball at (23, 5), with the switch as the route to the Elixir left it.",
-                "The Mansion's statue switches: one flag for all four floors (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc), a toggle each press flips and each floor applies on load. The pinned maps (PokemonSimulation 4b886bb) carry it as gates: barriers that open when the switch is on or off, and the statues that press it. A route plans the presses itself (PRESS_SWITCH: face the statue, A, Yes, B through the text) wherever a barrier is in the way, and the step's gates_after says the switch it leaves; a checkpoint that starts from a save says the switch in start_gates."
-            ]
+      },
+      {
+        "id": "hidden_elixir",
+        "action": "talk",
+        "why": "the hidden ELIXIR on (35, 5) (pokeguy 1:20:06)"
+      },
+      {
+        "id": "to_tm14",
+        "action": "route",
+        "why": "back along the north rooms to (23, 5), below the ball (23, 4)",
+        "args": {
+          "target": {
+            "map": "PokemonMansion_B1F",
+            "tiles": [
+              [
+                23,
+                5
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
         }
-    },
+      },
+      {
+        "id": "tm14",
+        "action": "talk",
+        "why": "TM14 (pokeguy 1:20:15)"
+      },
+      {
+        "id": "teach_blizzard",
+        "action": "teach",
+        "why": "TM14 Blizzard over Mega Kick (12.01 replaced Dig with Surf so the lead knows Surf, Water Pulse, Bite, Mega Kick; replacing Mega Kick yields pokeguy's Surf, Water Pulse, Bite, Blizzard for Silph/Blaine/Erika, and 19.04 Strength later replaces Water Pulse), taught as soon as it is picked up; keep list: every move the lead can know except Mega Kick/Dig; fails if none or several are outside the list",
+        "args": {
+          "item": "tm14",
+          "move": "blizzard",
+          "slot": 1,
+          "keep": [
+            "tackle",
+            "withdraw",
+            "tail-whip",
+            "water-gun",
+            "bubble",
+            "bite",
+            "water-pulse",
+            "surf"
+          ]
+        }
+      }
+    ],
     "metadata": {
-        "phase": "testing",
-        "postconditions": {
-            "position": {
-                "map": "PokemonMansion_B1F",
-                "tiles": [
-                    [
-                        23,
-                        5
-                    ]
-                ],
-                "facing": "north"
-            }
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "PokemonMansion_B1F",
+          "tiles": [
+            [
+              23,
+              5
+            ]
+          ],
+          "facing": "north"
         }
+      }
     }
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts on B1F (34, 29) where 13.02 ends, the switch on (start_gates). Ends below TM14's ball at (23, 5), with the switch as the route to the Elixir left it.",
+        "The Mansion's statue switches: one flag for all four floors (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc), a toggle each press flips and each floor applies on load. The pinned maps (PokemonSimulation 4b886bb) carry it as gates: barriers that open when the switch is on or off, and the statues that press it. A route plans the presses itself (PRESS_SWITCH: face the statue, A, Yes, B through the text) wherever a barrier is in the way, and the step's gates_after says the switch it leaves; a checkpoint that starts from a save says the switch in start_gates."
+      ]
+    },
+    "start_gates": {
+      "switches": {
+        "mansion": true
+      }
+    }
+  }
 }

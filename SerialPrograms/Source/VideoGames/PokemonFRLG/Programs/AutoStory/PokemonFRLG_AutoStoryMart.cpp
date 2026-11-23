@@ -171,12 +171,12 @@ std::string_view mart_end_name(MartEnd end){
 }
 
 
-Pokemon::StoryActionArgs mart_args(const MartPlan& plan){
+FrlgArgMap mart_args(const MartPlan& plan){
     std::vector<Pokemon::StoryItem> items;
     for (const MartLine& line : plan.lines){
         items.push_back({line.item, line.quantity});
     }
-    Pokemon::StoryActionArgs args{{"map", plan.map}, {"items", std::move(items)}};
+    FrlgArgMap args{{"map", plan.map}, {"items", std::move(items)}};
     if (plan.if_affordable){
         args["if_affordable"] = true;
     }
@@ -190,7 +190,7 @@ Pokemon::StoryActionArgs mart_args(const MartPlan& plan){
     return args;
 }
 
-std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args){
+std::optional<MartPlan> mart_plan_of(const FrlgArgMap& args){
     const std::string* map = game_arg<std::string>(args, "map");
     const std::vector<Pokemon::StoryItem>* items = game_arg<std::vector<Pokemon::StoryItem>>(args, "items");
     if (map == nullptr || mart_stock(*map).empty() || items == nullptr || items->empty()){
@@ -215,9 +215,8 @@ std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args){
     return plan;
 }
 
-Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& plan){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep mart_step(std::string name, std::string why, const MartPlan& plan){
+    StoryStep step;
     step.name = std::move(name);
     step.why = std::move(why);
     step.action = MART_ACTION;

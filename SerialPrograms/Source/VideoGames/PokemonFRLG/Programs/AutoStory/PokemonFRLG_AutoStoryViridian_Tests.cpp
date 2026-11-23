@@ -17,7 +17,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -119,15 +118,15 @@ const StoryCheckpoint& table_row(std::string_view id){
 //  Whether row `row`'s step `c` is a battle a talk starts: the sim has no
 //  talk, and no trainer's message up for it.
 bool talk_battle(const StoryCheckpoint& row, size_t c){
-    return row.steps[c].kind == StoryStepKind::BATTLE && c > 0 && row.steps[c - 1].kind == StoryStepKind::TALK;
+    return row.steps[c].action == "battle" && c > 0 && row.steps[c - 1].action == "talk";
 }
 
 //  Whether the overworld sim plays row `row`'s step `c`; after any other
 //  step the player is put on its pose_after.
 bool sim_walks(const StoryCheckpoint& row, size_t c){
     const StoryStep& step = row.steps[c];
-    return !talk_battle(row, c) && (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS
-        || step.kind == StoryStepKind::STEP || step.kind == StoryStepKind::BATTLE);
+    return !talk_battle(row, c) && (step.action == "route" || step.action == "legs"
+        || step.action == "step" || step.action == "battle");
 }
 
 //  story_maps() after Giovanni's win: every trainer of the gym beaten with
@@ -155,11 +154,11 @@ UnitTestResult walk_row(
     const std::vector<MapData>& maps, const MapPosition& end
 ){
     const StoryCheckpoint& row = table_row(id);
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     size_t first = 0;
     for (size_t c = 0; !after.empty() && c < row.steps.size(); c++){
         if (row.steps[c].name == after){
-            at = *story_pose(Pokemon::pose_of(*row.steps[c].pose_after));
+            at = *story_pose(*row.steps[c].pose_after);
             first = c + 1;
         }
     }
@@ -171,7 +170,7 @@ UnitTestResult walk_row(
     size_t fought = 0;
     for (size_t c = first; c < row.steps.size(); c++){
         const StoryStep& step = row.steps[c];
-        battles += step.kind == StoryStepKind::BATTLE ? 1 : 0;
+        battles += step.action == "battle" ? 1 : 0;
         if (sim_walks(row, c)){
             if (const std::string failure = row_step_carrying_flags(*sim, at, step, row.id, flags); !failure.empty()){
                 return failure;
@@ -179,7 +178,7 @@ UnitTestResult walk_row(
         }else if (step.pose_after){
             fought += sim->state().trainers_beaten.size() + (talk_battle(row, c) ? 1 : 0);
             flags.insert(step.flags_after.begin(), step.flags_after.end());
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            at = *story_pose(*step.pose_after);
             sim.emplace(with_trainers_beaten(maps, beaten_trainers(flags)), MapPosition{at.map, at.tile}, at.facing.value_or(sim->state().facing));
         }
         if (!sim->state().violations.empty()){

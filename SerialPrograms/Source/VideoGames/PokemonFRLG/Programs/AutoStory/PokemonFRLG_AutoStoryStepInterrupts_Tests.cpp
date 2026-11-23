@@ -22,7 +22,6 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Logging/Logger.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
@@ -33,8 +32,6 @@ namespace PokemonFRLG{
 
 
 namespace{
-
-using Pokemon::StoryStepKind;
 
 const WallClock T0 = WallClock() + std::chrono::hours(1);
 
@@ -58,21 +55,34 @@ public:
     explicit FakeGame(std::vector<Frame> screen)
         : m_screen(std::move(screen))
         , m_table(make_story_action_table([this](StoryActionId id){ return recorder(id); }))
-        , m_executor(m_table, m_guard)
         , m_interrupts(step_interrupts([this](bool){ return look(); }, noting()))
-    {
-        m_executor.set_interrupts(&m_interrupts);
-    }
+    {}
 
-    //  `kind`'s step through the table, from a known pose: its outcome.
-    Pokemon::Outcome run(StoryStepKind kind){
-        Pokemon::StoryStep step;
-        step.kind = kind;
+    //  `action`'s step through the table, from a known pose: its failure, if any.
+    std::optional<Pokemon::StoryFailure> run(const std::string& action){
+        StoryStep step;
+        step.action = action;
         step.name = "synthetic";
-        return m_executor.run(step, state);
+        const StoryActionId id = story_action_id_of(action);
+        const bool check_interrupts = id == StoryActionId::ROUTE || id == StoryActionId::LEGS
+            || id == StoryActionId::STEP || id == StoryActionId::TALK;
+        if (check_interrupts){
+            const Pokemon::InterruptCheck cleared = Pokemon::clear_story_interrupt(m_interrupts, step.name, step.action);
+            if (cleared.pose_lost){
+                state.pose = std::nullopt;
+            }
+            if (cleared.failure){
+                return cleared.failure;
+            }
+        }
+        const auto it = m_table.find(step.action);
+        if (it == m_table.end() || !it->second){
+            return frlg_unsupported_step(step);
+        }
+        return it->second(step, state);
     }
 
-    Pokemon::RunState state{.pose = to_pose(StoryPose{"Route1", TilePos{1, 2}, std::nullopt})};
+    FrlgRunState state{.pose = to_grid_pose(StoryPose{"Route1", TilePos{1, 2}, std::nullopt})};
     std::vector<std::string> trace;
 
 private:
@@ -89,50 +99,56 @@ private:
         return out;
     }
     StepInterruptActions noting(){
-        const auto note = [this](std::string_view kind){
-            return [this, kind](const Pokemon::InterruptVerdict&, Pokemon::RunState&){
+        const auto note = [this](std::string_view kind, bool lose_pose){
+            return [this, kind, lose_pose](const Pokemon::InterruptVerdict&) -> std::optional<Pokemon::StoryFailure>{
                 trace.push_back(std::format("clear {}", kind));
-                return Pokemon::outcome_ok();
+                if (lose_pose){
+                    state.pose = std::nullopt;
+                }
+                return std::nullopt;
             };
         };
-        return {.wild = note("wild"), .trainer = note("trainer"), .dialog = note("dialog"), .warp = note("warp")};
+        return {
+            .wild = note("wild", false),
+            .trainer = note("trainer", false),
+            .dialog = note("dialog", false),
+            .warp = note("warp", true),
+        };
     }
-    Pokemon::StoryAction recorder(StoryActionId id){
-        return {.act = [this, id](const Pokemon::StoryStep&, Pokemon::RunState&){
+    FrlgStepAction recorder(StoryActionId id){
+        return [this, id](const StoryStep&, FrlgRunState&) -> std::optional<Pokemon::StoryFailure>{
             trace.emplace_back(story_action_name(id));
-            return Pokemon::outcome_ok();
-        }};
+            return std::nullopt;
+        };
     }
 
     std::vector<Frame> m_screen;
-    Pokemon::StepGuard m_guard;
-    Pokemon::StoryActionTable m_table;
-    Pokemon::TableExecutor m_executor;
+    FrlgActionTable m_table;
     Pokemon::StoryInterrupts m_interrupts;
 };
 
-//  Runs a `kind` step after `screen`; empty if what ran was `expected`.
-std::string ran(std::vector<Frame> screen, StoryStepKind kind, const std::vector<std::string>& expected){
+//  Runs an `action` step after `screen`; empty if what ran was `expected`.
+std::string ran(std::vector<Frame> screen, const std::string& action, const std::vector<std::string>& expected){
     FakeGame game(std::move(screen));
-    const Pokemon::Outcome outcome = game.run(kind);
-    if (outcome.succeeded() && game.trace == expected){
+    const std::optional<Pokemon::StoryFailure> failure = game.run(action);
+    if (!failure && game.trace == expected){
         return "";
     }
-    std::string got = Pokemon::to_string(outcome) + ":";
+    std::string got = (failure ? failure->code : std::string("ok")) + ":";
     for (const std::string& item : game.trace){
         got += " " + item;
     }
-    return std::string(Pokemon::story_step_kind_name(kind)) + ": got " + got;
+    return action + ": got " + got;
 }
 
 UnitTestResult test_message(){
     const std::vector<Frame> message{{0, OVERWORLD}, {100, BOX}};
     for (const std::string& error : {
-        ran(message, StoryStepKind::ROUTE, {"clear dialog", "route"}),
-        ran(message, StoryStepKind::TALK, {"clear dialog", "talk"}),
-        ran(message, StoryStepKind::MASH, {"mash"}),
-        ran(message, StoryStepKind::ANSWER, {"answer"}),
-        ran(message, StoryStepKind::BATTLE, {"battle"}),
+        ran(message, "route", {"clear dialog", "route"}),
+        ran(message, "talk", {"clear dialog", "talk"}),
+        ran(message, "scene", {"mash"}),
+        ran(message, "answer", {"answer"}),
+        ran(message, "battle", {"battle"}),
     }){
         if (!error.empty()){
             return error;
@@ -145,11 +161,11 @@ UnitTestResult test_battle(){
     const std::vector<Frame> wild{{0, OVERWORLD}, {100, WHITE}, {400, OVERWORLD}, {1500, BATTLE}};
     const std::vector<Frame> trainer{{0, OVERWORLD}, {100, BOX}, {2000, BLACK}, {2500, BATTLE}};
     for (const std::string& error : {
-        ran(wild, StoryStepKind::ROUTE, {"clear wild", "route"}),
-        ran(wild, StoryStepKind::BATTLE, {"battle"}),
-        ran(trainer, StoryStepKind::LEGS, {"clear trainer", "legs"}),
-        ran(trainer, StoryStepKind::BATTLE, {"battle"}),
-        ran(trainer, StoryStepKind::GAME, {"game"}),
+        ran(wild, "route", {"clear wild", "route"}),
+        ran(wild, "battle", {"battle"}),
+        ran(trainer, "legs", {"clear trainer", "legs"}),
+        ran(trainer, "battle", {"battle"}),
+        ran(trainer, "mart", {"game"}),
     }){
         if (!error.empty()){
             return error;
@@ -161,16 +177,20 @@ UnitTestResult test_battle(){
 UnitTestResult test_warp(){
     const std::vector<Frame> warp{{0, OVERWORLD}, {100, BLACK}, {600, OVERWORLD}, {9000, OVERWORLD}};
     FakeGame game(warp);
-    const Pokemon::Outcome outcome = game.run(StoryStepKind::STEP);
-    if (!outcome.succeeded() || game.trace != std::vector<std::string>{"clear warp", "step"}){
-        return "Expected the warp cleared before the step, got " + Pokemon::to_string(outcome);
+    const std::optional<Pokemon::StoryFailure> failure = game.run("step");
+    if (failure || game.trace != std::vector<std::string>{"clear warp", "step"}){
+        return "Expected the warp cleared before the step, got " + (failure ? failure->code : std::string("ok"));
     }
-    if (game.state.pose.where != nullptr){
-        return "Expected the pose lost after a warp, got " + Pokemon::to_string(game.state.pose);
+    if (game.state.pose){
+        return "Expected the pose lost after a warp, got " + format_grid_pose(game.state.pose);
     }
-    const std::string error = ran(warp, StoryStepKind::GAME, {"game"});
+    const std::string error = ran(warp, "mart", {"game"});
     if (!error.empty()){
         return error;
+    }
+    const std::string scene_error = ran(warp, "scene", {"mash"});
+    if (!scene_error.empty()){
+        return scene_error;
     }
     return true;
 }
@@ -183,7 +203,7 @@ UnitTestResult test_warp(){
 UnitTestResult test_failure_frame(){
     const std::string folder = DEBUG_PATH() + "UnitTests/AutoStoryFailures/";
     InterruptLogGuard guard(global_logger_tagged(), folder);
-    Pokemon::StoryStep step;
+    StoryStep step;
     step.name = "land_north_sand_bar";
     guard.on_failure(step, OperationFailedException(ErrorReportMode::NO_ERROR_REPORT, "no frame"));
     if (Filesystem::exists(Filesystem::Path(folder)) && !Filesystem::list_directory(Filesystem::Path(folder)).empty()){

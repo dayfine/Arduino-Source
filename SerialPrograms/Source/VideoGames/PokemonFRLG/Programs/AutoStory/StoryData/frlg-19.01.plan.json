@@ -4,18 +4,51 @@
   "checkpoint": {
     "id": "19.01",
     "title": "Route 22, to the east end of the rival's road",
-    "start": {"map": "ViridianCity", "tiles": [[26, 27]], "facing": "south"},
+    "start": {
+      "map": "ViridianCity",
+      "tiles": [
+        [
+          26,
+          27
+        ]
+      ],
+      "facing": "south"
+    },
     "events": [
       {
         "id": "route22_east_of_trigger",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "west out of Viridian City onto Route 22, along row 5 to (34, 5), a tile short of the rival's trigger column (33, 4..6), which 19.01b, saved here, steps onto",
         "args": {
-          "target": {"map": "Route22", "tiles": [[34, 5]], "facing": "west"}
-        },
-        "why": "west out of Viridian City onto Route 22, along row 5 to (34, 5), a tile short of the rival's trigger column (33, 4..6), which 19.01b, saved here, steps onto"
+          "target": {
+            "map": "Route22",
+            "tiles": [
+              [
+                34,
+                5
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "Route22",
+          "tiles": [
+            [
+              34,
+              5
+            ]
+          ],
+          "facing": "west"
+        }
+      }
+    }
   },
   "execution": {
     "menu": "full",
@@ -24,12 +57,6 @@
         "Starts below Viridian's Pokemon Center, where 19.01a's Fly lands. Walks only: the rival is its own checkpoint (19.01b), saved a step short of his trigger, so a retry of the battle replays no walk.",
         "Ends on Route 22 at (34, 5) facing west, a tile east of the rival's trigger column, where 19.01b starts."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {"map": "Route22", "tiles": [[34, 5]], "facing": "west"}
     }
   }
 }
