@@ -63,6 +63,18 @@ endfunction()
 add_library(CoreLib STATIC ${CORE_LIBRARY_SOURCES})
 pa_apply_gui_free_target_properties(CoreLib)
 
+#  Usage requirements, so a target outside this tree only needs to link CoreLib.
+target_include_directories(CoreLib SYSTEM INTERFACE ${PA_SERIAL_PROGRAMS_DIR}/../3rdParty-Core)
+target_include_directories(CoreLib INTERFACE
+    ${PA_SERIAL_PROGRAMS_DIR}/..
+    ${PA_SERIAL_PROGRAMS_DIR}/Source/
+)
+target_compile_definitions(CoreLib INTERFACE NOMINMAX PA_IMAGE_BACKEND_None)
+if(WIN32)
+    target_compile_definitions(CoreLib INTERFACE WIN32_LEAN_AND_MEAN)
+endif()
+target_link_libraries(CoreLib INTERFACE Threads::Threads)
+
 if (WIN32)
     if(PA_ASSEMBLY_LISTINGS)  # option defined in CMakeLists.txt
         #  /FaAssembly/CoreLib/ writes assembly listings to Assembly/CoreLib/ in the build folder.
