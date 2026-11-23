@@ -30,11 +30,11 @@ main
                                                  └─ #797 autostory/story-policies-seam       [CLEAN]
                                                      └─ #799 autostory/story-launch-seam     [CLEAN]
                                                          └─ #800 autostory/readings-replay-door-seam [CLEAN]
-                                                             └─ #801 autostory/phase1-utils-seam     [CI running]
+                                                             └─ #801 autostory/phase1-utils-seam     [CLEAN]
 ```
 
 Game lean branches & adoption PRs:
-- `bdsp/lean` ([#753](https://github.com/dayfine/Arduino-Source/pull/753), `CLEAN`): `#772` (`bdsp/core-adopt`) **MERGED**; [#802](https://github.com/dayfine/Arduino-Source/pull/802) (`bdsp/layer0-adopt`, adopting `#795 → #800`) open (`CI running`).
+- `bdsp/lean` ([#753](https://github.com/dayfine/Arduino-Source/pull/753), `CLEAN`): `#772` (`bdsp/core-adopt`) **MERGED**; [#802](https://github.com/dayfine/Arduino-Source/pull/802) (`bdsp/layer0-adopt`, adopting `#795 → #800`) open (Ubuntu/Code Health/Map/Codec green; 2 pre-existing `bdsp/lean` Windows warnings).
 - `frlg/lean` ([#652](https://github.com/dayfine/Arduino-Source/pull/652)): `#779` (`frlg/core-adopt`, with `#791` fixes) passed FRLG run and is being prepared to merge; `frlg/layer0-adopt` (adopting `#795 → #800`) follows next.
 
 Independent helpers on `main`:
@@ -43,7 +43,7 @@ Independent helpers on `main`:
 
 ## Landing priority vs. post-`core-adopt` deduplication
 
-All **15** PRs from `#572 → #771 → #795 (incl. #796) → #797 → #799 → #800` (plus `#728` and `#783`) are **`CLEAN`**:
+All **16** PRs from `#572 → #771 → #795 (incl. #796) → #797 → #799 → #800 → #801` (plus `#728` and `#783`) are **`CLEAN`**:
 
 1. **Base & Layer 0 (`#572 → #800`) are complete and green.** `#572 → #771` strips ~41k lines / ~340 files of shared core + navigation infra from both lean branches, and Layer 0 (`#795 → #800`) extracts the remaining 83 shared `Pokemon/AutoStory` & `Pokemon/Navigation` files (plus 4 `NintendoSwitch` HOME reader/observer files) that sat above `#771` on both `bdsp/lean` and `frlg/core-adopt`.
 2. **Phase 1 has started (`#801`)** on top of `#800` with the shared `Pokemon_AutoStoryResources`, `Pokemon_OverlayLog` (`#159`), and `Pokemon_MapPackLoader` helpers.
