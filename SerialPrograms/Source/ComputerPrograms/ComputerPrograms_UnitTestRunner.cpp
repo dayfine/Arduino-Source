@@ -34,6 +34,7 @@
 #include "NintendoSwitch/Inference/NintendoSwitch_CheckOnlineDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h"
 #include "NintendoSwitch/Inference/NintendoSwitch_UpdatePopupDetector.h"
+#include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_SystemKeyboardTyping.h"
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
@@ -84,6 +85,7 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_UpdatePopupDetector(ret);
+    NintendoSwitch::FastCodeEntry::add_tests_SystemKeyboardTyping(ret);
     NintendoSwitch::Typewriter::add_tests_TypewriterTextMapping(ret);
     NintendoSwitch::PokemonBDSP::add_tests_DialogDetector(ret);
     NintendoSwitch::PokemonBDSP::add_tests_MenuDetector(ret);

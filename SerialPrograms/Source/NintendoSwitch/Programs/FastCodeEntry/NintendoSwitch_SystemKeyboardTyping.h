@@ -11,7 +11,12 @@
 #ifndef PokemonAutomation_NintendoSwitch_SystemKeyboardTyping_H
 #define PokemonAutomation_NintendoSwitch_SystemKeyboardTyping_H
 
+#include <cstddef>
+#include <functional>
 #include <string>
+#include "Common/Cpp/Time.h"
+#include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/Programs/FastCodeEntry/NintendoSwitch_KeyboardEntryMappings.h"
@@ -20,6 +25,14 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace FastCodeEntry{
 
+
+//  Navigates the cursor to the bottom-row English/Latin key (row 4, col 3) and
+//  presses A so CJK IME keyboards (e.g. Simplified Chinese Pinyin) switch to
+//  Latin letters before typing.
+//  Throws OperationFailedException if the cursor cannot reach that key.
+void switch_system_keyboard_to_letters(
+    VideoStream& stream, ProControllerContext& context
+);
 
 //  Types letters, digits and first-page symbols; uppercase via Shift (left stick
 //  click), assuming the keyboard opens with Shift off.
@@ -31,6 +44,22 @@ void type_on_system_keyboard(
     const std::string& text,
     KeyboardLayout layout = KeyboardLayout::QWERTY
 );
+
+//  Presses PLUS up to `max_presses` times until `is_closed` holds for consecutive
+//  frames (default: no cursor border visible via read_system_keyboard_cursor()).
+//  Retries cover CJK IME keyboards that consume the first PLUS to commit composing
+//  text before a second PLUS presses OK.
+//  Throws OperationFailedException if the keyboard stays open.
+void confirm_system_keyboard(
+    VideoStream& stream, ProControllerContext& context,
+    const std::function<bool(const ImageViewRGB32&)>& is_closed = {},
+    size_t max_presses = 3,
+    Milliseconds wait_per_press = Milliseconds(2500)
+);
+
+
+//  Register the tests of this file.
+void add_tests_SystemKeyboardTyping(UnitTestDatabase& database);
 
 
 }  // namespace FastCodeEntry
