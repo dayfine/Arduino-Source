@@ -74,7 +74,7 @@ ScriptedTry lose(){
 //  The bag of "Enter Lorelei" (her entry contract), which 20.01a buys.
 SlugCounts lorelei_bag(){
     return {
-        {"full-restore", 8}, {"x-special", 15}, {"x-speed", 5}, {"x-accuracy", 3}, {"guard-spec", 2},
+        {"full-restore", 9}, {"x-special", 15}, {"x-speed", 5}, {"x-accuracy", 3}, {"guard-spec", 2},
         {"super-potion", 6}, {"elixir", 1}, {"max-elixir", 1},
     };
 }
@@ -303,54 +303,54 @@ const LeagueRunCase LEAGUE_RUN_CASES[] = {
     {
         .name = "every try a win within the caps: 20.01 to 20.05 each saved once",
         .input = {},
-        .expectation = {.completed = true, .fights = ALL_PASS, .saves = 5, .full_restores_saved = 8},
+        .expectation = {.completed = true, .fights = ALL_PASS, .saves = 5, .full_restores_saved = 9},
     },
     {
-        .name = "Bruno's first win spends 4 of 8 Full Restores, leaving 4, under Agatha's 5: no pass; the next win passes and is saved",
+        .name = "Bruno's first win spends 4 of 9 Full Restores, leaving 5, under Agatha's 6: no pass; the next win passes and is saved",
         .input = {.tries = {
             {"20.02", {win({{"full-restore", 4}}), win({{"full-restore", 1}})}},
         }},
-        .expectation = {.completed = true, .fights = ALL_PASS + 1, .saves = 5, .full_restores_saved = 7},
+        .expectation = {.completed = true, .fights = ALL_PASS + 1, .saves = 5, .full_restores_saved = 8},
     },
     {
         .name = "Lorelei loses all 3 tries of reset_budget: the run stops before Bruno, nothing saved",
         .input = {.tries = {{"20.01", {lose()}}}},
-        .expectation = {.failure = "verify_out_of_budget", .failed_row = "20.01", .fights = 3, .saves = 0, .full_restores_saved = 8},
+        .expectation = {.failure = "verify_out_of_budget", .failed_row = "20.01", .fights = 3, .saves = 0, .full_restores_saved = 9},
     },
     {
-        .name = "Lorelei wins leaving 5 Full Restores, under Bruno's 6, every time: reset_budget runs out after 3 tries, the run stops",
+        .name = "Lorelei wins leaving 6 Full Restores, under Bruno's 7, every time: reset_budget runs out after 3 tries, the run stops",
         .input = {.tries = {{"20.01", {win({{"full-restore", 3}})}}}},
-        .expectation = {.failure = "verify_out_of_budget", .failed_row = "20.01", .fights = 3, .saves = 0, .full_restores_saved = 8},
+        .expectation = {.failure = "verify_out_of_budget", .failed_row = "20.01", .fights = 3, .saves = 0, .full_restores_saved = 9},
     },
     {
         .name = "the bag at the Indigo Plateau Center short of a Full Restore: 20.01 stops before the League's door",
         .input = {.bag = {
-            {"full-restore", 7}, {"x-special", 15}, {"x-speed", 5}, {"x-accuracy", 3}, {"guard-spec", 2},
+            {"full-restore", 8}, {"x-special", 15}, {"x-speed", 5}, {"x-accuracy", 3}, {"guard-spec", 2},
             {"super-potion", 6}, {"elixir", 1}, {"max-elixir", 1},
         }},
-        .expectation = {.failure = "precondition_failed", .failed_row = "20.01", .fights = 0, .saves = 0, .full_restores_saved = 7},
+        .expectation = {.failure = "precondition_failed", .failed_row = "20.01", .fights = 0, .saves = 0, .full_restores_saved = 8},
     },
     {
-        .name = "from Lance's entry bag, a win within his cap of 2 Full Restores at 45 HP: the Champion's heal takes a third, leaving 1 of his 2: never saved",
+        .name = "from Lance's entry bag, a win within his cap of 2 Full Restores at 45 HP: the Champion's heal takes a third, leaving 2 of his 3: never saved",
         .input = {
             .first = "20.04",
             .bag = {
-                {"full-restore", 4}, {"x-special", 4}, {"x-speed", 1}, {"x-accuracy", 3}, {"guard-spec", 2},
+                {"full-restore", 5}, {"x-special", 4}, {"x-speed", 1}, {"x-accuracy", 3}, {"guard-spec", 2},
                 {"super-potion", 2}, {"elixir", 1}, {"max-elixir", 1},
             },
             .tries = {{"20.04", {win({{"full-restore", 2}}, /*hp_left=*/45)}}},
         },
-        .expectation = {.failure = "verify_out_of_budget", .failed_row = "20.04", .fights = 3, .saves = 0, .full_restores_saved = 4},
+        .expectation = {.failure = "verify_out_of_budget", .failed_row = "20.04", .fights = 3, .saves = 0, .full_restores_saved = 5},
     },
     {
-        .name = "Bruno wins at 45 HP, so the top-up before Agatha takes a Full Restore, more than her plan's spend of none: her wins still leave Lance's 4, saved",
+        .name = "Bruno wins at 45 HP, so the top-up before Agatha takes a Full Restore, more than her plan's spend of none: her wins still leave Lance's 5, saved",
         .input = {.first = "20.02", .tries = {{"20.02", {win(/*used=*/{}, /*hp_left=*/45)}}}},
-        .expectation = {.completed = true, .fights = FROM_BRUNO_ALL_PASS, .saves = 4, .full_restores_saved = 7},
+        .expectation = {.completed = true, .fights = FROM_BRUNO_ALL_PASS, .saves = 4, .full_restores_saved = 8},
     },
     {
         .name = "Agatha wins leaving Surf at 2, under Lance's 3: never saved",
         .input = {.tries = {{"20.03", {win(/*used=*/{}, MAX_HP, /*surf_spent=*/13)}}}},
-        .expectation = {.failure = "verify_out_of_budget", .failed_row = "20.03", .fights = LORELEI_ALL_PASS + BRUNO_ALL_PASS + 3, .saves = 2, .full_restores_saved = 8},
+        .expectation = {.failure = "verify_out_of_budget", .failed_row = "20.03", .fights = LORELEI_ALL_PASS + BRUNO_ALL_PASS + 3, .saves = 2, .full_restores_saved = 9},
     },
 };
 
