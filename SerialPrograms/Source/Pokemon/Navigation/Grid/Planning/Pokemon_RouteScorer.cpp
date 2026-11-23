@@ -10,6 +10,7 @@
 #include <map>
 #include <set>
 #include "Common/Cpp/EnumStringMap.h"
+#include "Pokemon_RobustLegPlanner.h"
 #include "Pokemon_RouteScorer.h"
 
 namespace PokemonAutomation{
@@ -77,7 +78,7 @@ struct LegWalk{
     long long ms = 0;
     bool stop = false;              //  ended at a wall (a re-localization)
     size_t taps = 0;
-    std::string unsafe;             //  why the leg may end somewhere it must not
+    std::string unsafe;             //  why the leg may end somewhere it must not: "may overshoot onto ..."
 };
 
 //  Steps from `from` until stopped, at most `most` steps; stops on a warp
@@ -109,11 +110,19 @@ size_t path_tiles(const TilePos& from, const std::vector<TilePos>& path){
     return tiles;
 }
 
+//  A walk that no wall stops within RobustLegPlannerInternal::MAX_STEPS_TO_WALL
+//  steps (edges that loop round) is not a stop and fails the plan.
 LegWalk walk_to_wall(const ScoreMap& map, const TilePos& from, const ScoredLeg& leg, const RoutePaces& paces){
+    using RobustLegPlannerInternal::MAX_STEPS_TO_WALL;
     LegWalk walk;
-    walk.path = walk_steps(map, from, leg.direction, (size_t)-1);
+    walk.path = walk_steps(map, from, leg.direction, MAX_STEPS_TO_WALL);
     walk.ends = {walk.path.empty() ? from : walk.path.back()};
-    walk.stop = walk.path.empty() || !stops_on(map.risk(walk.path.back()));
+    const bool on_warp = !walk.path.empty() && stops_on(map.risk(walk.path.back()));
+    const bool endless = walk.path.size() == MAX_STEPS_TO_WALL && !on_warp;
+    walk.stop = !on_warp && !endless;
+    if (endless){
+        walk.unsafe = std::format("meets no wall within {} steps", MAX_STEPS_TO_WALL);
+    }
     walk.ms = paces.start_ms + (long long)path_tiles(from, walk.path) * paces.ms_per_tile(leg.direction, leg.run)
         + (walk.stop ? paces.stop_ms : 0);
     return walk;
@@ -158,14 +167,18 @@ LegWalk walk_open_hold(const ScoreMap& map, const TilePos& from, const ScoredLeg
     const RoutePaces& paces, const std::function<bool(const TilePos&)>& goal
 ){
     const size_t error = paces.open_hold_error ? paces.open_hold_error(leg.tiles) : 0;
-    const size_t fewest = leg.tiles > error ? leg.tiles - error : 0;
     const std::vector<TilePos> all = walk_steps(map, from, leg.direction, leg.tiles + error);
+    //  A hold stopped before its shortest end ends where it is stopped.
+    const size_t fewest = std::min(leg.tiles > error ? leg.tiles - error : 0, all.size());
     LegWalk walk;
-    walk.path.assign(all.begin(), all.begin() + std::min(fewest, all.size()));
+    walk.path.assign(all.begin(), all.begin() + fewest);
     for (size_t k = fewest; k <= all.size(); k++){
         walk.ends.push_back(k == 0 ? from : all[k - 1]);
         if (k > fewest && walk.unsafe.empty()){
-            walk.unsafe = unsafe_overshoot(map, k == 1 ? from : all[k - 2], all[k - 1], goal);
+            const std::string overshoot = unsafe_overshoot(map, k == 1 ? from : all[k - 2], all[k - 1], goal);
+            if (!overshoot.empty()){
+                walk.unsafe = std::format("may overshoot onto {}", overshoot);
+            }
         }
     }
     walk.ms = paces.start_ms + (long long)leg.tiles * paces.ms_per_tile(leg.direction, leg.run);
@@ -351,7 +364,7 @@ void Scorer::walk_branch(const Branch& branch, size_t index, const ScoredLeg& le
 ) const{
     const LegWalk walk = walk_leg(m_map, branch.pos, leg, m_paces, m_goal);
     if (!walk.unsafe.empty() && out.fail.empty()){
-        out.fail = std::format("leg {} ({}) from {} may overshoot onto {}", index + 1, to_string(leg), to_string(branch.pos), walk.unsafe);
+        out.fail = std::format("leg {} ({}) from {} {}", index + 1, to_string(leg), to_string(branch.pos), walk.unsafe);
     }
     for (const TilePos& pos : walk.path){
         if (m_map.risk(pos) == TileRisk::WARP && !(last && pos == walk.path.back() && m_goal(pos)) && out.fail.empty()){
