@@ -248,7 +248,7 @@ static bool move_to_yes_before(
     WallClock confirm_time,
     std::string& failure_reason
 ){
-    SelectionArrowFinder yes_no(env.console, {0.50, 0.60, 0.35, 0.20}, COLOR_RED);
+    SelectionArrowFinder yes_no(env.console, /*box=*/{0.50, 0.60, 0.35, 0.20}, COLOR_RED);
     const WallClock up_deadline = confirm_time - UP_PRESS - AFTER_UP;
     if (wait_until(env.console, context, up_deadline, {{yes_no}}) == 0){
         env.log(std::format(
@@ -272,6 +272,32 @@ static bool move_to_yes_before(
     return false;
 }
 
+//  The selecting press, cursor onto "Yes", the confirming press
+//  `select_to_confirm` after the selecting one, then the battle start.
+static bool select_and_confirm(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    Milliseconds select_to_confirm,
+    std::string& failure_reason
+){
+    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+    context.wait_for_all_requests();
+    const WallClock select_done = current_time();
+    const WallClock confirm_time = select_done + select_to_confirm - 80ms;
+    if (!move_to_yes_before(env, context, select_done, confirm_time, failure_reason)){
+        return false;
+    }
+    const WallClock now = current_time();
+    if (now < confirm_time){
+        pbf_wait(context, std::chrono::duration_cast<Milliseconds>(confirm_time - now));
+    }
+    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+    pbf_wait(context, 3000ms);
+    pbf_press_button(context, BUTTON_A, 100ms, 0ms);
+    context.wait_for_all_requests();
+    return true;
+}
+
 //  The whole button press sequence: blind up to the selecting press, then the
 //  Yes/No box is watched for and the confirming press keeps its scheduled time.
 bool issue_starter_sequence(
@@ -279,13 +305,15 @@ bool issue_starter_sequence(
     ProControllerContext& context,
     BdspStarter starter,
     Language language,
-    double starly_seconds,
-    double select_seconds,
-    double confirm_seconds,
+    const PressSchedule& schedule,
     std::string& failure_reason
 ){
     StarterSequenceWaits waits;
-    if (!compute_starter_waits(starter, language, starly_seconds, select_seconds, confirm_seconds, waits, failure_reason)){
+    if (!compute_starter_waits(
+        starter, language,
+        schedule.starly_seconds, schedule.select_seconds, schedule.confirm_seconds,
+        waits, failure_reason
+    )){
         return false;
     }
 
@@ -304,25 +332,8 @@ bool issue_starter_sequence(
         pbf_press_dpad(context, DPAD_RIGHT, 100ms, 600ms);
     }
 
-    //  The selecting press, cursor onto "Yes", confirming press, then battle start
     pbf_wait(context, waits.before_select);
-    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
-    context.wait_for_all_requests();
-    const WallClock select_done = current_time();
-    const WallClock confirm_time = select_done + waits.select_to_confirm - 80ms;
-    if (!move_to_yes_before(env, context, select_done, confirm_time, failure_reason)){
-        return false;
-    }
-    const WallClock now = current_time();
-    if (now < confirm_time){
-        pbf_wait(context, std::chrono::duration_cast<Milliseconds>(confirm_time - now));
-    }
-    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
-    pbf_wait(context, 3000ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 0ms);
-
-    context.wait_for_all_requests();
-    return true;
+    return select_and_confirm(env, context, waits.select_to_confirm, failure_reason);
 }
 
 

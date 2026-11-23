@@ -592,8 +592,7 @@ std::string run_blind_starter_sequence(
         return "the briefcase press moment passed before it could be sent";
     }
     if (!issue_starter_sequence(
-        run.env, run.context, run.settings.starter, run.settings.language,
-        schedule.starly_seconds, schedule.select_seconds, schedule.confirm_seconds,
+        run.env, run.context, run.settings.starter, run.settings.language, schedule,
         sequence_failure
     )){
         return sequence_failure;

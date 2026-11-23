@@ -18,6 +18,7 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
+#include "PokemonBDSP_RngExecution.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -80,9 +81,7 @@ bool issue_starter_sequence(
     ProControllerContext& context,
     BdspStarter starter,
     Language language,
-    double starly_seconds,
-    double select_seconds,
-    double confirm_seconds,
+    const PressSchedule& schedule,
     std::string& failure_reason
 );
 
