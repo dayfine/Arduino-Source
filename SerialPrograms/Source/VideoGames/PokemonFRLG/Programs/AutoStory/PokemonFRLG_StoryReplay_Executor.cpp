@@ -103,6 +103,17 @@ Pokemon::StoryCheckpoint ReplayExecutor::build(FrlgRunState& state){
             return std::nullopt;
         },
     });
+    if (m_data->row.start){
+        checkpoint.steps.push_back(Pokemon::StoryStep{
+            .name = "from_save",
+            .why = "",
+            .action = "from_save",
+            .run = [this, &state](Pokemon::StoryBackend&, Pokemon::RunState&) -> std::optional<Pokemon::StoryFailure>{
+                state.pose = *m_data->row.start;
+                return std::nullopt;
+            },
+        });
+    }
     for (const StoryStep& step : m_data->row.steps){
         checkpoint.steps.push_back(Pokemon::StoryStep{
             .name = step.name,
