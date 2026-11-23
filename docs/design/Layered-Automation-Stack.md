@@ -1,6 +1,7 @@
 # Layered automation stack: I/O daemon, probe layer, OCaml programs
 
-Status: **design only, nothing built**. Outcome of a design interview on 2026-11-22.
+Status: **design only, nothing built**. Outcome of two design interviews on 2026-11-22; the
+second one (section 13) revised the first and wins where they differ.
 Every decision below was chosen by the user unless marked *default* (proposed, not
 discussed, open to objection). Items marked *unverified* are assumptions the Week 0 spikes
 test.
@@ -29,7 +30,7 @@ until the new stack passes a measured gate (section 9).
 
 | # | Question | Decision |
 |---|---|---|
-| Q1 | Audience | Daemon/API seam is an upstream candidate; the program framework is the user's own |
+| Q1 | Audience | Nothing needs to go upstream; keep the overlay on Arduino-Source thin so upstream changes are cheap to pick up (revised, section 13) |
 | D1 | OCaml purity | OCaml side is pure logic plus a network client: no C stubs, dependency allowlist, Windows CI build as the real gate |
 | Q2 | Where vision runs | In the daemon; OCaml never handles pixels in the hot loop |
 | Q3 | Detector backends | One probe interface; in-daemon primitives now, external worker process designed for but deferred |
@@ -44,7 +45,7 @@ until the new stack passes a measured gate (section 9).
 | D5 | Timing | Per-probe `latest` or `every` delivery; command batches can be anchored to the frame clock |
 | D6 | RNG math | Rewritten in OCaml, the repo's C++ as test oracle (*default*) |
 | Q9 | Existing C++ AutoStory | Continues in parallel; port only after a pass-rate gate |
-| Q10 | Slice order | S0 -> S1 -> S4 -> S2 -> S3 |
+| Q10 | Slice order | S0 -> S1 -> S4 -> S2 -> S3; S0/S1 are the Mail Glitch checkpoints (revised, section 13) |
 | Q11 | Reaching S4 | Port FRLG actions in the dex design's slice order, each gated against its C++ twin |
 | Q12 | Simulation | In-process OCaml sim for execution; Python PokemonSimulation stays planner/evaluator, coupled by data only |
 | D7 | OCaml layering | measurements -> facts -> logic; replay injects measurements, sim injects facts |
@@ -61,7 +62,7 @@ capture timestamp; commands are timed against the same clock.
 What the code offers today:
 
 - `CoreLib` (`SerialPrograms/cmake/CoreLib.cmake`): 339 files, about 43k lines, no Qt,
-  OpenCV, ONNX or Tesseract. It contains the serial connection, the PABotBase2 protocol,
+  OpenCV, ONNX or Tesseract. The daemon includes upstream's cmake files for it unchanged. It contains the serial connection, the PABotBase2 protocol,
   controller scheduling and the Switch controllers, plus JSON and sockets. Already used by
   `SerialProgramsCommandLine`. Link it as is.
 - Controller interface (`NintendoSwitch_ProController.h`, `Controllers/Controller.h`):
@@ -91,10 +92,12 @@ on frames and returns raw results with no judgment.
 | `ocr` (on request) | text | tens to hundreds of milliseconds |
 | `model` (on request) | boxes, labels, scores | tens of milliseconds |
 
-The image primitives behind these (`Kernels`, `ImageMatch`, waterfill, `ImageTools`) are
-Qt-free in source apart from one bridge file, but have no library target. Compile the
-needed sources from the Arduino-Source submodule (*unverified until the first build*). A
-second Qt-free library target, following `CoreLib`, is the one natural upstream PR.
+The probes are written on OpenCV (`meanStdDev`, `absdiff`, `matchTemplate` or a port of
+PA's RMSD formula, `inRange` + `connectedComponentsWithStats`). PA's image primitives
+(`Kernels`, 129 files whose SIMD flags live in the main `CMakeLists.txt`, `ImageMatch`,
+waterfill) are not compiled: carrying their source list and flags would be the heaviest
+overlay. Only `CoreLib` comes from PA, through upstream's own `SourceFiles.cmake` and
+`CoreLib.cmake`.
 
 Invariants fixed from the start:
 
@@ -230,14 +233,14 @@ be written by OCaml programs; do not invest further in retiring CFR on the old a
 
 | Slice | What | Proves |
 |---|---|---|
-| S0 | One already-passing FRLG checkpoint on mGBA | probe model, stream, OCaml loop, protocol |
-| S1 | The same checkpoint on console B | capture, `CoreLib` link, real timing |
+| S0 | Mail Glitch checkpoints (fork #781, `mg-01`..`mg-05`) on mGBA from their saves | probe model, stream, OCaml loop, protocol |
+| S1 | The same checkpoints on console B's post-game save | capture, `CoreLib` link, real timing |
 | S4 | FRLG dex collection (design: `autostory/frlg/design/AutoStory-FRLG-Dex-Collection.md` on `agents`, fork #776) | engine, planner, the FRLG action set |
 | S2 | BDSP legendary shiny RNG | `every` probes, clock-anchored batches, OCaml RNG |
 | S3 | SV programs (legendary collection, isolated shiny hunts) | free-camera 3D, model and audio probes |
 
-S1's checkpoint should use actions S4 needs first (`from_save`, `route`, `heal_to_full`,
-`save`).
+S0/S1 are the first S4 slice: the Mail Glitch is Track 1A of the dex plan. The port starts
+after #781 lands; its `MailGlitchActivation` is the C++ twin.
 
 S4 on this stack: the catalog and maps are reused as data; snapshot, capabilities, planner
 and checkpoint factory are OCaml; the bulk is the FRLG actions (`route`, Fly, `capture`,
@@ -250,7 +253,9 @@ S2: the repo already has the reference (`Pokemon_Xorshift128.h`, `Pokemon_BdspRn
 `BlinkModel`, `StateSolver`, `StateReidentifier`, the seed finders, and blink extraction
 that fits a tick period from per-frame timestamps). Generate golden vectors from it.
 
-Gate for each ported action: same save, N runs, pass rate at least that of the C++ twin.
+Gates: pass rate (10 runs each, both stacks from the same save, interleaved) on mGBA;
+real timing on the Switch (3 testing-mode runs per checkpoint, no save, then one forward
+run that saves); `mg-05` (the glitch itself) is gated on mGBA only.
 
 ## 10. Week 0, budget and stop rules
 
@@ -259,8 +264,8 @@ Week 0 spikes, with go/no-go:
 | Spike | Question | If it fails |
 |---|---|---|
 | Capture | OpenCV holds 1080p at full rate and low latency from the lab card | borrow PA's Qt capture |
-| Link | `CoreLib` plus the image primitive sources build into our own Qt-free binary | upstream a library target first, or write primitives on OpenCV |
-| Latency | frame -> probe -> OCaml -> command on the wire, p99 under one frame (33 ms) | Q4 is wrong: stop and redesign before S0 |
+| Link | `CoreLib` plus OpenCV build into our own Qt-free binary on three OSes | carry a patched copy of the two cmake files |
+| Latency | frame -> probe -> OCaml -> command on the wire, p99 under one frame (33 ms) | Q4 is wrong: stop and redesign before S1 (mGBA runs in lockstep, so S0 does not depend on it) |
 
 Then S0 + S1 in at most 5 weeks on one lane; other lanes keep the C++ track moving.
 
@@ -280,18 +285,33 @@ Estimates here are rough judgments, not measurements.
 - Assets: templates live in the program repo beside the reader that uses them.
 - Recordings: the wire log plus a frame-ring dump on failure, under the existing lab disk
   GC.
-- Repo: one new repo with `daemon/` (C++) and `programs/` (dune), Arduino-Source as a
-  submodule. Upstream candidates: the Qt-free image library target only.
+- Repo: `dayfine/GamePilot`, private, with `daemon/` (C++) and `programs/` (dune),
+  `contracts/` and `docs/`; Arduino-Source (fork `main`) and Packages as read-only
+  submodules. Nothing is edited inside a submodule; fixes go to the fork and arrive by a
+  bump.
 
 ## 12. Open
 
-- Repo name and location.
-- Which FRLG checkpoint is S0/S1.
-- How the mGBA backend attaches. The fork's mGBA lane (`docs/design/Lab-mGBA-Console.md`,
-  `lab/mgba-*` branches) drives mGBA from SerialPrograms; whether its bridge can be reused
-  by the daemon has not been examined.
-- I/O library under the real effect handler.
-- How the user takes the console on this stack (no app window to click; a `hold` command
-  and any operator input).
-- Game identification for `ensure_game`.
-- Whether to keep D3 strict if re-describing a detector as data proves costly.
+- I/O library under the real effect handler: settled (stdlib, section 13).
+- Repo, S0/S1 checkpoint, mGBA attachment, console takeover: settled (section 13).
+- Exact console-B windows for S1: decided by the main session under the one-train rule.
+
+## 13. Second interview (2026-11-22)
+
+| # | Question | Decision |
+|---|---|---|
+| R1 | Primary goal | The dev loop: freedom from Arduino-Source's build drag and upstream restrictions. Stop rule 4 is the main gate; the C++ pass rate is a "no worse than" floor |
+| R2 | Upstream | Nothing has to go upstream. The overlay on Arduino-Source stays thin |
+| R3 | Image primitives | Probes on OpenCV; only `CoreLib` from PA via upstream's cmake files |
+| R4 | S0 backend | mGBA through the existing `lab/mgba/bridge.lua` protocol, unchanged (the daemon is a second client), plus replay of the recorded wire log |
+| R5 | S0/S1 checkpoints | The Mail Glitch checkpoints of fork #781, after it lands. mGBA has a save per checkpoint (`~/FRLGLab/mgba/emu-1/saves`, story to `20.05`; `mail-glitch-test/` for `mg-*`); console B is post-game |
+| R6 | Repo | `dayfine/GamePilot`, private, `~/Projects/GamePilot`; harness from `dayfine/agent-harness` plus the fork's `pr-maintenance`, `reviewer`, `dispatch`, `console-iteration`, `codex-dispatch`, `cpp-style-review` |
+| R7 | C++ | One small daemon, glue only (about 2k lines): no thresholds, state machines or game names. `daemon/` and `programs/` are fully separate, each with its own build, lint and CI; `clang-format`, strict warnings, PA's `Filesystem` wrappers for paths |
+| R8 | Real effect handler | OCaml stdlib only (`Unix` sockets, one reader thread, a queue, a small scheduler); OCaml 5.2+ pinned in CI on three OSes; Eio later is a handler swap (D8) |
+| R9 | Gates | Pass rate on mGBA; timing on the Switch in testing mode; `mg-05` on mGBA only |
+| R10 | Console B | GamePilot is one more lab process under the one-train rule (`lablock.sh`); the main session schedules windows |
+| R11 | Swappable parts | P1: anything that may be swapped (I/O backend, RNG, effect handler, probes) sits behind one boundary. No I/O survey or RNG library search up front |
+| R12 | FRLG RNG | Needed in S4; D6's OCaml rewrite starts there, PA's FRLG RNG as oracle |
+| R13 | Templates | Packages as a read-only submodule; new templates in `programs/<game>/assets/`; programs upload templates at probe registration (cached by hash); template readers get replay tests |
+| R14 | Manual control | pa-lab's MCP tools, mapped onto daemon calls by its second adapter, plus a hold state on the lease; no separate CLI |
+| R15 | Defaults | D3 strict; game identification is an OCaml reader run by `ensure_game`; the latency spike gates S1, not S0 |

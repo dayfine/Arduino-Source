@@ -7,40 +7,18 @@ section numbers below refer to it.
 
 ## State
 
-- The design is complete as an interview outcome: 15 questions answered by the user and 8
-  derived decisions (section 2). Nothing is built. No repo, no spike, no code.
-- It is filed as fork draft PR dayfine/Arduino-Source#808 (base `agents`, branch
-  `docs/layered-automation-stack`). The `Agents Check` job passed on the first commit. The
-  PR is not merged.
-- The user has not yet given a go-ahead to build anything. The last question put to them
-  was whether to start the Week 0 link spike; it was not answered before the move.
+- The design is complete after two interviews on 2026-11-22; the second (design doc
+  section 13) settled the repo, S0/S1, the gates and the open items.
+- Go-ahead given for: this doc update, creating `dayfine/GamePilot` (private) with its first
+  commit, and the Week 0 link spike. S0's port waits for fork #781 (Mail Glitch) to land.
 
 ## Do next
 
-1. Read the design doc, then `AGENTS.md` and `pokemon_sv/PR_WORKFLOW.md` on `origin/agents`.
-2. Get the user's decisions that block a first build (section 12):
-   - the new repo's name and location;
-   - which FRLG checkpoint is S0/S1 (it should use `from_save`, `route`, `heal_to_full`,
-     `save`, the actions S4 needs first);
-   - whether to merge #808.
-3. Run the Week 0 spikes (section 10). What each one needs:
-
-   | Spike | Needs | Can run on a computer without the lab |
-   |---|---|---|
-   | Link: `CoreLib` + image primitive sources in a Qt-free binary | an Arduino-Source checkout, CMake, OpenCV | yes |
-   | Capture: OpenCV `VideoCapture` at 1080p | the lab capture card | no |
-   | Latency: frame -> probe -> OCaml -> command, p99 under 33 ms | capture card, controller board, a console | no |
-
-   The link spike is the only one that can start anywhere, and it needs no repo name: a
-   scratch tree is enough. S0 (mGBA) also needs no console, but it needs mGBA 0.10.5 and
-   the FireRed ROM, which the user loaded on the old computer only.
-4. When the repo is created, set up D1 in the first commit: the architecture note, the
-   lint on `dune` files, the dependency allowlist, the Windows CI build (section 6). Add
-   the golden wire messages (D4) with the first protocol code.
-5. Follow-ups noticed but not requested; ask before doing them:
-   - the FRLG dex design's slices 2-3 (`autostory/frlg/design/AutoStory-FRLG-Dex-Collection.md`)
-     assume C++ list inference and need redirecting to probes;
-   - the pa-lab README plan should say that Slice 7b work on the old app stops (section 8).
+1. Merge #808 (the user).
+2. First commit of `dayfine/GamePilot`: `agent-harness init`, the D1 rules, the Arduino-Source
+   and Packages submodules, empty `daemon/` and `programs/`, CI on three OSes.
+3. Link spike: `CoreLib` + OpenCV in a Qt-free daemon binary, green in that CI.
+4. Capture and latency spikes in console-B windows; then S0 on mGBA once #781 lands.
 
 ## What the design doc does not say
 
