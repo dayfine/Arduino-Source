@@ -92,6 +92,34 @@ void make_blink_watchers(
 );
 
 
+
+//  The provisional state a calibration holds until a later solve repeats it.
+struct ProvisionalState{
+    bool held = false;
+    Pokemon::Xorshift128State state;
+    size_t events = 0;
+    size_t failed_solves = 0;
+};
+enum class ProvisionalStep{
+    KEEP_COLLECTING,
+    PROVISIONAL,
+    CHANGED,
+    DROPPED,
+    CONFIRMED,
+};
+//  Takes one solve over `events` rolls. A held state is dropped after
+//  `confirmation_events` solves in a row fail: while one is held the blink
+//  window stops sliding, so a misread blink among its rolls fails every later
+//  solve until the attempt gives up; dropping it lets the window slide past.
+ProvisionalStep update_provisional(
+    ProvisionalState& provisional,
+    bool solved,
+    const Pokemon::Xorshift128State& state,
+    size_t events,
+    size_t confirmation_events
+);
+
+
 bool collect_blink_matches(
     std::vector<std::unique_ptr<EyeBlinkWatcher>>& watchers,
     std::vector<std::vector<BlinkMatchSample>>& matches,

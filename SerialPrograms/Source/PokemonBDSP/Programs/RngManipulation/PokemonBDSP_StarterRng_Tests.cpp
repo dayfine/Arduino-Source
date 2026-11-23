@@ -8,8 +8,10 @@
 #include <format>
 #include <functional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
+#include "PokemonBDSP_BlinkRecovery.h"
 #include "PokemonBDSP_RngAim.h"
 #include "PokemonBDSP_RngCalibration.h"
 #include "PokemonBDSP_StarterNavigation.h"
@@ -285,6 +287,41 @@ private:
     StarterRngTestCase m_case;
 };
 
+//  A held provisional state is dropped once six solves in a row fail, so the
+//  blink window slides past a misread blink (lab-B 2026-11-23, German run 8:
+//  three attempts held a state from 51-54 rolls and gave up at 156 blinks).
+UnitTestResult test_provisional_state_steps(Logger&){
+    const Pokemon::Xorshift128State a(1, 2, 3, 4);
+    const Pokemon::Xorshift128State b(5, 6, 7, 8);
+    struct Solve{ std::string_view label; bool solved; Pokemon::Xorshift128State state; ProvisionalStep step; };
+    const Solve solves[] = {
+        {"no state yet, a failed solve", false, a, ProvisionalStep::KEEP_COLLECTING},
+        {"first solve", true, a, ProvisionalStep::PROVISIONAL},
+        {"failed solve 1", false, a, ProvisionalStep::KEEP_COLLECTING},
+        {"failed solve 2", false, a, ProvisionalStep::KEEP_COLLECTING},
+        {"failed solve 3", false, a, ProvisionalStep::KEEP_COLLECTING},
+        {"failed solve 4", false, a, ProvisionalStep::KEEP_COLLECTING},
+        {"failed solve 5", false, a, ProvisionalStep::KEEP_COLLECTING},
+        {"failed solve 6", false, a, ProvisionalStep::DROPPED},
+        {"solve after the drop", true, b, ProvisionalStep::PROVISIONAL},
+        {"a different state", true, a, ProvisionalStep::CHANGED},
+        {"failed solve between two that agree", false, a, ProvisionalStep::KEEP_COLLECTING},
+        {"the same state again", true, a, ProvisionalStep::CONFIRMED},
+    };
+    ProvisionalState provisional;
+    size_t events = 44;
+    for (const Solve& solve : solves){
+        const ProvisionalStep step = update_provisional(provisional, solve.solved, solve.state, events++, /*confirmation_events=*/6);
+        if (step != solve.step){
+            return std::format("{}: step {}, expected {}", solve.label, (int)step, (int)solve.step);
+        }
+    }
+    if (!provisional.held || provisional.state != a){
+        return std::string("the confirmed state is not held");
+    }
+    return true;
+}
+
 const StarterRngTestCase STARTER_RNG_CASES[] = {
     {.name = "per-starter tables and timings", .input = {.body = test_starter_tables}, .expectation = {}},
     {.name = "bedroom skip buffer and landing math", .input = {.body = test_skip_buffer_and_landing_math}, .expectation = {}},
@@ -292,6 +329,7 @@ const StarterRngTestCase STARTER_RNG_CASES[] = {
     {.name = "attempt loop outcome resolution", .input = {.body = test_attempt_loop_transitions}, .expectation = {}},
     {.name = "default filter row is shiny of any nature", .input = {.body = test_default_shiny_row}, .expectation = {}},
     {.name = "a shiny that did not settle ends the loop unsettled", .input = {.body = test_shiny_unsettled}, .expectation = {}},
+    {.name = "a provisional state that stops solving is dropped", .input = {.body = test_provisional_state_steps}, .expectation = {}},
 };
 
 } // namespace

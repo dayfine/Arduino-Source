@@ -243,6 +243,70 @@ static size_t report_fresh_progress(
     return search_updates;
 }
 
+ProvisionalStep update_provisional(
+    ProvisionalState& provisional,
+    bool solved,
+    const Xorshift128State& state,
+    size_t events,
+    size_t confirmation_events
+){
+    if (!solved){
+        if (!provisional.held){
+            return ProvisionalStep::KEEP_COLLECTING;
+        }
+        provisional.failed_solves++;
+        if (provisional.failed_solves < confirmation_events){
+            return ProvisionalStep::KEEP_COLLECTING;
+        }
+        provisional = ProvisionalState();
+        return ProvisionalStep::DROPPED;
+    }
+    provisional.failed_solves = 0;
+    if (provisional.held && state == provisional.state){
+        return ProvisionalStep::CONFIRMED;
+    }
+    const bool was_held = provisional.held;
+    provisional.held = true;
+    provisional.state = state;
+    provisional.events = events;
+    return was_held ? ProvisionalStep::CHANGED : ProvisionalStep::PROVISIONAL;
+}
+
+//  Logs a step of the provisional state; true once it is confirmed.
+static bool report_provisional_step(
+    SingleSwitchProgramEnvironment& env,
+    ProvisionalStep step,
+    const Xorshift128State& state,
+    size_t events,
+    size_t confirmation_events
+){
+    switch (step){
+    case ProvisionalStep::PROVISIONAL:
+        env.log("Provisional state " + state.to_string() + " from "
+            + std::to_string(events) + " rolls. Collecting "
+            + std::to_string(confirmation_events) + " more to confirm.");
+        return false;
+    case ProvisionalStep::CHANGED:
+        env.log(
+            "The RNG state changed as more blinks arrived, so the earlier one was "
+            "wrong. Continuing.",
+            COLOR_ORANGE
+        );
+        return false;
+    case ProvisionalStep::DROPPED:
+        env.log(
+            "The provisional RNG state stopped solving as blinks arrived, so a blink "
+            "was probably misread. Searching again over the newest blinks.",
+            COLOR_ORANGE
+        );
+        return false;
+    case ProvisionalStep::CONFIRMED:
+        return true;
+    default:
+        return false;
+    }
+}
+
 BlinkRecovery recover_state_from_blinks(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -261,10 +325,8 @@ BlinkRecovery recover_state_from_blinks(
     std::vector<double> estimated_thresholds(watchers.size(), -1);
     std::vector<size_t> estimated_from(watchers.size(), 0);
 
-    bool have_candidate = false;
+    ProvisionalState provisional;
     size_t search_updates = 0;
-    Xorshift128State candidate;
-    size_t candidate_events = 0;
     std::vector<WallClock> newest_blink(watchers.size(), WallClock::min());
 
     WallClock next_nudge = current_time() + config.keep_awake_interval;
@@ -334,7 +396,7 @@ BlinkRecovery recover_state_from_blinks(
         }
         display.set_progress(events, config.min_rolls_to_try + config.confirmation_events);
         //  don't trim if there is a candidate (the solution is pinned to the earliest blink)
-        if (!have_candidate){
+        if (!provisional.held){
             trim_to_window(watchers, streams, origin, config.window_events / streams.size());
         }
 
@@ -354,7 +416,7 @@ BlinkRecovery recover_state_from_blinks(
         if (!fresh){
             continue;
         }
-        search_updates = report_fresh_progress(config, events, search_updates, have_candidate, candidate_events, env);
+        search_updates = report_fresh_progress(config, events, search_updates, provisional.held, provisional.events, env);
 
         if (longest->size() < 3){
             continue;
@@ -364,7 +426,7 @@ BlinkRecovery recover_state_from_blinks(
         if (!(fit.period_seconds > 0)){
             continue;
         }
-        if (have_candidate && events < candidate_events + config.confirmation_events){
+        if (provisional.held && events < provisional.events + config.confirmation_events){
             continue;
         }
 
@@ -391,13 +453,8 @@ BlinkRecovery recover_state_from_blinks(
             }
             std::rotate(slots.begin(), slots.begin() + 1, slots.end());
         }
-        if (!solved.success){
-            failed_solves++;
-            continue;
-        }
-        failed_solves = 0;
-
-        if (frozen_thresholds[0] <= 0){
+        failed_solves = solved.success ? 0 : failed_solves + 1;
+        if (solved.success && frozen_thresholds[0] <= 0){
             std::string report;
             for (size_t w = 0; w < watchers.size(); w++){
                 frozen_thresholds[w] = thresholds[w];
@@ -406,23 +463,10 @@ BlinkRecovery recover_state_from_blinks(
             }
             env.log("Thresholds fixed so that blink numbering stops moving: " + report + ".");
         }
-        if (!have_candidate){
-            env.log("Provisional state " + solved.state.to_string() + " from "
-                + std::to_string(events) + " rolls. Collecting "
-                + std::to_string(config.confirmation_events) + " more to confirm.");
-            have_candidate = true;
-            candidate = solved.state;
-            candidate_events = events;
-            continue;
-        }
-        if (solved.state != candidate){
-            env.log(
-                "The RNG state changed as more blinks arrived, so the earlier one was "
-                "wrong. Continuing.",
-                COLOR_ORANGE
-            );
-            candidate = solved.state;
-            candidate_events = events;
+        const ProvisionalStep step = update_provisional(
+            provisional, solved.success, solved.state, events, config.confirmation_events
+        );
+        if (!report_provisional_step(env, step, solved.state, events, config.confirmation_events)){
             continue;
         }
 
