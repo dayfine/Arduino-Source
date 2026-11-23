@@ -494,7 +494,7 @@ TargetSelectionResult find_starter_target(
     const RngAim& aim,
     double& lead_seconds
 ){
-    const StarterSceneDurations durations = StarterSceneDurations::measured();
+    const StarterSceneDurations durations = StarterSceneDurations::measured(settings.language);
     NavigationTimings timings;
     timings.ready_seconds = durations.briefcase_to_starly_ready;
     timings.move_seconds = seconds_to_move_to_starter(settings.starter) + 0.25;
@@ -592,8 +592,7 @@ std::string run_blind_starter_sequence(
         return "the briefcase press moment passed before it could be sent";
     }
     if (!issue_starter_sequence(
-        run.context, run.settings.starter,
-        schedule.starly_seconds, schedule.select_seconds, schedule.confirm_seconds,
+        run.env, run.context, run.settings.starter, run.settings.language, schedule,
         sequence_failure
     )){
         return sequence_failure;

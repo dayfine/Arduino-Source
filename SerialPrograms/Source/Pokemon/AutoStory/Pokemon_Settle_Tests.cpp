@@ -83,6 +83,7 @@ const RuleTestCase RULE_CASES[] = {
         .expectation = {"warp=true quiet=5000ms calm=15000ms still=screen still look=1200ms cap=120000ms"},
     },
     {
+        //  Wait 1 s of the player still after a door fade-in (lab-B 2026-11-10).
         .name = "a door waits 1 s of the player still, looking often",
         .input = {SettleKind::DOOR},
         .expectation = {"warp=false quiet=1000ms calm=2500ms still=player still look=200ms cap=120000ms"},

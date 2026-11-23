@@ -10,6 +10,8 @@
 #include <format>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/OCR/OCR_Routines.h"
@@ -239,7 +241,9 @@ private:
 
 void add_tests_HomeTileReader(UnitTestDatabase& database){
     for (const HomeTileCase& test : HOME_TILE_CASES){
-        database.add<Test_HomeTileReader>(test);
+        if (Filesystem::exists(std::format("{}{}", UNIT_TEST_RESOURCE_PATH(), test.input.image))){
+            database.add<Test_HomeTileReader>(test);
+        }
     }
 }
 

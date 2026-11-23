@@ -11,6 +11,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "PokemonBDSP/Inference/Battles/PokemonBDSP_EndBattleDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
+#include "PokemonBDSP/Inference/PokemonBDSP_SelectionArrow.h"
 #include "PokemonBDSP_StarterNavigation.h"
 
 namespace PokemonAutomation{
@@ -20,7 +21,29 @@ namespace PokemonBDSP{
 
 const Milliseconds AFTER_BRIEFCASE = 4000ms;
 const Milliseconds PRE_BRIEFCASE_DURATION = 21000ms;
-const Milliseconds PROMPT_ANIMATION = 1000ms;
+//  The selecting press shows the starter and its two-line question; the Yes/No
+//  box comes up once the question has typed out. Short in English and the CJK
+//  languages (1 s held for every run in them). French types out far longer: on
+//  console B (2026-11-23) the question was still typing 2 s after the press,
+//  so UP at 1 s was dropped and the confirming press landed on "Non". The
+//  long-text languages get a wait that covers it until it is measured: the
+//  sequence logs when the box shows.
+static Milliseconds starter_prompt_wait(Language language){
+    switch (language){
+    case Language::French:
+    case Language::German:
+    case Language::Spanish:
+    case Language::Italian:
+        return 6000ms;
+    default:
+        return 1000ms;
+    }
+}
+//  After the Yes/No box shows: UP, then room for the confirming press.
+const Milliseconds UP_PRESS = 100ms;
+const Milliseconds AFTER_UP = 200ms;
+//  How long to keep watching for a late Yes/No box, only to log the delay.
+const Milliseconds PROMPT_MEASURE_LIMIT = 15000ms;
 const Milliseconds SCHEDULING_SLACK = 100ms;
 
 
@@ -152,8 +175,9 @@ void navigate_to_pre_briefcase(SingleSwitchProgramEnvironment& env, ProControlle
 
 const Milliseconds BRIEFCASE_PRESS_TO_STARLY_READY =
     80ms + AFTER_BRIEFCASE + 100ms;
-const Milliseconds SELECT_PRESS_TO_CONFIRM_READY =
-    80ms + PROMPT_ANIMATION + 100ms + 200ms;
+static Milliseconds select_press_to_confirm_ready(Language language){
+    return 80ms + starter_prompt_wait(language) + UP_PRESS + AFTER_UP;
+}
 
 static Milliseconds starly_press_to_select_ready(BdspStarter starter){
     return 80ms + 5500ms + 100ms + 1200ms
@@ -166,7 +190,7 @@ namespace{
 struct StarterSequenceWaits{
     Milliseconds before_starly = 0ms;
     Milliseconds before_select = 0ms;
-    Milliseconds before_confirm = 0ms;
+    Milliseconds select_to_confirm = 0ms;
 };
 
 Milliseconds seconds_to_ms(double seconds){
@@ -175,6 +199,7 @@ Milliseconds seconds_to_ms(double seconds){
 
 bool compute_starter_waits(
     BdspStarter starter,
+    Language language,
     double starly_seconds,
     double select_seconds,
     double confirm_seconds,
@@ -188,7 +213,7 @@ bool compute_starter_waits(
     const Milliseconds confirm_at = seconds_to_ms(confirm_seconds);
     const Milliseconds after_dialog = BRIEFCASE_PRESS_TO_STARLY_READY;
     const Milliseconds after_starly = starly_at + starly_press_to_select_ready(starter);
-    const Milliseconds after_select = select_at + SELECT_PRESS_TO_CONFIRM_READY;
+    const Milliseconds after_select = select_at + select_press_to_confirm_ready(language);
 
     auto too_tight = [&](std::string_view what, Milliseconds needed, Milliseconds have){
         failure_reason = std::format(
@@ -208,23 +233,87 @@ bool compute_starter_waits(
     }
     waits.before_starly = starly_at - after_dialog;
     waits.before_select = select_at - after_starly;
-    waits.before_confirm = confirm_at - after_select;
+    waits.select_to_confirm = confirm_at - select_at;
     return true;
 }
 
 } // namespace
 
-//  The whole blind button press sequence
+//  Waits for the Yes/No box the selecting press brings up, then UP onto "Yes".
+//  Returns false, with the reason, when the box shows too late for `confirm_time`.
+static bool move_to_yes_before(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    WallClock select_done,
+    WallClock confirm_time,
+    std::string& failure_reason
+){
+    SelectionArrowFinder yes_no(env.console, /*box=*/{0.50, 0.60, 0.35, 0.20}, COLOR_RED);
+    const WallClock up_deadline = confirm_time - UP_PRESS - AFTER_UP;
+    if (wait_until(env.console, context, up_deadline, {{yes_no}}) == 0){
+        env.log(std::format(
+            "The Yes/No box showed {} ms after the selecting press.",
+            std::chrono::duration_cast<Milliseconds>(current_time() - select_done).count()
+        ));
+        pbf_press_dpad(context, DPAD_UP, UP_PRESS, 0ms);
+        context.wait_for_all_requests();
+        return true;
+    }
+    //  Too late for this attempt; keep watching only to log how long it takes.
+    const bool showed = wait_until(env.console, context, select_done + PROMPT_MEASURE_LIMIT, {{yes_no}}) == 0;
+    const Milliseconds took = std::chrono::duration_cast<Milliseconds>(current_time() - select_done);
+    failure_reason = showed
+        ? std::format(
+            "the Yes/No box showed {} ms after the selecting press, after the {} ms this language allows",
+            took.count(), std::chrono::duration_cast<Milliseconds>(up_deadline - select_done).count()
+        )
+        : std::format("the Yes/No box did not show within {} ms of the selecting press", took.count());
+    env.log(failure_reason, COLOR_RED);
+    return false;
+}
+
+//  The selecting press, cursor onto "Yes", the confirming press
+//  `select_to_confirm` after the selecting one, then the battle start.
+static bool select_and_confirm(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    Milliseconds select_to_confirm,
+    std::string& failure_reason
+){
+    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+    context.wait_for_all_requests();
+    const WallClock select_done = current_time();
+    const WallClock confirm_time = select_done + select_to_confirm - 80ms;
+    if (!move_to_yes_before(env, context, select_done, confirm_time, failure_reason)){
+        return false;
+    }
+    const WallClock now = current_time();
+    if (now < confirm_time){
+        pbf_wait(context, std::chrono::duration_cast<Milliseconds>(confirm_time - now));
+    }
+    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
+    pbf_wait(context, 3000ms);
+    pbf_press_button(context, BUTTON_A, 100ms, 0ms);
+    context.wait_for_all_requests();
+    return true;
+}
+
+//  The whole button press sequence: blind up to the selecting press, then the
+//  Yes/No box is watched for and the confirming press keeps its scheduled time.
 bool issue_starter_sequence(
+    SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     BdspStarter starter,
-    double starly_seconds,
-    double select_seconds,
-    double confirm_seconds,
+    Language language,
+    const PressSchedule& schedule,
     std::string& failure_reason
 ){
     StarterSequenceWaits waits;
-    if (!compute_starter_waits(starter, starly_seconds, select_seconds, confirm_seconds, waits, failure_reason)){
+    if (!compute_starter_waits(
+        starter, language,
+        schedule.starly_seconds, schedule.select_seconds, schedule.confirm_seconds,
+        waits, failure_reason
+    )){
         return false;
     }
 
@@ -243,18 +332,8 @@ bool issue_starter_sequence(
         pbf_press_dpad(context, DPAD_RIGHT, 100ms, 600ms);
     }
 
-    //  The selecting press, cursor onto "Yes", confirming press, then battle start
     pbf_wait(context, waits.before_select);
-    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
-    pbf_wait(context, PROMPT_ANIMATION);
-    pbf_press_dpad(context, DPAD_UP, 100ms, 200ms);
-    pbf_wait(context, waits.before_confirm);
-    pbf_press_button(context, BUTTON_A, 80ms, 0ms);
-    pbf_wait(context, 3000ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 0ms);
-
-    context.wait_for_all_requests();
-    return true;
+    return select_and_confirm(env, context, waits.select_to_confirm, failure_reason);
 }
 
 
@@ -286,13 +365,13 @@ double seconds_to_move_to_starter(BdspStarter starter){
 }
 
 //  Kept as short as the prompt animation allows to avoid extra blinks from the starter.
-StarterSceneDurations StarterSceneDurations::measured(){
+StarterSceneDurations StarterSceneDurations::measured(Language language){
     auto to_seconds = [](Milliseconds duration){
         return std::chrono::duration_cast<std::chrono::duration<double>>(duration).count();
     };
     return StarterSceneDurations{
         .briefcase_to_starly_ready = to_seconds(BRIEFCASE_PRESS_TO_STARLY_READY),
-        .select_to_confirm = to_seconds(SELECT_PRESS_TO_CONFIRM_READY + SCHEDULING_SLACK),
+        .select_to_confirm = to_seconds(select_press_to_confirm_ready(language) + SCHEDULING_SLACK),
         .to_pre_briefcase = to_seconds(PRE_BRIEFCASE_DURATION),
     };
 }
