@@ -151,7 +151,7 @@ const OverworldWalkTestCase OVERWORLD_WALK_CASES[] = {
 
 struct TurnTapInput{
     //  SimScript::dropped_turn_taps.
-    std::set<int> dropped_turn_taps;
+    std::set<int> dropped_turn_taps = {};
     //  SimWalkerRules::confirm_turn.
     bool confirm_turn = true;
     //  On the Bicycle (SimScript::on_bike, SimWalkerRules::speed).
