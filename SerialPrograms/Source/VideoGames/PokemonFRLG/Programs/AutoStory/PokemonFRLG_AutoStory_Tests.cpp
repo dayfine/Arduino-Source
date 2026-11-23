@@ -555,6 +555,7 @@ const AllowedRevisit ALLOWED_REVISITS[] = {
     {"02.01", "below_mart_door", CONSOLE_VERIFIED_REVISIT},
     {"02.02", "below_oak", CONSOLE_VERIFIED_REVISIT},
     {"02.03", "mart_clerk", CONSOLE_VERIFIED_REVISIT},
+    {"05.09", "above_center_ledge", "east to the railing wall (12, 15) and back west 1 to (11, 15) to anchor Nugget Bridge's center column now that the Rocket is gone (FLAG_HIDE_NUGGET_BRIDGE_ROCKET)"},
     {"06.01", "off_2f", CONSOLE_VERIFIED_REVISIT},
     {"07.01", "bike_clerk", CONSOLE_VERIFIED_REVISIT},
     {"07.01", "cerulean_nurse", "north to the wall (19, 18) and back south 2 to (19, 20) to avoid an open stop under wanderer routing"},
@@ -900,6 +901,25 @@ bool grass_held(const StoryPose& pose, const StoryStep& step){
     return step.action == "legs" && std::all_of(legs.begin(), legs.end(), [](const RouteStep& leg){ return !leg.wild || leg.to_wall || leg.tiles == 1; });
 }
 
+//  A route leaving a GRIND or CAPTURE grass patch whose wild legs all end on
+//  walls (08.03/celadon_below_center holds east to the wall (18, 6) out of
+//  Route 7's grass after catch_pidgey rather than an open wild stop south).
+bool leaving_patch_to_wall(
+    const StoryCheckpoint& checkpoint, size_t index, const StoryPose& pose, const StoryStep& step
+){
+    if (index == 0 || step.action != "route"){
+        return false;
+    }
+    const std::string& prev = checkpoint.steps[index - 1].action;
+    if (prev != GRIND_ACTION && prev != CAPTURE_ACTION){
+        return false;
+    }
+    const std::vector<RouteStep> legs = legs_walked(pose, step);
+    return !legs.empty() && std::all_of(legs.begin(), legs.end(), [](const RouteStep& leg){
+        return !leg.wild || leg.to_wall;
+    });
+}
+
 //  Moves `pose` past `step`, as check_checkpoint() does.
 UnitTestResult advance(StoryPose& pose, const StoryStep& step){
     if (step.action == "route"){
@@ -967,10 +987,11 @@ UnitTestResult check_lines(const StoryCheckpoint& checkpoint, std::set<std::stri
         //  A GRIND's or a capture's patch is grass: the route there may end on it.
         const bool to_patch = step.args.contains("target") && c + 1 < checkpoint.steps.size()
             && (checkpoint.steps[c + 1].action == GRIND_ACTION || checkpoint.steps[c + 1].action == CAPTURE_ACTION);
+        const bool exit_patch = leaving_patch_to_wall(checkpoint, c, pose, step);
         for (const MapPosition& tile : walks ? tiles_walked(pose, step) : std::vector<MapPosition>{}){
             const StoryPose end = to_patch ? one_tile(frlg_arg<Pokemon::GridPose>(step.args, "target")) : StoryPose{};
             const bool patch = to_patch && tile.map == end.map && tile.point == end.tile;
-            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || repelled || grass_held(pose, step)) && problem.starts_with("in the grass"))
+            if (const std::string problem = tile_problem(tile, beaten); !problem.empty() && !((patch || exit_patch || repelled || grass_held(pose, step)) && problem.starts_with("in the grass"))
                 && !(incidental_fights(checkpoint.id) && problem.starts_with("in the line of the trainer"))
             ){
                 return where + problem;
