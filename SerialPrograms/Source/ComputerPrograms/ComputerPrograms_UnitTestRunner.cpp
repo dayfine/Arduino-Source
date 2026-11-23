@@ -42,20 +42,6 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_MenuDetector.h"
 
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy_Tests.h"
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryVerifyRuns_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_FrameReplay_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_Interrupts_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_ScriptedReadings_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_Settle_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryFailureClasses_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_Transitions_Tests.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel_Tests.h"
 #include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
 #include "VideoGames/PokemonSwSh/PokemonSwSh_Tests.h"
@@ -74,27 +60,6 @@ namespace ComputerPrograms{
 
 
 
-
-namespace{
-
-void add_tests_GridAutoStory(UnitTestDatabase& ret){
-    Pokemon::add_tests_CenterVisit(ret);
-    Pokemon::add_tests_FrameReplay(ret);
-    Pokemon::add_tests_Interrupts(ret);
-    Pokemon::add_tests_SceneJudges(ret);
-    Pokemon::add_tests_ScriptedReadings(ret);
-    Pokemon::add_tests_Settle(ret);
-    Pokemon::add_tests_StoryCheckLevel(ret);
-    Pokemon::add_tests_StoryFailureClasses(ret);
-    Pokemon::add_tests_StoryInterrupts(ret);
-    Pokemon::add_tests_StoryLaunch(ret);
-    Pokemon::add_tests_StoryRngHandoff(ret);
-    Pokemon::add_tests_StorySavePolicy(ret);
-    Pokemon::add_tests_StoryVerifyRuns(ret);
-    Pokemon::add_tests_Transitions(ret);
-}
-
-} // namespace
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
@@ -121,7 +86,6 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     Kernels::add_tests(ret);
     Pokemon::add_tests_Navigation(ret);
     Pokemon::add_tests_AutoStory(ret);
-    add_tests_GridAutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_HomeTileReader(ret);
