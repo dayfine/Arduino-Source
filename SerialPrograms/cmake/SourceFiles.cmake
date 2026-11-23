@@ -1525,14 +1525,26 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryActions_Tests.h
     Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.cpp
     Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.h
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit.cpp
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit.h
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h
     Source/Pokemon/AutoStory/Pokemon_FadeProfiles.h
     Source/Pokemon/AutoStory/Pokemon_InterruptHandlers.h
     Source/Pokemon/AutoStory/Pokemon_Interrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_Interrupts.h
     Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges.cpp
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h
     Source/Pokemon/AutoStory/Pokemon_ScreenEventLog.cpp
     Source/Pokemon/AutoStory/Pokemon_ScreenEventLog.h
+    Source/Pokemon/AutoStory/Pokemon_Settle.cpp
+    Source/Pokemon/AutoStory/Pokemon_Settle.h
+    Source/Pokemon/AutoStory/Pokemon_Settle_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_Settle_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryFailure.h
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryInterrupts.h
