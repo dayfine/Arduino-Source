@@ -103,7 +103,7 @@
       {
         "id": "beside_bill",
         "action": "legs",
-        "why": "to (6, 6), west of Bill, facing him",
+        "why": "not_using_planner_route: pre-2026-11-15 Sea Cottage interior approach leg; to (6, 6), west of Bill, facing him",
         "args": {
           "legs": [
             {
@@ -139,7 +139,7 @@
       {
         "id": "around_bill",
         "action": "legs",
-        "why": "to (7, 8), above the mat; Bill stands on (7, 6) after his scene",
+        "why": "not_using_planner_route: Bill moves to (7, 6) after his scene, differing from his map tile; to (7, 8), above the mat; Bill stands on (7, 6) after his scene",
         "args": {
           "legs": [
             {

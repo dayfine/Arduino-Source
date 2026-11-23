@@ -85,7 +85,7 @@
       {
         "id": "center_northwest_corner",
         "action": "legs",
-        "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2): legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse",
+        "why": "not_using_planner_route: from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2): legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse",
         "args": {
           "legs": [
             {
@@ -295,7 +295,7 @@
       {
         "id": "below_kayden_line",
         "action": "legs",
-        "why": "up column 14 from (14, 21) to (14, 17), a tile below Kayden's east line (13..14, 16): a planned route here goes up column 12 or 13 and meets his south line",
+        "why": "not_using_planner_route: up column 14 from (14, 21) to (14, 17), a tile below Kayden's east line (13..14, 16): a planned route here goes up column 12 or 13 and meets his south line",
         "args": {
           "legs": [
             {
@@ -347,7 +347,7 @@
       {
         "id": "east_column_to_kirk",
         "action": "legs",
-        "why": "up column 14 from (14, 16) to (14, 12), a tile below Juggler Kirk's line (12..14, 11)",
+        "why": "not_using_planner_route: up column 14 from (14, 16) to (14, 12), a tile below Juggler Kirk's line (12..14, 11)",
         "args": {
           "legs": [
             {
@@ -402,7 +402,7 @@
       {
         "id": "east_column_to_wall",
         "action": "legs",
-        "why": "up column 14 from (14, 11) to the wall at (14, 2): past Tamer Edgar's east line (14, 4) when he looks east (he looks every way), on a leg the wall stops",
+        "why": "not_using_planner_route: up column 14 from (14, 11) to the wall at (14, 2): past Tamer Edgar's east line (14, 4) when he looks east (he looks every way), on a leg the wall stops",
         "args": {
           "legs": [
             {
@@ -416,7 +416,7 @@
       {
         "id": "top_row_to_wall",
         "action": "legs",
-        "why": "west along row 2 to the wall at (0, 2), the gym's top edge (pokeguy's invisible-wall corridor, 1:16:18): past Edgar's north line (13, 2..3) when he looks north, on a leg the wall stops",
+        "why": "not_using_planner_route: west along row 2 to the wall at (0, 2), the gym's top edge (pokeguy's invisible-wall corridor, 1:16:18): past Edgar's north line (13, 2..3) when he looks north, on a leg the wall stops",
         "args": {
           "legs": [
             {
@@ -430,7 +430,7 @@
       {
         "id": "down_to_koga",
         "action": "legs",
-        "why": "east along row 2 to (9, 2), down column 9 to the wall at (9, 10), west along row 10 to (2, 10), below Rocker Shawn (2, 9), who looks west at (1, 9) only, down to (2, 12) and into the middle box along row 12 to (6, 12) and (6, 13): out of Tamer Phil's lines round (4, 6), which a planned route crosses",
+        "why": "not_using_planner_route: east along row 2 to (9, 2), down column 9 to the wall at (9, 10), west along row 10 to (2, 10), below Rocker Shawn (2, 9), who looks west at (1, 9) only, down to (2, 12) and into the middle box along row 12 to (6, 12) and (6, 13): out of Tamer Phil's lines round (4, 6), which a planned route crosses",
         "args": {
           "legs": [
             {

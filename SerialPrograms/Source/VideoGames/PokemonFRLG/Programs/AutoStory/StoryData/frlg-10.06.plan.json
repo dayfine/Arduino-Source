@@ -203,7 +203,7 @@
       {
         "id": "below_fuji_house",
         "action": "legs",
-        "why": "a tap a tile from the door (4, 7) up to (4, 4) and west to below Mr. Fuji (3, 3), now shown (FLAG_HIDE_POKEHOUSE_FUJI cleared): (3, 4), between the table (5..6, 4..5) and the youngster (3, 5). An approach to an A press ends on its tile: held, \"north 3\" is open at (4, 3)",
+        "why": "not_using_planner_route: a tap a tile from the door (4, 7) up to (4, 4) and west to below Mr. Fuji (3, 3), now shown (FLAG_HIDE_POKEHOUSE_FUJI cleared): (3, 4), between the table (5..6, 4..5) and the youngster (3, 5). An approach to an A press ends on its tile: held, \"north 3\" is open at (4, 3)",
         "args": {
           "legs": [
             {

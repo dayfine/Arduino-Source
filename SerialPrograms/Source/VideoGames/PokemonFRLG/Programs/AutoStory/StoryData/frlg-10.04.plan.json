@@ -44,7 +44,7 @@
       {
         "id": "tower_3f_to_stairs",
         "action": "legs",
-        "why": "a tap a tile east along row 7 to (18, 7), down to (18, 9), west to the wall (17, 9) and down to (17, 10): the stairs (18, 10) warp on a press east, so they are stepped onto going east, and a walk a tile short still ends with the press east onto them. Down column 18 instead, a turn read as a step left the player on (18, 9), facing a wall (console B, 2026-11-12). The planner, kept off open stops on wild floor, would go down to (18, 12) and round",
+        "why": "not_using_planner_route: a tap a tile east along row 7 to (18, 7), down to (18, 9), west to the wall (17, 9) and down to (17, 10): the stairs (18, 10) warp on a press east, so they are stepped onto going east, and a walk a tile short still ends with the press east onto them. Down column 18 instead, a turn read as a step left the player on (18, 9), facing a wall (console B, 2026-11-12). The planner, kept off open stops on wild floor, would go down to (18, 12) and round",
         "args": {
           "legs": [
             {
@@ -88,7 +88,7 @@
       {
         "id": "tower_4f_column_16",
         "action": "legs",
-        "why": "a tap a tile: down to (18, 11), west to (16, 11) and up column 16 to the wall (16, 6), on (16, 7), west of Laurel's line",
+        "why": "not_using_planner_route: a tap a tile: down to (18, 11), west to (16, 11) and up column 16 to the wall (16, 6), on (16, 7), west of Laurel's line",
         "args": {
           "legs": [
             {
@@ -176,7 +176,7 @@
       {
         "id": "tower_5f_row6_east",
         "action": "legs",
-        "why": "a tap a tile along row 6 to (18, 6), above Tammy's line (16..18, 7)",
+        "why": "not_using_planner_route: a tap a tile along row 6 to (18, 6), above Tammy's line (16..18, 7)",
         "args": {
           "legs": [
             {

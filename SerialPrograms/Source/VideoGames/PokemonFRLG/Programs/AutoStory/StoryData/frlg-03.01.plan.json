@@ -18,7 +18,7 @@
       {
         "id": "forest_east",
         "action": "legs",
-        "why": "up the east side to (44, 43)",
+        "why": "not_using_planner_route: pre-2026-11-15 wall-guided Viridian Forest legs; up the east side to (44, 43)",
         "args": {
           "legs": [
             {
@@ -61,7 +61,7 @@
       {
         "id": "forest_exit",
         "action": "legs",
-        "why": "walls all the way to the gate's column",
+        "why": "not_using_planner_route: pre-2026-11-15 wall-guided Viridian Forest legs; walls all the way to the gate's column",
         "args": {
           "legs": [
             {

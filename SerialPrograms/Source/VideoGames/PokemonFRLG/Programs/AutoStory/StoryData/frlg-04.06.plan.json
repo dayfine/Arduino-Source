@@ -110,7 +110,7 @@
       {
         "id": "above_city_ledge",
         "action": "legs",
-        "why": "to walls: (9, 12), (8, 12), (30, 12), (30, 17), (25, 17)",
+        "why": "not_using_planner_route: pre-2026-11-15 wall-anchored Cerulean approach legs; to walls: (9, 12), (8, 12), (30, 12), (30, 17), (25, 17)",
         "args": {
           "legs": [
             {

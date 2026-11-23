@@ -18,7 +18,7 @@
       {
         "id": "route10_east_side",
         "action": "legs",
-        "why": "east along row 58 to (18, 58), up to the wall (18, 56), west to the wall (17, 56), back to (18, 56), down through the ledges' gap to (18, 64), east to the wall (21, 64), down column 21 to the wall (21, 73), west along row 73 to the wall (11, 73)",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 10/Lavender wall-anchored legs; east along row 58 to (18, 58), up to the wall (18, 56), west to the wall (17, 56), back to (18, 56), down through the ledges' gap to (18, 64), east to the wall (21, 64), down column 21 to the wall (21, 73), west along row 73 to the wall (11, 73)",
         "args": {
           "legs": [
             {
@@ -96,7 +96,7 @@
       {
         "id": "below_center_door",
         "action": "legs",
-        "why": "west along row 8 to (5, 8), onto row 9, east to the wall (7, 9), west to (6, 9)",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 10/Lavender wall-anchored legs; west along row 8 to (5, 8), onto row 9, east to the wall (7, 9), west to (6, 9)",
         "args": {
           "legs": [
             {

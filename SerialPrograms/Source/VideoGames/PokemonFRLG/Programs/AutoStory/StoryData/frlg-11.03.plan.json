@@ -109,7 +109,7 @@
       {
         "id": "before_east_grass",
         "action": "legs",
-        "why": "along the east area's bottom row to (28, 28), the tile before its first grass (29, 28): the Super Repel's 200 steps start here, so they last to the north area's last grass (SafariZone_Tests' step count)",
+        "why": "not_using_planner_route: along the east area's bottom row to (28, 28), the tile before its first grass (29, 28): the Super Repel's 200 steps start here, so they last to the north area's last grass (SafariZone_Tests' step count)",
         "args": {
           "legs": [
             {
@@ -136,7 +136,7 @@
       {
         "id": "to_full_restore",
         "action": "legs",
-        "why": "the shortest way round the east area's ledges and levels (pokefirered SafariZone_East map.json elevations) to below the FULL RESTORE's ball (37, 15), on the Bicycle. An approach to an A press ends on its tile: held east along row 14 to the wall (39, 14) at (38, 14), south to (38, 16) above the level 4 ground (38, 17), and a tile west; held, \"east 4\" was open at (37, 14)",
+        "why": "not_using_planner_route: the shortest way round the east area's ledges and levels (pokefirered SafariZone_East map.json elevations) to below the FULL RESTORE's ball (37, 15), on the Bicycle. An approach to an A press ends on its tile: held east along row 14 to the wall (39, 14) at (38, 14), south to (38, 16) above the level 4 ground (38, 17), and a tile west; held, \"east 4\" was open at (37, 14)",
         "args": {
           "legs": [
             {
@@ -213,7 +213,7 @@
       {
         "id": "to_north_area",
         "action": "legs",
-        "why": "west along the east area's top to (9, 9), beside its exit (8, 9)",
+        "why": "not_using_planner_route: fixed Safari Zone Bicycle step-budget legs; west along the east area's top to (9, 9), beside its exit (8, 9)",
         "args": {
           "legs": [
             {
@@ -269,7 +269,7 @@
       {
         "id": "to_west_area",
         "action": "legs",
-        "why": "the shortest way through the north area's levels with the least grass, its last grass (13..14, 9..10) the Super Repel's 193rd step, down column 11 to (11, 33), above its exit (11, 34); the PROTEIN, TM47 and QUICK CLAW are left",
+        "why": "not_using_planner_route: the shortest way through the north area's levels with the least grass, its last grass (13..14, 9..10) the Super Repel's 193rd step, down column 11 to (11, 33), above its exit (11, 34); the PROTEIN, TM47 and QUICK CLAW are left",
         "args": {
           "legs": [
             {
@@ -369,7 +369,7 @@
       {
         "id": "below_gold_teeth",
         "action": "legs",
-        "why": "down to below the GOLD TEETH's ball (28, 14) (pokeguy 1:14:07..09), the TM32, MAX POTION and MAX REVIVE left: west along row 16 to the wall (26, 16), a tile east, and up into the ball. An approach to an A press ends on its tile: held, \"south 10\" and \"west 3\" were open at (31, 16) and (27, 15)",
+        "why": "not_using_planner_route: down to below the GOLD TEETH's ball (28, 14) (pokeguy 1:14:07..09), the TM32, MAX POTION and MAX REVIVE left: west along row 16 to the wall (26, 16), a tile east, and up into the ball. An approach to an A press ends on its tile: held, \"south 10\" and \"west 3\" were open at (31, 16) and (27, 15)",
         "args": {
           "legs": [
             {
@@ -418,7 +418,7 @@
       {
         "id": "below_secret_house_attendant",
         "action": "legs",
-        "why": "a tap a tile from the door (4, 9) up to below the attendant (6, 5): (6, 6), facing him. An approach to an A press ends on its tile: held, \"east 2\" along row 6 is open at (7, 6)",
+        "why": "not_using_planner_route: a tap a tile from the door (4, 9) up to below the attendant (6, 5): (6, 6), facing him. An approach to an A press ends on its tile: held, \"east 2\" along row 6 is open at (7, 6)",
         "args": {
           "legs": [
             {

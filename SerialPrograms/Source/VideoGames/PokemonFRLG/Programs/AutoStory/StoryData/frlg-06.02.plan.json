@@ -100,7 +100,7 @@
       {
         "id": "west_of_dwayne_line",
         "action": "legs",
-        "why": "up column 5 to the can (5, 14), east to (7, 15): out of Dwayne's and Baily's sight",
+        "why": "not_using_planner_route: pre-2026-11-15 Vermilion Gym trainer-sight legs; up column 5 to the can (5, 14), east to (7, 15): out of Dwayne's and Baily's sight",
         "args": {
           "legs": [
             {
@@ -149,7 +149,7 @@
       {
         "id": "east_of_baily_line",
         "action": "legs",
-        "why": "west along row 15 to (4, 15), up to (4, 13), west to (3, 13): out of Baily's sight",
+        "why": "not_using_planner_route: pre-2026-11-15 Vermilion Gym trainer-sight legs; west along row 15 to (4, 15), up to (4, 13), west to (3, 13): out of Baily's sight",
         "args": {
           "legs": [
             {
@@ -202,7 +202,7 @@
       {
         "id": "below_tucker_line",
         "action": "legs",
-        "why": "east to (4, 13), up column 4 past Baily's row to (4, 9), east to (5, 9): below Tucker's line, not on it",
+        "why": "not_using_planner_route: pre-2026-11-15 Vermilion Gym trainer-sight legs; east to (4, 13), up column 4 past Baily's row to (4, 9), east to (5, 9): below Tucker's line, not on it",
         "args": {
           "legs": [
             {

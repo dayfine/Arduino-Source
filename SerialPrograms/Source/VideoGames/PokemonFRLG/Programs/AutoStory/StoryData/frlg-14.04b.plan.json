@@ -18,7 +18,7 @@
       {
         "id": "below_lori",
         "action": "legs",
-        "why": "a tap west from below Erika (6, 5) to below Lori (5, 4), on (5, 5)",
+        "why": "not_using_planner_route: a tap west from below Erika (6, 5) to below Lori (5, 4), on (5, 5)",
         "args": {
           "legs": [
             {
@@ -32,7 +32,7 @@
       {
         "id": "row_5_to_wall",
         "action": "legs",
-        "why": "run west from below Lori (5, 5) over the inner tree's tile (3, 5) to the wall at (1, 5): the tree, cut in 14.03, is still cut (start_gates: a save keeps it; only a warp grows it back), and Erika's win beats every trainer in the gym (set_gym_trainers 4); the wall stops any overshoot",
+        "why": "not_using_planner_route: run west from below Lori (5, 5) over the inner tree's tile (3, 5) to the wall at (1, 5): the tree, cut in 14.03, is still cut (start_gates: a save keeps it; only a warp grows it back), and Erika's win beats every trainer in the gym (set_gym_trainers 4); the wall stops any overshoot",
         "args": {
           "legs": [
             {
@@ -46,7 +46,7 @@
       {
         "id": "column_1_down_to_wall",
         "action": "legs",
-        "why": "run down column 1 to the wall at (1, 10), (1, 11) being wall: past Tamia, who stands on (2, 9) since her battle",
+        "why": "not_using_planner_route: run down column 1 to the wall at (1, 10), (1, 11) being wall: past Tamia, who stands on (2, 9) since her battle",
         "args": {
           "legs": [
             {
@@ -60,7 +60,7 @@
       {
         "id": "onto_column_2",
         "action": "legs",
-        "why": "a tap east from the wall (1, 10) onto column 2, (2, 10), right below Tamia (2, 9)",
+        "why": "not_using_planner_route: a tap east from the wall (1, 10) onto column 2, (2, 10), right below Tamia (2, 9)",
         "args": {
           "legs": [
             {
@@ -74,7 +74,7 @@
       {
         "id": "column_2_to_wall",
         "action": "legs",
-        "why": "run down the west aisle from (2, 10) to the wall at (2, 18): behind Lass Kay (3, 11), who looks east, and clear of Beauty Bridget's line (6..8, 10) that a planned way out through the middle crosses; all are beaten since Erika's win, and the wall stops any overshoot",
+        "why": "not_using_planner_route: run down the west aisle from (2, 10) to the wall at (2, 18): behind Lass Kay (3, 11), who looks east, and clear of Beauty Bridget's line (6..8, 10) that a planned way out through the middle crosses; all are beaten since Erika's win, and the wall stops any overshoot",
         "args": {
           "legs": [
             {

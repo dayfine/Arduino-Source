@@ -47,7 +47,7 @@
       {
         "id": "top_of_cycling_road",
         "action": "legs",
-        "why": "the six Bikers (LOOK_AROUND, sight 1) leave no way past out of every one's sight, so each leg that may be seen is one tile, the trainer seeing the player on its end, where the walk goes on from after the battle: along row 13 through Lao's (16, 13) and Hideki's (14, 13) to (13, 13), down column 13 through Hideki's (13, 14) to (13, 15), down to (13, 19) and east to the wall (14, 19), above Route 17's column 14 (pokeguy's way down: no Biker fought by choice)",
+        "why": "not_using_planner_route: the six Bikers (LOOK_AROUND, sight 1) leave no way past out of every one's sight, so each leg that may be seen is one tile, the trainer seeing the player on its end, where the walk goes on from after the battle: along row 13 through Lao's (16, 13) and Hideki's (14, 13) to (13, 13), down column 13 through Hideki's (13, 14) to (13, 15), down to (13, 19) and east to the wall (14, 19), above Route 17's column 14 (pokeguy's way down: no Biker fought by choice)",
         "args": {
           "legs": [
             {
@@ -135,7 +135,7 @@
       {
         "id": "route18_west_wall",
         "action": "legs",
-        "why": "the slope's count of taps leaves the player on (12, 10) only if every tap moved a tile: up a tile, west to the wall (8, 9) and down to the water (8, 10) find them from a tile either way, before the gate's door (41, 9) needs the row",
+        "why": "not_using_planner_route: the slope's count of taps leaves the player on (12, 10) only if every tap moved a tile: up a tile, west to the wall (8, 9) and down to the water (8, 10) find them from a tile either way, before the gate's door (41, 9) needs the row",
         "args": {
           "legs": [
             {

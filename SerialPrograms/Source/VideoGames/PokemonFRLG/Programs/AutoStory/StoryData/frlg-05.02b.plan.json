@@ -71,7 +71,7 @@
       {
         "id": "below_misty_taps",
         "action": "legs",
-        "why": "not planned: tap west 3 to (9, 7) below Misty's platform so beside_misty starts from a known tile",
+        "why": "not_using_planner_route: tap west 3 to (9, 7) below Misty's platform so beside_misty starts from a known tile",
         "args": {
           "legs": [
             {

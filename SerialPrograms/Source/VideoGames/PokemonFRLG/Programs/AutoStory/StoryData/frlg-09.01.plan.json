@@ -122,7 +122,7 @@
       {
         "id": "b2f_to_stairs",
         "action": "legs",
-        "why": "west to (21, 4), a tile short of the Grunt's north line (20, 4..5), and up column 21 to the wall, onto the stairs (21, 2), whose warp is a step east",
+        "why": "not_using_planner_route: west to (21, 4), a tile short of the Grunt's north line (20, 4..5), and up column 21 to the wall, onto the stairs (21, 2), whose warp is a step east",
         "args": {
           "legs": [
             {
@@ -158,7 +158,7 @@
       {
         "id": "b3f_arrow_maze",
         "action": "legs",
-        "why": "pokeguy's way through the arrow floor (video 56:39-56:50), a tap a tile: west along the top corridor and down column 12 to row 7, west to (5, 7), down to (5, 9) between the arrows; west onto (4, 9), which slides to the stop (2, 9); south onto (2, 11), which slides east to the stop (6, 11); west to (4, 11), down column 4 to (4, 14), west to the wall (1, 14), down to (1, 16); east onto (3, 16), which slides east and, turned by (7, 16), south to the stop (7, 20); west to (5, 20), down column 5 to row 25, east to column 15 and up to (15, 19), below the stairs to B4F (15, 18). He detours to the BLACKGLASSES on the way down column 5; we don't.",
+        "why": "not_using_planner_route: pokeguy's way through the arrow floor (video 56:39-56:50), a tap a tile: west along the top corridor and down column 12 to row 7, west to (5, 7), down to (5, 9) between the arrows; west onto (4, 9), which slides to the stop (2, 9); south onto (2, 11), which slides east to the stop (6, 11); west to (4, 11), down column 4 to (4, 14), west to the wall (1, 14), down to (1, 16); east onto (3, 16), which slides east and, turned by (7, 16), south to the stop (7, 20); west to (5, 20), down column 5 to row 25, east to column 15 and up to (15, 19), below the stairs to B4F (15, 18). He detours to the BLACKGLASSES on the way down column 5; we don't.",
         "args": {
           "legs": [
             {
@@ -277,7 +277,7 @@
       {
         "id": "beside_lift_key",
         "action": "legs",
-        "why": "a tap west from the Grunt's line (4, 3) to below the LIFT KEY (3, 3)",
+        "why": "not_using_planner_route: a tap west from the Grunt's line (4, 3) to below the LIFT KEY (3, 3)",
         "args": {
           "legs": [
             {
@@ -314,7 +314,7 @@
       {
         "id": "b4f_east_to_wall",
         "action": "legs",
-        "why": "run from below the LIFT KEY (3, 3) east to the wall (6, 3): the Grunt (4, 2) is beaten, so his line (4, 3) is open floor, and the wall stops any overshoot",
+        "why": "not_using_planner_route: run from below the LIFT KEY (3, 3) east to the wall (6, 3): the Grunt (4, 2) is beaten, so his line (4, 3) is open floor, and the wall stops any overshoot",
         "args": {
           "legs": [
             {
@@ -328,7 +328,7 @@
       {
         "id": "b4f_to_stairs",
         "action": "legs",
-        "why": "a tap a tile from the wall (6, 3): down to (6, 7), east to (11, 7) and down onto the stairs (11, 15); neither (6, 7) nor (11, 7) has a wall to stop a run",
+        "why": "not_using_planner_route: a tap a tile from the wall (6, 3): down to (6, 7), east to (11, 7) and down onto the stairs (11, 15); neither (6, 7) nor (11, 7) has a wall to stop a run",
         "args": {
           "legs": [
             {
@@ -368,7 +368,7 @@
       {
         "id": "b3f_down_to_row_20",
         "action": "legs",
-        "why": "pokeguy's way back (video 57:39-57:42), a tap a tile: down from B4F's stairs (15, 18) to row 20, (15, 20); row 21 below is open, so no run",
+        "why": "not_using_planner_route: pokeguy's way back (video 57:39-57:42), a tap a tile: down from B4F's stairs (15, 18) to row 20, (15, 20); row 21 below is open, so no run",
         "args": {
           "legs": [
             {
@@ -382,7 +382,7 @@
       {
         "id": "b3f_row_20_to_wall",
         "action": "legs",
-        "why": "run west along row 20 to the wall at (10, 20): no arrow on it, and the Grunt (2, 20) is behind that wall",
+        "why": "not_using_planner_route: run west along row 20 to the wall at (10, 20): no arrow on it, and the Grunt (2, 20) is behind that wall",
         "args": {
           "legs": [
             {
@@ -396,7 +396,7 @@
       {
         "id": "b3f_back_to_candy_row",
         "action": "legs",
-        "why": "a tap a tile up column 10 onto the arrow (10, 14), which slides a tile north to the stop (10, 13)",
+        "why": "not_using_planner_route: a tap a tile up column 10 onto the arrow (10, 14), which slides a tile north to the stop (10, 13)",
         "args": {
           "legs": [
             {

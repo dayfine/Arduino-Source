@@ -122,7 +122,7 @@
       {
         "id": "past_the_cabins",
         "action": "legs",
-        "why": "to the wall (19, 10), up a step, west to the worker (12, 9), up a step to (13, 8): off the cabins' mats on row 10",
+        "why": "not_using_planner_route: stays off S.S. Anne cabin warp mats on row 10; to the wall (19, 10), up a step, west to the worker (12, 9), up a step to (13, 8): off the cabins' mats on row 10",
         "args": {
           "legs": [
             {
@@ -255,7 +255,7 @@
       {
         "id": "round_the_sailor",
         "action": "legs",
-        "why": "to the sailor (18, 8), down a step, east to (19, 9): off the cabins' mats on row 10",
+        "why": "not_using_planner_route: stays off S.S. Anne cabin warp mats on row 10; to the sailor (18, 8), down a step, east to (19, 9): off the cabins' mats on row 10",
         "args": {
           "legs": [
             {

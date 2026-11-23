@@ -18,7 +18,7 @@
       {
         "id": "above_door_6",
         "action": "legs",
-        "why": "a tap a tile down to (5, 7), a tile short of door 6, open since quiz 6: the map has the door shut, so a leg ending on (5, 8) is held to it and runs through the open door (as 14.01, console B, 2026-11-14). A route's last leg here is an open hold, and the walker re-checks an open leg that ends a walk with holds to walls: near a quiz door that wall may be the door, shut on the map and open on the console, as 14.01's below_blaine did through door 6",
+        "why": "not_using_planner_route: a tap a tile down to (5, 7), a tile short of door 6, open since quiz 6: the map has the door shut, so a leg ending on (5, 8) is held to it and runs through the open door (as 14.01, console B, 2026-11-14). A route's last leg here is an open hold, and the walker re-checks an open leg that ends a walk with holds to walls: near a quiz door that wall may be the door, shut on the map and open on the console, as 14.01's below_blaine did through door 6",
         "args": {
           "legs": [
             {
@@ -86,7 +86,7 @@
       {
         "id": "above_door_5",
         "action": "legs",
-        "why": "a tap a tile down to (5, 15), a tile short of door 5, as for door 6",
+        "why": "not_using_planner_route: a tap a tile down to (5, 15), a tile short of door 5, as for door 6",
         "args": {
           "legs": [
             {
@@ -154,7 +154,7 @@
       {
         "id": "west_of_door_4",
         "action": "legs",
-        "why": "a tap a tile: down column 5 to (5, 22) and east to (9, 22), two tiles west of door 4's floor (11, 22); a planned route would hold east along row 23 to the shut door (11, 23), which is open, as 14.01's east_of_door_4 did. Legs ending on (10, 22) end 'to the wall' (the shut door) and the walker's tap toward the wall after them walks through the open door, as in 14.01 run 5 (console B, 2026-11-14)",
+        "why": "not_using_planner_route: a tap a tile: down column 5 to (5, 22) and east to (9, 22), two tiles west of door 4's floor (11, 22); a planned route would hold east along row 23 to the shut door (11, 23), which is open, as 14.01's east_of_door_4 did. Legs ending on (10, 22) end 'to the wall' (the shut door) and the walker's tap toward the wall after them walks through the open door, as in 14.01 run 5 (console B, 2026-11-14)",
         "args": {
           "legs": [
             {
@@ -226,7 +226,7 @@
       {
         "id": "below_door_3",
         "action": "legs",
-        "why": "a tap a tile: east along row 22 to (17, 22) and up column 17 to (17, 18), a tile short of door 3. The route's open hold east a tile short would turn north up column 16 into the trainer on (16, 18), as 14.01's below_door_5 did into Burglar Dusty (console B, 2026-11-14)",
+        "why": "not_using_planner_route: a tap a tile: east along row 22 to (17, 22) and up column 17 to (17, 18), a tile short of door 3. The route's open hold east a tile short would turn north up column 16 into the trainer on (16, 18), as 14.01's below_door_5 did into Burglar Dusty (console B, 2026-11-14)",
         "args": {
           "legs": [
             {
@@ -298,7 +298,7 @@
       {
         "id": "below_door_2",
         "action": "legs",
-        "why": "a tap a tile up to (17, 11), a tile short of door 2, as for door 6: a hold to (17, 10) would run through the open door 2 into the top room, where above_door_1 starts east from (17, 8) (as 14.01's door 2 did, console B, 2026-11-14)",
+        "why": "not_using_planner_route: a tap a tile up to (17, 11), a tile short of door 2, as for door 6: a hold to (17, 10) would run through the open door 2 into the top room, where above_door_1 starts east from (17, 8) (as 14.01's door 2 did, console B, 2026-11-14)",
         "args": {
           "legs": [
             {
@@ -366,7 +366,7 @@
       {
         "id": "above_door_1",
         "action": "legs",
-        "why": "a tap a tile east through the top room to (26, 7), a tile short of door 1, as for door 6: a hold to (26, 8) would run through the open door. The legs to walls are the route's, tapped too, as the last leg is open",
+        "why": "not_using_planner_route: a tap a tile east through the top room to (26, 7), a tile short of door 1, as for door 6: a hold to (26, 8) would run through the open door. The legs to walls are the route's, tapped too, as the last leg is open",
         "args": {
           "legs": [
             {

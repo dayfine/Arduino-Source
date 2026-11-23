@@ -59,7 +59,7 @@
       {
         "id": "mt_moon_1f",
         "action": "legs",
-        "why": "up the middle, east of Miriam, west along row 9, down column 18 past Josh, up column 11 past Marcos, to (3, 3)",
+        "why": "not_using_planner_route: pre-2026-11-15 Mt. Moon wall-guided trainer-dodging legs; up the middle, east of Miriam, west along row 9, down column 18 past Josh, up column 11 past Marcos, to (3, 3)",
         "args": {
           "legs": [
             {
@@ -191,7 +191,7 @@
       {
         "id": "b2f_south",
         "action": "legs",
-        "why": "through the Grunt's room at (37, 21), round the south edge, up column 11 to (11, 21)",
+        "why": "not_using_planner_route: pre-2026-11-15 Mt. Moon wall-guided trainer-dodging legs; through the Grunt's room at (37, 21), round the south edge, up column 11 to (11, 21)",
         "args": {
           "legs": [
             {
@@ -308,7 +308,7 @@
       {
         "id": "below_miguel_trigger",
         "action": "legs",
-        "why": "to (14, 12), below Miguel's trigger (14, 11)",
+        "why": "not_using_planner_route: pre-2026-11-15 Mt. Moon wall-guided trainer-dodging legs; to (14, 12), below Miguel's trigger (14, 11)",
         "args": {
           "legs": [
             {
@@ -361,7 +361,7 @@
       {
         "id": "below_helix_fossil",
         "action": "legs",
-        "why": "up column 14 to the HELIX FOSSIL (14, 7)",
+        "why": "not_using_planner_route: pre-2026-11-15 Mt. Moon wall-guided trainer-dodging legs; up column 14 to the HELIX FOSSIL (14, 7)",
         "args": {
           "legs": [
             {

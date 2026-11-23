@@ -126,7 +126,7 @@
       {
         "id": "lavender_west_edge",
         "action": "legs",
-        "why": "west along row 16 to the wall (12, 16), up column 13 to the wall (13, 6), back onto row 8, west along it to the wall (0, 8) and down to (1, 10), mid-way along the way out (rows 9..11)",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; west along row 16 to the wall (12, 16), up column 13 to the wall (13, 6), back onto row 8, west along it to the wall (0, 8) and down to (1, 10), mid-way along the way out (rows 9..11)",
         "args": {
           "legs": [
             {
@@ -174,7 +174,7 @@
       {
         "id": "east_of_rich_line",
         "action": "legs",
-        "why": "down column 62 to Julia (62, 14), who looks west, a tile east and down column 63 to the wall (63, 19), west along row 18 to (57, 18), two tiles short of Rich's line",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; down column 62 to Julia (62, 14), who looks west, a tile east and down column 63 to the wall (63, 19), west along row 18 to (57, 18), two tiles short of Rich's line",
         "args": {
           "legs": [
             {
@@ -231,7 +231,7 @@
       {
         "id": "west_of_glenn_column",
         "action": "legs",
-        "why": "west along row 18 past Rich (55, 17) to the wall (47, 18), then up column 48 to row 7, west of Glenn's south line (51, 7..10) and below his west line (47..50, 6): the wall puts the player on column 48 wherever on row 18 the battle left them",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; west along row 18 past Rich (55, 17) to the wall (47, 18), then up column 48 to row 7, west of Glenn's south line (51, 7..10) and below his west line (47..50, 6): the wall puts the player on column 48 wherever on row 18 the battle left them",
         "args": {
           "legs": [
             {
@@ -249,7 +249,7 @@
       {
         "id": "route8_row7_west_wall",
         "action": "legs",
-        "why": "west along row 7, below Megan's line (30..35, 6) and Andrea's (26..28, 5), to the wall (25, 7): column 26 from anywhere on the row",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; west along row 7, below Megan's line (30..35, 6) and Andrea's (26..28, 5), to the wall (25, 7): column 26 from anywhere on the row",
         "args": {
           "legs": [
             {
@@ -263,7 +263,7 @@
       {
         "id": "route8_row14_west_wall",
         "action": "legs",
-        "why": "down column 26 to the wall (26, 19), east of Jaren's line (25, 17), 4 tiles back up onto row 14, and west along it above Jaren (24, 17) and Ricardo (14, 16), who see a tile, to the wall (11, 14): the walls put the player on row 18, then on column 12, wherever the walk along row 7 ended (console B, 2026-11-09: open legs from (48, 7) to (14, 13) ended 3 tiles east, and the door step bumped the house)",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; down column 26 to the wall (26, 19), east of Jaren's line (25, 17), 4 tiles back up onto row 14, and west along it above Jaren (24, 17) and Ricardo (14, 16), who see a tile, to the wall (11, 14): the walls put the player on row 18, then on column 12, wherever the walk along row 7 ended (console B, 2026-11-09: open legs from (48, 7) to (14, 13) ended 3 tiles east, and the door step bumped the house)",
         "args": {
           "legs": [
             {
@@ -285,7 +285,7 @@
       {
         "id": "east_of_underground_door",
         "action": "legs",
-        "why": "2 taps east (a Bicycle tap is a tile) onto column 14, east of Aidan's line (10..13, 6), and up it to the house's wall (14, 4)",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; 2 taps east (a Bicycle tap is a tile) onto column 14, east of Aidan's line (10..13, 6), and up it to the house's wall (14, 4)",
         "args": {
           "legs": [
             {

@@ -58,7 +58,7 @@
       {
         "id": "below_colton_line",
         "action": "legs",
-        "why": "to (14, 7), in the ledges' gap",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 3 trainer-dodging legs; to (14, 7), in the ledges' gap",
         "args": {
           "legs": [
             {
@@ -107,7 +107,7 @@
       {
         "id": "past_ben",
         "action": "legs",
-        "why": "up to row 3 above Ben, down at x 18 east of his line, to (24, 5)",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 3 trainer-dodging legs; up to row 3 above Ben, down at x 18 east of his line, to (24, 5)",
         "args": {
           "legs": [
             {
@@ -165,7 +165,7 @@
       {
         "id": "above_james_line",
         "action": "legs",
-        "why": "along row 5 to the wall at (36, 5)",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 3 trainer-dodging legs; along row 5 to the wall at (36, 5)",
         "args": {
           "legs": [
             {
@@ -209,7 +209,7 @@
       {
         "id": "save_spot",
         "action": "legs",
-        "why": "down to (36, 8), beside the wall east of it",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 3 trainer-dodging legs; down to (36, 8), beside the wall east of it",
         "args": {
           "legs": [
             {

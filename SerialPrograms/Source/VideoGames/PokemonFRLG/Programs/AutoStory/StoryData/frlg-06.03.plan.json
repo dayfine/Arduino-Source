@@ -51,7 +51,7 @@
       {
         "id": "round_isabelle_line",
         "action": "legs",
-        "why": "onto Jeff's row (11, 33), west to the wall (7, 33), up to (7, 31), east along row 31 to (12, 31) and a step onto the grass, (13, 31): out of Isabelle's line",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 6 wall-guided trainer-dodging legs; onto Jeff's row (11, 33), west to the wall (7, 33), up to (7, 31), east along row 31 to (12, 31) and a step onto the grass, (13, 31): out of Isabelle's line",
         "args": {
           "legs": [
             {
@@ -129,7 +129,7 @@
       {
         "id": "down_to_jeff_row",
         "action": "legs",
-        "why": "down to the wall (7, 33), east along Jeff's row to (11, 33): out of Isabelle's line",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 6 wall-guided trainer-dodging legs; down to the wall (7, 33), east along Jeff's row to (11, 33): out of Isabelle's line",
         "args": {
           "legs": [
             {

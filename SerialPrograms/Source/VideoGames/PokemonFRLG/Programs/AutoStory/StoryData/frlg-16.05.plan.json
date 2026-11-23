@@ -95,7 +95,7 @@
       {
         "id": "center_northeast_corner",
         "action": "legs",
-        "why": "not planned: from the nurse to Saffron Center's east wall (14, 4) and north wall (14, 2) by legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse; west along row 4 is blocked by Woman 3 wandering (3..5, 3..5)",
+        "why": "not_using_planner_route: from the nurse to Saffron Center's east wall (14, 4) and north wall (14, 2) by legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse; west along row 4 is blocked by Woman 3 wandering (3..5, 3..5)",
         "args": {
           "legs": [
             {

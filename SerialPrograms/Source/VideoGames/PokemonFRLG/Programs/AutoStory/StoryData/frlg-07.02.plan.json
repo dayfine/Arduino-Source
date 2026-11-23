@@ -258,7 +258,7 @@
       {
         "id": "round_brice",
         "action": "legs",
-        "why": "up to the ledge (52, 4), up column 51 to Brice's row, west to the rock (48, 3) (or (48, 1)), up to (48, 1), east along row 1 to the rock (64, 1), down to (64, 2)",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 9/10 wall-guided trainer-dodging legs; up to the ledge (52, 4), up column 51 to Brice's row, west to the rock (48, 3) (or (48, 1)), up to (48, 1), east along row 1 to the rock (64, 1), down to (64, 2)",
         "args": {
           "legs": [
             {
@@ -332,7 +332,7 @@
       {
         "id": "above_caitlin_line",
         "action": "legs",
-        "why": "down column 64 to row 8, east along it to (70, 8): above Caitlin's line (61..64, 9)",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 9/10 wall-guided trainer-dodging legs; down column 64 to row 8, east along it to (70, 8): above Caitlin's line (61..64, 9)",
         "args": {
           "legs": [
             {
@@ -368,7 +368,7 @@
       {
         "id": "below_center_door",
         "action": "legs",
-        "why": "into the ledge's gap (16, 11), down column 16 to row 23, a tile west, up to the Center's wall (15, 21), west along row 21 to the wall (10, 21), east to (13, 21), below the door",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 9/10 wall-guided trainer-dodging legs; into the ledge's gap (16, 11), down column 16 to row 23, a tile west, up to the Center's wall (15, 21), west along row 21 to the wall (10, 21), east to (13, 21), below the door",
         "args": {
           "legs": [
             {

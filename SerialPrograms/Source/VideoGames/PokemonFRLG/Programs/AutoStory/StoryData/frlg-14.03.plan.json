@@ -109,7 +109,7 @@
       {
         "id": "below_gym_gap",
         "action": "legs",
-        "why": "7 taps east from the tree wall (4, 37) to (11, 37), below the gap in the ledges (10..11, 33) and the gym's door (11, 30): a tile off, north meets a ledge (4..9 or 12..19, 33) or the fence beside the door",
+        "why": "not_using_planner_route: 7 taps east from the tree wall (4, 37) to (11, 37), below the gap in the ledges (10..11, 33) and the gym's door (11, 30): a tile off, north meets a ledge (4..9 or 12..19, 33) or the fence beside the door",
         "args": {
           "legs": [
             {
@@ -181,7 +181,7 @@
       {
         "id": "column_1_west",
         "action": "legs",
-        "why": "a tap west from (2, 10) to (1, 10): Tamia stands on (2, 9) now, in column 2, where the map still has her on (2, 6), so no planned route past her",
+        "why": "not_using_planner_route: a tap west from (2, 10) to (1, 10): Tamia stands on (2, 9) now, in column 2, where the map still has her on (2, 6), so no planned route past her",
         "args": {
           "legs": [
             {
@@ -195,7 +195,7 @@
       {
         "id": "column_1_to_wall",
         "action": "legs",
-        "why": "run up column 1 from (1, 10) to the wall at (1, 5): Tamia is beaten, no other trainer looks down column 1, and the wall (1, 4) stops any overshoot",
+        "why": "not_using_planner_route: run up column 1 from (1, 10) to the wall at (1, 5): Tamia is beaten, no other trainer looks down column 1, and the wall (1, 4) stops any overshoot",
         "args": {
           "legs": [
             {
@@ -209,7 +209,7 @@
       {
         "id": "beside_inner_tree",
         "action": "legs",
-        "why": "a tap east from (1, 5) to (2, 5), beside the inner tree (3, 5)",
+        "why": "not_using_planner_route: a tap east from (1, 5) to (2, 5), beside the inner tree (3, 5)",
         "args": {
           "legs": [
             {
@@ -271,7 +271,7 @@
       {
         "id": "beside_erika",
         "action": "legs",
-        "why": "a tap east from below Lori (5, 5) to below Erika (6, 4), on (6, 5): out of Lass Lisa's line (7, 5..6) and Cooltrainer Mary's (6..7, 7)",
+        "why": "not_using_planner_route: a tap east from below Lori (5, 5) to below Erika (6, 4), on (6, 5): out of Lass Lisa's line (7, 5..6) and Cooltrainer Mary's (6..7, 7)",
         "args": {
           "legs": [
             {

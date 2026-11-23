@@ -36,7 +36,7 @@
       {
         "id": "beside_warden",
         "action": "legs",
-        "why": "a tap a tile from the wall (1, 6) east to below the Warden (3, 6): no wall there stops a run",
+        "why": "not_using_planner_route: a tap a tile from the wall (1, 6) east to below the Warden (3, 6): no wall there stops a run",
         "args": {
           "legs": [
             {

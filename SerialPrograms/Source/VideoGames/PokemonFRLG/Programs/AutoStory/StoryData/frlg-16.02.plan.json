@@ -70,7 +70,7 @@
       {
         "id": "to_card_key_ball",
         "action": "legs",
-        "why": "a tap a tile east along row 21 from (12, 21) to (21, 21), west of the CARD KEY's ball (22, 21); the beaten Rocket stands behind at (11, 21)",
+        "why": "not_using_planner_route: a tap a tile east along row 21 from (12, 21) to (21, 21), west of the CARD KEY's ball (22, 21); the beaten Rocket stands behind at (11, 21)",
         "args": {
           "legs": [
             {

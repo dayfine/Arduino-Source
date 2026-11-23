@@ -36,7 +36,7 @@
       {
         "id": "statue_row",
         "action": "legs",
-        "why": "a tap a tile down to row 5, the statue's (12, 5): (8, 5), or (9, 5) when the stairs left the player a tile east",
+        "why": "not_using_planner_route: a tap a tile down to row 5, the statue's (12, 5): (8, 5), or (9, 5) when the stairs left the player a tile east",
         "args": {
           "legs": [
             {
@@ -50,7 +50,7 @@
       {
         "id": "statue_wall",
         "action": "legs",
-        "why": "east along row 5 to the statue's west side, (11, 5): the statue stops the hold there from either tile, the funnel the open legs onto its tile lacked (they ended on (13, 6) three times)",
+        "why": "not_using_planner_route: east along row 5 to the statue's west side, (11, 5): the statue stops the hold there from either tile, the funnel the open legs onto its tile lacked (they ended on (13, 6) three times)",
         "args": {
           "legs": [
             {
@@ -64,7 +64,7 @@
       {
         "id": "statue_tile",
         "action": "legs",
-        "why": "a tap a tile from (11, 5) to the tile below the statue, (12, 6), the one it is pressed from facing north",
+        "why": "not_using_planner_route: a tap a tile from (11, 5) to the tile below the statue, (12, 6), the one it is pressed from facing north",
         "args": {
           "legs": [
             {

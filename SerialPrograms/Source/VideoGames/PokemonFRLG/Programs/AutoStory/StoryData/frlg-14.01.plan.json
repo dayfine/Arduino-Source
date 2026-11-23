@@ -58,7 +58,7 @@
       {
         "id": "center_northeast_corner",
         "action": "legs",
-        "why": "not planned: from the nurse to the Center's east wall (14, 4) and up to the north wall (14, 2) by legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse; west along row 4 is blocked by CinnabarIsland_PokemonCenter_1F's Cooltrainer F wandering left-and-right on (1..3, 4)",
+        "why": "not_using_planner_route: from the nurse to the Center's east wall (14, 4) and up to the north wall (14, 2) by legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse; west along row 4 is blocked by CinnabarIsland_PokemonCenter_1F's Cooltrainer F wandering left-and-right on (1..3, 4)",
         "args": {
           "legs": [
             {
@@ -94,7 +94,7 @@
       {
         "id": "below_quiz_1",
         "action": "legs",
-        "why": "a tap a tile, as no wall ends the open legs: east to (28, 16), up column 28 to row 12, west to (23, 12) and up to below quiz machine 1 (22..23, 10), west of Burglar Quinn (25, 11); a held north 4 a tile long would meet Quinn on row 11",
+        "why": "not_using_planner_route: a tap a tile, as no wall ends the open legs: east to (28, 16), up column 28 to row 12, west to (23, 12) and up to below quiz machine 1 (22..23, 10), west of Burglar Quinn (25, 11); a held north 4 a tile long would meet Quinn on row 11",
         "args": {
           "legs": [
             {
@@ -155,7 +155,7 @@
       {
         "id": "below_door_1",
         "action": "legs",
-        "why": "a tap a tile: down to (23, 12), east along row 12 below the trainer on (25, 11) to (26, 12) and up to (26, 11), a tile short of door 1 (26..27, 8..9), whose map has it shut (a leg ending on (26, 10) is held to it and runs through the open door; console B, 2026-11-14). A route's open hold east a tile short would turn north into that trainer, as at door 5",
+        "why": "not_using_planner_route: a tap a tile: down to (23, 12), east along row 12 below the trainer on (25, 11) to (26, 12) and up to (26, 11), a tile short of door 1 (26..27, 8..9), whose map has it shut (a leg ending on (26, 10) is held to it and runs through the open door; console B, 2026-11-14). A route's open hold east a tile short would turn north into that trainer, as at door 5",
         "args": {
           "legs": [
             {
@@ -231,7 +231,7 @@
       {
         "id": "to_quiz_2_machine",
         "action": "legs",
-        "why": "up column 26 to the top wall (26, 2) and west along row 2, above Super Nerd Erik (25, 4), against quiz machine 2 (15..16, 2) on (17, 2): both legs end at a wall. Row 2 is floor east of the machine (pokefirered layout); a held north 5 to (26, 3) ran a tile on to (26, 2) and west 10 stopped at the machine (console B, 2026-11-14)",
+        "why": "not_using_planner_route: up column 26 to the top wall (26, 2) and west along row 2, above Super Nerd Erik (25, 4), against quiz machine 2 (15..16, 2) on (17, 2): both legs end at a wall. Row 2 is floor east of the machine (pokefirered layout); a held north 5 to (26, 3) ran a tile on to (26, 2) and west 10 stopped at the machine (console B, 2026-11-14)",
         "args": {
           "legs": [
             {
@@ -249,7 +249,7 @@
       {
         "id": "below_quiz_2",
         "action": "legs",
-        "why": "a tap a tile: down to (17, 4), above Super Nerd Avery (17, 5), west to (16, 4) and up to below quiz machine 2 (16, 2) on (16, 3)",
+        "why": "not_using_planner_route: a tap a tile: down to (17, 4), above Super Nerd Avery (17, 5), west to (16, 4) and up to below quiz machine 2 (16, 2) on (16, 3)",
         "args": {
           "legs": [
             {
@@ -306,7 +306,7 @@
       {
         "id": "above_door_2",
         "action": "legs",
-        "why": "a tap a tile: down column 16 to the wall (16, 7) and east to (17, 7), a tile short of door 2 (17..18, 8..9), west of Avery: a leg ending on (17, 8) is held to the shut door on the map and ran through the open one to (17, 11) (console B, 2026-11-14). A route's last leg here is an open hold, and the walker re-checks an open leg that ends a walk with holds to walls: near a quiz door that wall may be the door, shut on the map and open on the console",
+        "why": "not_using_planner_route: a tap a tile: down column 16 to the wall (16, 7) and east to (17, 7), a tile short of door 2 (17..18, 8..9), west of Avery: a leg ending on (17, 8) is held to the shut door on the map and ran through the open one to (17, 11) (console B, 2026-11-14). A route's last leg here is an open hold, and the walker re-checks an open leg that ends a walk with holds to walls: near a quiz door that wall may be the door, shut on the map and open on the console",
         "args": {
           "legs": [
             {
@@ -378,7 +378,7 @@
       {
         "id": "below_quiz_3",
         "action": "legs",
-        "why": "a tap a tile, as no wall ends the open legs: down to (17, 12), west along row 12 below Burglar Ramon (16, 11) to (14, 12) and up to below quiz machine 3 (13..14, 10)",
+        "why": "not_using_planner_route: a tap a tile, as no wall ends the open legs: down to (17, 12), west along row 12 below Burglar Ramon (16, 11) to (14, 12) and up to below quiz machine 3 (13..14, 10)",
         "args": {
           "legs": [
             {
@@ -435,7 +435,7 @@
       {
         "id": "above_door_3",
         "action": "legs",
-        "why": "a tap a tile: down column 14 to the wall (14, 14) and east to (17, 14), a tile short of door 3 (17..18, 15..16), as for door 2",
+        "why": "not_using_planner_route: a tap a tile: down column 14 to the wall (14, 14) and east to (17, 14), a tile short of door 3 (17..18, 15..16), as for door 2",
         "args": {
           "legs": [
             {
@@ -507,7 +507,7 @@
       {
         "id": "below_quiz_4",
         "action": "legs",
-        "why": "a tap a tile, as no wall ends the open legs: down to (17, 19), west along row 19 below Super Nerd Derek (16, 18) to (14, 19) and up to below quiz machine 4 (13..14, 17)",
+        "why": "not_using_planner_route: a tap a tile, as no wall ends the open legs: down to (17, 19), west along row 19 below Super Nerd Derek (16, 18) to (14, 19) and up to below quiz machine 4 (13..14, 17)",
         "args": {
           "legs": [
             {
@@ -564,7 +564,7 @@
       {
         "id": "east_of_door_4",
         "action": "legs",
-        "why": "a tap a tile: down column 14 to (14, 22) and west to (13, 22), two tiles east of door 4's floor (11, 22). Door 4 opens (11, 22) and (11, 23) (OpenDoor4), which the map has shut: a planned route ran south to (14, 23) and held west 'to the wall' (11, 23), and on the console that hold went through the open door and on to below Burglar Dusty (console B, 2026-11-14). Legs ending on (12, 22) end 'to the wall' too, and the walker's tap toward the wall after them walked through the open door to (11, 22), leaving the player a tile west of the plan from there on (run 5, console B, 2026-11-14)",
+        "why": "not_using_planner_route: a tap a tile: down column 14 to (14, 22) and west to (13, 22), two tiles east of door 4's floor (11, 22). Door 4 opens (11, 22) and (11, 23) (OpenDoor4), which the map has shut: a planned route ran south to (14, 23) and held west 'to the wall' (11, 23), and on the console that hold went through the open door and on to below Burglar Dusty (console B, 2026-11-14). Legs ending on (12, 22) end 'to the wall' too, and the walker's tap toward the wall after them walked through the open door to (11, 22), leaving the player a tile west of the plan from there on (run 5, console B, 2026-11-14)",
         "args": {
           "legs": [
             {
@@ -636,7 +636,7 @@
       {
         "id": "below_quiz_5",
         "action": "legs",
-        "why": "a tap a tile: west along row 22 to the wall (1, 22), back east to (2, 22) and up, west of Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18). The west leg ends at a wall so the player is found there: in run 5 (console B, 2026-11-14) the player came into the room a tile west of the plan, an open west 8 ended on (1, 22), and quiz 5 was read from (1, 19), so below_door_5 ended under Dusty",
+        "why": "not_using_planner_route: a tap a tile: west along row 22 to the wall (1, 22), back east to (2, 22) and up, west of Burglar Dusty (4, 19), to below quiz machine 5 (1..2, 18). The west leg ends at a wall so the player is found there: in run 5 (console B, 2026-11-14) the player came into the room a tile west of the plan, an open west 8 ended on (1, 22), and quiz 5 was read from (1, 19), so below_door_5 ended under Dusty",
         "args": {
           "legs": [
             {
@@ -693,7 +693,7 @@
       {
         "id": "below_door_5",
         "action": "legs",
-        "why": "a tap a tile: down to (2, 20), east along row 20 below Burglar Dusty (4, 19) to (5, 20) and up to (5, 19), a tile short of door 5 (5..6, 16..17). A route went south to (2, 23), east 3 open and north 4: on the console the east hold ended a tile short, on Dusty's column, and north 4 stopped below him (console B, 2026-11-14)",
+        "why": "not_using_planner_route: a tap a tile: down to (2, 20), east along row 20 below Burglar Dusty (4, 19) to (5, 20) and up to (5, 19), a tile short of door 5 (5..6, 16..17). A route went south to (2, 23), east 3 open and north 4: on the console the east hold ended a tile short, on Dusty's column, and north 4 stopped below him (console B, 2026-11-14)",
         "args": {
           "legs": [
             {
@@ -769,7 +769,7 @@
       {
         "id": "below_quiz_6",
         "action": "legs",
-        "why": "a tap a tile, as no wall ends the open legs: up column 5 to (5, 12), west along row 12 below Super Nerd Zac (4, 11) to (2, 12) and up to below quiz machine 6 (1..2, 10); a held north 4 a tile long would meet Zac on row 11",
+        "why": "not_using_planner_route: a tap a tile, as no wall ends the open legs: up column 5 to (5, 12), west along row 12 below Super Nerd Zac (4, 11) to (2, 12) and up to below quiz machine 6 (1..2, 10); a held north 4 a tile long would meet Zac on row 11",
         "args": {
           "legs": [
             {
@@ -826,7 +826,7 @@
       {
         "id": "below_door_6",
         "action": "legs",
-        "why": "a tap a tile: down to (2, 12), east along row 12 below Super Nerd Zac (4, 11) to (5, 12) and up to (5, 11), a tile short of door 6 (5..6, 8..9). A route's open hold east a tile short would turn north into Zac, as at door 5",
+        "why": "not_using_planner_route: a tap a tile: down to (2, 12), east along row 12 below Super Nerd Zac (4, 11) to (5, 12) and up to (5, 11), a tile short of door 6 (5..6, 8..9). A route's open hold east a tile short would turn north into Zac, as at door 5",
         "args": {
           "legs": [
             {
@@ -902,7 +902,7 @@
       {
         "id": "below_blaine",
         "action": "legs",
-        "why": "a tap a tile up column 5 from door 6 to (5, 5), facing Blaine (5, 4). A route's open hold north 3 was re-checked with a hold south 3 'to the wall' (5, 8), whose wall is door 6's barrier (5, 9), shut on the map: on the console it ran through the open door, the player was taken as found on (5, 8), and north 3 left them in door 6's gap, so challenge_blaine's A opened no message (14.02, console B, 2026-11-14)",
+        "why": "not_using_planner_route: a tap a tile up column 5 from door 6 to (5, 5), facing Blaine (5, 4). A route's open hold north 3 was re-checked with a hold south 3 'to the wall' (5, 8), whose wall is door 6's barrier (5, 9), shut on the map: on the console it ran through the open door, the player was taken as found on (5, 8), and north 3 left them in door 6's gap, so challenge_blaine's A opened no message (14.02, console B, 2026-11-14)",
         "args": {
           "legs": [
             {

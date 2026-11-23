@@ -115,7 +115,7 @@
       {
         "id": "round_isabelle_and_elijah",
         "action": "legs",
-        "why": "onto Jeff's row (11, 33), west to the wall (7, 33), up to (7, 31), east along row 31 to the wall (16, 31), up column 16 to the ledge (16, 12): out of Isabelle's and Elijah's lines",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 6 wall-guided trainer-dodging legs; onto Jeff's row (11, 33), west to the wall (7, 33), up to (7, 31), east along row 31 to the wall (16, 31), up column 16 to the ledge (16, 12): out of Isabelle's and Elijah's lines",
         "args": {
           "legs": [
             {

@@ -119,7 +119,7 @@
       {
         "id": "round_keigo_and_elijah",
         "action": "legs",
-        "why": "down column 15 to the wall (15, 33); up to (15, 31), west to the wall (7, 31), down to the wall (7, 33), east to (9, 33)",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 6 wall-guided trainer-dodging legs; down column 15 to the wall (15, 33); up to (15, 31), west to the wall (7, 31), down to the wall (7, 33), east to (9, 33)",
         "args": {
           "legs": [
             {
