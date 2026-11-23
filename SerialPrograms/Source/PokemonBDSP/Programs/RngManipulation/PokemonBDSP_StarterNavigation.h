@@ -15,6 +15,7 @@
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/Time.h"
 #include "CommonFramework/ImageTools/ImageBoxes.h"
+#include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_SingleSwitchProgram.h"
 
@@ -75,8 +76,10 @@ void navigate_to_pre_briefcase(SingleSwitchProgramEnvironment& env, ProControlle
 
 
 bool issue_starter_sequence(
+    SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     BdspStarter starter,
+    Language language,
     double starly_seconds,
     double select_seconds,
     double confirm_seconds,
@@ -94,7 +97,7 @@ struct StarterSceneDurations{
     double select_to_confirm = 0;
     double to_pre_briefcase = 0;
 
-    static StarterSceneDurations measured();
+    static StarterSceneDurations measured(Language language);
 };
 
 
