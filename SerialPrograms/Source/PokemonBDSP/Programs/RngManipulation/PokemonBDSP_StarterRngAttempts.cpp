@@ -11,6 +11,8 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/PrettyPrint.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
+#include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonFramework/Notifications/ProgramNotifications.h"
 #include "CommonTools/Async/InferenceRoutines.h"
@@ -25,6 +27,7 @@
 #include "PokemonBDSP/Inference/ShinyDetection/PokemonBDSP_ShinyEncounterDetector.h"
 #include "PokemonBDSP/Programs/PokemonBDSP_GameEntry.h"
 #include "PokemonBDSP_BlinkRecovery.h"
+#include "PokemonBDSP_BlinkSampleLog.h"
 #include "PokemonBDSP_RngCalibration.h"
 #include "PokemonBDSP_RngExecution.h"
 #include "PokemonBDSP_RngTargets.h"
@@ -133,11 +136,26 @@ void validate_skip_budget(
     }
 }
 
+//  One file per attempt with every blink sample, so a failed recovery can be replayed.
+BlinkSampleLog open_blink_sample_log(SingleSwitchProgramEnvironment& env){
+    const std::string folder = std::format("{}StarterRng/blinks/", SCREENSHOTS_PATH());
+    Filesystem::create_directories(Filesystem::Path(folder));
+    const std::string path = std::format("{}{}.txt", folder, now_to_filestring());
+    BlinkSampleLog log(path);
+    if (log.is_open()){
+        env.log(std::format("Blink samples: {}", path));
+    }else{
+        env.log(std::format("Could not open {}; this attempt's blinks are not logged.", path), COLOR_ORANGE);
+    }
+    return log;
+}
+
 BlinkRecovery recover_bedroom_state(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
     const StarterRngSettings& settings,
-    AttemptDisplays& displays
+    AttemptDisplays& displays,
+    BlinkSampleLog& sample_log
 ){
     env.log("Starting in the bedroom.");
     pbf_press_button(context, BUTTON_A, 100ms, 2000ms); // open dialogue box
@@ -151,8 +169,9 @@ BlinkRecovery recover_bedroom_state(
 
     BlinkRecoveryConfig bedroom_config;
     bedroom_config.npcs = 1;
+    sample_log.begin_recovery("bedroom", bedroom_config.npcs, watchers);
     return recover_state_from_blinks(
-        env, context, watchers, callbacks, displays.collection, bedroom_config
+        env, context, watchers, callbacks, displays.collection, bedroom_config, &sample_log
     );
 }
 
@@ -184,13 +203,14 @@ BdspSkipResult skip_advances_from_bedroom(
     ProControllerContext& context,
     const StarterRngSettings& settings,
     const std::function<bool(const BdspPokemonResult&)>& wanted_fn,
-    AttemptDisplays& displays
+    AttemptDisplays& displays,
+    BlinkSampleLog& sample_log
 ){
     BdspSkipResult skip;
     const BdspRngTargetInfo& target_info = bdsp_rng_target_info(BdspRngTarget::Starter);
     validate_skip_budget(env, settings, target_info);
 
-    const BlinkRecovery recovery = recover_bedroom_state(env, context, settings, displays);
+    const BlinkRecovery recovery = recover_bedroom_state(env, context, settings, displays, sample_log);
     if (!recovery.success){
         skip.failure_reason = "could not determine the RNG state in the bedroom: " + recovery.failure_reason;
         return skip;
@@ -456,7 +476,8 @@ std::string recover_lake_session(
     const StarterRngSettings& settings,
     const BdspRngTargetInfo& target_info,
     AttemptDisplays& displays,
-    LakeBlinkSession& session
+    LakeBlinkSession& session,
+    BlinkSampleLog& sample_log
 ){
     navigate_to_lake_blinks(env.logger(), context);
     session.setups = lake_eye_templates(settings.player_model);
@@ -475,8 +496,9 @@ std::string recover_lake_session(
     make_blink_watchers(session.setups, session.eyes, session.watchers, session.callbacks);
     session.config.npcs = target_info.observation_npcs;
     log_calibration_start(session.config.min_rolls_to_try, env);
+    sample_log.begin_recovery("lake", session.config.npcs, session.watchers);
     session.recovery = recover_state_from_blinks(
-        env, context, session.watchers, session.callbacks, displays.collection, session.config
+        env, context, session.watchers, session.callbacks, displays.collection, session.config, &sample_log
     );
     if (!session.recovery.success){
         return "could not determine the RNG state: " + session.recovery.failure_reason;
@@ -767,17 +789,17 @@ BdspStarterAttemptResult run_starter_rng_attempt(
     const std::function<bool(const BdspPokemonResult&)> wanted_fn = resolve_wanted_predicate(settings);
     const BdspRngTargetInfo& target_info = bdsp_rng_target_info(BdspRngTarget::Starter);
     const AttemptRunState run{env, context, settings, io, target_info, wanted_fn, displays, aim};
-
+    BlinkSampleLog sample_log = open_blink_sample_log(env);
     BdspSkipResult skip;
     if (settings.start_point == BdspStartPoint::Bedroom){
-        skip = skip_advances_from_bedroom(env, context, settings, wanted_fn, displays);
+        skip = skip_advances_from_bedroom(env, context, settings, wanted_fn, displays, sample_log);
         if (!skip.success){
             return abandon_attempt(env, displays, skip.failure_reason);
         }
     }
 
     LakeBlinkSession session;
-    if (const std::string err = recover_lake_session(env, context, settings, target_info, displays, session); !err.empty()){
+    if (const std::string err = recover_lake_session(env, context, settings, target_info, displays, session, sample_log); !err.empty()){
         return abandon_attempt(env, displays, err);
     }
     if (skip.success){
