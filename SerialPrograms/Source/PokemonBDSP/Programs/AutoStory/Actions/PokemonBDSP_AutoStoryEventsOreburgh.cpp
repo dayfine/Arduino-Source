@@ -23,6 +23,7 @@
 #include "PokemonBDSP_AutoStoryBattle.h"
 #include "PokemonBDSP_AutoStoryBattleMoves.h"
 #include "PokemonBDSP_AutoStoryCenter.h"
+#include "PokemonBDSP_AutoStoryLitDoorway.h"
 #include "PokemonBDSP_AutoStoryMenuActions.h"
 #include "PokemonBDSP_AutoStoryTalks.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryWalks.h"
@@ -177,6 +178,12 @@ void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& con
             continue;
         }
         if (north.stop == WalkStop::BLOCKED){
+            const VideoSnapshot snap = stream.video().snapshot();
+            if (!snap || !find_lit_doorway(*snap.frame)){
+                //  Blocked early (e.g. Oreburgh Mine signpost or wandering hiker): step east and keep heading north.
+                dpad_tiles(stream, context, DPAD_RIGHT, 1, "around obstacle toward Oreburgh Center");
+                continue;
+            }
             dpad_tiles(stream, context, DPAD_RIGHT, 1, "below Oreburgh Center door");
             heal_at_pokemon_center(stream, context, "Oreburgh");
             return;
