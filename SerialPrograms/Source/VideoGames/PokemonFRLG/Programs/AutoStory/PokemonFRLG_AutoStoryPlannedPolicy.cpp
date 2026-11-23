@@ -319,6 +319,17 @@ std::optional<PlannedChoice> ko_risk_rows(
     if (own.status != PlannedStatus::NONE && has_restore){
         return item_choice("status_ko", FULL_RESTORE);
     }
+    //  After consecutive heals on the same foe at the same HP, stop looping
+    //  Full Restores once three consecutive medicine turns have already run,
+    //  or when healing to max HP still falls under D after a mean hit while
+    //  current HP already survives a mean hit (e.g. a lower-HP Blastoise vs
+    //  Dragonite's Outrage under Hyper Beam's D).
+    if (streak >= 3){
+        return std::nullopt;
+    }
+    if (streak >= 1 && own.hp > danger.mean && own.max_hp - danger.mean <= danger.normal_max){
+        return std::nullopt;
+    }
     if (streak >= 2){
         if (has_restore){
             return item_choice("ko_heal", FULL_RESTORE);
