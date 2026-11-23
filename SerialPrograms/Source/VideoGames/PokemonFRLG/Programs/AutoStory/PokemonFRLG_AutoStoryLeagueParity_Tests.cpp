@@ -179,6 +179,7 @@ PartyMember lead_of(const JsonObject& own){
             .defense = static_cast<uint16_t>(integer(stats, "def")), .sp_attack = static_cast<uint16_t>(integer(stats, "spa")),
             .sp_defense = static_cast<uint16_t>(integer(stats, "spd")), .speed = static_cast<uint16_t>(integer(stats, "spe")),
         },
+        .moves = {},
     };
     for (const JsonValue& value : own.get_array_throw("moves")){
         const JsonObject& move = value.to_object_throw();
@@ -225,8 +226,8 @@ void put_back(const JsonObject& hidden, Hidden part, PlannedState& state){
 //  The sim's choice of one turn.
 struct SimChoice{
     std::string row;
-    std::optional<std::string> item;
-    std::optional<size_t> move_slot;
+    std::optional<std::string> item = std::nullopt;
+    std::optional<size_t> move_slot = std::nullopt;
 };
 
 SimChoice sim_choice(const JsonObject& line){
