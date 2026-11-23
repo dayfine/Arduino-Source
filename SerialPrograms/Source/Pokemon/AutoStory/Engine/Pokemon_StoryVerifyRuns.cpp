@@ -330,12 +330,19 @@ VerifyRowReport run_verify_row(
 ){
     VerifyRowReport report;
     report.checkpoint = std::string(checkpoint_id);
-    backend.log(std::format(
-        "[Verify] {}: phase 1, {} tries from one save, {} must pass; phase 2, up to {} tries, the first pass saved",
-        checkpoint_id, verify.tries, verify.min_pass, verify.reset_budget
-    ));
+    if (verify.tries == 0){
+        backend.log(std::format(
+            "[Verify] {}: phase 1 skipped; phase 2, up to {} tries, the first pass saved",
+            checkpoint_id, verify.reset_budget
+        ));
+    }else{
+        backend.log(std::format(
+            "[Verify] {}: phase 1, {} tries from one save, {} must pass; phase 2, up to {} tries, the first pass saved",
+            checkpoint_id, verify.tries, verify.min_pass, verify.reset_budget
+        ));
+    }
     VerifyRowContext ctx{backend, checkpoint_id, make_checkpoint, game, state, verify_pass, report};
-    if (!run_verify_row_phase1(ctx, verify)){
+    if (verify.tries > 0 && !run_verify_row_phase1(ctx, verify)){
         return report;
     }
     for (size_t c = 1; c <= verify.reset_budget; c++){
