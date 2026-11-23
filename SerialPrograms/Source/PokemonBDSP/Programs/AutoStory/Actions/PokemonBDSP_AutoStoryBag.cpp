@@ -222,9 +222,12 @@ Dose potion_dose(VideoStream& stream, ProControllerContext& context, size_t dose
         return Dose::HEALED;
     }
     if (before <= 0.005){
-        OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
-            "Potion: Slot 1 appears fainted; a Potion cannot revive it.",
-            stream);
+        //  A Potion cannot revive it; the next Center heals. Roark was beaten
+        //  with the lead fainted and the backup landing the last hit, and a
+        //  failure here reloaded the save from before the gym (lab-B
+        //  2026-11-22 22:05).
+        stream.log("[Potion] Slot 1 appears fainted; a Potion cannot revive it. Going on.", COLOR_ORANGE);
+        return Dose::NONE_LEFT;
     }
     pbf_press_button(context, BUTTON_A, 80ms, 500ms);
     pbf_press_button(context, BUTTON_A, 80ms, 500ms);
