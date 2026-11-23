@@ -141,11 +141,11 @@ UnitTestResult row_checked(
         return std::string(id) + ": " + failure;
     }
     if (std::find(fought.begin(), fought.end(), sim.state().trainers_beaten) == fought.end()){
-        std::string fought;
+        std::string beaten;
         for (const std::string& name : sim.state().trainers_beaten){
-            fought += " " + name;
+            beaten += " " + name;
         }
-        return std::format("{}: fought{}.", id, fought);
+        return std::format("{}: fought{}.", id, beaten);
     }
     if (!sim.state().violations.empty()){
         return std::string(id) + ": a violation on the way: " + sim.state().violations.back();

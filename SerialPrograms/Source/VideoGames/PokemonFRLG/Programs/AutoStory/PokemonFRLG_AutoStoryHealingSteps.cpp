@@ -64,6 +64,13 @@ std::optional<StoryFailure> heal(StoryEnv& env, const StoryStep& step, int max_h
     const std::optional<int> after = heal_to_full(
         env.supplies, max_hp, use, full_restore != nullptr && *full_restore ? "full-restore" : ""
     );
+    if (env.supplies.status == StatusCondition::POISON){
+        if (bag_count(env.supplies, "antidote") > 0){
+            use("antidote");
+        }else if (bag_count(env.supplies, "full-heal") > 0){
+            use("full-heal");
+        }
+    }
     const bool full = after && *after <= 0;
     env.console.log(std::format(
         "Story: {}: {} before, {} after; {} Potions, {} Super Potions, {} Full Restores left.",
@@ -93,6 +100,9 @@ std::optional<StoryFailure> check(StoryEnv& env, const StoryStep& step, int max_
     }
     if (*missing > 0){
         return frlg_failure("hp_not_full", std::format("{}: {} HP missing", step.name, *missing));
+    }
+    if (env.supplies.status != StatusCondition::NONE){
+        return frlg_failure("status_not_clear", std::format("{}: lead still has status condition", step.name));
     }
     env.console.log(std::format("Story: {}: the lead's HP is full.", step.name));
     return std::nullopt;
@@ -172,12 +182,26 @@ bool fill_mart_to(Logger& logger, const Supplies& supplies, StoryStep& step){
     if (fill == nullptr || items == nullptr || items->empty()){
         return false;
     }
+    if (*fill == 0){
+        std::vector<Pokemon::StoryItem> needed;
+        for (const Pokemon::StoryItem& line : *items){
+            const int held = bag_count(supplies, line.item);
+            const int shortfall = fill_shortfall(supplies, (int)line.quantity, line.item);
+            logger.log(std::format("Story: {}: {} {} against {}: {} short.", step.name, held, line.item, line.quantity, shortfall));
+            if (shortfall > 0){
+                needed.push_back({line.item, (size_t)shortfall});
+            }
+        }
+        if (needed.empty()){
+            return true;
+        }
+        step.args["items"] = std::move(needed);
+        return false;
+    }
     std::vector<Pokemon::StoryItem> lines = *items;
+    const int held = bag_count(supplies, lines[0].item);
     const int shortfall = fill_shortfall(supplies, (int)*fill, lines[0].item);
-    logger.log(std::format(
-        "Story: {}: {} Potions and {} Super Potions against {} {}: {} short.",
-        step.name, supplies.potions, supplies.super_potions, *fill, lines[0].item, shortfall
-    ));
+    logger.log(std::format("Story: {}: {} {} against {}: {} short.", step.name, held, lines[0].item, *fill, shortfall));
     if (shortfall <= 0){
         return true;
     }

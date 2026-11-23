@@ -111,7 +111,9 @@ std::string walk_league_row(
         if (step.name == until){
             return "";
         }
-        if (step.action != "route" && step.action != "legs" && step.action != "step"){
+        if (step.action != "route" && step.action != "legs" && step.action != "step"
+            && step.action != "fly" && step.action != "lift_floor"
+        ){
             continue;
         }
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -380,15 +382,23 @@ UnitTestResult test_magikarp_never_sent(){
 //  The League's fight rows, in order: each starts where the one before
 //  ends; its first steps are the level check and the top-up for its own
 //  fight (league_top_up), before any walk; its battle is that fight; and
-//  its verify block is the plan's pass figures (frlg-league-plan.json's
-//  contract.pass: tries = min_pass.of, min_pass = min_pass.k,
-//  reset_budget).
+//  its verify block skips phase 1 (tries = 0, min_pass = 0) with retry
+//  counts 3, 5, 3, 3, 5.
 UnitTestResult test_league_fight_rows(){
-    const std::string_view rows[][2] = {
-        {"20.01", "lorelei"}, {"20.02", "bruno"}, {"20.03", "agatha"}, {"20.04", "lance"}, {"20.05", "champion"},
+    struct LeagueRowSpec{
+        std::string_view id;
+        std::string_view fight;
+        size_t reset_budget;
+    };
+    const LeagueRowSpec rows[] = {
+        {"20.01", "lorelei", 3},
+        {"20.02", "bruno", 5},
+        {"20.03", "agatha", 3},
+        {"20.04", "lance", 3},
+        {"20.05", "champion", 5},
     };
     const StoryCheckpoint* before = &league_row("20.01a");
-    for (const auto& [id, fight_name] : rows){
+    for (const auto& [id, fight_name, reset_budget] : rows){
         const StoryCheckpoint& row = league_row(id);
         const std::optional<Pokemon::GridPose> before_end = checkpoint_end_pose(*before);
         if (!row.start || !before_end || !(*row.start == *before_end)){
@@ -409,9 +419,9 @@ UnitTestResult test_league_fight_rows(){
             return std::format("{}: the League plan has no pass figures for {}.", id, fight_name);
         }
         const Pokemon::StoryVerify plan{
-            .tries = (size_t)fight->pass->min_pass_of,
-            .min_pass = (size_t)fight->pass->min_pass,
-            .reset_budget = (size_t)fight->pass->reset_budget,
+            .tries = 0,
+            .min_pass = 0,
+            .reset_budget = reset_budget,
         };
         if (row.verify != plan){
             return std::format(

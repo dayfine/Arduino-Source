@@ -36,18 +36,219 @@
       {
         "id": "magikarp_from_box",
         "action": "pc",
-        "why": "the shiny Magikarp (Gift RNG at 00.12b, put in BOX 1 at 04.04) rides into the League with the team for the Hall of Fame (user, 2026-11-16): WITHDRAW, found by reading each cell's species in BOX 1. protect: its party slot is never sent into a battle. A full party refuses the withdrawal and stops the row: which member goes to the box is the user's call",
+        "why": "the shiny Magikarp (Gift RNG at 00.12b, put in BOX 1 at 04.04) rides into the League with the team for the Hall of Fame (user, 2026-11-16): WITHDRAW, found by reading each cell's species in BOX 1. if_present: skipped when Gift RNG didn't run (mirroring 04.04's deposit). protect: its party slot is never sent into a battle. A full party refuses the withdrawal and stops the row: which member goes to the box is the user's call",
         "args": {
           "do": "withdraw",
           "species": "magikarp",
           "box": 1,
+          "if_present": true,
           "protect": true
+        }
+      },
+      {
+        "id": "indigo_outside",
+        "action": "route",
+        "why": "out of Indigo Plateau's Center onto the exterior landing (11, 7) to Fly to Celadon for the League's X-item contract top-up",
+        "args": {
+          "target": {
+            "map": "IndigoPlateau_Exterior",
+            "tiles": [
+              [
+                11,
+                7
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "fly_celadon",
+        "action": "fly",
+        "why": "the Pidgey flies to Celadon City (48, 12), as 18.03, to top up X-items to Lorelei's entry contract",
+        "args": {
+          "town": "CeladonCity",
+          "species": "pidgey",
+          "pose_after": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                48,
+                12
+              ]
+            ],
+            "facing": "south"
+          }
+        }
+      },
+      {
+        "id": "below_store_lift",
+        "action": "route",
+        "why": "from Fly's landing west to the Department Store's door (11, 14) and up 1F to below its lift door (6, 1), as 18.03",
+        "args": {
+          "target": {
+            "map": "CeladonCity_DepartmentStore_1F",
+            "tiles": [
+              [
+                6,
+                2
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "lift_to_5f",
+        "action": "lift_floor",
+        "why": "the lift from 1F to 5F, as 18.03",
+        "args": {
+          "from": "1F",
+          "to": "5F",
+          "pose_after": {
+            "map": "CeladonCity_DepartmentStore_5F",
+            "tiles": [
+              [
+                6,
+                2
+              ]
+            ],
+            "facing": "south"
+          }
+        }
+      },
+      {
+        "id": "x_items_clerk",
+        "action": "route",
+        "why": "down and west to face the X items clerk (1, 7) over the counter (2, 7), as 18.03",
+        "args": {
+          "target": {
+            "map": "CeladonCity_DepartmentStore_5F",
+            "tiles": [
+              [
+                3,
+                7
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "top_up_league_x_items",
+        "action": "mart",
+        "why": "top up X Special (15), X Speed (5), X Accuracy (3) and Guard Spec (2) to Lorelei's entry contract (fill_to 0 fills each line to its quantity; skipped if the bag already meets all four), selling up to 2 Nuggets (+10,000) so the League purse stays intact",
+        "args": {
+          "map": "CeladonCity_DepartmentStore_5F",
+          "sell": [
+            {
+              "item": "nugget",
+              "quantity": 2
+            }
+          ],
+          "items": [
+            {
+              "item": "x-special",
+              "quantity": 15
+            },
+            {
+              "item": "x-speed",
+              "quantity": 5
+            },
+            {
+              "item": "x-accuracy",
+              "quantity": 3
+            },
+            {
+              "item": "guard-spec",
+              "quantity": 2
+            }
+          ],
+          "fill_to": 0,
+          "if_affordable": true
+        }
+      },
+      {
+        "id": "below_5f_lift",
+        "action": "route",
+        "why": "back up to below the lift door (6, 1), as 18.03",
+        "args": {
+          "target": {
+            "map": "CeladonCity_DepartmentStore_5F",
+            "tiles": [
+              [
+                6,
+                2
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "lift_to_1f",
+        "action": "lift_floor",
+        "why": "the lift down from 5F to 1F, as 18.03",
+        "args": {
+          "from": "5F",
+          "to": "1F",
+          "pose_after": {
+            "map": "CeladonCity_DepartmentStore_1F",
+            "tiles": [
+              [
+                6,
+                2
+              ]
+            ],
+            "facing": "south"
+          }
+        }
+      },
+      {
+        "id": "out_of_store",
+        "action": "route",
+        "why": "out of the Department Store onto Celadon City (11, 15), as 18.03",
+        "args": {
+          "target": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                11,
+                15
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "fly_indigo",
+        "action": "fly",
+        "why": "the Pidgey flies back to Indigo Plateau (11, 7), unlocked when 19.05 stepped onto IndigoPlateau_Exterior",
+        "args": {
+          "town": "IndigoPlateau",
+          "species": "pidgey",
+          "pose_after": {
+            "map": "IndigoPlateau_Exterior",
+            "tiles": [
+              [
+                11,
+                7
+              ]
+            ],
+            "facing": "south"
+          }
         }
       },
       {
         "id": "indigo_mart_clerk",
         "action": "route",
-        "why": "from the PC across the lobby to the Mart's counter, facing the clerk (0, 7) across it (1, 7)",
+        "why": "back in through Indigo Plateau Center's door (11, 6) and across the lobby to the Mart's counter, facing the clerk (0, 7) across it (1, 7)",
         "args": {
           "target": {
             "map": "IndigoPlateau_PokemonCenter_1F",
@@ -65,9 +266,15 @@
       {
         "id": "buy_full_restores",
         "action": "mart",
-        "why": "Full Restores up to 13 in the bag, as in PokeGuy's bag at Lorelei (fullrestore x13, potion x4, superpotion x4, xaccuracy x3, xspecial x15, xspeed x4, guardspec x2, elixir x1; PokemonSimulation docs/battles/pokeguy-conditions.md, lorelei): the C policy's heals in the League's five fights come from the bag. Buys 13 less what the bag holds (3000 each), skipped at 13. if_affordable (user, 2026-11-16: no money left for the next run): a short purse skips the line, and 20.01 plans the League from the bag as it is",
+        "why": "Full Restores up to 13 in the bag, as in PokeGuy's bag at Lorelei (fullrestore x13, potion x4, superpotion x4, xaccuracy x3, xspecial x15, xspeed x4, guardspec x2, elixir x1; PokemonSimulation docs/battles/pokeguy-conditions.md, lorelei): the C policy's heals in the League's five fights come from the bag. Sells up to 4 Nuggets (+20,000) so a fresh save covers all 13 Full Restores and the 4 Full Heals after them. Buys 13 less what the bag holds (3000 each), skipped at 13. if_affordable (user, 2026-11-16: no money left for the next run): a short purse skips the line, and 20.01 plans the League from the bag as it is",
         "args": {
           "map": "IndigoPlateau_PokemonCenter_1F",
+          "sell": [
+            {
+              "item": "nugget",
+              "quantity": 4
+            }
+          ],
           "items": [
             {
               "item": "full-restore",

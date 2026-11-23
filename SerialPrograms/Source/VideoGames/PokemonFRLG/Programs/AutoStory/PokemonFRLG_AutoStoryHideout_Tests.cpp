@@ -391,11 +391,16 @@ UnitTestResult test_giovanni_scene_then_taps(){
     const MapPosition below_giovanni{"RocketHideout_B4F", {19, 5}};
     std::vector<MapData> maps = story_maps();
     for (MapData& map : maps){
+        if (map.name != below_giovanni.map){
+            continue;
+        }
         for (MapObject& object : map.objects){
-            if (map.name == below_giovanni.map && object.x == 19 && object.y == 4){
+            if (object.x == 19 && object.y == 4){
                 object.trainer = Pokemon::MapTrainer{.sight = 1, .looks = {Direction::SOUTH}};
             }
         }
+        //  Giovanni's post-battle script drops the SILPH SCOPE at (20, 5).
+        map.objects.push_back(MapObject{.name = "silph_scope", .x = 20, .y = 5});
     }
     SimScript script;
     script.scene_after_trainer_battle = Milliseconds(2000);

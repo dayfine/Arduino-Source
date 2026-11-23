@@ -39,7 +39,7 @@
         "why": "deposit lead into Box 2 slot 1 so only Rattata remains for Nugget Bridge fainting",
         "args": {
           "do": "deposit",
-          "box": 1,
+          "box": 2,
           "slot": 1
         }
       },

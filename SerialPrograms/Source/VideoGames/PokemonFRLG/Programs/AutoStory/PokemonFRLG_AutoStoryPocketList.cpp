@@ -20,17 +20,28 @@ using namespace std::chrono_literals;
 //  The Items pocket's capacity (pokefirered BAG_ITEMS_COUNT).
 constexpr size_t MAX_POCKET_ROWS = 42;
 
+namespace{
+
+bool read_initial_pocket_page(PocketList& list, std::vector<BagRow>& reads, PocketRead& read){
+    for (int shown = 0; shown < ITEM_LIST_ROWS; shown++){
+        std::optional<BagRow> row = list.read_shown(shown);
+        if (row && row->item == "cancel"){
+            read.saw_cancel = true;
+        }
+        if (!row || row->item == "cancel"){
+            return true;
+        }
+        reads.push_back(std::move(*row));
+    }
+    return false;
+}
+
+} // namespace
+
 PocketRead read_whole_pocket(PocketList& list){
     PocketRead read;
     std::vector<BagRow> reads;
-    bool end = false;
-    for (int shown = 0; !end && shown < ITEM_LIST_ROWS; shown++){
-        std::optional<BagRow> row = list.read_shown(shown);
-        end = !row || row->item == "cancel";
-        if (!end){
-            reads.push_back(std::move(*row));
-        }
-    }
+    bool end = read_initial_pocket_page(list, reads, read);
     //  The rows below the first six: DOWN to the fourth row shown, then
     //  each DOWN scrolls the next row into the last. Reading one page only
     //  missed the X Specials under a MOON STONE, a NUGGET and four more,
@@ -39,13 +50,26 @@ PocketRead read_whole_pocket(PocketList& list){
         list.cursor_down();
         read.downs++;
     }
+    int same_in_a_row = 0;
     while (!end && reads.size() < MAX_POCKET_ROWS){
         list.cursor_down();
         read.downs++;
         std::optional<BagRow> row = list.read_shown(ITEM_LIST_ROWS - 1);
-        //  The same row again: the list stopped scrolling, its CANCEL unread.
+        //  Two consecutive identical bottom rows: the list stopped scrolling,
+        //  its CANCEL unread. Requiring two tolerates a single dropped DOWN
+        //  (e.g. Lorelei turn 11 re-read, 2026-11-22) without truncating the
+        //  pocket and wiping the remaining items.
         const bool same = row && row->item == reads.back().item && row->count == reads.back().count;
-        end = !row || row->item == "cancel" || same;
+        if (row && row->item == "cancel"){
+            read.saw_cancel = true;
+        }
+        if (same){
+            same_in_a_row++;
+            end = same_in_a_row >= 2;
+            continue;
+        }
+        same_in_a_row = 0;
+        end = !row || row->item == "cancel";
         if (!end){
             reads.push_back(std::move(*row));
         }
@@ -127,11 +151,14 @@ void open_battle_bag(ProControllerContext& context, size_t rows){
     }
 }
 
-std::vector<BagRow> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language, size_t rows){
+std::optional<std::vector<BagRow>> read_battle_pocket(ConsoleHandle& console, ProControllerContext& context, Language language, size_t rows){
     open_battle_bag(context, rows);
-    std::vector<BagRow> read = read_open_pocket(console, context, language).rows;
+    PocketRead read = read_open_pocket(console, context, language);
     pbf_press_button(context, BUTTON_B, /*hold=*/160ms, /*release=*/1500ms);
-    return read;
+    if (read.rows.empty() && !read.saw_cancel){
+        return std::nullopt;
+    }
+    return std::move(read.rows);
 }
 
 

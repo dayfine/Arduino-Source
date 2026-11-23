@@ -2165,6 +2165,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoverySupport.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryWalk.h
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryFrames_Tests.cpp
+    Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecoveryFrames_Tests.h
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRecovery_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWanderRecovery_Tests.cpp
     Source/VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWanderRecovery_Tests.h
@@ -2322,6 +2324,7 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckLevel_Tests.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckLevel_Tests.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryCheckpoints.h
+    Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEngineAdapter.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.cpp
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvents.h
     Source/VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryEvolutionWait_Tests.cpp

@@ -145,8 +145,13 @@ std::vector<MapData> make_sweep_maps(bool silph_cleared){
     const std::vector<MapData> all = overworld_maps();
     std::set<std::string> flags = map_flag_set(all, "after_hall_of_fame");
     flags.merge(map_flag_set(all, "new_game"));
-    //  As story_maps(): Route 16's Snorlax gone (11.01's flute).
+    //  As story_maps(): Route 16's Snorlax (11.01's flute), Route 24's
+    //  Nugget Bridge Rocket (05.05), and B4F's Silph Scope ball (hidden
+    //  until Giovanni is beaten in 09.02) gone.
     flags.insert("FLAG_HIDE_ROUTE_16_SNORLAX");
+    flags.insert("FLAG_HIDE_NUGGET_BRIDGE_ROCKET");
+    flags.insert("FLAG_HIDE_SILPH_SCOPE");
+    flags.insert("FLAG_HIDE_SILPH_RIVAL");
     if (silph_cleared){
         flags.insert("FLAG_HIDE_SILPH_ROCKETS");
         flags.insert("FLAG_HIDE_SAFFRON_ROCKETS");

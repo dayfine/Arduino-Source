@@ -31,7 +31,13 @@ bool bag_row_is(
     }
     context.wait_for_all_requests();
     VideoSnapshot screen = console.video().snapshot();
-    const std::string read = screen ? read_item_list_name(console, language, screen, shown) : "";
+    int check_shown = shown;
+    if (screen){
+        if (const std::optional<int> cursor_shown = read_item_list_cursor_row(screen)){
+            check_shown = *cursor_shown;
+        }
+    }
+    const std::string read = screen ? read_item_list_name(console, language, screen, check_shown) : "";
     if (read == item){
         return true;
     }
@@ -39,7 +45,10 @@ bool bag_row_is(
         console.log(std::format("Bag: row {} unread, taking it as the {} by its position.", row + 1, item), COLOR_ORANGE);
         return true;
     }
-    console.log(std::format("Bag: row {} reads \"{}\", not {}: not using it.", row + 1, read, item), COLOR_RED);
+    console.log(std::format(
+        "Bag: row {} (slot {}, cursor slot {}) reads \"{}\", not {}: not using it.",
+        row + 1, shown + 1, check_shown + 1, read, item
+    ), COLOR_RED);
     dump_debug_image(console, "AutoStory/bag", std::format("row{}-not-{}", row + 1, item), screen);
     return false;
 }
@@ -91,10 +100,10 @@ ConsoleBattleBag::ConsoleBattleBag(
 {}
 
 std::vector<BagRow> ConsoleBattleBag::read_pocket(const Supplies& supplies){
-    std::vector<BagRow> rows = read_battle_pocket(m_console, m_context, m_language, rows_to_top(supplies));
+    std::optional<std::vector<BagRow>> rows = read_battle_pocket(m_console, m_context, m_language, rows_to_top(supplies));
     //  A read ends with the cursor on the top row.
     m_cursor.row = 0;
-    return rows;
+    return rows ? std::move(*rows) : std::vector<BagRow>{};
 }
 
 bool ConsoleBattleBag::use_row(const Supplies& supplies, int row, int shown, const std::string& item){
@@ -102,21 +111,33 @@ bool ConsoleBattleBag::use_row(const Supplies& supplies, int row, int shown, con
     if (m_cursor.row){
         open_battle_items_pocket(m_context);
         from = *m_cursor.row;
+        //  When the bottom-most item above CANCEL is used up, FRLG moves the
+        //  cursor up onto the new bottom item rather than leaving it on CANCEL.
+        int active_items = 0;
+        for (const std::string& slot : supplies.pocket){
+            if (item_row(supplies, slot) >= 0){
+                active_items++;
+            }
+        }
+        if (active_items > 0 && from >= active_items){
+            from = active_items - 1;
+        }
         m_console.log(std::format("Bag: cursor from row {} to row {}.", from + 1, row + 1));
     }else{
         open_battle_bag(m_context, rows_to_top(supplies));
         m_console.log(std::format("Bag: cursor to the top, then to row {}.", row + 1));
     }
     for (int c = from; c < row; c++){
-        pbf_press_dpad(m_context, DPAD_DOWN, /*hold=*/160ms, /*release=*/240ms);
+        pbf_press_dpad(m_context, DPAD_DOWN, /*hold=*/100ms, /*release=*/300ms);
     }
     for (int c = row; c < from; c++){
-        pbf_press_dpad(m_context, DPAD_UP, /*hold=*/160ms, /*release=*/240ms);
+        pbf_press_dpad(m_context, DPAD_UP, /*hold=*/100ms, /*release=*/300ms);
     }
     //  Used or not, the bag keeps the cursor here; a used-up item's row
     //  goes, and the row below it moves up under the cursor.
     m_cursor.row = row;
     if (!bag_row_is(m_console, m_context, row, shown, item, m_checks, m_language)){
+        m_cursor.row = std::nullopt;
         pbf_press_button(m_context, BUTTON_B, /*hold=*/160ms, /*release=*/1500ms);
         return false;
     }

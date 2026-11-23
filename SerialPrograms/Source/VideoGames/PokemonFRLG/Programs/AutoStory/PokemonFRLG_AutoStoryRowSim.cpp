@@ -87,7 +87,9 @@ bool stops_past_end(const RouteStep& step, const std::vector<MapData>& maps){
     const TilePos here = step.end.point;
     const TilePos ahead = here.next(step.direction);
     if (!in_bounds(map, ahead)){
-        return true;
+        return !std::ranges::any_of(map.connections, [&](const MapConnection& connection){
+            return connection.side == step.direction && map_named(connection.to_map, maps) == nullptr;
+        });
     }
     if (warps_on_step(map, ahead) || exit_mat(map, here) == step.direction
         || (step.direction == Direction::NORTH && is_door(map, ahead))
@@ -538,9 +540,11 @@ public:
         return {.scrolled = !(m_sim.state().position == from), .boulder_moved = false};
     }
 
-    bool clear_interrupt() override{
+    BoulderInterrupt clear_interrupt() override{
         const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(sim_screen_look(m_sim), MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
-        return quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
+        return quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET)
+            ? BoulderInterrupt::CLEARED
+            : BoulderInterrupt::FAILED;
     }
 
 private:

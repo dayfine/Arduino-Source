@@ -27,6 +27,7 @@
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
+#include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryRowSim.h"
 #include "PokemonFRLG_AutoStoryRows_Tests.h"
 #include "PokemonFRLG_AutoStorySlope.h"
@@ -152,7 +153,10 @@ public:
                 const bool a = press.a && first;
                 first = false;
                 if (message && gate.opened(m_pages > 0, now())){
-                    return SlopeSendResult{.sent = SlopeSent::MESSAGE};
+                    const Milliseconds remaining = Milliseconds(
+                        std::max<int64_t>(0, (int64_t)(end - m_clock))
+                    );
+                    return SlopeSendResult{.sent = SlopeSent::MESSAGE, .press = c, .press_remaining = remaining};
                 }
                 if (m_pages > 0){
                     m_pages -= a ? 1 : 0;
@@ -181,8 +185,17 @@ public:
         m_catch = std::pair<int, int>{x, y};
     }
 
-    int x() const{ return m_x; }
-    int y() const{ return m_y; }
+    //  An unexpected non-battle white dialog (e.g. "REPEL's effect wore off!")
+    //  opens the first time the player steps onto (x, y).
+    void repel_on(int x, int y){
+        m_repel = std::pair<int, int>{x, y};
+    }
+
+    void close_dialog(){
+        m_pages = 0;
+    }
+
+    std::pair<int, int> pos() const{ return {m_x, m_y}; }
     const std::vector<std::string>& seen() const{ return m_seen; }
     const std::vector<std::string>& picked() const{ return m_picked; }
 
@@ -266,6 +279,10 @@ private:
             m_catch.reset();
             m_caught = true;
         }
+        if (m_repel == std::pair<int, int>{m_x, m_y}){
+            m_repel.reset();
+            m_pages = 1;
+        }
     }
     bool face_item(){
         const auto item = m_items.find({m_x + dx_of(m_facing), m_y + dy_of(m_facing)});
@@ -302,6 +319,7 @@ private:
     std::vector<std::string> m_picked;
     int m_pages = 0;
     std::optional<std::pair<int, int>> m_catch;
+    std::optional<std::pair<int, int>> m_repel;
     bool m_caught = false;
 };
 
@@ -326,6 +344,10 @@ SlopeResult ride_on_model(SlopeModel& model, const std::vector<SlopeMove>& moves
         .send = [&model](const std::vector<SlopePress>& presses, bool message){ return model.send(presses, message); },
         .fight = []{ return true; },
         .log = [](const std::string&){},
+        .clear_dialog = [&model]{
+            model.close_dialog();
+            return false;
+        },
     };
     return ride_slope(moves, calls);
 }
@@ -340,7 +362,7 @@ UnitTestResult test_slope_moves(){
     SlopeModel model(14, -1);
     const SlopeResult result = ride_on_model(model, *parse_slope_step(*step));
     if (result.end != SlopeEnd::DONE || result.found != std::vector<std::string>{"rare-candy", "max-elixir"}){
-        return std::format("11.02: the slope ended at move {}, at ({}, {}), {} item(s) found.", result.move + 1, model.x(), model.y(), result.found.size());
+        return std::format("11.02: the slope ended at move {}, at ({}, {}), {} item(s) found.", result.move + 1, model.pos().first, model.pos().second, result.found.size());
     }
     //  11.02's second run (console B, 2026-11-12): the RARE CANDY's message,
     //  still closing, was taken for the MAX ELIXIR's, which was never
@@ -348,8 +370,8 @@ UnitTestResult test_slope_moves(){
     if (model.picked() != std::vector<std::string>{"rare-candy", "max-elixir"}){
         return std::format("11.02: {} item(s) picked up, not both.", model.picked().size());
     }
-    if (model.x() != 12 || model.y() != ROUTE18_ROW + 10){
-        return std::format("11.02: the slope ended at ({}, {}), not Route 18's (12, 10).", model.x(), model.y());
+    if (model.pos() != std::pair<int, int>{12, ROUTE18_ROW + 10}){
+        return std::format("11.02: the slope ended at ({}, {}), not Route 18's (12, 10).", model.pos().first, model.pos().second);
     }
     if (!model.seen().empty()){
         return "11.02: a Biker sees the player at " + model.seen().front();
@@ -370,10 +392,10 @@ UnitTestResult test_gap_rolls(){
         gapped.send(slope_move_presses(SlopeMove{.kind = SlopeMoveKind::STEP, .direction = Direction::EAST, .tiles = 1}), false);
         gapped.send({SlopePress{.hold = Milliseconds(300)}}, false);
     }
-    if (batched.x() != 17 || batched.y() != 20){
-        return std::format("B held: ended ({}, {}), expected (17, 20).", batched.x(), batched.y());
+    if (batched.pos() != std::pair<int, int>{17, 20}){
+        return std::format("B held: ended ({}, {}), expected (17, 20).", batched.pos().first, batched.pos().second);
     }
-    if (gapped.y() == 20){
+    if (gapped.pos().second == 20){
         return "A gap with B released should roll the player.";
     }
     //  Every press of a STEP or SEARCH holds B.
@@ -410,10 +432,10 @@ UnitTestResult check_caught_and_done(int x, int y){
     model.catch_on(x, y);
     const SlopeResult result = ride_on_model(model, *parse_slope_step(*slope_step(checkpoint("11.02"))));
     if (result.end != SlopeEnd::DONE || result.found != std::vector<std::string>{"rare-candy", "max-elixir"}){
-        return std::format("Caught on ({}, {}): ended {} at move {}, at ({}, {}), {} item(s) found.", x, y, int(result.end), result.move + 1, model.x(), model.y(), result.found.size());
+        return std::format("Caught on ({}, {}): ended {} at move {}, at ({}, {}), {} item(s) found.", x, y, int(result.end), result.move + 1, model.pos().first, model.pos().second, result.found.size());
     }
-    if (model.x() != 12 || model.y() != ROUTE18_ROW + 10){
-        return std::format("Caught on ({}, {}): ended at ({}, {}), not Route 18's (12, 10).", x, y, model.x(), model.y());
+    if (model.pos() != std::pair<int, int>{12, ROUTE18_ROW + 10}){
+        return std::format("Caught on ({}, {}): ended at ({}, {}), not Route 18's (12, 10).", x, y, model.pos().first, model.pos().second);
     }
     return true;
 }
@@ -433,6 +455,46 @@ UnitTestResult test_caught_stepping_east(){
     const SlopeResult result = ride_on_model(model, *parse_slope_step(*slope_step(checkpoint("11.02"))));
     if (result.end != SlopeEnd::BATTLE || result.move != 2){
         return std::format("Caught on (16, 29): ended {} at move {}, expected a battle at move 3.", int(result.end), result.move + 1);
+    }
+    return true;
+}
+
+//  A non-battle white dialog ("REPEL's effect wore off!") during a roll
+//  must not be mistaken for the next search's hidden item message: clear it
+//  and resume the roll so both items are still picked up.
+UnitTestResult test_repel_wore_off_during_roll(){
+    SlopeModel model(14, -1);
+    model.repel_on(19, 120);
+    const SlopeResult result = ride_on_model(model, *parse_slope_step(*slope_step(checkpoint("11.02"))));
+    if (result.end != SlopeEnd::DONE || result.found != std::vector<std::string>{"rare-candy", "max-elixir"}){
+        return std::format("Repel on (19, 120): ended {} at move {}, {} item(s) found.", int(result.end), result.move + 1, result.found.size());
+    }
+    if (model.picked() != std::vector<std::string>{"rare-candy", "max-elixir"}){
+        return std::format("Repel on (19, 120): {} item(s) picked up, not both.", model.picked().size());
+    }
+    if (model.pos() != std::pair<int, int>{12, ROUTE18_ROW + 10}){
+        return std::format("Repel on (19, 120): ended at ({}, {}), not Route 18's (12, 10).", model.pos().first, model.pos().second);
+    }
+    return true;
+}
+
+//  Route 16's south edge connects to Route 17 (not loaded): fixed_route()
+//  must not mark "south 4" to Route 16 (13, 19) as to_wall, or the wall
+//  overshoot rolls onto Route 17's slope before the slope step starts.
+UnitTestResult test_top_of_cycling_road_not_to_wall(){
+    const std::optional<std::vector<RouteStep>> route = fixed_route(
+        story_maps(),
+        MapPosition{"Route16", {13, 15}},
+        {{Direction::SOUTH, 4}, {Direction::EAST, 1}}
+    );
+    if (!route || route->size() != 2){
+        return "11.02 top_of_cycling_road: fixed_route failed.";
+    }
+    if ((*route)[0].to_wall){
+        return "Route16 (13, 15) south 4 to connected edge (13, 19) was marked to_wall.";
+    }
+    if (!(*route)[1].to_wall){
+        return "Route16 (13, 19) east 1 to fence (14, 19) was not marked to_wall.";
     }
     return true;
 }
@@ -500,6 +562,8 @@ void add_tests_AutoStorySlope(UnitTestDatabase& database){
     database.add<Test_AutoStorySlope>("11.02 caught rolling down column 14, fought, on to both items", test_caught_rolling);
     database.add<Test_AutoStorySlope>("11.02 caught on Route 18's last steps, fought, on to the water", test_caught_on_route18);
     database.add<Test_AutoStorySlope>("11.02 caught part-way along a step east, the ride stops", test_caught_stepping_east);
+    database.add<Test_AutoStorySlope>("11.02 Repel wearing off during roll still finds both items", test_repel_wore_off_during_roll);
+    database.add<Test_AutoStorySlope>("11.02 top_of_cycling_road south to Route 17 connection is not to_wall", test_top_of_cycling_road_not_to_wall);
     database.add<Test_AutoStorySlope>("11.02 slope moves parse", test_parse);
     database.add<Test_AutoStorySlope>("11.02 Route 16 to the slope, Route 18 to the Safari Zone", test_routes);
 }

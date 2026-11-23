@@ -155,6 +155,197 @@ VerifyModeReport verify_checkpoint(
     return report;
 }
 
+namespace{
+
+class VerifyRowRunner{
+public:
+    VerifyRowRunner(
+        StoryBackend& backend,
+        std::string_view checkpoint_id,
+        const StoryVerify& verify,
+        StoryCheckpointFactory make_checkpoint,
+        StoryGame& game,
+        RunState& state,
+        VerifyPassPredicate verify_pass
+    )
+        : m_backend(backend)
+        , m_checkpoint_id(checkpoint_id)
+        , m_verify(verify)
+        , m_make_checkpoint(std::move(make_checkpoint))
+        , m_game(game)
+        , m_state(state)
+        , m_verify_pass(std::move(verify_pass))
+    {
+        m_report.checkpoint = std::string(checkpoint_id);
+    }
+
+    VerifyRowReport run(){
+        log_start();
+        if (m_verify.tries > 0 && !run_phase1()){
+            return std::move(m_report);
+        }
+        return run_phase2();
+    }
+
+private:
+    void log_start(){
+        if (m_verify.tries > 0){
+            m_backend.log(std::format(
+                "[Verify] {}: phase 1, {} tries from one save, {} must pass; phase 2, up to {} tries, the first pass saved",
+                m_checkpoint_id, m_verify.tries, m_verify.min_pass, m_verify.reset_budget
+            ));
+        }else{
+            m_backend.log(std::format(
+                "[Verify] {}: up to {} tries, the first pass saved",
+                m_checkpoint_id, m_verify.reset_budget
+            ));
+        }
+    }
+
+    void stop(std::string code, std::string detail){
+        m_backend.log(std::format("[Verify] {}: {}; stopping", m_checkpoint_id, detail));
+        m_report.failure = CheckpointFailure{
+            .checkpoint_id = std::string(m_checkpoint_id),
+            .failure = StoryFailure{.code = std::move(code), .detail = std::move(detail), .repeats = true},
+        };
+    }
+
+    //  Runs m_verify_pass on a passed checkpoint. Sets m_report.failure and
+    //  returns false if VERIFY_UNREAD forces an immediate stop.
+    bool evaluate_pass_check(
+        const StoryCheckpoint& checkpoint,
+        std::optional<CheckpointFailure>& failed
+    ){
+        if (failed || !m_verify_pass){
+            return true;
+        }
+        std::optional<StoryFailure> check_fail = m_verify_pass(m_backend, checkpoint, m_state);
+        if (!check_fail){
+            return true;
+        }
+        if (check_fail->code == VERIFY_UNREAD){
+            m_backend.log(std::format(
+                "[Verify] {}: the pass check couldn't read the game; no save, stopping", m_checkpoint_id
+            ));
+            check_fail->repeats = true;
+            m_report.failure = CheckpointFailure{
+                .checkpoint_id = std::string(m_checkpoint_id),
+                .failure = std::move(*check_fail),
+            };
+            return false;
+        }
+        failed = CheckpointFailure{
+            .checkpoint_id = std::string(m_checkpoint_id),
+            .failure = StoryFailure{
+                .code = "verify_no_pass",
+                .detail = std::format("{}", *check_fail),
+            },
+        };
+        return true;
+    }
+
+    //  Returns true if try passed, false if try failed (continue loop), or
+    //  nullopt if the loop must stop immediately (m_report.failure is set).
+    std::optional<bool> try_once(size_t phase, size_t index, size_t of){
+        if (m_report.attempts > 0){
+            m_report.reloads++;
+            if (std::optional<StoryFailure> reload_error = reload_for_verify(m_backend, m_checkpoint_id, m_game, m_state)){
+                m_report.failure = CheckpointFailure{
+                    .checkpoint_id = std::string(m_checkpoint_id),
+                    .failure = std::move(*reload_error),
+                };
+                return std::nullopt;
+            }
+        }
+        m_report.attempts++;
+        StoryCheckpoint checkpoint = m_make_checkpoint();
+        std::optional<CheckpointFailure> failed = run_single_try(m_backend, checkpoint, m_state);
+        if (!evaluate_pass_check(checkpoint, failed)){
+            return std::nullopt;
+        }
+        if (!failed && phase == 2 && m_game.save){
+            if (std::optional<StoryFailure> save_fail = m_game.save(m_backend, checkpoint)){
+                failed = CheckpointFailure{
+                    .checkpoint_id = std::string(m_checkpoint_id),
+                    .failure = std::move(*save_fail),
+                };
+            }else{
+                m_report.saved = true;
+            }
+        }
+        if (!failed){
+            m_backend.log(std::format("[Verify] {}: phase {} try {}/{} passed", m_checkpoint_id, phase, index, of));
+            return true;
+        }
+        const std::string step = step_name_at(checkpoint, failed->event_index);
+        m_backend.log(std::format(
+            "[Verify] {}: phase {} try {}/{} failed{}: {}",
+            m_checkpoint_id, phase, index, of,
+            step.empty() ? std::string() : std::format(" at {}", step),
+            failed->failure
+        ));
+        if (is_fatal_verify_failure(failed->failure)){
+            m_backend.log(std::format("[Verify] {}: stopping", m_checkpoint_id));
+            m_report.failure = std::move(failed);
+            return std::nullopt;
+        }
+        return false;
+    }
+
+    bool run_phase1(){
+        for (size_t c = 1; c <= m_verify.tries && m_report.phase1_passes < m_verify.min_pass; c++){
+            const std::optional<bool> ok = try_once(/*phase=*/1, c, m_verify.tries);
+            if (!ok){
+                return false;
+            }
+            m_report.phase1_passes += *ok ? 1 : 0;
+            if (m_report.phase1_passes + (m_verify.tries - c) < m_verify.min_pass){
+                stop("verify_below_min_pass", std::format(
+                    "phase 1 passed {} of {}, {} left: under {}",
+                    m_report.phase1_passes, c, m_verify.tries - c, m_verify.min_pass
+                ));
+                return false;
+            }
+        }
+        if (m_report.phase1_passes < m_verify.min_pass){
+            stop("verify_below_min_pass", std::format(
+                "phase 1 passed {} of {}, under {}", m_report.phase1_passes, m_verify.tries, m_verify.min_pass
+            ));
+            return false;
+        }
+        m_backend.log(std::format("[Verify] {}: phase 1 reached {} passes", m_checkpoint_id, m_report.phase1_passes));
+        return true;
+    }
+
+    VerifyRowReport run_phase2(){
+        for (size_t c = 1; c <= m_verify.reset_budget; c++){
+            const std::optional<bool> ok = try_once(/*phase=*/2, c, m_verify.reset_budget);
+            if (!ok){
+                return std::move(m_report);
+            }
+            if (*ok){
+                m_report.passed = true;
+                m_backend.log(std::format("[Verify] {}: phase 2 try {} passed and saved", m_checkpoint_id, c));
+                return std::move(m_report);
+            }
+        }
+        stop("verify_out_of_budget", std::format("no pass in {} phase 2 tries", m_verify.reset_budget));
+        return std::move(m_report);
+    }
+
+    StoryBackend& m_backend;
+    std::string_view m_checkpoint_id;
+    const StoryVerify& m_verify;
+    StoryCheckpointFactory m_make_checkpoint;
+    StoryGame& m_game;
+    RunState& m_state;
+    VerifyPassPredicate m_verify_pass;
+    VerifyRowReport m_report;
+};
+
+} // namespace
+
+
 VerifyRowReport run_verify_row(
     StoryBackend& backend,
     std::string_view checkpoint_id,
@@ -164,121 +355,9 @@ VerifyRowReport run_verify_row(
     RunState& state,
     VerifyPassPredicate verify_pass
 ){
-    VerifyRowReport report;
-    report.checkpoint = std::string(checkpoint_id);
-    backend.log(std::format(
-        "[Verify] {}: phase 1, {} tries from one save, {} must pass; phase 2, up to {} tries, the first pass saved",
-        checkpoint_id, verify.tries, verify.min_pass, verify.reset_budget
-    ));
-
-    const auto stop = [&](std::string code, std::string detail) -> VerifyRowReport{
-        backend.log(std::format("[Verify] {}: {}; stopping", checkpoint_id, detail));
-        report.failure = CheckpointFailure{
-            .checkpoint_id = std::string(checkpoint_id),
-            .failure = StoryFailure{.code = std::move(code), .detail = std::move(detail), .repeats = true},
-        };
-        return report;
-    };
-
-    //  Returns true if try passed, false if try failed (continue loop), or
-    //  nullopt if the loop must stop immediately (report.failure is set).
-    const auto try_once = [&](size_t phase, size_t index, size_t of) -> std::optional<bool>{
-        if (report.attempts > 0){
-            report.reloads++;
-            if (std::optional<StoryFailure> reload_error = reload_for_verify(backend, checkpoint_id, game, state)){
-                report.failure = CheckpointFailure{
-                    .checkpoint_id = std::string(checkpoint_id),
-                    .failure = std::move(*reload_error),
-                };
-                return std::nullopt;
-            }
-        }
-        report.attempts++;
-        StoryCheckpoint checkpoint = make_checkpoint();
-        std::optional<CheckpointFailure> failed = run_single_try(backend, checkpoint, state);
-        if (!failed && verify_pass){
-            if (std::optional<StoryFailure> check_fail = verify_pass(backend, checkpoint, state)){
-                if (check_fail->code == VERIFY_UNREAD){
-                    backend.log(std::format(
-                        "[Verify] {}: the pass check couldn't read the game; no save, stopping", checkpoint_id
-                    ));
-                    check_fail->repeats = true;
-                    report.failure = CheckpointFailure{
-                        .checkpoint_id = std::string(checkpoint_id),
-                        .failure = std::move(*check_fail),
-                    };
-                    return std::nullopt;
-                }
-                failed = CheckpointFailure{
-                    .checkpoint_id = std::string(checkpoint_id),
-                    .failure = StoryFailure{
-                        .code = "verify_no_pass",
-                        .detail = std::format("{}", *check_fail),
-                    },
-                };
-            }
-        }
-        if (!failed && phase == 2 && game.save){
-            if (std::optional<StoryFailure> save_fail = game.save(backend, checkpoint)){
-                failed = CheckpointFailure{
-                    .checkpoint_id = std::string(checkpoint_id),
-                    .failure = std::move(*save_fail),
-                };
-            }else{
-                report.saved = true;
-            }
-        }
-        if (!failed){
-            backend.log(std::format("[Verify] {}: phase {} try {}/{} passed", checkpoint_id, phase, index, of));
-            return true;
-        }
-        const std::string step = step_name_at(checkpoint, failed->event_index);
-        backend.log(std::format(
-            "[Verify] {}: phase {} try {}/{} failed{}: {}",
-            checkpoint_id, phase, index, of,
-            step.empty() ? std::string() : std::format(" at {}", step),
-            failed->failure
-        ));
-        if (is_fatal_verify_failure(failed->failure)){
-            backend.log(std::format("[Verify] {}: stopping", checkpoint_id));
-            report.failure = std::move(failed);
-            return std::nullopt;
-        }
-        return false;
-    };
-
-    for (size_t c = 1; c <= verify.tries && report.phase1_passes < verify.min_pass; c++){
-        const std::optional<bool> ok = try_once(/*phase=*/1, c, verify.tries);
-        if (!ok){
-            return report;
-        }
-        report.phase1_passes += *ok ? 1 : 0;
-        if (report.phase1_passes + (verify.tries - c) < verify.min_pass){
-            return stop("verify_below_min_pass", std::format(
-                "phase 1 passed {} of {}, {} left: under {}",
-                report.phase1_passes, c, verify.tries - c, verify.min_pass
-            ));
-        }
-    }
-    if (report.phase1_passes < verify.min_pass){
-        return stop("verify_below_min_pass", std::format(
-            "phase 1 passed {} of {}, under {}", report.phase1_passes, verify.tries, verify.min_pass
-        ));
-    }
-    backend.log(std::format("[Verify] {}: phase 1 reached {} passes", checkpoint_id, report.phase1_passes));
-
-    for (size_t c = 1; c <= verify.reset_budget; c++){
-        const std::optional<bool> ok = try_once(/*phase=*/2, c, verify.reset_budget);
-        if (!ok){
-            return report;
-        }
-        if (*ok){
-            report.passed = true;
-            backend.log(std::format("[Verify] {}: phase 2 try {} passed and saved", checkpoint_id, c));
-            return report;
-        }
-    }
-    return stop("verify_out_of_budget", std::format("no pass in {} phase 2 tries", verify.reset_budget));
+    return VerifyRowRunner(
+        backend, checkpoint_id, verify, std::move(make_checkpoint), game, state, std::move(verify_pass)
+    ).run();
 }
 
 

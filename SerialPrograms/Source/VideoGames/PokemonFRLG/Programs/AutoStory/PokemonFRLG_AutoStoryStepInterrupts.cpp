@@ -125,8 +125,11 @@ Pokemon::StoryInterrupts step_interrupts(Pokemon::ScreenLookFunction look, const
             out.handlers.starts_on(action, InterruptKind::TRAINER_SIGHT);
             out.handlers.starts_on(action, InterruptKind::WILD_ENCOUNTER);
         }
-        if (action == "new_game" || !is_core_action(action)){
+        if (action == "new_game" || action == "scene" || !is_core_action(action)){
             out.handlers.starts_on(action, InterruptKind::WARP);
+        }
+        if (action == "scene"){
+            out.handlers.starts_on(action, InterruptKind::UNSETTLED);
         }
     }
     return out;

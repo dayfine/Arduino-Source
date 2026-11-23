@@ -56,13 +56,13 @@
         "why": "full HP and PP before the gym (pokeguy skips the Center; healing is the safe side)"
       },
       {
-        "id": "center_northwest_corner",
+        "id": "center_northeast_corner",
         "action": "legs",
-        "why": "from the nurse to the Center's wall west (0, 4) and up to the wall (0, 2), as in 12.01: legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse; from one off, the walk out ended on a side tile of the mat, (6, 8) or (8, 8), which warps only on a step south into the wall (scene end pose sweep)",
+        "why": "not planned: from the nurse to the Center's east wall (14, 4) and up to the north wall (14, 2) by legs to walls, so the walk out starts from a known tile even if the Center script left the player a tile off the nurse; west along row 4 is blocked by CinnabarIsland_PokemonCenter_1F's Cooltrainer F wandering left-and-right on (1..3, 4)",
         "args": {
           "legs": [
             {
-              "direction": "west",
+              "direction": "east",
               "tiles": 7
             },
             {

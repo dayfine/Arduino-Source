@@ -228,14 +228,14 @@
       6
     ],
     "verify": {
-      "tries": 10,
-      "min_pass": 1,
-      "reset_budget": 9
+      "tries": 0,
+      "min_pass": 0,
+      "reset_budget": 5
     },
     "notes": {
       "checkpoint": [
         "Starts in Bruno's room (6, 7), where 20.01 ends. Ends in Agatha's room (6, 7).",
-        "One League fight per row, each run as a verification loop from its start save (execution.verify, copied from frlg-league-plan.json's contract.pass: tries = min_pass.of, min_pass = min_pass.k, reset_budget): phase 1 plays it that many times saving none and stops the run under min_pass; phase 2 plays it until a try passes (won, within the fight's item caps: league_row_pass()) and saves that one.",
+        "One League fight per row, each run with execution.verify (phase 1 disabled: tries = 0, min_pass = 0; retry counts 3, 5, 3, 3, 5 for 20.01 to 20.05): plays up to reset_budget tries from its start save until a try passes (won, within the fight's item caps: league_row_pass()) and saves that first pass.",
         "The League rooms are one-way: the entrance closes behind the player, and the next room's door opens only when the room's trainer is beaten.",
         "PokeGuy's fights: Lorelei 1:46:37, Bruno 1:49:15, Agatha 1:51:12, Lance 1:53:07, the Champion 1:55:44 (docs/battles/pokeguy-conditions.md); his turns: ~/BDSPLab/notes/pokeguy-league-turns.md."
       ]

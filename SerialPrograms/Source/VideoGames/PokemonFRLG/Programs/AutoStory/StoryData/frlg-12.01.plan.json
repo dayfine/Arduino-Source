@@ -22,7 +22,8 @@
         "args": {
           "items": [
             "potion",
-            "super-potion"
+            "super-potion",
+            "full-heal"
           ]
         }
       },
@@ -69,7 +70,7 @@
       {
         "id": "teach_surf",
         "action": "teach",
-        "why": "HM03 Surf in place of Water Gun, as pokeguy (1:14:55 to 1:15:13: Surf, Water Pulse, Bite, Mega Kick after it), unless the lead knows it; an HM, so not a one-shot TM; keep list: Bite, Water Pulse, Dig and Mega Kick stay and the one other move (Bubble or Water Gun) goes; fails if none or several are outside the list",
+        "why": "HM03 Surf in place of Dig (after 04.06 Mega Kick, 05.02b Water Pulse and 06.02 Dig, the lead knows Water Pulse, Bite, Dig and Mega Kick; Dig is unused after Lt. Surge and keeping Water Pulse gives 35 Water PP across Kayden, Kirk and Koga, matching pokeguy's Surf, Water Pulse, Bite, Mega Kick moveset), unless the lead knows it; an HM, so not a one-shot TM; keep list: Bite, Water Pulse and Mega Kick stay and Dig goes; fails if none or several are outside the list",
         "args": {
           "item": "hm03",
           "move": "surf",
@@ -77,7 +78,6 @@
           "keep": [
             "bite",
             "water-pulse",
-            "dig",
             "mega-kick"
           ]
         }
@@ -221,6 +221,21 @@
             }
           ],
           "fill_to": 5
+        }
+      },
+      {
+        "id": "buy_full_heals",
+        "action": "mart",
+        "why": "Full Heals up to 3 in the bag (Fuchsia Mart sells Full Heal for $600, no Antidote): cures Juggler Kirk's Poison Gas before Koga and Koga's Sludge/Smog poison during the fight",
+        "args": {
+          "map": "FuchsiaCity_Mart",
+          "items": [
+            {
+              "item": "full-heal",
+              "quantity": 3
+            }
+          ],
+          "fill_to": 3
         }
       },
       {
@@ -462,6 +477,14 @@
             "facing": "east"
           },
           "variant": "run"
+        }
+      },
+      {
+        "id": "heal_before_koga",
+        "action": "heal_to_full",
+        "why": "heal any damage or poison from Tamer Edgar on east_column_to_wall or top_row_to_wall before saving west of Koga; a no-op if Edgar was not fought",
+        "args": {
+          "max_hp": 122
         }
       },
       {

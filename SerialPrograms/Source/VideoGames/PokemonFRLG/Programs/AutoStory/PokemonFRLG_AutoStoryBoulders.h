@@ -32,11 +32,17 @@ std::optional<Pokemon::StoryFailure> boulder_pushed(
     FrlgRunState& state, const StoryStep& step, const std::vector<MapData>& maps
 );
 
+enum class BoulderInterrupt{
+    FAILED,
+    CLEARED,
+    WILD_BATTLE,
+};
+
 class BoulderPresses{
 public:
     virtual ~BoulderPresses() = default;
     virtual BoulderPressRead press(Direction direction) = 0;
-    virtual bool clear_interrupt() = 0;
+    virtual BoulderInterrupt clear_interrupt() = 0;
 };
 
 struct BoulderPush{

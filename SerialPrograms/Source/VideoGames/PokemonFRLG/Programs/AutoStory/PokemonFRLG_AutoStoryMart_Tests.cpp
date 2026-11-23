@@ -660,6 +660,7 @@ const std::vector<ApprovedShopping>& approved_shopping(){
     MartPlan rival_restock = one_line("LavenderTown_Mart", "super-potion", 15);
     rival_restock.lines.push_back({"antidote", 1});
     rival_restock.lines.push_back({"parlyz-heal", 2});
+    rival_restock.lines.push_back({"super-repel", 4});
     rival_restock.if_affordable = true;
     MartPlan full_heals = one_line("IndigoPlateau_PokemonCenter_1F", "full-heal", 4);
     full_heals.if_affordable = true;
@@ -675,10 +676,10 @@ const std::vector<ApprovedShopping>& approved_shopping(){
             .money = 1900, .bag = {{"x-accuracy", 2}}, .money_after = 0,
         },
         {
-            //  One Mart for the whole list: Lavender stocks all three.
+            //  One Mart for the whole list: Lavender stocks all four.
             .checkpoint = "19.01a", .step = "buy_potions_and_status_heals", .before = "19.01b",
             .plan = rival_restock,
-            .money = 11000, .bag = {{"super-potion", 15}, {"antidote", 1}, {"parlyz-heal", 2}}, .money_after = 0,
+            .money = 13000, .bag = {{"super-potion", 15}, {"antidote", 1}, {"parlyz-heal", 2}, {"super-repel", 4}}, .money_after = 0,
         },
         {
             //  4 Full Heals (user, 2026-11-16). After 13 Full Restores, money

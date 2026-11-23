@@ -188,6 +188,10 @@ UnitTestResult test_warp(){
     if (!error.empty()){
         return error;
     }
+    const std::string scene_error = ran(warp, "scene", {"mash"});
+    if (!scene_error.empty()){
+        return scene_error;
+    }
     return true;
 }
 
