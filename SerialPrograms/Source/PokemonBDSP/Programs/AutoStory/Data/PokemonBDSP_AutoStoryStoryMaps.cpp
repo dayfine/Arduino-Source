@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader.h"
 #include "PokemonBDSP_AutoStoryMaps.h"
 #include "PokemonBDSP_AutoStoryStoryMaps.h"
 #include "PokemonBDSP_AutoStorySpots.h"
@@ -29,43 +30,6 @@ StoryWorld single(std::string_view name, const std::string& json_map){
     StoryWorld world;
     world.add(std::string(name), story_map(json_map), {0, 0});
     return world;
-}
-
-//  The tiles of `map` from `corner`, `width` x `height`, and the objects on
-//  them, as a map of its own. Its points are left out.
-MapData crop(const MapData& map, const TilePos& corner, int width, int height){
-    MapData cropped;
-    cropped.name = map.name;
-    cropped.source = map.source;
-    cropped.tiles = Pokemon::Grid<Pokemon::TileKind>{width, height, {}};
-    for (int y = 0; y < height; y++){
-        for (int x = 0; x < width; x++){
-            cropped.tiles.cells.push_back(map.tiles.at({corner.x + x, corner.y + y}));
-        }
-    }
-    for (Pokemon::MapObject object : map.objects){
-        object.x -= corner.x;
-        object.y -= corner.y;
-        if (object.wander){
-            object.wander->x0 -= corner.x;
-            object.wander->x1 -= corner.x;
-            object.wander->y0 -= corner.y;
-            object.wander->y1 -= corner.y;
-        }
-        if (cropped.tiles.contains({object.x, object.y}) || (object.wander
-            && object.wander->x1 >= 0 && object.wander->y1 >= 0
-            && object.wander->x0 < width && object.wander->y0 < height)){
-            cropped.objects.push_back(std::move(object));
-        }
-    }
-    for (auto warp : map.warps){
-        warp.x -= corner.x;
-        warp.y -= corner.y;
-        if (cropped.tiles.contains({warp.x, warp.y})){
-            cropped.warps.push_back(std::move(warp));
-        }
-    }
-    return cropped;
 }
 
 bool in_region(const std::string& map, const std::string& region, const TilePos& pos){
@@ -118,7 +82,7 @@ const StoryWorld& jubilife_east_maps(){
     static const StoryWorld maps = []{
         const MapData& city = story_map("JubilifeCity");
         StoryWorld world;
-        world.add(MAP_JUBILIFE_CITY, crop(
+        world.add(MAP_JUBILIFE_CITY, Pokemon::crop_map_data(
             city, JUBILIFE_EAST_CORNER, city.tiles.width - JUBILIFE_EAST_CORNER.x, JUBILIFE_EAST_BOTTOM - JUBILIFE_EAST_CORNER.y + 1
         ), {0, 0});
         return world;

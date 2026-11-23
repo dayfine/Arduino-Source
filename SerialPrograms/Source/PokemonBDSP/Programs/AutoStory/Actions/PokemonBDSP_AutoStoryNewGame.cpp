@@ -366,7 +366,7 @@ struct IntroRun{
     //  `capture_language_pick` before the language's.
     bool capture = false;
     bool capture_language_pick = false;
-    std::string capture_tag;
+    std::string capture_tag = {};
     bool capture_done = false;
 };
 
