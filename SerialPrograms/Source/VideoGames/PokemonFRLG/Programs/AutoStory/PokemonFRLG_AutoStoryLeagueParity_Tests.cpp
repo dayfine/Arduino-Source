@@ -173,13 +173,13 @@ PartyMember lead_of(const JsonObject& own){
     const JsonObject& stats = own.get_object_throw("stats");
     PartyMember lead{
         .species = own.get_string_throw("species"),
+        .moves = {},
         .level = static_cast<uint8_t>(own.get_integer_throw("level")),
         .stats = Stats{
             .hp = static_cast<uint16_t>(integer(stats, "hp")), .attack = static_cast<uint16_t>(integer(stats, "atk")),
             .defense = static_cast<uint16_t>(integer(stats, "def")), .sp_attack = static_cast<uint16_t>(integer(stats, "spa")),
             .sp_defense = static_cast<uint16_t>(integer(stats, "spd")), .speed = static_cast<uint16_t>(integer(stats, "spe")),
         },
-        .moves = {},
     };
     for (const JsonValue& value : own.get_array_throw("moves")){
         const JsonObject& move = value.to_object_throw();
