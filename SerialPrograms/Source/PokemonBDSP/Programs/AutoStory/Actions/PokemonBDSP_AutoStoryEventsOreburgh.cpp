@@ -63,12 +63,17 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
     }
-    //  The gym's wall stopped us: try the column west, then the one east.
-    dpad_tiles(stream, context, DPAD_LEFT, 1, "a column west of the gym's door");
-    if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
-        return;
+    //  The gym's wall stopped us. Taps that moved while a passer-by changed
+    //  the view can go uncounted and overshoot west (lab-B 2026-11-22 22:08:
+    //  three uncounted taps left us 3 columns west of the door), so sweep
+    //  east a column at a time first, then the column west of the start.
+    for (size_t east = 1; east <= 4; east++){
+        dpad_tiles(stream, context, DPAD_RIGHT, 1, "a column east toward the gym's door");
+        if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
+            return;
+        }
     }
-    dpad_tiles(stream, context, DPAD_RIGHT, 2, "a column east of the gym's door");
+    dpad_tiles(stream, context, DPAD_LEFT, 5, "a column west of the gym's door");
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
     }
