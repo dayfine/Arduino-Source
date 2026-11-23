@@ -25,7 +25,7 @@ main
                                  └─ #769 autostory/navigation-trace-seam   [CLEAN]
                                      └─ #770 autostory/navigation-walker-seam [CLEAN]
                                          └─ #771 autostory/navigation-sim-seam [CLEAN]
-                                             ├─ #779 frlg/core-adopt (+ #791) [preparing merge]
+                                             ├─ #779 frlg/core-adopt -> frlg/lean (#791 merged) [MERGEABLE, CI running]
                                              └─ #795 autostory/screen-flow-seam (incl. #796) [CLEAN]
                                                  └─ #797 autostory/story-policies-seam       [CLEAN]
                                                      └─ #799 autostory/story-launch-seam     [CLEAN]
@@ -35,7 +35,7 @@ main
 
 Game lean branches & adoption PRs:
 - `bdsp/lean` ([#753](https://github.com/dayfine/Arduino-Source/pull/753), `CLEAN`): `#772` (`bdsp/core-adopt`) **MERGED**; [#802](https://github.com/dayfine/Arduino-Source/pull/802) (`bdsp/layer0-adopt`, adopting `#795 → #800`) open (Ubuntu/Code Health/Map/Codec green; 2 pre-existing `bdsp/lean` Windows warnings).
-- `frlg/lean` ([#652](https://github.com/dayfine/Arduino-Source/pull/652)): `#779` (`frlg/core-adopt`, with `#791` fixes) passed FRLG run and is being prepared to merge; `frlg/layer0-adopt` (adopting `#795 → #800`) follows next.
+- `frlg/lean` ([#652](https://github.com/dayfine/Arduino-Source/pull/652)): `#779` (`frlg/core-adopt`, `#791` merged + synced with `frlg/lean`, retargeted to `frlg/lean`, `MERGEABLE`, CI running); `frlg/layer0-adopt` (adopting `#795 → #800`) follows next.
 
 Independent helpers on `main`:
 - [#728](https://github.com/dayfine/Arduino-Source/pull/728) `ns/system-keyboard` (`CLEAN`) — feedback-driven system keyboard typing (shared by BDSP/FRLG naming screens; ready to land in parallel).
