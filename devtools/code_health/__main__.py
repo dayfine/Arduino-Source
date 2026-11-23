@@ -140,7 +140,7 @@ def run(root, base_ref=None, github=False):
     print(f'Scanned {len(changes)} changed C++ files against {base_ref}.')
     for name, (total, with_reason) in sorted(legs.items()):
         print(f'Plan lint: {name}: {total} legs events in the changed plans, {with_reason} with a '
-              '"not planned:" reason; only new or edited ones must have one.')
+              '"not_using_planner_route:" reason; only new or edited ones must have one.')
     print(f'Advisory: {advisory} changed files exceed {ADVISORY["file_lines"]} lines; prefer functions <={ADVISORY["function_lines"]} lines.')
     for note in notes:
         print(f'Advisory: {note}')

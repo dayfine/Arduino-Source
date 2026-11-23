@@ -162,11 +162,13 @@ class PlanLintTests(unittest.TestCase):
     def ids(self, text, previous=None, path=PATH):
         return [f.message.split()[2] for f in plan_lint.check(path, text, previous)]
 
-    def test_new_legs_events_need_a_not_planned_reason(self):
+    def test_new_legs_events_need_a_not_using_planner_route_reason(self):
         self.assertEqual(['right_of_takashi', 'to_the_gate'],
                          self.ids(plan([self.FRLG_LEGS, self.PLZA_WALK, self.ROUTE])))
-        reasoned = dict(self.FRLG_LEGS, why='not planned: a tap beside a wall where a run overshoots')
+        reasoned = dict(self.FRLG_LEGS, why='not_using_planner_route: a tap beside a wall where a run overshoots')
         self.assertEqual([], self.ids(plan([reasoned, self.ROUTE])))
+        legacy = dict(self.FRLG_LEGS, why='not planned: a tap beside a wall where a run overshoots')
+        self.assertEqual([], self.ids(plan([legacy, self.ROUTE])))
 
     def test_unchanged_legs_at_the_base_are_grandfathered_and_edits_are_not(self):
         base = plan([self.FRLG_LEGS, self.ROUTE])
