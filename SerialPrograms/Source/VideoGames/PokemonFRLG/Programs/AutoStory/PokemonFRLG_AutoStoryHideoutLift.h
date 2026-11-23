@@ -17,9 +17,9 @@
 #include <vector>
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -47,7 +47,7 @@ struct LiftRide{
 //  The ride a lift_floor step names, or nothing if it is not one, or names
 //  floors no one panel has. The floors' names pick the lift: B1F..B4F the
 //  hideout's, 1F..5F the store's.
-std::optional<LiftRide> parse_lift_floor_step(const Pokemon::StoryStep& step);
+std::optional<LiftRide> parse_lift_floor_step(const StoryStep& step);
 
 //  Presses of the D-pad on a menu: which way, how many.
 struct MenuPresses{

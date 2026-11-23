@@ -23,9 +23,8 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -56,11 +55,11 @@ inline const std::string REGISTER_BIKE_VARIANT = "register_bike";
 //  isn't one the story uses from the bag, or it names a slot or a count
 //  that is out of range. An item for a Pokemon (is_party_item()) goes on
 //  the lead.
-std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step);
+std::optional<std::string> parse_use_item_step(const StoryStep& step);
 //  How often the step uses its item ("count", 1 to 99; 1 if left out).
-size_t use_item_count(const Pokemon::StoryStep& step);
+size_t use_item_count(const StoryStep& step);
 //  Whether `step` is one of this file's steps.
-bool is_item_use_step(const Pokemon::StoryStep& step);
+bool is_item_use_step(const StoryStep& step);
 
 
 //  Registers the item use tests.

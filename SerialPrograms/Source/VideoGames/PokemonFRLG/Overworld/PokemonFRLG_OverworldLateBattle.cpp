@@ -51,6 +51,15 @@ LateStop place_late_stop(
         return out;
     }
     const Milliseconds since_hold = std::chrono::duration_cast<Milliseconds>(*pressed - hold_start);
+    //  LATE_WILD_BATTLE_DELAY (3.7 s) was measured on Route 1's grass wipe;
+    //  cave wipes (Victory Road 2F/3F, ~2.83 s) open ~0.9 s sooner, which
+    //  puts *pressed before hold_start. Clamping negative since_hold to 0
+    //  falsely narrows the stop to 0..2 tiles and leaves recovery holds short
+    //  of the anchor wall; leave it unplaced so run_route() searches the whole
+    //  leg instead.
+    if (since_hold.count() < 0){
+        return out;
+    }
     out.walked = walked_near(step, tile_reached(since_hold, tile_time, step.tiles), tile_time);
     return out;
 }

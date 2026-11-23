@@ -19,7 +19,6 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "PokemonFRLG_AutoStoryStartFrameCompare.h"
 
 namespace PokemonAutomation{

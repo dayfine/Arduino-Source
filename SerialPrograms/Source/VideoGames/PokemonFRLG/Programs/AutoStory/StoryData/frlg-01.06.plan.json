@@ -4,60 +4,103 @@
   "checkpoint": {
     "id": "01.06",
     "title": "Squirtle, then the rival's battle",
-    "start": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[9, 5]], "facing": "north"},
+    "start": {
+      "map": "PalletTown_ProfessorOaksLab",
+      "tiles": [
+        [
+          9,
+          5
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "squirtle_ball",
-        "kind": "talk",
+        "action": "talk",
         "why": "\"So, you want the WATER POKEMON SQUIRTLE?\""
       },
       {
         "id": "choose_squirtle",
-        "kind": "answer",
+        "action": "answer",
         "why": "take Squirtle"
       },
       {
         "id": "no_nickname",
-        "kind": "answer",
+        "action": "answer",
+        "why": "\"give a nickname?\" NO",
         "args": {
           "yes": false
-        },
-        "why": "\"give a nickname?\" NO"
+        }
       },
       {
         "id": "rival_takes_bulbasaur",
-        "kind": "scene",
-        "declared_after": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[9, 5]], "facing": "north"},
-        "why": "the rival picks his ball; the player still faces the table (console B, 2026-11-01)"
+        "action": "scene",
+        "why": "the rival picks his ball; the player still faces the table (console B, 2026-11-01)",
+        "args": {
+          "pose_after": {
+            "map": "PalletTown_ProfessorOaksLab",
+            "tiles": [
+              [
+                9,
+                5
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "above_rival_trigger",
-        "kind": "route",
+        "action": "route",
+        "why": "short of the rival's trigger row 8",
         "args": {
-          "target": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[7, 7]], "facing": "south"}
-        },
-        "why": "short of the rival's trigger row 8"
+          "target": {
+            "map": "PalletTown_ProfessorOaksLab",
+            "tiles": [
+              [
+                7,
+                7
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "rival_trigger",
-        "kind": "step",
+        "action": "step",
+        "why": "\"Wait, let's check out our POKEMON!\"",
         "args": {
           "direction": "south"
-        },
-        "why": "\"Wait, let's check out our POKEMON!\""
+        }
       },
       {
         "id": "rival_battle",
-        "kind": "battle",
+        "action": "battle",
+        "why": "the tutorial battle; losing goes on too",
         "args": {
           "may_lose": true,
           "trainer": "TRAINER_RIVAL_OAKS_LAB_BULBASAUR",
-          "foes": ["bulbasaur"]
-        },
-        "declared_after": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[7, 8]], "facing": "south"},
-        "why": "the tutorial battle; losing goes on too"
+          "foes": [
+            "bulbasaur"
+          ],
+          "pose_after": {
+            "map": "PalletTown_ProfessorOaksLab",
+            "tiles": [
+              [
+                7,
+                8
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "before_pokedex",
@@ -66,6 +109,5 @@
         "The rival leaves; PlayerWatchRivalExitAfterBattleRight ends facing down."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

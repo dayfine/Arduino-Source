@@ -7,16 +7,30 @@
     "events": [
       {
         "id": "intro",
-        "kind": "new_game",
-        "declared_after": {"map": "PalletTown_PlayersHouse_2F", "tiles": [[6, 6]], "facing": "north"},
-        "why": "Oak's speech, BOY, the player's name (default if none is set), rival GREEN"
+        "action": "new_game",
+        "why": "Oak's speech, BOY, the player's name (default if none is set), rival GREEN",
+        "args": {
+          "pose_after": {
+            "map": "PalletTown_PlayersHouse_2F",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "options",
-        "kind": "options",
+        "action": "options",
         "why": "fast text; no switch prompt between a trainer's Pokemon"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "before_pokemon",
@@ -26,6 +40,5 @@
         "new_game.c: the bedroom at (6, 6), facing the TV."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

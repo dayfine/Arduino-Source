@@ -419,6 +419,15 @@ const std::vector<PcCase> PC_CASES = {
         .box1_after = "pidgey",
     },
     {
+        .name = "skip a species the box hasn't got, when told to",
+        .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true, .if_missing = PcMissing::SKIP},
+        .party = {{.species = "blastoise"}},
+        .box1 = {"pidgey"},
+        .end = PcEnd::SKIPPED,
+        .party_after = "blastoise",
+        .box1_after = "pidgey",
+    },
+    {
         .name = "refuse to withdraw a species into a full party",
         .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true},
         .party = {{.species = "a"}, {.species = "b"}, {.species = "c"}, {.species = "d"}, {.species = "e"}, {.species = "f"}},
@@ -588,21 +597,19 @@ UnitTestResult test_pc_transfers(){
 }
 
 
-//  The dialog alone on screens the fake PC doesn't reach: a storage menu
-//  left on another option, a Pokemon's menu not on its top row, nothing
-//  recognized.
-UnitTestResult test_pc_dialog_screens(){
-    struct Case{
-        std::string name = {};
-        PcTransfer transfer = {};
-        std::vector<PcView> views = {};
-        //  The last view's decision.
-        PcPress press = PcPress::WAIT;
-    };
+struct PcDialogScreenCase{
+    std::string name = {};
+    PcTransfer transfer = {};
+    std::vector<PcView> views = {};
+    //  The last view's decision.
+    PcPress press = PcPress::WAIT;
+};
+
+std::vector<PcDialogScreenCase> pc_dialog_screen_cases(){
     const PcTransfer deposit{.action = PcAction::DEPOSIT, .party_slot = 1};
     const PcTransfer withdraw{.action = PcAction::WITHDRAW};
     std::vector<PcView> others(PC_MAX_OTHER_IN_A_ROW, PcView{});
-    const std::vector<Case> cases = {
+    return {
         {.name = "DEPOSIT from MOVE ITEMS: up", .transfer = deposit,
             .views = {{.screen = PcScreen::STORAGE_MENU, .cursor = 3}}, .press = PcPress::UP},
         {.name = "DEPOSIT from SEE YA: down, wrapping", .transfer = deposit,
@@ -624,8 +631,27 @@ UnitTestResult test_pc_dialog_screens(){
             .views = std::vector<PcView>(PC_BOOT_READS + 1, PcView{.screen = PcScreen::OVERWORLD}), .press = PcPress::FAIL},
         {.name = "the box chooser after a move, unread", .transfer = {.action = PcAction::DEPOSIT, .box = 2},
             .views = {{.screen = PcScreen::BOX_CHOOSER}, {.screen = PcScreen::BOX_CHOOSER}}, .press = PcPress::FAIL},
+        {.name = "species search resets to slot 0 after switching from box 2 to box 1",
+            .transfer = {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp"},
+            .views = {
+                {.screen = PcScreen::BOX_GRID, .cursor = 0, .occupied = false},
+                {.screen = PcScreen::BOX_GRID, .cursor = 1, .box = 1, .occupied = false},
+                {.screen = PcScreen::BOX_GRID, .box = 1, .on_box_header = true},
+                {.screen = PcScreen::BOX_GRID, .box = 0, .on_box_header = true},
+                {.screen = PcScreen::BOX_GRID, .box = 0, .on_box_header = true},
+                {.screen = PcScreen::BOX_GRID, .cursor = 2, .box = 0, .occupied = false},
+                {.screen = PcScreen::BOX_GRID, .cursor = 1, .box = 0, .occupied = false},
+                {.screen = PcScreen::BOX_GRID, .cursor = 0, .box = 0, .occupied = true, .species = "magikarp"},
+            },
+            .press = PcPress::A},
     };
-    for (const Case& item : cases){
+}
+
+//  The dialog alone on screens the fake PC doesn't reach: a storage menu
+//  left on another option, a Pokemon's menu not on its top row, nothing
+//  recognized.
+UnitTestResult test_pc_dialog_screens(){
+    for (const PcDialogScreenCase& item : pc_dialog_screen_cases()){
         PcStorageDialog dialog(item.transfer);
         PcDecision decision;
         for (const PcView& view : item.views){
@@ -647,6 +673,7 @@ UnitTestResult test_pc_args(){
         {.action = PcAction::WITHDRAW, .box = 13, .box_slot = 29},
         {.action = PcAction::DEPOSIT, .party_slot = 1, .box = 0, .if_missing = PcMissing::SKIP},
         {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true},
+        {.action = PcAction::WITHDRAW, .box = 0, .species = "magikarp", .protect = true, .if_missing = PcMissing::SKIP},
     };
     for (size_t c = 0; c < transfers.size(); c++){
         const PcTransfer& transfer = transfers[c];
@@ -660,9 +687,9 @@ UnitTestResult test_pc_args(){
         }
     }
     const auto args = [](std::string action, int64_t slot, int64_t box){
-        return Pokemon::StoryActionArgs{{"do", std::move(action)}, {"slot", slot}, {"box", box}};
+        return FrlgArgMap{{"do", std::move(action)}, {"slot", slot}, {"box", box}};
     };
-    const std::vector<Pokemon::StoryActionArgs> bad_args{
+    const std::vector<FrlgArgMap> bad_args{
         {},
         args("deposit", 7, 1),
         args("deposit", 0, 1),
@@ -670,10 +697,10 @@ UnitTestResult test_pc_args(){
         args("withdraw", 31, 1),
         args("release", 1, 1),
         //  A withdrawal names a slot or a species, not both.
-        Pokemon::StoryActionArgs{{"do", std::string("withdraw")}, {"box", int64_t(1)}},
-        Pokemon::StoryActionArgs{{"do", std::string("withdraw")}, {"box", int64_t(1)}, {"slot", int64_t(1)}, {"species", std::string("magikarp")}},
+        FrlgArgMap{{"do", std::string("withdraw")}, {"box", int64_t(1)}},
+        FrlgArgMap{{"do", std::string("withdraw")}, {"box", int64_t(1)}, {"slot", int64_t(1)}, {"species", std::string("magikarp")}},
     };
-    for (const Pokemon::StoryActionArgs& bad : bad_args){
+    for (const FrlgArgMap& bad : bad_args){
         if (pc_transfer_of(bad)){
             return "Expected a missing or out-of-range arg refused.";
         }

@@ -17,10 +17,10 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_PcScreenReader.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -70,10 +70,10 @@ struct PcTransfer{
 //  rides along, never sent into a battle.
 inline const std::string PC_ACTION = "pc";
 //  `transfer` as its action's args.
-Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer);
+FrlgArgMap pc_args(const PcTransfer& transfer);
 //  The transfer a PC_ACTION step's args give; nothing if they name a slot
 //  or box the game hasn't got.
-std::optional<PcTransfer> pc_transfer_of(const Pokemon::StoryActionArgs& args);
+std::optional<PcTransfer> pc_transfer_of(const FrlgArgMap& args);
 
 
 

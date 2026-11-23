@@ -10,7 +10,6 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_CodedRooms.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
@@ -79,9 +78,8 @@ private:
 };
 
 UnitTestResult test_variants(){
-    const auto game_step = [](std::string action, Pokemon::StoryActionArgs args){
+    const auto game_step = [](std::string action, FrlgArgMap args){
         StoryStep step;
-        step.kind = Pokemon::StoryStepKind::GAME;
         step.action = std::move(action);
         step.args = std::move(args);
         return step;
@@ -92,7 +90,7 @@ UnitTestResult test_variants(){
         return "Expected only the poster switch and lift rides as hideout steps.";
     }
     const StoryStep ride = lift_floor_step("ride", "B2F", "B4F");
-    const Pokemon::StoryActionArgs expected{{"from", std::string("B2F")}, {"to", std::string("B4F")}};
+    const FrlgArgMap expected{{"from", std::string("B2F")}, {"to", std::string("B4F")}};
     if (ride.action != LIFT_FLOOR_VARIANT || ride.args != expected){
         return "Expected lift_floor with {from: B2F, to: B4F}, got \"" + ride.action + "\".";
     }
@@ -192,7 +190,7 @@ std::string lift_on_sim(){
     if (!sim.state().violations.empty()){
         return "The lift step broke the game's rules: " + sim.state().violations.front();
     }
-    const Pokemon::DeclaredPose declared = Pokemon::TileDeclared{b4f_exit.map, {b4f_exit.point}, Direction::SOUTH};
+    const Pokemon::GridPose declared = Pokemon::GridPose{b4f_exit.map, {b4f_exit.point}, Direction::SOUTH};
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
             if (row.id == "09.02" && step.name == "lift_to_b4f" && !(step.pose_after == declared)){
@@ -393,11 +391,16 @@ UnitTestResult test_giovanni_scene_then_taps(){
     const MapPosition below_giovanni{"RocketHideout_B4F", {19, 5}};
     std::vector<MapData> maps = story_maps();
     for (MapData& map : maps){
+        if (map.name != below_giovanni.map){
+            continue;
+        }
         for (MapObject& object : map.objects){
-            if (map.name == below_giovanni.map && object.x == 19 && object.y == 4){
+            if (object.x == 19 && object.y == 4){
                 object.trainer = Pokemon::MapTrainer{.sight = 1, .looks = {Direction::SOUTH}};
             }
         }
+        //  Giovanni's post-battle script drops the SILPH SCOPE at (20, 5).
+        map.objects.push_back(MapObject{.name = "silph_scope", .x = 20, .y = 5});
     }
     SimScript script;
     script.scene_after_trainer_battle = Milliseconds(2000);
@@ -456,7 +459,7 @@ UnitTestResult test_b4f_left_guard_from_below_lift_door(){
     if (below_left_guard == nullptr){
         return "Expected 09.02's step below_left_guard.";
     }
-    const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(below_left_guard->args, "legs");
+    const std::vector<Pokemon::StoryLeg> legs = frlg_arg<std::vector<Pokemon::StoryLeg>>(below_left_guard->args, "legs");
     const std::optional<std::vector<RouteStep>> route = fixed_route(maps, lift_exit, legs);
     if (!route || !(route->back().end == left_guard)){
         return "Expected the legs from the lift's exit (20, 24) to end below the left Grunt (16, 15).";
@@ -502,10 +505,10 @@ std::string run_step_on_sim(const RunStepCase& run){
             }
         }
     }
-    if (found == nullptr || found->action != "run"){
+    if (found == nullptr || found->variant != "run"){
         return std::format("Expected {}'s step {}, run.", run.row, run.step);
     }
-    const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(found->args, "legs");
+    const std::vector<Pokemon::StoryLeg> legs = frlg_arg<std::vector<Pokemon::StoryLeg>>(found->args, "legs");
     const std::optional<std::vector<RouteStep>> route = fixed_route(maps, run.start, legs);
     if (!route || route->size() != 1 || route->back().direction != run.way || !route->back().to_wall || !(route->back().end == run.wall)){
         return std::format("Expected {} to be one leg from {} to the wall {}.", run.step, to_string(run.start), to_string(run.wall));
@@ -565,7 +568,7 @@ UnitTestResult test_below_lift_one_backtrack(){
     if (below_lift == nullptr){
         return "Expected 09.02's step below_lift.";
     }
-    const std::vector<Pokemon::StoryLeg> legs = Pokemon::story_arg<std::vector<Pokemon::StoryLeg>>(below_lift->args, "legs");
+    const std::vector<Pokemon::StoryLeg> legs = frlg_arg<std::vector<Pokemon::StoryLeg>>(below_lift->args, "legs");
     const std::optional<std::vector<RouteStep>> route = fixed_route(maps, wall, legs);
     if (!route || route->size() != 1 || (*route)[0].direction != Direction::WEST || !((*route)[0].end == below_door)){
         return "Expected below_lift to be one leg west from the wall (30, 17) to (28, 17).";

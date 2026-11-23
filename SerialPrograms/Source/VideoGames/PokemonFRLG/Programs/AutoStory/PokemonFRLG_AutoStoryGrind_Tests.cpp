@@ -280,20 +280,20 @@ UnitTestResult test_grind_args(){
     plan.max_encounters = 60;
     plan.pace = Pokemon::Direction::NORTH;
     plan.heal_every = 8;
-    const Pokemon::StoryActionArgs args = grind_args(plan, NURSE);
+    const FrlgArgMap args = grind_args(plan, NURSE);
     const std::optional<GrindPlan> back = grind_plan_of(args);
     if (!back || back->level != 18 || back->max_encounters != 60 || back->pace != Pokemon::Direction::NORTH
         || back->heal_every != 8 || back->member != 0
     ){
         return "The level-18 plan didn't read back from its args.";
     }
-    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+    const std::vector<std::pair<std::string, FrlgArgValue>> bad_args{
         {"level", int64_t(101)},
         {"slot", int64_t(7)},
         {"encounters", int64_t(0)},
     };
     for (const auto& [key, value] : bad_args){
-        Pokemon::StoryActionArgs bad = args;
+        FrlgArgMap bad = args;
         bad[key] = value;
         if (grind_plan_of(bad)){
             return "Expected a bad " + key + " refused.";
@@ -318,7 +318,7 @@ UnitTestResult test_grind_reached_already(){
             return std::format("Lv{}: reached {}, {} encounters, {} heals {}.", level, reached, patch.encounters, patch.heals, patch.error);
         }
     }
-    const Pokemon::StoryStep check = grind_check_step("lead_ready", "", squirtle_to(30));
+    const StoryStep check = grind_check_step("lead_ready", "", squirtle_to(30));
     const std::optional<GrindPlan> back = grind_plan_of(check.args);
     if (check.action != GRIND_CHECK_ACTION || !back || back->level != 30 || check.args.contains("nurse")){
         return "The check's args didn't read back as its plan, or had a nurse.";

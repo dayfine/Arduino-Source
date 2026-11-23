@@ -20,9 +20,8 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonFRLG_AutoStoryBattle.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -69,14 +68,14 @@ struct MartPlan{
 //  MartPlan::sells.
 inline const std::string MART_ACTION = "mart";
 //  `plan` as its action's args.
-Pokemon::StoryActionArgs mart_args(const MartPlan& plan);
+FrlgArgMap mart_args(const MartPlan& plan);
 //  The plan a MART_ACTION step's args give; nothing if it has no line,
 //  names an item its Mart doesn't sell, or sells one the clerk won't buy.
-std::optional<MartPlan> mart_plan_of(const Pokemon::StoryActionArgs& args);
+std::optional<MartPlan> mart_plan_of(const FrlgArgMap& args);
 
 //  The table's Mart step, once per save (StoryStep::once_per_save): a
 //  retry from the same save skips it when it had nothing to buy.
-Pokemon::StoryStep mart_step(std::string name, std::string why, const MartPlan& plan);
+StoryStep mart_step(std::string name, std::string why, const MartPlan& plan);
 
 
 

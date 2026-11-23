@@ -21,7 +21,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
@@ -102,12 +101,12 @@ std::vector<MapData> beaten_on(const std::vector<MapData>& maps, std::optional<s
 //  scene are the console's; the sim has none of the game's coord events.
 bool onto_trigger(const StoryCheckpoint& row, size_t index){
     const StoryStep& step = row.steps[index];
-    if (step.kind != StoryStepKind::STEP || !step.action.empty() || step.pose_after || index + 1 >= row.steps.size()){
+    if (step.action != "step" || !step.variant.empty() || step.pose_after || index + 1 >= row.steps.size()){
         return false;
     }
     const StoryStep& next = row.steps[index + 1];
-    const bool scripted = next.kind == StoryStepKind::MASH || next.kind == StoryStepKind::TALK
-        || next.kind == StoryStepKind::ANSWER || next.kind == StoryStepKind::BATTLE;
+    const bool scripted = next.action == "scene" || next.action == "talk"
+        || next.action == "answer" || next.action == "battle";
     return scripted && next.pose_after.has_value();
 }
 
@@ -118,25 +117,24 @@ bool onto_trigger(const StoryCheckpoint& row, size_t index){
 //  heal are the console's.
 bool sim_plays(const StoryCheckpoint& row, size_t index, const OverworldSim& sim){
     const StoryStep& step = row.steps[index];
-    switch (step.kind){
-    case StoryStepKind::ROUTE:
-    case StoryStepKind::LEGS:
+    if (step.action == "route" || step.action == "legs"){
         return true;
-    case StoryStepKind::STEP:
-        return !onto_trigger(row, index);
-    case StoryStepKind::BATTLE:
-        return sim.state().screen == SimScreen::MESSAGE;
-    default:
-        return false;
     }
+    if (step.action == "step"){
+        return !onto_trigger(row, index);
+    }
+    if (step.action == "battle"){
+        return sim.state().screen == SimScreen::MESSAGE;
+    }
+    return false;
 }
 
 //  The pose the sim ends on, or the failure: the row's steps from its start
 //  on the overworld sim, over the maps of its start flags (start_flags),
 //  with every trainer on `trainers_beaten_on` beaten.
 struct EndpointWalk{
-    std::string failure;
-    MapPosition position;
+    std::string failure = {};
+    MapPosition position = {};
     Direction facing = Direction::SOUTH;
 };
 
@@ -146,7 +144,7 @@ EndpointWalk walk_row_to_end(const StoryCheckpoint& row, std::optional<std::stri
     }
     std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
     const std::vector<MapData> maps = beaten_on(run_story_maps(flags), trainers_beaten_on);
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     std::optional<OverworldSim> sim;
     sim.emplace(maps, MapPosition{at.map, at.tile}, at.facing.value_or(Direction::SOUTH));
     for (size_t index = 0; index < row.steps.size(); index++){
@@ -156,7 +154,7 @@ EndpointWalk walk_row_to_end(const StoryCheckpoint& row, std::optional<std::stri
                 return {.failure = std::move(failure)};
             }
         }else if (step.pose_after){
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            at = *story_pose(*step.pose_after);
             sim.emplace(maps, MapPosition{at.map, at.tile}, at.facing.value_or(sim->state().facing));
         }
         if (!sim->state().violations.empty()){
@@ -175,7 +173,7 @@ UnitTestResult check_endpoint(const AutoStoryEndpointCase& test_case){
     const StoryCheckpoint& row = endpoint_row(test_case.input.checkpoint);
     const AutoStoryEndpointExpectation& expected = test_case.expectation;
     const MapPosition end{std::string(expected.map), expected.tile};
-    const std::optional<Pokemon::GridPose> declared = Pokemon::checkpoint_end_pose(row);
+    const std::optional<Pokemon::GridPose> declared = checkpoint_end_pose(row);
     if (!declared || declared->map != expected.map || declared->facing != expected.facing
         || std::find(declared->tiles.begin(), declared->tiles.end(), expected.tile) == declared->tiles.end()
     ){

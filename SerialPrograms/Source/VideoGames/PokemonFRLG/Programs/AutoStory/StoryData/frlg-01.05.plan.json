@@ -4,17 +4,38 @@
   "checkpoint": {
     "id": "01.05",
     "title": "to Squirtle's ball, south of the table",
-    "start": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "north"},
+    "start": {
+      "map": "PalletTown_ProfessorOaksLab",
+      "tiles": [
+        [
+          6,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "below_squirtle",
-        "kind": "route",
+        "action": "route",
+        "why": "under Squirtle's ball (9, 4)",
         "args": {
-          "target": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[9, 5]], "facing": "north"}
-        },
-        "why": "under Squirtle's ball (9, 4)"
+          "target": {
+            "map": "PalletTown_ProfessorOaksLab",
+            "tiles": [
+              [
+                9,
+                5
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "before_pokemon",
@@ -24,6 +45,5 @@
         "Starter RNG starts from a save south of the table, facing the ball."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

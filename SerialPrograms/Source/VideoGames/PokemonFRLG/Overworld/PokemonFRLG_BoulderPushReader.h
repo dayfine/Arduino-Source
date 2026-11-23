@@ -26,11 +26,14 @@ namespace PokemonFRLG{
 
 //  What one step tap toward a boulder showed.
 struct BoulderPressRead{
-    //  The map scrolled: the player walked a tile (tap_scroll_change() over
-    //  WALL_TAP_MOVED_RMSD).
+    //  The map scrolled a tile in the tap's direction: the player walked a
+    //  tile (edge bands changed over WALL_TAP_MOVED_RMSD and the map above
+    //  the dialog box shifted one tile that way). A dialog box opening or
+    //  closing on a still screen, or a wild battle flash, reads as neither
+    //  scrolled nor boulder_moved so press_for() clears the interrupt.
     bool scrolled = false;
-    //  The two tiles ahead of the player changed: a boulder left the first
-    //  for the second, or for a hole there. Read only when the map stayed.
+    //  The two tiles ahead of the player changed while the edge bands stayed
+    //  still: a boulder left the first for the second, or for a hole there.
     bool boulder_moved = false;
 };
 

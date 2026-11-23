@@ -5,7 +5,6 @@
  */
 
 #include <format>
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonFRLG_AutoStorySaveChecks.h"
 #include "PokemonFRLG_AutoStoryTable.h"
 
@@ -18,7 +17,7 @@ std::string checkpoint_end_map(const std::string& id){
     const std::vector<StoryCheckpoint>& table = story_checkpoints();
     for (size_t c = 0; c + 1 < table.size(); c++){
         if (table[c].id == id && table[c + 1].start){
-            return Pokemon::grid_pose_of(*table[c + 1].start).map;
+            return table[c + 1].start->map;
         }
     }
     return "";
@@ -34,6 +33,7 @@ std::string save_end_error(const std::string& end_map, const std::string& place)
     }
     return std::format("The save card names {}, but the checkpoint ends in {} ({}).", place, *expected, end_map);
 }
+
 
 
 } // namespace PokemonFRLG

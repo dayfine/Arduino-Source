@@ -2,64 +2,45 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  One step of a tile game's story (FRLG, BDSP) as plain data: its kind,
- *  the action that does it and the action's args. A game's executor does it
- *  (Pokemon_StoryStepExecutor.h); the shared JSON reads and writes it
- *  (Data/Pokemon_StoryStepJson.h).
+ *  One step of a checkpoint: an action of the game's, named by the plan,
+ *  with its args bound, ready to run. A checkpoint (StoryCheckpoint) is the
+ *  steps between two saves; the engine runs them in order, and the first
+ *  step that fails fails the checkpoint.
  *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryStep_H
 #define PokemonAutomation_Pokemon_StoryStep_H
 
+#include <functional>
 #include <optional>
+#include <set>
 #include <string>
-#include <vector>
-#include "Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h"
-#include "Pokemon_DeclaredPose.h"
-#include "Pokemon_StoryActionArg.h"
-#include "Pokemon_StoryStepKind.h"
+#include "Common/Cpp/MoveOnlyFunction.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryBackend.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Specification of an atomic story task with actions and postconditions.
+//  What a run knows; a reload empties it.
+struct RunState{
+    //  The step under way, "<checkpoint>/<step>", for its log lines.
+    std::string step = {};
+    //  The actions of the checkpoint's steps after the one under way.
+    std::set<std::string, std::less<>> actions_ahead = {};
+};
+
+//  A step's action with its args bound.
+using StoryStepRun = MoveOnlyFunction<std::optional<StoryFailure>(StoryBackend& backend, RunState& state)>;
+
 struct StoryStep{
-    StoryStepKind kind = StoryStepKind::TALK;
-    std::string name;
-    std::string why;
-
-    //  How the step does its kind: one of the built-in actions
-    //  (Pokemon_BuiltinStoryActions.h) or the game's own; for a GAME step, the
-    //  game's action. Empty is the kind's default action.
-    std::string action;
-    //  The arguments the action reads, parsed against its spec when the
-    //  game loads the step, with the spec's fallbacks filled in.
-    StoryActionArgs args;
-
-    //  Skipped when all of these hold (and there is at least one): names
-    //  the game's executor answers (StoryStepExecutor::holds()), run flags
-    //  unless the game reads them off the screen.
-    std::vector<std::string> skip_if;
-    //  Preparation for what follows, done once per save: a TEACH, a check,
-    //  a read. Once it has succeeded and changed nothing
-    //  (Outcome::changed_nothing), the attempts after a reload of the same
-    //  save skip it, so a retry goes from the reload straight to the
-    //  battle. One that changed the game (a TM taught) runs again, as the
-    //  reload undid it. Only with build_story_checkpoint()'s PreparedSteps.
-    bool once_per_save = false;
-    //  Where the step leaves the player, when its action does not say: the
-    //  end of a scene that moves the player.
-    std::optional<DeclaredPose> pose_after;
-    //  The gates the step opens and the switches it sets
-    //  (Pokemon/Navigation/Pokemon_GateState.h), applied to the run's gate
-    //  state when the step is done.
-    std::optional<GateChange> gates_after = {};
-    //  The run flags the step sets when it is done (JSON "flags_after"): what
-    //  the story's later steps and the planner read, as "card_key_held" after
-    //  the Card Key is picked up, which lets plans open card-key gates.
-    std::vector<std::string> flags_after = {};
+    std::string name = {};
+    std::string why = {};
+    //  The plan's "action": what kind of step it is.
+    std::string action = {};
+    StoryStepRun run = {};
 };
 
 

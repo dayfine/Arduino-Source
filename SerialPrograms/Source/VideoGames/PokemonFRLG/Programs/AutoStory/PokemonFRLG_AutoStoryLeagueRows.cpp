@@ -7,7 +7,6 @@
 #include <format>
 #include <optional>
 #include <string>
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "PokemonFRLG_AutoStoryLeagueFightData.h"
 #include "PokemonFRLG_AutoStoryPlannedBetween.h"
 #include "PokemonFRLG_AutoStoryLeagueRows.h"
@@ -39,11 +38,11 @@ void compare(std::string_view what, int had, int wanted, LeagueEntryCheck& check
 
 
 const LeagueFightData* league_row_fight(const StoryCheckpoint& row){
-    for (const Pokemon::StoryStep& step : row.steps){
-        if (step.kind != Pokemon::StoryStepKind::BATTLE || !step.args.contains("trainer")){
+    for (const StoryStep& step : row.steps){
+        if (step.action != "battle" || !step.args.contains("trainer")){
             continue;
         }
-        const std::optional<std::string> name = league_fight_name(Pokemon::story_arg<std::string>(step.args, "trainer"));
+        const std::optional<std::string> name = league_fight_name(frlg_arg<std::string>(step.args, "trainer"));
         if (name){
             return league_fight_data(league_plan_data(), *name);
         }
@@ -77,23 +76,23 @@ LeagueEntryCheck league_entry_check(const LeagueFightData& next, LeagueSide side
     return check;
 }
 
-Pokemon::Outcome league_row_pass(const StoryCheckpoint& row, const LeagueSide& end){
+std::optional<Pokemon::StoryFailure> league_row_pass(const StoryCheckpoint& row, const LeagueSide& end){
     const LeagueFightData* fight = league_row_fight(row);
     if (fight == nullptr){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     const LeagueFightData* next = next_league_fight(*fight);
     if (next == nullptr){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     const LeagueEntryCheck check = league_entry_check(*next, end);
     if (!check.short_of.empty()){
-        return Pokemon::outcome_failed("league_next_entry", std::format(
+        return frlg_failure("league_next_entry", std::format(
             "after {} and the top-up [{}] before {}, read vs wanted: {}; short of {}",
             fight->name, joined(check.topped_up), next->name, joined(check.compared), joined(check.short_of)
         ));
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 

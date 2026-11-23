@@ -246,7 +246,6 @@ UnitTestResult test_push_boulder_step_on_sim(){
     OverworldSim sim(story_maps(), MapPosition{"VictoryRoad_1F", {7, 19}}, Direction::NORTH);
     StoryPose at{"VictoryRoad_1F", {7, 19}, Direction::NORTH};
     StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
     step.name = "push";
     step.action = PUSH_BOULDER_VARIANT;
     step.args = {{"direction", Direction::NORTH}, {"tiles", int64_t(2)}, {"activate", false}};
@@ -275,7 +274,6 @@ bool boulder_on(const OverworldSim& sim, TilePos tile){
 //  already on.
 StoryStep push_step(Direction direction, int64_t tiles){
     StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
     step.name = "push";
     step.action = PUSH_BOULDER_VARIANT;
     step.args = {{"direction", direction}, {"tiles", tiles}, {"activate", false}};
@@ -331,14 +329,14 @@ UnitTestResult test_stuck_boulder_on_sim(){
 //  Taps that read as `reads` in turn, and `interrupts` cleared in turn.
 class ScriptedPresses : public BoulderPresses{
 public:
-    ScriptedPresses(std::vector<BoulderPressRead> reads, std::vector<bool> interrupts)
+    ScriptedPresses(std::vector<BoulderPressRead> reads, std::vector<BoulderInterrupt> interrupts)
         : m_reads(std::move(reads)), m_interrupts(std::move(interrupts))
     {}
     BoulderPressRead press(Direction) override{
         return m_taps < m_reads.size() ? m_reads[m_taps++] : BoulderPressRead{};
     }
-    bool clear_interrupt() override{
-        return m_cleared < m_interrupts.size() && m_interrupts[m_cleared++];
+    BoulderInterrupt clear_interrupt() override{
+        return m_cleared < m_interrupts.size() ? m_interrupts[m_cleared++] : BoulderInterrupt::FAILED;
     }
     size_t taps() const{
         return m_taps;
@@ -346,7 +344,7 @@ public:
 
 private:
     std::vector<BoulderPressRead> m_reads;
-    std::vector<bool> m_interrupts;
+    std::vector<BoulderInterrupt> m_interrupts;
     size_t m_taps = 0;
     size_t m_cleared = 0;
 };
@@ -364,7 +362,7 @@ UnitTestResult test_walk_after_a_push_goes_round_the_boulder(){
         return failure;
     }
     StoryStep corner;
-    corner.kind = Pokemon::StoryStepKind::ROUTE;
+    corner.action = "route";
     corner.name = "by_boulder_2_corner";
     const Pokemon::GridPose target{"VictoryRoad_1F", {{6, 18}}, std::nullopt};
     corner.args = {{"target", target}, {"fight_wild", false}};
@@ -507,7 +505,7 @@ UnitTestResult test_push_taps_twice_a_tile(){
 //  A tap to push that walks the player stops the push, with the tile
 //  walked counted.
 UnitTestResult test_walk_instead_of_push_is_counted(){
-    ScriptedPresses presses({PUSHED, WALKED, WALKED}, {false});
+    ScriptedPresses presses({PUSHED, WALKED, WALKED}, {BoulderInterrupt::FAILED});
     const BoulderPush push = push_boulder_tiles(Direction::SOUTH, /*tiles=*/2, presses);
     if (!push.failure || push.walked != 2){
         return std::format("failed {}, {} tile(s) walked, not failed with 2.", push.failure.has_value(), push.walked);
@@ -518,13 +516,30 @@ UnitTestResult test_walk_instead_of_push_is_counted(){
 //  A wild battle set off by the step onto the boulder's old tile eats the
 //  next tap to push; once it is cleared, the tap is tried again.
 UnitTestResult test_cleared_interrupt_repeats_the_tap(){
-    ScriptedPresses presses({PUSHED, WALKED, BoulderPressRead{}, PUSHED, WALKED}, {true});
+    ScriptedPresses presses({PUSHED, WALKED, BoulderPressRead{}, PUSHED, WALKED}, {BoulderInterrupt::WILD_BATTLE});
     const BoulderPush push = push_boulder_tiles(Direction::EAST, /*tiles=*/2, presses);
     if (push.failure){
         return *push.failure;
     }
     if (push.walked != 2 || presses.taps() != 5){
         return std::format("{} tile(s) walked in {} taps, not 2 in 5.", push.walked, presses.taps());
+    }
+    return true;
+}
+
+//  19.04c push_onto_2f_switch (2026-11-22): tile 1's walk tap stepped onto
+//  the vacated tile and immediately flashed into a wild battle before
+//  still_shot() finished, so press() read nothing moved. Clearing the wild
+//  battle proves the step already happened: do NOT tap again for tile 1's
+//  walk (which would push the boulder for tile 2 instead of walking).
+UnitTestResult test_wild_battle_on_walk_tap_counts_as_walked(){
+    ScriptedPresses presses({PUSHED, BoulderPressRead{}, PUSHED, WALKED}, {BoulderInterrupt::WILD_BATTLE});
+    const BoulderPush push = push_boulder_tiles(Direction::WEST, /*tiles=*/2, presses);
+    if (push.failure){
+        return *push.failure;
+    }
+    if (push.walked != 2 || presses.taps() != 4){
+        return std::format("{} tile(s) walked in {} taps, not 2 in 4.", push.walked, presses.taps());
     }
     return true;
 }
@@ -596,6 +611,62 @@ UnitTestResult test_reader_sees_a_walk_and_a_still_screen(){
     return true;
 }
 
+//  Draws a GBA white dialog box (e.g. "REPEL's effect wore off...") over
+//  rows 7..9 (y = 116..158) of a 240x160 screen.
+ImageRGB32 with_dialog_box(ImageRGB32 image){
+    for (size_t y = 116; y < 158; y++){
+        for (size_t x = 8; x < 232; x++){
+            image.pixel(x, y) = 0xfff8f8f8;
+        }
+    }
+    return image;
+}
+
+//  19.04b push_east_row17 (2026-11-22): step 30 onto (12, 17) wears off
+//  Repel and opens "REPEL's effect wore off..." (MSGBOX_SIGN) at the bottom
+//  of the screen; the next push tap's D-pad RIGHT dismisses that box without
+//  scrolling the map. The walk tap that opened the box must still read as
+//  scrolled, and the tap that closed the box (or a battle flash) must read as
+//  nothing moved so press_for() clears the interrupt and retries the push.
+UnitTestResult test_reader_handles_dialog_box_and_battle_flash(){
+    const ImageFloatBox game(0, 0, 1, 1);
+    const ImageRGB32 at_rest = cave_screen(/*scroll_x=*/0, /*boulder_x=*/128, /*boulder_y=*/72);
+    const ImageRGB32 walked_with_box = with_dialog_box(
+        cave_screen(/*scroll_x=*/16, /*boulder_x=*/128, /*boulder_y=*/72)
+    );
+    const BoulderPressRead walk_read = read_boulder_press(at_rest, walked_with_box, game, Direction::EAST);
+    if (!walk_read.scrolled){
+        return "a walk east that opened a dialog box did not read as scrolled.";
+    }
+    const ImageRGB32 still_with_box = with_dialog_box(
+        cave_screen(/*scroll_x=*/0, /*boulder_x=*/128, /*boulder_y=*/72)
+    );
+    const BoulderPressRead close_east = read_boulder_press(still_with_box, at_rest, game, Direction::EAST);
+    if (close_east.scrolled || close_east.boulder_moved){
+        return std::format(
+            "closing a dialog box on a still screen read as scrolled {}, boulder_moved {}.",
+            close_east.scrolled, close_east.boulder_moved
+        );
+    }
+    const BoulderPressRead close_south = read_boulder_press(still_with_box, at_rest, game, Direction::SOUTH);
+    if (close_south.scrolled || close_south.boulder_moved){
+        return std::format(
+            "closing a dialog box facing south read as scrolled {}, boulder_moved {}.",
+            close_south.scrolled, close_south.boulder_moved
+        );
+    }
+    ImageRGB32 flash(240, 160);
+    flash.fill(0xff101010);
+    const BoulderPressRead battle_flash = read_boulder_press(at_rest, flash, game, Direction::EAST);
+    if (battle_flash.scrolled || battle_flash.boulder_moved){
+        return std::format(
+            "a battle flash read as scrolled {}, boulder_moved {}.",
+            battle_flash.scrolled, battle_flash.boulder_moved
+        );
+    }
+    return true;
+}
+
 const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
     {
         .input = {.name = "19.04b's one-tile push south from (7, 17) on the sim", .body = test_one_tile_push_on_sim},
@@ -646,12 +717,20 @@ const AutoStoryBouldersCase AUTO_STORY_BOULDERS_CASES[] = {
         .expectation = {.description = "the battle cleared, the tap repeated, both tiles pushed"},
     },
     {
+        .input = {.name = "a walk tap whose step immediately flashed into a wild battle", .body = test_wild_battle_on_walk_tap_counts_as_walked},
+        .expectation = {.description = "the battle cleared, tile 1 counted as walked without an extra tap, tile 2 pushed"},
+    },
+    {
         .input = {.name = "the reader on a boulder pushed each way", .body = test_reader_sees_the_boulder_move},
         .expectation = {.description = "the boulder moved, no scroll"},
     },
     {
         .input = {.name = "the reader on a step and on a still screen", .body = test_reader_sees_a_walk_and_a_still_screen},
         .expectation = {.description = "a scroll, then nothing"},
+    },
+    {
+        .input = {.name = "the reader on a dialog box opening/closing and a battle flash", .body = test_reader_handles_dialog_box_and_battle_flash},
+        .expectation = {.description = "walk with dialog box scrolls; closing dialog box or battle flash reads as nothing"},
     },
     {
         .input = {.name = "a push_boulder step on the sim", .body = test_push_boulder_step_on_sim},

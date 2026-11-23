@@ -18,8 +18,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -118,16 +116,16 @@ const std::vector<MapData>& mansion_3f_arrival_east_maps(){
 //  are planned on the story maps and walked on `sim_maps`.
 UnitTestResult test_row(const MansionRow& expected, const std::vector<MapData>& sim_maps = story_maps()){
     const StoryCheckpoint& row = checkpoint(expected.id);
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     SimScript script;
-    script.gates = row.start_gates.value_or(Pokemon::GateState());
+    script.gates = row.start_gates;
     std::optional<OverworldSim> sim;
     sim.emplace(sim_maps, MapPosition{at.map, at.tile}, *at.facing, script);
     std::vector<std::string> floors;
     for (const StoryStep& step : row.steps){
         if (step.name == "escape_rope"){
             //  The rope's script has no map: the player stands where it says.
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            at = *story_pose(*step.pose_after);
             sim.emplace(sim_maps, MapPosition{at.map, at.tile}, *at.facing, script);
         }else if (const std::string failure = row_step_on_sim(*sim, at, step, row.id); !failure.empty()){
             return std::format("{}: ended on {}; {}", row.id, to_string(sim->state().position), failure);

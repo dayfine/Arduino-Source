@@ -19,7 +19,6 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -92,7 +91,7 @@ std::string walk_row(
         if (step.name == until){
             return "";
         }
-        const bool walks = step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS || step.kind == StoryStepKind::STEP;
+        const bool walks = step.action == "route" || step.action == "legs" || step.action == "step";
         if (!walks && !parse_fly_step(step)){
             continue;
         }
@@ -114,12 +113,12 @@ std::string walk_row(
 //  trainer met on the way.
 UnitTestResult test_route22_rival_trigger(){
     const StoryCheckpoint& shop = checkpoint("19.01a");
-    StoryPose at = *story_pose(Pokemon::pose_of(*shop.start));
+    StoryPose at = *story_pose(*shop.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = walk_row(sim, at, shop, ""); !failure.empty()){
         return failure;
     }
-    StoryPose lavender = *story_pose(Pokemon::pose_of(*shop.start));
+    StoryPose lavender = *story_pose(*shop.start);
     OverworldSim to_lavender(story_maps(), MapPosition{lavender.map, lavender.tile}, *lavender.facing);
     if (const std::string failure = walk_row(to_lavender, lavender, shop, "buy_potions_and_status_heals"); !failure.empty()){
         return failure;
@@ -146,7 +145,7 @@ UnitTestResult test_route22_rival_trigger(){
     };
     for (const auto& leg : legs){
         const StoryCheckpoint& row = checkpoint(leg.id);
-        const StoryPose start = *story_pose(Pokemon::pose_of(*row.start));
+        const StoryPose start = *story_pose(*row.start);
         if (start.map != leg.start.map || !(start.tile == leg.start.point)){
             return std::format("{} doesn't start on {}, where the row before it ends.", leg.id, to_string(leg.start));
         }
@@ -168,7 +167,7 @@ UnitTestResult test_route22_rival_trigger(){
 //  is the console's), and the door beyond leads to Route 23's south end.
 UnitTestResult test_gate_guard_trigger_and_route23(){
     const StoryCheckpoint& row = checkpoint("19.02");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     MapPosition at_trigger;
     if (const std::string failure = walk_row(sim, at, row, "", "gate_guard_trigger", &at_trigger); !failure.empty()){
@@ -226,7 +225,7 @@ std::string walk_row_landings(
     std::map<std::string, MapPosition>& landings
 ){
     for (const StoryStep& step : row.steps){
-        if (step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP && !is_field_move_step(step)){
+        if (step.action != "route" && step.action != "legs" && step.action != "step" && !is_field_move_step(step)){
             continue;
         }
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -241,7 +240,7 @@ std::string walk_row_landings(
 //  event (Route23 map.json), and the row ends below Victory Road's mouth.
 UnitTestResult test_route23_guard_triggers(){
     const StoryCheckpoint& row = checkpoint("19.03");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     std::map<std::string, MapPosition> landings;
     if (const std::string failure = walk_row_landings(sim, at, row, landings); !failure.empty()){
@@ -285,7 +284,7 @@ UnitTestResult test_strength_teach_and_cave_mouth(){
         return "19.04 teach_strength: keep is not surf, bite, blizzard.";
     }
     const StoryCheckpoint& row = checkpoint("19.04");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = walk_row(sim, at, row, ""); !failure.empty()){
         return failure;
@@ -303,12 +302,12 @@ UnitTestResult test_strength_teach_and_cave_mouth(){
 //  walks after a push plan round the boulder where it now stands
 //  (moved_boulders()).
 std::string floor_steps_on_sim(const StoryCheckpoint& row, OverworldSim& sim){
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     const std::string& id = row.id;
     std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
     for (const StoryStep& step : row.steps){
-        const bool push = step.kind == StoryStepKind::GAME && step.action == PUSH_BOULDER_VARIANT;
-        if (!push && step.kind != StoryStepKind::ROUTE && step.kind != StoryStepKind::LEGS && step.kind != StoryStepKind::STEP){
+        const bool push = step.action == PUSH_BOULDER_VARIANT;
+        if (!push && step.action != "route" && step.action != "legs" && step.action != "step"){
             continue;
         }
         if (const std::string failure = row_step_carrying_flags(sim, at, step, row.id, flags); !failure.empty()){
@@ -326,9 +325,9 @@ std::string floor_steps_on_sim(const StoryCheckpoint& row, OverworldSim& sim){
 
 //  A row's sim from its start pose and start_gates, Strength on as given.
 OverworldSim floor_sim(const StoryCheckpoint& row, bool strength_on){
-    const StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    const StoryPose at = *story_pose(*row.start);
     SimScript script;
-    script.gates = row.start_gates.value_or(Pokemon::GateState());
+    script.gates = row.start_gates;
     script.strength_on = strength_on;
     return OverworldSim(story_maps(), MapPosition{at.map, at.tile}, at.facing.value_or(Direction::NORTH), script);
 }
@@ -343,9 +342,9 @@ OverworldSim floor_sim(const StoryCheckpoint& row, bool strength_on){
 UnitTestResult cave_floor(std::string_view previous, std::string_view id, std::string_view switch_key, const MapPosition& end){
     const StoryCheckpoint& before = checkpoint(previous);
     const StoryCheckpoint& row = checkpoint(id);
-    const StoryPose at_start = *story_pose(Pokemon::pose_of(*row.start));
-    const std::optional<Pokemon::GridPose> before_pose = Pokemon::checkpoint_end_pose(before);
-    const std::optional<StoryPose> before_end = before_pose ? story_pose(Pokemon::pose_of(*before_pose)) : std::nullopt;
+    const StoryPose at_start = *story_pose(*row.start);
+    const std::optional<Pokemon::GridPose> before_pose = checkpoint_end_pose(before);
+    const std::optional<StoryPose> before_end = before_pose ? story_pose(*before_pose) : std::nullopt;
     if (!before_end || before_end->map != at_start.map || !(before_end->tile == at_start.tile)){
         return std::format("{} doesn't start where {} ends.", id, previous);
     }
@@ -390,7 +389,7 @@ UnitTestResult test_victory_road_hole_and_exit(){
 //  19.05: from Victory Road's exit on Route 23 to the nurse's counter.
 UnitTestResult test_indigo_center_walk(){
     const StoryCheckpoint& row = checkpoint("19.05");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = walk_row(sim, at, row, ""); !failure.empty()){
         return failure;

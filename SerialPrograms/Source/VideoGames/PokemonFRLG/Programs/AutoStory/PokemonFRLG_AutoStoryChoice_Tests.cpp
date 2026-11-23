@@ -179,7 +179,7 @@ UnitTestResult test_fossil_choice(){
 
 
 UnitTestResult test_fossil_args(){
-    const Pokemon::StoryStep step = fossil_step("helix", "", Fossil::HELIX);
+    const StoryStep step = fossil_step("helix", "", Fossil::HELIX);
     if (step.action != FOSSIL_ACTION || fossil_of(step.args) != Fossil::HELIX
         || fossil_of({{"fossil", std::string("dome")}}) != Fossil::DOME
     ){

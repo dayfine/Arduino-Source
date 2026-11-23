@@ -22,20 +22,28 @@ using namespace std::chrono_literals;
 //  The Items pocket's capacity (pokefirered BAG_ITEMS_COUNT).
 constexpr size_t MAX_POCKET_ROWS = 42;
 
-PocketRead read_whole_pocket(PocketList& list){
-    PocketRead read;
-    std::vector<BagRow> reads;
-    bool end = false;
-    for (int shown = 0; !end && shown < ITEM_LIST_ROWS; shown++){
+namespace{
+
+bool read_initial_pocket_page(PocketList& list, std::vector<BagRow>& reads, PocketRead& read){
+    for (int shown = 0; shown < ITEM_LIST_ROWS; shown++){
         std::optional<BagRow> row = list.read_shown(shown);
         if (row && row->item == "cancel"){
             read.saw_cancel = true;
         }
-        end = !row || row->item == "cancel";
-        if (!end){
-            reads.push_back(std::move(*row));
+        if (!row || row->item == "cancel"){
+            return true;
         }
+        reads.push_back(std::move(*row));
     }
+    return false;
+}
+
+} // namespace
+
+PocketRead read_whole_pocket(PocketList& list){
+    PocketRead read;
+    std::vector<BagRow> reads;
+    bool end = read_initial_pocket_page(list, reads, read);
     //  The rows below the first six: DOWN to the fourth row shown, then
     //  each DOWN scrolls the next row into the last. Reading one page only
     //  missed the X Specials under a MOON STONE, a NUGGET and four more,
@@ -44,20 +52,29 @@ PocketRead read_whole_pocket(PocketList& list){
         list.cursor_down();
         read.downs++;
     }
+    int same_in_a_row = 0;
     while (!end && reads.size() < MAX_POCKET_ROWS){
         list.cursor_down();
         read.downs++;
         std::optional<BagRow> row = list.read_shown(ITEM_LIST_ROWS - 1);
-        //  The same row again: the list stopped scrolling, its CANCEL unread.
-        //  Never stop on consecutive unrecognized rows (empty item name), such
-        //  as Key Items where multiple unknown rows all read as {"", -1}.
+        //  Two consecutive identical bottom rows: the list stopped scrolling,
+        //  its CANCEL unread. Requiring two tolerates a single dropped DOWN
+        //  (e.g. Lorelei turn 11 re-read, 2026-11-22) without truncating the
+        //  pocket and wiping the remaining items. Never match consecutive
+        //  unrecognized rows (empty item name) unless bottom_row_unchanged().
         const bool same =
             list.bottom_row_unchanged() ||
             (row && !row->item.empty() && row->item == reads.back().item && row->count == reads.back().count);
         if (row && row->item == "cancel"){
             read.saw_cancel = true;
         }
-        end = !row || row->item == "cancel" || same;
+        if (same){
+            same_in_a_row++;
+            end = same_in_a_row >= 2;
+            continue;
+        }
+        same_in_a_row = 0;
+        end = !row || row->item == "cancel";
         if (!end){
             reads.push_back(std::move(*row));
         }

@@ -23,7 +23,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -97,7 +96,7 @@ std::vector<MapData> story_maps_by_11_01(bool snorlax_gone){
 //  The Snorlax's battle: a BATTLE step with no trainer, which the sim
 //  can't play; the table says where it ends.
 bool scripted(const StoryStep& step){
-    return step.kind == StoryStepKind::BATTLE && Pokemon::story_arg<std::string>(step.args, "trainer").empty();
+    return step.action == "battle" && frlg_arg<std::string>(step.args, "trainer").empty();
 }
 
 //  11.01: out of Mr. Fuji's house, Fly to Celadon, the Bicycle to the
@@ -105,7 +104,7 @@ bool scripted(const StoryStep& step){
 //  tile to east of the Cycling Road gate's door.
 UnitTestResult test_snorlax(){
     const StoryCheckpoint& row = checkpoint("11.01");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     const std::vector<MapData> maps = story_maps_by_11_01(false);
     if (std::none_of(maps.begin(), maps.end(), [](const MapData& map){
         return map.name == "Route16" && std::any_of(map.objects.begin(), map.objects.end(), [](const MapObject& object){
@@ -120,7 +119,7 @@ UnitTestResult test_snorlax(){
             if (!sim->state().trainers_beaten.empty() || !sim->state().violations.empty()){
                 return std::format("11.01: a battle or a violation before {}.", step.name);
             }
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            at = *story_pose(*step.pose_after);
             sim = std::make_unique<OverworldSim>(story_maps_by_11_01(true), MapPosition{at.map, at.tile}, *at.facing);
             continue;
         }
@@ -141,16 +140,16 @@ UnitTestResult test_snorlax(){
 //  11.01's Snorlax battle runs (the "run" arg), and only that battle.
 UnitTestResult test_snorlax_battle_runs(){
     for (const StoryStep& step : checkpoint("11.01").steps){
-        if (step.kind != StoryStepKind::BATTLE){
+        if (step.action != "battle"){
             continue;
         }
-        if (!Pokemon::story_arg<bool>(step.args, "run")){
+        if (!frlg_arg<bool>(step.args, "run")){
             return std::format("11.01: {} fights; expected it to run.", step.name);
         }
     }
     for (const StoryCheckpoint& row : story_checkpoints()){
         for (const StoryStep& step : row.steps){
-            if (step.kind == StoryStepKind::BATTLE && row.id != "11.01" && Pokemon::story_arg<bool>(step.args, "run")){
+            if (step.action == "battle" && row.id != "11.01" && frlg_arg<bool>(step.args, "run")){
                 return std::format("{}: {} runs; only 11.01's Snorlax should.", row.id, step.name);
             }
         }

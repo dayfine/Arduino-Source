@@ -23,9 +23,9 @@ namespace Pokemon{
 //  One of `tiles` of `map`, facing `facing` if set. As a target, any of the
 //  tiles will do.
 struct GridPose{
-    std::string map;
-    std::vector<TilePos> tiles;
-    std::optional<Direction> facing;
+    std::string map = {};
+    std::vector<TilePos> tiles = {};
+    std::optional<Direction> facing = std::nullopt;
 
     bool operator==(const GridPose& other) const = default;
 };

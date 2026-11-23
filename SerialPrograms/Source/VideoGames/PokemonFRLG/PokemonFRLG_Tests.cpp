@@ -27,6 +27,7 @@
 #include "Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
 #include "Inference/Menus/PokemonFRLG_SaveCardReader.h"
 #include "Inference/Menus/PokemonFRLG_PartyMemberMenuReader.h"
+#include "Inference/Menus/PokemonFRLG_SummaryDetector.h"
 #include "Inference/Menus/PokemonFRLG_SummaryMovesReader.h"
 #include "Inference/Menus/PokemonFRLG_TeachScreenReader.h"
 #include "Inference/PokemonFRLG_BallReader.h"
@@ -38,6 +39,7 @@
 #include "Inference/PokemonFRLG_ShinySymbolDetector.h"
 #include "Inference/PokemonFRLG_StatsReader.h"
 #include "Inference/PokemonFRLG_TrainerIdReader.h"
+#include "Inference/PokemonFRLG_TypeReader.h"
 #include "Inference/PokemonFRLG_WildEncounterReader.h"
 #include "Programs/BoxOrganization/PokemonFRLG_BoxSorter_Tests.h"
 #include "Overworld/PokemonFRLG_OverworldMaps.h"
@@ -183,6 +185,8 @@ static void add_tests_Screens(UnitTestDatabase& database){
     add_tests_PrizeSelectDetector(database);
     add_tests_PartySlotDetector(database);
     add_tests_BattleTextBoxDetector(database);
+    add_tests_SummaryDetector(database);
+    add_tests_TypeReader(database);
     add_tests_AutoStoryReaders(database);
     add_tests_PlayerFacingReader(database);
     add_tests_PokemonCenterFloorReader(database);

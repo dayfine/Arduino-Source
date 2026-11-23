@@ -323,13 +323,13 @@ UnitTestResult test_starter_rows_joined(){
         return "Expected 01.05 \"Squirtle, then the rival's battle\": " + expected_steps
             + "; got " + row.id + " \"" + row.title + "\": " + step_names(row);
     }
-    const std::optional<StoryPose> start = story_pose(Pokemon::pose_of(*row.start));
+    const std::optional<StoryPose> start = story_pose(*row.start);
     if (!start || start->map != "PalletTown_ProfessorOaksLab" || !(start->tile == TilePos{6, 4}) || row.menu != StartMenu::BEFORE_POKEDEX){
         return "Expected the joined 01.05 to start at the table (6, 4) and save with the starter's START menu.";
     }
     //  Split, 01.05 saves under the ball facing it, before the starter.
     const StoryCheckpoint& to_ball = checkpoints[row_index("01.05")];
-    const std::optional<StoryPose> ball = story_pose(Pokemon::pose_of(*checkpoints[row_index("01.06")].start));
+    const std::optional<StoryPose> ball = story_pose(*checkpoints[row_index("01.06")].start);
     if (to_ball.handoff != StoryHandoff::STARTER_RNG || to_ball.menu != StartMenu::BEFORE_POKEMON
         || !ball || !(ball->tile == TilePos{9, 5}) || ball->facing != Direction::NORTH
     ){
@@ -367,14 +367,18 @@ size_t find_step(const std::vector<StoryStep>& steps, size_t from, const std::fu
 }
 
 //  `step`'s pose arg `key`, or nothing.
-std::optional<Pokemon::Pose> pose_arg(const StoryStep& step, std::string_view key){
-    const Pokemon::GridPose* pose = Pokemon::value_if_at_it<Pokemon::GridPose>(step.args, step.args.find(key));
-    return pose == nullptr ? std::nullopt : std::optional<Pokemon::Pose>(Pokemon::pose_of(*pose));
+std::optional<Pokemon::GridPose> pose_arg(const StoryStep& step, std::string_view key){
+    const auto it = step.args.find(key);
+    if (it == step.args.end()){
+        return std::nullopt;
+    }
+    const Pokemon::GridPose* pose = std::get_if<Pokemon::GridPose>(&it->second);
+    return pose == nullptr ? std::nullopt : std::optional<Pokemon::GridPose>(*pose);
 }
 
 //  `step`'s pose arg `key` as a StoryPose, or nothing.
 std::optional<StoryPose> story_pose_arg(const StoryStep& step, std::string_view key){
-    const std::optional<Pokemon::Pose> pose = pose_arg(step, key);
+    const std::optional<Pokemon::GridPose> pose = pose_arg(step, key);
     return pose ? story_pose(*pose) : std::nullopt;
 }
 
@@ -391,9 +395,9 @@ std::optional<GrindPlan> grind_of(const StoryStep& step){
 
 //  The GRIND at `grind`'s patch, the target of the route right before it,
 //  and its nurse; nothing without either.
-std::optional<std::pair<Pokemon::Pose, Pokemon::Pose>> grind_trip(const std::vector<StoryStep>& steps, size_t grind){
-    const std::optional<Pokemon::Pose> patch = grind == 0 || grind >= steps.size() ? std::nullopt : pose_arg(steps[grind - 1], "target");
-    const std::optional<Pokemon::Pose> nurse = grind >= steps.size() ? std::nullopt : pose_arg(steps[grind], "nurse");
+std::optional<std::pair<Pokemon::GridPose, Pokemon::GridPose>> grind_trip(const std::vector<StoryStep>& steps, size_t grind){
+    const std::optional<Pokemon::GridPose> patch = grind == 0 || grind >= steps.size() ? std::nullopt : pose_arg(steps[grind - 1], "target");
+    const std::optional<Pokemon::GridPose> nurse = grind >= steps.size() ? std::nullopt : pose_arg(steps[grind], "nurse");
     if (!patch || !nurse){
         return std::nullopt;
     }
@@ -401,7 +405,7 @@ std::optional<std::pair<Pokemon::Pose, Pokemon::Pose>> grind_trip(const std::vec
 }
 
 //  Whether a route plans from `from` to `to` (ending facing as `to` does).
-bool plans(const Pokemon::Pose& from, const Pokemon::Pose& to){
+bool plans(const Pokemon::GridPose& from, const Pokemon::GridPose& to){
     const std::optional<StoryPose> start = story_pose(from);
     const std::optional<StoryPose> goal = story_pose(to);
     if (!start || !goal){
@@ -418,7 +422,7 @@ bool plans(const Pokemon::Pose& from, const Pokemon::Pose& to){
 UnitTestResult test_cerulean_mart_and_capture(){
     const StoryCheckpoint& row = story_checkpoints()[row_index("05.01")];
     const std::vector<StoryStep>& steps = row.steps;
-    const std::optional<StoryPose> start = row.start ? story_pose(Pokemon::pose_of(*row.start)) : std::nullopt;
+    const std::optional<StoryPose> start = row.start ? story_pose(*row.start) : std::nullopt;
     if (!start || start->map != "CeruleanCity_PokemonCenter_1F"){
         return "05.01: expected it to start in Cerulean's Center.";
     }
@@ -438,7 +442,7 @@ UnitTestResult test_cerulean_mart_and_capture(){
         return step.name == "catch_rattata";
     });
     const size_t heal = find_step(steps, mart, [](const StoryStep& step){
-        return step.kind == StoryStepKind::HEAL;
+        return step.action == "heal";
     });
     if (capture == steps.size() || heal == steps.size() || capture > heal){
         return "05.01: expected catch_rattata after the Mart, then a Center heal.";
@@ -453,7 +457,7 @@ UnitTestResult test_cerulean_rival_row(){
     const std::vector<StoryCheckpoint>& checkpoints = story_checkpoints();
     const size_t index = row_index("05.02c");
     const StoryCheckpoint& rival = checkpoints[index];
-    const std::optional<StoryPose> start = rival.start ? story_pose(Pokemon::pose_of(*rival.start)) : std::nullopt;
+    const std::optional<StoryPose> start = rival.start ? story_pose(*rival.start) : std::nullopt;
     if (!start || rival.live_start || start->map != "CeruleanCity" || !(start->tile == TilePos{23, 7})
         || !save_card_place(start->map)
     ){
@@ -461,10 +465,10 @@ UnitTestResult test_cerulean_rival_row(){
     }
     std::string battles;
     for (const StoryStep& step : rival.steps){
-        battles += step.kind == StoryStepKind::BATTLE ? " " + step.name : "";
+        battles += step.action == "battle" ? " " + step.name : "";
     }
     if (battles != " rival_cerulean" || rival.steps.size() != 4 || rival.steps[0].name != "rival_trigger"
-        || rival.steps[3].kind != StoryStepKind::HEAL
+        || rival.steps[3].action != "heal"
     ){
         return "05.02c: expected rival_trigger, rival_cerulean, nurse route and heal; its battles:" + battles;
     }
@@ -481,7 +485,7 @@ UnitTestResult test_cerulean_rival_row(){
 std::string battle_names(const StoryCheckpoint& row){
     std::string battles;
     for (const StoryStep& step : row.steps){
-        battles += step.kind == StoryStepKind::BATTLE ? " " + step.name : "";
+        battles += step.action == "battle" ? " " + step.name : "";
     }
     return battles;
 }
@@ -496,12 +500,12 @@ UnitTestResult test_misty_rows(){
         return "Expected 05.01, 05.02 and 05.02b between 04.06 and 05.02c.";
     }
     const StoryCheckpoint& misty = checkpoints[row_index("05.02b")];
-    const std::optional<StoryPose> start = misty.start ? story_pose(Pokemon::pose_of(*misty.start)) : std::nullopt;
+    const std::optional<StoryPose> start = misty.start ? story_pose(*misty.start) : std::nullopt;
     if (!start || misty.live_start || start->map != "CeruleanCity_PokemonCenter_1F" || !(start->tile == TilePos{7, 4})){
         return "05.02b: expected it to start in Cerulean's Center on (7, 4).";
     }
     const size_t talk = find_step(misty.steps, 0, [](const StoryStep& step){
-        return step.kind == StoryStepKind::TALK;
+        return step.action == "talk";
     });
     if (battle_names(misty) != " misty" || talk == 0 || talk + 1 >= misty.steps.size()
         || misty.steps[talk + 1].name != "misty"
@@ -541,7 +545,7 @@ UnitTestResult test_misty_grind_order(){
         return "05.02: expected the GRIND on Route 4, its trips to Cerulean's nurse and back planning.";
     }
     const size_t heal = find_step(steps, grind + 1, [](const StoryStep& step){
-        return step.kind == StoryStepKind::HEAL;
+        return step.action == "heal";
     });
     if (heal == steps.size()){
         return "05.02: expected the nurse heal after the GRIND.";

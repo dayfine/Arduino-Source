@@ -1,88 +1,101 @@
 {
-    "format": "pokesim-authored-checkpoint/1",
-    "game": "frlg",
-    "checkpoint": {
-        "id": "16.05b",
-        "title": "Silph Co. 11F: the president and the MASTER BALL",
-        "start": {
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "16.05b",
+    "title": "Silph Co. 11F: the president and the MASTER BALL",
+    "start": {
+      "map": "SilphCo_11F",
+      "tiles": [
+        [
+          5,
+          15
+        ]
+      ],
+      "facing": "east"
+    },
+    "events": [
+      {
+        "id": "below_president",
+        "action": "route",
+        "why": "up the room to (9, 10), below the president (9, 9)",
+        "args": {
+          "target": {
             "map": "SilphCo_11F",
             "tiles": [
-                [
-                    5,
-                    15
-                ]
+              [
+                9,
+                10
+              ]
             ],
-            "facing": "east"
-        },
-        "start_gates": {
-            "opened": [
-                "SilphCo_3F/door_2",
-                "SilphCo_11F/door"
-            ]
-        },
-        "start_flags": [
-            "card_key_held",
-            "silph_cleared"
-        ],
-        "events": [
-            {
-                "id": "below_president",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "SilphCo_11F",
-                        "tiles": [
-                            [
-                                9,
-                                10
-                            ]
-                        ],
-                        "facing": "north"
-                    }
-                },
-                "why": "up the room to (9, 10), below the president (9, 9)"
-            },
-            {
-                "id": "master_ball",
-                "kind": "talk",
-                "skip_if": [
-                    "master_ball_skipped"
-                ],
-                "why": "the president gives the MASTER BALL (SilphCo_11F_EventScript_President, FLAG_GOT_MASTER_BALL_FROM_SILPH); skipped by the program's option and in a SPEEDRUN (pokeguy skips it, 1:32:51)"
-            },
-            {
-                "id": "master_ball_obtained",
-                "kind": "scene",
-                "skip_if": [
-                    "master_ball_skipped"
-                ],
-                "declared_after": {"map": "SilphCo_11F", "tiles": [[9, 10]], "facing": "north"},
-                "why": "the president's thanks, the MASTER BALL and his last line, to the overworld (SilphCo_11F_EventScript_President); the talk returns at his first message, and the save's Start presses went into it (console B, 2026-11-15)"
-            }
-        ]
-    },
-    "execution": {
-        "menu": "full",
-        "notes": {
-            "checkpoint": [
-                "Starts where 16.05 ends after Giovanni's battle and saves: (5, 15) facing east, Giovanni gone and the Rockets with him (silph_cleared). Ends facing the president, with the MASTER BALL if taken; the save after it is the retry point before the walk back (16.06)."
-            ]
+            "facing": "north"
+          },
+          "variant": "run"
         }
-    },
+      },
+      {
+        "id": "master_ball",
+        "action": "talk",
+        "why": "the president gives the MASTER BALL (SilphCo_11F_EventScript_President, FLAG_GOT_MASTER_BALL_FROM_SILPH); skipped by the program's option and in a SPEEDRUN (pokeguy skips it, 1:32:51)",
+        "args": {
+          "skip_if": [
+            "master_ball_skipped"
+          ]
+        }
+      },
+      {
+        "id": "master_ball_obtained",
+        "action": "scene",
+        "why": "the president's thanks, the MASTER BALL and his last line, to the overworld (SilphCo_11F_EventScript_President); the talk returns at his first message, and the save's Start presses went into it (console B, 2026-11-15)",
+        "args": {
+          "pose_after": {
+            "map": "SilphCo_11F",
+            "tiles": [
+              [
+                9,
+                10
+              ]
+            ],
+            "facing": "north"
+          },
+          "skip_if": [
+            "master_ball_skipped"
+          ]
+        }
+      }
+    ],
     "metadata": {
-        "phase": "testing",
-        "postconditions": {
-            "position": {
-                "map": "SilphCo_11F",
-                "tiles": [
-                    [
-                        9,
-                        10
-                    ]
-                ],
-                "facing": "north"
-            }
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "SilphCo_11F",
+          "tiles": [
+            [
+              9,
+              10
+            ]
+          ],
+          "facing": "north"
         }
+      }
     }
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts where 16.05 ends after Giovanni's battle and saves: (5, 15) facing east, Giovanni gone and the Rockets with him (silph_cleared). Ends facing the president, with the MASTER BALL if taken; the save after it is the retry point before the walk back (16.06)."
+      ]
+    },
+    "start_flags": [
+      "card_key_held",
+      "silph_cleared"
+    ],
+    "start_gates": {
+      "opened": [
+        "SilphCo_3F/door_2",
+        "SilphCo_11F/door"
+      ]
+    }
+  }
 }

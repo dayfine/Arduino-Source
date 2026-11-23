@@ -2,15 +2,15 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The shared event vocabulary and the watcher form of an observer.
+ *  The shared event vocabulary, fades and the still-screen test.
  *
  */
 
 #include <format>
-#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
+#include "Common/Cpp/Time.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "ScreenEventTypes.h"
@@ -21,8 +21,6 @@
 namespace PokemonAutomation{
 
 namespace{
-
-using namespace std::chrono_literals;
 
 UnitTestResult expect_equal(const std::string& what, const std::string& got, const std::string& expected){
     if (got == expected){
@@ -43,13 +41,10 @@ UnitTestResult test_set_and_describe(){
     if (fade_in(events) != WarpFade::WHITE){
         return "fade_events(WHITE) did not give a white fade";
     }
-    if (ScreenEvents::from_bits(events.bits()) != events){
-        return "from_bits(bits()) is not the same set";
+    if (std::format("{}", ScreenEvents()) != "nothing"){
+        return "an empty set does not print as nothing";
     }
-    if (describe(ScreenEvents()) != "nothing"){
-        return "an empty set does not describe as nothing";
-    }
-    return expect_equal("describe()", describe(events), "white fade, player can move");
+    return expect_equal("std::format()", std::format("{}", events), "white fade, player can move");
 }
 
 //  A screen filled with one colour, or a checkerboard of two.
@@ -65,10 +60,10 @@ ImageRGB32 screen_of(uint32_t a, uint32_t b){
 
 UnitTestResult test_fade_of_screen(){
     struct Row{
-        std::string name;
-        uint32_t a;
-        uint32_t b;
-        WarpFade fade;
+        std::string name = {};
+        uint32_t a = 0;
+        uint32_t b = 0;
+        WarpFade fade = WarpFade::NONE;
     };
     const std::vector<Row> rows = {
         {"black", 0xff000000, 0xff000000, WarpFade::BLACK},
@@ -80,74 +75,52 @@ UnitTestResult test_fade_of_screen(){
     for (const Row& row : rows){
         const WarpFade got = fade_of_screen(screen_of(row.a, row.b));
         if (got != row.fade){
-            return std::format("{}: expected {}, got {}", row.name, warp_fade_name(row.fade), warp_fade_name(got));
+            return std::format("{}: expected {}, got {}", row.name, WARP_FADE_NAMES().get_string(row.fade), WARP_FADE_NAMES().get_string(got));
         }
     }
     return true;
 }
 
-//  Replays a fixed list of event sets, one per frame.
-class ScriptedObserver : public ScreenEventObserver{
-public:
-    explicit ScriptedObserver(std::vector<ScreenEvents> frames)
-        : m_frames(std::move(frames))
-    {}
-    virtual ScreenEvents observe(const VideoSnapshot&, WallClock) override{
-        return m_next < m_frames.size() ? m_frames[m_next++] : ScreenEvents();
+UnitTestResult test_same_screen(){
+    const WallClock now = WallClock::min();
+    const VideoSnapshot black(screen_of(0xff000000, 0xff000000), now);
+    const VideoSnapshot black_again(screen_of(0xff000000, 0xff000000), now);
+    const VideoSnapshot white(screen_of(0xffffffff, 0xffffffff), now);
+    ImageRGB32 small(32, 18);
+    small.fill(0xff000000);
+    const VideoSnapshot black_small(std::move(small), now);
+    if (!same_screen(black, black_again)){
+        return "two black frames are not the same screen";
     }
-    virtual void make_overlays(VideoOverlaySet&) const override{}
-
-private:
-    std::vector<ScreenEvents> m_frames;
-    size_t m_next = 0;
-};
-
-UnitTestResult test_watcher(){
-    ScriptedObserver observer({
-        {ScreenEvent::PLAYER_CAN_MOVE},
-        {ScreenEvent::FADE_BLACK},
-        {ScreenEvent::LOCATION_BANNER, ScreenEvent::PLAYER_CAN_MOVE},
-        {ScreenEvent::DIALOG_BOX},
-    });
-    ScreenEventWatcher watcher(observer, {ScreenEvent::LOCATION_BANNER});
-    const VideoSnapshot frame;
-    std::vector<bool> stops;
-    for (size_t c = 0; c < 4; c++){
-        stops.push_back(watcher.process_frame(frame));
+    if (same_screen(black, white)){
+        return "black and white frames are the same screen";
     }
-    if (stops != std::vector<bool>{false, false, true, false}){
-        return "the watcher did not stop exactly on the banner frame";
+    if (same_screen(black, black_small)){
+        return "frames of different sizes are the same screen";
     }
-    UnitTestResult result = expect_equal("seen()", describe(watcher.seen()),
-        "black fade, location banner, dialog box, player can move");
-    if (result.result != UnitTestResult::PASSED){
-        return result;
+    if (same_screen(black, VideoSnapshot())){
+        return "a missing frame is the same screen";
     }
-    result = expect_equal("stopped_on()", describe(watcher.stopped_on()), "location banner, player can move");
-    if (result.result != UnitTestResult::PASSED){
-        return result;
-    }
-    watcher.reset();
-    return expect_equal("seen() after reset()", describe(watcher.seen()), "nothing");
+    return true;
 }
 
 
 struct ScreenEventsCase{
     struct Input{
-        std::string name;
-        std::function<UnitTestResult()> body;
+        UnitTestResult (*body)() = nullptr;
     };
     struct Expectation{
     };
 
-    Input input;
-    Expectation expectation;
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_ScreenEvents : public UnitTest{
 public:
     explicit Test_ScreenEvents(ScreenEventsCase test_case)
-        : UnitTest(std::format("CommonTools::ScreenEvents - {}", test_case.input.name))
+        : UnitTest(std::format("CommonTools::ScreenEvents - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -163,15 +136,18 @@ private:
 
 const ScreenEventsCase SCREEN_EVENTS_CASES[] = {
     {
-        .input = {"a set of events, its fade and its log text", test_set_and_describe},
+        .name = "a set of events, its fade and its log text",
+        .input = {.body = test_set_and_describe},
         .expectation = {},
     },
     {
-        .input = {"a fade is uniform, dark or white; a textured floor is none", test_fade_of_screen},
+        .name = "a fade is uniform, dark or white; a textured floor is none",
+        .input = {.body = test_fade_of_screen},
         .expectation = {},
     },
     {
-        .input = {"an observer as a watcher records and stops", test_watcher},
+        .name = "the same screen: equal frames of one size",
+        .input = {.body = test_same_screen},
         .expectation = {},
     },
 };

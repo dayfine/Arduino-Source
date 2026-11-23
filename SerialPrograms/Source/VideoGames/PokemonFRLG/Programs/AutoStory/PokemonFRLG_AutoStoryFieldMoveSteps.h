@@ -15,7 +15,7 @@
 #include <string_view>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -24,9 +24,9 @@ namespace PokemonFRLG{
 
 //  A fly step to `town` with the Fly user in `slot` (from 1), ending on its
 //  landing tile facing south.
-Pokemon::StoryStep fly_step(std::string name, size_t slot, std::string_view town);
+StoryStep fly_step(std::string name, size_t slot, std::string_view town);
 //  A surf step onto `water`'s tile, `water.facing` the way to it.
-Pokemon::StoryStep surf_step(std::string name, Pokemon::GridPose water);
+StoryStep surf_step(std::string name, Pokemon::GridPose water);
 
 
 //  Registers the field moves' tests.

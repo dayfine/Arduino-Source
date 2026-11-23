@@ -35,12 +35,11 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 #include "PokemonFRLG_AutoStoryTrainerMessage.h"
 #include "PokemonFRLG_AutoStoryCaptureRun.h"
 #include "PokemonFRLG_AutoStoryCaptureTurns.h"
@@ -55,12 +54,12 @@ namespace PokemonFRLG{
 //  actions, the party read from `pc`: nothing for another action. A capture that ends on a shiny
 //  throws ProgramFinishedException, so the segment stops without
 //  reloading, with a screenshot from `stream` if given; any other end but
-//  CAUGHT is a failed Outcome, as is a PC step that fails or is refused.
+//  CAUGHT is a failed StoryFailure, as is a PC step that fails or is refused.
 //  A withdrawal with `protect` adds the party slot it joined to
 //  `protected_slots` (Supplies::protected_slots).
-std::optional<Pokemon::Outcome> run_storage_game_step(
+std::optional<std::optional<Pokemon::StoryFailure>> run_storage_game_step(
     std::vector<size_t>& protected_slots,
-    Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step,
+    Logger& logger, VideoStream* stream, const StoryStep& step,
     CaptureActions& capture, PcStorageActions& pc
 );
 

@@ -51,35 +51,35 @@ Direction opposite(Direction direction){
 } // namespace
 
 
-std::optional<Pokemon::Outcome> run_storage_game_step(
+std::optional<std::optional<Pokemon::StoryFailure>> run_storage_game_step(
     std::vector<size_t>& protected_slots,
-    Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step,
+    Logger& logger, VideoStream* stream, const StoryStep& step,
     CaptureActions& capture, PcStorageActions& pc
 ){
     if (step.action == CAPTURE_ACTION){
         const std::optional<CapturePlan> plan = capture_plan_of(step.args);
         if (!plan){
-            return Pokemon::outcome_failed("bad_args", step.action);
+            return frlg_failure("bad_args", step.action);
         }
         const CaptureResult result = run_capture(logger, capture, *plan, pc.read_party().size());
         const std::string message = capture_message(*plan, result);
         logger.log(message, result.end == CaptureEnd::CAUGHT ? COLOR_BLACK : COLOR_RED);
         if (result.end == CaptureEnd::SHINY){
-            //  Not a failed Outcome, which would reload the save.
+            //  Not a failed StoryFailure, which would reload the save.
             if (stream != nullptr){
                 throw ProgramFinishedException(message, *stream);
             }
             throw ProgramFinishedException(message);
         }
         if (result.end == CaptureEnd::CAUGHT){
-            return Pokemon::outcome_ok();
+            return std::optional<Pokemon::StoryFailure>(std::nullopt);
         }
-        return Pokemon::outcome_failed(std::string("capture_") + std::string(capture_end_name(result.end)), message);
+        return frlg_failure(std::string("capture_") + std::string(capture_end_name(result.end)), message);
     }
     if (step.action == PC_ACTION){
         const std::optional<PcTransfer> transfer = pc_transfer_of(step.args);
         if (!transfer){
-            return Pokemon::outcome_failed("bad_args", step.action);
+            return frlg_failure("bad_args", step.action);
         }
         const PcResult result = run_pc_transfer(logger, pc, *transfer);
         if ((result.end == PcEnd::DONE || result.end == PcEnd::SKIPPED) && transfer->protect && result.party_slot
@@ -91,11 +91,11 @@ std::optional<Pokemon::Outcome> run_storage_game_step(
         switch (result.end){
         case PcEnd::DONE:
         case PcEnd::SKIPPED:
-            return Pokemon::outcome_ok();
+            return std::optional<Pokemon::StoryFailure>(std::nullopt);
         case PcEnd::REFUSED:
-            return Pokemon::outcome_failed("pc_refused", result.detail);
+            return frlg_failure("pc_refused", result.detail);
         case PcEnd::FAILED:
-            return Pokemon::outcome_failed("pc_failed", result.detail);
+            return frlg_failure("pc_failed", result.detail);
         }
     }
     return std::nullopt;

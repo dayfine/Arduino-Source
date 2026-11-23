@@ -58,8 +58,8 @@ std::string_view capture_end_name(CaptureEnd end){
 }
 
 
-Pokemon::StoryActionArgs capture_args(const CapturePlan& plan){
-    Pokemon::StoryActionArgs args{
+FrlgArgMap capture_args(const CapturePlan& plan){
+    FrlgArgMap args{
         {"species", plan.species},
         {"catches", int64_t(plan.catches)},
         {"encounters", int64_t(plan.max_encounters)},
@@ -73,7 +73,7 @@ Pokemon::StoryActionArgs capture_args(const CapturePlan& plan){
     return args;
 }
 
-std::optional<CapturePlan> capture_plan_of(const Pokemon::StoryActionArgs& args){
+std::optional<CapturePlan> capture_plan_of(const FrlgArgMap& args){
     const std::string* species = game_arg<std::string>(args, "species");
     const std::optional<size_t> catches = number_arg(args, "catches", 1, 999);
     const std::optional<size_t> encounters = number_arg(args, "encounters", 1, 9999);
@@ -96,9 +96,8 @@ std::optional<CapturePlan> capture_plan_of(const Pokemon::StoryActionArgs& args)
     return plan;
 }
 
-Pokemon::StoryStep capture_step(std::string name, std::string why, const CapturePlan& plan){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep capture_step(std::string name, std::string why, const CapturePlan& plan){
+    StoryStep step;
     step.name = std::move(name);
     step.why = std::move(why);
     step.action = CAPTURE_ACTION;
@@ -106,9 +105,8 @@ Pokemon::StoryStep capture_step(std::string name, std::string why, const Capture
     return step;
 }
 
-Pokemon::StoryStep pc_step(std::string name, std::string why, const PcTransfer& transfer){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep pc_step(std::string name, std::string why, const PcTransfer& transfer){
+    StoryStep step;
     step.name = std::move(name);
     step.why = std::move(why);
     step.action = PC_ACTION;

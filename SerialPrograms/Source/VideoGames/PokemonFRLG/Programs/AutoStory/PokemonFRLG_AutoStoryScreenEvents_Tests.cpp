@@ -78,7 +78,7 @@ public:
         FrlgScreenObserver observer;
         const ScreenEvents got = observer.observe(frame, WallClock());
         if (got != m_case.expectation.events){
-            return std::format("expected {}, got {}", describe(m_case.expectation.events), describe(got));
+            return std::format("expected {}, got {}", m_case.expectation.events, got);
         }
         return true;
     }

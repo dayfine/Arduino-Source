@@ -23,8 +23,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_HideoutLiftRoom.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -101,7 +99,7 @@ struct PadWalk{
 
 PadWalk walk_pads(const StoryCheckpoint& row){
     PadWalk walk;
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     const std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
     const std::vector<MapData>& maps = run_story_maps(flags);
     std::optional<OverworldSim> sim;
@@ -110,13 +108,13 @@ PadWalk walk_pads(const StoryCheckpoint& row){
         if (step.action == CENTER_ENTER_VARIANT){
             break;
         }
-        if (step.kind == StoryStepKind::TALK || step.kind == StoryStepKind::BATTLE){
+        if (step.action == "talk" || step.action == "battle"){
             continue;
         }
         //  The Escape Rope's script has no map: the player stands where the
         //  step says, as in the Silph Co. tests.
         if (parse_use_item_step(step) == "escape-rope"){
-            at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            at = *story_pose(*step.pose_after);
             sim.emplace(maps, MapPosition{at.map, at.tile}, *at.facing);
             walk.rope_landing = sim->state().position;
             continue;
@@ -125,7 +123,7 @@ PadWalk walk_pads(const StoryCheckpoint& row){
         if (!walk.failure.empty()){
             break;
         }
-        if (step.kind == StoryStepKind::STEP){
+        if (step.action == "step"){
             walk.landings.push_back(sim->state().position);
         }
     }
@@ -162,10 +160,10 @@ UnitTestResult test_pads_to_sabrina(){
 //  Sabrina's battle, in front of her, and 18.02b starts there.
 UnitTestResult test_sabrina_own_checkpoint(){
     const std::vector<StoryStep>& steps = checkpoint("18.02").steps;
-    if (steps.empty() || steps.back().kind != StoryStepKind::BATTLE || steps.back().name != "sabrina"){
+    if (steps.empty() || steps.back().action != "battle" || steps.back().name != "sabrina"){
         return "18.02 does not end with Sabrina's battle.";
     }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("18.02b").start));
+    const StoryPose next = *story_pose(*checkpoint("18.02b").start);
     const MapPosition below_sabrina{"SaffronCity_Gym", {14, 12}};
     if (next.map != below_sabrina.map || !(next.tile == below_sabrina.point) || next.facing != Direction::NORTH){
         return "18.02b doesn't start in front of Sabrina, where her battle leaves the player.";
@@ -207,7 +205,7 @@ UnitTestResult test_cameron_sees_row_21(){
     OverworldSim sim(story_maps(), MapPosition{"SaffronCity_Gym", {28, 21}}, Direction::WEST);
     StoryPose at{"SaffronCity_Gym", {28, 21}, Direction::WEST};
     StoryStep along;
-    along.kind = StoryStepKind::LEGS;
+    along.action = "legs";
     along.name = "along_row_21";
     along.args = {{"legs", std::vector<StoryLeg>{{Direction::WEST, 8}}}};
     const std::string failure = row_step_on_sim(sim, at, along, "18.01");
@@ -224,7 +222,7 @@ UnitTestResult test_cameron_sees_row_21(){
 //  player to 17.02's start. Nobody met.
 UnitTestResult test_celadon_x_accuracies(){
     const StoryCheckpoint& row = checkpoint("18.03");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     //  The Department Store's lift, as 10.01's: story_maps() has its room,
     //  the sim its floors (SimScript::lift_floors).
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
@@ -299,7 +297,7 @@ struct RowPlanning{
 //  declares elsewhere starting a stretch; `at` moves to where it ends.
 //  The failure, or empty.
 std::string add_step_tiles(const RowPlanning& planning, const StoryStep& step, StoryPose& at, RowStretches& out){
-    if (step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS){
+    if (step.action == "route" || step.action == "legs"){
         const std::optional<std::vector<RouteStep>> route = walked_route(at, step, planning.maps, planning.gates, planning.rules);
         if (!route){
             return std::format("{}: no route from {}.", step.name, to_string(MapPosition{at.map, at.tile}));
@@ -310,7 +308,7 @@ std::string add_step_tiles(const RowPlanning& planning, const StoryStep& step, S
     if (!step.pose_after){
         return "";
     }
-    const StoryPose to = *story_pose(Pokemon::pose_of(*step.pose_after));
+    const StoryPose to = *story_pose(*step.pose_after);
     if (to.map != at.map || !(to.tile == at.tile)){
         out.stretches.push_back({MapPosition{to.map, to.tile}, {}});
     }
@@ -325,10 +323,10 @@ RowStretches row_stretches(const StoryCheckpoint& row){
     const std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
     const RowPlanning planning{
         .maps = run_story_maps(flags),
-        .gates = row.start_gates.value_or(Pokemon::GateState()),
+        .gates = row.start_gates,
         .rules = Pokemon::GateRules{.card_key_held = flags.contains("card_key_held")},
     };
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     RowStretches out;
     out.stretches.push_back({MapPosition{at.map, at.tile}, {}});
     for (const StoryStep& step : row.steps){

@@ -31,11 +31,11 @@ MemberReader console_member_reader(ConsoleHandle& console, ProControllerContext&
 }
 
 
-Pokemon::StoryActionArgs level_args(const LevelCheck& check){
+FrlgArgMap level_args(const LevelCheck& check){
     return {{"slot", int64_t(check.slot + 1)}, {"min", int64_t(check.level)}};
 }
 
-std::optional<LevelCheck> level_check_of(const Pokemon::StoryActionArgs& args){
+std::optional<LevelCheck> level_check_of(const FrlgArgMap& args){
     const std::optional<size_t> slot = counted_arg(args, "slot", PARTY_SLOTS);
     const std::optional<size_t> level = number_arg(args, "min", 1, 100);
     if (!slot || !level){
@@ -44,9 +44,8 @@ std::optional<LevelCheck> level_check_of(const Pokemon::StoryActionArgs& args){
     return LevelCheck{.slot = *slot, .level = (unsigned)*level};
 }
 
-Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep level_step(std::string name, std::string why, const LevelCheck& check){
+    StoryStep step;
     step.name = std::move(name);
     step.why = std::move(why);
     step.action = LEVEL_ACTION;

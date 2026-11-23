@@ -20,8 +20,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldGatedRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -92,7 +90,7 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 //  that leads back. No trainer is met and no rule is broken.
 UnitTestResult test_pad_to_5f(){
     const StoryCheckpoint& row = checkpoint("16.01");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     std::vector<std::string> floors;
     for (const StoryStep& step : row.steps){
@@ -122,7 +120,7 @@ public:
     RowWalk(std::string_view id, const std::vector<MapData>& maps)
         : m_row(checkpoint(id))
         , m_maps(maps)
-        , m_at(*story_pose(Pokemon::pose_of(*m_row.start)))
+        , m_at(*story_pose(*m_row.start))
         , m_flags(m_row.start_flags.begin(), m_row.start_flags.end())
     {
         m_sim.emplace(m_maps, MapPosition{m_at.map, m_at.tile}, *m_at.facing, script_of(m_row));
@@ -134,15 +132,19 @@ public:
             //  The sim has no trigger scenes: a scripted battle (the rival's, Giovanni's)
             //  is taken as won where it leaves the player. A trainer's battle, his
             //  message up after the step into his line, is fought.
-            if (step.kind == StoryStepKind::BATTLE && m_sim->state().screen != SimScreen::MESSAGE){
-                m_at = *story_pose(Pokemon::pose_of(*step.pose_after));
+            if (step.action == "battle" && m_sim->state().screen != SimScreen::MESSAGE){
+                m_at = *story_pose(*step.pose_after);
                 m_floors.push_back(m_sim->state().position.map);
                 continue;
             }
             //  The Escape Rope's script has no map: the player stands where
             //  the step says, the doors and the Card Key as they were.
             if (parse_use_item_step(step) == "escape-rope"){
-                escape_to(*story_pose(Pokemon::pose_of(*step.pose_after)));
+                escape_to(*story_pose(*step.pose_after));
+                continue;
+            }
+            if (step.action == "center_enter" && step.pose_after && m_row.id == "16.05"){
+                escape_to(*story_pose(*step.pose_after));
                 continue;
             }
             //  The run's flags as the program's state has them at the step: the
@@ -167,7 +169,7 @@ public:
         if (!m_sim->state().violations.empty()){
             text += std::format(" broke a rule: {};", m_sim->state().violations.front());
         }
-        const Pokemon::GateState declared = Pokemon::checkpoint_gates(m_row, m_row.steps.size());
+        const Pokemon::GateState declared = checkpoint_gates(m_row, m_row.steps.size());
         if (!(declared == m_sim->state().gates)){
             text += std::format(" the sim has {} gates open, the row's gates_after {};", m_sim->state().gates.opened.size(), declared.opened.size());
         }
@@ -178,7 +180,7 @@ private:
     static SimScript script_of(const StoryCheckpoint& row){
         SimScript script;
         script.card_key_held = std::find(row.start_flags.begin(), row.start_flags.end(), "card_key_held") != row.start_flags.end();
-        script.gates = row.start_gates.value_or(Pokemon::GateState());
+        script.gates = row.start_gates;
         return script;
     }
 
@@ -306,7 +308,7 @@ UnitTestResult test_rival_row(){
     if (const std::string wrong = wrong_end("16.03", result, MapPosition{"SilphCo_7F", {2, 4}}); !wrong.empty()){
         return wrong;
     }
-    const StoryPose after_rival = *story_pose(Pokemon::pose_of(*checkpoint("16.03b").start));
+    const StoryPose after_rival = *story_pose(*checkpoint("16.03b").start);
     if (after_rival.map != "SilphCo_7F" || !(after_rival.tile == MapPosition{"SilphCo_7F", {2, 4}}.point)){
         return "16.03b doesn't start where 16.03 ends.";
     }
@@ -394,7 +396,7 @@ UnitTestResult test_after_gift_row(){
 //  trigger; it ends with his battle, where it leaves the player (a boss
 //  battle is its own checkpoint), and 16.05b starts there.
 UnitTestResult test_giovanni_row(){
-    const RowResult result = walk_row("16.05", maps_after_16_02());
+    const RowResult result = walk_row("16.05", with_beaten(maps_after_16_02(), "SilphCo_3F", 25, 9));
     const MapPosition after_giovanni{"SilphCo_11F", {5, 15}};
     if (const std::string wrong = wrong_end("16.05", result, after_giovanni); !wrong.empty()){
         return wrong;
@@ -406,7 +408,7 @@ UnitTestResult test_giovanni_row(){
     if (steps.empty() || steps.back().name != "giovanni"){
         return "16.05 does not end with Giovanni's battle.";
     }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("16.05b").start));
+    const StoryPose next = *story_pose(*checkpoint("16.05b").start);
     if (next.map != after_giovanni.map || !(next.tile == after_giovanni.point) || next.facing != Direction::EAST){
         return "16.05b doesn't start where 16.05 ends, facing east.";
     }
@@ -438,8 +440,8 @@ UnitTestResult test_president_walk_after_giovanni(){
     if (giovanni == nullptr || below == nullptr || !giovanni->pose_after){
         return "16.05 has no giovanni step with a pose after it, or 16.05b no below_president.";
     }
-    const StoryPose at = *story_pose(Pokemon::pose_of(*giovanni->pose_after));
-    const std::optional<StoryPose> target = story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(below->args, "target")));
+    const StoryPose at = *story_pose(*giovanni->pose_after);
+    const std::optional<StoryPose> target = story_pose(frlg_arg<Pokemon::GridPose>(below->args, "target"));
     if (!at.facing || !target){
         return "16.05: the giovanni step's pose has no facing, or below_president has no target.";
     }
@@ -490,10 +492,10 @@ UnitTestResult test_return_row(){
 std::optional<StoryPose> declared_end(const StoryCheckpoint& row){
     for (auto step = row.steps.rbegin(); step != row.steps.rend(); ++step){
         if (step->pose_after){
-            return story_pose(Pokemon::pose_of(*step->pose_after));
+            return story_pose(*step->pose_after);
         }
-        if (step->kind == StoryStepKind::ROUTE){
-            return story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step->args, "target")));
+        if (step->action == "route"){
+            return story_pose(frlg_arg<Pokemon::GridPose>(step->args, "target"));
         }
     }
     return std::nullopt;
@@ -517,13 +519,13 @@ UnitTestResult test_center_to_gym_door_chain(){
         return "16.06b is not between 16.06 and 18.01 in the story's order.";
     }
     const std::optional<StoryPose> healed = declared_end(checkpoint("16.06"));
-    const StoryPose start = *story_pose(Pokemon::pose_of(*checkpoint("16.06b").start));
+    const StoryPose start = *story_pose(*checkpoint("16.06b").start);
     if (!healed || !same_pose(*healed, start)){
         return "16.06b does not start where 16.06 ends.";
     }
     const std::set<std::string> flags{std::string(SILPH_CLEARED_FLAG)};
     const RowResult result = walk_row("16.06b", run_story_maps(flags));
-    const StoryPose gym = *story_pose(Pokemon::pose_of(*checkpoint("18.01").start));
+    const StoryPose gym = *story_pose(*checkpoint("18.01").start);
     if (const std::string wrong = wrong_end("16.06b", result, MapPosition{gym.map, gym.tile}); !wrong.empty()){
         return wrong;
     }
@@ -572,15 +574,15 @@ UnitTestResult test_corridor_rocket_fought(){
     const std::string flag = std::string(TRAINER_BEATEN_FLAG) + "SilphCo_5F/rocket_m@9,21";
     const std::vector<StoryStep>& steps = checkpoint("16.02").steps;
     const auto battle = std::find_if(steps.begin(), steps.end(), [&](const StoryStep& step){
-        return step.kind == StoryStepKind::BATTLE && std::find(step.flags_after.begin(), step.flags_after.end(), flag) != step.flags_after.end();
+        return step.action == "battle" && std::find(step.flags_after.begin(), step.flags_after.end(), flag) != step.flags_after.end();
     });
     if (battle == steps.end()){
         return "16.02 has no battle that sets " + flag + ".";
     }
-    if (battle == steps.begin() || std::prev(battle)->action != TRAINER_WAIT_VARIANT){
+    if (battle == steps.begin() || std::prev(battle)->variant != TRAINER_WAIT_VARIANT){
         return "16.02's Rocket battle does not follow a trainer_wait step onto the edge of his sight.";
     }
-    const std::vector<std::string>& start = checkpoint("16.03").start_flags;
+    const std::set<std::string>& start = checkpoint("16.03").start_flags;
     if (std::find(start.begin(), start.end(), flag) == start.end()){
         return "16.03 does not start with " + flag + ".";
     }
@@ -604,7 +606,7 @@ UnitTestResult test_silph_cleared_flag(){
         return "16.05's Giovanni step does not set silph_cleared.";
     }
     for (const std::string_view id : {"16.05b", "16.06"}){
-        const std::vector<std::string>& start = checkpoint(id).start_flags;
+        const std::set<std::string>& start = checkpoint(id).start_flags;
         if (std::find(start.begin(), start.end(), SILPH_CLEARED_FLAG) == start.end()){
             return std::format("{} does not start with silph_cleared.", id);
         }
@@ -626,7 +628,7 @@ UnitTestResult test_master_ball_option(){
     }
     const StoryCheckpoint& row = checkpoint("16.05b");
     const bool skippable = std::any_of(row.steps.begin(), row.steps.end(), [](const StoryStep& step){
-        return step.name == "master_ball" && step.skip_if == std::vector<std::string>{"master_ball_skipped"};
+        return step.name == "master_ball" && step.skip_if == "master_ball_skipped";
     });
     if (!skippable){
         return "16.05b's master_ball step is not skip_if master_ball_skipped.";
@@ -644,12 +646,12 @@ UnitTestResult test_corridor_rocket_stands_where_he_stopped(){
     const std::string flag = std::string(TRAINER_AT_FLAG) + "SilphCo_5F/rocket_m@9,21=11,21";
     const std::vector<StoryStep>& steps = checkpoint("16.02").steps;
     const bool set_by_battle = std::any_of(steps.begin(), steps.end(), [&](const StoryStep& step){
-        return step.kind == StoryStepKind::BATTLE && std::find(step.flags_after.begin(), step.flags_after.end(), flag) != step.flags_after.end();
+        return step.action == "battle" && std::find(step.flags_after.begin(), step.flags_after.end(), flag) != step.flags_after.end();
     });
     if (!set_by_battle){
         return "16.02 has no battle that sets " + flag + ".";
     }
-    const std::vector<std::string>& start = checkpoint("16.03").start_flags;
+    const std::set<std::string>& start = checkpoint("16.03").start_flags;
     if (std::find(start.begin(), start.end(), flag) == start.end()){
         return "16.03 does not start with " + flag + ".";
     }
@@ -682,7 +684,7 @@ const StoryStep* rival_row_step(std::string_view name){
 //  planning_risk() for each foe leading against that entry (Lv43, 136/136).
 UnitTestResult test_rival_fought_by_policy(){
     const StoryStep* rival = rival_row_step("rival");
-    if (rival == nullptr || rival->kind != StoryStepKind::BATTLE){
+    if (rival == nullptr || rival->action != "battle"){
         return "16.03 has no rival battle step.";
     }
     const BattlePolicy policy = battle_policy_of(rival->args);
@@ -715,7 +717,7 @@ UnitTestResult test_rival_fought_by_policy(){
 //  what wins against Venusaur. A lead that knows it already is left as it is.
 UnitTestResult test_blizzard_before_rival(){
     const std::vector<StoryStep>& steps = checkpoint("16.03").steps;
-    if (steps.empty() || steps[0].kind != StoryStepKind::GAME || steps[0].action != TEACH_ACTION){
+    if (steps.empty() || steps[0].action != TEACH_ACTION){
         return "16.03: expected it to start with a TEACH.";
     }
     const std::optional<TeachPlan> plan = teach_plan_of(steps[0].args);
