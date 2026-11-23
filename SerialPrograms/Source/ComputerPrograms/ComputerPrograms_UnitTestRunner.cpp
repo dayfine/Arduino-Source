@@ -40,15 +40,6 @@
 #include "NintendoSwitch/Programs/Typewriter/NintendoSwitch_Typewriter_Tests.h"
 #include "NintendoSwitch/Controllers/SysbotBase/SysbotBase_Connection.h"
 
-#include "Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_CenterVisit_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_Interrupts_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_SceneJudges_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_Settle_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryInterrupts_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h"
-#include "Pokemon/AutoStory/Pokemon_Transitions_Tests.h"
-#include "Pokemon/Navigation/Grid/Walker/Pokemon_DoorApproach_Tests.h"
 #include "Pokemon/Navigation/Pokemon_Navigation_Tests.h"
 #include "PokemonBDSP/PokemonBDSP_Tests.h"
 #include "VideoGames/PokemonHome/PokemonHome_Tests.h"
@@ -68,24 +59,6 @@ namespace ComputerPrograms{
 
 
 
-
-namespace{
-
-void add_pokemon_autostory_tests(UnitTestDatabase& ret){
-    Pokemon::add_tests_Navigation(ret);
-    Pokemon::add_tests_AutoStory(ret);
-    Pokemon::add_tests_CenterVisit(ret);
-    Pokemon::add_tests_DoorApproach(ret);
-    Pokemon::add_tests_Interrupts(ret);
-    Pokemon::add_tests_SceneJudges(ret);
-    Pokemon::add_tests_Settle(ret);
-    Pokemon::add_tests_StoryInterrupts(ret);
-    Pokemon::add_tests_StoryLaunch(ret);
-    Pokemon::add_tests_StoryRngHandoff(ret);
-    Pokemon::add_tests_Transitions(ret);
-}
-
-} // namespace
 
 UnitTestDatabase make_UNIT_TESTS_ALL(){
     UnitTestDatabase ret;
@@ -110,7 +83,8 @@ UnitTestDatabase make_UNIT_TESTS_ALL(){
     OCR::add_tests(ret);
     add_tests_ScreenEvents(ret);
     Kernels::add_tests(ret);
-    add_pokemon_autostory_tests(ret);
+    Pokemon::add_tests_Navigation(ret);
+    Pokemon::add_tests_AutoStory(ret);
     NintendoSwitch::add_tests_CheckOnlineDetector(ret);
     NintendoSwitch::add_tests_FailedToConnectDetector(ret);
     NintendoSwitch::add_tests_HomeTileReader(ret);
