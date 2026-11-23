@@ -1519,6 +1519,12 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
+    Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryActions.cpp
+    Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryActions.h
+    Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryActions_Tests.cpp
+    Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryActions_Tests.h
+    Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.cpp
+    Source/Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.h
     Source/Pokemon/AutoStory/Pokemon_StoryFailure.h
     Source/Pokemon/AutoStory/Pokemon_StoryLog.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryLog.h
@@ -1526,8 +1532,16 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
     Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.cpp
     Source/Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h
+    Source/Pokemon/AutoStory/Types/Pokemon_GridPose.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
+    Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_GateState.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h
     Source/Pokemon/Pokemon_AdvRng.cpp
     Source/Pokemon/Pokemon_AdvRng.h
     Source/Pokemon/Pokemon_BdspRng.cpp

@@ -16,6 +16,7 @@
 #include "Engine/Pokemon_ScreenMatch_Tests.h"
 #include "Engine/Pokemon_StoryBackend_Tests.h"
 #include "Engine/Pokemon_StoryEngine_Tests.h"
+#include "Grid/Pokemon_GridStoryActions_Tests.h"
 #include "Options/Pokemon_StoryRangeOptions_Tests.h"
 #include "Pokemon_AutoStorySelect_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
@@ -33,6 +34,7 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_ScreenMatch(database);
     add_tests_StoryBackend(database);
     add_tests_StoryEngine(database);
+    add_tests_GridStoryActions(database);
 }
 
 
