@@ -172,6 +172,10 @@ public:
                 PokemonFRLG_Stats stats;
                 StatsReader().read_page1(m_console, m_language, screen, stats);
                 if (!stats.name.empty()){
+                    //  PokemonOCR-*.json uses "farfetch-d", while PokemonSprites.json and plans use "farfetchd".
+                    if (stats.name == "farfetch-d"){
+                        return "farfetchd";
+                    }
                     return stats.name;
                 }
             }

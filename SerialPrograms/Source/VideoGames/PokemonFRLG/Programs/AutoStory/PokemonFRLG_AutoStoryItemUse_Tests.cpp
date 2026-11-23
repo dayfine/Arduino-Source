@@ -55,6 +55,8 @@ public:
         return row < m_rows.size() ? m_rows[row] : BagRow{};
     }
     virtual void cursor_down() override{
+        m_prev_top = m_top;
+        m_had_down = true;
         if (m_cursor + 1 < m_rows.size()){
             m_cursor++;
         }
@@ -65,11 +67,15 @@ public:
     }
     //  The list scrolls back under the cursor on its fourth row shown.
     virtual void cursor_up() override{
+        m_had_down = false;
         if (m_cursor > 0){
             m_cursor--;
         }
         constexpr size_t STOP = ITEM_LIST_ROWS / 2;
         m_top = std::min(m_top, m_cursor > STOP ? m_cursor - STOP : 0);
+    }
+    virtual bool bottom_row_unchanged() const override{
+        return m_had_down && m_top == m_prev_top;
     }
     //  The row (from 0) the cursor is on.
     size_t cursor() const{
@@ -80,6 +86,8 @@ private:
     std::vector<BagRow> m_rows;
     size_t m_cursor = 0;
     size_t m_top = 0;
+    size_t m_prev_top = 0;
+    bool m_had_down = false;
 };
 
 //  A bag on the sim: its pockets, each item used takes one, a bag that may

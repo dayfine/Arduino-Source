@@ -476,7 +476,7 @@ bool ConsoleTeachScreens::talk_to_tutor(){
             dialog_still++;
             if (dialog_still >= 2){
                 dialog_still = 0;
-                pbf_press_button(m_context, BUTTON_A, 160ms, 500ms);
+                pbf_press_button(m_context, BUTTON_A, /*hold=*/160ms, /*release=*/500ms);
             }else{
                 pbf_wait(m_context, 300ms);
             }

@@ -114,7 +114,10 @@
               ]
             ],
             "facing": "east"
-          }
+          },
+          "flags_after": [
+            "old_man_tutorial_done"
+          ]
         }
       },
       {

@@ -210,6 +210,9 @@ std::vector<MapData> row_maps(const StoryCheckpoint& row){
     const std::set<std::string> start_flags = start_flag_set(row);
     const std::vector<MapData>& base = start_flags.contains(std::string(SILPH_CLEARED_FLAG)) ? cleared_sweep_maps() : sweep_maps();
     std::vector<MapData> maps = with_trainers_beaten(with_trainers_moved(base, moved_trainers(start_flags)), beaten_trainers(start_flags));
+    if (!start_flags.contains(std::string(OLD_MAN_TUTORIAL_DONE_FLAG))){
+        place_viridian_old_man_at_8(maps);
+    }
     const std::set<std::string> cleared = gyms_cleared_before(row);
     for (MapData& map : maps){
         if (!cleared.contains(map.name)){
