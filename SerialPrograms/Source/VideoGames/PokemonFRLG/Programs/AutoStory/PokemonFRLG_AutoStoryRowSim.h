@@ -2,11 +2,8 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  FRLG's story on the simulation, through the same action table as the
- *  console (make_story_action_table()): each binding plays the actions it
- *  can and stubs the rest, which need the console. StoryMapsSim runs the
- *  whole story on the story maps; OverworldStepSim walks a row's steps on
- *  the OverworldSim, for the simulation tests of each stage's rows.
+ *  FRLG's story on the simulation, running through #648 StoryEngine
+ *  (make_sim_engine_checkpoint()) and OverworldStepSim.
  *
  */
 
@@ -19,8 +16,9 @@
 #include <set>
 #include <string>
 #include <vector>
-#include "Pokemon/AutoStory/Pokemon_StoryActions.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
 #include "Pokemon/Navigation/Grid/Planning/Pokemon_GatedTypes.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
@@ -35,124 +33,85 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  What happens on the story maps besides the story's steps.
 struct StorySimKnobs{
-    //  Whether a dialog pops up right before row `row`'s step `step`:
-    //  someone walks up and talks between two steps. Until it is pressed
-    //  through, it stops a step that walks or talks, as on the console.
     std::function<bool(const std::string& row, const std::string& step)> dialog_before = nullptr;
-    //  Whether the executor clears what came up between steps
-    //  (step_interrupts()), as the console does; off, as before it did.
     bool clear_interrupts = true;
-    //  The maps the story is planned and walked on, with the gates of the
-    //  run state; the story's (story_maps()) if null.
     const std::vector<MapData>* maps = nullptr;
-    //  The run's check level: a check step it doesn't run is skipped, as on
-    //  the console. TESTING (every check) by default.
     Pokemon::StoryCheckLevel checks = Pokemon::StoryCheckLevel::TESTING;
 };
 
-//  The whole story on the story maps, without a walker: each ROUTE planned
-//  and followed from where the run stands (turning to a wall when the
-//  facing is unknown, as the program does), each LEGS laid out, a step
-//  into a trainer's line taken until a trainer can see the player, a
-//  READY's way to the nurse planned, the Viridian Mart's orders checked
-//  against its list, and a GAME leaving the player where pacing would
-//  (paced_pose()). The rest is stubbed. The dialogs `knobs` pops up are
-//  the only interrupts between steps it shows.
-class StoryMapsSim : public Pokemon::TableExecutor{
+//  Runs FRLG's story on the story maps without a walker, executing through
+//  #648 StoryEngine::run_checkpoints() via make_checkpoint().
+class StoryMapsSim{
 public:
-    //  The table and guard are members, built after the base: it only keeps
-    //  references to them until a step runs.
     explicit StoryMapsSim(StorySimKnobs knobs = {});
     StoryMapsSim(const StoryMapsSim&) = delete;
     void operator=(const StoryMapsSim&) = delete;
 
-    virtual void begin_attempt(const Pokemon::StoryCheckpoint& data) override;
-    //  The step, after a dialog pops up before it if the knobs say so.
-    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState& state) override;
-    //  The story's actions as this simulation binds them.
-    const Pokemon::StoryActionTable& actions() const{
+    virtual ~StoryMapsSim() = default;
+    virtual void begin_attempt(const StoryCheckpoint& data);
+    virtual std::optional<Pokemon::StoryFailure> run_step(const StoryStep& step, FrlgRunState& state);
+
+    //  Builds a #648 Pokemon::StoryCheckpoint driven by this StoryMapsSim.
+    Pokemon::StoryCheckpoint make_checkpoint(
+        const StoryCheckpoint& data, FrlgRunState& state,
+        SavePoseReader start_pose_reader = {}, StoryLog start_log = {}
+    );
+
+    const FrlgActionTable& actions() const{
         return m_table;
     }
     const SimStubs& stubs() const{
         return m_stubs;
     }
-    //  What the Mart sold, by its list's names.
     const std::map<std::string, int>& bag() const{
         return m_bag;
     }
-    //  "01.04/oak: a dialog pops up before it.", and how it was cleared.
     const std::vector<std::string>& dialog_notes() const{
         return m_dialog_notes;
     }
 
-protected:
-    //  A dialog that popped up and is still up stops a step that walks or
-    //  talks; a step that presses through text closes it.
-    virtual Pokemon::Outcome run_action(const StoryStep& step, Pokemon::RunState& state) override;
-
 private:
-    Pokemon::StoryAction action(StoryActionId id);
-    //  The maps a run with `state`'s flags plans on: run_story_maps(), as
-    //  the program (Silph Co.'s Rockets gone once cleared, walked-up
-    //  trainers where they stand), unless the knobs give maps.
-    const std::vector<MapData>& maps(const Pokemon::RunState& state) const;
-    //  Plans the route and moves the run's pose and gates to its end.
-    Pokemon::Outcome walk_to(Pokemon::RunState& state, const StoryStep& step) const;
-    Pokemon::Outcome legs(const Pokemon::RunState& state, const StoryStep& step) const;
-    Pokemon::Outcome step_ahead(const Pokemon::Pose& pose, const StoryStep& step) const;
-    Pokemon::Outcome shop(const StoryStep& step);
-    //  The screen between steps: the dialog that popped up, if one did.
+    FrlgStepAction action(StoryActionId id);
+    const std::vector<MapData>& maps(const FrlgRunState& state) const;
+    std::optional<Pokemon::StoryFailure> walk_to(FrlgRunState& state, const StoryStep& step) const;
+    std::optional<Pokemon::StoryFailure> legs(FrlgRunState& state, const StoryStep& step) const;
+    std::optional<Pokemon::StoryFailure> step_ahead(FrlgRunState& state, const StoryStep& step) const;
+    std::optional<Pokemon::StoryFailure> shop(const StoryStep& step);
     Pokemon::ScreenLook look();
     StepInterruptActions sim_interrupt_actions();
 
-    SimStepGuard m_guard;
     SimStubs m_stubs;
     std::map<std::string, int> m_bag;
-    Pokemon::StoryActionTable m_table;
+    FrlgActionTable m_table;
     StorySimKnobs m_knobs;
     Pokemon::StoryInterrupts m_interrupts;
     std::string m_row;
-    //  A dialog popped up (StorySimKnobs::dialog_before) and is still up;
-    //  it rose since the last look.
     bool m_dialog_up = false;
     bool m_dialog_rose = false;
     std::vector<std::string> m_dialog_notes;
 };
 
 
-//  The route the program walks for `step`, a ROUTE or LEGS, from `at`:
-//  planned, or the legs laid out. A route is planned over `maps` through
-//  `gates`, and may open a card-key gate if `rules` say the player holds
-//  the Card Key.
 std::optional<std::vector<RouteStep>> walked_route(
     const StoryPose& at, const StoryStep& step,
     const std::vector<MapData>& maps = story_maps(),
-    const Pokemon::GateState& gates = Pokemon::GateState(), const Pokemon::GateRules& rules = Pokemon::GateRules()
+    const Pokemon::GateState& gates = Pokemon::GateState(),
+    const Pokemon::GateRules& rules = Pokemon::GateRules()
 );
 
-//  A row's steps on the OverworldSim as the program does them: routes and
-//  legs by the sim's walker from where the table says the player stands,
-//  fighting a trainer who sees the player on the way; a hop down a ledge
-//  (hop()) or a step onto the tile before one (step_onto()), to where the
-//  table says; a step one tap at a time, or for a step into a trainer's
-//  line by step_until_seen(), each watched for the trainer; a battle from
-//  the trainer's message, which must be up; a cut tree cut and stepped
-//  onto. The rest is stubbed.
-class OverworldStepSim : public Pokemon::TableExecutor{
+class OverworldStepSim{
 public:
-    //  `sim` must outlive the executor.
     OverworldStepSim(OverworldSim& sim, std::string row, StoryPose at);
     OverworldStepSim(const OverworldStepSim&) = delete;
     void operator=(const OverworldStepSim&) = delete;
 
-    //  Where the table says the player stands: moved to where it says each
-    //  step ends.
+    std::optional<Pokemon::StoryFailure> run(const StoryStep& step, FrlgRunState& state);
+
     const StoryPose& at() const{
         return m_at;
     }
-    const Pokemon::StoryActionTable& actions() const{
+    const FrlgActionTable& actions() const{
         return m_table;
     }
     const SimStubs& stubs() const{
@@ -160,10 +119,8 @@ public:
     }
 
 private:
-    //  step_action(), after a box left open is cleared for a step that
-    //  presses A first (clear_box_before_a()).
-    Pokemon::StoryAction action(StoryActionId id);
-    Pokemon::StoryAction step_action(StoryActionId id);
+    FrlgStepAction action(StoryActionId id);
+    FrlgStepAction step_action(StoryActionId id);
     std::string walk(const StoryStep& step);
     std::string step_ahead(const StoryStep& step);
     std::string step_onto(const StoryStep& step);
@@ -171,33 +128,22 @@ private:
     std::string cut(const StoryStep& step);
     std::string push_boulder(const StoryStep& step);
     std::string battle(const StoryStep& step);
-    Pokemon::StoryAction hideout_or_stub();
+    FrlgStepAction hideout_or_stub();
     std::string hideout(const StoryStep& step);
     std::string ended_on(const StoryStep& step);
 
     OverworldSim& m_sim;
     StoryPose m_at;
-    //  The step's run flags: the maps the program plans on are theirs
-    //  (run_story_maps()), and the walker doesn't watch for the trainers they
-    //  say are beaten (m_beaten, beaten_trainers()).
     std::set<std::string> m_flags;
     std::set<std::string> m_beaten;
-    SimStepGuard m_guard;
     SimStubs m_stubs;
-    Pokemon::StoryActionTable m_table;
+    FrlgActionTable m_table;
 };
 
-//  Runs `step` of row `id` on `sim` through OverworldStepSim, from `at`,
-//  with `run_flags` (the trainers beaten among them, TRAINER_BEATEN_FLAG),
-//  and moves `at` to where the table says the step ends. Returns the
-//  failure, "<id>/<step>: <why> On <where>.", or empty.
 std::string row_step_on_sim(
     OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
     const std::set<std::string>& run_flags = std::set<std::string>()
 );
-//  row_step_on_sim() with `run_flags` carried on: they become the flags
-//  the step left, as the program's run state carries them to the next
-//  step (a trainer who walked up to the player, TRAINER_AT_FLAG).
 std::string row_step_carrying_flags(
     OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id,
     std::set<std::string>& run_flags

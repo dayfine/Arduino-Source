@@ -15,8 +15,8 @@
 #include <optional>
 #include <string_view>
 #include <vector>
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "PokemonFRLG_AutoStoryStats.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -90,7 +90,7 @@ std::optional<BattlePolicyKind> battle_policy_kind(std::string_view word);
 
 //  The battle policy a step's args name, with its setup goals and foe data:
 //  NONE when they name none, with the foes' stats all the same.
-BattlePolicy battle_policy_of(const Pokemon::StoryActionArgs& args);
+BattlePolicy battle_policy_of(const FrlgArgMap& args);
 
 //  The step's "foe_threats" rows, [speed, likely, mean, max, normal_max,
 //  lowers_accuracy, explodes] each, with phazes as an eighth column where

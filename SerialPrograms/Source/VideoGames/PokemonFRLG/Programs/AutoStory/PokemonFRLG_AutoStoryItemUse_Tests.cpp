@@ -160,9 +160,9 @@ private:
 };
 
 struct ItemUseInput{
-    std::string variant;
-    std::vector<BagRow> items;
-    std::vector<BagRow> key_items;
+    std::string variant = {};
+    std::vector<BagRow> items = {};
+    std::vector<BagRow> key_items = {};
     bool opens = true;
     //  renew_repel() instead of use_item_from_bag().
     bool renew = false;
@@ -504,8 +504,8 @@ UnitTestResult test_variants_and_bike(){
         return "Expected ride_bike, not poster_switch, as an item use.";
     }
     StoryStep ride;
-    ride.kind = Pokemon::StoryStepKind::ROUTE;
-    ride.action = BIKE_VARIANT;
+    ride.action = "route";
+    ride.variant = BIKE_VARIANT;
     if (move_speed(ride) != MoveSpeed::BIKE){
         return "A bike ROUTE isn't ridden.";
     }
@@ -602,7 +602,7 @@ const PocketReadCase POCKET_READ_CASES[] = {
     {
         .name = "eleven rows, the CANCEL unread: until the list stops",
         .input = {.rows = ELEVEN_ROWS, .cancel_read = false},
-        .expectation = {.rows = 11, .downs = 10},
+        .expectation = {.rows = 11, .downs = 11},
     },
     {
         .name = "fifteen rows: back on the top row after 13 DOWN",

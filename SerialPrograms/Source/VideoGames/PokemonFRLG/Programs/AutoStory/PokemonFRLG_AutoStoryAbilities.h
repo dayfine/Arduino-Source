@@ -16,14 +16,14 @@
 #include <optional>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "CommonFramework/Tools/VideoStream.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonFRLG_AutoStoryChoice.h"
 #include "PokemonFRLG_AutoStoryGrind.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryMember.h"
 #include "PokemonFRLG_AutoStoryPartyMember.h"
 #include "PokemonFRLG_AutoStoryPartyRoster.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 #include "PokemonFRLG_AutoStoryTeach.h"
 
 namespace PokemonAutomation{
@@ -52,12 +52,13 @@ struct StoryAbilities{
 //  another action. A GRIND that meets a shiny throws
 //  ProgramFinishedException, with a screenshot from `stream` if given, so
 //  the segment stops without reloading. Any other end but success is a
-//  failed Outcome; a MART that buys nothing because the money doesn't
+//  failed StoryFailure; a MART that buys nothing because the money doesn't
 //  cover it, and a TEACH whose TM isn't in the TM CASE, succeed, with the
 //  reason logged. Those, a TEACH of a move the member knows and a LEVEL
-//  reached change nothing in the game (Outcome::changed_nothing).
-std::optional<Pokemon::Outcome> run_ability_game_step(
-    Logger& logger, VideoStream* stream, const Pokemon::StoryStep& step, StoryAbilities& abilities
+//  reached change nothing in the game (`changed_nothing = true`).
+std::optional<std::optional<Pokemon::StoryFailure>> run_ability_game_step(
+    Logger& logger, VideoStream* stream, const StoryStep& step, StoryAbilities& abilities,
+    bool& changed_nothing
 );
 
 

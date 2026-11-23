@@ -24,8 +24,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryLevelCheck.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -92,8 +90,8 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 //  which a talk starts, leaves the player where the table says. The
 //  Center's way in and the nurse, which the sim hasn't got, pass.
 std::string gym_step_on_sim(const StoryStep& step, const std::string& id, StoryPose& at, OverworldSim& sim){
-    if (step.kind == StoryStepKind::BATTLE && step.name == "erika"){
-        at = *story_pose(Pokemon::pose_of(*step.pose_after));
+    if (step.action == "battle" && step.name == "erika"){
+        at = *story_pose(*step.pose_after);
         return "";
     }
     return row_step_on_sim(sim, at, step, id);
@@ -127,7 +125,7 @@ std::string fought(const OverworldSim& sim){
 //  no rule is broken.
 UnitTestResult test_fuchsia_to_cinnabar(){
     const StoryCheckpoint& row = checkpoint("12.03");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (step.action == CENTER_ENTER_VARIANT){
@@ -155,7 +153,7 @@ UnitTestResult test_fuchsia_to_cinnabar(){
 //  the walk to the gym starts. No one is fought on the way.
 UnitTestResult test_fly_to_celadon(){
     const StoryCheckpoint& row = checkpoint("14.03");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (step.name == "above_gym_tree"){
@@ -191,7 +189,7 @@ std::string to_erika(StoryPose& at, OverworldSim& sim){
     if (sim.state().trainers_beaten != std::vector<std::string>{"beauty", "beauty"}){
         return std::format("14.03: fought{}, not Tamia and Lori.", fought(sim));
     }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("14.04").start));
+    const StoryPose next = *story_pose(*checkpoint("14.04").start);
     if (next.map != GYM || !(next.tile == below_erika.point)){
         return "14.04 doesn't start where 14.03 ends.";
     }
@@ -205,7 +203,7 @@ std::string to_erika(StoryPose& at, OverworldSim& sim){
 //  Center's door (the Center's way in and the nurse need the console),
 //  meeting no one else.
 UnitTestResult test_gym_rows(){
-    StoryPose at = *story_pose(Pokemon::pose_of(*checkpoint("14.03").start));
+    StoryPose at = *story_pose(*checkpoint("14.03").start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     if (const std::string failure = to_erika(at, sim); !failure.empty()){
         return failure;
@@ -217,7 +215,7 @@ UnitTestResult test_gym_rows(){
     if (!(sim.state().position == below_erika)){
         return std::format("14.04: ended on {}, not in front of Erika where 14.04b starts.", to_string(sim.state().position));
     }
-    const StoryPose after_erika = *story_pose(Pokemon::pose_of(*checkpoint("14.04b").start));
+    const StoryPose after_erika = *story_pose(*checkpoint("14.04b").start);
     if (after_erika.map != GYM || !(after_erika.tile == below_erika.point)){
         return "14.04b doesn't start where 14.04 ends.";
     }
@@ -356,7 +354,7 @@ public:
 UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id, std::string_view battle, unsigned pokeguy){
     std::optional<LevelCheck> check;
     for (const StoryStep& step : checkpoint(id).steps){
-        if (step.kind == StoryStepKind::BATTLE && step.name == battle){
+        if (step.action == "battle" && step.name == battle){
             break;
         }
         if (step.action == LEVEL_ACTION){

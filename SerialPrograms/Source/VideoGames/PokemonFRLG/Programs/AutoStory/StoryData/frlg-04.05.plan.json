@@ -4,167 +4,418 @@
   "checkpoint": {
     "id": "04.05",
     "title": "Mt. Moon: a Moon Stone, a Rocket, Miguel and the Helix Fossil",
-    "start": {"map": "Route4_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"},
+    "start": {
+      "map": "Route4_PokemonCenter_1F",
+      "tiles": [
+        [
+          11,
+          2
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "route4_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "the nurse, below the counter",
         "args": {
-          "target": {"map": "Route4_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "the nurse, below the counter"
+          "target": {
+            "map": "Route4_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_route4",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       },
       {
         "id": "mt_moon_entrance",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the Center, west into Mt. Moon",
         "args": {
-          "target": {"map": "MtMoon_1F", "tiles": [[18, 37]], "facing": "north"}
-        },
-        "why": "out of the Center, west into Mt. Moon"
+          "target": {
+            "map": "MtMoon_1F",
+            "tiles": [
+              [
+                18,
+                37
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "mt_moon_1f",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Mt. Moon wall-guided trainer-dodging legs; up the middle, east of Miriam, west along row 9, down column 18 past Josh, up column 11 past Marcos, to (3, 3)",
         "args": {
-          "legs": [{"direction": "north", "tiles": 12}, {"direction": "east", "tiles": 8}, {"direction": "north", "tiles": 12}, {"direction": "east", "tiles": 3}, {"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 9}, {"direction": "north", "tiles": 1}, {"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 4}, {"direction": "west", "tiles": 24}, {"direction": "east", "tiles": 2}, {"direction": "south", "tiles": 12}, {"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 18}, {"direction": "west", "tiles": 9}, {"direction": "east", "tiles": 1}]
-        },
-        "why": "up the middle, east of Miriam, west along row 9, down column 18 past Josh, up column 11 past Marcos, to (3, 3)"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 12
+            },
+            {
+              "direction": "east",
+              "tiles": 8
+            },
+            {
+              "direction": "north",
+              "tiles": 12
+            },
+            {
+              "direction": "east",
+              "tiles": 3
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 9
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "west",
+              "tiles": 24
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "south",
+              "tiles": 12
+            },
+            {
+              "direction": "west",
+              "tiles": 7
+            },
+            {
+              "direction": "north",
+              "tiles": 18
+            },
+            {
+              "direction": "west",
+              "tiles": 9
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "below_moon_stone",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "facing the Moon Stone (3, 2)",
         "args": {
-          "target": {"map": "MtMoon_1F", "tiles": [[3, 3]], "facing": "north"}
-        },
-        "why": "facing the Moon Stone (3, 2)"
+          "target": {
+            "map": "MtMoon_1F",
+            "tiles": [
+              [
+                3,
+                3
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "moon_stone_ball",
-        "kind": "talk",
+        "action": "talk",
         "why": "A on the item ball"
       },
       {
         "id": "found_moon_stone",
-        "kind": "scene",
-        "declared_after": {"map": "MtMoon_1F", "tiles": [[3, 3]], "facing": "north"},
-        "why": "\"<player> found a MOON STONE!\", then the pocket line; the ball is gone"
+        "action": "scene",
+        "why": "\"<player> found a MOON STONE!\", then the pocket line; the ball is gone",
+        "args": {
+          "pose_after": {
+            "map": "MtMoon_1F",
+            "tiles": [
+              [
+                3,
+                3
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "b2f_ladder_foot",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "1F's ladder (5, 6), down B1F's west side to its ladder (22, 18), onto B2F",
         "args": {
-          "target": {"map": "MtMoon_B2F", "tiles": [[26, 21]], "facing": "east"}
-        },
-        "why": "1F's ladder (5, 6), down B1F's west side to its ladder (22, 18), onto B2F"
+          "target": {
+            "map": "MtMoon_B2F",
+            "tiles": [
+              [
+                26,
+                21
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "b2f_south",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Mt. Moon wall-guided trainer-dodging legs; through the Grunt's room at (37, 21), round the south edge, up column 11 to (11, 21)",
         "args": {
-          "legs": [{"direction": "north", "tiles": 4}, {"direction": "east", "tiles": 8}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 5}, {"direction": "east", "tiles": 8}, {"direction": "north", "tiles": 3}, {"direction": "west", "tiles": 1}, {"direction": "north", "tiles": 5}, {"direction": "east", "tiles": 7}, {"direction": "south", "tiles": 14}, {"direction": "west", "tiles": 9}, {"direction": "south", "tiles": 10}, {"direction": "west", "tiles": 29}, {"direction": "east", "tiles": 3}, {"direction": "north", "tiles": 17}]
-        },
-        "why": "through the Grunt's room at (37, 21), round the south edge, up column 11 to (11, 21)"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "east",
+              "tiles": 8
+            },
+            {
+              "direction": "west",
+              "tiles": 2
+            },
+            {
+              "direction": "south",
+              "tiles": 5
+            },
+            {
+              "direction": "east",
+              "tiles": 8
+            },
+            {
+              "direction": "north",
+              "tiles": 3
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 5
+            },
+            {
+              "direction": "east",
+              "tiles": 7
+            },
+            {
+              "direction": "south",
+              "tiles": 14
+            },
+            {
+              "direction": "west",
+              "tiles": 9
+            },
+            {
+              "direction": "south",
+              "tiles": 10
+            },
+            {
+              "direction": "west",
+              "tiles": 29
+            },
+            {
+              "direction": "east",
+              "tiles": 3
+            },
+            {
+              "direction": "north",
+              "tiles": 17
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "grunt_line",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (12, 21), below the Grunt at (12, 20)",
         "args": {
           "direction": "east"
-        },
-        "why": "onto (12, 21), below the Grunt at (12, 20)"
+        }
       },
       {
         "id": "rocket_grunt",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Rattata and Zubat, Lv13",
         "args": {
           "trainer": "TRAINER_TEAM_ROCKET_GRUNT",
-          "foes": ["rattata", "zubat"]
-        },
-        "declared_after": {"map": "MtMoon_B2F", "tiles": [[12, 21]], "facing": "east"},
-        "why": "Rattata and Zubat, Lv13"
+          "foes": [
+            "rattata",
+            "zubat"
+          ],
+          "pose_after": {
+            "map": "MtMoon_B2F",
+            "tiles": [
+              [
+                12,
+                21
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "ready_for_miguel",
-        "kind": "ready",
+        "action": "ready",
+        "why": "items for a status or low HP; the nurse, back through the cave, only if they can't",
         "args": {
-          "target": {"map": "Route4_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "items for a status or low HP; the nurse, back through the cave, only if they can't"
+          "target": {
+            "map": "Route4_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_miguel_trigger",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Mt. Moon wall-guided trainer-dodging legs; to (14, 12), below Miguel's trigger (14, 11)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 1}, {"direction": "north", "tiles": 9}, {"direction": "east", "tiles": 1}]
-        },
-        "why": "to (14, 12), below Miguel's trigger (14, 11)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 9
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "miguel_trigger",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (14, 11), beside Miguel",
         "args": {
           "direction": "north"
-        },
-        "why": "onto (14, 11), beside Miguel"
+        }
       },
       {
         "id": "super_nerd_miguel",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Grimer, Voltorb and Koffing, Lv12; \"We'll each take one!\"",
         "args": {
           "trainer": "TRAINER_SUPER_NERD_MIGUEL",
-          "foes": ["grimer", "voltorb", "koffing"]
-        },
-        "declared_after": {"map": "MtMoon_B2F", "tiles": [[14, 11]], "facing": "north"},
-        "why": "Grimer, Voltorb and Koffing, Lv12; \"We'll each take one!\""
+          "foes": [
+            "grimer",
+            "voltorb",
+            "koffing"
+          ],
+          "pose_after": {
+            "map": "MtMoon_B2F",
+            "tiles": [
+              [
+                14,
+                11
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_helix_fossil",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Mt. Moon wall-guided trainer-dodging legs; up column 14 to the HELIX FOSSIL (14, 7)",
         "args": {
-          "legs": [{"direction": "north", "tiles": 3}]
-        },
-        "why": "up column 14 to the HELIX FOSSIL (14, 7)"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 3
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "helix_fossil",
-        "kind": "game_action",
         "action": "fossil",
+        "why": "the HELIX FOSSIL; Miguel takes the DOME FOSSIL",
         "args": {
           "fossil": "helix"
-        },
-        "why": "the HELIX FOSSIL; Miguel takes the DOME FOSSIL"
+        }
       },
       {
         "id": "helix_gap",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (14, 7), where the HELIX FOSSIL lay",
         "args": {
           "direction": "north"
-        },
-        "why": "onto (14, 7), where the HELIX FOSSIL lay"
+        }
       },
       {
         "id": "route4_east",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "west to B2F's ladder (5, 10), up to B1F, east to its exit onto Route 4",
         "args": {
-          "target": {"map": "Route4", "tiles": [[32, 6]], "facing": "south"}
-        },
-        "why": "west to B2F's ladder (5, 10), up to B1F, east to its exit onto Route 4"
+          "target": {
+            "map": "Route4",
+            "tiles": [
+              [
+                32,
+                6
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "poison_survival": {
+          "steps": 130,
+          "max_hp": 55
+        }
+      }
+    }
   },
   "execution": {
     "menu": "full",
@@ -189,15 +440,6 @@
       "helix_gap": [
         "The maps keep the fossils, which the game removes after the choice: the step onto the HELIX's tile is taken on its own."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "poison_survival": {
-        "steps": 130,
-        "max_hp": 55
-      }
     }
   }
 }

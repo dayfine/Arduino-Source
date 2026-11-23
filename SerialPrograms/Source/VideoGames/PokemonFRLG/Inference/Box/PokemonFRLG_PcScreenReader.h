@@ -80,6 +80,8 @@ struct PcView{
     //  BOX_GRID: the species' slug of the Pokemon under the hand, if read
     //  (BoxCellReader, by the caller: this reader has no language).
     std::optional<std::string> species = std::nullopt;
+    //  BOX_GRID: true when the selection hand rests on the box title banner.
+    bool on_box_header = false;
 };
 
 //  The PC's screen on `screen`, with its cursor where it can be read.

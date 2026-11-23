@@ -11,8 +11,9 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
@@ -67,30 +68,32 @@ GiovanniRun run_giovanni_rows(StoryCheckLevel level){
     const std::vector<MapData> maps = beaten_gym_maps();
     StoryMapsSim sim(StorySimKnobs{.maps = &maps, .checks = level});
     const std::vector<const StoryCheckpoint*> rows = {&checkpoint_row("17.04"), &checkpoint_row("17.04b")};
-    Pokemon::Segment segment;
-    segment.id = "17";
+    FrlgRunState frlg_state;
+    std::vector<Pokemon::StoryCheckpoint> checkpoints;
     for (const StoryCheckpoint* data : rows){
-        segment.checkpoints.push_back(Pokemon::CheckpointSpec{
-            .id = data->id, .title = data->title, .saves = true,
-            .build = [&sim, data]{ return Pokemon::build_story_checkpoint(*data, sim); },
-        });
+        checkpoints.push_back(sim.make_checkpoint(*data, frlg_state));
     }
     GiovanniRun run;
-    Pokemon::SegmentHooks hooks;
-    hooks.save = [](Pokemon::RunState&){ return Pokemon::outcome_ok(); };
-    hooks.reload = [](Pokemon::RunState&){ return Pokemon::outcome_ok(); };
-    hooks.log = [&run](const std::string& line){ run.lines.push_back(line); };
-    Pokemon::RunState state;
-    Pokemon::SegmentPolicy policy;
-    policy.attempts_per_checkpoint = 1;
-    run.completed = Pokemon::run_segment({.from = "17.04", .to = "17.04b"}, policy, segment, hooks, state).completed;
+    struct LocalScope : CancellableScope{};
+    LocalScope scope;
+    Pokemon::FakeStoryBackend backend(Pokemon::FakeStoryScript{}, scope);
+    Pokemon::StoryGame game;
+    game.attempts_per_checkpoint = 1;
+    game.save = [](Pokemon::StoryBackend&, const Pokemon::StoryCheckpoint&) -> std::optional<Pokemon::StoryFailure>{
+        return std::nullopt;
+    };
+    game.reload = [](Pokemon::StoryBackend&, const Pokemon::StoryCheckpoint& failed) -> std::optional<std::string>{
+        return failed.id;
+    };
+    Pokemon::RunState core_state;
+    run.completed = !Pokemon::run_checkpoints(backend, checkpoints, game, core_state).has_value();
+    run.lines = backend.lines();
     run.stubs = sim.stubs().rows();
     for (const RowStubs& stubbed : run.stubs){
         for (const StoryCheckpoint* data : rows){
             for (const StoryStep& step : data->steps){
-                const Pokemon::StoryAction* action = sim.actions().find(step);
                 const bool was_stubbed = data->id == stubbed.row && std::ranges::find(stubbed.steps, step.name) != stubbed.steps.end();
-                if (was_stubbed && action != nullptr && action->check && !Pokemon::runs_check(level, *action->check)){
+                if (was_stubbed && step.check && !Pokemon::runs_check(level, *step.check)){
                     run.skipped_checks_run.push_back(std::format("{}/{}", data->id, step.name));
                 }
             }

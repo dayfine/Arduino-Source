@@ -82,7 +82,7 @@ StoryPreflight StoryPreflight::read(NintendoSwitch::ConsoleHandle& console, Nint
 }
 
 
-Outcome StoryPreflight::check() const{
+std::optional<StoryFailure> StoryPreflight::check() const{
     std::string failed;
     auto add = [&failed](bool ok, std::string_view what){
         if (ok){
@@ -97,9 +97,9 @@ Outcome StoryPreflight::check() const{
     add(controller_ready, "the controller is not ready");
     add(game_running, "the game is not running");
     if (failed.empty()){
-        return outcome_ok();
+        return std::nullopt;
     }
-    return outcome_failed(std::string(FAILURE), failed);
+    return StoryFailure{.code = std::string(FAILURE), .detail = std::move(failed), .repeats = true};
 }
 
 

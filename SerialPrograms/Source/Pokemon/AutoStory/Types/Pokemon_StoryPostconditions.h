@@ -4,8 +4,6 @@
  *
  *  What must hold once a checkpoint is done, as plain data from its plan:
  *  where the player stands, what the Bag holds, which story flags moved.
- *  check_postconditions() (Pokemon_StoryPostconditionCheck.h) checks them
- *  against what the game read, as a step of its own after the run.
  *
  */
 
@@ -16,22 +14,21 @@
 #include <string>
 #include <vector>
 #include "Pokemon_GridPose.h"
-#include "Pokemon_StoryActionArg.h"
+#include "Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// The end state a checkpoint's plan promises: position, Bag items and flags.
+//  The end state a checkpoint's plan promises: position, Bag items and flags.
 struct StoryPostconditions{
-    //  Where the checkpoint ends; unset, it is the last step's target
-    //  (checkpoint_end_pose()).
-    std::optional<GridPose> position;
+    //  Where the checkpoint ends; unset, it is the last step's target.
+    std::optional<GridPose> position = std::nullopt;
     //  Each item's count in the Bag, exactly, by the game's item id
     //  ("LIFT_KEY", "RARE_CANDY").
-    std::vector<StoryItem> items;
+    std::vector<StoryItem> items = {};
     //  Story flags that must be set: a trainer beaten, a door open.
-    std::vector<std::string> flags;
+    std::vector<std::string> flags = {};
 
     bool operator==(const StoryPostconditions& other) const = default;
 };

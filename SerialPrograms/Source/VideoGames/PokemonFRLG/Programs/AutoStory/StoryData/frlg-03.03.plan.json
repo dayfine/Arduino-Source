@@ -4,39 +4,80 @@
   "checkpoint": {
     "id": "03.03",
     "title": "Pewter: the Running Shoes from Oak's aide",
-    "start": {"map": "PewterCity_Gym", "tiles": [[6, 6]], "facing": "north"},
+    "start": {
+      "map": "PewterCity_Gym",
+      "tiles": [
+        [
+          6,
+          6
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "before_aide_trigger",
-        "kind": "route",
+        "action": "route",
+        "why": "out of the Gym, east along row 21, short of the top trigger",
         "args": {
-          "target": {"map": "PewterCity", "tiles": [[45, 21]], "facing": "east"}
-        },
-        "why": "out of the Gym, east along row 21, short of the top trigger"
+          "target": {
+            "map": "PewterCity",
+            "tiles": [
+              [
+                45,
+                21
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "aide_trigger",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (46, 21), below the aide",
         "args": {
           "direction": "east"
-        },
-        "why": "onto (46, 21), below the aide"
+        }
       },
       {
         "id": "shoes_from_aide",
-        "kind": "scene",
-        "declared_after": {"map": "PewterCity", "tiles": [[46, 21]], "facing": "north"},
-        "why": "\"Oh, PLAYER!\" ... the Running Shoes; ends facing north"
+        "action": "scene",
+        "why": "\"Oh, PLAYER!\" ... the Running Shoes; ends facing north",
+        "args": {
+          "pose_after": {
+            "map": "PewterCity",
+            "tiles": [
+              [
+                46,
+                21
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_pewter_center",
-        "kind": "route",
+        "action": "route",
+        "why": "west along row 21 and down to below the Pokemon Center's door (17, 25)",
         "args": {
-          "target": {"map": "PewterCity", "tiles": [[17, 26]], "facing": "south"}
-        },
-        "why": "west along row 21 and down to below the Pokemon Center's door (17, 25)"
+          "target": {
+            "map": "PewterCity",
+            "tiles": [
+              [
+                17,
+                26
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -55,6 +96,5 @@
         "Where the by-hand walk stopped to start 04.01 (console B, 2026-11-02)."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

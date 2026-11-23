@@ -2,8 +2,9 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The SHOP step: Viridian Mart before the Boulder Badge, whose rows the
- *  story knows, and the bag's counts read back after it.
+ *  Viridian City's Mart (02.02's shop step): the orders from the step's
+ *  items, bought at the counter, added to the supplies and checked against
+ *  the Bag.
  *
  */
 
@@ -12,7 +13,8 @@
 
 #include <optional>
 #include <vector>
-#include "PokemonFRLG_AutoStoryActions.h"
+#include "Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 
 namespace PokemonAutomation{
@@ -20,14 +22,10 @@ namespace NintendoSwitch{
 namespace PokemonFRLG{
 
 
-//  `items` as orders at the Viridian Mart before the Boulder Badge: the
-//  rows of POKE BALL, POTION, ANTIDOTE, PARLYZ HEAL. Nothing if it does
-//  not sell one of them.
 std::optional<std::vector<MartOrder>> viridian_mart_orders(const std::vector<Pokemon::StoryItem>& items);
 
-//  A SHOP step: its "items" bought at the Viridian Mart, counted into
-//  `env.supplies`, and with Thorough checks the counts read from the bag.
-Pokemon::Outcome viridian_shop(StoryEnv& env, const StoryStep& step);
+std::optional<Pokemon::StoryFailure> viridian_shop(StoryEnv& env, const StoryStep& step);
+
 
 
 } // namespace PokemonFRLG

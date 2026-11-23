@@ -24,6 +24,7 @@
 
 #include <cstddef>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -31,10 +32,8 @@
 #include "CommonFramework/Language.h"
 #include "CommonTools/ScreenMachine/ScreenObservation.h"
 #include "NintendoSwitch/Controllers/NintendoSwitch_ControllerButtons.h"
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "Pokemon_StoryBackend.h"
-#include "Pokemon_ZonePose.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -116,6 +115,14 @@ struct StoryLaunchPolicy{
     std::vector<StoryLaunchPrompt> prompts = {};
     //  The player in control. Unset: the look shows PLAYER_CAN_MOVE.
     std::function<bool(const ScreenObservation& look)> overworld = {};
+    //  Once the launch closed the game or saw its title, the overworld
+    //  counts only after a `title_press` on a look `title` matched and
+    //  then the load's black (FADE_BLACK), with no title since; until then
+    //  an overworld look takes `title_press` too, which does not start the
+    //  load. BDSP's title plays an attract movie, a town with people
+    //  walking, that reads as the overworld, and ZL on it goes back to
+    //  the title through a black.
+    bool overworld_after_load = false;
     //  Looks in a row the overworld must show before the launch is done.
     size_t settled_looks = 3;
     //  The wait between looks at a screen with nothing to press.
@@ -146,16 +153,12 @@ inline constexpr std::string_view STORY_LAUNCH_FAILED = "launch_failed";
 
 //  Drives `backend` to the overworld on the save `request` asks for, by
 //  `policy`; logs each press as "[Launch] <game>: <screen>: <what>".
-//  Succeeds once the overworld shows `policy.settled_looks` looks in a
-//  row; fails as STORY_LAUNCH_FAILED on a new game, a missing tile, a
+//  Returns std::nullopt once the overworld shows `policy.settled_looks` looks
+//  in a row; fails as STORY_LAUNCH_FAILED on a new game, a missing tile, a
 //  screen that took too many presses, or after `policy.max_looks` looks.
-template <StoryPose PoseType>
-Outcome launch_story_game(StoryBackend<PoseType>& backend, const StoryLaunchPolicy& policy, StoryLaunchRequest request);
-
-//  Instantiated once, in Pokemon_StoryLaunch.cpp.
-extern template Outcome launch_story_game<GridPose>(StoryBackend<GridPose>&, const StoryLaunchPolicy&, StoryLaunchRequest);
-//  And for ZonePose (Pokemon_ZonePose.h).
-extern template Outcome launch_story_game<ZonePose>(StoryBackend<ZonePose>&, const StoryLaunchPolicy&, StoryLaunchRequest);
+std::optional<StoryFailure> launch_story_game(
+    StoryBackend& backend, const StoryLaunchPolicy& policy, StoryLaunchRequest request
+);
 
 
 

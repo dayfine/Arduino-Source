@@ -12,10 +12,11 @@
 #ifndef PokemonAutomation_Pokemon_StoryPreflight_H
 #define PokemonAutomation_Pokemon_StoryPreflight_H
 
+#include <optional>
 #include <string_view>
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
-#include "Pokemon_StoryOutcome.h"
+#include "Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -33,9 +34,9 @@ struct StoryPreflight{
     //  The game is on screen, not the Switch's HOME menu.
     bool game_running = false;
 
-    //  outcome_ok() when every check passed, else FAILURE naming each
+    //  std::nullopt when every check passed, else FAILURE naming each
     //  check that failed.
-    Outcome check() const;
+    std::optional<StoryFailure> check() const;
 
     //  Reads the console: a frame newer than two seconds that shows a
     //  picture (not black, not the capture card's color bars), the

@@ -36,7 +36,7 @@ const MapData& map_named(const std::vector<MapData>& maps, std::string_view name
 //  Read a scripted runtime-local pose, checking bounds, occupants and elevation.
 OverworldPose read_pose(const JsonValue& value, const std::vector<MapData>& maps);
 //  Resolve a known one-tile authored pose; this does not create evidence.
-OverworldPose authored_pose(const Pokemon::Pose& value, const std::vector<MapData>& maps);
+OverworldPose authored_pose(const Pokemon::GridPose& value, const std::vector<MapData>& maps);
 //  JSON snapshot of a known model pose, or a candidate with unknown facing.
 JsonValue pose_json(const OverworldPose& pose, std::optional<Direction> facing);
 //  Reject bad hashes, capabilities and policies before any executor action.

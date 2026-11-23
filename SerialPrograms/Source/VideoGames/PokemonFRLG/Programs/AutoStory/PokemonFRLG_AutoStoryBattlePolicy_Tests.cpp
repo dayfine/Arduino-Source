@@ -18,7 +18,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "PokemonFRLG_AutoStoryBattleDecisions.h"
 #include "PokemonFRLG_AutoStoryBattlePolicy.h"
 #include "PokemonFRLG_AutoStoryHealing.h"
@@ -509,12 +508,12 @@ UnitTestResult test_foe_rows(){
 
 
 const StoryStep& battle_step(std::string_view id, std::string_view name){
-    for (const Pokemon::StoryCheckpoint& row : story_checkpoints()){
+    for (const StoryCheckpoint& row : story_checkpoints()){
         if (row.id != id){
             continue;
         }
         for (const StoryStep& step : row.steps){
-            if (step.kind == StoryStepKind::BATTLE && step.name == name){
+            if (step.action == "battle" && step.name == name){
                 return step;
             }
         }
@@ -743,7 +742,7 @@ Supplies league_supplies(const StoryStep& step){
         .level = 52,
         .stats = Stats{.hp = 165, .attack = 99, .defense = 129, .sp_attack = 114, .sp_defense = 144, .speed = 113},
     };
-    supplies.foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+    supplies.foes = frlg_arg<std::vector<std::string>>(step.args, "foes");
     supplies.policy = battle_policy_of(step.args);
     return supplies;
 }

@@ -11,6 +11,7 @@
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "Pokemon_StoryCheckLevel.h"
 #include "Pokemon_StoryCheckLevel_Tests.h"
+#include "Pokemon_StoryLevelCheck.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -103,12 +104,60 @@ private:
     CheckTableCase m_scenario;
 };
 
+struct LevelVerdictCase{
+    struct Input{
+        unsigned level = 0;
+        unsigned minimum = 0;
+    };
+    struct Expectation{
+        LevelVerdict verdict = LevelVerdict::MET;
+    };
+
+    std::string_view name;
+    Input input;
+    Expectation expectation;
+};
+
+//  Tolerance of 3 levels below minimum (17.04, console B, 2026-11-15:
+//  Lv49 passes against min 50 with a warning, Lv46 stops).
+const LevelVerdictCase LEVEL_VERDICT_CASES[] = {
+    {.name = "at minimum", .input = {.level = 50, .minimum = 50}, .expectation = {.verdict = LevelVerdict::MET}},
+    {.name = "one below minimum passes within tolerance", .input = {.level = 49, .minimum = 50}, .expectation = {.verdict = LevelVerdict::WITHIN_TOLERANCE}},
+    {.name = "three below minimum passes within tolerance", .input = {.level = 47, .minimum = 50}, .expectation = {.verdict = LevelVerdict::WITHIN_TOLERANCE}},
+    {.name = "four below minimum fails", .input = {.level = 46, .minimum = 50}, .expectation = {.verdict = LevelVerdict::BELOW}},
+};
+
+class Test_LevelVerdict : public UnitTest{
+public:
+    explicit Test_LevelVerdict(const LevelVerdictCase& scenario)
+        : UnitTest(std::format("Pokemon::StoryCheckLevel - level verdict: {}", scenario.name))
+        , m_scenario(scenario)
+    {}
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const LevelVerdict got = level_verdict(m_scenario.input.level, m_scenario.input.minimum);
+        if (got != m_scenario.expectation.verdict){
+            return std::format(
+                "level_verdict({}, {}) returned {}, expected {}",
+                m_scenario.input.level, m_scenario.input.minimum,
+                static_cast<int>(got), static_cast<int>(m_scenario.expectation.verdict)
+            );
+        }
+        return true;
+    }
+
+private:
+    LevelVerdictCase m_scenario;
+};
+
 } // namespace
 
 
 void add_tests_StoryCheckLevel(UnitTestDatabase& database){
     for (const CheckTableCase& scenario : CHECK_TABLE_CASES){
         database.add<Test_StoryCheckTable>(scenario);
+    }
+    for (const LevelVerdictCase& scenario : LEVEL_VERDICT_CASES){
+        database.add<Test_LevelVerdict>(scenario);
     }
 }
 

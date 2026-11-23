@@ -6,69 +6,150 @@
     "title": "Restock before the Route 22 rival: Super Potions and status heals at Lavender's Mart",
     "start": {
       "map": "ViridianCity_PokemonCenter_1F",
-      "tiles": [[7, 4]],
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
       "facing": "north"
     },
     "events": [
       {
         "id": "viridian_outside",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of Viridian's Center onto the street below its door (26, 26), where 17.04b's Fly landed: Fly works outdoors only",
         "args": {
-          "target": {"map": "ViridianCity", "tiles": [[26, 27]], "facing": "south"}
-        },
-        "why": "out of Viridian's Center onto the street below its door (26, 26), where 17.04b's Fly landed: Fly works outdoors only"
+          "target": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                26,
+                27
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "fly_lavender",
-        "kind": "game_action",
         "action": "fly",
-        "args": {"town": "LavenderTown", "species": "pidgey"},
-        "declared_after": {"map": "LavenderTown", "tiles": [[6, 6]], "facing": "south"},
-        "why": "the Pidgey flies to Lavender Town, landing below the Pokemon Center's door (6, 5), as 10.01. Celadon's Department Store sells no Hyper Potion (pokefirered: only Saffron's, Cinnabar's and the Sevii Marts do) and its 2F items clerk, whose best healing is the Super Potion, is on a floor the walker has no map of; Lavender's Mart sells the same Super Potion (700) a short walk from its landing (08.03)"
+        "why": "the Pidgey flies to Lavender Town, landing below the Pokemon Center's door (6, 5), as 10.01. Celadon's Department Store sells no Hyper Potion (pokefirered: only Saffron's, Cinnabar's and the Sevii Marts do) and its 2F items clerk, whose best healing is the Super Potion, is on a floor the walker has no map of; Lavender's Mart sells the same Super Potion (700) a short walk from its landing (08.03)",
+        "args": {
+          "town": "LavenderTown",
+          "species": "pidgey",
+          "pose_after": {
+            "map": "LavenderTown",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "lavender_mart_clerk",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "along the street to the Mart's door (20, 15), in and up to face the clerk (2, 3) over the counter (3, 3), as 08.03",
         "args": {
-          "target": {"map": "LavenderTown_Mart", "tiles": [[4, 3]], "facing": "west"}
-        },
-        "why": "along the street to the Mart's door (20, 15), in and up to face the clerk (2, 3) over the counter (3, 3), as 08.03"
+          "target": {
+            "map": "LavenderTown_Mart",
+            "tiles": [
+              [
+                4,
+                3
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "buy_potions_and_status_heals",
-        "kind": "game_action",
         "action": "mart",
+        "why": "the errand's whole list at one Mart: Lavender stocks the Super Potion (700), the Antidote (100), the Parlyz Heal (200), and the Super Repel (500), so no second Mart is visited (this row once flew back to Viridian's Mart for the status heals alone). The bag at 17.04b holds potion x3 and super-potion x0 (console B, 2026-11-15 22:10) against PokeGuy's potion x4, superpotion x4 at the Route 22 rival and his antidote x1, parlyzheal x2 for the League (PokemonSimulation docs/battles/pokeguy-conditions.md; user's decision 2026-11-15); recovery_items() cures PSN and PAR with them, and super-repel x4 covers Route 23 (19.03) and Victory Road (19.04-19.04d). 13,000 in all from the ~$51,000 the save holds, so nothing is sold; if_affordable cuts a line to what a smaller purse covers",
         "args": {
           "map": "LavenderTown_Mart",
           "items": [
-            {"item": "super-potion", "quantity": 15},
-            {"item": "antidote", "quantity": 1},
-            {"item": "parlyz-heal", "quantity": 2}
+            {
+              "item": "super-potion",
+              "quantity": 15
+            },
+            {
+              "item": "antidote",
+              "quantity": 1
+            },
+            {
+              "item": "parlyz-heal",
+              "quantity": 2
+            },
+            {
+              "item": "super-repel",
+              "quantity": 4
+            }
           ],
           "if_affordable": true
-        },
-        "why": "the errand's whole list at one Mart: Lavender stocks the Super Potion (700), the Antidote (100) and the Parlyz Heal (200), so no second Mart is visited (this row once flew back to Viridian's Mart for the status heals alone). The bag at 17.04b holds potion x3 and super-potion x0 (console B, 2026-11-15 22:10) against PokeGuy's potion x4, superpotion x4 at the Route 22 rival and his antidote x1, parlyzheal x2 for the League (PokemonSimulation docs/battles/pokeguy-conditions.md; user's decision 2026-11-15); recovery_items() cures PSN and PAR with them. 11,000 in all from the ~$51,000 the save holds, so nothing is sold; if_affordable cuts a line to what a smaller purse covers"
+        }
       },
       {
         "id": "out_of_lavender_mart",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "back out of the Mart's door (20, 15) onto the street below it, as 08.03",
         "args": {
-          "target": {"map": "LavenderTown", "tiles": [[20, 16]], "facing": "south"}
-        },
-        "why": "back out of the Mart's door (20, 15) onto the street below it, as 08.03"
+          "target": {
+            "map": "LavenderTown",
+            "tiles": [
+              [
+                20,
+                16
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "fly_viridian",
-        "kind": "game_action",
         "action": "fly",
-        "args": {"town": "ViridianCity", "species": "pidgey"},
-        "declared_after": {"map": "ViridianCity", "tiles": [[26, 27]], "facing": "south"},
-        "why": "the Pidgey flies back to Viridian City, landing below the Pokemon Center's door (26, 26), as 17.04b, where 19.01 starts its walk to Route 22"
+        "why": "the Pidgey flies back to Viridian City, landing below the Pokemon Center's door (26, 26), as 17.04b, where 19.01 starts its walk to Route 22",
+        "args": {
+          "town": "ViridianCity",
+          "species": "pidgey",
+          "pose_after": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                26,
+                27
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "ViridianCity",
+          "tiles": [
+            [
+              26,
+              27
+            ]
+          ],
+          "facing": "south"
+        }
+      }
+    }
   },
   "execution": {
     "menu": "full",
@@ -77,12 +158,6 @@
         "Starts at Viridian's nurse, where 17.04b ends. Flies to Lavender for the whole list at its one Mart, then back to Viridian.",
         "Ends below Viridian's Pokemon Center at (26, 27) facing south, the Fly's landing, where 19.01 starts."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {"map": "ViridianCity", "tiles": [[26, 27]], "facing": "south"}
     }
   }
 }

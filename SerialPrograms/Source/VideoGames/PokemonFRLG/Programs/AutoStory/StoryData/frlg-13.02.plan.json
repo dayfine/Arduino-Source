@@ -1,108 +1,108 @@
 {
-    "format": "pokesim-authored-checkpoint/1",
-    "game": "frlg",
-    "checkpoint": {
-        "id": "13.02",
-        "title": "Pokemon Mansion 3F's hole to 1F, 1F's stairs to B1F",
-        "start": {
-            "map": "PokemonMansion_3F",
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "13.02",
+    "title": "Pokemon Mansion 3F's hole to 1F, 1F's stairs to B1F",
+    "start": {
+      "map": "PokemonMansion_3F",
+      "tiles": [
+        [
+          19,
+          13
+        ]
+      ],
+      "facing": "south"
+    },
+    "events": [
+      {
+        "id": "to_ted_room",
+        "action": "route",
+        "why": "south to the hole row (18..20, 18), which drops to 1F's room (19..20, 22), west along row 23 to the room's west wall, out of the sight line of Ted at (22, 24) facing west (4 tiles: 18..21 on row 24)",
+        "args": {
+          "target": {
+            "map": "PokemonMansion_1F",
             "tiles": [
-                [
-                    19,
-                    13
-                ]
+              [
+                17,
+                23
+              ]
             ],
             "facing": "south"
-        },
-        "events": [
-            {
-                "id": "to_ted_room",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "PokemonMansion_1F",
-                        "tiles": [
-                            [
-                                17,
-                                23
-                            ]
-                        ],
-                        "facing": "south"
-                    }
-                },
-                "why": "south to the hole row (18..20, 18), which drops to 1F's room (19..20, 22), west along row 23 to the room's west wall, out of the sight line of Ted at (22, 24) facing west (4 tiles: 18..21 on row 24)"
-            },
-            {
-                "id": "past_ted",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "PokemonMansion_1F",
-                        "tiles": [
-                            [
-                                17,
-                                25
-                            ]
-                        ],
-                        "facing": "south"
-                    }
-                },
-                "why": "south down the west wall: (17, 24) is the one tile of row 24 past Ted's 4-tile line"
-            },
-            {
-                "id": "down_to_b1f",
-                "kind": "route",
-                "action": "run",
-                "args": {
-                    "target": {
-                        "map": "PokemonMansion_B1F",
-                        "tiles": [
-                            [
-                                34,
-                                29
-                            ]
-                        ],
-                        "facing": "west"
-                    }
-                },
-                "why": "south to the hole row (18..20, 18), which drops to 1F's east rooms (a one-way warp), through them to the stairs (25, 27), an arrow warp, to B1F's (34, 29); the switch stays on",
-                "gates_after": {
-                    "switches": {
-                        "mansion": true
-                    }
-                }
-            }
-        ],
-        "start_gates": {
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "past_ted",
+        "action": "route",
+        "why": "south down the west wall: (17, 24) is the one tile of row 24 past Ted's 4-tile line",
+        "args": {
+          "target": {
+            "map": "PokemonMansion_1F",
+            "tiles": [
+              [
+                17,
+                25
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
+      },
+      {
+        "id": "down_to_b1f",
+        "action": "route",
+        "why": "south to the hole row (18..20, 18), which drops to 1F's east rooms (a one-way warp), through them to the stairs (25, 27), an arrow warp, to B1F's (34, 29); the switch stays on",
+        "args": {
+          "target": {
+            "map": "PokemonMansion_B1F",
+            "tiles": [
+              [
+                34,
+                29
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run",
+          "gates_after": {
             "switches": {
-                "mansion": true
+              "mansion": true
             }
+          }
         }
-    },
-    "execution": {
-        "menu": "full",
-        "notes": {
-            "checkpoint": [
-                "Starts where 13.01 ends, 3F (19, 13) facing south, the switch on (start_gates). Ends on B1F (34, 29), the foot of 1F's stairs. The hole is the way pokeguy goes (floor drop, then the staircase to the basement, before 1:19:56).",
-                "The Mansion's statue switches: one flag for all four floors (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc), a toggle each press flips and each floor applies on load. The pinned maps (PokemonSimulation 4b886bb) carry it as gates: barriers that open when the switch is on or off, and the statues that press it. A route plans the presses itself (PRESS_SWITCH: face the statue, A, Yes, B through the text) wherever a barrier is in the way, and the step's gates_after says the switch it leaves; a checkpoint that starts from a save says the switch in start_gates."
-            ]
-        }
-    },
+      }
+    ],
     "metadata": {
-        "phase": "testing",
-        "postconditions": {
-            "position": {
-                "map": "PokemonMansion_B1F",
-                "tiles": [
-                    [
-                        34,
-                        29
-                    ]
-                ],
-                "facing": "west"
-            }
+      "phase": "testing",
+      "postconditions": {
+        "position": {
+          "map": "PokemonMansion_B1F",
+          "tiles": [
+            [
+              34,
+              29
+            ]
+          ],
+          "facing": "west"
         }
+      }
     }
+  },
+  "execution": {
+    "menu": "full",
+    "notes": {
+      "checkpoint": [
+        "Starts where 13.01 ends, 3F (19, 13) facing south, the switch on (start_gates). Ends on B1F (34, 29), the foot of 1F's stairs. The hole is the way pokeguy goes (floor drop, then the staircase to the basement, before 1:19:56).",
+        "The Mansion's statue switches: one flag for all four floors (pokefirered data/scripts/pokemon_mansion.inc, PokemonMansion_*F scripts.inc), a toggle each press flips and each floor applies on load. The pinned maps (PokemonSimulation 4b886bb) carry it as gates: barriers that open when the switch is on or off, and the statues that press it. A route plans the presses itself (PRESS_SWITCH: face the statue, A, Yes, B through the text) wherever a barrier is in the way, and the step's gates_after says the switch it leaves; a checkpoint that starts from a save says the switch in start_gates."
+      ]
+    },
+    "start_gates": {
+      "switches": {
+        "mansion": true
+      }
+    }
+  }
 }

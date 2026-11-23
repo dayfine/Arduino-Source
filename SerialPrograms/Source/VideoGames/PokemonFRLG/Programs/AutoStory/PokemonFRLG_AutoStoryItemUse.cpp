@@ -35,10 +35,10 @@ using namespace std::chrono_literals;
 constexpr size_t MAX_USE_COUNT = 99;
 
 MoveSpeed move_speed(const StoryStep& step){
-    if (step.action == BIKE_VARIANT){
+    if (step.variant == BIKE_VARIANT){
         return MoveSpeed::BIKE;
     }
-    return step.action == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
+    return step.variant == RUN_VARIANT ? MoveSpeed::RUN : MoveSpeed::WALK;
 }
 
 std::optional<BagPocket> usable_item_pocket(std::string_view item){
@@ -91,7 +91,7 @@ std::vector<std::string> repel_renew_order(std::string_view used, std::optional<
     return order;
 }
 
-std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step){
+std::optional<std::string> parse_use_item_step(const StoryStep& step){
     const std::string* item = step.action == USE_ITEM_VARIANT ? game_arg<std::string>(step.args, "item") : nullptr;
     if (item == nullptr || step.args.contains("slot") || !usable_item_pocket(*item) || is_lead_recovery_item(*item)){
         return std::nullopt;
@@ -101,10 +101,10 @@ std::optional<std::string> parse_use_item_step(const Pokemon::StoryStep& step){
     }
     return *item;
 }
-size_t use_item_count(const Pokemon::StoryStep& step){
+size_t use_item_count(const StoryStep& step){
     return number_arg(step.args, "count", 1, MAX_USE_COUNT).value_or(1);
 }
-bool is_item_use_step(const Pokemon::StoryStep& step){
+bool is_item_use_step(const StoryStep& step){
     const bool bike = step.action == RIDE_BIKE_VARIANT || step.action == REGISTER_BIKE_VARIANT;
     return (bike && step.args.empty()) || step.action == USE_REPEL_VARIANT || parse_use_item_step(step).has_value();
 }
@@ -240,7 +240,7 @@ ItemUses use_items_from_bag(Logger& logger, ItemUseActions& actions, std::string
 ItemUseEnd use_strongest_repel(Logger& logger, ItemUseActions& actions){
     return with_bag_row(logger, actions, repel_renew_order(STRONGEST_REPEL, std::nullopt), /*registers=*/false);
 }
-std::optional<std::string> repel_put_on_by(const Pokemon::StoryStep& step){
+std::optional<std::string> repel_put_on_by(const StoryStep& step){
     if (step.action == USE_REPEL_VARIANT){
         return STRONGEST_REPEL;
     }

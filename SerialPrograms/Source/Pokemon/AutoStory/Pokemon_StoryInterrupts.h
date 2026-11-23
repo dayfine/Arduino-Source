@@ -4,44 +4,19 @@
  *
  *  What stops the story between two of its steps: someone walks up and
  *  talks, a trainer sees us as a step ends, a wild battle starts on the
- *  last tile of a walk, a door takes us somewhere. A walk's own walker
- *  clears what happens part-way through it (Pokemon_LegWalker.h, BDSP's
- *  walks); this is what is left once a step has settled.
- *
- *  Before each step, and after a step fails, the TableExecutor looks at
- *  the screen through the game's eyes (ScreenLookFunction), judges the
- *  look with the shared classifier (classify_interrupt()) and clears what
- *  it found with the game's handler for that kind of interrupt. The
- *  handlers are a table, like the story's actions: data a game binds to
- *  its console or its simulation, not a type per game.
- *
- *  A step that starts on what the look found (a MASH on its scene's box,
- *  a BATTLE on its trainer's lines) is not interrupted by it: the table
- *  says which (InterruptHandlerTable::starts_on()). A step that starts on
- *  a battle also starts on an UNSETTLED screen, a fade with no battle yet:
- *  that is its battle's opening, still playing (BDSP's Starly battle right
- *  after the starter is picked), and the step waits for it itself.
- *
- *  Before another step, an unsettled screen is looked at until it settles,
- *  up to max_unsettled_looks looks. A battle's opening (a white flash, a
- *  fade still down, a fade after a dialog box) settles on its battle: the
- *  walk before the step ended in grass or in a trainer's sight. The battle
- *  is then cleared as any other. A door's fade, back up, settles as a warp
- *  once no battle came for battle_after_fade; whatever the game scripts
- *  after the door (the Elite Four rooms walk the player in for 2.5 s,
- *  taking no input) is over by then, and the warp is cleared as any other.
+ *  last tile of a walk, a door takes us somewhere.
  *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryInterrupts_H
 #define PokemonAutomation_Pokemon_StoryInterrupts_H
 
+#include <optional>
 #include <string>
+#include <string_view>
 #include "Pokemon_InterruptHandlers.h"
 #include "Pokemon_Interrupts.h"
-#include "CommonTools/ScreenEvents/ScreenEvents.h"
-#include "Pokemon_StoryEvents.h"
-#include "Pokemon_StoryStepExecutor.h"
+#include "Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -74,17 +49,20 @@ struct InterruptCheck{
     ScreenSettle screen = {};
     //  NONE when nothing interrupted, or when the step starts on it.
     InterruptVerdict verdict = {};
-    //  Failed when the look stayed unsettled, the kind had no handler, or
+    //  Set when the look stayed unsettled, the kind had no handler, or
     //  the handler failed; GAME_NOT_RUNNING, with no verdict, when the
     //  look ended on the Switch's HOME menu.
-    Outcome outcome = {};
+    std::optional<StoryFailure> failure = std::nullopt;
+    //  True when clearing the interrupt invalidated the player's pose (a warp).
+    bool pose_lost = false;
 };
 
-//  Looks at the screen before `step` (or after it failed) and clears what
-//  interrupted the player, if anything, writing the handler's effect on
-//  the pose into `state`. On the HOME menu it fails as GAME_NOT_RUNNING
-//  and clears nothing, whatever the step starts on.
-InterruptCheck clear_story_interrupt(const StoryInterrupts& interrupts, const StoryStep& step, RunState& state);
+//  Looks at the screen before step `step_name` (`action`) and clears what
+//  interrupted the player, if anything. On the HOME menu it fails as
+//  GAME_NOT_RUNNING and clears nothing, whatever the step starts on.
+InterruptCheck clear_story_interrupt(
+    const StoryInterrupts& interrupts, std::string_view step_name, std::string_view action
+);
 
 
 

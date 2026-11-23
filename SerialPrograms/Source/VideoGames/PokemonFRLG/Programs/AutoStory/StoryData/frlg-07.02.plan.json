@@ -4,208 +4,428 @@
   "checkpoint": {
     "id": "07.02",
     "title": "East over Route 9 to Route 10's Pokemon Center: the two trees, Alicia, Jeremy and Conner",
-    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "CeruleanCity_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "above_cerulean_tree",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the Center, south through the city to above the tree (26, 32), grown back",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[26, 31]], "facing": "south"}
-        },
-        "why": "out of the Center, south through the city to above the tree (26, 32), grown back"
+          "target": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                26,
+                31
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cut_cerulean_tree",
-        "kind": "game_action",
         "action": "cut_tree",
+        "why": "the tree; a step onto its tile",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "CeruleanCity", "tiles": [[26, 32]], "facing": "south"},
-        "why": "the tree; a step onto its tile"
+          "direction": "south",
+          "pose_after": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                26,
+                32
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "west_of_route9_tree",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down to row 33, east and up column 39 or 40 to row 18, east out of the city onto Route 9, west of its tree (2, 8)",
         "args": {
-          "target": {"map": "Route9", "tiles": [[1, 8]], "facing": "east"}
-        },
-        "why": "down to row 33, east and up column 39 or 40 to row 18, east out of the city onto Route 9, west of its tree (2, 8)"
+          "target": {
+            "map": "Route9",
+            "tiles": [
+              [
+                1,
+                8
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cut_route9_tree",
-        "kind": "game_action",
         "action": "cut_tree",
+        "why": "Route 9's tree; a step onto its tile",
         "args": {
-          "direction": "east"
-        },
-        "declared_after": {"map": "Route9", "tiles": [[2, 8]], "facing": "east"},
-        "why": "Route 9's tree; a step onto its tile"
+          "direction": "east",
+          "pose_after": {
+            "map": "Route9",
+            "tiles": [
+              [
+                2,
+                8
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "above_alicia_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east to (11, 9), above the west end of Alicia's line",
         "args": {
-          "target": {"map": "Route9", "tiles": [[11, 9]], "facing": "south"}
-        },
-        "why": "east to (11, 9), above the west end of Alicia's line"
+          "target": {
+            "map": "Route9",
+            "tiles": [
+              [
+                11,
+                9
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "alicia_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 10), in Alicia's line: she walks up to (12, 10)",
         "args": {
-          "direction": "south"
-        },
-        "why": "onto (11, 10), in Alicia's line: she walks up to (12, 10)"
+          "direction": "south",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "picnicker_alicia",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Oddish, Bellsprout, Oddish and Bellsprout, Lv18",
         "args": {
           "trainer": "TRAINER_PICNICKER_ALICIA",
-          "foes": ["oddish", "bellsprout", "oddish", "bellsprout"]
-        },
-        "declared_after": {"map": "Route9", "tiles": [[11, 10]], "facing": "south"},
-        "why": "Oddish, Bellsprout, Oddish and Bellsprout, Lv18"
+          "foes": [
+            "oddish",
+            "bellsprout",
+            "oddish",
+            "bellsprout"
+          ],
+          "pose_after": {
+            "map": "Route9",
+            "tiles": [
+              [
+                11,
+                10
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "alicia_ledge_hop",
-        "kind": "step",
+        "action": "step",
+        "why": "down the ledge (11, 11)",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "Route9", "tiles": [[11, 12]], "facing": "south"},
-        "why": "down the ledge (11, 11)"
+          "direction": "south",
+          "pose_after": {
+            "map": "Route9",
+            "tiles": [
+              [
+                11,
+                12
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "west_of_jeremy_sight",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down to row 13 and east along it to (19, 13), west of Jeremy's north line",
         "args": {
-          "target": {"map": "Route9", "tiles": [[19, 13]], "facing": "east"}
-        },
-        "why": "down to row 13 and east along it to (19, 13), west of Jeremy's north line"
+          "target": {
+            "map": "Route9",
+            "tiles": [
+              [
+                19,
+                13
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "jeremy_sight",
-        "kind": "step",
-        "action": "trainer_wait",
+        "action": "step",
+        "why": "onto (20, 13), four above Jeremy (20, 17): when he looks north he walks up to (20, 14)",
         "args": {
-          "direction": "east"
-        },
-        "why": "onto (20, 13), four above Jeremy (20, 17): when he looks north he walks up to (20, 14)"
+          "direction": "east",
+          "variant": "trainer_wait"
+        }
       },
       {
         "id": "hiker_jeremy",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Machop and Onix, Lv20",
         "args": {
           "trainer": "TRAINER_HIKER_JEREMY",
-          "foes": ["machop", "onix"]
-        },
-        "declared_after": {"map": "Route9", "tiles": [[20, 13]], "facing": "east"},
-        "why": "Machop and Onix, Lv20"
+          "foes": [
+            "machop",
+            "onix"
+          ],
+          "pose_after": {
+            "map": "Route9",
+            "tiles": [
+              [
+                20,
+                13
+              ]
+            ],
+            "facing": "east"
+          }
+        }
       },
       {
         "id": "below_conner_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east along row 13 and up column 52 to (52, 8), below the east end of Conner's line",
         "args": {
-          "target": {"map": "Route9", "tiles": [[52, 8]], "facing": "north"}
-        },
-        "why": "east along row 13 and up column 52 to (52, 8), below the east end of Conner's line"
+          "target": {
+            "map": "Route9",
+            "tiles": [
+              [
+                52,
+                8
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "conner_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (52, 7), the end of Conner's line: he walks up to (51, 7)",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (52, 7), the end of Conner's line: he walks up to (51, 7)"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "bug_catcher_conner",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Caterpie, Weedle and Venonat, Lv20",
         "args": {
           "trainer": "TRAINER_BUG_CATCHER_CONNER",
-          "foes": ["caterpie", "weedle", "venonat"]
-        },
-        "declared_after": {"map": "Route9", "tiles": [[52, 7]], "facing": "north"},
-        "why": "Caterpie, Weedle and Venonat, Lv20"
+          "foes": [
+            "caterpie",
+            "weedle",
+            "venonat"
+          ],
+          "pose_after": {
+            "map": "Route9",
+            "tiles": [
+              [
+                52,
+                7
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "round_brice",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 9/10 wall-guided trainer-dodging legs; up to the ledge (52, 4), up column 51 to Brice's row, west to the rock (48, 3) (or (48, 1)), up to (48, 1), east along row 1 to the rock (64, 1), down to (64, 2)",
         "args": {
-          "legs": [{"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 1}, {"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 3}, {"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 16}, {"direction": "south", "tiles": 1}]
-        },
-        "why": "up to the ledge (52, 4), up column 51 to Brice's row, west to the rock (48, 3) (or (48, 1)), up to (48, 1), east along row 1 to the rock (64, 1), down to (64, 2)"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 3
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 16
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "above_east_ledge",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (64, 3), above the ledge (64, 4)",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "Route9", "tiles": [[64, 3]], "facing": "south"},
-        "why": "onto (64, 3), above the ledge (64, 4)"
+          "direction": "south",
+          "pose_after": {
+            "map": "Route9",
+            "tiles": [
+              [
+                64,
+                3
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "east_ledge_hop",
-        "kind": "step",
+        "action": "step",
+        "why": "down the ledge (64, 4)",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "Route9", "tiles": [[64, 5]], "facing": "south"},
-        "why": "down the ledge (64, 4)"
+          "direction": "south",
+          "pose_after": {
+            "map": "Route9",
+            "tiles": [
+              [
+                64,
+                5
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "above_caitlin_line",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 9/10 wall-guided trainer-dodging legs; down column 64 to row 8, east along it to (70, 8): above Caitlin's line (61..64, 9)",
         "args": {
-          "legs": [{"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 6}]
-        },
-        "why": "down column 64 to row 8, east along it to (70, 8): above Caitlin's line (61..64, 9)"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 6
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "route10_ledge_end",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east onto Route 10, down to row 11 west of the grass and east along it to the wall (17, 11), above the fence post (17, 12)",
         "args": {
-          "target": {"map": "Route10", "tiles": [[17, 11]], "facing": "east"}
-        },
-        "why": "east onto Route 10, down to row 11 west of the grass and east along it to the wall (17, 11), above the fence post (17, 12)"
+          "target": {
+            "map": "Route10",
+            "tiles": [
+              [
+                17,
+                11
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "below_center_door",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 Route 9/10 wall-guided trainer-dodging legs; into the ledge's gap (16, 11), down column 16 to row 23, a tile west, up to the Center's wall (15, 21), west along row 21 to the wall (10, 21), east to (13, 21), below the door",
         "args": {
-          "legs": [{"direction": "west", "tiles": 1}, {"direction": "south", "tiles": 12}, {"direction": "west", "tiles": 1}, {"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 5}, {"direction": "east", "tiles": 3}]
-        },
-        "why": "into the ledge's gap (16, 11), down column 16 to row 23, a tile west, up to the Center's wall (15, 21), west along row 21 to the wall (10, 21), east to (13, 21), below the door"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 12
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 5
+            },
+            {
+              "direction": "east",
+              "tiles": 3
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "route10_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up onto the Center's door (13, 20), to the nurse",
         "args": {
-          "target": {"map": "Route10_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "up onto the Center's door (13, 20), to the nurse"
+          "target": {
+            "map": "Route10_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_route10",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -224,6 +444,5 @@
         "The nurse, and the save in Route 10's Center: the save card names ROUTE 10."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

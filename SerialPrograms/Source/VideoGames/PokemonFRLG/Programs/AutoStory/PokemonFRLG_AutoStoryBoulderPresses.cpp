@@ -13,8 +13,11 @@
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryBoulderPresses.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementStepPresses.h"
+#include "PokemonFRLG_AutoStoryBagUse.h"
+#include "PokemonFRLG_AutoStoryBattleData.h"
 #include "PokemonFRLG_AutoStoryPresses.h"
 #include "PokemonFRLG_AutoStoryQuietOverworld.h"
+#include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryTrainerMessage.h"
 
@@ -69,19 +72,44 @@ std::optional<std::string> use_strength(ConsoleHandle& console, ProControllerCon
     return std::nullopt;
 }
 
-ConsoleBoulderPresses::ConsoleBoulderPresses(ConsoleHandle& console, ProControllerContext& context, PlayerGender player)
+ConsoleBoulderPresses::ConsoleBoulderPresses(
+    ConsoleHandle& console, ProControllerContext& context,
+    PlayerGender player, Supplies& supplies, Language language
+)
     : m_console(console)
     , m_context(context)
     , m_player(player)
+    , m_supplies(supplies)
+    , m_language(language)
 {}
 
 BoulderPressRead ConsoleBoulderPresses::press(Direction direction){
     m_context.wait_for_all_requests();
     const VideoSnapshot before = m_console.video().snapshot();
+    if (!before){
+        m_console.log("Boulder: no shot of the screen before the tap: read as nothing moved.", COLOR_ORANGE);
+        return {};
+    }
+    //  Don't press D-pad into an open box (e.g. "REPEL's effect wore off..."
+    //  from the previous step: in FRLG, MSGBOX_SIGN closes on frame 1 of a
+    //  D-pad tap and the rest of the 66 ms hold can push the boulder in the
+    //  same tap while the box disappears) or into a battle/fade. Returning
+    //  empty lets press_for() call clear_interrupt() first and then tap cleanly.
+    FrlgScreenObserver observer;
+    const ScreenEvents showing = observer.observe(before, current_time());
+    if (showing.has(ScreenEvent::DIALOG_BOX)
+        || showing.has(ScreenEvent::CHOICE_BOX)
+        || showing.has(ScreenEvent::BATTLE_STARTED)
+        || showing.has(ScreenEvent::FADE_BLACK)
+        || showing.has(ScreenEvent::FADE_WHITE)
+    ){
+        m_console.log("Boulder: an interrupt is showing before the tap: clearing it instead of pressing.", COLOR_ORANGE);
+        return {};
+    }
     step_once(m_console, m_context, direction, direction, m_player);
     const VideoSnapshot after = still_shot();
-    if (!before || !after){
-        m_console.log("Boulder: no shot of the screen around the tap: read as nothing moved.", COLOR_ORANGE);
+    if (!after){
+        m_console.log("Boulder: no shot of the screen after the tap: read as nothing moved.", COLOR_ORANGE);
         return {};
     }
     const BoulderPressRead read = read_boulder_press(*before.frame, *after.frame, GameSettings::instance().GAME_BOX, direction);
@@ -89,24 +117,43 @@ BoulderPressRead ConsoleBoulderPresses::press(Direction direction){
     return read;
 }
 
-bool ConsoleBoulderPresses::clear_interrupt(){
+BoulderInterrupt ConsoleBoulderPresses::clear_interrupt(){
     m_context.wait_for_all_requests();
     ConsoleScreenLook eyes(m_console, m_context);
     const Pokemon::ScreenLookFunction look = [&eyes](bool fresh){ return eyes.look(fresh); };
     Pokemon::ScreenSettle settle = wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
+    bool wild_battle = false;
     if (settle.showing.has(ScreenEvent::BATTLE_STARTED)){
+        wild_battle = true;
         m_console.log("Boulder: a wild battle stopped the push; running from it.", COLOR_ORANGE);
         flee_battle(m_console, m_context);
         wait_out_battle_exit(m_console, m_context);
         settle = wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
     }else if (settle.showing.has(ScreenEvent::DIALOG_BOX) || settle.showing.has(ScreenEvent::CHOICE_BOX)){
+        bool wore_off = false;
+        if (const VideoSnapshot frame = m_console.video().snapshot()){
+            wore_off = repel_wore_off_shows(m_language, frame);
+        }
         m_console.log("Boulder: a box stopped the push; closing it.", COLOR_ORANGE);
         mash_until_overworld(m_console, m_context, BOX_TIMEOUT);
+        if (wore_off){
+            ConsoleItemUseActions bag(m_console, m_context, m_language, m_supplies.repel_menu);
+            const ItemUseEnd end = m_supplies.repel.empty()
+                ? use_strongest_repel(m_console.logger(), bag)
+                : renew_repel(m_console.logger(), bag, m_supplies.repel);
+            m_console.log("Boulder: another Repel after the last wore off: " + item_use_end_name(end) + ".");
+            if (end == ItemUseEnd::USED){
+                m_supplies.counts_read = false;
+            }
+        }
         settle = wait_for_quiet_overworld(look, MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT);
     }
     const bool quiet = quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
-    m_console.log(std::format("Boulder: after the tap, {}{}.", Pokemon::describe(settle), quiet ? "; tapping again" : ""), quiet ? COLOR_BLACK : COLOR_RED);
-    return quiet;
+    m_console.log(std::format("Boulder: after the tap, {}{}.", Pokemon::describe(settle), quiet ? "; continuing" : ""), quiet ? COLOR_BLACK : COLOR_RED);
+    if (!quiet){
+        return BoulderInterrupt::FAILED;
+    }
+    return wild_battle ? BoulderInterrupt::WILD_BATTLE : BoulderInterrupt::CLEARED;
 }
 
 VideoSnapshot ConsoleBoulderPresses::still_shot(){

@@ -160,6 +160,8 @@ PcView box_screen(Logger& logger, const ImageViewRGB32& screen, const ImageViewR
     if (selection && selection->location == BoxSelectionLocation::Grid){
         view.cursor = selection->row * BOX_COLUMNS + selection->column;
         view.occupied = BoxCellOccupiedDetector(COLOR_RED).detect(screen);
+    }else if (selection && selection->location == BoxSelectionLocation::BoxTile){
+        view.on_box_header = true;
     }
     return view;
 }

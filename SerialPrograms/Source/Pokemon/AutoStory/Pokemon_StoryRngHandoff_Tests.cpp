@@ -19,24 +19,22 @@ namespace Pokemon{
 
 namespace{
 
-struct RngHandoffInput{
-    std::string_view name;
-    UnitTestResult (*body)(Logger& logger);
-};
-
-struct RngHandoffExpectation{
-    std::string_view description;
-};
-
 struct RngHandoffTestCase{
-    RngHandoffInput input;
-    RngHandoffExpectation expectation;
+    struct Input{
+        UnitTestResult (*body)(Logger& logger);
+    };
+    struct Expectation{
+        std::string_view description;
+    };
+    std::string_view name;
+    Input input;
+    Expectation expectation;
 };
 
 class Test_RngHandoff : public UnitTest{
 public:
     explicit Test_RngHandoff(RngHandoffTestCase scenario)
-        : UnitTest("Pokemon::StoryRngHandoff - " + std::string(scenario.input.name))
+        : UnitTest("Pokemon::StoryRngHandoff - " + std::string(scenario.name))
         , m_scenario(scenario)
     {}
 
@@ -68,15 +66,15 @@ UnitTestResult test_mode(Logger&){
     return true;
 }
 
-//  A success is an ok Outcome and calls the program once.
+//  A success returns std::nullopt and calls the program once.
 UnitTestResult test_success(Logger& logger){
     int calls = 0;
-    const Outcome outcome = run_rng_handoff(logger, "Test RNG", [&]{
+    const std::optional<StoryFailure> failure = run_rng_handoff(logger, "Test RNG", [&]{
         calls++;
-        return RngHandoffResult{.failure = {}, .summary = "2 resets", .user_turn = {}};
+        return RngHandoffResult{.summary = "2 resets"};
     });
-    if (!outcome.succeeded()){
-        return "Expected an ok outcome";
+    if (failure){
+        return "Expected success";
     }
     if (calls != 1){
         return std::format("Expected 1 call, got {}", calls);
@@ -90,7 +88,7 @@ UnitTestResult test_failure(Logger& logger){
     try{
         run_rng_handoff(logger, "Test RNG", [&]{
             calls++;
-            return RngHandoffResult{.failure = "out of resets", .summary = {}, .user_turn = {}};
+            return RngHandoffResult{.failure = "out of resets"};
         });
     }catch (OperationFailedException&){
         if (calls != 1){
@@ -107,7 +105,7 @@ UnitTestResult test_user_turn(Logger& logger){
     int calls = 0;
     const std::optional<std::string> turn = run_rng_handoff_or_user_turn(logger, "Test RNG", [&]{
         calls++;
-        return RngHandoffResult{.failure = {}, .summary = {}, .user_turn = "save by hand"};
+        return RngHandoffResult{.user_turn = "save by hand"};
     });
     if (!turn || *turn != "save by hand"){
         return "Expected the user's turn";
@@ -116,14 +114,14 @@ UnitTestResult test_user_turn(Logger& logger){
         return std::format("Expected 1 call, got {}", calls);
     }
     const std::optional<std::string> none = run_rng_handoff_or_user_turn(logger, "Test RNG", []{
-        return RngHandoffResult{.failure = {}, .summary = "shiny", .user_turn = {}};
+        return RngHandoffResult{.summary = "shiny"};
     });
     if (none){
         return "A success has no user's turn";
     }
     try{
         run_rng_handoff_or_user_turn(logger, "Test RNG", []{
-            return RngHandoffResult{.failure = "out of resets", .summary = {}, .user_turn = "ignored"};
+            return RngHandoffResult{.failure = "out of resets", .user_turn = "ignored"};
         });
     }catch (OperationFailedException&){
         return true;
@@ -154,23 +152,28 @@ UnitTestResult test_stop_report(Logger& logger){
 
 const RngHandoffTestCase RNG_HANDOFF_CASES[] = {
     {
-        .input = {.name = "RUN takes precedence over STOP", .body = test_mode},
+        .name = "RUN takes precedence over STOP",
+        .input = {.body = test_mode},
         .expectation = {.description = "RUN wins when both options are on"},
     },
     {
-        .input = {.name = "a stop reports its message and lines", .body = test_stop_report},
+        .name = "a stop reports its message and lines",
+        .input = {.body = test_stop_report},
         .expectation = {.description = "log, overlay and notification text agree"},
     },
     {
-        .input = {.name = "a success is ok", .body = test_success},
+        .name = "a success is ok",
+        .input = {.body = test_success},
         .expectation = {.description = "an ok outcome after one call"},
     },
     {
-        .input = {.name = "a failure throws without a retry", .body = test_failure},
+        .name = "a failure throws without a retry",
+        .input = {.body = test_failure},
         .expectation = {.description = "OperationFailedException after one call"},
     },
     {
-        .input = {.name = "a user's turn is returned, not an error", .body = test_user_turn},
+        .name = "a user's turn is returned, not an error",
+        .input = {.body = test_user_turn},
         .expectation = {.description = "the message comes back; a failure still throws"},
     },
 };

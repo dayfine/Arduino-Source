@@ -4,81 +4,145 @@
   "checkpoint": {
     "id": "05.01",
     "title": "Cerulean: Buy balls/potions, catch Rattata (Cut user), return to Center",
-    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "CeruleanCity_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "mart_clerk",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the Center to the Mart's clerk",
         "args": {
-          "target": {"map": "CeruleanCity_Mart", "tiles": [[4, 3]], "facing": "west"}
-        },
-        "why": "out of the Center to the Mart's clerk"
+          "target": {
+            "map": "CeruleanCity_Mart",
+            "tiles": [
+              [
+                4,
+                3
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "buy_supplies",
-        "kind": "game_action",
         "action": "mart",
+        "why": "5 Poke Balls to catch Rattata (Cut user) and 5 Potions",
         "args": {
           "map": "CeruleanCity_Mart",
-          "items": [{"item": "poke-ball", "quantity": 5}, {"item": "potion", "quantity": 5}]
-        },
-        "why": "5 Poke Balls to catch Rattata (Cut user) and 5 Potions"
+          "items": [
+            {
+              "item": "poke-ball",
+              "quantity": 5
+            },
+            {
+              "item": "potion",
+              "quantity": 5
+            }
+          ]
+        }
       },
       {
         "id": "capture_patch",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "west out of the city onto Route 4 grass to catch Rattata",
         "args": {
-          "target": {"map": "Route4", "tiles": [[86, 16]], "facing": "west"}
-        },
-        "why": "west out of the city onto Route 4 grass to catch Rattata"
+          "target": {
+            "map": "Route4",
+            "tiles": [
+              [
+                86,
+                16
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "catch_rattata",
-        "kind": "game_action",
         "action": "capture",
+        "why": "catch Rattata as early Cut user and weak mon for Nugget Bridge fainting",
         "args": {
           "species": "rattata",
           "balls": 5,
           "encounters": 30,
           "pace": "west"
-        },
-        "why": "catch Rattata as early Cut user and weak mon for Nugget Bridge fainting"
+        }
       },
       {
         "id": "cerulean_road",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "align on Route 4 row 11 (Cerulean row 21) before crossing into Cerulean City",
         "args": {
-          "target": {"map": "Route4", "tiles": [[94, 11]], "facing": "east"}
-        },
-        "why": "align on Route 4 row 11 (Cerulean row 21) before crossing into Cerulean City"
+          "target": {
+            "map": "Route4",
+            "tiles": [
+              [
+                94,
+                11
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cerulean_east_wall",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "run east to the Pokecenter sign wall (26, 21) to absorb the Route4->CeruleanCity connection stall",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[26, 21]], "facing": "east"}
-        },
-        "why": "run east to the Pokecenter sign wall (26, 21) to absorb the Route4->CeruleanCity connection stall"
+          "target": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                26,
+                21
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "cerulean_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "back to the Center before Rival",
         "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "back to the Center before Rival"
+          "target": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_cerulean",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -88,6 +152,5 @@
         "Cerulean 05.01: buy Poke Balls and Potions, catch Rattata on Route 4, return to Cerulean Center."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

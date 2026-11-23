@@ -2,9 +2,6 @@
  *
  *  From: https://github.com/PokemonAutomation/
  *
- *  The unit tests of the action registry, the step runner and the
- *  take_warp example (Pokemon/AutoStory/Engine).
- *
  */
 
 #ifndef PokemonAutomation_Pokemon_StoryEngine_Tests_H
@@ -16,7 +13,7 @@ namespace PokemonAutomation{
 namespace Pokemon{
 
 
-// Registers unit tests for the action registry, the step runner and the take_warp example.
+// Registers unit tests for the story engine on a scripted backend: runs, lint, retries and saves.
 void add_tests_StoryEngine(UnitTestDatabase& database);
 
 
