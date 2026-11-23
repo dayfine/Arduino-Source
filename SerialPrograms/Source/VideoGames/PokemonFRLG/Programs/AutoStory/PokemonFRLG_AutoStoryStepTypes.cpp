@@ -249,24 +249,24 @@ void parse_grind_args(const JsonObject& args, std::string_view source, bool with
     out["heal_every"] = read_int_default(args, "heal_every", 0);
 }
 
-void parse_field_or_league_args(std::string_view action, const JsonObject& args, std::string_view source, FrlgArgMap& out){
+bool parse_field_move_args(std::string_view action, const JsonObject& args, std::string_view source, FrlgArgMap& out){
     if (action == "cut_tree" || action == "surf"){
         check_allowed_args(args, {"direction"});
         out["direction"] = read_direction_field(args, "direction", source);
-        return;
+        return true;
     }
     if (action == "push_boulder"){
         check_allowed_args(args, {"direction", "tiles", "activate"});
         out["direction"] = read_direction_field(args, "direction", source);
         out["tiles"] = read_int_default(args, "tiles", 1);
         out["activate"] = read_bool_default(args, "activate", false);
-        return;
+        return true;
     }
     if (action == "lift_floor"){
         check_allowed_args(args, {"from", "to"});
         out["from"] = read_string_field(args, "from", source);
         out["to"] = read_string_field(args, "to", source);
-        return;
+        return true;
     }
     if (action == "use_item"){
         check_allowed_args(args, {"item", "safari", "count", "if_any"});
@@ -274,13 +274,13 @@ void parse_field_or_league_args(std::string_view action, const JsonObject& args,
         out["safari"] = read_bool_default(args, "safari", false);
         out["count"] = read_int_default(args, "count", 1);
         out["if_any"] = read_bool_default(args, "if_any", false);
-        return;
+        return true;
     }
     if (action == "use_repel"){
         check_allowed_args(args, {"safari", "if_any"});
         out["safari"] = read_bool_default(args, "safari", false);
         out["if_any"] = read_bool_default(args, "if_any", false);
-        return;
+        return true;
     }
     if (action == "fly"){
         check_allowed_args(args, {"town", "slot", "species", "menu_row", "safari"});
@@ -293,40 +293,48 @@ void parse_field_or_league_args(std::string_view action, const JsonObject& args,
         }
         out["menu_row"] = read_int_default(args, "menu_row", 2);
         out["safari"] = read_bool_default(args, "safari", false);
-        return;
+        return true;
     }
+    return false;
+}
+
+bool parse_misc_action_args(std::string_view action, const JsonObject& args, std::string_view source, FrlgArgMap& out){
     if (action == "fossil"){
         check_allowed_args(args, {"fossil"});
         out["fossil"] = read_string_field(args, "fossil", source);
-        return;
+        return true;
     }
     if (action == "level"){
         check_allowed_args(args, {"slot", "min"});
         out["slot"] = read_int_field(args, "slot", source);
         out["min"] = read_int_field(args, "min", source);
-        return;
+        return true;
     }
     if (action == "nugget_farm"){
         check_allowed_args(args, {"count", "nurse"});
         out["count"] = read_int_field(args, "count", source);
         out["nurse"] = Pokemon::read_grid_pose(args.get_value_throw("nurse", std::string(source)), source);
-        return;
+        return true;
     }
     if (action == "slope"){
         check_allowed_args(args, {"moves"});
         out["moves"] = read_words_value(args.get_value_throw("moves", std::string(source)), source);
-        return;
+        return true;
     }
     if (action == "count_items"){
         check_allowed_args(args, {"items", "found"});
         out["items"] = read_words_value(args.get_value_throw("items", std::string(source)), source);
         out["found"] = read_bool_default(args, "found", false);
-        return;
+        return true;
     }
+    return false;
+}
+
+void parse_league_action_args(std::string_view action, const JsonObject& args, std::string_view source, FrlgArgMap& out){
     if (action == "heal_to_full"){
         check_allowed_args(args, {"max_hp", "full_restore", "below_percent"});
         out["max_hp"] = read_int_field(args, "max_hp", source);
-        out["full_restore"] = read_bool_default(args, "full_restore", false);
+        out.emplace("full_restore", read_bool_default(args, "full_restore", false));
         out["below_percent"] = read_int_default(args, "below_percent", 100);
         return;
     }
@@ -354,6 +362,119 @@ void parse_field_or_league_args(std::string_view action, const JsonObject& args,
         return;
     }
     throw ParseException(std::format("unknown FRLG action \"{}\"", action));
+}
+
+bool parse_simple_action_step(std::string_view action, const JsonObject& args, StoryStep& step){
+    static const std::set<std::string_view> NO_ARGS{
+        "new_game", "options", "scene", "heal", "close_trainer_card", "leave_gift_summary",
+        "trash_cans", "poster_switch", "ride_bike", "register_bike", "center_enter",
+        "center_exit", "hall_of_fame",
+    };
+    if (NO_ARGS.contains(action)){
+        check_allowed_args(args, {});
+        return true;
+    }
+    if (action == "talk"){
+        check_allowed_args(args, {"variant"});
+        step.variant = read_string_default(args, "variant");
+        check_variant(action, step.variant, {"wanderer"});
+        return true;
+    }
+    if (action == "route"){
+        check_allowed_args(args, {"target", "fight_wild", "variant"});
+        step.variant = read_string_default(args, "variant");
+        check_variant(action, step.variant, {"run", "bike"});
+        step.args["target"] = Pokemon::read_grid_pose(args.get_value_throw("target", "route"), "route");
+        step.args["fight_wild"] = read_bool_default(args, "fight_wild", false);
+        return true;
+    }
+    if (action == "legs"){
+        check_allowed_args(args, {"legs", "fight_wild", "variant"});
+        step.variant = read_string_default(args, "variant");
+        check_variant(action, step.variant, {"run", "bike", "taps"});
+        step.args["legs"] = Pokemon::read_story_legs(args.get_value_throw("legs", "legs"), "legs");
+        step.args["fight_wild"] = read_bool_default(args, "fight_wild", false);
+        return true;
+    }
+    if (action == "step"){
+        check_allowed_args(args, {"direction", "variant"});
+        step.variant = read_string_default(args, "variant");
+        check_variant(action, step.variant, {"trainer_line", "trainer_wait"});
+        step.args["direction"] = read_direction_field(args, "direction", "step");
+        return true;
+    }
+    return false;
+}
+
+std::optional<Pokemon::StoryCheckKind> frlg_action_check_kind(std::string_view action){
+    if (action == "level"){
+        return Pokemon::StoryCheckKind::PARTY_STATS;
+    }
+    return std::nullopt;
+}
+
+bool parse_specialized_action_args(std::string_view action, const JsonObject& args, FrlgArgMap& out){
+    if (action == "battle"){
+        parse_battle_args(args, action, out);
+        return true;
+    }
+    if (action == "pc"){
+        parse_pc_args(args, action, out);
+        return true;
+    }
+    if (action == "capture"){
+        parse_capture_args(args, action, out);
+        return true;
+    }
+    if (action == "mart"){
+        parse_mart_args(args, action, out);
+        return true;
+    }
+    if (action == "teach"){
+        parse_teach_args(args, action, out);
+        return true;
+    }
+    if (action == "grind" || action == "grind_check"){
+        parse_grind_args(args, action, action == "grind", out);
+        return true;
+    }
+    return false;
+}
+
+StoryStep parse_frlg_step(std::string_view action, const JsonObject& args){
+    StoryStep step;
+    step.action = std::string(action);
+    step.check = frlg_action_check_kind(action);
+    parse_common_step_args(args, action, step);
+
+    if (parse_simple_action_step(action, args, step)){
+        return step;
+    }
+    if (action == "answer"){
+        check_allowed_args(args, {"yes"});
+        step.args["yes"] = read_bool_default(args, "yes", true);
+        return step;
+    }
+    if (action == "shop"){
+        check_allowed_args(args, {"items"});
+        step.args["items"] = Pokemon::read_story_items(args.get_value_throw("items", "shop"), "shop");
+        return step;
+    }
+    if (action == "ready"){
+        check_allowed_args(args, {"target", "fight_wild"});
+        step.args["target"] = Pokemon::read_grid_pose(args.get_value_throw("target", "ready"), "ready");
+        step.args["fight_wild"] = read_bool_default(args, "fight_wild", false);
+        return step;
+    }
+    if (parse_specialized_action_args(action, args, step.args)){
+        return step;
+    }
+    if (!parse_field_move_args(action, args, action, step.args)
+        && !parse_misc_action_args(action, args, action, step.args)
+    ){
+        parse_league_action_args(action, args, action, step.args);
+    }
+    return step;
 }
 
 } // namespace
@@ -433,10 +554,6 @@ Pokemon::GateRules frlg_gate_rules(const FrlgRunState& state){
     return Pokemon::GateRules{.card_key_held = state.flags.contains(std::string(CARD_KEY_HELD_FLAG))};
 }
 
-std::string prepared_step_key(std::string_view checkpoint_id, std::string_view step_name){
-    return std::format("{}/{}", checkpoint_id, step_name);
-}
-
 bool is_core_action(std::string_view action){
     static const std::set<std::string_view> CORE{
         "new_game", "options", "route", "legs", "step", "scene",
@@ -493,106 +610,6 @@ const std::vector<std::string>& frlg_action_names(){
         "use_repel",
     };
     return NAMES;
-}
-
-bool is_known_frlg_action(std::string_view action){
-    const auto& names = frlg_action_names();
-    return std::binary_search(names.begin(), names.end(), action);
-}
-
-std::optional<Pokemon::StoryCheckKind> frlg_action_check_kind(std::string_view action){
-    if (action == "level"){
-        return Pokemon::StoryCheckKind::PARTY_STATS;
-    }
-    return std::nullopt;
-}
-
-StoryStep parse_frlg_step(std::string_view action, const JsonObject& args){
-    StoryStep step;
-    step.action = std::string(action);
-    step.check = frlg_action_check_kind(action);
-    parse_common_step_args(args, action, step);
-
-    if (action == "new_game" || action == "options" || action == "scene" || action == "heal"
-        || action == "close_trainer_card" || action == "leave_gift_summary"
-        || action == "trash_cans" || action == "poster_switch" || action == "ride_bike"
-        || action == "register_bike" || action == "center_enter" || action == "center_exit"
-        || action == "hall_of_fame"
-    ){
-        check_allowed_args(args, {});
-        return step;
-    }
-    if (action == "talk"){
-        check_allowed_args(args, {"variant"});
-        step.variant = read_string_default(args, "variant");
-        check_variant(action, step.variant, {"wanderer"});
-        return step;
-    }
-    if (action == "route"){
-        check_allowed_args(args, {"target", "fight_wild", "variant"});
-        step.variant = read_string_default(args, "variant");
-        check_variant(action, step.variant, {"run", "bike"});
-        step.args["target"] = Pokemon::read_grid_pose(args.get_value_throw("target", "route"), "route");
-        step.args["fight_wild"] = read_bool_default(args, "fight_wild", false);
-        return step;
-    }
-    if (action == "legs"){
-        check_allowed_args(args, {"legs", "fight_wild", "variant"});
-        step.variant = read_string_default(args, "variant");
-        check_variant(action, step.variant, {"run", "bike", "taps"});
-        step.args["legs"] = Pokemon::read_story_legs(args.get_value_throw("legs", "legs"), "legs");
-        step.args["fight_wild"] = read_bool_default(args, "fight_wild", false);
-        return step;
-    }
-    if (action == "step"){
-        check_allowed_args(args, {"direction", "variant"});
-        step.variant = read_string_default(args, "variant");
-        check_variant(action, step.variant, {"trainer_line", "trainer_wait"});
-        step.args["direction"] = read_direction_field(args, "direction", "step");
-        return step;
-    }
-    if (action == "answer"){
-        check_allowed_args(args, {"yes"});
-        step.args["yes"] = read_bool_default(args, "yes", true);
-        return step;
-    }
-    if (action == "shop"){
-        check_allowed_args(args, {"items"});
-        step.args["items"] = Pokemon::read_story_items(args.get_value_throw("items", "shop"), "shop");
-        return step;
-    }
-    if (action == "ready"){
-        check_allowed_args(args, {"target", "fight_wild"});
-        step.args["target"] = Pokemon::read_grid_pose(args.get_value_throw("target", "ready"), "ready");
-        step.args["fight_wild"] = read_bool_default(args, "fight_wild", false);
-        return step;
-    }
-    if (action == "battle"){
-        parse_battle_args(args, action, step.args);
-        return step;
-    }
-    if (action == "pc"){
-        parse_pc_args(args, action, step.args);
-        return step;
-    }
-    if (action == "capture"){
-        parse_capture_args(args, action, step.args);
-        return step;
-    }
-    if (action == "mart"){
-        parse_mart_args(args, action, step.args);
-        return step;
-    }
-    if (action == "teach"){
-        parse_teach_args(args, action, step.args);
-        return step;
-    }
-    if (action == "grind" || action == "grind_check"){
-        parse_grind_args(args, action, action == "grind", step.args);
-        return step;
-    }
-    parse_field_or_league_args(action, args, action, step.args);
-    return step;
 }
 
 Pokemon::StoryActions make_frlg_action_parsers(

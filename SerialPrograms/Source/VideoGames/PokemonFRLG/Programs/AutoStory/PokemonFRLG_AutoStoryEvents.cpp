@@ -612,10 +612,7 @@ ConsoleAction game_console_action(StoryActionId id){
     }
 }
 
-ConsoleAction console_action_of(StoryActionId id){
-    if (const ConsoleAction game = game_console_action(id)){
-        return game;
-    }
+ConsoleAction movement_console_action(StoryActionId id){
     switch (id){
     case StoryActionId::NEW_GAME:
         return [](StoryEnv& env, FrlgRunState&, const StoryStep&) -> std::optional<StoryFailure>{
@@ -634,6 +631,19 @@ ConsoleAction console_action_of(StoryActionId id){
             note_line_trainer(env.console.logger(), step, failure, state);
             return failure;
         };
+    default:
+        return nullptr;
+    }
+}
+
+ConsoleAction console_action_of(StoryActionId id){
+    if (const ConsoleAction game = game_console_action(id)){
+        return game;
+    }
+    if (const ConsoleAction move = movement_console_action(id)){
+        return move;
+    }
+    switch (id){
     case StoryActionId::TALK:
         return [](StoryEnv& env, FrlgRunState&, const StoryStep& step) -> std::optional<StoryFailure>{
             if (!talk_until_message(env.console, env.context, step)){
@@ -846,6 +856,55 @@ FrlgStepAction StoryExecutor::console_action(StoryActionId id){
     );
 }
 
+namespace{
+
+std::optional<StoryFailure> invoke_step_with_warp_guards(
+    const FrlgStepAction& action,
+    const StoryStep& step,
+    InterruptLogGuard& guard,
+    FrlgRunState& state
+){
+    return trainers_back_on_warp(
+        [&]{
+            return regrow_on_warp(
+                story_maps(),
+                [&]() -> std::optional<StoryFailure>{
+                    try{
+                        return action(step, state);
+                    }catch (OperationFailedException& e){
+                        guard.on_failure(step, e);
+                        return frlg_failure("operation_failed", e.message());
+                    }
+                },
+                state
+            );
+        },
+        state
+    );
+}
+
+void apply_step_post_state(
+    const StoryStep& step,
+    const std::string& prep_key,
+    StoryEnv& env,
+    FrlgRunState& state
+){
+    if (step.pose_after){
+        state.pose = step.pose_after;
+    }
+    if (step.gates_after){
+        Pokemon::apply_gate_change(state.gates, *step.gates_after);
+    }
+    for (const std::string& flag : step.flags_after){
+        state.flags.insert(flag);
+    }
+    if (step.once_per_save && state.changed_nothing){
+        env.prepared.insert(prep_key);
+    }
+}
+
+} // namespace
+
 std::optional<StoryFailure> StoryExecutor::run_step(
     std::string_view checkpoint_id, const StoryStep& step, FrlgRunState& state
 ){
@@ -856,7 +915,7 @@ std::optional<StoryFailure> StoryExecutor::run_step(
     if (!step.skip_if.empty() && holds(step.skip_if, state)){
         return std::nullopt;
     }
-    const std::string prep_key = prepared_step_key(checkpoint_id, step.name);
+    const std::string prep_key = std::format("{}/{}", checkpoint_id, step.name);
     if (step.once_per_save && m_env.prepared.contains(prep_key)){
         m_env.console.log(std::format("Story: {} already done on this save; skipping.", prep_key));
         return std::nullopt;
@@ -882,41 +941,13 @@ std::optional<StoryFailure> StoryExecutor::run_step(
     if (it == m_table.end()){
         return frlg_unsupported_step(step);
     }
-
-    std::optional<StoryFailure> failure = trainers_back_on_warp(
-        [&]{
-            return regrow_on_warp(
-                story_maps(),
-                [&]() -> std::optional<StoryFailure>{
-                    try{
-                        return it->second(step, state);
-                    }catch (OperationFailedException& e){
-                        m_guard.on_failure(step, e);
-                        return frlg_failure("operation_failed", e.message());
-                    }
-                },
-                state
-            );
-        },
-        state
-    );
+    std::optional<StoryFailure> failure = invoke_step_with_warp_guards(it->second, step, m_guard, state);
     m_env.supplies.counts_read = m_env.supplies.counts_read
         && items_pocket_change(step.action).value_or(ItemsPocketChange::STALE) != ItemsPocketChange::STALE;
     if (failure){
         return failure;
     }
-    if (step.pose_after){
-        state.pose = step.pose_after;
-    }
-    if (step.gates_after){
-        Pokemon::apply_gate_change(state.gates, *step.gates_after);
-    }
-    for (const std::string& flag : step.flags_after){
-        state.flags.insert(flag);
-    }
-    if (step.once_per_save && state.changed_nothing){
-        m_env.prepared.insert(prep_key);
-    }
+    apply_step_post_state(step, prep_key, m_env, state);
     return std::nullopt;
 }
 

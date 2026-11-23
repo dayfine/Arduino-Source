@@ -257,43 +257,9 @@ std::vector<StoryCheckpoint> frlg_rows_for_mode(const FrlgStoryData& data, bool 
     return rows;
 }
 
-StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source){
-    std::vector<StoryStep> parsed_steps;
-    Pokemon::StoryActions parsers = make_frlg_action_parsers(
-        [&parsed_steps](StoryStep parsed) -> Pokemon::StoryStepRun{
-            parsed_steps.push_back(std::move(parsed));
-            return {};
-        }
-    );
-    //  Parse and validate the S10/S11 envelope and every step through #648.
-    const Pokemon::StoryCheckpoint core = Pokemon::read_story_checkpoint(value, "frlg", source, parsers);
+namespace{
 
-    const JsonObject& root = value.to_object_throw(std::string(source));
-    const JsonObject& cp_obj = root.get_object_throw("checkpoint", std::string(source));
-    const JsonObject& execution = root.get_object_throw("execution", std::string(source));
-
-    StoryCheckpoint checkpoint;
-    checkpoint.id = core.id;
-    checkpoint.title = core.title;
-    if (parsed_steps.size() != core.steps.size()){
-        throw ParseException(std::format("{}: parsed step count mismatch", source));
-    }
-    for (size_t i = 0; i < core.steps.size(); i++){
-        StoryStep& step = parsed_steps[i];
-        step.name = core.steps[i].name;
-        step.why = core.steps[i].why;
-        const bool spends = step.action == MART_ACTION
-            || step.action == TEACH_ACTION
-            || step.action == "register_bike";
-        step.once_per_save = spends && step.skip_if.empty();
-    }
-    checkpoint.steps = std::move(parsed_steps);
-
-    if (const JsonValue* start_val = cp_obj.get_value("start")){
-        checkpoint.start = Pokemon::read_grid_pose(*start_val, source);
-    }
-    read_metadata(cp_obj, source, checkpoint);
-
+void read_execution_block(const JsonObject& execution, std::string_view source, StoryCheckpoint& checkpoint){
     only_fields(execution, {
         "menu", "supplies", "lead", "protected_slots", "handoff", "gift",
         "live_start", "notes", "verify", "dev_only", "save", "reload_when_chained",
@@ -324,6 +290,9 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
     if (execution.get_value("reload_when_chained") != nullptr){
         checkpoint.reload_when_chained = execution.get_boolean_throw("reload_when_chained", std::string(source));
     }
+}
+
+void read_execution_state_and_notes(const JsonObject& execution, std::string_view source, StoryCheckpoint& checkpoint){
     if (const JsonValue* verify_val = execution.get_value("verify")){
         checkpoint.verify = read_verify(verify_val->to_object_throw(std::string(source)), source);
     }
@@ -335,7 +304,6 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
     if (const JsonValue* gates_val = execution.get_value("start_gates")){
         Pokemon::apply_gate_change(checkpoint.start_gates, read_gate_change(*gates_val, source));
     }
-
     const std::set<std::string> note_keys = read_note_keys(execution, source);
     for (const std::string& key : note_keys){
         bool found = key == "checkpoint";
@@ -346,19 +314,14 @@ StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_v
             throw ParseException(std::format("{}: notes for unknown step {}", source, key));
         }
     }
-    return checkpoint;
 }
 
-FrlgStoryData load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files){
-    const auto& embedded = checkpoint_files();
-    std::map<std::string, std::string> by_name;
-    for (const auto& [name, text] : embedded){
-        const std::string key = name.ends_with(".json") ? std::string(name) : std::string(name) + ".json";
-        by_name.emplace(key, text);
-    }
-
-    FrlgStoryData data;
-    std::map<std::string, std::string> dev_by_name;
+void apply_dev_overrides(
+    std::span<const Pokemon::StoryDevFile> dev_files,
+    std::map<std::string, std::string>& by_name,
+    std::map<std::string, std::string>& dev_by_name,
+    FrlgStoryData& data
+){
     for (const Pokemon::StoryDevFile& file : dev_files){
         if (!by_name.contains(file.name)){
             throw ParseException(std::format("{}: unknown checkpoint file \"{}\"", file.path, file.name));
@@ -376,6 +339,83 @@ FrlgStoryData load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files){
         by_name[file.name] = file.text;
         data.dev_files.emplace_back(file.name, file.path);
     }
+}
+
+void validate_story_checkpoints(std::vector<StoryCheckpoint>& checkpoints){
+    std::sort(checkpoints.begin(), checkpoints.end(), [](const StoryCheckpoint& a, const StoryCheckpoint& b){
+        return story_position(a.id) < story_position(b.id);
+    });
+    for (size_t c = 0; c < checkpoints.size(); c++){
+        const StoryCheckpoint& row = checkpoints[c];
+        if (!row.reload_when_chained){
+            continue;
+        }
+        if (c == 0 || !checkpoints[c - 1].autosave){
+            throw ParseException(std::format(
+                "{}: reload_when_chained requires the previous checkpoint to end on autosave", row.id
+            ));
+        }
+    }
+    for (size_t c = 1; c < checkpoints.size(); c++){
+        if (checkpoints[c].id == checkpoints[c - 1].id){
+            throw ParseException(std::format(
+                "Checkpoint {} needs its id once in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).", checkpoints[c].id
+            ));
+        }
+    }
+}
+
+} // namespace
+
+StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source){
+    std::vector<StoryStep> parsed_steps;
+    Pokemon::StoryActions parsers = make_frlg_action_parsers(
+        [&parsed_steps](StoryStep parsed) -> Pokemon::StoryStepRun{
+            parsed_steps.push_back(std::move(parsed));
+            return {};
+        }
+    );
+    const Pokemon::StoryCheckpoint core = Pokemon::read_story_checkpoint(value, "frlg", source, parsers);
+    const JsonObject& root = value.to_object_throw(std::string(source));
+    const JsonObject& cp_obj = root.get_object_throw("checkpoint", std::string(source));
+    const JsonObject& execution = root.get_object_throw("execution", std::string(source));
+
+    StoryCheckpoint checkpoint;
+    checkpoint.id = core.id;
+    checkpoint.title = core.title;
+    if (parsed_steps.size() != core.steps.size()){
+        throw ParseException(std::format("{}: parsed step count mismatch", source));
+    }
+    for (size_t i = 0; i < core.steps.size(); i++){
+        StoryStep& step = parsed_steps[i];
+        step.name = core.steps[i].name;
+        step.why = core.steps[i].why;
+        const bool spends = step.action == MART_ACTION
+            || step.action == TEACH_ACTION
+            || step.action == "register_bike";
+        step.once_per_save = spends && step.skip_if.empty();
+    }
+    checkpoint.steps = std::move(parsed_steps);
+    if (const JsonValue* start_val = cp_obj.get_value("start")){
+        checkpoint.start = Pokemon::read_grid_pose(*start_val, source);
+    }
+    read_metadata(cp_obj, source, checkpoint);
+    read_execution_block(execution, source, checkpoint);
+    read_execution_state_and_notes(execution, source, checkpoint);
+    return checkpoint;
+}
+
+FrlgStoryData load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files){
+    const auto& embedded = checkpoint_files();
+    std::map<std::string, std::string> by_name;
+    for (const auto& [name, text] : embedded){
+        const std::string key = name.ends_with(".json") ? std::string(name) : std::string(name) + ".json";
+        by_name.emplace(key, text);
+    }
+
+    FrlgStoryData data;
+    std::map<std::string, std::string> dev_by_name;
+    apply_dev_overrides(dev_files, by_name, dev_by_name, data);
 
     for (const auto& [name, text] : by_name){
         const auto dev_it = dev_by_name.find(name);
@@ -388,28 +428,7 @@ FrlgStoryData load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files){
         }
         data.checkpoints.push_back(std::move(cp));
     }
-
-    std::sort(data.checkpoints.begin(), data.checkpoints.end(), [](const StoryCheckpoint& a, const StoryCheckpoint& b){
-        return story_position(a.id) < story_position(b.id);
-    });
-    for (size_t c = 0; c < data.checkpoints.size(); c++){
-        const StoryCheckpoint& row = data.checkpoints[c];
-        if (!row.reload_when_chained){
-            continue;
-        }
-        if (c == 0 || !data.checkpoints[c - 1].autosave){
-            throw ParseException(std::format(
-                "{}: reload_when_chained requires the previous checkpoint to end on autosave", row.id
-            ));
-        }
-    }
-    for (size_t c = 1; c < data.checkpoints.size(); c++){
-        if (data.checkpoints[c].id == data.checkpoints[c - 1].id){
-            throw ParseException(std::format(
-                "Checkpoint {} needs its id once in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).", data.checkpoints[c].id
-            ));
-        }
-    }
+    validate_story_checkpoints(data.checkpoints);
     return data;
 }
 

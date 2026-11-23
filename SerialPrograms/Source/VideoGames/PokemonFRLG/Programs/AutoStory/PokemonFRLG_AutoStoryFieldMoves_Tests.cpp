@@ -125,7 +125,10 @@ UnitTestResult test_args(){
     if (parse_surf_step(surf) || is_field_move_step(surf)){
         return "Expected no surf step with an arg it doesn't take.";
     }
-    if (!is_known_frlg_action(FLY_VARIANT) || !is_known_frlg_action(SURF_VARIANT)){
+    const auto& action_names = frlg_action_names();
+    if (!std::binary_search(action_names.begin(), action_names.end(), FLY_VARIANT)
+        || !std::binary_search(action_names.begin(), action_names.end(), SURF_VARIANT)
+    ){
         return "Expected fly and surf among FRLG actions.";
     }
     return true;

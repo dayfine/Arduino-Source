@@ -39,56 +39,29 @@ std::string_view story_action_name(StoryActionId id){
 }
 
 StoryActionId story_action_id_of(std::string_view action){
-    if (action == "new_game"){
-        return StoryActionId::NEW_GAME;
-    }
-    if (action == "options"){
-        return StoryActionId::OPTIONS;
-    }
-    if (action == "route"){
-        return StoryActionId::ROUTE;
-    }
-    if (action == "legs"){
-        return StoryActionId::LEGS;
-    }
-    if (action == "step"){
-        return StoryActionId::STEP;
-    }
-    if (action == "talk"){
-        return StoryActionId::TALK;
-    }
-    if (action == "answer"){
-        return StoryActionId::ANSWER;
-    }
-    if (action == "scene"){
-        return StoryActionId::MASH;
-    }
-    if (action == "battle"){
-        return StoryActionId::BATTLE;
-    }
-    if (action == "heal"){
-        return StoryActionId::HEAL;
-    }
-    if (action == "shop"){
-        return StoryActionId::SHOP;
-    }
-    if (action == "ready"){
-        return StoryActionId::READY;
-    }
-    if (action == CLOSE_TRAINER_CARD){
-        return StoryActionId::CLOSE_TRAINER_CARD;
-    }
-    if (action == LEAVE_GIFT_SUMMARY){
-        return StoryActionId::LEAVE_GIFT_SUMMARY;
-    }
-    if (action == CUT_TREE_VARIANT){
-        return StoryActionId::CUT_TREE;
-    }
-    if (action == PUSH_BOULDER_VARIANT){
-        return StoryActionId::PUSH_BOULDER;
-    }
-    if (action == TRASH_CANS_VARIANT){
-        return StoryActionId::TRASH_CANS;
+    static const std::pair<std::string_view, StoryActionId> TABLE[] = {
+        {"new_game", StoryActionId::NEW_GAME},
+        {"options", StoryActionId::OPTIONS},
+        {"route", StoryActionId::ROUTE},
+        {"legs", StoryActionId::LEGS},
+        {"step", StoryActionId::STEP},
+        {"talk", StoryActionId::TALK},
+        {"answer", StoryActionId::ANSWER},
+        {"scene", StoryActionId::MASH},
+        {"battle", StoryActionId::BATTLE},
+        {"heal", StoryActionId::HEAL},
+        {"shop", StoryActionId::SHOP},
+        {"ready", StoryActionId::READY},
+        {CLOSE_TRAINER_CARD, StoryActionId::CLOSE_TRAINER_CARD},
+        {LEAVE_GIFT_SUMMARY, StoryActionId::LEAVE_GIFT_SUMMARY},
+        {CUT_TREE_VARIANT, StoryActionId::CUT_TREE},
+        {PUSH_BOULDER_VARIANT, StoryActionId::PUSH_BOULDER},
+        {TRASH_CANS_VARIANT, StoryActionId::TRASH_CANS},
+    };
+    for (const auto& [name, id] : TABLE){
+        if (action == name){
+            return id;
+        }
     }
     return StoryActionId::GAME;
 }

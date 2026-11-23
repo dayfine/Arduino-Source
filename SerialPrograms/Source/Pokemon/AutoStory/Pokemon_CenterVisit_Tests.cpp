@@ -131,6 +131,7 @@ const VisitTestCase VISIT_CASES[] = {
         .expectation = {.calls = "in settle_door inside heal out settle_door outside"},
     },
     {
+        //  Even with no fade, settle before walking to the nurse (lab-B 2026-11-08).
         .name = "no fade in, but the inside shows: no lineup",
         .input = {.in = NO_FADE, .places = {P::INSIDE, P::INSIDE, P::OUTSIDE}, .out = FADE},
         .expectation = {.calls = "in inside settle_door inside heal out settle_door outside"},

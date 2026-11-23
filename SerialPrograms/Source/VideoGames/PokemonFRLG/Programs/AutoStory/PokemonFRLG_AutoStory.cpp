@@ -587,8 +587,9 @@ static size_t checkpoint_index(const std::vector<StoryCheckpoint>& checkpoints, 
 static void run_verify_story_row(
     SingleSwitchProgramEnvironment& env, StoryEnv& story, StoryExecutor& executor,
     const StoryCheckpoint& row, Pokemon::StoryBackend& backend,
-    Pokemon::StoryGame& game, Pokemon::RunState& core_state, Pokemon::AutoStoryStats& stats
+    Pokemon::StoryGame& game, Pokemon::RunState& core_state
 ){
+    Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
     const Pokemon::VerifyRowReport report = Pokemon::run_verify_row(
         backend,
         row.id,
@@ -625,7 +626,6 @@ static void run_story_rows(
 ){
     FrlgConsoleBackend backend(env, story.context);
     Pokemon::StoryGame game = make_frlg_story_game(env, story, executor, rows, policy, std::move(before));
-    Pokemon::AutoStoryStats& stats = env.current_stats<Pokemon::AutoStoryStats>();
     Pokemon::RunState core_state;
 
     backend.log(std::format("[Segment] 00: start, {} checkpoints", rows.size()));
@@ -633,7 +633,7 @@ static void run_story_rows(
     try{
         while (index < rows.size()){
             if (rows[index].verify){
-                run_verify_story_row(env, story, executor, rows[index], backend, game, core_state, stats);
+                run_verify_story_row(env, story, executor, rows[index], backend, game, core_state);
                 index++;
                 continue;
             }
@@ -654,7 +654,7 @@ static void run_story_rows(
                     std::format("AutoStory stopped at {}: {}", failure->checkpoint_id, failure->failure)
                 );
             }
-            stats.m_checkpoint += chunk.size();
+            env.current_stats<Pokemon::AutoStoryStats>().m_checkpoint += chunk.size();
         }
     }catch (OperationFailedException&){
         env.update_stats();

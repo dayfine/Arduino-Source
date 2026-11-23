@@ -94,9 +94,6 @@ struct FrlgRunState{
     bool changed_nothing = false;
 };
 
-//  once_per_save step keys ("<checkpoint>/<step>") completed since last save.
-using PreparedSteps = std::set<std::string>;
-
 //  Callback that executes one FRLG step against FRLG run state.
 using FrlgStepAction = std::function<std::optional<Pokemon::StoryFailure>(const StoryStep& step, FrlgRunState& state)>;
 
@@ -126,25 +123,11 @@ std::string format_grid_pose(const Pokemon::GridPose& pose);
 //  Gate rules derived from FRLG run flags (card_key_held).
 Pokemon::GateRules frlg_gate_rules(const FrlgRunState& state);
 
-//  Key for PreparedSteps tracking.
-std::string prepared_step_key(std::string_view checkpoint_id, std::string_view step_name);
-
 //  Returns true if `action` is a built-in (non-game-action) step name.
 bool is_core_action(std::string_view action);
 
-//  Returns true if `action` is any registered FRLG action name.
-bool is_known_frlg_action(std::string_view action);
-
 //  All registered FRLG S11 action names (sorted).
 const std::vector<std::string>& frlg_action_names();
-
-//  Optional StoryCheckKind associated with `action` (e.g. "level" -> PARTY_STATS).
-std::optional<Pokemon::StoryCheckKind> frlg_action_check_kind(std::string_view action);
-
-//  Parses one step's args object for `action` into a StoryStep (name/why left
-//  for the caller). Uses #648 reject_unknown_keys() and #653 GridStoryArgs.
-//  Throws ParseException on unknown/missing/mistyped fields.
-StoryStep parse_frlg_step(std::string_view action, const JsonObject& args);
 
 //  Builds #648 Pokemon::StoryActions over every FRLG action name. Each parser
 //  validates args at plan load time and forwards the parsed StoryStep to
@@ -155,6 +138,9 @@ Pokemon::StoryActions make_frlg_action_parsers(
 
 //  Typed lookup of a required/defaulted arg in `args`. Throws InternalProgramError
 //  if missing or wrong type.
+template <typename Type>
+const Type& frlg_arg(const FrlgArgMap& args, std::string_view key);
+
 template <typename Type>
 const Type& frlg_arg(const FrlgArgMap& args, std::string_view key){
     const auto it = args.find(key);

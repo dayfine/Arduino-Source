@@ -359,12 +359,15 @@ UnitTestResult test_capture_args(){
             return "The " + plan.species + " plan didn't read back from its args.";
         }
     }
-    if (!is_known_frlg_action(CAPTURE_ACTION)){
+    const auto& action_names = frlg_action_names();
+    if (!std::binary_search(action_names.begin(), action_names.end(), CAPTURE_ACTION)){
         return "No capture action among FRLG's actions.";
     }
     JsonObject short_json;
     short_json["species"] = "rattata";
-    const FrlgArgMap short_form = parse_frlg_step(CAPTURE_ACTION, short_json).args;
+    StoryStep short_step;
+    make_frlg_action_parsers([&](StoryStep s){ short_step = std::move(s); return Pokemon::StoryStepRun{}; }).at(CAPTURE_ACTION)(short_json);
+    const FrlgArgMap& short_form = short_step.args;
     const std::optional<CapturePlan> defaults = capture_plan_of(short_form);
     if (!defaults || defaults->species != "rattata" || defaults->max_balls != 5 || defaults->weaken_move){
         return "Expected a capture of only a species to read with the defaults.";

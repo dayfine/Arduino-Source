@@ -4,9 +4,11 @@
  *
  */
 
-#include <functional>
+#include <format>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <utility>
 #include <vector>
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryVerifyRuns.h"
 #include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
@@ -17,23 +19,6 @@ namespace Pokemon{
 
 
 namespace{
-
-class VerifyRunsTest : public UnitTest{
-public:
-    VerifyRunsTest(std::string name, std::function<UnitTestResult(Logger&, CancellableScope&)> fn)
-        : UnitTest(std::move(name))
-        , m_fn(std::move(fn))
-    {}
-
-    virtual UnitTestResult run(Logger& logger, CancellableScope& scope) const override{
-        return m_fn(logger, scope);
-    }
-
-private:
-    std::function<UnitTestResult(Logger&, CancellableScope&)> m_fn;
-};
-
-#define PA_STORY_EXPECT(cond) do{ if (!(cond)){ return "assertion failed: " #cond; } }while (false)
 
 StoryCheckpointFactory scripted_factory(std::string id, std::vector<std::optional<StoryFailure>> results){
     size_t index = 0;
@@ -67,179 +52,217 @@ StoryGame fake_game(size_t& saves, size_t& reloads){
     return game;
 }
 
-UnitTestResult test_verify_checkpoint_two_of_three_no_save(Logger&, CancellableScope& scope){
-    FakeStoryBackend backend(FakeStoryScript{}, scope);
-    size_t saves = 0;
-    size_t reloads = 0;
-    StoryGame game = fake_game(saves, reloads);
-    RunState state;
+struct VerifyModeCase{
+    struct Input{
+        std::string checkpoint_id;
+        VerifyModePolicy policy;
+        std::vector<std::optional<StoryFailure>> outcomes;
+    };
+    struct Expectation{
+        bool verified = false;
+        size_t runs = 0;
+        size_t passes = 0;
+        bool saved = false;
+        size_t saves = 0;
+        size_t reloads = 0;
+    };
 
-    const VerifyModeReport report = verify_checkpoint(
-        backend, "20.01",
-        VerifyModePolicy{.runs = 3, .passes_needed = 2, .save_mode = StorySaveMode::NONE},
-        scripted_factory("20.01", {std::nullopt, StoryFailure{.code = "blackout"}, std::nullopt}),
-        game, state
-    );
-    PA_STORY_EXPECT(report.verified);
-    PA_STORY_EXPECT(report.runs == 3);
-    PA_STORY_EXPECT(report.passes == 2);
-    PA_STORY_EXPECT(!report.saved);
-    PA_STORY_EXPECT(saves == 0);
-    PA_STORY_EXPECT(reloads == 2);
-    return true;
-}
+    std::string_view name;
+    Input input;
+    Expectation expectation;
+};
 
-UnitTestResult test_verify_checkpoint_after_verification_saves_only_when_all_pass(Logger&, CancellableScope& scope){
-    FakeStoryBackend backend(FakeStoryScript{}, scope);
-    size_t saves = 0;
-    size_t reloads = 0;
-    StoryGame game = fake_game(saves, reloads);
-    RunState state;
+const VerifyModeCase VERIFY_MODE_CASES[] = {
+    {
+        .name = "two of three passes without saving",
+        .input = {
+            .checkpoint_id = "20.01",
+            .policy = {.runs = 3, .passes_needed = 2, .save_mode = StorySaveMode::NONE},
+            .outcomes = {std::nullopt, StoryFailure{.code = "blackout"}, std::nullopt},
+        },
+        .expectation = {.verified = true, .runs = 3, .passes = 2, .saved = false, .saves = 0, .reloads = 2},
+    },
+    {
+        .name = "after-verification saves when every run passes",
+        .input = {
+            .checkpoint_id = "20.01",
+            .policy = {.runs = 2, .passes_needed = 2, .save_mode = StorySaveMode::AFTER_VERIFICATION},
+            .outcomes = {std::nullopt, std::nullopt},
+        },
+        .expectation = {.verified = true, .runs = 2, .passes = 2, .saved = true, .saves = 1, .reloads = 1},
+    },
+};
 
-    const VerifyModeReport report = verify_checkpoint(
-        backend, "20.01",
-        VerifyModePolicy{.runs = 2, .passes_needed = 2, .save_mode = StorySaveMode::AFTER_VERIFICATION},
-        scripted_factory("20.01", {std::nullopt, std::nullopt}),
-        game, state
-    );
-    PA_STORY_EXPECT(report.verified);
-    PA_STORY_EXPECT(report.saved);
-    PA_STORY_EXPECT(saves == 1);
-    PA_STORY_EXPECT(reloads == 1);
-    return true;
-}
+class Test_VerifyMode : public UnitTest{
+public:
+    explicit Test_VerifyMode(const VerifyModeCase& scenario)
+        : UnitTest(std::format("Pokemon::StoryVerifyRuns - mode: {}", scenario.name))
+        , m_scenario(scenario)
+    {}
 
-UnitTestResult test_verify_row_phase1_and_phase2_save(Logger&, CancellableScope& scope){
-    FakeStoryBackend backend(FakeStoryScript{}, scope);
-    size_t saves = 0;
-    size_t reloads = 0;
-    StoryGame game = fake_game(saves, reloads);
-    RunState state;
-
-    //  Phase 1: fail, pass, pass (reaches min_pass = 2 in 3 tries, 0 saves)
-    //  Phase 2: fail, pass (saves on try 2)
-    const VerifyRowReport report = run_verify_row(
-        backend, "20.01",
-        StoryVerify{.tries = 5, .min_pass = 2, .reset_budget = 3},
-        scripted_factory("20.01", {
-            StoryFailure{.code = "blackout"},
-            std::nullopt,
-            std::nullopt,
-            StoryFailure{.code = "blackout"},
-            std::nullopt,
-        }),
-        game, state
-    );
-    PA_STORY_EXPECT(report.passed);
-    PA_STORY_EXPECT(report.saved);
-    PA_STORY_EXPECT(report.phase1_passes == 2);
-    PA_STORY_EXPECT(report.attempts == 5);
-    PA_STORY_EXPECT(report.reloads == 4);
-    PA_STORY_EXPECT(saves == 1);
-    PA_STORY_EXPECT(reloads == 4);
-    return true;
-}
-
-UnitTestResult test_verify_row_stops_early_below_min_pass(Logger&, CancellableScope& scope){
-    FakeStoryBackend backend(FakeStoryScript{}, scope);
-    size_t saves = 0;
-    size_t reloads = 0;
-    StoryGame game = fake_game(saves, reloads);
-    RunState state;
-
-    //  tries=4, min_pass=3: after 2 failures, only 2 tries left -> impossible!
-    const VerifyRowReport report = run_verify_row(
-        backend, "20.02",
-        StoryVerify{.tries = 4, .min_pass = 3, .reset_budget = 3},
-        scripted_factory("20.02", {
-            StoryFailure{.code = "blackout"},
-            StoryFailure{.code = "blackout"},
-        }),
-        game, state
-    );
-    PA_STORY_EXPECT(!report.passed);
-    PA_STORY_EXPECT(!report.saved);
-    PA_STORY_EXPECT(report.attempts == 2);
-    PA_STORY_EXPECT(report.failure && report.failure->failure.code == "verify_below_min_pass");
-    PA_STORY_EXPECT(saves == 0);
-    return true;
-}
-
-UnitTestResult test_verify_row_stops_on_precondition_and_unread(Logger&, CancellableScope& scope){
-    FakeStoryBackend backend(FakeStoryScript{}, scope);
-    size_t saves = 0;
-    size_t reloads = 0;
-    StoryGame game = fake_game(saves, reloads);
-    RunState state;
-
-    const VerifyRowReport precond = run_verify_row(
-        backend, "20.03",
-        StoryVerify{.tries = 5, .min_pass = 2, .reset_budget = 3},
-        scripted_factory("20.03", {
-            StoryFailure{.code = "precondition_failed", .detail = "short of potions", .repeats = true},
-        }),
-        game, state
-    );
-    PA_STORY_EXPECT(!precond.passed);
-    PA_STORY_EXPECT(precond.attempts == 1);
-    PA_STORY_EXPECT(precond.failure && precond.failure->failure.code == "precondition_failed");
-    PA_STORY_EXPECT(saves == 0);
-
-    const VerifyRowReport unread = run_verify_row(
-        backend, "20.04",
-        StoryVerify{.tries = 5, .min_pass = 2, .reset_budget = 3},
-        scripted_factory("20.04", {std::nullopt}),
-        game, state,
-        [](StoryBackend&, const StoryCheckpoint&, RunState&) -> std::optional<StoryFailure>{
-            return StoryFailure{.code = std::string(VERIFY_UNREAD), .detail = "summary unreadable", .repeats = true};
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        FakeStoryBackend backend(FakeStoryScript{}, scope);
+        size_t saves = 0;
+        size_t reloads = 0;
+        StoryGame game = fake_game(saves, reloads);
+        RunState state;
+        const VerifyModeReport report = verify_checkpoint(
+            backend, m_scenario.input.checkpoint_id, m_scenario.input.policy,
+            scripted_factory(m_scenario.input.checkpoint_id, m_scenario.input.outcomes),
+            game, state
+        );
+        if (report.verified != m_scenario.expectation.verified
+            || report.runs != m_scenario.expectation.runs
+            || report.passes != m_scenario.expectation.passes
+            || report.saved != m_scenario.expectation.saved
+            || saves != m_scenario.expectation.saves
+            || reloads != m_scenario.expectation.reloads
+        ){
+            return std::format(
+                "report mismatch: verified={} runs={} passes={} saved={} saves={} reloads={}",
+                report.verified, report.runs, report.passes, report.saved, saves, reloads
+            );
         }
-    );
-    PA_STORY_EXPECT(!unread.passed);
-    PA_STORY_EXPECT(unread.attempts == 1);
-    PA_STORY_EXPECT(unread.failure && unread.failure->failure.code == VERIFY_UNREAD);
-    PA_STORY_EXPECT(saves == 0);
-    return true;
-}
+        return true;
+    }
 
-UnitTestResult test_verify_row_skips_phase1_when_tries_zero(Logger&, CancellableScope& scope){
-    FakeStoryBackend backend(FakeStoryScript{}, scope);
-    size_t saves = 0;
-    size_t reloads = 0;
-    StoryGame game = fake_game(saves, reloads);
-    RunState state;
+private:
+    VerifyModeCase m_scenario;
+};
 
-    //  Phase 1 skipped (tries = 0, min_pass = 0); phase 2 fails once, then passes and saves.
-    const VerifyRowReport report = run_verify_row(
-        backend, "20.01",
-        StoryVerify{.tries = 0, .min_pass = 0, .reset_budget = 3},
-        scripted_factory("20.01", {
-            StoryFailure{.code = "blackout"},
-            std::nullopt,
-        }),
-        game, state
-    );
-    PA_STORY_EXPECT(report.passed);
-    PA_STORY_EXPECT(report.saved);
-    PA_STORY_EXPECT(report.phase1_passes == 0);
-    PA_STORY_EXPECT(report.attempts == 2);
-    PA_STORY_EXPECT(report.reloads == 1);
-    PA_STORY_EXPECT(saves == 1);
-    PA_STORY_EXPECT(reloads == 1);
-    return true;
-}
+struct VerifyRowCase{
+    struct Input{
+        std::string checkpoint_id = {};
+        StoryVerify verify = {};
+        std::vector<std::optional<StoryFailure>> outcomes = {};
+        std::optional<StoryFailure> pass_check_failure = std::nullopt;
+    };
+    struct Expectation{
+        bool passed = false;
+        bool saved = false;
+        size_t phase1_passes = 0;
+        size_t attempts = 0;
+        size_t reloads = 0;
+        size_t saves = 0;
+        std::string failure_code = {};
+    };
 
-#undef PA_STORY_EXPECT
+    std::string_view name;
+    Input input;
+    Expectation expectation;
+};
+
+const VerifyRowCase VERIFY_ROW_CASES[] = {
+    {
+        .name = "phase 1 passes then phase 2 saves on first pass",
+        .input = {
+            .checkpoint_id = "20.01",
+            .verify = {.tries = 5, .min_pass = 2, .reset_budget = 3},
+            .outcomes = {
+                StoryFailure{.code = "blackout"},
+                std::nullopt,
+                std::nullopt,
+                StoryFailure{.code = "blackout"},
+                std::nullopt,
+            },
+        },
+        .expectation = {.passed = true, .saved = true, .phase1_passes = 2, .attempts = 5, .reloads = 4, .saves = 1},
+    },
+    {
+        .name = "stops early when phase 1 can no longer reach min_pass",
+        .input = {
+            .checkpoint_id = "20.02",
+            .verify = {.tries = 4, .min_pass = 3, .reset_budget = 3},
+            .outcomes = {StoryFailure{.code = "blackout"}, StoryFailure{.code = "blackout"}},
+        },
+        .expectation = {.passed = false, .saved = false, .phase1_passes = 0, .attempts = 2, .reloads = 1, .saves = 0, .failure_code = "verify_below_min_pass"},
+    },
+    {
+        .name = "stops immediately on precondition_failed",
+        .input = {
+            .checkpoint_id = "20.03",
+            .verify = {.tries = 5, .min_pass = 2, .reset_budget = 3},
+            .outcomes = {StoryFailure{.code = "precondition_failed", .detail = "short of potions", .repeats = true}},
+        },
+        .expectation = {.passed = false, .saved = false, .phase1_passes = 0, .attempts = 1, .reloads = 0, .saves = 0, .failure_code = "precondition_failed"},
+    },
+    {
+        .name = "stops immediately when pass check is unreadable",
+        .input = {
+            .checkpoint_id = "20.04",
+            .verify = {.tries = 5, .min_pass = 2, .reset_budget = 3},
+            .outcomes = {std::nullopt},
+            .pass_check_failure = StoryFailure{.code = std::string(VERIFY_UNREAD), .detail = "summary unreadable", .repeats = true},
+        },
+        .expectation = {.passed = false, .saved = false, .phase1_passes = 0, .attempts = 1, .reloads = 0, .saves = 0, .failure_code = std::string(VERIFY_UNREAD)},
+    },
+    {
+        .name = "skips phase 1 when tries is zero and saves on first phase 2 pass",
+        .input = {
+            .checkpoint_id = "20.01",
+            .verify = {.tries = 0, .min_pass = 0, .reset_budget = 3},
+            .outcomes = {StoryFailure{.code = "blackout"}, std::nullopt},
+        },
+        .expectation = {.passed = true, .saved = true, .phase1_passes = 0, .attempts = 2, .reloads = 1, .saves = 1},
+    },
+};
+
+class Test_VerifyRow : public UnitTest{
+public:
+    explicit Test_VerifyRow(const VerifyRowCase& scenario)
+        : UnitTest(std::format("Pokemon::StoryVerifyRuns - row: {}", scenario.name))
+        , m_scenario(scenario)
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope& scope) const override{
+        FakeStoryBackend backend(FakeStoryScript{}, scope);
+        size_t saves = 0;
+        size_t reloads = 0;
+        StoryGame game = fake_game(saves, reloads);
+        RunState state;
+        VerifyPassPredicate predicate;
+        if (m_scenario.input.pass_check_failure){
+            const StoryFailure fail = *m_scenario.input.pass_check_failure;
+            predicate = [fail](StoryBackend&, const StoryCheckpoint&, RunState&) -> std::optional<StoryFailure>{
+                return fail;
+            };
+        }
+        const VerifyRowReport report = run_verify_row(
+            backend, m_scenario.input.checkpoint_id, m_scenario.input.verify,
+            scripted_factory(m_scenario.input.checkpoint_id, m_scenario.input.outcomes),
+            game, state, std::move(predicate)
+        );
+        const std::string got_code = report.failure ? report.failure->failure.code : "";
+        if (report.passed != m_scenario.expectation.passed
+            || report.saved != m_scenario.expectation.saved
+            || report.phase1_passes != m_scenario.expectation.phase1_passes
+            || report.attempts != m_scenario.expectation.attempts
+            || report.reloads != m_scenario.expectation.reloads
+            || saves != m_scenario.expectation.saves
+            || got_code != m_scenario.expectation.failure_code
+        ){
+            return std::format(
+                "row mismatch: passed={} saved={} p1={} attempts={} reloads={} saves={} code={}",
+                report.passed, report.saved, report.phase1_passes, report.attempts, report.reloads, saves, got_code
+            );
+        }
+        return true;
+    }
+
+private:
+    VerifyRowCase m_scenario;
+};
 
 } // namespace
 
 
 void add_tests_StoryVerifyRuns(UnitTestDatabase& database){
-    database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyCheckpointTwoOfThree", test_verify_checkpoint_two_of_three_no_save);
-    database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyCheckpointAfterVerificationSaves", test_verify_checkpoint_after_verification_saves_only_when_all_pass);
-    database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyRowPhase1AndPhase2Save", test_verify_row_phase1_and_phase2_save);
-    database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyRowStopsEarlyBelowMinPass", test_verify_row_stops_early_below_min_pass);
-    database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyRowStopsOnPreconditionAndUnread", test_verify_row_stops_on_precondition_and_unread);
-    database.add<VerifyRunsTest>("AutoStory/StoryVerifyRuns/VerifyRowSkipsPhase1WhenTriesZero", test_verify_row_skips_phase1_when_tries_zero);
+    for (const VerifyModeCase& scenario : VERIFY_MODE_CASES){
+        database.add<Test_VerifyMode>(scenario);
+    }
+    for (const VerifyRowCase& scenario : VERIFY_ROW_CASES){
+        database.add<Test_VerifyRow>(scenario);
+    }
 }
 
 

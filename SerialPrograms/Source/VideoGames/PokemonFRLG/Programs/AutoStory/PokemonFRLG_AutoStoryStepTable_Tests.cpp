@@ -210,16 +210,16 @@ const StepTableTestCase STEP_TABLE_CASES[] = {
     },
 };
 
-struct PocketChangeInput{
-    std::string action;
-};
-struct PocketChangeExpectation{
-    ItemsPocketChange change;
-};
 struct PocketChangeCase{
-    std::string name;
-    PocketChangeInput input;
-    PocketChangeExpectation expectation;
+    struct Input{
+        std::string action = {};
+    };
+    struct Expectation{
+        ItemsPocketChange change = ItemsPocketChange::NONE;
+    };
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_ItemsPocketChange : public UnitTest{

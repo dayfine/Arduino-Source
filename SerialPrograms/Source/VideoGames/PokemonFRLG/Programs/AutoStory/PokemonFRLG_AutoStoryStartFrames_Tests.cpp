@@ -376,25 +376,25 @@ const ReadCase READ_CASES[] = {
 //  (add_start_check(), as build_checkpoint() adds it): the walk runs only
 //  when the screen after the save loads shows the kept frame's place, or
 //  when no frame is kept.
-struct StartCheckInput{
-    std::string name;
-    bool has_reference;
-    ImageRGB32 (*screen)();
-};
-struct StartCheckExpectation{
-    bool walked;
-    //  The start check's log line starts with this.
-    std::string logged;
-};
 struct StartCheckCase{
-    StartCheckInput input;
-    StartCheckExpectation expectation;
+    struct Input{
+        bool has_reference = false;
+        ImageRGB32 (*screen)() = nullptr;
+    };
+    struct Expectation{
+        bool walked = false;
+        //  The start check's log line starts with this.
+        std::string logged = {};
+    };
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_StartFrameCheck : public UnitTest{
 public:
     explicit Test_StartFrameCheck(StartCheckCase test_case)
-        : UnitTest("PokemonFRLG::AutoStoryStartFrames - " + test_case.input.name)
+        : UnitTest("PokemonFRLG::AutoStoryStartFrames - " + test_case.name)
         , m_case(std::move(test_case))
     {}
 
@@ -460,15 +460,18 @@ private:
 
 const StartCheckCase START_CHECK_CASES[] = {
     {
-        .input = {"a save outside the door stops before any step", true, outside_door},
+        .name = "a save outside the door stops before any step",
+        .input = {true, outside_door},
         .expectation = {false, "start pose mismatch: "},
     },
     {
-        .input = {"a save at the counter walks", true, at_counter},
+        .name = "a save at the counter walks",
+        .input = {true, at_counter},
         .expectation = {true, "start pose matches: "},
     },
     {
-        .input = {"no frame kept walks, as before", false, outside_door},
+        .name = "no frame kept walks, as before",
+        .input = {false, outside_door},
         .expectation = {true, "start pose not read: no start frame kept"},
     },
 };

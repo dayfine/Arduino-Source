@@ -63,7 +63,7 @@ struct StoryEnv{
     std::string checkpoint = {};
     StartMenu start_menu = StartMenu::BEFORE_POKEMON;
     //  once_per_save steps completed since the last save.
-    PreparedSteps prepared = {};
+    std::set<std::string> prepared = {};
     bool bag_read = false;
     StartFrameStore start_frames = {};
     bool keep_start_frame = false;
@@ -109,9 +109,9 @@ public:
     static bool master_ball_skipped(bool take_master_ball, Pokemon::StoryCheckLevel checks);
     static bool nugget_farm_skipped(uint16_t nugget_farm_count);
     static int64_t effective_nugget_farm_count(uint16_t nugget_farm_count, int64_t step_count);
-    bool holds(std::string_view condition, const FrlgRunState& state) const;
 
 private:
+    bool holds(std::string_view condition, const FrlgRunState& state) const;
     FrlgStepAction console_action(StoryActionId id);
 
     StoryEnv& m_env;

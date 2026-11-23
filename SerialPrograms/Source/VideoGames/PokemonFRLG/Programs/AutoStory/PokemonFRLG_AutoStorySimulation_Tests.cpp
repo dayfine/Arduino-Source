@@ -79,17 +79,9 @@ std::string joined(const std::vector<std::string>& lines){
 }
 
 bool action_needs_console(const StoryStep& step){
-    switch (story_action_id_of(step.action)){
-    case StoryActionId::ROUTE:
-    case StoryActionId::LEGS:
-    case StoryActionId::STEP:
-    case StoryActionId::READY:
-    case StoryActionId::SHOP:
-    case StoryActionId::PUSH_BOULDER:
-        return false;
-    default:
-        return true;
-    }
+    const StoryActionId id = story_action_id_of(step.action);
+    return id != StoryActionId::ROUTE && id != StoryActionId::LEGS && id != StoryActionId::STEP
+        && id != StoryActionId::READY && id != StoryActionId::SHOP && id != StoryActionId::PUSH_BOULDER;
 }
 
 //  The table's checkpoint `id`; throws if it has none.
@@ -100,6 +92,10 @@ const StoryCheckpoint& checkpoint_row(std::string_view id){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "No checkpoint " + std::string(id) + ".");
     }
     return *row;
+}
+
+std::vector<StoryStep>::const_iterator find_step(const StoryCheckpoint& row, std::string_view name){
+    return std::find_if(row.steps.begin(), row.steps.end(), [name](const StoryStep& step){ return step.name == name; });
 }
 
 //  The whole story end to end, a slow test.
@@ -189,10 +185,9 @@ struct Simulation{
             ));
         }
 
-        SimReport report;
-        report.checkpoints_run = selected.size();
+        SimReport report{.checkpoints_run = selected.size()};
         struct LocalScope : CancellableScope{};
-    LocalScope scope;
+        LocalScope scope;
         Pokemon::FakeStoryBackend backend(Pokemon::FakeStoryScript{}, scope);
         Pokemon::StoryGame hooks;
         hooks.attempts_per_checkpoint = attempts_per_checkpoint;
@@ -206,12 +201,9 @@ struct Simulation{
             report.reloads++;
             return failed.id;
         };
-
         Pokemon::RunState core_state;
         const std::optional<Pokemon::CheckpointFailure> failed = Pokemon::run_checkpoints(backend, checkpoints, hooks, core_state);
-        for (const std::string& line : backend.lines()){
-            lines.push_back(line);
-        }
+        lines.insert(lines.end(), backend.lines().begin(), backend.lines().end());
         report.completed = !failed.has_value();
         if (failed){
             report.failed_checkpoint = failed->checkpoint_id;
@@ -226,12 +218,8 @@ struct Simulation{
         return report;
     }
     std::string last_begun() const{
-        for (auto it = game.trace.rbegin(); it != game.trace.rend(); ++it){
-            if (it->starts_with("begin ")){
-                return it->substr(6);
-            }
-        }
-        return "";
+        const auto found = begun();
+        return found.empty() ? "" : found.back();
     }
     std::vector<std::string> begun() const{
         std::vector<std::string> ids;
@@ -247,22 +235,18 @@ struct Simulation{
     }
 };
 
-struct AutoStorySimulationInput{
-    UnitTestResult (*body)();
-    //  A body that logs, run instead of `body` if given.
-    std::function<UnitTestResult(Logger&)> logged = {};
-    //  Run only with the slow tests on (SLOW_TESTS_VARIABLE).
-    bool slow = false;
-};
-
-struct AutoStorySimulationExpectation{
-    std::string_view description;
-};
-
 struct AutoStorySimulationTestCase{
-    std::string name;
-    AutoStorySimulationInput input;
-    AutoStorySimulationExpectation expectation;
+    struct Input{
+        UnitTestResult (*body)() = nullptr;
+        std::function<UnitTestResult(Logger&)> logged = {};
+        bool slow = false;
+    };
+    struct Expectation{
+        std::string_view description = {};
+    };
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_AutoStorySimulation : public UnitTest{
@@ -501,9 +485,9 @@ std::string walk_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step)
 //  foot of Route 4's ledge, the row's walks on the sim reach the nurse
 //  with that leg whole or a tile short.
 UnitTestResult test_cerulean_entry_short(){
-    const StoryCheckpoint* row = &checkpoint_row("04.06");
-    const auto hop = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "ledge_hop"; });
-    if (hop == row->steps.end() || !hop->pose_after){
+    const StoryCheckpoint& row = checkpoint_row("04.06");
+    const auto hop = find_step(row, "ledge_hop");
+    if (hop == row.steps.end() || !hop->pose_after){
         return "04.06: no ledge_hop.";
     }
     for (int short_by : {0, 1}){
@@ -511,10 +495,9 @@ UnitTestResult test_cerulean_entry_short(){
         SimScript script;
         script.short_holds[1] = short_by;
         OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing, script);
-        for (auto step = hop + 1; step != row->steps.end() && step->action != "heal"; ++step){
-            const std::string failure = walk_on_sim(sim, at, *step);
-            if (!failure.empty()){
-                return std::format("Entry {} tile(s) short: ", short_by) + failure;
+        for (auto step = hop + 1; step != row.steps.end() && step->action != "heal"; ++step){
+            if (const std::string failure = walk_on_sim(sim, at, *step); !failure.empty()){
+                return std::format("Entry {} tile(s) short: {}", short_by, failure);
             }
         }
     }
@@ -524,22 +507,19 @@ UnitTestResult test_cerulean_entry_short(){
 //  Console B, 2026-11-03 (row 05.05), twice: the open leg north from
 //  Cerulean City onto Nugget Bridge ended on (11, 33), a tile short of
 //  (11, 32), and the one step onto Cale's row reached only (11, 32), out
-//  of his sight: "bug_catcher_cale: failed: no_battle". From the walk's
-//  end, whole or a tile short, the five trainers are met and beaten on
-//  the sim, each battle on the trainer's row.
+//  of his sight: "bug_catcher_cale: failed: no_battle".
 UnitTestResult test_nugget_bridge_short(){
-    const StoryCheckpoint* row = &checkpoint_row("05.03");
-    const auto walk = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "below_cale_line"; });
-    if (walk == row->steps.end() || !walk->args.contains("target")){
+    const StoryCheckpoint& row = checkpoint_row("05.03");
+    const auto walk = find_step(row, "below_cale_line");
+    if (walk == row.steps.end() || !walk->args.contains("target")){
         return "No step 05.03/below_cale_line.";
     }
     for (int short_by : {0, 1}){
         StoryPose at = *story_pose(frlg_arg<Pokemon::GridPose>(walk->args, "target"));
         OverworldSim sim(story_maps(), MapPosition{at.map, {at.tile.x, at.tile.y + short_by}}, Direction::NORTH);
-        for (auto step = walk + 1; step != row->steps.end() && step->action != "ready"; ++step){
-            const std::string failure = row_step_on_sim(sim, at, *step, "05.03");
-            if (!failure.empty()){
-                return std::format("Walk {} tile(s) short: ", short_by) + failure;
+        for (auto step = walk + 1; step != row.steps.end() && step->action != "ready"; ++step){
+            if (const std::string failure = row_step_on_sim(sim, at, *step, "05.03"); !failure.empty()){
+                return std::format("Walk {} tile(s) short: {}", short_by, failure);
             }
         }
         if (sim.state().trainers_beaten.size() != 5){
@@ -656,44 +636,26 @@ std::string walk_paced_route(OverworldSim& sim, const std::vector<RouteStep>& ro
 //  A ROUTE's target as a GridPose, or nothing for another step.
 std::optional<Pokemon::GridPose> target_of(const StoryStep& step){
     const auto it = step.args.find("target");
-    if (it == step.args.end()){
-        return std::nullopt;
-    }
-    const auto* target = std::get_if<Pokemon::GridPose>(&it->second);
+    const auto* target = it == step.args.end() ? nullptr : std::get_if<Pokemon::GridPose>(&it->second);
     return target == nullptr ? std::nullopt : std::optional<Pokemon::GridPose>(*target);
 }
 
-//  Console B, 2026-11-03 (row 05.09, run m61): the Oddish's battle came
-//  on the pace's far step, so the capture left the player on (3, 19), not
-//  the table's (4, 19). The walk back planned from (4, 19) went a column
-//  west of its plan, down the bridge's column 10, not 11, and stopped
-//  against the beaten Lass on (10, 22); every later leg bumped, and the
-//  warp to the Center never came. On the sim, the battle on either step
-//  of the pace, the row's later walks, from the capture's tiles, reach the
-//  nurse.
-//  Console B, 2026-11-03 (m63, 05.09 verify run 2): the open leg west
-//  from Nugget Bridge's head ended a tile short, so the walk down onto the
-//  grass ended on (5, 19), in Camper Shane's sight; after the first wild
-//  battle he walked up ("I saw your feat from the grass!") and the capture
-//  stopped. From the Mart, the walk to the patch on the sim keeps out of
-//  his sight with the leg west whole or a tile short.
+//  Console B, 2026-11-03 (05.09 m61 & m63): open leg west from Nugget Bridge
+//  ended a tile short into Shane's sight, and far-step pace ended on (3, 19).
 UnitTestResult test_oddish_patch_west_short(){
-    const StoryCheckpoint* row = &checkpoint_row("05.09");
-    const auto mart = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "mart_clerk"; });
-    const auto patch = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "oddish_patch"; });
-    if (mart == row->steps.end() || patch == row->steps.end() || !target_of(*mart) || !target_of(*patch)){
+    const StoryCheckpoint& row = checkpoint_row("05.09");
+    const auto mart = find_step(row, "mart_clerk");
+    const auto patch = find_step(row, "oddish_patch");
+    if (mart == row.steps.end() || patch == row.steps.end() || !target_of(*mart) || !target_of(*patch)){
         return "05.09: no mart_clerk or oddish_patch.";
     }
     for (int short_by : {0, 1}){
         StoryPose at = *story_pose(*target_of(*mart));
         SimScript script;
-        //  Holds from the Mart: south, west, north, east, north, east, north
-        //  over the bridge, then the 8th, west from the bridge's head.
         script.short_holds[8] = short_by;
         OverworldSim sim(maps_bridge_beaten(), MapPosition{at.map, at.tile}, *at.facing, script);
-        const std::string failure = row_step_on_sim(sim, at, *patch, "05.09");
         const std::string label = std::format("West leg {} tile(s) short: ", short_by);
-        if (!failure.empty()){
+        if (const std::string failure = row_step_on_sim(sim, at, *patch, "05.09"); !failure.empty()){
             return label + failure;
         }
         if (!sim.state().trainers_beaten.empty()){
@@ -708,17 +670,15 @@ UnitTestResult test_oddish_patch_west_short(){
 }
 
 UnitTestResult test_oddish_battle_on_far_step(){
-    const StoryCheckpoint* row = &checkpoint_row("05.09");
-    const auto capture = std::find_if(row->steps.begin(), row->steps.end(), [](const StoryStep& step){ return step.name == "catch_oddish"; });
-    if (capture == row->steps.end() || capture + 1 == row->steps.end() || !target_of(*(capture + 1))){
+    const StoryCheckpoint& row = checkpoint_row("05.09");
+    const auto capture = find_step(row, "catch_oddish");
+    if (capture == row.steps.end() || capture + 1 == row.steps.end() || !target_of(*(capture + 1))){
         return "05.09: no catch_oddish with a route after it.";
     }
-    const auto patch = std::find_if(row->steps.begin(), capture, [](const StoryStep& step){ return step.name == "oddish_patch"; });
-    if (patch == capture || !target_of(*patch)){
+    const auto patch = find_step(row, "oddish_patch");
+    if (patch == row.steps.end() || !target_of(*patch)){
         return "05.09: no oddish_patch before catch_oddish.";
     }
-    //  The sim starts on the patch (3, 19): grass step 1 is the pace's far
-    //  step onto (4, 19), step 2 the one back.
     for (int grass_step : {1, 2}){
         SimScript script;
         script.encounters.push_back(SimEncounter{.grass_step = grass_step});
@@ -732,18 +692,15 @@ UnitTestResult test_oddish_battle_on_far_step(){
         }
         const StoryStep& back = *(capture + 1);
         StoryPose at = *story_pose(*target_of(back));
-        const std::optional<std::vector<RouteStep>> route = plan_story_route(
-            story_maps(), *paced_pose(*target_of(*patch), *capture), std::nullopt, RouteGoal{{at.map, at.tile}, at.facing}
-        );
+        const auto route = plan_story_route(story_maps(), *paced_pose(*target_of(*patch), *capture), std::nullopt, RouteGoal{{at.map, at.tile}, at.facing});
         if (!route){
             return label + "no route from the capture's tiles.";
         }
         if (const std::string failure = walk_paced_route(sim, *route, "05.09/" + back.name); !failure.empty()){
             return label + failure;
         }
-        for (auto step = capture + 2; step != row->steps.end(); ++step){
-            const std::string failure = row_step_on_sim(sim, at, *step, "05.09");
-            if (!failure.empty()){
+        for (auto step = capture + 2; step != row.steps.end(); ++step){
+            if (const std::string failure = row_step_on_sim(sim, at, *step, "05.09"); !failure.empty()){
                 return label + failure;
             }
         }
@@ -905,27 +862,18 @@ UnitTestResult check_dialog_before_every_step(const SimRange& range){
     return true;
 }
 
-//  The same dialogs left up, as before the executor looked: the story's
-//  first walk fails on one.
+//  The same dialogs left up, as before the executor looked: the story's first walk fails on one.
 UnitTestResult test_dialog_left_up_stops_a_walk(){
-    const auto always = [](const std::string&, const std::string&){
-        return true;
-    };
-    Simulation left({.dialog_before = always, .clear_interrupts = false});
+    Simulation left({.dialog_before = [](const std::string&, const std::string&){ return true; }, .clear_interrupts = false});
     const bool completed = left.run({}).completed;
-    const auto stopped = [](const std::string& line){
-        return line.find("is still up") != std::string::npos;
-    };
+    const auto stopped = [](const std::string& line){ return line.find("is still up") != std::string::npos; };
     if (completed || std::ranges::none_of(left.lines, stopped)){
         return "Expected a dialog left up to stop a walk:" + joined(left.lines);
     }
     return true;
 }
 
-//  Dialogs pop up at random before one step in five: how many whole runs
-//  pass with them cleared between steps, and with them left up. Each run
-//  has its own STAGE_BUDGET (one for all ten ran out on Fork Draft CI, 40
-//  to 80 s a run); a slow test, as with it CI ran past 60 min (2026-11-16).
+//  Dialogs pop up at random before one step in five (slow test).
 UnitTestResult check_dialogs_at_random(Logger& logger, const SimRange& range){
     constexpr uint32_t SEEDS = 5;
     size_t passes[2] = {0, 0};
@@ -933,9 +881,7 @@ UnitTestResult check_dialogs_at_random(Logger& logger, const SimRange& range){
         for (bool clear : {false, true}){
             const auto rng = std::make_shared<std::mt19937>(seed);
             Simulation sim({
-                .dialog_before = [rng](const std::string&, const std::string&){
-                    return std::bernoulli_distribution(0.2)(*rng);
-                },
+                .dialog_before = [rng](const std::string&, const std::string&){ return std::bernoulli_distribution(0.2)(*rng); },
                 .clear_interrupts = clear,
             });
             passes[clear] += sim.run(range).completed ? 1 : 0;
@@ -951,15 +897,11 @@ UnitTestResult check_dialogs_at_random(Logger& logger, const SimRange& range){
     return true;
 }
 
-//  A stage of the story: its first and last checkpoints.
 struct StoryStage{
     std::string first;
     std::string last;
 };
 
-//  The story's stages, as a run with every handoff off takes its rows:
-//  each run of rows whose ids share a stage number ("05" for 05.01 to
-//  05.10).
 std::vector<StoryStage> story_stages(){
     const std::vector<StoryCheckpoint> rows = plan_story_run(story_checkpoints(), 0, story_checkpoints().size() - 1, StoryHandoffs{}).rows;
     std::vector<StoryStage> stages;
@@ -973,15 +915,11 @@ std::vector<StoryStage> story_stages(){
     return stages;
 }
 
-//  The stage tests: each stage of the story, from its first row's start
-//  (where the save of the row before it stands, as the no-sim chain test
-//  checks: PokemonFRLG_AutoStoryStepLint_Tests.cpp) to its last row's end,
-//  within STAGE_BUDGET. Together they run the whole story on every push.
 struct StageCheck{
     std::string_view what;
     std::string_view description;
     UnitTestResult (*check)(Logger&, const SimRange&);
-    bool slow;  //  run only with the slow tests on
+    bool slow;
 };
 
 const StageCheck STAGE_CHECKS[] = {
@@ -991,7 +929,6 @@ const StageCheck STAGE_CHECKS[] = {
     {"dialogs before one step in five, over 5 seeds", "every run of the stage passes with them cleared", check_dialogs_at_random, true},
 };
 
-//  `check` on `stage`. `check` is one of STAGE_CHECKS, which outlive it.
 AutoStorySimulationTestCase stage_case(const StoryStage& stage, const StageCheck& check){
     const SimRange range{.from = stage.first, .to = stage.last};
     return {
