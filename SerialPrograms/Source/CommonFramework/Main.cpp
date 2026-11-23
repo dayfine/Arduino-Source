@@ -206,7 +206,7 @@ int run_program(int argc, char *argv[]){
         return 1;
     }
     if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
-        return run_command_line_tests(false);
+        return run_command_line_tests(false, "");
     }
 
     ScopeExit cleanup([]{
@@ -426,15 +426,14 @@ int run_test_application(int argc, char* argv[], const StartupPlan& plan){
     register_all_statics();
     GlobalThreadPools::qt_worker_threadpool();
     GlobalThreadPools::qt_event_threadpool();
-    const int ret = run_command_line_tests(plan.augment_color_distortions);
+    const int ret = run_command_line_tests(plan.augment_color_distortions, plan.test_substring);
     OCR::clear_ocr_cache();
     global_periodic_runner().stop();
     global_watchdog().stop();
-#ifdef PA_ENABLE_QT_ADOPTION_WORKAROUND
+    //  The tests are done and nothing after this needs the thread pools: skip the joins, which
+    //  hang on Qt 6.9+ Windows and hang with no diagnostics when a task never finishes.
+    std::cout << "Command-line test mode: std::quick_exit() to avoid thread join hangs." << std::endl;
     std::quick_exit(ret);
-#endif
-    stop_thread_pools();
-    return ret;
 }
 
 int run_with_profile_lease(

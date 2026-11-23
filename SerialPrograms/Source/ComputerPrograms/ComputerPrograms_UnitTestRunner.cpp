@@ -516,9 +516,18 @@ size_t CommandLineUnitTestRunner::run(bool augment_color_distortions, std::span<
         GlobalThreadPools::unlimited_normal()
     );
     runner.add_listener(*this);
+    size_t num_matching = 0;
     for (const auto& [test_name, test] : UNIT_TESTS_ALL()){
         if (matches_any(test_name, filters)){
+            num_matching++;
             runner.add_test(test);
+        }
+    }
+    if (!filters.empty()){
+        if (num_matching == 0){
+            m_logger.log("No test name contains any of the filters. No tests will be run.", COLOR_ORANGE);
+        }else{
+            m_logger.log("Running the " + tostr_u_commas(num_matching) + " tests whose name contains any of the filters.");
         }
     }
     runner.run();
