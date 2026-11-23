@@ -481,7 +481,7 @@ UnitTestResult test_quantity_presses(){
 
 UnitTestResult test_mart_args(){
     const MartPlan plan = pewter_plan({{"potion", 5}, {"repel", 3}});
-    const Pokemon::StoryActionArgs args = mart_args(plan);
+    const FrlgArgMap args = mart_args(plan);
     const std::optional<MartPlan> back = mart_plan_of(args);
     if (!back || back->map != plan.map
         || back->lines.size() != 2 || back->lines[1].item != "repel" || back->lines[1].quantity != 3
@@ -500,7 +500,7 @@ UnitTestResult test_mart_args(){
     if (!selling_back || selling_back->sells.size() != 1 || selling_back->sells[0].item != "nugget" || args.contains("sell")){
         return "The sales didn't read back from their args, or were written when none.";
     }
-    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+    const std::vector<std::pair<std::string, FrlgArgValue>> bad_args{
         {"items", std::vector<Pokemon::StoryItem>{}},
         {"map", std::string("Nowhere_Mart")},
         {"map", std::string("ViridianCity_Mart")},
@@ -510,7 +510,7 @@ UnitTestResult test_mart_args(){
         {"sell", std::vector<Pokemon::StoryItem>{{"nugget", 0}}},
     };
     for (const auto& [key, value] : bad_args){
-        Pokemon::StoryActionArgs bad = args;
+        FrlgArgMap bad = args;
         bad[key] = value;
         if (mart_plan_of(bad)){
             return "Expected a bad " + key + " refused.";
@@ -592,9 +592,9 @@ const std::set<std::string_view> LATE_MART_CHECKPOINTS = {"07.01", "12.01"};
 
 //  Whether a step is a battle that can cost the money (a prize or a loss).
 bool fights(const StoryStep& step){
-    return step.kind == Pokemon::StoryStepKind::BATTLE
-        || step.kind == Pokemon::StoryStepKind::TRAIN
-        || (step.kind == Pokemon::StoryStepKind::GAME && (step.action == GRIND_ACTION || step.action == CAPTURE_ACTION));
+    return step.action == "battle"
+        || step.action == "train"
+        || step.action == GRIND_ACTION || step.action == CAPTURE_ACTION;
 }
 
 //  Whether `data` has a Mart step after a battle or a long walk.
@@ -602,13 +602,13 @@ bool has_late_mart(const StoryCheckpoint& data){
     size_t walk = 0;
     bool fought = false;
     for (const StoryStep& step : data.steps){
-        if (step.kind == Pokemon::StoryStepKind::GAME && step.action == MART_ACTION){
+        if (step.action == MART_ACTION){
             if (fought || walk > MAX_WALK_BEFORE_MART){
                 return true;
             }
             walk = 0;
             fought = false;
-        }else if (step.kind == Pokemon::StoryStepKind::ROUTE || step.kind == Pokemon::StoryStepKind::LEGS){
+        }else if (step.action == "route" || step.action == "legs"){
             walk++;
         }else if (fights(step)){
             fought = true;
@@ -660,6 +660,7 @@ const std::vector<ApprovedShopping>& approved_shopping(){
     MartPlan rival_restock = one_line("LavenderTown_Mart", "super-potion", 15);
     rival_restock.lines.push_back({"antidote", 1});
     rival_restock.lines.push_back({"parlyz-heal", 2});
+    rival_restock.lines.push_back({"super-repel", 4});
     rival_restock.if_affordable = true;
     MartPlan full_heals = one_line("IndigoPlateau_PokemonCenter_1F", "full-heal", 4);
     full_heals.if_affordable = true;
@@ -675,10 +676,10 @@ const std::vector<ApprovedShopping>& approved_shopping(){
             .money = 1900, .bag = {{"x-accuracy", 2}}, .money_after = 0,
         },
         {
-            //  One Mart for the whole list: Lavender stocks all three.
+            //  One Mart for the whole list: Lavender stocks all four.
             .checkpoint = "19.01a", .step = "buy_potions_and_status_heals", .before = "19.01b",
             .plan = rival_restock,
-            .money = 11000, .bag = {{"super-potion", 15}, {"antidote", 1}, {"parlyz-heal", 2}}, .money_after = 0,
+            .money = 13000, .bag = {{"super-potion", 15}, {"antidote", 1}, {"parlyz-heal", 2}, {"super-repel", 4}}, .money_after = 0,
         },
         {
             //  4 Full Heals (user, 2026-11-16). After 13 Full Restores, money

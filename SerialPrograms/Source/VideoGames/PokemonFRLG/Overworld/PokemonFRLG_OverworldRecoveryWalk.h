@@ -46,6 +46,14 @@ constexpr double WALL_TAP_MOVED_RMSD = 20.0;
 //  shore around it stay put, and only a step moves them a tile.
 bool tap_moved_on_water(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction);
 
+//  Whether a single-tile tap `direction` moved the player: an edge quarter
+//  changed by more than WALL_TAP_MOVED_RMSD, and (outside a dark cave) the
+//  map in `game` matches `before` shifted one tile in `direction` more
+//  closely than `before` unshifted (tap_moved_on_water()). Animated water,
+//  flowers, or wandering NPCs in an edge band can exceed WALL_TAP_MOVED_RMSD
+//  on a blocked tap (Cerulean City west 13 across little_boy).
+bool tap_step_moved(const ImageViewRGB32& before, const ImageViewRGB32& after, const ImageFloatBox& game, Direction direction);
+
 //  Whether the player's tile in `game` (column 7, row 4 of the 15 by 10)
 //  shows them on the water: over a quarter of it water's blue. Surfing, the
 //  water shows around the player's mount (0.47 on Route 21); on land none

@@ -17,35 +17,34 @@
     "events": [
       {
         "id": "lead_lv55_for_champion",
-        "kind": "game_action",
         "action": "level",
+        "why": "the precondition for the Champion: the lead at least Lv55, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md champion)",
         "args": {
           "slot": 1,
           "min": 55
-        },
-        "why": "the precondition for the Champion: the lead at least Lv55, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md champion)"
+        }
       },
       {
         "id": "top_up_before_champion",
-        "kind": "game_action",
         "action": "league_top_up",
+        "why": "after the reload, before the walk: reads the lead's HP and the Items pocket, then the plan's top-up before the fight (planned_between(): a Super Potion for up to 50 missing HP, two for up to 100 if two are spare, else a Full Restore; the Elixir only before the Champion), then checks the fight's entry contract (contract.entry: the items it starts with); a broken contract fails the row's start",
         "args": {
           "fight": "champion",
           "max_hp": 171
-        },
-        "why": "after the reload, before the walk: reads the lead's HP and the Items pocket, then the plan's top-up before the fight (planned_between(): a Super Potion for up to 50 missing HP, two for up to 100 if two are spare, else a Full Restore; the Elixir only before the Champion), then checks the fight's entry contract (contract.entry: the items it starts with); a broken contract fails the row's start"
+        }
       },
       {
         "id": "champions_door",
-        "kind": "step",
+        "action": "step",
+        "why": "into the door (6, 5), the warp into the Champion's room at its south end (6, 19). The room's OnFrame script walks the player ten tiles north to (6, 9), in front of the rival (6, 8), and his intro runs straight into the battle: no talk",
         "args": {
           "direction": "north"
-        },
-        "why": "into the door (6, 5), the warp into the Champion's room at its south end (6, 19). The room's OnFrame script walks the player ten tiles north to (6, 9), in front of the rival (6, 8), and his intro runs straight into the battle: no talk"
+        }
       },
       {
         "id": "champion",
-        "kind": "battle",
+        "action": "battle",
+        "why": "the Champion (TRAINER_CHAMPION_FIRST_BULBASAUR for a player who took Squirtle): Pidgeot Lv59, Alakazam Lv57, Rhydon Lv59, Gyarados Lv59, Arcanine Lv61, Venusaur Lv63, four Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against Pidgeot's Sand Attack; the doc's champion row, 95.6% at 171/171, its opening a Guard Spec); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP, Pidgeot's row marked as lowering accuracy: Venusaur's Solar Beam worst normal hit is 198 (a one-hit KO from full), Rhydon's worst case 183; Solar Beam without sun charges a turn first (Venusaur's row's ninth column), so it is a KO risk only while Venusaur is charging or the sun is out (the battle text), else setup goes on; Pidgeot (Whirlwind) and Arcanine (Roar) are marked as phazing, so no X item is spent on them (their stages would go with a forced switch). foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs Rhydon, so it is attacked at once",
         "args": {
           "trainer": "TRAINER_CHAMPION_FIRST_BULBASAUR",
           "foes": [
@@ -152,26 +151,41 @@
               135,
               193
             ]
-          ]
-        },
-        "declared_after": {
-          "map": "PokemonLeague_ChampionsRoom",
-          "tiles": [
-            [
-              6,
-              9
-            ]
           ],
-          "facing": "north"
-        },
-        "why": "the Champion (TRAINER_CHAMPION_FIRST_BULBASAUR for a player who took Squirtle): Pidgeot Lv59, Alakazam Lv57, Rhydon Lv59, Gyarados Lv59, Arcanine Lv61, Venusaur Lv63, four Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +2 and Accuracy +2 by X Specials and X Accuracies, X Speed until faster, Guard Spec first against Pidgeot's Sand Attack; the doc's champion row, 95.6% at 171/171, its opening a Guard Spec); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP, Pidgeot's row marked as lowering accuracy: Venusaur's Solar Beam worst normal hit is 198 (a one-hit KO from full), Rhydon's worst case 183; Solar Beam without sun charges a turn first (Venusaur's row's ninth column), so it is a KO risk only while Venusaur is charging or the sun is out (the battle text), else setup goes on; Pidgeot (Whirlwind) and Arcanine (Roar) are marked as phazing, so no X item is spent on them (their stages would go with a forced switch). foe_stats are each foe's Defense, Sp. Def and HP from the doc's table: Surf KOs Rhydon, so it is attacked at once"
+          "pose_after": {
+            "map": "PokemonLeague_ChampionsRoom",
+            "tiles": [
+              [
+                6,
+                9
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "hall_of_fame",
-        "kind": "game_action",
         "action": "hall_of_fame",
-        "args": {},
-        "declared_after": {
+        "why": "the rival's last words, Oak's entrance and his talk, and Oak leading the player out north (PokemonLeague_ChampionsRoom_Movement_PlayerExit) to the Hall of Fame (5, 12); its OnFrame script walks the player eight tiles north to (5, 4), Oak's congratulations, then the record (FLDEFF_HALL_OF_FAME_RECORD) and the Hall of Fame (special EnterHallOfFame), which saves the game itself. The step presses B until the save message (HallOfFameSavingDetector), then keeps screenshots in Screenshots/AutoStory/hall_of_fame/ by how the screen moves (user, 2026-11-16): each member's 2 s hold, the whole team as the confetti starts, and the LEAGUE CHAMP card, where it stops before the credits",
+        "args": {
+          "pose_after": {
+            "map": "PokemonLeague_HallOfFame",
+            "tiles": [
+              [
+                5,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
           "map": "PokemonLeague_HallOfFame",
           "tiles": [
             [
@@ -180,41 +194,27 @@
             ]
           ],
           "facing": "north"
-        },
-        "why": "the rival's last words, Oak's entrance and his talk, and Oak leading the player out north (PokemonLeague_ChampionsRoom_Movement_PlayerExit) to the Hall of Fame (5, 12); its OnFrame script walks the player eight tiles north to (5, 4), Oak's congratulations, then the record (FLDEFF_HALL_OF_FAME_RECORD) and the Hall of Fame (special EnterHallOfFame), which saves the game itself. The step presses B until the save message (HallOfFameSavingDetector), then keeps screenshots in Screenshots/AutoStory/hall_of_fame/ by how the screen moves (user, 2026-11-16): each member's 2 s hold, the whole team as the confetti starts, and the LEAGUE CHAMP card, where it stops before the credits"
+        }
       }
-    ]
+    }
   },
   "execution": {
     "menu": "full",
-    "protected_slots": [6],
+    "protected_slots": [
+      6
+    ],
     "verify": {
-      "tries": 10,
-      "min_pass": 2,
-      "reset_budget": 8
+      "tries": 0,
+      "min_pass": 0,
+      "reset_budget": 5
     },
     "notes": {
       "checkpoint": [
         "Starts below the Champion's door (6, 6), where 20.04 ends. Ends in the Hall of Fame (5, 4) facing north. The Hall of Fame saves the game itself (respawn at Pallet Town) and the credits follow: the row's own save at its end is not one the game offers there.",
-        "One League fight per row, each run as a verification loop from its start save (execution.verify, copied from frlg-league-plan.json's contract.pass: tries = min_pass.of, min_pass = min_pass.k, reset_budget): phase 1 plays it that many times saving none and stops the run under min_pass; phase 2 plays it until a try passes (won, within the fight's item caps: league_row_pass()) and saves that one.",
+        "One League fight per row, each run with execution.verify (phase 1 disabled: tries = 0, min_pass = 0; retry counts 3, 5, 3, 3, 5 for 20.01 to 20.05): plays up to reset_budget tries from its start save until a try passes (won, within the fight's item caps: league_row_pass()) and saves that first pass.",
         "The League rooms are one-way: the entrance closes behind the player, and the next room's door opens only when the room's trainer is beaten.",
         "PokeGuy's fights: Lorelei 1:46:37, Bruno 1:49:15, Agatha 1:51:12, Lance 1:53:07, the Champion 1:55:44 (docs/battles/pokeguy-conditions.md); his turns: ~/BDSPLab/notes/pokeguy-league-turns.md."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {
-        "map": "PokemonLeague_HallOfFame",
-        "tiles": [
-          [
-            5,
-            4
-          ]
-        ],
-        "facing": "north"
-      }
     }
   }
 }

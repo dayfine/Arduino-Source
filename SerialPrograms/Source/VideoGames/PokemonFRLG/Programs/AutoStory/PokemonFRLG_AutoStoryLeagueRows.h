@@ -15,9 +15,10 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryLeagueRows_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryLeagueRows_H
 
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
+#include <optional>
 #include <string>
 #include <vector>
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "PokemonFRLG_AutoStoryCheckpoints.h"
 #include "PokemonFRLG_AutoStoryLeaguePlanData.h"
 #include "PokemonFRLG_AutoStorySupplies.h"
@@ -65,7 +66,7 @@ LeagueEntryCheck league_entry_check(const LeagueFightData& next, LeagueSide side
 //  whatever the top-up before this one took. The last fight passes on the
 //  win. Any other row passes. The failure's detail logs every value
 //  compared.
-Pokemon::Outcome league_row_pass(const StoryCheckpoint& row, const LeagueSide& end);
+std::optional<Pokemon::StoryFailure> league_row_pass(const StoryCheckpoint& row, const LeagueSide& end);
 
 
 

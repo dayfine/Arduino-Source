@@ -4,115 +4,218 @@
   "checkpoint": {
     "id": "10.05",
     "title": "Pokemon Tower 6F: Jennifer, Emilia, the Rare Candy and the Marowak ghost",
-    "start": {"map": "PokemonTower_5F", "tiles": [[18, 7]], "facing": "south"},
+    "start": {
+      "map": "PokemonTower_5F",
+      "tiles": [
+        [
+          18,
+          7
+        ]
+      ],
+      "facing": "south"
+    },
     "events": [
       {
         "id": "tower_6f_stairs",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down 5F's column 18 onto its stairs (18, 10) to 6F's (18, 10), turned north: the way on keeps out of Angelica's line (14..16, 10)",
         "args": {
-          "target": {"map": "PokemonTower_6F", "tiles": [[18, 10]], "facing": "north"}
-        },
-        "why": "down 5F's column 18 onto its stairs (18, 10) to 6F's (18, 10), turned north: the way on keeps out of Angelica's line (14..16, 10)"
+          "target": {
+            "map": "PokemonTower_6F",
+            "tiles": [
+              [
+                18,
+                10
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "tower_6f_below_jennifer_line",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "not_using_planner_route: a tap a tile: up to the wall (18, 7), on (18, 8), and west to (16, 8), two tiles below Jennifer's line (15..17, 6). No tap up to (16, 7): a tap there that stepped unseen leaves the player on (16, 7) or (16, 8), and the hold that finds them again goes up column 16 to its wall through her line, so she is fought before jennifer_line (the unseen step sweep, step tap 8)",
         "args": {
-          "legs": [{"direction": "north", "tiles": 2}, {"direction": "west", "tiles": 2}]
-        },
-        "why": "a tap a tile: up to the wall (18, 7), on (18, 8), and west to (16, 8), two tiles below Jennifer's line (15..17, 6). No tap up to (16, 7): a tap there that stepped unseen leaves the player on (16, 7) or (16, 8), and the hold that finds them again goes up column 16 to its wall through her line, so she is fought before jennifer_line (the unseen step sweep, step tap 8)"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "west",
+              "tiles": 2
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "jennifer_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "up from (16, 8) onto (16, 6) in Jennifer's line, two taps: she faces west from (18, 6) and walks to (17, 6)",
         "args": {
-          "direction": "north"
-        },
-        "why": "up from (16, 8) onto (16, 6) in Jennifer's line, two taps: she faces west from (18, 6) and walks to (17, 6)"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "channeler_jennifer",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Channeler Jennifer: Gastly Lv24 (pokeguy 1:07:00)",
         "args": {
           "trainer": "TRAINER_CHANNELER_JENNIFER",
-          "foes": ["gastly"]
-        },
-        "declared_after": {"map": "PokemonTower_6F", "tiles": [[16, 6]], "facing": "north"},
-        "why": "Channeler Jennifer: Gastly Lv24 (pokeguy 1:07:00)"
+          "foes": [
+            "gastly"
+          ],
+          "pose_after": {
+            "map": "PokemonTower_6F",
+            "tiles": [
+              [
+                16,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "tower_6f_east_of_emilia_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "up column 16 to row 4, west along it and down column 12 to row 8, west to (10, 8), east of Emilia's line (9, 7..9)",
         "args": {
-          "target": {"map": "PokemonTower_6F", "tiles": [[10, 8]], "facing": "west"}
-        },
-        "why": "up column 16 to row 4, west along it and down column 12 to row 8, west to (10, 8), east of Emilia's line (9, 7..9)"
+          "target": {
+            "map": "PokemonTower_6F",
+            "tiles": [
+              [
+                10,
+                8
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "emilia_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (9, 8) in Emilia's line: she faces south from (9, 6) and walks to (9, 7)",
         "args": {
-          "direction": "west"
-        },
-        "why": "onto (9, 8) in Emilia's line: she faces south from (9, 6) and walks to (9, 7)"
+          "direction": "west",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "channeler_emilia",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Channeler Emilia: Gastly Lv24 (pokeguy 1:07:28)",
         "args": {
           "trainer": "TRAINER_CHANNELER_EMILIA",
-          "foes": ["gastly"]
-        },
-        "declared_after": {"map": "PokemonTower_6F", "tiles": [[9, 8]], "facing": "west"},
-        "why": "Channeler Emilia: Gastly Lv24 (pokeguy 1:07:28)"
+          "foes": [
+            "gastly"
+          ],
+          "pose_after": {
+            "map": "PokemonTower_6F",
+            "tiles": [
+              [
+                9,
+                8
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "above_tower_rare_candy",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "not_using_planner_route: a tap a tile from (9, 8), where Emilia's battle leaves the player, west along row 8 to (5, 8) and down column 5 to (5, 14), above the Rare Candy (5, 15) (pokeguy 1:07:53): an approach to an A press ends on its tile. As holds, west ended on (4, 8) and south met the gravestone (4, 9) (console B, 2026-11-12 04:39)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 4}, {"direction": "south", "tiles": 6}]
-        },
-        "why": "a tap a tile from (9, 8), where Emilia's battle leaves the player, west along row 8 to (5, 8) and down column 5 to (5, 14), above the Rare Candy (5, 15) (pokeguy 1:07:53): an approach to an A press ends on its tile. As holds, west ended on (4, 8) and south met the gravestone (4, 9) (console B, 2026-11-12 04:39)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 4
+            },
+            {
+              "direction": "south",
+              "tiles": 6
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "tower_rare_candy",
-        "kind": "talk",
+        "action": "talk",
         "why": "pick up the Rare Candy"
       },
       {
         "id": "above_marowak_trigger",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "not_using_planner_route: a tap a tile back up column 5 to row 12, east along it to (11, 12) and down column 11 to (11, 14), above the trigger (11, 15) before the stairs (11, 16): the planner, kept off open stops on wild floor, would go west to the wall (2, 11) and back",
         "args": {
-          "legs": [{"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 6}, {"direction": "south", "tiles": 2}]
-        },
-        "why": "a tap a tile back up column 5 to row 12, east along it to (11, 12) and down column 11 to (11, 14), above the trigger (11, 15) before the stairs (11, 16): the planner, kept off open stops on wild floor, would go west to the wall (2, 11) and back"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 6
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "marowak_trigger",
-        "kind": "step",
+        "action": "step",
+        "why": "onto (11, 15): PokemonTower_6F_EventScript_MarowakGhost, \"Be gone... Intruders...\"; with the SILPH SCOPE the ghost is a Marowak",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "PokemonTower_6F", "tiles": [[11, 15]], "facing": "south"},
-        "why": "onto (11, 15): PokemonTower_6F_EventScript_MarowakGhost, \"Be gone... Intruders...\"; with the SILPH SCOPE the ghost is a Marowak"
+          "direction": "south",
+          "pose_after": {
+            "map": "PokemonTower_6F",
+            "tiles": [
+              [
+                11,
+                15
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "marowak_ghost",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Marowak Lv30, a wild battle that can't be run from (StartMarowakBattle); pokeguy KOs it with one Water Pulse (1:08:04). Then the spirit's text",
         "args": {
-          "foes": ["marowak"]
-        },
-        "declared_after": {"map": "PokemonTower_6F", "tiles": [[11, 15]], "facing": "south"},
-        "why": "Marowak Lv30, a wild battle that can't be run from (StartMarowakBattle); pokeguy KOs it with one Water Pulse (1:08:04). Then the spirit's text"
+          "foes": [
+            "marowak"
+          ],
+          "pose_after": {
+            "map": "PokemonTower_6F",
+            "tiles": [
+              [
+                11,
+                15
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -123,6 +226,5 @@
         "The runtime map has no ball at the Rare Candy (5, 15) or the X ACCURACY (15, 15) (see 10.04's notes); the pickup faces (5, 15) from above."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

@@ -22,10 +22,12 @@
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "CommonFramework/GlobalAutoPaths.h"
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "Tests/ImageUnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryStartFrames.h"
 
@@ -374,63 +376,76 @@ const ReadCase READ_CASES[] = {
 //  (add_start_check(), as build_checkpoint() adds it): the walk runs only
 //  when the screen after the save loads shows the kept frame's place, or
 //  when no frame is kept.
-struct StartCheckInput{
-    std::string name;
-    bool has_reference;
-    ImageRGB32 (*screen)();
-};
-struct StartCheckExpectation{
-    bool walked;
-    //  The start check's log line starts with this.
-    std::string logged;
-};
 struct StartCheckCase{
-    StartCheckInput input;
-    StartCheckExpectation expectation;
+    struct Input{
+        bool has_reference = false;
+        ImageRGB32 (*screen)() = nullptr;
+    };
+    struct Expectation{
+        bool walked = false;
+        //  The start check's log line starts with this.
+        std::string logged = {};
+    };
+    std::string name = {};
+    Input input = {};
+    Expectation expectation = {};
 };
 
 class Test_StartFrameCheck : public UnitTest{
 public:
     explicit Test_StartFrameCheck(StartCheckCase test_case)
-        : UnitTest("PokemonFRLG::AutoStoryStartFrames - " + test_case.input.name)
+        : UnitTest("PokemonFRLG::AutoStoryStartFrames - " + test_case.name)
         , m_case(std::move(test_case))
     {}
 
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
         size_t walks = 0;
         std::vector<std::string> lines;
-        Pokemon::Checkpoint checkpoint = one_walk(walks);
-        add_start_check(
-            checkpoint, to_pose(StoryPose{"CeruleanCity_PokemonCenter_1F", TilePos{7, 4}, Direction::NORTH}),
-            [this]{ return read_start_frames(reference(), m_case.input.screen, 3); },
-            [&lines](const std::string& line){ lines.push_back(line); }
-        );
+        std::vector<Pokemon::StoryCheckpoint> checkpoints;
+        checkpoints.push_back(one_walk(walks, lines));
+        struct LocalScope : CancellableScope{};
+    LocalScope scope;
+        Pokemon::FakeStoryBackend backend(Pokemon::FakeStoryScript{}, scope);
+        Pokemon::StoryGame game;
+        game.attempts_per_checkpoint = 1;
         Pokemon::RunState state;
-        Pokemon::EventLogger log = [](const std::string&){};
-        const Pokemon::CheckpointReport report = Pokemon::run_checkpoint(state, checkpoint, log);
-        const bool stopped = !report.completed && report.failure.failure == "start_failed";
+        const std::optional<Pokemon::CheckpointFailure> failure = Pokemon::run_checkpoints(backend, checkpoints, game, state);
+        const bool completed = !failure.has_value();
+        const bool stopped = failure.has_value() && failure->failure.code == "start_failed";
         const bool logged = lines.size() == 1 && lines[0].starts_with(m_case.expectation.logged);
-        if ((m_case.expectation.walked ? !report.completed || walks != 1 : !stopped || walks != 0) || !logged){
+        if ((m_case.expectation.walked ? !completed || walks != 1 : !stopped || walks != 0) || !logged){
             return std::format(
                 "expected {}, \"{}\" logged; got {} walk(s), {}: {}",
                 m_case.expectation.walked ? "the walk" : "a stop before it", m_case.expectation.logged,
-                walks, Pokemon::to_string(report.failure), lines.empty() ? "nothing logged" : lines[0]
+                walks, failure ? failure->failure.code : std::string("ok"), lines.empty() ? "nothing logged" : lines[0]
             );
         }
         return true;
     }
 
 private:
-    static Pokemon::Checkpoint one_walk(size_t& walks){
-        Pokemon::Checkpoint checkpoint;
+    Pokemon::StoryCheckpoint one_walk(size_t& walks, std::vector<std::string>& lines) const{
+        Pokemon::StoryCheckpoint checkpoint;
         checkpoint.id = "07.02";
-        Pokemon::Event walk;
-        walk.name = "to_the_door";
-        walk.act = [&walks](Pokemon::RunState&){
-            walks++;
-            return Pokemon::outcome_ok();
-        };
-        checkpoint.events.push_back(std::move(walk));
+        checkpoint.steps.push_back(Pokemon::StoryStep{
+            .name = "save_at_start_pose",
+            .action = "start_check",
+            .run = [this, &lines](Pokemon::StoryBackend&, Pokemon::RunState&){
+                return run_start_check(
+                    to_grid_pose(StoryPose{"CeruleanCity_PokemonCenter_1F", TilePos{7, 4}, Direction::NORTH}),
+                    [this]{ return read_start_frames(reference(), m_case.input.screen, 3); },
+                    [&lines](const std::string& line){ lines.push_back(line); }
+                );
+            },
+        });
+        checkpoint.steps.push_back(Pokemon::StoryStep{
+            .name = "to_the_door",
+            .action = "route",
+            .run = [&walks](Pokemon::StoryBackend&, Pokemon::RunState&) -> std::optional<Pokemon::StoryFailure>{
+                walks++;
+                return std::nullopt;
+            },
+        });
         return checkpoint;
     }
     std::optional<ImageRGB32> reference() const{
@@ -445,15 +460,18 @@ private:
 
 const StartCheckCase START_CHECK_CASES[] = {
     {
-        .input = {"a save outside the door stops before any step", true, outside_door},
+        .name = "a save outside the door stops before any step",
+        .input = {true, outside_door},
         .expectation = {false, "start pose mismatch: "},
     },
     {
-        .input = {"a save at the counter walks", true, at_counter},
+        .name = "a save at the counter walks",
+        .input = {true, at_counter},
         .expectation = {true, "start pose matches: "},
     },
     {
-        .input = {"no frame kept walks, as before", false, outside_door},
+        .name = "no frame kept walks, as before",
+        .input = {false, outside_door},
         .expectation = {true, "start pose not read: no start frame kept"},
     },
 };

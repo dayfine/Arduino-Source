@@ -16,9 +16,8 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -42,10 +41,10 @@ Pokemon::TilePos fossil_tile(Fossil fossil);
 //  or "dome".
 inline const std::string FOSSIL_ACTION = "fossil";
 //  The fossil a FOSSIL_ACTION step's args choose; nothing if it isn't one.
-std::optional<Fossil> fossil_of(const Pokemon::StoryActionArgs& args);
+std::optional<Fossil> fossil_of(const FrlgArgMap& args);
 
 //  The table's CHOICE(fossil) step, the player facing the fossil.
-Pokemon::StoryStep fossil_step(std::string name, std::string why, Fossil fossil);
+StoryStep fossil_step(std::string name, std::string why, Fossil fossil);
 
 
 

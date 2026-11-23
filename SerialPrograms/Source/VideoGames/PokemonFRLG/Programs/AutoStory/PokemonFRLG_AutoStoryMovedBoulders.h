@@ -16,6 +16,7 @@
 #include <string_view>
 #include <vector>
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRouteSteps.h"
 #include "PokemonFRLG_AutoStoryCheckpoints.h"
 
 namespace PokemonAutomation{

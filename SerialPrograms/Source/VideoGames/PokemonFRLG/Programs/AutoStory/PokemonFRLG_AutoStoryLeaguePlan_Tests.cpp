@@ -63,10 +63,10 @@ struct BudgetedTurnCase{
     BudgetedTurnExpectation expectation;
 };
 
-const Pokemon::StoryStep& league_battle(std::string_view name){
+const StoryStep& league_battle(std::string_view name){
     for (const StoryCheckpoint& row : story_checkpoints()){
-        for (const Pokemon::StoryStep& step : row.steps){
-            if (row.id.starts_with("20.") && step.kind == Pokemon::StoryStepKind::BATTLE && step.name == name){
+        for (const StoryStep& step : row.steps){
+            if (row.id.starts_with("20.") && step.action == "battle" && step.name == name){
                 return step;
             }
         }
@@ -75,7 +75,7 @@ const Pokemon::StoryStep& league_battle(std::string_view name){
 }
 
 Supplies league_turn_supplies(const BudgetedTurnInput& input){
-    const Pokemon::StoryStep& step = league_battle(input.battle);
+    const StoryStep& step = league_battle(input.battle);
     Supplies supplies;
     std::vector<BagRow> bag = {
         {"full-restore", 10}, {"x-special", 10}, {"x-speed", 4}, {"x-accuracy", 3}, {"guard-spec", 2},
@@ -93,7 +93,7 @@ Supplies league_turn_supplies(const BudgetedTurnInput& input){
         .level = 52,
         .stats = Stats{.hp = 165, .attack = 99, .defense = 129, .sp_attack = 114, .sp_defense = 144, .speed = 113},
     };
-    supplies.foes = Pokemon::story_arg<std::vector<std::string>>(step.args, "foes");
+    supplies.foes = frlg_arg<std::vector<std::string>>(step.args, "foes");
     supplies.policy = battle_policy_of(step.args);
     supplies.budget = input.budget;
     return supplies;

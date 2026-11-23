@@ -19,8 +19,9 @@
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
 #include "CommonFramework/Exceptions/ProgramFinishedException.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryEngine.h"
+#include "Pokemon/AutoStory/Engine/Pokemon_StoryGame.h"
+#include "Pokemon/AutoStory/Testing/Pokemon_StoryFakeBackend.h"
 #include "PokemonFRLG_AutoStoryCapture.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
 
@@ -32,7 +33,6 @@ namespace PokemonFRLG{
 namespace{
 
 using Pokemon::Direction;
-using Pokemon::StoryStep;
 
 //  Keeps the lines logged, for the messages a test checks.
 class LineLogger : public Logger{
@@ -359,31 +359,35 @@ UnitTestResult test_capture_args(){
             return "The " + plan.species + " plan didn't read back from its args.";
         }
     }
-    const Pokemon::StoryActionSpec* spec = Pokemon::find_story_action(story_action_specs(), Pokemon::StoryStepKind::GAME, CAPTURE_ACTION);
-    if (spec == nullptr){
+    const auto& action_names = frlg_action_names();
+    if (!std::binary_search(action_names.begin(), action_names.end(), CAPTURE_ACTION)){
         return "No capture action among FRLG's actions.";
     }
-    const Pokemon::StoryActionArgs short_form = Pokemon::with_fallbacks(*spec, {{"species", std::string("rattata")}});
+    JsonObject short_json;
+    short_json["species"] = "rattata";
+    StoryStep short_step;
+    make_frlg_action_parsers([&](StoryStep s){ short_step = std::move(s); return Pokemon::StoryStepRun{}; }).at(CAPTURE_ACTION)(short_json);
+    const FrlgArgMap& short_form = short_step.args;
     const std::optional<CapturePlan> defaults = capture_plan_of(short_form);
     if (!defaults || defaults->species != "rattata" || defaults->max_balls != 5 || defaults->weaken_move){
         return "Expected a capture of only a species to read with the defaults.";
     }
-    const std::vector<std::pair<std::string, Pokemon::StoryArgValue>> bad_args{
+    const std::vector<std::pair<std::string, FrlgArgValue>> bad_args{
         {"species", std::string("")},
         {"balls", int64_t(0)},
         {"move", int64_t(5)},
         {"pace", std::string("up")},
     };
     for (const auto& [key, value] : bad_args){
-        Pokemon::StoryActionArgs args = short_form;
+        FrlgArgMap args = short_form;
         args[key] = value;
         if (capture_plan_of(args)){
             return "Expected a bad " + key + " refused.";
         }
     }
-    const Pokemon::StoryStep step = capture_step("catch_rattata", "Cut user", RATTATA);
-    if (step.kind != Pokemon::StoryStepKind::GAME || step.action != CAPTURE_ACTION || !capture_plan_of(step.args)){
-        return "Expected capture_step() to be a GAME capture step with its plan's args.";
+    const StoryStep step = capture_step("catch_rattata", "Cut user", RATTATA);
+    if (step.action != CAPTURE_ACTION || !capture_plan_of(step.args)){
+        return "Expected capture_step() to be a capture step with its plan's args.";
     }
     return true;
 }
@@ -439,51 +443,65 @@ public:
     virtual void press(PcPress) override{}
 };
 
-//  Runs capture and PC GAME steps as the program's executor does.
-class StorageExecutor : public Pokemon::StoryStepExecutor{
+//  Runs capture and PC steps as the program's executor does.
+class StorageExecutor{
 public:
     LineLogger logger;
     FakeCaptureGame capture;
     IdlePc pc;
     std::vector<size_t> protected_slots;
 
-    virtual Pokemon::Outcome run(const StoryStep& step, Pokemon::RunState&) override{
-        if (step.kind != Pokemon::StoryStepKind::GAME){
-            return Pokemon::unsupported_step(step);
-        }
-        const std::optional<Pokemon::Outcome> outcome = run_storage_game_step(protected_slots, logger, nullptr, step, capture, pc);
-        return outcome ? *outcome : Pokemon::unsupported_step(step);
+    std::optional<Pokemon::StoryFailure> run(const StoryStep& step){
+        const std::optional<std::optional<Pokemon::StoryFailure>> outcome = run_storage_game_step(
+            protected_slots, logger, nullptr, step, capture, pc
+        );
+        return outcome ? *outcome : frlg_unsupported_step(step);
     }
 };
 
 struct SegmentRun{
-    Pokemon::SegmentReport report;
+    bool completed = false;
+    std::string failure_code = {};
     size_t reloads = 0;
     //  The program stopped: ProgramFinishedException.
     bool finished = false;
 };
 
-//  One checkpoint of `steps`, run by the shared runner with the program's
+//  One checkpoint of `steps`, run by #648 StoryEngine with the program's
 //  retry policy.
 SegmentRun run_steps(StorageExecutor& executor, const std::vector<StoryStep>& steps){
-    const Pokemon::StoryCheckpoint data{.id = "test.01", .title = "capture", .start = std::nullopt, .steps = steps};
-    Pokemon::Segment segment;
-    segment.id = "test";
-    segment.checkpoints.push_back(Pokemon::CheckpointSpec{
-        .id = data.id, .title = data.title, .saves = false,
-        .build = [&]{ return Pokemon::build_story_checkpoint(data, executor); },
-    });
+    Pokemon::StoryCheckpoint cp;
+    cp.id = "test.01";
+    cp.title = "capture";
+    for (const StoryStep& step : steps){
+        cp.steps.push_back(Pokemon::StoryStep{
+            .name = step.name,
+            .why = step.why,
+            .action = step.action,
+            .run = [&executor, step](Pokemon::StoryBackend&, Pokemon::RunState&){
+                return executor.run(step);
+            },
+        });
+    }
+    std::vector<Pokemon::StoryCheckpoint> checkpoints;
+    checkpoints.push_back(std::move(cp));
     SegmentRun run;
-    Pokemon::SegmentHooks hooks;
-    hooks.save = [](Pokemon::RunState&){ return Pokemon::outcome_ok(); };
-    hooks.reload = [&](Pokemon::RunState&){
+    struct LocalScope : CancellableScope{};
+    LocalScope scope;
+    Pokemon::FakeStoryBackend backend(Pokemon::FakeStoryScript{}, scope);
+    Pokemon::StoryGame game;
+    game.attempts_per_checkpoint = 3;
+    game.reload = [&](Pokemon::StoryBackend&, const Pokemon::StoryCheckpoint& failed) -> std::optional<std::string>{
         run.reloads++;
-        return Pokemon::outcome_ok();
+        return failed.id;
     };
-    hooks.log = [](const std::string&){};
     Pokemon::RunState state;
     try{
-        run.report = Pokemon::run_segment({}, Pokemon::SegmentPolicy{}, segment, hooks, state);
+        const std::optional<Pokemon::CheckpointFailure> failed = Pokemon::run_checkpoints(backend, checkpoints, game, state);
+        run.completed = !failed.has_value();
+        if (failed){
+            run.failure_code = failed->failure.code;
+        }
     }catch (ProgramFinishedException&){
         run.finished = true;
     }
@@ -498,7 +516,7 @@ UnitTestResult test_capture_in_segment(){
         StorageExecutor executor;
         executor.capture.encounters = {{.species = "spearow"}, {.species = "rattata"}};
         const SegmentRun run = run_steps(executor, {capture_step("catch_rattata", "", RATTATA)});
-        if (!run.report.completed || run.reloads != 0 || joined(executor.capture.trace) != "spearow, run, rattata, ball, to party"){
+        if (!run.completed || run.reloads != 0 || joined(executor.capture.trace) != "spearow, run, rattata, ball, to party"){
             return "Expected the catch in one attempt; got: " + joined(executor.capture.trace);
         }
     }
@@ -507,10 +525,10 @@ UnitTestResult test_capture_in_segment(){
         executor.capture.bag_balls = 0;
         executor.capture.encounters = {{.species = "rattata"}, {.species = "rattata"}, {.species = "rattata"}};
         const SegmentRun run = run_steps(executor, {capture_step("catch_rattata", "", RATTATA)});
-        if (run.report.completed || run.reloads != 2 || run.report.failure.failure != "capture_out_of_balls"){
+        if (run.completed || run.reloads != 2 || run.failure_code != "capture_out_of_balls"){
             return std::format(
                 "Expected 3 attempts out of balls, reloading between; got {} reloads, failure {}.",
-                run.reloads, run.report.failure.failure
+                run.reloads, run.failure_code
             );
         }
     }
@@ -531,7 +549,7 @@ UnitTestResult test_capture_in_segment(){
         executor.pc.party = {{.species = "squirtle", .fainted = true}, {.species = "magikarp"}};
         const PcTransfer deposit{.action = PcAction::DEPOSIT, .party_slot = 1};
         const SegmentRun run = run_steps(executor, {pc_step("deposit_magikarp", "", deposit)});
-        if (run.report.completed || run.report.failure.failure != "pc_refused" || executor.pc.views != 0){
+        if (run.completed || run.failure_code != "pc_refused" || executor.pc.views != 0){
             return "Expected the deposit of the last Pokemon that can fight refused before the PC was read.";
         }
     }

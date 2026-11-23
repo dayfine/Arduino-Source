@@ -61,13 +61,13 @@ LaunchLook read_launch_look(const StoryLaunchPolicy& policy, const ScreenObserva
     return {.screen = overworld ? LaunchScreen::OVERWORLD : LaunchScreen::OTHER};
 }
 
-Outcome launch_failed(std::string detail){
-    return outcome_failed(std::string(STORY_LAUNCH_FAILED), std::move(detail));
+StoryFailure launch_failed(std::string detail){
+    return StoryFailure{.code = std::string(STORY_LAUNCH_FAILED), .detail = std::move(detail), .repeats = true};
 }
 
 //  Why `policy` cannot launch `request`, before any press; nothing when it
 //  can.
-std::optional<Outcome> launch_problem(const StoryLaunchPolicy& policy, StoryLaunchRequest request){
+std::optional<StoryFailure> launch_problem(const StoryLaunchPolicy& policy, StoryLaunchRequest request){
     if (!policy.tile_selected || !policy.title){
         return launch_failed(std::format("{}: the launch policy has no tile or title check", policy.game));
     }
@@ -78,20 +78,28 @@ std::optional<Outcome> launch_problem(const StoryLaunchPolicy& policy, StoryLaun
 }
 
 
+//  How one step of the launch ended: keep going, succeeded, or failed.
+struct LaunchStepEnd{
+    bool done = false;
+    std::optional<StoryFailure> failure = std::nullopt;
+};
+
 //  One launch: a look, one thing done about it, until the overworld has
 //  settled or a screen took too many presses.
-template <StoryPose PoseType>
 class LaunchDriver{
 public:
-    LaunchDriver(StoryBackend<PoseType>& backend, const StoryLaunchPolicy& policy, StoryLaunchRequest request)
+    LaunchDriver(StoryBackend& backend, const StoryLaunchPolicy& policy, StoryLaunchRequest request)
         : m_backend(backend)
         , m_policy(policy)
         , m_request(request)
     {}
 
-    //  One look and its answer; the launch's end when this look ended it.
-    std::optional<Outcome> step(){
-        const Observation<PoseType> observation = m_backend.observe();
+    //  One look and its answer; done when this look ended the launch.
+    LaunchStepEnd step(){
+        const ScreenObservation observation = m_backend.observe();
+        if (m_title_pressed && observation.events.has(ScreenEvent::FADE_BLACK)){
+            m_load_seen = true;
+        }
         const LaunchLook look = read_launch_look(m_policy, observation, m_launched || m_loading);
         if (look.screen != LaunchScreen::OVERWORLD){
             m_settled = 0;
@@ -100,7 +108,7 @@ public:
         case LaunchScreen::HOME:
             return on_home(observation);
         case LaunchScreen::NEW_GAME:
-            return launch_failed(std::format("{}: the game shows a new game: no save to load, and a launch never starts one", m_policy.game));
+            return {.done = true, .failure = launch_failed(std::format("{}: the game shows a new game: no save to load, and a launch never starts one", m_policy.game))};
         case LaunchScreen::PROMPT:
             return on_prompt(*look.prompt);
         case LaunchScreen::TITLE:
@@ -121,14 +129,14 @@ private:
 
     //  The cursor to the game's tile, then the game closed if it must
     //  load again, then A on the tile.
-    std::optional<Outcome> on_home(const ScreenObservation& observation){
+    LaunchStepEnd on_home(const ScreenObservation& observation){
         if (m_launch_pressed && m_home_waited < m_policy.launch_wait){
             if (m_home_waited == Milliseconds(0)){
                 log("home", "waiting for the game to start");
             }
             m_home_waited += m_policy.poll;
             m_backend.wait(m_policy.poll);
-            return std::nullopt;
+            return {};
         }
         if (!m_policy.tile_selected(observation)){
             return move_to_tile();
@@ -143,20 +151,20 @@ private:
         return press("home", {.button = BUTTON_A}, m_policy.presses_per_screen, "launch the game");
     }
 
-    std::optional<Outcome> move_to_tile(){
+    LaunchStepEnd move_to_tile(){
         const size_t left = m_policy.tile_search;
         if (m_tile_moves >= 3 * left){
-            return launch_failed(std::format("{}: the game's tile is not on HOME: {} tiles searched", m_policy.game, m_tile_moves));
+            return {.done = true, .failure = launch_failed(std::format("{}: the game's tile is not on HOME: {} tiles searched", m_policy.game, m_tile_moves))};
         }
         const Button button = m_tile_moves < left ? BUTTON_LEFT : BUTTON_RIGHT;
         m_tile_moves++;
         log("home", std::format("not on the game's tile: {}", button_to_string(button)));
         m_backend.press(button, Milliseconds(80), Milliseconds(400));
-        return std::nullopt;
+        return {};
     }
 
     //  The prompt's lead-in presses, then its press.
-    std::optional<Outcome> on_prompt(const StoryLaunchPrompt& prompt){
+    LaunchStepEnd on_prompt(const StoryLaunchPrompt& prompt){
         if (m_presses[prompt.name] < prompt.max_presses){
             for (const StoryLaunchPress& each : prompt.before){
                 m_backend.press(each.button, each.hold, each.release);
@@ -165,7 +173,7 @@ private:
         return press(prompt.name, prompt.press, prompt.max_presses);
     }
 
-    std::optional<Outcome> on_title(){
+    LaunchStepEnd on_title(){
         m_loading = true;
         m_launched = true;
         if (m_request.save == StoryLaunchRequest::Save::BACKUP && !m_backup_sent){
@@ -175,52 +183,69 @@ private:
                 m_backend.press(each.button, each.hold, each.release);
             }
         }
+        //  A black before this title was not the load.
+        m_load_seen = false;
+        m_title_pressed = true;
         return press("title", m_policy.title_press, m_policy.presses_per_screen);
     }
 
-    std::optional<Outcome> on_overworld(){
+    LaunchStepEnd on_overworld(){
         if (needs_load()){
-            return press("overworld", {.button = BUTTON_HOME}, m_policy.presses_per_screen, "HOME, to load the save");
+            return press("overworld", {.button = BUTTON_HOME, .release = Milliseconds(1000)}, m_policy.presses_per_screen, "HOME, to load the save");
+        }
+        if (m_loading && !m_launched){
+            //  Closing the game on HOME: a mid-fade frame before HOME returns
+            //  is not the title's attract movie yet.
+            m_backend.wait(m_policy.poll);
+            return {};
+        }
+        if (m_policy.overworld_after_load && m_loading && !m_load_seen){
+            //  Not the load's press: on the movie, it goes back to the
+            //  title through a black.
+            return press(
+                "title", m_policy.title_press, m_policy.presses_per_screen,
+                std::format("no load yet, so the title's attract movie: {}", button_to_string(m_policy.title_press.button))
+            );
         }
         if (++m_settled >= m_policy.settled_looks){
             log("overworld", std::format("settled for {} looks", m_settled));
-            return outcome_ok();
+            return {.done = true, .failure = std::nullopt};
         }
         m_backend.wait(m_policy.poll);
-        return std::nullopt;
+        return {};
     }
 
     //  A screen the policy doesn't know: the game's boot or a load once
     //  launched; before that the game was in front already, left with HOME
     //  to load the save, or B toward its overworld.
-    std::optional<Outcome> on_other(){
+    LaunchStepEnd on_other(){
         if (m_launched || m_loading){
             m_backend.wait(m_policy.poll);
-            return std::nullopt;
+            return {};
         }
         if (needs_load()){
-            return press("unknown screen", {.button = BUTTON_HOME}, m_policy.presses_per_screen, "HOME, to load the save");
+            return press("unknown screen", {.button = BUTTON_HOME, .release = Milliseconds(1000)}, m_policy.presses_per_screen, "HOME, to load the save");
         }
         return press("unknown screen", {.button = BUTTON_B}, m_policy.presses_per_screen, "B, toward the overworld");
     }
 
     //  `what` on `screen`, unless `screen` already took `max` presses.
-    std::optional<Outcome> press(std::string_view screen, const StoryLaunchPress& what, size_t max, std::string_view why = {}){
+    LaunchStepEnd press(std::string_view screen, const StoryLaunchPress& what, size_t max, std::string_view why = {}){
         size_t& count = m_presses[std::string(screen)];
         if (count >= max){
-            return launch_failed(std::format("{}: stuck on {}: {} presses changed nothing", m_policy.game, screen, count));
+            return {.done = true, .failure = launch_failed(std::format("{}: stuck on {}: {} presses changed nothing", m_policy.game, screen, count))};
         }
         count++;
         log(screen, why.empty() ? button_to_string(what.button) : std::string(why));
         m_backend.press(what.button, what.hold, what.release);
-        return std::nullopt;
+        return {};
     }
 
     void log(std::string_view screen, std::string_view what){
         m_backend.log(std::format("[Launch] {}: {}: {}", m_policy.game, screen, what));
     }
 
-    StoryBackend<PoseType>& m_backend;
+    StoryBackend& m_backend;
     const StoryLaunchPolicy& m_policy;
     StoryLaunchRequest m_request;
     std::map<std::string, size_t, std::less<>> m_presses;
@@ -237,6 +262,12 @@ private:
     bool m_launch_pressed = false;
     Milliseconds m_home_waited = Milliseconds(0);
     bool m_backup_sent = false;
+    //  The title press was sent on a look `policy.title` read as the
+    //  title; a press on the attract movie (`overworld_after_load`) is not.
+    bool m_title_pressed = false;
+    //  A black screen showed after the title press, and the title has not
+    //  shown since: the save loading.
+    bool m_load_seen = false;
 };
 
 
@@ -250,29 +281,26 @@ std::function<bool(const ScreenObservation& look)> switch_home_tile_named(Langua
 }
 
 
-template <StoryPose PoseType>
-Outcome launch_story_game(StoryBackend<PoseType>& backend, const StoryLaunchPolicy& policy, StoryLaunchRequest request){
-    if (std::optional<Outcome> problem = launch_problem(policy, request)){
+std::optional<StoryFailure> launch_story_game(StoryBackend& backend, const StoryLaunchPolicy& policy, StoryLaunchRequest request){
+    if (std::optional<StoryFailure> problem = launch_problem(policy, request)){
         backend.log(std::format("[Launch] {}", problem->detail));
-        return std::move(*problem);
+        return problem;
     }
-    LaunchDriver<PoseType> driver(backend, policy, request);
+    LaunchDriver driver(backend, policy, request);
     for (size_t looks = 0; looks < policy.max_looks; looks++){
         backend.scope().throw_if_cancelled();
-        if (std::optional<Outcome> end = driver.step()){
-            if (!end->succeeded()){
-                backend.log(std::format("[Launch] {}", end->detail));
+        LaunchStepEnd end = driver.step();
+        if (end.done){
+            if (end.failure){
+                backend.log(std::format("[Launch] {}", end.failure->detail));
             }
-            return std::move(*end);
+            return std::move(end.failure);
         }
     }
-    const Outcome failed = launch_failed(std::format("{}: no overworld after {} looks", policy.game, policy.max_looks));
+    StoryFailure failed = launch_failed(std::format("{}: no overworld after {} looks", policy.game, policy.max_looks));
     backend.log(std::format("[Launch] {}", failed.detail));
     return failed;
 }
-
-template Outcome launch_story_game<GridPose>(StoryBackend<GridPose>&, const StoryLaunchPolicy&, StoryLaunchRequest);
-template Outcome launch_story_game<ZonePose>(StoryBackend<ZonePose>&, const StoryLaunchPolicy&, StoryLaunchRequest);
 
 
 

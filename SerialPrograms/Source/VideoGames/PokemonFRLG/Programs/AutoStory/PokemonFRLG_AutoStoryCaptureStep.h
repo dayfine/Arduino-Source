@@ -20,11 +20,9 @@
 #include "CommonFramework/Tools/VideoStream.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "PokemonFRLG_AutoStoryPcStorage.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -58,15 +56,15 @@ struct CapturePlan{
 //  INTEGER (2).
 inline const std::string CAPTURE_ACTION = "capture";
 //  `plan` as its action's args.
-Pokemon::StoryActionArgs capture_args(const CapturePlan& plan);
+FrlgArgMap capture_args(const CapturePlan& plan);
 //  The plan a CAPTURE_ACTION step's args give; nothing if one is out of
 //  range.
-std::optional<CapturePlan> capture_plan_of(const Pokemon::StoryActionArgs& args);
+std::optional<CapturePlan> capture_plan_of(const FrlgArgMap& args);
 
 //  The table's step that runs `plan`.
-Pokemon::StoryStep capture_step(std::string name, std::string why, const CapturePlan& plan);
+StoryStep capture_step(std::string name, std::string why, const CapturePlan& plan);
 //  The table's step that runs `transfer` at the PC the player faces.
-Pokemon::StoryStep pc_step(std::string name, std::string why, const PcTransfer& transfer);
+StoryStep pc_step(std::string name, std::string why, const PcTransfer& transfer);
 
 
 

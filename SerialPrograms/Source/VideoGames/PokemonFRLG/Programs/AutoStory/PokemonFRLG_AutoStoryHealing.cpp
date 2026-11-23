@@ -81,12 +81,12 @@ void took_recovery_item(Supplies& supplies, const std::string& item){
     }
 }
 
-Pokemon::Outcome check_poison_survival(int steps, int fallback_max_hp, const Supplies& supplies){
+std::optional<Pokemon::StoryFailure> check_poison_survival(int steps, int fallback_max_hp, const Supplies& supplies){
     if (supplies.status != StatusCondition::POISON){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     if (bag_count(supplies, "antidote") > 0 || bag_count(supplies, "full-heal") > 0){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     const int needed_hp = steps / 4 + 1;
     const int max_hp = supplies.lead.stats && supplies.lead.stats->hp > 0 ? supplies.lead.stats->hp : fallback_max_hp;
@@ -95,15 +95,15 @@ Pokemon::Outcome check_poison_survival(int steps, int fallback_max_hp, const Sup
         ? max_hp - *missing
         : static_cast<int>(std::floor(supplies.hp_fill * max_hp));
     if (estimated_hp < needed_hp || (!missing && supplies.hp_red)){
-        return Pokemon::outcome_failed(
-            "postconditions_failed",
-            std::format(
+        return Pokemon::StoryFailure{
+            .code = "postconditions_failed",
+            .detail = std::format(
                 "poison_survival: lead is PSN with ~{}/{} HP and no Antidote (need >= {} HP for {} steps)",
                 std::max(0, estimated_hp), max_hp, needed_hp, steps
-            )
-        );
+            ),
+        };
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 std::optional<int> missing_hp(const Supplies& supplies, int fallback_max_hp){
@@ -169,7 +169,7 @@ int hp_cover_shortfall(const Supplies& supplies, int cover_hp, const std::string
 }
 
 int fill_shortfall(const Supplies& supplies, int target, const std::string& item){
-    return std::max(0, target - item_count(supplies, item));
+    return std::max(0, target - bag_count(supplies, item));
 }
 
 
@@ -422,7 +422,7 @@ UnitTestResult test_poison_survival(){
     //  Not poisoned: passes even at low HP with no Antidotes.
     Supplies healthy;
     measured_hp(healthy, 0.10);
-    if (!check_poison_survival(130, 55, healthy).succeeded()){
+    if (check_poison_survival(130, 55, healthy)){
         return "Not poisoned: expected ok.";
     }
 
@@ -431,12 +431,12 @@ UnitTestResult test_poison_survival(){
     cured.status = StatusCondition::POISON;
     cured.antidotes = 1;
     measured_hp(cured, 0.10);
-    if (!check_poison_survival(130, 55, cured).succeeded()){
+    if (check_poison_survival(130, 55, cured)){
         return "Poisoned with Antidote: expected ok.";
     }
     cured.antidotes = 0;
     cured.full_heals = 1;
-    if (!check_poison_survival(130, 55, cured).succeeded()){
+    if (check_poison_survival(130, 55, cured)){
         return "Poisoned with Full Heal: expected ok.";
     }
 
@@ -444,8 +444,8 @@ UnitTestResult test_poison_survival(){
     Supplies low;
     low.status = StatusCondition::POISON;
     measured_hp(low, 0.40);
-    const Pokemon::Outcome low_outcome = check_poison_survival(130, 55, low);
-    if (low_outcome.succeeded() || low_outcome.failure != "postconditions_failed"){
+    const std::optional<Pokemon::StoryFailure> low_failure = check_poison_survival(130, 55, low);
+    if (!low_failure || low_failure->code != "postconditions_failed"){
         return "Poisoned at 40% of 55 HP with no Antidote: expected postconditions_failed.";
     }
 
@@ -453,7 +453,7 @@ UnitTestResult test_poison_survival(){
     Supplies high;
     high.status = StatusCondition::POISON;
     measured_hp(high, 0.80);
-    if (!check_poison_survival(130, 55, high).succeeded()){
+    if (check_poison_survival(130, 55, high)){
         return "Poisoned at 80% of 55 HP: expected ok.";
     }
 
@@ -461,7 +461,7 @@ UnitTestResult test_poison_survival(){
     Supplies unmeasured_low;
     unmeasured_low.status = StatusCondition::POISON;
     unmeasured_low.hp_fill = 0.50;
-    if (check_poison_survival(130, 55, unmeasured_low).succeeded()){
+    if (!check_poison_survival(130, 55, unmeasured_low)){
         return "Poisoned with unmeasured 50% hp_fill: expected failure.";
     }
     return true;

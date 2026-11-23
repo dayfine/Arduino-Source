@@ -32,9 +32,8 @@
 #include <string>
 #include <string_view>
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Pokemon_StoryOutcome.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 
@@ -90,14 +89,11 @@ private:
     bool m_done = false;
 };
 
-//  HALL_OF_FAME_ACTION's spec.
-Pokemon::StoryActionSpec hall_of_fame_action_spec();
-
 //  On the console, a HALL_OF_FAME_ACTION step; nothing for another. Fails
 //  if the save message doesn't show; the screenshots are logged, and one
 //  that can't be taken doesn't fail the step.
-std::optional<Pokemon::Outcome> run_hall_of_fame_step(
-    ConsoleHandle& console, ProControllerContext& context, const Pokemon::StoryStep& step
+std::optional<std::optional<Pokemon::StoryFailure>> run_hall_of_fame_step(
+    ConsoleHandle& console, ProControllerContext& context, const StoryStep& step
 );
 
 

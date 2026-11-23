@@ -21,12 +21,11 @@
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "CommonFramework/Language.h"
-#include "Pokemon/AutoStory/Pokemon_StoryEvents.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
+#include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_PlayerFacingReader.h"
 #include "PokemonFRLG_AutoStoryPartyRoster.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -51,10 +50,7 @@ inline const std::string LIFT_FLOOR_VARIANT = "lift_floor";
 
 
 //  Whether `step` is one of this file's steps.
-bool is_hideout_step(const Pokemon::StoryStep& step);
-//  The GAME actions of this file, a Pokemon Center's and the bag's, with
-//  their args: FRLG's table adds them (story_action_specs()).
-std::vector<Pokemon::StoryActionSpec> field_action_specs();
+bool is_hideout_step(const StoryStep& step);
 
 //  On the console: A on the poster, its message closed back to the
 //  overworld.
@@ -66,9 +62,9 @@ void push_poster_switch(ConsoleHandle& console, ProControllerContext& context);
 //  (HALL_OF_FAME_ACTION);
 //  nothing for another GAME step. The step ends on its pose_after, if it
 //  has one (an Escape Rope's, a lift ride's, a Center's).
-std::optional<Pokemon::Outcome> run_field_game_step(
+std::optional<std::optional<Pokemon::StoryFailure>> run_field_game_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player,
-    const Pokemon::StoryStep& step, PartyCache& party
+    const StoryStep& step, PartyCache& party
 );
 
 

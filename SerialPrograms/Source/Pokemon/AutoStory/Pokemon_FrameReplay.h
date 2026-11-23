@@ -46,6 +46,7 @@
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
 #include "CommonTools/ScreenEvents/ScreenEvents.h"
+#include "Pokemon_ScreenEventLog.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{

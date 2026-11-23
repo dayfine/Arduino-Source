@@ -17,28 +17,26 @@
     "events": [
       {
         "id": "lead_lv53_for_agatha",
-        "kind": "game_action",
         "action": "level",
+        "why": "the precondition for Agatha: the lead at least Lv53, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md agatha; Bruno's fight takes it a level up)",
         "args": {
           "slot": 1,
           "min": 53
-        },
-        "why": "the precondition for Agatha: the lead at least Lv53, pokeguy's Blastoise here (docs/battles/pokeguy-conditions.md agatha; Bruno's fight takes it a level up)"
+        }
       },
       {
         "id": "top_up_before_agatha",
-        "kind": "game_action",
         "action": "league_top_up",
+        "why": "after the reload, before the walk: reads the lead's HP and the Items pocket, then the plan's top-up before the fight (planned_between(): a Super Potion for up to 50 missing HP, two for up to 100 if two are spare, else a Full Restore; the Elixir only before the Champion), then checks the fight's entry contract (contract.entry: the items it starts with); a broken contract fails the row's start",
         "args": {
           "fight": "agatha",
           "max_hp": 165
-        },
-        "why": "after the reload, before the walk: reads the lead's HP and the Items pocket, then the plan's top-up before the fight (planned_between(): a Super Potion for up to 50 missing HP, two for up to 100 if two are spare, else a Full Restore; the Elixir only before the Champion), then checks the fight's entry contract (contract.entry: the items it starts with); a broken contract fails the row's start"
+        }
       },
       {
         "id": "before_agatha",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "to (6, 6) facing Agatha (6, 5), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off",
         "args": {
           "target": {
             "map": "PokemonLeague_AgathasRoom",
@@ -49,18 +47,19 @@
               ]
             ],
             "facing": "north"
-          }
-        },
-        "why": "to (6, 6) facing Agatha (6, 5), planned from where the room's walk left the player: a tile north, or a step round if the walk ended a tile off"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "challenge_agatha",
-        "kind": "talk",
+        "action": "talk",
         "why": "Agatha (6, 5): the intro, then the battle (trainerbattle_no_intro)"
       },
       {
         "id": "agatha",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar Lv54, Golbat Lv54, Haunter Lv53, Arbok Lv56, Gengar Lv58, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +1 by X Specials, +3 while Torrent is off (torrent_power), X Speed until faster, Guard Spec first against an accuracy drop; the doc's agatha row, 95.3% at 45/165, its opening a heal); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: Arbok's worst case is 108. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the door north (6, 2) opens",
         "args": {
           "trainer": "TRAINER_ELITE_FOUR_AGATHA",
           "foes": [
@@ -149,24 +148,23 @@
               109,
               155
             ]
-          ]
-        },
-        "declared_after": {
-          "map": "PokemonLeague_AgathasRoom",
-          "tiles": [
-            [
-              6,
-              6
-            ]
           ],
-          "facing": "north"
-        },
-        "why": "Agatha (TRAINER_ELITE_FOUR_AGATHA): Gengar Lv54, Golbat Lv54, Haunter Lv53, Arbok Lv56, Gengar Lv58, two Full Restores; fought by budgeted C2 (budgeted-setup, the League plan's per-fight item budget; before that goal-based-setup: Sp. Atk +1 by X Specials, +3 while Torrent is off (torrent_power), X Speed until faster, Guard Spec first against an accuracy drop; the doc's agatha row, 95.3% at 45/165, its opening a heal); foe_threats are the rows PokemonSimulation's player-strategy planning_risk() gives for each foe leading against console B's Lv54 Blastoise (171 HP, Def 135, Sp. Def 150) at full HP: Arbok's worst case is 108. foe_stats are each foe's Defense, Sp. Def and HP from the doc's table, for the damage each attack would do and whether the best one KOs (no X item then). Then the door north (6, 2) opens"
+          "pose_after": {
+            "map": "PokemonLeague_AgathasRoom",
+            "tiles": [
+              [
+                6,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_agathas_door",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "from in front of Agatha (6, 5) around her to below her door (6, 2), open since her defeat",
         "args": {
           "target": {
             "map": "PokemonLeague_AgathasRoom",
@@ -177,22 +175,40 @@
               ]
             ],
             "facing": "north"
-          }
-        },
-        "why": "from in front of Agatha (6, 5) around her to below her door (6, 2), open since her defeat"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "agathas_door",
-        "kind": "step",
+        "action": "step",
+        "why": "into the door (6, 2), the warp into Lance's room at the east end of its corridor (23, 13)",
         "args": {
           "direction": "north"
-        },
-        "why": "into the door (6, 2), the warp into Lance's room at the east end of its corridor (23, 13)"
+        }
       },
       {
         "id": "lances_corridor",
-        "kind": "scene",
-        "declared_after": {
+        "action": "scene",
+        "why": "the room's OnFrame script walks the player through the corridor (PokemonLeague_LancesRoom_Movement_WalkThroughCorridor: 2 north, 6 west, 7 south, 11 west, 8 north) from (23, 13) to (6, 10) and closes the entrance behind; no text",
+        "args": {
+          "pose_after": {
+            "map": "PokemonLeague_LancesRoom",
+            "tiles": [
+              [
+                6,
+                10
+              ]
+            ],
+            "facing": "north"
+          }
+        }
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
           "map": "PokemonLeague_LancesRoom",
           "tiles": [
             [
@@ -201,41 +217,27 @@
             ]
           ],
           "facing": "north"
-        },
-        "why": "the room's OnFrame script walks the player through the corridor (PokemonLeague_LancesRoom_Movement_WalkThroughCorridor: 2 north, 6 west, 7 south, 11 west, 8 north) from (23, 13) to (6, 10) and closes the entrance behind; no text"
+        }
       }
-    ]
+    }
   },
   "execution": {
     "menu": "full",
-    "protected_slots": [6],
+    "protected_slots": [
+      6
+    ],
     "verify": {
-      "tries": 10,
-      "min_pass": 5,
-      "reset_budget": 5
+      "tries": 0,
+      "min_pass": 0,
+      "reset_budget": 3
     },
     "notes": {
       "checkpoint": [
         "Starts in Agatha's room (6, 7), where 20.02 ends. Ends in Lance's room (6, 10), at the end of its corridor.",
-        "One League fight per row, each run as a verification loop from its start save (execution.verify, copied from frlg-league-plan.json's contract.pass: tries = min_pass.of, min_pass = min_pass.k, reset_budget): phase 1 plays it that many times saving none and stops the run under min_pass; phase 2 plays it until a try passes (won, within the fight's item caps: league_row_pass()) and saves that one.",
+        "One League fight per row, each run with execution.verify (phase 1 disabled: tries = 0, min_pass = 0; retry counts 3, 5, 3, 3, 5 for 20.01 to 20.05): plays up to reset_budget tries from its start save until a try passes (won, within the fight's item caps: league_row_pass()) and saves that first pass.",
         "The League rooms are one-way: the entrance closes behind the player, and the next room's door opens only when the room's trainer is beaten.",
         "PokeGuy's fights: Lorelei 1:46:37, Bruno 1:49:15, Agatha 1:51:12, Lance 1:53:07, the Champion 1:55:44 (docs/battles/pokeguy-conditions.md); his turns: ~/BDSPLab/notes/pokeguy-league-turns.md."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {
-        "map": "PokemonLeague_LancesRoom",
-        "tiles": [
-          [
-            6,
-            10
-          ]
-        ],
-        "facing": "north"
-      }
     }
   }
 }

@@ -4,9 +4,12 @@
  *
  */
 
+#include <algorithm>
 #include <format>
 #include "PokemonFRLG_WanderRules.h"
 #include "PokemonFRLG_OverworldHeldInPlace.h"
+#include "PokemonFRLG_OverworldSpin.h"
+#include "PokemonFRLG_OverworldTileRules.h"
 #include "PokemonFRLG_OverworldRecoverySupport.h"
 
 namespace PokemonAutomation{
@@ -191,6 +194,47 @@ bool step_blocked_by_wanderer(
     }
     for (const StopCandidate& candidate : before_people(*maps, hold_from, step, across)){
         if (ahead_has_wanderer(maps, candidate.player, step.direction)){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool open_leg_needs_reanchor(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteStep& step
+){
+    if (step.wild || step.surfing || step.lands_after > 0 || step.spin_tiles
+        || !step.connection_steps.empty() || step.end.map != start.map
+    ){
+        return true;
+    }
+    const auto map_it = std::find_if(maps.begin(), maps.end(), [&](const MapData& map){
+        return map.name == start.map;
+    });
+    if (map_it == maps.end()){
+        return true;
+    }
+    const std::vector<MapPosition> tiles = leg_tiles(maps, start, step);
+    if (tiles.size() < (size_t)(step.tiles + 1)){
+        return true;
+    }
+    for (const MapPosition& tile : tiles){
+        if (tile.map != start.map){
+            return true;
+        }
+        const TileKind kind = tile_at(*map_it, tile.point);
+        if (is_tall_grass(*map_it, tile.point)
+            || is_water(*map_it, tile.point)
+            || is_ledge(*map_it, tile.point)
+            || warp_at(*map_it, tile.point) != nullptr
+            || kind == TileKind::DOOR
+            || spin_direction(*map_it, tile.point).has_value()
+            || stops_spinning(*map_it, tile.point)
+            || kind == TileKind::FALL_HOLE
+            || kind == TileKind::STRENGTH_BUTTON
+        ){
             return true;
         }
     }

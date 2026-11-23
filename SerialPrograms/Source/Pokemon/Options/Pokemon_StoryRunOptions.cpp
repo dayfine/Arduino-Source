@@ -14,27 +14,13 @@ namespace Pokemon{
 const EnumDropdownDatabase<StoryCheckLevel>& StoryCheckLevel_Database(){
     static const EnumDropdownDatabase<StoryCheckLevel> database({
         {StoryCheckLevel::TESTING,  "testing",  "Testing: run each checkpoint 3 times to be sure it really passes"},
-        {StoryCheckLevel::THOROUGH, "thorough", "Thorough: check everything for the user (Bag items, Pok\u00e9mon levels and stats before a fight)"},
-        {StoryCheckLevel::DEFAULT,  "default",  "Default: check menu rows before pressing them; trust the Bag counts and levels the story keeps"},
-        {StoryCheckLevel::FAST,     "fast",     "Fast: only the save and the start of each checkpoint"},
-        {StoryCheckLevel::SPEEDRUN, "speedrun", "Speedrun: only the save and the start of each checkpoint, skipping optional errands"},
+        {StoryCheckLevel::THOROUGH, "thorough", "Thorough: check everything for the user (Bag items, Pok\u00e9mon stats, preconditions)"},
+        {StoryCheckLevel::DEFAULT,  "default",  "Default: check the most important things, assume the rest is fine"},
+        {StoryCheckLevel::FAST,     "fast",     "Fast: minimal checks"},
+        {StoryCheckLevel::SPEEDRUN, "speedrun", "Speedrun: almost no checks, as fast as possible"},
     });
     return database;
 }
-
-
-namespace{
-
-//  The CHECKS option's label, with the check table (story_checks_help()),
-//  so what it says is what runs.
-std::string checks_label(){
-    return std::format(
-        "<b>Checks:</b><br>How much each step reads the screen to confirm what it did, from Testing (the most) to Speedrun (almost none). "
-        "Each kind of check runs at these levels:{}", story_checks_help()
-    );
-}
-
-} // namespace
 
 
 const EnumDropdownDatabase<StorySaveMode>& StorySaveMode_Database(){
@@ -57,15 +43,20 @@ const EnumDropdownDatabase<StoryBreakpoints>& StoryBreakpoints_Database(){
 }
 
 
+std::string story_checkpoint_label(std::string_view id, std::string_view title){
+    return title.empty() ? std::string(id) : std::format("{} {}", id, title);
+}
+
 std::string story_checkpoint_label(const StoryCheckpoint& checkpoint){
-    return checkpoint.title.empty() ? checkpoint.id : std::format("{} {}", checkpoint.id, checkpoint.title);
+    return story_checkpoint_label(checkpoint.id, checkpoint.title);
 }
 
 
 
 StoryVerifyOptions::StoryVerifyOptions()
     : GroupOption(
-        "Verify Mode: run the start checkpoint (also the end) from its save several times, never saving at its end",
+        "Verify Mode: run the start checkpoint (also the end) from its save several times. "
+        "Only with Save set to After verification does the last run save at its end, when every run passed",
         LockMode::LOCK_WHILE_RUNNING,
         EnableMode::DEFAULT_DISABLED
     )
@@ -108,7 +99,7 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
         3, 1, 20
     )
     , CHECKS(
-        checks_label(),
+        "<b>Checks:</b><br>How much each step reads the screen to confirm what it did, from Testing (the most) to Speedrun (almost none).",
         StoryCheckLevel_Database(),
         LockMode::LOCK_WHILE_RUNNING,
         StoryCheckLevel::DEFAULT
@@ -122,8 +113,9 @@ StoryRunOptions::StoryRunOptions(const StringSelectDatabase& checkpoints, const 
     )
     , SAVE_MODE(
         "<b>Save:</b><br>When the run saves the game. A failed run never saves. "
-        "None keeps the save the run started from; After verification saves once at the end, after the checkpoint "
-        "passed 2-3 times; Each checkpoint is for a playthrough of verified checkpoints.",
+        "None keeps the save the run started from. After verification saves once, at the end of a run that passed "
+        "(in Verify Mode, at the end of the last run, when every run passed). Each checkpoint saves after each "
+        "checkpoint that passed, for a playthrough of verified checkpoints.",
         StorySaveMode_Database(),
         LockMode::LOCK_WHILE_RUNNING,
         StorySaveMode::NONE
@@ -163,8 +155,8 @@ std::string StoryRunOptions::check_validity() const{
     return error;
 }
 
-SegmentPolicy StoryRunOptions::policy() const{
-    SegmentPolicy policy;
+StoryRunPolicy StoryRunOptions::policy() const{
+    StoryRunPolicy policy;
     policy.attempts_per_checkpoint = ATTEMPTS_PER_CHECKPOINT;
     policy.save_mode = SAVE_MODE;
     return policy;

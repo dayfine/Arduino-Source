@@ -17,9 +17,10 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Pokemon/AutoStory/Types/Pokemon_GridPose.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -29,13 +30,13 @@ namespace Pokemon{
 //  flags, absent from the map) when the game can't read it: the matching
 //  postconditions are then not checked.
 struct ObservedState{
-    std::optional<std::string> map;
-    std::optional<TilePos> tile;
-    std::optional<Direction> facing;
+    std::optional<std::string> map = std::nullopt;
+    std::optional<TilePos> tile = std::nullopt;
+    std::optional<Direction> facing = std::nullopt;
     //  The Bag's count of each item read, 0 for one read and not there.
-    std::map<std::string, size_t, std::less<>> items;
+    std::map<std::string, size_t, std::less<>> items = {};
     //  Each story flag read, and whether it is set.
-    std::map<std::string, bool, std::less<>> flags;
+    std::map<std::string, bool, std::less<>> flags = {};
 };
 
 // The result of one postcondition.
@@ -48,15 +49,15 @@ enum class PostconditionVerdict{
 //  One postcondition checked: "map", "tile", "facing", "item LIFT_KEY",
 //  "flag ...", its verdict and what was expected and read.
 struct PostconditionResult{
-    std::string what;
+    std::string what = {};
     PostconditionVerdict verdict = PostconditionVerdict::NOT_CHECKED;
-    std::string detail;
+    std::string detail = {};
 };
 
 // Every postcondition of one checkpoint, checked.
 struct PostconditionReport{
-    std::string checkpoint;
-    std::vector<PostconditionResult> results;
+    std::string checkpoint = {};
+    std::vector<PostconditionResult> results = {};
 
     size_t count(PostconditionVerdict verdict) const;
     //  Every postcondition was read and held: none failed, none unchecked,
@@ -64,14 +65,14 @@ struct PostconditionReport{
     bool all_passed() const;
 };
 
-//  Where `checkpoint` ends: its postconditions' position, else the last
-//  step's declared pose or target. Unset when a step after that moves the
-//  player in a way the plan does not place (taps of legs).
-std::optional<GridPose> checkpoint_end_pose(const StoryCheckpoint& checkpoint);
-
-//  Checks the end position (map, tile among the pose's tiles, facing),
-//  then each item count and flag, against `observed`.
-PostconditionReport check_postconditions(const StoryCheckpoint& checkpoint, const ObservedState& observed);
+//  Checks the end position (postconditions.position if set, else
+//  `fallback_end_pose`), then each item count and flag, against `observed`.
+PostconditionReport check_postconditions(
+    std::string_view checkpoint_id,
+    const StoryPostconditions& postconditions,
+    const std::optional<GridPose>& fallback_end_pose,
+    const ObservedState& observed
+);
 
 //  The report as log lines, one per postcondition and a summary:
 //      [Postcondition] 00.31 map: passed: RocketHideout_B3F

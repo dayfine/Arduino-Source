@@ -5,8 +5,6 @@
  */
 
 #include <format>
-#include <vector>
-#include "Pokemon/AutoStory/Pokemon_TilePose.h"
 #include "PokemonFRLG_AutoStoryMovedBoulders.h"
 #include "PokemonFRLG_AutoStoryLineTrainer.h"
 #include "PokemonFRLG_AutoStoryPacedRoute.h"
@@ -25,28 +23,38 @@ std::optional<TrainerMove> note_trainer_walked_up(const MapPosition& tile, std::
     return move;
 }
 
-void note_line_trainer(Logger& logger, const StoryStep& step, const Pokemon::Outcome& outcome, std::set<std::string>& run_flags){
-    const bool line = step.action == TRAINER_LINE_VARIANT || step.action == TRAINER_WAIT_VARIANT;
-    const std::vector<TilePos> tiles = line && outcome.succeeded() && outcome.pose ? Pokemon::tiles_of(*outcome.pose) : std::vector<TilePos>();
-    if (tiles.size() != 1){
+void note_line_trainer(
+    Logger& logger, const StoryStep& step,
+    const std::optional<Pokemon::StoryFailure>& failure, FrlgRunState& state
+){
+    const bool line = step.action == "step"
+        && (step.variant == TRAINER_LINE_VARIANT || step.variant == TRAINER_WAIT_VARIANT);
+    if (!line || failure){
         return;
     }
-    const MapPosition tile{outcome.pose->map, tiles[0]};
-    if (const std::optional<TrainerMove> move = note_trainer_walked_up(tile, run_flags)){
+    const std::optional<StoryPose> at = story_pose(state.pose);
+    if (!at){
+        return;
+    }
+    const MapPosition tile{at->map, at->tile};
+    if (const std::optional<TrainerMove> move = note_trainer_walked_up(tile, state.flags)){
         logger.log(std::format("Story: {}: {} walked up to ({}, {}) and stays there.", step.name, move->trainer, move->x, move->y));
     }else{
         logger.log(std::format("Story: {}: where the trainer who saw the player on {} stands now isn't known.", step.name, to_string(tile)), COLOR_ORANGE);
     }
 }
 
-
-Pokemon::Outcome trainers_back_on_warp(const std::function<Pokemon::Outcome()>& run, Pokemon::RunState& state){
-    const std::string map_before = state.pose.map;
-    Pokemon::Outcome outcome = run();
-    trainers_back_after_map_change(map_before, state.pose.map, state.flags);
-    boulders_back_after_map_change(map_before, state.pose.map, state.flags);
-    return outcome;
+std::optional<Pokemon::StoryFailure> trainers_back_on_warp(
+    const std::function<std::optional<Pokemon::StoryFailure>()>& run, FrlgRunState& state
+){
+    const std::string map_before = state.pose ? state.pose->map : std::string();
+    std::optional<Pokemon::StoryFailure> failure = run();
+    const std::string map_after = state.pose ? state.pose->map : std::string();
+    trainers_back_after_map_change(map_before, map_after, state.flags);
+    boulders_back_after_map_change(map_before, map_after, state.flags);
+    return failure;
 }
+
 
 
 } // namespace PokemonFRLG

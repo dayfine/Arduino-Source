@@ -17,7 +17,6 @@
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
 #include "VideoGames/PokemonFRLG/Inference/Box/PokemonFRLG_PcScreenReader.h"
@@ -77,12 +76,19 @@ public:
     bool transferred() const{
         return m_transferred;
     }
+    //  Whether a withdrawal with if_present skipped because the species was absent.
+    bool skipped() const{
+        return m_skipped;
+    }
 
 private:
     PcDecision on_overworld();
     PcDecision on_storage_menu(const PcView& view);
     PcDecision on_party_panel(const PcView& view);
     PcDecision on_box_grid(const PcView& view);
+    PcDecision on_box_header(const PcView& view);
+    std::optional<PcDecision> switch_box_if_needed(const PcView& view);
+    std::optional<PcDecision> advance_species_search(const PcView& view);
     PcDecision on_mon_menu(const PcView& view);
     PcDecision on_box_chooser(const PcView& view);
 
@@ -97,9 +103,11 @@ private:
     //  The overworld read since A at the PC, while the PC boots.
     size_t m_booting_reads = 0;
     bool m_transferred = false;
-    //  BOX_GRID box-switch state for WITHDRAW to box > 0:
-    //  0 = not started, 1..box = pressing RIGHT on header, box+1 = DOWN to grid, box+2 = done.
+    bool m_skipped = false;
+    //  BOX_GRID box-switch state for WITHDRAW when switching boxes on the header.
     size_t m_box_switch_step = 0;
+    bool m_box_slide_wait = false;
+    bool m_tried_header_up = false;
     //  BOX_CHOOSER opens on BOX 1 each time the PC is entered.
     bool m_chooser_seen = false;
     size_t m_others_in_a_row = 0;

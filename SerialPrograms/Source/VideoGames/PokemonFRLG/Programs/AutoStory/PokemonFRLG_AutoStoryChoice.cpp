@@ -51,7 +51,7 @@ std::string_view choice_end_name(ChoiceEnd end){
 }
 
 
-std::optional<Fossil> fossil_of(const Pokemon::StoryActionArgs& args){
+std::optional<Fossil> fossil_of(const FrlgArgMap& args){
     const std::string* name = game_arg<std::string>(args, "fossil");
     if (name == nullptr){
         return std::nullopt;
@@ -59,9 +59,8 @@ std::optional<Fossil> fossil_of(const Pokemon::StoryActionArgs& args){
     return fossil_from_name(*name);
 }
 
-Pokemon::StoryStep fossil_step(std::string name, std::string why, Fossil fossil){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep fossil_step(std::string name, std::string why, Fossil fossil){
+    StoryStep step;
     step.name = std::move(name);
     step.why = std::move(why);
     step.action = FOSSIL_ACTION;

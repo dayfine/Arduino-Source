@@ -174,8 +174,8 @@ std::string walk_to_stand(OverworldSim& sim, StoryPose& at, int can){
 //  which a talk starts, leaves the player where the table says. The TEACH,
 //  the GRIND and the talks the sim hasn't got pass.
 std::string gym_step_on_sim(OverworldSim& sim, StoryPose& at, const StoryStep& step, const std::string& id){
-    if (step.kind == StoryStepKind::BATTLE && step.name == "lt_surge"){
-        at = *story_pose(Pokemon::pose_of(*step.pose_after));
+    if (step.action == "battle" && step.name == "lt_surge"){
+        at = *story_pose(*step.pose_after);
         return "";
     }
     return row_step_on_sim(sim, at, step, id);
@@ -261,7 +261,7 @@ std::string run_gym_steps(OverworldSim& sim, StoryPose& at, size_t first, size_t
 UnitTestResult test_gym_row(){
     const StoryCheckpoint& row = checkpoint("06.02");
     for (const std::vector<Switches>& draws : {std::vector<Switches>{{3, 4}}, std::vector<Switches>{{3, 8}, {13, 14}}}){
-        StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+        StoryPose at = *story_pose(*row.start);
         OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
         if (const std::string failure = run_gym_steps(sim, at, 0, row.steps.size(), draws); !failure.empty()){
             return failure + " Beat" + beaten_list(sim) + ".";
@@ -282,7 +282,7 @@ UnitTestResult test_gym_row(){
 //  every other stand, and the way out to the nurse from every stand.
 UnitTestResult test_cans_from_everywhere(){
     const StoryCheckpoint& row = checkpoint("06.02");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     const size_t cans = step_index(row, "trash_cans");
     if (const std::string failure = run_gym_steps(sim, at, 0, cans, {}); !failure.empty()){
@@ -343,7 +343,7 @@ UnitTestResult test_tree_shuts_the_yard(){
 UnitTestResult test_to_surge_and_out(){
     for (std::string_view id : {"06.03", "06.04"}){
         const StoryCheckpoint& row = checkpoint(id);
-        StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+        StoryPose at = *story_pose(*row.start);
         OverworldSim sim(maps_after_gym(), MapPosition{at.map, at.tile}, *at.facing);
         for (const StoryStep& step : row.steps){
             if (const std::string failure = gym_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -358,7 +358,7 @@ UnitTestResult test_to_surge_and_out(){
             return std::format("{}: ended on {}, not {}.", id, to_string(sim.state().position), to_string(end));
         }
     }
-    const StoryPose next = *story_pose(Pokemon::pose_of(*checkpoint("06.04").start));
+    const StoryPose next = *story_pose(*checkpoint("06.04").start);
     if (!(next.tile == TilePos{5, 3}) || next.map != GYM){
         return "06.04 doesn't start where 06.03 ends.";
     }
@@ -377,7 +377,7 @@ UnitTestResult test_out_past_oaks_aide(){
     if (object_at(city, {25, 7}) == nullptr){
         return "Expected Oak's aide on (25, 7) after Lt. Surge.";
     }
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (const std::string failure = gym_step_on_sim(sim, at, step, row.id); !failure.empty()){
@@ -402,11 +402,11 @@ UnitTestResult test_lead_ready_skips_grind(){
     if (check.action != GRIND_CHECK_ACTION || !grind_plan_of(check.args)){
         return "Expected 06.03 to start with the grind's check, not " + check.name + ".";
     }
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(maps_after_gym(), MapPosition{at.map, at.tile}, *at.facing);
     std::vector<std::string> skipped;
     for (const StoryStep& step : row.steps){
-        if (step.skip_if == std::vector<std::string>{check.name}){
+        if (step.skip_if == check.name){
             skipped.push_back(step.name);
             continue;
         }

@@ -19,7 +19,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldObjects.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldRoute.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -53,7 +52,7 @@ const StoryCheckpoint& row_12_03(){
 
 //  A table pose as a StoryPose; FRLG's table has one-tile poses only.
 StoryPose one_tile(const Pokemon::GridPose& grid_pose){
-    const std::optional<StoryPose> ret = story_pose(Pokemon::pose_of(grid_pose));
+    const std::optional<StoryPose> ret = story_pose(grid_pose);
     if (!ret){
         throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, "Not a one-tile pose.");
     }
@@ -138,7 +137,7 @@ void note_walk_back(const std::string& name, const std::vector<RouteStep>& route
 //  no one, and aren't watched for.
 SurfRun run_12_03(SimScript script = {}, bool start_flags = true){
     const StoryCheckpoint& row = row_12_03();
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     const std::set<std::string> flags = start_flags
         ? std::set<std::string>(row.start_flags.begin(), row.start_flags.end())
         : std::set<std::string>();
@@ -148,8 +147,8 @@ SurfRun run_12_03(SimScript script = {}, bool start_flags = true){
         if (step.action == CENTER_ENTER_VARIANT){
             break;
         }
-        if (step.kind == StoryStepKind::ROUTE){
-            const StoryPose target = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
+        if (step.action == "route"){
+            const StoryPose target = one_tile(frlg_arg<Pokemon::GridPose>(step.args, "target"));
             const std::optional<std::vector<RouteStep>> route = plan_overworld_route(
                 story_maps(), sim.state().position, RouteGoal{{target.map, target.tile}, target.facing},
                 story_route_costs(), sim.state().facing
@@ -325,8 +324,8 @@ UnitTestResult test_box_open_before_each_surf(){
     std::vector<std::string> failed;
     int surfs = 0;
     for (const StoryStep& step : row.steps){
-        if (step.kind == StoryStepKind::ROUTE){
-            before = one_tile(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target"));
+        if (step.action == "route"){
+            before = one_tile(frlg_arg<Pokemon::GridPose>(step.args, "target"));
             continue;
         }
         const std::optional<Direction> water = parse_surf_step(step);

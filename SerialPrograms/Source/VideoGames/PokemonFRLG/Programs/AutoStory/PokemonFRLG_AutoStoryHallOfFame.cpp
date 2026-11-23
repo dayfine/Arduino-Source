@@ -173,22 +173,18 @@ HallOfFameShot HallOfFameShots::see(bool changed){
     return HallOfFameShot::NONE;
 }
 
-Pokemon::StoryActionSpec hall_of_fame_action_spec(){
-    return {.kind = Pokemon::StoryStepKind::GAME, .name = HALL_OF_FAME_ACTION, .args = {}};
-}
-
-std::optional<Pokemon::Outcome> run_hall_of_fame_step(
-    ConsoleHandle& console, ProControllerContext& context, const Pokemon::StoryStep& step
+std::optional<std::optional<Pokemon::StoryFailure>> run_hall_of_fame_step(
+    ConsoleHandle& console, ProControllerContext& context, const StoryStep& step
 ){
     if (step.action != HALL_OF_FAME_ACTION){
         return std::nullopt;
     }
     if (!wait_for_save(console, context)){
-        return Pokemon::outcome_failed("no_hall_of_fame", "the Hall of Fame's save message didn't show and go");
+        return frlg_failure("no_hall_of_fame", "the Hall of Fame's save message didn't show and go");
     }
     console.log(std::format("Hall of Fame: saved; taking the screenshots in {}.", hall_of_fame_folder()));
     take_shots(console, context);
-    return Pokemon::outcome_ok();
+    return std::optional<Pokemon::StoryFailure>(std::nullopt);
 }
 
 
