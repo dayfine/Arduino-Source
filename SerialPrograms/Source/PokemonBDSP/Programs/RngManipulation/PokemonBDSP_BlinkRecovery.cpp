@@ -426,11 +426,11 @@ static double estimated_threshold(
 //  Logs a solve that did not confirm; a confirmed state is logged once its
 //  clock is anchored.
 static void log_unconfirmed_pass(
-    BlinkSampleLog& log,
     const BlinkWindowPass& pass,
     size_t events,
     const std::vector<std::vector<BlinkEvent>>& streams,
-    WallClock origin
+    WallClock origin,
+    BlinkSampleLog& log
 ){
     switch (pass.step){
     case ProvisionalStep::KEEP_COLLECTING:
@@ -567,7 +567,7 @@ BlinkRecovery recover_state_from_blinks(
             }
             env.log("Thresholds fixed so that blink numbering stops moving: " + report + ".");
         }
-        log_unconfirmed_pass(log, pass, events, streams, origin);
+        log_unconfirmed_pass(pass, events, streams, origin, log);
         if (!report_provisional_step(env, pass.step, pass.solved.state, events, config.confirmation_events)){
             continue;
         }
