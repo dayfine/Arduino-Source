@@ -169,8 +169,8 @@ void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context,
 //  (lab-B 2026-11-22 19:35).
 void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& context){
     const JoystickPosition north_stick{0, 1};
-    bool shifted_east = false;
-    for (size_t legs = 0; legs < 10; legs++){
+    size_t east_shifts = 0;
+    for (size_t legs = 0; legs < 12; legs++){
         const WalkResult north = walk_until(stream, context, run_from_wild_battle, north_stick, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center",
             [](const ImageViewRGB32& screen){ return pokemon_center_inside(screen); });
         if (north.stop == WalkStop::TRANSITION || north.stop == WalkStop::ARRIVED){
@@ -190,19 +190,22 @@ void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& con
                 heal_inside_pokemon_center(stream, context, "Oreburgh");
                 return;
             }
-            if (!shifted_east){
-                //  Blocked by mine signpost/Hiker on col 46 or Center wall (46, 21): step onto col 47.
+            if (east_shifts == 0){
                 dpad_tiles(stream, context, DPAD_RIGHT, 1, "column 47 toward Oreburgh Center door");
-                shifted_east = true;
-                continue;
+                east_shifts++;
+            }else if (north.moved_chunks <= 1 && east_shifts < 4){
+                //  Grazing the Hiker on the street can slide Dawn west onto the
+                //  door's left pillar (lab-B 2026-11-22 20:41, 20:48): clear the
+                //  pillar and sweep east ~0.6 tile across the doorway.
+                pbf_move_left_joystick(context, {0, -1}, 120ms, 100ms);
+                pbf_move_left_joystick(context, {1, 0}, 240ms, 200ms);
+                east_shifts++;
+            }else if (north.moved_chunks <= 1){
+                pbf_move_left_joystick(context, {0, -1}, 120ms, 100ms);
+                pbf_move_left_joystick(context, {-1, 0}, 300ms, 200ms);
+            }else{
+                context.wait_for(2000ms);
             }
-            if (north.moved_chunks <= 1 && dpad_through_door_north(stream, context, "Oreburgh Center door")){
-                if (in_pokemon_center(stream)){
-                    heal_inside_pokemon_center(stream, context, "Oreburgh");
-                    return;
-                }
-            }
-            context.wait_for(2000ms);
         }
     }
     fail_step(stream, "Oreburgh Mine training: could not reach Oreburgh Center.");
@@ -215,7 +218,7 @@ void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& con
 bool train_in_oreburgh_mine(VideoStream& stream, ProControllerContext& context, size_t battles){
     stream.log(std::format("[Oreburgh Mine] Training (up to {} wild battles).", battles), COLOR_BLUE);
     dpad_tiles(stream, context, DPAD_LEFT, 1, "column 46 to Oreburgh Mine");
-    const WalkResult enter = walk_until_no_wild(stream, context, {0, -1}, MINE_COLUMN_WALK_LIMIT, "south into Oreburgh Mine");
+    const WalkResult enter = walk_until(stream, context, run_from_wild_battle, {0, -1}, MINE_COLUMN_WALK_LIMIT, "south into Oreburgh Mine");
     if (enter.stop != WalkStop::TRANSITION){
         fail_step(stream, "Oreburgh Mine training: did not enter Oreburgh Mine.");
     }
