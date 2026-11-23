@@ -196,6 +196,15 @@ const VerifyRowCase VERIFY_ROW_CASES[] = {
         },
         .expectation = {.passed = false, .saved = false, .phase1_passes = 0, .attempts = 1, .reloads = 0, .saves = 0, .failure_code = std::string(VERIFY_UNREAD)},
     },
+    {
+        .name = "skips phase 1 when tries is zero and saves on first phase 2 pass",
+        .input = {
+            .checkpoint_id = "20.01",
+            .verify = {.tries = 0, .min_pass = 0, .reset_budget = 3},
+            .outcomes = {StoryFailure{.code = "blackout"}, std::nullopt},
+        },
+        .expectation = {.passed = true, .saved = true, .phase1_passes = 0, .attempts = 2, .reloads = 1, .saves = 1},
+    },
 };
 
 class Test_VerifyRow : public UnitTest{
