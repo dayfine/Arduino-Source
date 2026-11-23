@@ -42,7 +42,7 @@ std::optional<size_t> first_beat(const std::vector<ScreenEvents>& beats, SceneMo
     const Milliseconds every = 1000ms;
     WallClock now = WallClock();
     for (size_t c = 0; c < beats.size(); c++){
-        if (judge.look(beats[c], now) == want){
+        if (judge.look(beats[c], now, /*player_still=*/false) == want){
             return c;
         }
         now += every;
@@ -116,13 +116,13 @@ UnitTestResult test_talk_over(){
 
 struct SceneJudgesCase{
     struct Input{
-        std::string name;
         UnitTestResult (*body)();
     };
 
     struct Expectation{
     };
 
+    std::string name;
     Input input;
     Expectation expectation;
 };
@@ -130,7 +130,7 @@ struct SceneJudgesCase{
 class Test_SceneJudges : public UnitTest{
 public:
     explicit Test_SceneJudges(SceneJudgesCase test_case)
-        : UnitTest(std::format("Pokemon::SceneJudges - {}", test_case.input.name))
+        : UnitTest(std::format("Pokemon::SceneJudges - {}", test_case.name))
         , m_case(std::move(test_case))
     {}
     virtual UnitTestResult run(Logger&, CancellableScope&) const override{
@@ -146,11 +146,13 @@ private:
 
 const SceneJudgesCase SCENE_JUDGES_CASES[] = {
     {
-        .input = {"a warp is the first fade and the first banner seen", test_warp_seen},
+        .name = "a warp is the first fade and the first banner seen",
+        .input = {test_warp_seen},
         .expectation = {},
     },
     {
-        .input = {"talk-over from scripted events", test_talk_over},
+        .name = "talk-over from scripted events",
+        .input = {test_talk_over},
         .expectation = {},
     },
 };

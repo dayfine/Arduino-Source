@@ -9,7 +9,6 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/AutoStory/Pokemon_StoryInterrupts.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
@@ -35,7 +34,6 @@ namespace PokemonFRLG{
 
 using namespace std::chrono_literals;
 using Pokemon::Direction;
-using Pokemon::StoryStep;
 
 
 namespace{
@@ -88,23 +86,6 @@ std::optional<Direction> parse_surf_step(const StoryStep& step){
 
 bool is_field_move_step(const StoryStep& step){
     return parse_fly_step(step).has_value() || parse_surf_step(step).has_value();
-}
-
-std::vector<Pokemon::StoryActionSpec> field_move_specs(){
-    using Pokemon::StoryArgType;
-    using Pokemon::StoryStepKind;
-    return {
-        {.kind = StoryStepKind::GAME, .name = FLY_VARIANT, .args = {
-            required_arg("town", StoryArgType::WORD, "the town's map, as kanto_fly_towns() names it (CeladonCity, Route4)"),
-            absent_arg("slot", StoryArgType::INTEGER, "the Fly user's party slot, from 1, when no species is named"),
-            absent_arg("species", StoryArgType::WORD, "the Fly user by its species, e.g. \"pidgey\": the first member whose menu lists FLY flies, recorded under this name"),
-            optional_arg("menu_row", StoryArgType::INTEGER, int64_t(2), "FLY's row on its menu, from 1: SUMMARY, then field moves in move order"),
-            optional_arg("safari", StoryArgType::BOOLEAN, false, "in the Safari Zone, whose START menu has RETIRE on top"),
-        }},
-        {.kind = StoryStepKind::GAME, .name = SURF_VARIANT, .args = {
-            required_arg("direction", StoryArgType::DIRECTION, "the way to the water, from ground beside it"),
-        }},
-    };
 }
 
 
@@ -228,17 +209,14 @@ std::string fly_to_town(
 
 } // namespace
 
-std::optional<Pokemon::Outcome> run_field_move_step(
+std::optional<std::optional<Pokemon::StoryFailure>> run_field_move_step(
     ConsoleHandle& console, ProControllerContext& context, Language language, PlayerGender player, const StoryStep& step,
     PartyCache& party
 ){
-    const auto done = [&step]{
-        return step.pose_after ? Pokemon::outcome_ok(Pokemon::pose_of(*step.pose_after)) : Pokemon::outcome_ok();
-    };
     if (const std::optional<Direction> water = parse_surf_step(step)){
         console.log(std::format("Story: Surf {}.", Pokemon::direction_name(*water)));
         OverworldWalkSteps::start_surf(console, context, *water, false);
-        return done();
+        return std::optional<Pokemon::StoryFailure>(std::nullopt);
     }
     std::optional<FlyPlan> plan = parse_fly_step(step);
     if (!plan){
@@ -261,10 +239,10 @@ std::optional<Pokemon::Outcome> run_field_move_step(
         });
         if (failure == FIELD_MOVE_NO_MEMBER){
             console.log("Story: no member's menu lists FLY.", COLOR_RED);
-            return Pokemon::outcome_failed("fly_no_member", plan->species);
+            return frlg_failure("fly_no_member", plan->species);
         }
         if (failure == FIELD_MOVE_MENU_UNREAD){
-            return Pokemon::outcome_failed("fly_menu_unread", plan->species);
+            return frlg_failure("fly_menu_unread", plan->species);
         }
     }else{
         console.log(std::format(
@@ -276,7 +254,10 @@ std::optional<Pokemon::Outcome> run_field_move_step(
     if (failure.empty()){
         failure = fly_to_town(console, context, player, town, departure);
     }
-    return failure.empty() ? done() : Pokemon::outcome_failed(failure, town.name);
+    if (failure.empty()){
+        return std::optional<Pokemon::StoryFailure>(std::nullopt);
+    }
+    return frlg_failure(failure, town.name);
 }
 
 

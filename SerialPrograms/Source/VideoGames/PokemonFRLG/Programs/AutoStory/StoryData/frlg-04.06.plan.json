@@ -4,89 +4,184 @@
   "checkpoint": {
     "id": "04.06",
     "title": "Route 4: Mega Kick from its tutor, then east to Cerulean's Pokemon Center",
-    "start": {"map": "Route4", "tiles": [[32, 6]], "facing": "south"},
+    "start": {
+      "map": "Route4",
+      "tiles": [
+        [
+          32,
+          6
+        ]
+      ],
+      "facing": "south"
+    },
     "events": [
       {
         "id": "mega_kick_tutor",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east and up through (48, 5) into the tutors' pen, below the Mega Kick tutor (50, 3)",
         "args": {
-          "target": {"map": "Route4", "tiles": [[50, 4]], "facing": "north"}
-        },
-        "why": "east and up through (48, 5) into the tutors' pen, below the Mega Kick tutor (50, 3)"
+          "target": {
+            "map": "Route4",
+            "tiles": [
+              [
+                50,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "teach_mega_kick",
-        "kind": "game_action",
         "action": "teach",
+        "why": "the tutor's Mega Kick in place of Withdraw, unless the lead knows it; keep list: every move the lead can know but Withdraw, which goes; fails if it knows none or several outside the list",
         "args": {
           "item": "tutor",
           "move": "mega-kick",
           "slot": 1,
-          "keep": ["tackle", "tail-whip", "water-gun", "bubble", "bite", "water-pulse", "dig", "surf"]
-        },
-        "why": "the tutor's Mega Kick in place of Withdraw, unless the lead knows it; keep list: every move the lead can know but Withdraw, which goes; fails if it knows none or several outside the list"
+          "keep": [
+            "tackle",
+            "tail-whip",
+            "water-gun",
+            "bubble",
+            "bite",
+            "water-pulse",
+            "dig",
+            "surf"
+          ]
+        }
       },
       {
         "id": "above_ledge",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east along Route 4's upper road to above the ledge row 9",
         "args": {
-          "target": {"map": "Route4", "tiles": [[93, 8]], "facing": "south"}
-        },
-        "why": "east along Route 4's upper road to above the ledge row 9"
+          "target": {
+            "map": "Route4",
+            "tiles": [
+              [
+                93,
+                8
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "ledge_hop",
-        "kind": "step",
+        "action": "step",
+        "why": "down the ledge (93, 9) to the lower road",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "Route4", "tiles": [[93, 10]], "facing": "south"},
-        "why": "down the ledge (93, 9) to the lower road"
+          "direction": "south",
+          "pose_after": {
+            "map": "Route4",
+            "tiles": [
+              [
+                93,
+                10
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "cerulean_entry",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "east into Cerulean City, to (9, 20) below column 9",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[9, 20]], "facing": "east"}
-        },
-        "why": "east into Cerulean City, to (9, 20) below column 9"
+          "target": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                9,
+                20
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "above_city_ledge",
-        "kind": "legs",
-        "action": "run",
+        "action": "legs",
+        "why": "not_using_planner_route: pre-2026-11-15 wall-anchored Cerulean approach legs; to walls: (9, 12), (8, 12), (30, 12), (30, 17), (25, 17)",
         "args": {
-          "legs": [{"direction": "north", "tiles": 8}, {"direction": "west", "tiles": 1}, {"direction": "east", "tiles": 22}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 5}]
-        },
-        "why": "to walls: (9, 12), (8, 12), (30, 12), (30, 17), (25, 17)"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 8
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 22
+            },
+            {
+              "direction": "south",
+              "tiles": 5
+            },
+            {
+              "direction": "west",
+              "tiles": 5
+            }
+          ],
+          "variant": "run"
+        }
       },
       {
         "id": "city_ledge_hop",
-        "kind": "step",
+        "action": "step",
+        "why": "down the ledge (25, 18)",
         "args": {
-          "direction": "south"
-        },
-        "declared_after": {"map": "CeruleanCity", "tiles": [[25, 19]], "facing": "south"},
-        "why": "down the ledge (25, 18)"
+          "direction": "south",
+          "pose_after": {
+            "map": "CeruleanCity",
+            "tiles": [
+              [
+                25,
+                19
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "cerulean_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "west along row 20 to the Pokemon Center's door (22, 19)",
         "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "west along row 20 to the Pokemon Center's door (22, 19)"
+          "target": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_cerulean",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -106,6 +201,5 @@
         "North up column 9 (or 8, a tile short) to row 12, west to (8, 12), east to (30, 12) beside the policeman (31, 12), south to (30, 17), west to (25, 17). The way keeps out of the boy's (16, 18..24) and the balding man's (8..10, 22..24) wander boxes."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

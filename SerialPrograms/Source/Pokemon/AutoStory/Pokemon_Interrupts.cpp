@@ -231,7 +231,7 @@ std::string describe(const InterruptVerdict& verdict, WallClock origin){
             "{}{:+} ms {} {}",
             separator,
             std::chrono::duration_cast<Milliseconds>(change.time - origin).count(),
-            screen_event_name(change.event),
+            SCREEN_EVENT_NAMES().get_string(change.event),
             change.edge == ScreenEventEdge::ROSE ? "rose" : "fell"
         );
         separator = ", ";

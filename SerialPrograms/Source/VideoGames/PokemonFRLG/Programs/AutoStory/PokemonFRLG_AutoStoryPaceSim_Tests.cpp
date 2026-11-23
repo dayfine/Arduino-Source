@@ -88,10 +88,10 @@ UnitTestResult test_capture_paced_in_trainer_sight(){
     OverworldSim sim(story_maps(), patch, Direction::SOUTH, script);
     std::string walk_failure;
     SimPatch pacing(sim, Direction::EAST, Direction::WEST, [&]{
-        const Pokemon::Pose paced = paced_pose(Pokemon::tile_pose(patch.map, {patch.point}), capture);
-        const std::optional<std::vector<RouteStep>> route = plan_story_route(
-            story_maps(), paced, std::nullopt, RouteGoal{patch, std::nullopt}
-        );
+        const std::optional<Pokemon::GridPose> paced = paced_pose(Pokemon::GridPose{patch.map, {patch.point}, std::nullopt}, capture);
+        const std::optional<std::vector<RouteStep>> route = paced
+            ? plan_story_route(story_maps(), *paced, std::nullopt, RouteGoal{patch, std::nullopt})
+            : std::nullopt;
         const RoutePlanning planning{.maps = &story_maps(), .start = std::nullopt, .label = "back_after_trainer"};
         walk_failure = route ? OverworldSimWalker(sim).run(*route, planning) : "no route back onto the patch.";
     });

@@ -29,7 +29,7 @@
 #include <string>
 #include <vector>
 #include "Common/Cpp/Logging/AbstractLogger.h"
-#include "Pokemon_StoryOutcome.h"
+#include "Pokemon_StoryFailure.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -55,12 +55,12 @@ RngHandoffMode rng_handoff_mode(const RngHandoffOptions& options);
 //  How an RNG program's call ended, as the story needs it.
 struct RngHandoffResult{
     //  Empty: the game stands where the story goes on. Otherwise why it does not.
-    std::string failure;
+    std::string failure = {};
     //  What a success did, for the log: the resets used, the target hit.
-    std::string summary;
+    std::string summary = {};
     //  Not empty (and no failure): the program ended where the user takes
     //  over, with this for them. The run stops without an error report.
-    std::string user_turn;
+    std::string user_turn = {};
 
     bool succeeded() const;
 };
@@ -69,10 +69,10 @@ struct RngHandoffResult{
 using RngHandoffCall = std::function<RngHandoffResult()>;
 
 //  Runs `call` for the RNG program `program` ("Starter RNG"). A success is
-//  logged with its summary and returned as an ok Outcome. A failure throws
+//  logged with its summary and returns std::nullopt. A failure throws
 //  OperationFailedException with an error report, so that no row retry
 //  reruns the program's reset loop.
-Outcome run_rng_handoff(Logger& logger, const std::string& program, const RngHandoffCall& call);
+std::optional<StoryFailure> run_rng_handoff(Logger& logger, const std::string& program, const RngHandoffCall& call);
 
 //  As run_rng_handoff(), for a program whose call may end in the user's turn:
 //  returns that message, which is logged, and the run stops there. Returns

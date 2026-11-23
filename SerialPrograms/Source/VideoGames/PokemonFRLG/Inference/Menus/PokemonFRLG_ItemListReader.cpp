@@ -7,9 +7,11 @@
 #include <algorithm>
 #include <format>
 #include <iterator>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
+#include "Common/Cpp/Color.h"
 #include "Common/Cpp/Filesystem/Filesystem.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
@@ -162,6 +164,49 @@ ImageFloatBox bag_item_count_box(int row){
 
 ImageFloatBox item_list_name_box(int row){
     return ImageFloatBox(96.0 / 240, (ROW_TOP + ROW_STEP * row) / 160, 72.0 / 240, ROW_HEIGHT / 160);
+}
+
+std::optional<int> read_item_list_cursor_row(const ImageViewRGB32& screen){
+    const ImageViewRGB32 game = game_box(screen);
+    if (!game){
+        return std::nullopt;
+    }
+    double best_ratio = 0.0;
+    double second_ratio = 0.0;
+    int best_row = -1;
+    for (int row = 0; row < ITEM_LIST_ROWS; row++){
+        const ImageFloatBox arrow_box(
+            88.0 / 240, (ROW_TOP + ROW_STEP * row) / 160,
+            8.0 / 240, ROW_HEIGHT / 160
+        );
+        const ImageViewRGB32 region = extract_box_reference(game, arrow_box);
+        const size_t width = region.width();
+        const size_t height = region.height();
+        if (width == 0 || height == 0){
+            continue;
+        }
+        size_t dark = 0;
+        for (size_t r = 0; r < height; r++){
+            for (size_t c = 0; c < width; c++){
+                const Color px(region.pixel(c, r));
+                if (px.red() < 150 && px.green() < 150 && px.blue() < 150){
+                    dark++;
+                }
+            }
+        }
+        const double ratio = static_cast<double>(dark) / static_cast<double>(width * height);
+        if (ratio > best_ratio){
+            second_ratio = best_ratio;
+            best_ratio = ratio;
+            best_row = row;
+        }else if (ratio > second_ratio){
+            second_ratio = ratio;
+        }
+    }
+    if (best_row < 0 || best_ratio < 0.10 || best_ratio < second_ratio * 3.0){
+        return std::nullopt;
+    }
+    return best_row;
 }
 
 std::string read_item_list_name(Logger& logger, Language language, const ImageViewRGB32& screen, int row){
@@ -340,6 +385,45 @@ public:
     }
 };
 
+class Test_ItemListCursorRow : public UnitTest{
+public:
+    Test_ItemListCursorRow()
+        : UnitTest("PokemonFRLG::ItemListReader - cursor arrow row detection")
+    {}
+
+    virtual UnitTestResult run(Logger&, CancellableScope&) const override{
+        const ImageFloatBox gb = GameSettings::instance().GAME_BOX;
+        const auto make_screen = [&](std::optional<int> arrow_row){
+            ImageRGB32 image(480, 270);
+            image.fill(0xfff8f8c8);
+            if (arrow_row){
+                const ImagePixelBox game_px = floatbox_to_pixelbox(image.width(), image.height(), gb);
+                const ImageFloatBox arrow_box(
+                    88.0 / 240, (ROW_TOP + ROW_STEP * (*arrow_row)) / 160,
+                    8.0 / 240, ROW_HEIGHT / 160
+                );
+                const ImagePixelBox box = floatbox_to_pixelbox(game_px.width(), game_px.height(), arrow_box);
+                for (size_t y = game_px.min_y + box.min_y + 2; y + 2 < game_px.min_y + box.max_y; y++){
+                    for (size_t x = game_px.min_x + box.min_x + 2; x + 2 < game_px.min_x + box.max_x; x++){
+                        image.pixel(x, y) = 0xff404040;
+                    }
+                }
+            }
+            return image;
+        };
+        if (read_item_list_cursor_row(make_screen(std::nullopt)).has_value()){
+            return "Expected no cursor row on a blank cream list.";
+        }
+        for (int row : {0, 2, 3, 5}){
+            const std::optional<int> got = read_item_list_cursor_row(make_screen(row));
+            if (got != row){
+                return std::format("Expected cursor row {}, got {}.", row, got ? std::to_string(*got) : std::string("none"));
+            }
+        }
+        return true;
+    }
+};
+
 } // namespace
 
 void add_tests_ItemListReader(UnitTestDatabase& database){
@@ -358,6 +442,7 @@ void add_tests_ItemListReader(UnitTestDatabase& database){
     database.add<Test_MartList>("PokemonFRLG/ItemListReader/FuchsiaMartBuyList_eng.png");
     database.add<Test_Route17ItemNames>();
     database.add<Test_StoryItemNames>();
+    database.add<Test_ItemListCursorRow>();
 }
 
 

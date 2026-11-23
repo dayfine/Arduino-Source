@@ -14,16 +14,11 @@
       ],
       "facing": "north"
     },
-    "start_flags": [
-      "trainer_beaten:ViridianCity_Gym/cooltrainer_m@13,7",
-      "trainer_at:ViridianCity_Gym/cooltrainer_m@13,7=14,7",
-      "trainer_beaten:ViridianCity_Gym/black_belt@10,2"
-    ],
     "events": [
       {
         "id": "gym_exit",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "back through the gym to the door and out onto Viridian City below it",
         "args": {
           "target": {
             "map": "ViridianCity",
@@ -34,34 +29,33 @@
               ]
             ],
             "facing": "south"
-          }
-        },
-        "why": "back through the gym to the door and out onto Viridian City below it"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "fly_viridian",
-        "kind": "game_action",
         "action": "fly",
+        "why": "the Pidgey flies to Viridian City, landing below the Pokemon Center's door (26, 26) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_VIRIDIAN_CITY), as 17.02: the walk there from the gym's door went north round the city's fences, 58 tiles for a straight line of 26",
         "args": {
           "town": "ViridianCity",
-          "species": "pidgey"
-        },
-        "declared_after": {
-          "map": "ViridianCity",
-          "tiles": [
-            [
-              26,
-              27
-            ]
-          ],
-          "facing": "south"
-        },
-        "why": "the Pidgey flies to Viridian City, landing below the Pokemon Center's door (26, 26) on its heal spot (pokefirered heal_locations.json, HEAL_LOCATION_VIRIDIAN_CITY), as 17.02: the walk there from the gym's door went north round the city's fences, 58 tiles for a straight line of 26"
+          "species": "pidgey",
+          "pose_after": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                26,
+                27
+              ]
+            ],
+            "facing": "south"
+          }
+        }
       },
       {
         "id": "below_center_door",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "turn to face the Center's door (26, 26) from the landing",
         "args": {
           "target": {
             "map": "ViridianCity",
@@ -72,15 +66,37 @@
               ]
             ],
             "facing": "north"
-          }
-        },
-        "why": "turn to face the Center's door (26, 26) from the landing"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "viridian_nurse",
-        "kind": "game_action",
         "action": "center_enter",
-        "declared_after": {
+        "why": "the Center script in, up to the nurse",
+        "args": {
+          "pose_after": {
+            "map": "ViridianCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
+      },
+      {
+        "id": "heal_viridian",
+        "action": "heal",
+        "why": "full HP and PP"
+      }
+    ],
+    "metadata": {
+      "phase": "testing",
+      "postconditions": {
+        "position": {
           "map": "ViridianCity_PokemonCenter_1F",
           "tiles": [
             [
@@ -89,15 +105,9 @@
             ]
           ],
           "facing": "north"
-        },
-        "why": "the Center script in, up to the nurse"
-      },
-      {
-        "id": "heal_viridian",
-        "kind": "heal",
-        "why": "full HP and PP"
+        }
       }
-    ]
+    }
   },
   "execution": {
     "menu": "full",
@@ -107,21 +117,11 @@
         "Ends at Viridian's nurse (declared: the gym exit is a street tile; the Center is where the next row starts).",
         "Out of the gym's door and by Fly to the Center's door (user, 2026-11-15: every Center trip flies once Fly is learned, unless the Center is really close)."
       ]
-    }
-  },
-  "metadata": {
-    "phase": "testing",
-    "postconditions": {
-      "position": {
-        "map": "ViridianCity_PokemonCenter_1F",
-        "tiles": [
-          [
-            7,
-            4
-          ]
-        ],
-        "facing": "north"
-      }
-    }
+    },
+    "start_flags": [
+      "trainer_beaten:ViridianCity_Gym/cooltrainer_m@13,7",
+      "trainer_at:ViridianCity_Gym/cooltrainer_m@13,7=14,7",
+      "trainer_beaten:ViridianCity_Gym/black_belt@10,2"
+    ]
   }
 }

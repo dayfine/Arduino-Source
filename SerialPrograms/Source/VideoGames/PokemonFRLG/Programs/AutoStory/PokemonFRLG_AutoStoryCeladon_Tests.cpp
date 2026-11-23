@@ -21,8 +21,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMap.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
@@ -134,8 +132,8 @@ const MapObject* object_ahead(const std::vector<MapData>& maps, const StoryPose&
 //  The row's last route's target.
 std::optional<StoryPose> last_target(const StoryCheckpoint& row){
     for (auto step = row.steps.rbegin(); step != row.steps.rend(); ++step){
-        if (step->kind == StoryStepKind::ROUTE && step->args.contains("target")){
-            return story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step->args, "target")));
+        if (step->action == "route" && step->args.contains("target")){
+            return story_pose(frlg_arg<Pokemon::GridPose>(step->args, "target"));
         }
     }
     return std::nullopt;
@@ -150,7 +148,7 @@ UnitTestResult starts_where_ends(const std::string& previous, const std::string&
     }
     const std::optional<StoryPose> end = last_target(checkpoint(previous));
     const StoryCheckpoint& row = checkpoint(id);
-    const std::optional<StoryPose> start = row.start ? story_pose(Pokemon::pose_of(*row.start)) : std::nullopt;
+    const std::optional<StoryPose> start = row.start ? story_pose(*row.start) : std::nullopt;
     if (!end || !start || start->map != end->map || !(start->tile == end->tile) || start->facing != end->facing){
         return "Expected " + id + " to start where " + previous + "'s last walk ends.";
     }
@@ -179,11 +177,11 @@ UnitTestResult test_bike_voucher_row(){
     if (object_at(city, {25, 7}) == nullptr){
         return "Expected Oak's aide on (25, 7) after Lt. Surge.";
     }
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
     std::vector<std::string> talked_to;
     for (const StoryStep& step : row.steps){
-        if (step.kind == StoryStepKind::TALK){
+        if (step.action == "talk"){
             const StoryPose here{sim.state().position.map, sim.state().position.point, sim.state().facing};
             const bool counter = here.map == BIKE_SHOP;
             const MapObject* person = object_ahead(maps, here, counter ? 2 : 1);
@@ -255,14 +253,14 @@ UnitTestResult test_repels_and_escape_ropes(){
 UnitTestResult test_route10_row(){
     const StoryCheckpoint& row = checkpoint("07.02");
     const std::vector<MapData> maps = maps_after_surge();
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(maps, MapPosition{at.map, at.tile}, *at.facing);
     for (const StoryStep& step : row.steps){
         if (const std::string failure = row_step_on_sim(sim, at, step, row.id); !failure.empty()){
             return failure;
         }
         //  A step into a trainer's line ends where the battle after it says.
-        const bool into_line = step.kind == StoryStepKind::STEP && !step.action.empty();
+        const bool into_line = step.action == "step" && !step.variant.empty();
         if (!into_line && !(sim.state().position == MapPosition{at.map, at.tile})){
             return std::format("07.02/{}: expected {}, on {}.", step.name, to_string(MapPosition{at.map, at.tile}), to_string(sim.state().position));
         }
@@ -364,7 +362,9 @@ UnitTestResult test_route10_tile_off_after_open_legs(){
     const std::vector<StoryStep> steps = route10_walk();
     const std::vector<MapData>& maps = story_maps();
     //  above_caitlin_line ends east 6 on (70, 8), an open leg.
-    RouteStep before{.direction = Direction::EAST, .tiles = 6};
+    RouteStep before;
+    before.direction = Direction::EAST;
+    before.tiles = 6;
     StoryPose at = ROUTE10_WALK_START;
     for (size_t s = 0; s < steps.size(); s++){
         const std::vector<RouteStep> route = walked_route(at, steps[s]).value_or(std::vector<RouteStep>{});

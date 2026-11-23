@@ -16,8 +16,6 @@
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldMaps.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldSim.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
@@ -82,7 +80,7 @@ const StoryCheckpoint& checkpoint(std::string_view id){
 //  Center, which has no map, is the console's. No trainer is met.
 UnitTestResult test_route7_to_saffron(){
     const StoryCheckpoint& row = checkpoint("15.01");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     OverworldSim sim(story_maps(), MapPosition{at.map, at.tile}, *at.facing);
     const MapPosition trigger{"Route7_EastEntrance", {6, 4}};
     bool on_trigger = false;
@@ -117,7 +115,7 @@ UnitTestResult test_route7_to_saffron(){
 //  walls, the walk ends at the door from column 7 or 8 alike.
 UnitTestResult test_route7_gate_running_crossing_not_held_up(){
     const StoryCheckpoint& row = checkpoint("15.01");
-    StoryPose at = *story_pose(Pokemon::pose_of(*row.start));
+    StoryPose at = *story_pose(*row.start);
     SimScript script;
     script.timing.tile = MovementMechanics::RUN_TILE_TIME;
     script.connections_stall = false;

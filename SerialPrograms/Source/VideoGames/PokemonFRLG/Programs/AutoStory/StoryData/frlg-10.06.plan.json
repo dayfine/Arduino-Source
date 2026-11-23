@@ -4,137 +4,264 @@
   "checkpoint": {
     "id": "10.06",
     "title": "Pokemon Tower 7F: three Rocket Grunts, Mr. Fuji and the POKE FLUTE",
-    "start": {"map": "PokemonTower_6F", "tiles": [[11, 15]], "facing": "south"},
+    "start": {
+      "map": "PokemonTower_6F",
+      "tiles": [
+        [
+          11,
+          15
+        ]
+      ],
+      "facing": "south"
+    },
     "events": [
       {
         "id": "tower_7f_below_grunt1_line",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "onto 6F's stairs (11, 16) to 7F's (11, 16), up column 11 to (11, 11), below Grunt 1's line (10..13, 10)",
         "args": {
-          "target": {"map": "PokemonTower_7F", "tiles": [[11, 11]], "facing": "north"}
-        },
-        "why": "onto 6F's stairs (11, 16) to 7F's (11, 16), up column 11 to (11, 11), below Grunt 1's line (10..13, 10)"
+          "target": {
+            "map": "PokemonTower_7F",
+            "tiles": [
+              [
+                11,
+                11
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "grunt1_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 10) in the first Grunt's line: he faces east from (9, 10) and walks to (10, 10)",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (11, 10) in the first Grunt's line: he faces east from (9, 10) and walks to (10, 10)"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "tower_grunt1",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_19): Zubat, Zubat, Golbat Lv25; he walks off (PokemonTower_7F_EventScript_Grunt1ExitRight) and is removed",
         "args": {
           "trainer": "TRAINER_TEAM_ROCKET_GRUNT_19",
-          "foes": ["zubat", "zubat", "golbat"]
-        },
-        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 10]], "facing": "north"},
-        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_19): Zubat, Zubat, Golbat Lv25; he walks off (PokemonTower_7F_EventScript_Grunt1ExitRight) and is removed"
+          "foes": [
+            "zubat",
+            "zubat",
+            "golbat"
+          ],
+          "pose_after": {
+            "map": "PokemonTower_7F",
+            "tiles": [
+              [
+                11,
+                10
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_grunt2_line",
-        "kind": "step",
+        "action": "step",
+        "why": "a step up to (11, 9), below Grunt 2's line (9..12, 8)",
         "args": {
-          "direction": "north"
-        },
-        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 9]], "facing": "north"},
-        "why": "a step up to (11, 9), below Grunt 2's line (9..12, 8)"
+          "direction": "north",
+          "pose_after": {
+            "map": "PokemonTower_7F",
+            "tiles": [
+              [
+                11,
+                9
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "grunt2_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 8) in the second Grunt's line: he faces west from (13, 8) and walks to (12, 8)",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (11, 8) in the second Grunt's line: he faces west from (13, 8) and walks to (12, 8)"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "tower_grunt2",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_20): Koffing, Drowzee Lv26; he walks off and is removed",
         "args": {
           "trainer": "TRAINER_TEAM_ROCKET_GRUNT_20",
-          "foes": ["koffing", "drowzee"]
-        },
-        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 8]], "facing": "north"},
-        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_20): Koffing, Drowzee Lv26; he walks off and is removed"
+          "foes": [
+            "koffing",
+            "drowzee"
+          ],
+          "pose_after": {
+            "map": "PokemonTower_7F",
+            "tiles": [
+              [
+                11,
+                8
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_grunt3_line",
-        "kind": "step",
+        "action": "step",
+        "why": "a step up to (11, 7), below Grunt 3's line (10..13, 6)",
         "args": {
-          "direction": "north"
-        },
-        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 7]], "facing": "north"},
-        "why": "a step up to (11, 7), below Grunt 3's line (10..13, 6)"
+          "direction": "north",
+          "pose_after": {
+            "map": "PokemonTower_7F",
+            "tiles": [
+              [
+                11,
+                7
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "grunt3_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "onto (11, 6) in the third Grunt's line: he faces east from (9, 6) and walks to (10, 6)",
         "args": {
-          "direction": "north"
-        },
-        "why": "onto (11, 6) in the third Grunt's line: he faces east from (9, 6) and walks to (10, 6)"
+          "direction": "north",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "tower_grunt3",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_21): Zubat, Rattata, Raticate, Zubat Lv23 (Rattata's Quick Attack, pokeguy 1:10:12); he walks off and is removed",
         "args": {
           "trainer": "TRAINER_TEAM_ROCKET_GRUNT_21",
-          "foes": ["zubat", "rattata", "raticate", "zubat"]
-        },
-        "declared_after": {"map": "PokemonTower_7F", "tiles": [[11, 6]], "facing": "north"},
-        "why": "Rocket Grunt (TRAINER_TEAM_ROCKET_GRUNT_21): Zubat, Rattata, Raticate, Zubat Lv23 (Rattata's Quick Attack, pokeguy 1:10:12); he walks off and is removed"
+          "foes": [
+            "zubat",
+            "rattata",
+            "raticate",
+            "zubat"
+          ],
+          "pose_after": {
+            "map": "PokemonTower_7F",
+            "tiles": [
+              [
+                11,
+                6
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_fuji",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "a tile up, below Mr. Fuji (11, 4)",
         "args": {
-          "target": {"map": "PokemonTower_7F", "tiles": [[11, 5]], "facing": "north"}
-        },
-        "why": "a tile up, below Mr. Fuji (11, 4)"
+          "target": {
+            "map": "PokemonTower_7F",
+            "tiles": [
+              [
+                11,
+                5
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "mr_fuji_tower",
-        "kind": "talk",
-        "declared_after": {"map": "LavenderTown_VolunteerPokemonHouse", "tiles": [[4, 7]], "facing": "north"},
-        "why": "Mr. Fuji: \"follow me\", and the script warps the player to his house's (4, 7)"
+        "action": "talk",
+        "why": "Mr. Fuji: \"follow me\", and the script warps the player to his house's (4, 7)",
+        "args": {
+          "pose_after": {
+            "map": "LavenderTown_VolunteerPokemonHouse",
+            "tiles": [
+              [
+                4,
+                7
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "below_fuji_house",
-        "kind": "legs",
-        "action": "taps",
+        "action": "legs",
+        "why": "not_using_planner_route: a tap a tile from the door (4, 7) up to (4, 4) and west to below Mr. Fuji (3, 3), now shown (FLAG_HIDE_POKEHOUSE_FUJI cleared): (3, 4), between the table (5..6, 4..5) and the youngster (3, 5). An approach to an A press ends on its tile: held, \"north 3\" is open at (4, 3)",
         "args": {
-          "legs": [{"direction": "north", "tiles": 3}, {"direction": "west", "tiles": 1}]
-        },
-        "why": "a tap a tile from the door (4, 7) up to (4, 4) and west to below Mr. Fuji (3, 3), now shown (FLAG_HIDE_POKEHOUSE_FUJI cleared): (3, 4), between the table (5..6, 4..5) and the youngster (3, 5). An approach to an A press ends on its tile: held, \"north 3\" is open at (4, 3)"
+          "legs": [
+            {
+              "direction": "north",
+              "tiles": 3
+            },
+            {
+              "direction": "west",
+              "tiles": 1
+            }
+          ],
+          "variant": "taps"
+        }
       },
       {
         "id": "facing_fuji",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "turned north to Mr. Fuji (3, 3)",
         "args": {
-          "target": {"map": "LavenderTown_VolunteerPokemonHouse", "tiles": [[3, 4]], "facing": "north"}
-        },
-        "why": "turned north to Mr. Fuji (3, 3)"
+          "target": {
+            "map": "LavenderTown_VolunteerPokemonHouse",
+            "tiles": [
+              [
+                3,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "poke_flute",
-        "kind": "talk",
+        "action": "talk",
         "why": "Mr. Fuji gives the POKE FLUTE (FLAG_GOT_POKE_FLUTE), no YES/NO"
       },
       {
         "id": "poke_flute_obtained",
-        "kind": "scene",
-        "declared_after": {"map": "LavenderTown_VolunteerPokemonHouse", "tiles": [[3, 4]], "facing": "north"},
-        "why": "Mr. Fuji's lines and the POKE FLUTE, to the overworld. The talk returns at his first message, so the save must not follow it"
+        "action": "scene",
+        "why": "Mr. Fuji's lines and the POKE FLUTE, to the overworld. The talk returns at his first message, so the save must not follow it",
+        "args": {
+          "pose_after": {
+            "map": "LavenderTown_VolunteerPokemonHouse",
+            "tiles": [
+              [
+                3,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -145,6 +272,5 @@
         "The facing after the script's warp is not measured; north is assumed (the player faced north to talk)."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

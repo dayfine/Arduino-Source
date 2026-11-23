@@ -4,95 +4,138 @@
   "checkpoint": {
     "id": "05.04",
     "title": "Nugget Bridge 10x farm: deposit lead, farm 10 Nuggets, withdraw lead",
-    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "CeruleanCity_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "pc_front_deposit",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "to Cerulean Center PC to deposit lead",
         "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"}
-        },
-        "why": "to Cerulean Center PC to deposit lead"
+          "target": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                11,
+                2
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "deposit_lead",
-        "kind": "game_action",
         "action": "pc",
+        "why": "deposit lead into Box 2 slot 1 so only Rattata remains for Nugget Bridge fainting",
         "args": {
           "do": "deposit",
-          "box": 1,
+          "box": 2,
           "slot": 1
-        },
-        "why": "deposit lead into Box 2 slot 1 so only Rattata remains for Nugget Bridge fainting"
+        }
       },
       {
         "id": "nugget_bridge_10x",
-        "kind": "game_action",
         "action": "nugget_farm",
+        "why": "farm 10 Nuggets by losing to the Nugget Bridge Rocket",
         "args": {
           "count": 10,
-          "nurse": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "farm 10 Nuggets by losing to the Nugget Bridge Rocket"
+          "nurse": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "pc_front",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "back to PC to withdraw lead",
         "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"}
-        },
-        "why": "back to PC to withdraw lead"
+          "target": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                11,
+                2
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "withdraw_lead",
-        "kind": "game_action",
         "action": "pc",
+        "why": "withdraw lead into slot 2",
         "args": {
           "do": "withdraw",
           "box": 2,
           "slot": 1
-        },
-        "why": "withdraw lead into slot 2"
+        }
       },
       {
         "id": "deposit_rattata",
-        "kind": "game_action",
         "action": "pc",
+        "why": "deposit Rattata so lead moves to slot 1",
         "args": {
           "do": "deposit",
           "box": 2,
           "slot": 1
-        },
-        "why": "deposit Rattata so lead moves to slot 1"
+        }
       },
       {
         "id": "withdraw_rattata",
-        "kind": "game_action",
         "action": "pc",
+        "why": "withdraw Rattata into slot 2",
         "args": {
           "do": "withdraw",
           "box": 2,
           "slot": 1
-        },
-        "why": "withdraw Rattata into slot 2"
+        }
       },
       {
         "id": "cerulean_nurse",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "heal before Rocket",
         "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "heal before Rocket"
+          "target": {
+            "map": "CeruleanCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "heal_cerulean",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -102,6 +145,5 @@
         "Cerulean 05.04: farm 10 Nuggets and withdraw lead back to slot 1."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

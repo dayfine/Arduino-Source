@@ -23,9 +23,9 @@
       "contract": {
         "topup": {},
         "entry": {"hp_sim": {"median": 171, "p10": 171}, "pp": {"surf": 15, "blizzard": 5},
-                  "items": {"fullrestore": 8, "xspecial": 15, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 6, "elixir": 1, "maxelixir": 1}},
+                  "items": {"fullrestore": 9, "xspecial": 15, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 6, "elixir": 1, "maxelixir": 1}},
         "exit": {"hp": {"median": 107, "p10": 36}, "surf": {"median": 15, "min": 12}, "pp": {"blizzard": 5},
-                 "items": {"fullrestore": 7, "xspecial": 9, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 6, "elixir": 1, "maxelixir": 1}},
+                 "items": {"fullrestore": 8, "xspecial": 9, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 6, "elixir": 1, "maxelixir": 1}},
         "pass": {"expected_pass": 0.733, "min_pass": {"k": 5, "of": 10, "rate": 0.5}, "reset_budget": 5}
       },
       "caps": {"fullrestore": 1, "xspecial": 6, "xspeed": 0, "xaccuracy": 0, "guardspec": 0, "superpotion": 0},
@@ -55,9 +55,9 @@
       "contract": {
         "topup": {"superpotion": 1, "fullrestore": 1},
         "entry": {"hp_sim": {"median": 171, "p10": 171}, "pp": {"surf": 12, "blizzard": 5},
-                  "items": {"fullrestore": 6, "xspecial": 9, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 5, "elixir": 1, "maxelixir": 1}},
+                  "items": {"fullrestore": 7, "xspecial": 9, "xspeed": 5, "xaccuracy": 3, "guardspec": 2, "superpotion": 5, "elixir": 1, "maxelixir": 1}},
         "exit": {"hp": {"median": 51, "p10": 32}, "surf": {"median": 10, "min": 5}, "pp": {"blizzard": 5},
-                 "items": {"fullrestore": 5, "xspecial": 7, "xspeed": 2, "xaccuracy": 3, "guardspec": 2, "superpotion": 5, "elixir": 1, "maxelixir": 1}},
+                 "items": {"fullrestore": 6, "xspecial": 7, "xspeed": 2, "xaccuracy": 3, "guardspec": 2, "superpotion": 5, "elixir": 1, "maxelixir": 1}},
         "pass": {"expected_pass": 0.37, "min_pass": {"k": 1, "of": 10, "rate": 0.1}, "reset_budget": 9}
       },
       "caps": {"fullrestore": 2, "xspecial": 2, "xspeed": 3, "xaccuracy": 0, "guardspec": 0, "superpotion": 1},
@@ -86,9 +86,9 @@
       "contract": {
         "topup": {"superpotion": 1},
         "entry": {"hp_sim": {"median": 104, "p10": 85}, "pp": {"surf": 5, "blizzard": 5},
-                  "items": {"fullrestore": 5, "xspecial": 7, "xspeed": 2, "xaccuracy": 3, "guardspec": 2, "superpotion": 4, "elixir": 1, "maxelixir": 1}},
+                  "items": {"fullrestore": 6, "xspecial": 7, "xspeed": 2, "xaccuracy": 3, "guardspec": 2, "superpotion": 4, "elixir": 1, "maxelixir": 1}},
         "exit": {"hp": {"median": 84, "p10": 47}, "surf": {"median": 7, "min": 3}, "pp": {"blizzard": 5},
-                 "items": {"fullrestore": 5, "xspecial": 4, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 4, "elixir": 1, "maxelixir": 1}},
+                 "items": {"fullrestore": 6, "xspecial": 4, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 4, "elixir": 1, "maxelixir": 1}},
         "pass": {"expected_pass": 0.719, "min_pass": {"k": 5, "of": 10, "rate": 0.5}, "reset_budget": 5}
       },
       "caps": {"fullrestore": 0, "xspecial": 3, "xspeed": 1, "xaccuracy": 0, "guardspec": 0, "superpotion": 1},
@@ -114,7 +114,7 @@
       "contract": {
         "topup": {"superpotion": 2, "fullrestore": 1},
         "entry": {"hp_sim": {"median": 171, "p10": 171}, "pp": {"surf": 3, "blizzard": 5},
-                  "items": {"fullrestore": 4, "xspecial": 4, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 2, "elixir": 1, "maxelixir": 1}},
+                  "items": {"fullrestore": 5, "xspecial": 4, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 2, "elixir": 1, "maxelixir": 1}},
         "exit": {"hp": {"median": 86.5, "p10": 62}, "surf": {"median": 5, "min": 1}, "pp": {},
                  "items": {"fullrestore": 3, "xspecial": 2, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 2, "elixir": 1, "maxelixir": 1}},
         "pass": {"expected_pass": 0.442, "min_pass": {"k": 2, "of": 10, "rate": 0.2}, "reset_budget": 7}
@@ -149,7 +149,7 @@
       "contract": {
         "topup": {"superpotion": 2, "fullrestore": 1, "elixir": 1},
         "entry": {"hp_sim": {"median": 171, "p10": 171}, "pp": {"surf": 8, "blizzard": 4},
-                  "items": {"fullrestore": 2, "xspecial": 2, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 0, "elixir": 0, "maxelixir": 1}},
+                  "items": {"fullrestore": 3, "xspecial": 2, "xspeed": 1, "xaccuracy": 3, "guardspec": 2, "superpotion": 0, "elixir": 0, "maxelixir": 1}},
         "exit": {"hp": {"median": 39, "p10": 3}, "surf": {"median": 11, "min": 6}, "pp": {},
                  "items": {"fullrestore": 0, "xspecial": 0, "xspeed": 0, "xaccuracy": 1, "guardspec": 1, "superpotion": 0, "elixir": 0, "maxelixir": 0}},
         "pass": {"expected_pass": 0.395, "min_pass": {"k": 2, "of": 10, "rate": 0.2}, "reset_budget": 8}

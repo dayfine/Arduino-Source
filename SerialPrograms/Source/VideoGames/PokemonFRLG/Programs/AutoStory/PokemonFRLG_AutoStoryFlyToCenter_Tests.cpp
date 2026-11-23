@@ -19,7 +19,6 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/UnitTest.h"
-#include "Pokemon/AutoStory/Pokemon_BuiltinStoryActions.h"
 #include "PokemonFRLG_AutoStoryEvents.h"
 #include "PokemonFRLG_AutoStoryFlyToCenter_Tests.h"
 #include "PokemonFRLG_AutoStoryItemUse.h"
@@ -87,7 +86,7 @@ bool close_center(std::string_view row, std::string_view step){
 
 //  The nurse, the Center's script in, or a walk up to her.
 bool is_center_step(const StoryStep& step){
-    return step.kind == StoryStepKind::HEAL || step.action == CENTER_ENTER_VARIANT || step.name.ends_with("_nurse");
+    return step.action == "heal" || step.action == CENTER_ENTER_VARIANT || step.name.ends_with("_nurse");
 }
 
 //  A step that moves the player without a menu or a talk in between.
@@ -98,16 +97,10 @@ bool moves(const StoryStep& step){
     if (is_center_step(step)){
         return false;
     }
-    switch (step.kind){
-    case StoryStepKind::ROUTE:
-    case StoryStepKind::LEGS:
-    case StoryStepKind::STEP:
+    if (step.action == "route" || step.action == "legs" || step.action == "step"){
         return true;
-    case StoryStepKind::GAME:
-        return GAME_MOVES.contains(step.action);
-    default:
-        return false;
     }
+    return GAME_MOVES.contains(step.action);
 }
 
 //  A Fly or an Escape Rope: the player lands elsewhere without walking.
@@ -138,17 +131,17 @@ int route_tiles(const std::vector<RouteStep>& route){
 }
 
 bool is_walk(const StoryStep& step){
-    return step.kind == StoryStepKind::ROUTE || step.kind == StoryStepKind::LEGS;
+    return step.action == "route" || step.action == "legs";
 }
 
 //  Where a ROUTE ends whether or not it plans here: its target. A row's
 //  own steps may open what its start flags keep shut (a cut tree, a door),
 //  so a route outside a Center trip may not plan on them.
 std::optional<StoryPose> route_target(const StoryStep& step){
-    if (step.kind != StoryStepKind::ROUTE){
+    if (step.action != "route"){
         return std::nullopt;
     }
-    return story_pose(Pokemon::pose_of(Pokemon::story_arg<Pokemon::GridPose>(step.args, "target")));
+    return story_pose(frlg_arg<Pokemon::GridPose>(step.args, "target"));
 }
 
 //  `step` walked from `walk.from`: its tiles into `walk`. Where it leaves
@@ -164,13 +157,13 @@ std::optional<StoryPose> walk_step(const RowPlanning& planning, const StoryStep&
             walk.tiles = route_tiles(*route);
             at = StoryPose{route->back().end.map, route->back().end.point, route->back().facing_after};
         }
-    }else if (at && step.kind == StoryStepKind::STEP){
-        const Direction direction = Pokemon::story_arg<Direction>(step.args, "direction");
+    }else if (at && step.action == "step"){
+        const Direction direction = frlg_arg<Direction>(step.args, "direction");
         walk.tiles = 1;
         at = StoryPose{at->map, at->tile.next(direction), direction};
     }
     if (step.pose_after){
-        at = story_pose(Pokemon::pose_of(*step.pose_after));
+        at = story_pose(*step.pose_after);
     }
     return at;
 }
@@ -181,13 +174,15 @@ std::vector<StepWalk> walk_row(const StoryCheckpoint& row){
     const std::set<std::string> flags(row.start_flags.begin(), row.start_flags.end());
     const RowPlanning planning{
         .maps = run_story_maps(flags),
-        .gates = row.start_gates.value_or(Pokemon::GateState()),
+        .gates = row.start_gates,
         .rules = Pokemon::GateRules{.card_key_held = flags.contains("card_key_held")},
     };
     std::vector<StepWalk> walks;
-    std::optional<StoryPose> at = story_pose(Pokemon::pose_of(*row.start));
+    std::optional<StoryPose> at = story_pose(*row.start);
     for (const StoryStep& step : row.steps){
-        walks.push_back(StepWalk{.from = at});
+        StepWalk walk;
+        walk.from = at;
+        walks.push_back(std::move(walk));
         at = walk_step(planning, step, walks.back());
     }
     return walks;

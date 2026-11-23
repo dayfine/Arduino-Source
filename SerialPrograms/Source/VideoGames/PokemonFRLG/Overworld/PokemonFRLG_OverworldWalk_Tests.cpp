@@ -151,7 +151,7 @@ const OverworldWalkTestCase OVERWORLD_WALK_CASES[] = {
 
 struct TurnTapInput{
     //  SimScript::dropped_turn_taps.
-    std::set<int> dropped_turn_taps;
+    std::set<int> dropped_turn_taps = {};
     //  SimWalkerRules::confirm_turn.
     bool confirm_turn = true;
     //  On the Bicycle (SimScript::on_bike, SimWalkerRules::speed).
@@ -424,6 +424,10 @@ struct HoldShot{
     //  The bottom 160 rows a row of trees whose pattern repeats every two
     //  tiles across, as along Celadon City's south yard.
     bool trees_bottom = false;
+    //  The right 160 columns a border whose pattern repeats every seven tiles
+    //  down, so 1- and 2-tile self-shifts don't match, as along Victory Road
+    //  3F's east corridor (19.04d north 7).
+    bool seven_tile_right = false;
 };
 
 //  A 960x640 screen of 64-pixel tiles, each its own color, seen as `shot`.
@@ -435,6 +439,7 @@ ImageRGB32 tile_map(const HoldShot& shot){
             const bool in_banner = shot.banner && x < 400 && y < 80;
             const bool in_stripes = shot.striped_bottom && y >= 480;
             const bool in_trees = shot.trees_bottom && y >= 480;
+            const bool in_seven_tile_right = shot.seven_tile_right && x >= 800;
             const bool off_map = shot.off_map == OffMap::ALL
                 || (shot.off_map == OffMap::TOP && y < 240)
                 || (shot.off_map == OffMap::BOTTOM && y >= 400);
@@ -444,6 +449,8 @@ ImageRGB32 tile_map(const HoldShot& shot){
                 image.pixel(x, y) = (x + shot.scroll_x) % 16 < 8 ? 0xff804020 : 0xffc08040;
             }else if (in_trees){
                 image.pixel(x, y) = (x + shot.scroll_x) % 128 < 64 ? 0xff208040 : 0xff60c080;
+            }else if (in_seven_tile_right){
+                image.pixel(x, y) = (y + shot.scroll_y) % 448 < 224 ? 0xffa08060 : 0xff604020;
             }else{
                 image.pixel(x, y) = in_banner ? 0xfff8f8f8 : 0xff000000 | (tile * 0x2f1b3d & 0x00ffffff);
             }
@@ -554,6 +561,20 @@ const HoldScrollCase HOLD_SCROLL_CASES[] = {
         .name = "no map on the screen",
         .input = {.before = {.off_map = OffMap::ALL}, .after = {.off_map = OffMap::ALL}},
         .expectation = {.movement = HoldMovement::UNMEASURED},
+    },
+    //  Victory Road 3F east corridor (19.04d above_exit): "north 7 (open)"
+    //  scrolled top/bottom/left by 70+ RMSD while the off-map rock border on
+    //  the right landed back in phase (4.5 RMSD) without repeating at 1- or
+    //  2-tile self-shift.
+    {
+        .name = "a walk north along a border that matches seven tiles on",
+        .input = {.before = {.seven_tile_right = true}, .after = {.scroll_y = 448, .seven_tile_right = true}, .direction = Direction::NORTH},
+        .expectation = {.movement = HoldMovement::MOVED},
+    },
+    {
+        .name = "standing beside a border that matches seven tiles on",
+        .input = {.before = {.seven_tile_right = true}, .after = {.seven_tile_right = true}, .direction = Direction::NORTH},
+        .expectation = {.movement = HoldMovement::NONE},
     },
 };
 

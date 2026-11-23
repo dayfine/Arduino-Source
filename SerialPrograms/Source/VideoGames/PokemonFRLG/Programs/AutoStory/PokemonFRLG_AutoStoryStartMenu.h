@@ -19,11 +19,10 @@
 #include "CommonFramework/ImageTypes/ImageViewRGB32.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionArg.h"
 #include "Pokemon/AutoStory/Types/Pokemon_StoryCheckLevel.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -54,7 +53,7 @@ int start_menu_option_row(StartMenu menu);
 StartMenuContext start_menu_context(StartMenu menu);
 //  The START menu a GAME step's `args` open: the Safari Zone's when its
 //  "safari" arg is true, else the full one.
-StartMenu step_start_menu(const Pokemon::StoryActionArgs& args);
+StartMenu step_start_menu(const FrlgArgMap& args);
 
 
 //  Whether the overworld is up: START opens the menu only there, with no

@@ -275,6 +275,27 @@ const PolicyCase POLICY_CASES[] = {
         .expectation = {.row = "ko_heal", .pick = "full-restore"},
     },
     {
+        .name = "5. fourth medicine turn stops looping Full Restores and attacks",
+        .input = {.state = {.own = blastoise_at({.bite = rolls(30, 36), .strength = rolls(20, 24), .surf = rolls(25, 30), .blizzard = rolls(90, 106)}, {}, {.hp = 50}),
+            .foe = dragonair(), .foe_party_alive = 4, .bag = BAG}, .fight = "lance", .streak = 3},
+        .expectation = {.not_rows = {"ko_heal"}, .attacks = true},
+    },
+    {
+        .name = "5. lower-HP Blastoise stops looping Full Restores vs Dragonite when above mean hit",
+        .input = {.state = {
+            .own = []{
+                PlannedOwn own = blastoise_at(ON_DRAGONITE, {}, {.spa = 2, .hp = 104});
+                own.max_hp = 161;
+                return own;
+            }(),
+            .foe = {.species = "dragonite", .slot = 4, .hp = 197, .max_hp = 197, .speed = 107,
+                .moves = {{.id = "hyper-beam", .pp = 5, .accuracy = 0.9, .damage = rolls(96, 113)}}},
+            .foe_party_alive = 3,
+            .bag = BAG,
+        }, .fight = "lance", .streak = 1},
+        .expectation = {.pick = "blizzard", .not_rows = {"ko_heal"}},
+    },
+    {
         .name = "6. KO risk from the current foe: the second Onix's hits",
         .input = {.state = {.own = blastoise_at({.bite = rolls(40, 48), .strength = rolls(20, 24), .surf = rolls(130, 154), .blizzard = rolls(60, 72)}, {}, {.spa = 2, .speed = 1, .hp = 60}),
             .foe = onix(), .foe_party_alive = 2, .bag = BAG}, .fight = "bruno"},

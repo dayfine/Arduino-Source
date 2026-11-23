@@ -15,8 +15,8 @@
 #include <optional>
 #include <string>
 #include "Common/Cpp/Logging/AbstractLogger.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryStep.h"
 #include "PokemonFRLG_AutoStoryBag.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -36,7 +36,7 @@ ItemUseEnd use_strongest_repel(Logger& logger, ItemUseActions& actions);
 //  it wears off: a use_item step's Repel, or for a use_repel step the Max
 //  Repel, so that its renewals go strongest first whichever it used.
 //  Nothing for another step.
-std::optional<std::string> repel_put_on_by(const Pokemon::StoryStep& step);
+std::optional<std::string> repel_put_on_by(const StoryStep& step);
 
 
 

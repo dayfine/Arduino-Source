@@ -4,210 +4,412 @@
   "checkpoint": {
     "id": "08.03",
     "title": "Lavender Mart, then west over Route 8 on the Bicycle, the Underground Path, a Pidgey on Route 7, Celadon's Pokemon Center",
-    "start": {"map": "LavenderTown_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "start": {
+      "map": "LavenderTown_PokemonCenter_1F",
+      "tiles": [
+        [
+          7,
+          4
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "register_bike",
-        "kind": "game_action",
         "action": "register_bike",
         "why": "the BICYCLE (07.01) registered for SELECT, which gets on and off in about 1 s (console B, 2026-11-09); here until 07.01's plan (frlg/stage7-celadon, #224) takes it right after the Bicycle"
       },
       {
         "id": "east_of_mart_door",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the Center's door (6, 5), east and down to the wall (22, 16), east of the Mart's door (20, 15)",
         "args": {
-          "target": {"map": "LavenderTown", "tiles": [[21, 16]], "facing": "east"}
-        },
-        "why": "out of the Center's door (6, 5), east and down to the wall (22, 16), east of the Mart's door (20, 15)"
+          "target": {
+            "map": "LavenderTown",
+            "tiles": [
+              [
+                21,
+                16
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "into_lavender_mart",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "a tile west, in at the Mart's door (20, 15) and up column 4 to the wall (4, 1)",
         "args": {
-          "target": {"map": "LavenderTown_Mart", "tiles": [[4, 2]], "facing": "north"}
-        },
-        "why": "a tile west, in at the Mart's door (20, 15) and up column 4 to the wall (4, 1)"
+          "target": {
+            "map": "LavenderTown_Mart",
+            "tiles": [
+              [
+                4,
+                2
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "lavender_mart_clerk",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "a tile back down, facing the clerk (2, 3) over the counter (3, 3)",
         "args": {
-          "target": {"map": "LavenderTown_Mart", "tiles": [[4, 3]], "facing": "west"}
-        },
-        "why": "a tile back down, facing the clerk (2, 3) over the counter (3, 3)"
+          "target": {
+            "map": "LavenderTown_Mart",
+            "tiles": [
+              [
+                4,
+                3
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "buy_ropes_and_super_repels",
-        "kind": "game_action",
         "action": "mart",
+        "why": "pokeguy 54:18: 4 Escape Ropes (the Rocket Hideout, 09.01) and 7 Super Repels (Pokemon Tower); and 1 Antidote and 1 Parlyz Heal for the bag PokeGuy brings to Koga (antidote x1, parlyzheal x2; PokemonSimulation docs/battles/pokeguy-conditions.md): the run's 3 Antidotes from Viridian were gone by Fuchsia (console B, 2026-11-12, Blastoise Lv39 with 0 at Koga). $300 more than pokeguy spent",
         "args": {
           "map": "LavenderTown_Mart",
-          "items": [{"item": "escape-rope", "quantity": 4}, {"item": "super-repel", "quantity": 7}, {"item": "antidote", "quantity": 1}, {"item": "parlyz-heal", "quantity": 1}]
-        },
-        "why": "pokeguy 54:18: 4 Escape Ropes (the Rocket Hideout, 09.01) and 7 Super Repels (Pokemon Tower); and 1 Antidote and 1 Parlyz Heal for the bag PokeGuy brings to Koga (antidote x1, parlyzheal x2; PokemonSimulation docs/battles/pokeguy-conditions.md): the run's 3 Antidotes from Viridian were gone by Fuchsia (console B, 2026-11-12, Blastoise Lv39 with 0 at Koga). $300 more than pokeguy spent"
+          "items": [
+            {
+              "item": "escape-rope",
+              "quantity": 4
+            },
+            {
+              "item": "super-repel",
+              "quantity": 7
+            },
+            {
+              "item": "antidote",
+              "quantity": 1
+            },
+            {
+              "item": "parlyz-heal",
+              "quantity": 1
+            }
+          ]
+        }
       },
       {
         "id": "out_of_lavender_mart",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "down to the mat and out of the door (20, 15)",
         "args": {
-          "target": {"map": "LavenderTown", "tiles": [[20, 16]], "facing": "south"}
-        },
-        "why": "down to the mat and out of the door (20, 15)"
+          "target": {
+            "map": "LavenderTown",
+            "tiles": [
+              [
+                20,
+                16
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "ride_bike",
-        "kind": "game_action",
         "action": "ride_bike",
         "why": "on the BICYCLE with SELECT (registered by register_bike) for Route 8"
       },
       {
         "id": "lavender_west_edge",
-        "kind": "legs",
-        "action": "bike",
+        "action": "legs",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; west along row 16 to the wall (12, 16), up column 13 to the wall (13, 6), back onto row 8, west along it to the wall (0, 8) and down to (1, 10), mid-way along the way out (rows 9..11)",
         "args": {
-          "legs": [{"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 9}, {"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 12}, {"direction": "south", "tiles": 2}]
-        },
-        "why": "west along row 16 to the wall (12, 16), up column 13 to the wall (13, 6), back onto row 8, west along it to the wall (0, 8) and down to (1, 10), mid-way along the way out (rows 9..11)"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 7
+            },
+            {
+              "direction": "north",
+              "tiles": 9
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 12
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            }
+          ],
+          "variant": "bike"
+        }
       },
       {
         "id": "route8_east_wall",
-        "kind": "route",
-        "action": "bike",
+        "action": "route",
+        "why": "west over the connection onto Route 8, to the wall (56..61, 6..13): a row off still ends on this wall",
         "args": {
-          "target": {"map": "Route8", "tiles": [[62, 10]], "facing": "west"}
-        },
-        "why": "west over the connection onto Route 8, to the wall (56..61, 6..13): a row off still ends on this wall"
+          "target": {
+            "map": "Route8",
+            "tiles": [
+              [
+                62,
+                10
+              ]
+            ],
+            "facing": "west"
+          },
+          "variant": "bike"
+        }
       },
       {
         "id": "east_of_rich_line",
-        "kind": "legs",
-        "action": "bike",
+        "action": "legs",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; down column 62 to Julia (62, 14), who looks west, a tile east and down column 63 to the wall (63, 19), west along row 18 to (57, 18), two tiles short of Rich's line",
         "args": {
-          "legs": [{"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 1}, {"direction": "south", "tiles": 5}, {"direction": "west", "tiles": 6}]
-        },
-        "why": "down column 62 to Julia (62, 14), who looks west, a tile east and down column 63 to the wall (63, 19), west along row 18 to (57, 18), two tiles short of Rich's line"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 5
+            },
+            {
+              "direction": "west",
+              "tiles": 6
+            }
+          ],
+          "variant": "bike"
+        }
       },
       {
         "id": "rich_line",
-        "kind": "step",
-        "action": "trainer_line",
+        "action": "step",
+        "why": "a tile at a time over (56, 18) onto (55, 18), the end of Rich's line (55, 16..18): he walks down to (55, 17)",
         "args": {
-          "direction": "west"
-        },
-        "why": "a tile at a time over (56, 18) onto (55, 18), the end of Rich's line (55, 16..18): he walks down to (55, 17)"
+          "direction": "west",
+          "variant": "trainer_line"
+        }
       },
       {
         "id": "gamer_rich",
-        "kind": "battle",
+        "action": "battle",
+        "why": "Gamer Rich (TRAINER_GAMER_RICH): Growlithe, Vulpix Lv24",
         "args": {
           "trainer": "TRAINER_GAMER_RICH",
-          "foes": ["growlithe", "vulpix"]
-        },
-        "declared_after": {"map": "Route8", "tiles": [[55, 18]], "facing": "west"},
-        "why": "Gamer Rich (TRAINER_GAMER_RICH): Growlithe, Vulpix Lv24"
+          "foes": [
+            "growlithe",
+            "vulpix"
+          ],
+          "pose_after": {
+            "map": "Route8",
+            "tiles": [
+              [
+                55,
+                18
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "west_of_glenn_column",
-        "kind": "legs",
-        "action": "bike",
+        "action": "legs",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; west along row 18 past Rich (55, 17) to the wall (47, 18), then up column 48 to row 7, west of Glenn's south line (51, 7..10) and below his west line (47..50, 6): the wall puts the player on column 48 wherever on row 18 the battle left them",
         "args": {
-          "legs": [{"direction": "west", "tiles": 7}, {"direction": "north", "tiles": 11}]
-        },
-        "why": "west along row 18 past Rich (55, 17) to the wall (47, 18), then up column 48 to row 7, west of Glenn's south line (51, 7..10) and below his west line (47..50, 6): the wall puts the player on column 48 wherever on row 18 the battle left them"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 7
+            },
+            {
+              "direction": "north",
+              "tiles": 11
+            }
+          ],
+          "variant": "bike"
+        }
       },
       {
         "id": "route8_row7_west_wall",
-        "kind": "legs",
-        "action": "bike",
+        "action": "legs",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; west along row 7, below Megan's line (30..35, 6) and Andrea's (26..28, 5), to the wall (25, 7): column 26 from anywhere on the row",
         "args": {
-          "legs": [{"direction": "west", "tiles": 22}]
-        },
-        "why": "west along row 7, below Megan's line (30..35, 6) and Andrea's (26..28, 5), to the wall (25, 7): column 26 from anywhere on the row"
+          "legs": [
+            {
+              "direction": "west",
+              "tiles": 22
+            }
+          ],
+          "variant": "bike"
+        }
       },
       {
         "id": "route8_row14_west_wall",
-        "kind": "legs",
-        "action": "bike",
+        "action": "legs",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; down column 26 to the wall (26, 19), east of Jaren's line (25, 17), 4 tiles back up onto row 14, and west along it above Jaren (24, 17) and Ricardo (14, 16), who see a tile, to the wall (11, 14): the walls put the player on row 18, then on column 12, wherever the walk along row 7 ended (console B, 2026-11-09: open legs from (48, 7) to (14, 13) ended 3 tiles east, and the door step bumped the house)",
         "args": {
-          "legs": [{"direction": "south", "tiles": 11}, {"direction": "north", "tiles": 4}, {"direction": "west", "tiles": 14}]
-        },
-        "why": "down column 26 to the wall (26, 19), east of Jaren's line (25, 17), 4 tiles back up onto row 14, and west along it above Jaren (24, 17) and Ricardo (14, 16), who see a tile, to the wall (11, 14): the walls put the player on row 18, then on column 12, wherever the walk along row 7 ended (console B, 2026-11-09: open legs from (48, 7) to (14, 13) ended 3 tiles east, and the door step bumped the house)"
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 11
+            },
+            {
+              "direction": "north",
+              "tiles": 4
+            },
+            {
+              "direction": "west",
+              "tiles": 14
+            }
+          ],
+          "variant": "bike"
+        }
       },
       {
         "id": "east_of_underground_door",
-        "kind": "legs",
-        "action": "bike",
+        "action": "legs",
+        "why": "not_using_planner_route: Bicycle wall-anchored legs avoiding open-hold drift and trainers; 2 taps east (a Bicycle tap is a tile) onto column 14, east of Aidan's line (10..13, 6), and up it to the house's wall (14, 4)",
         "args": {
-          "legs": [{"direction": "east", "tiles": 2}, {"direction": "north", "tiles": 9}]
-        },
-        "why": "2 taps east (a Bicycle tap is a tile) onto column 14, east of Aidan's line (10..13, 6), and up it to the house's wall (14, 4)"
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 2
+            },
+            {
+              "direction": "north",
+              "tiles": 9
+            }
+          ],
+          "variant": "bike"
+        }
       },
       {
         "id": "below_underground_door",
-        "kind": "route",
-        "action": "bike",
+        "action": "route",
+        "why": "a tile west, below the Underground Path's door (13, 4)",
         "args": {
-          "target": {"map": "Route8", "tiles": [[13, 5]], "facing": "north"}
-        },
-        "why": "a tile west, below the Underground Path's door (13, 4)"
+          "target": {
+            "map": "Route8",
+            "tiles": [
+              [
+                13,
+                5
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "bike"
+        }
       },
       {
         "id": "route7_underground_exit",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "through the door (the game takes the player off the Bicycle indoors), the east entrance, the east-west tunnel and the west entrance, out onto Route 7",
         "args": {
-          "target": {"map": "Route7", "tiles": [[7, 15]], "facing": "south"}
-        },
-        "why": "through the door (the game takes the player off the Bicycle indoors), the east entrance, the east-west tunnel and the west entrance, out onto Route 7"
+          "target": {
+            "map": "Route7",
+            "tiles": [
+              [
+                7,
+                15
+              ]
+            ],
+            "facing": "south"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "pidgey_grass",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "north round the ledges and up column 14 onto the edge of Route 7's grass (11..18, 2..6), grass tiles east of it free",
         "args": {
-          "target": {"map": "Route7", "tiles": [[14, 6]], "facing": "east"}
-        },
-        "why": "north round the ledges and up column 14 onto the edge of Route 7's grass (11..18, 2..6), grass tiles east of it free"
+          "target": {
+            "map": "Route7",
+            "tiles": [
+              [
+                14,
+                6
+              ]
+            ],
+            "facing": "east"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "catch_pidgey",
-        "kind": "game_action",
         "action": "capture",
+        "why": "a Pidgey to carry HM02 Fly (pokeguy flies with a Pidgey from 1:03 on); the party has no other flier",
         "args": {
           "species": "pidgey",
           "catches": 1,
           "encounters": 30,
           "balls": 5,
           "pace": "east"
-        },
-        "why": "a Pidgey to carry HM02 Fly (pokeguy flies with a Pidgey from 1:03 on); the party has no other flier"
+        }
       },
       {
         "id": "celadon_below_center",
-        "kind": "route",
-        "action": "run",
+        "action": "route",
+        "why": "out of the grass, west onto Celadon (rows 12..15) and along row 12 to below the Center's door (48, 11)",
         "args": {
-          "target": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "north"}
-        },
-        "why": "out of the grass, west onto Celadon (rows 12..15) and along row 12 to below the Center's door (48, 11)"
+          "target": {
+            "map": "CeladonCity",
+            "tiles": [
+              [
+                48,
+                12
+              ]
+            ],
+            "facing": "north"
+          },
+          "variant": "run"
+        }
       },
       {
         "id": "celadon_nurse",
-        "kind": "game_action",
         "action": "center_enter",
-        "declared_after": {"map": "CeladonCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
-        "why": "the Center script in: through the door and up to the nurse; no map of the Center"
+        "why": "the Center script in: through the door and up to the nurse; no map of the Center",
+        "args": {
+          "pose_after": {
+            "map": "CeladonCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "heal_celadon",
-        "kind": "heal",
+        "action": "heal",
         "why": "the nurse heals the party"
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -237,6 +439,5 @@
         "Section celadon: Celadon City's Pokemon Center"
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

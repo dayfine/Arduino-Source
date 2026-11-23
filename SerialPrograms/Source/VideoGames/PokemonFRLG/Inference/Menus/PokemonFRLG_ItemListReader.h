@@ -14,6 +14,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_ItemListReader_H
 #define PokemonAutomation_PokemonFRLG_ItemListReader_H
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -34,6 +35,10 @@ constexpr int ITEM_LIST_ROWS = 6;
 //  Where row `row` (from 0) of a list shows its item's name, as fractions
 //  of the game screen.
 ImageFloatBox item_list_name_box(int row);
+
+//  Which visible row (0..ITEM_LIST_ROWS-1) currently has the selection
+//  arrow to the left of its name, or nullopt if no unique arrow is visible.
+std::optional<int> read_item_list_cursor_row(const ImageViewRGB32& screen);
 
 //  The item named in row `row`: a slug such as "potion", "antidote",
 //  "parlyz-heal", "awakening", "poke-ball", "repel",

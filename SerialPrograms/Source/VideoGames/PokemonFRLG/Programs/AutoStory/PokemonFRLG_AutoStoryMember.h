@@ -28,10 +28,9 @@
 #include "CommonFramework/Language.h"
 #include "NintendoSwitch/Controllers/Procon/NintendoSwitch_ProController.h"
 #include "NintendoSwitch/NintendoSwitch_ConsoleHandle.h"
-#include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
-#include "Pokemon/AutoStory/Types/Pokemon_StoryActionSpec.h"
 #include "PokemonFRLG_AutoStoryStats.h"
 #include "PokemonFRLG_AutoStoryMemberInfo.h"
+#include "PokemonFRLG_AutoStoryStepTypes.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -51,12 +50,12 @@ struct LevelCheck{
 //  INTEGER (required, 1-100).
 inline const std::string LEVEL_ACTION = "level";
 //  `check` as its action's args.
-Pokemon::StoryActionArgs level_args(const LevelCheck& check);
+FrlgArgMap level_args(const LevelCheck& check);
 //  The check a LEVEL_ACTION step's args give; nothing if one is out of range.
-std::optional<LevelCheck> level_check_of(const Pokemon::StoryActionArgs& args);
+std::optional<LevelCheck> level_check_of(const FrlgArgMap& args);
 
 //  The table's LEVEL step.
-Pokemon::StoryStep level_step(std::string name, std::string why, const LevelCheck& check);
+StoryStep level_step(std::string name, std::string why, const LevelCheck& check);
 
 //  Outcome of checking a party member level.
 enum class LevelEnd{

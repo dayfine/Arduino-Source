@@ -120,9 +120,8 @@ private:
 };
 
 
-Pokemon::StoryStep game_step(std::string action, Pokemon::StoryActionArgs args){
-    Pokemon::StoryStep step;
-    step.kind = Pokemon::StoryStepKind::GAME;
+StoryStep game_step(std::string action, FrlgArgMap args){
+    StoryStep step;
     step.name = "test";
     step.action = std::move(action);
     step.args = std::move(args);
@@ -132,7 +131,7 @@ Pokemon::StoryStep game_step(std::string action, Pokemon::StoryActionArgs args){
 //  The failure name the step ends with ("" for success, "unchanged" for
 //  one that changed nothing in the game); "none" if it isn't one of these
 //  steps.
-std::string run_step(StubGame& game, const Pokemon::StoryStep& step){
+std::string run_step(StubGame& game, const StoryStep& step){
     QuietLogger logger;
     const MemberReader members = [&game](size_t slot) -> std::optional<MemberInfo>{
         if (slot != 0 || !game.level){
@@ -141,24 +140,28 @@ std::string run_step(StubGame& game, const Pokemon::StoryStep& step){
         return MemberInfo{.species = "squirtle", .level = game.level, .moves = {"water-gun", "surf"}};
     };
     StoryAbilities abilities{members, game.mart, game.mart_sell, game.teach, game.patch, game.fossils};
-    const std::optional<Pokemon::Outcome> outcome = run_ability_game_step(logger, nullptr, step, abilities);
+    bool changed_nothing = false;
+    const std::optional<std::optional<Pokemon::StoryFailure>> outcome = run_ability_game_step(logger, nullptr, step, abilities, changed_nothing);
     if (!outcome){
         return "none";
     }
-    return outcome->changed_nothing ? "unchanged" : outcome->failure;
+    if (*outcome){
+        return (*outcome)->code;
+    }
+    return changed_nothing ? "unchanged" : "";
 }
 
 struct StepCase{
     std::string name;
     std::function<void(StubGame&)> setup;
-    Pokemon::StoryStep step;
+    StoryStep step;
     std::string failure;
 };
 
 std::vector<StepCase> step_cases(){
     const auto none = [](StubGame&){};
-    const Pokemon::StoryStep mart = mart_step("mart", "", {.map = "PewterCity_Mart", .lines = {{"potion", 5}}});
-    const Pokemon::StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
+    const StoryStep mart = mart_step("mart", "", {.map = "PewterCity_Mart", .lines = {{"potion", 5}}});
+    const StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
     return {
         {"level reached", none, level_step("check", "", {.slot = 0, .level = 16}), "unchanged"},
         {"level 3 below the minimum passes", [](StubGame& game){ game.level = 47; }, level_step("check", "", {.slot = 0, .level = 50}), "unchanged"},
@@ -193,16 +196,16 @@ UnitTestResult test_ability_steps(){
 //  same save skips one that changed nothing. A LEVEL check, which follows
 //  a GRIND, and the GRIND run every attempt.
 UnitTestResult test_once_per_save_steps(){
-    const std::vector<Pokemon::StoryStep> once{
+    const std::vector<StoryStep> once{
         teach_step("teach", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "tail-whip"}),
         mart_step("mart", "", {.map = "CeruleanCity_Mart", .lines = {{.item = "potion", .quantity = 3}}}),
     };
-    for (const Pokemon::StoryStep& step : once){
+    for (const StoryStep& step : once){
         if (!step.once_per_save){
             return step.name + ": expected once per save.";
         }
     }
-    const Pokemon::StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
+    const StoryStep grind = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
     if (grind.once_per_save || level_step("level", "", {.slot = 0, .level = 16}).once_per_save){
         return "GRIND and LEVEL: expected every attempt.";
     }
@@ -244,8 +247,9 @@ UnitTestResult test_teach_records_fly_user(){
     };
     PartyCache party;
     StoryAbilities abilities{members, game.mart, game.mart_sell, game.teach, game.patch, game.fossils, {}, &party};
-    run_ability_game_step(logger, nullptr, teach_step("teach_surf", "", {.item = "hm03", .move = "surf", .member = 0}), abilities);
-    run_ability_game_step(logger, nullptr, teach_step("teach_tm", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "water-gun"}), abilities);
+    bool unchanged = false;
+    run_ability_game_step(logger, nullptr, teach_step("teach_surf", "", {.item = "hm03", .move = "surf", .member = 0}), abilities, unchanged);
+    run_ability_game_step(logger, nullptr, teach_step("teach_tm", "", {.item = "tm03", .move = "water-pulse", .member = 0, .forget_move = "water-gun"}), abilities, unchanged);
     const std::optional<FieldMoveUser> user = party.users().find("surf");
     if (!user || user->slot != 0 || user->species != "squirtle"){
         return "the Surf user isn't recorded as slot 1, squirtle.";
@@ -311,8 +315,9 @@ UnitTestResult test_teach_updates_battle_lead(){
         "blastoise", 43, {{"bite", 25, 25}, {"water-pulse", 20, 20}, {"surf", 14, 15}, {"dig", 10, 10}}, std::nullopt
     );
     StoryAbilities abilities{members, game.mart, game.mart_sell, teach, game.patch, game.fossils, {}, nullptr, &lead};
-    const Pokemon::StoryStep step = teach_step("teach_blizzard", "", {.item = "tm14", .move = "blizzard", .member = 0, .forget_move = "dig"});
-    run_ability_game_step(logger, nullptr, step, abilities);
+    const StoryStep step = teach_step("teach_blizzard", "", {.item = "tm14", .move = "blizzard", .member = 0, .forget_move = "dig"});
+    bool unchanged = false;
+    run_ability_game_step(logger, nullptr, step, abilities, unchanged);
     if (lead.moves.size() != 4 || lead.moves[3].move != "blizzard" || lead.moves[3].pp != 5 || lead.moves[2].pp != 14){
         return "the lead's slot 4 isn't Blizzard at 5 PP, the others kept.";
     }
@@ -322,7 +327,7 @@ UnitTestResult test_teach_updates_battle_lead(){
     }
     LearningTeach other({"bite", "water-pulse", "surf", "blizzard"});
     StoryAbilities second{members, game.mart, game.mart_sell, other, game.patch, game.fossils, {}, nullptr, &lead};
-    run_ability_game_step(logger, nullptr, teach_step("teach_slot2", "", {.item = "tm13", .move = "ice-beam", .member = 1, .forget_move = "surf"}), second);
+    run_ability_game_step(logger, nullptr, teach_step("teach_slot2", "", {.item = "tm13", .move = "ice-beam", .member = 1, .forget_move = "surf"}), second, unchanged);
     if (lead.moves[2].move != "surf"){
         return "a TEACH to party slot 2 changed the lead's moves.";
     }
@@ -335,7 +340,7 @@ UnitTestResult test_teach_updates_battle_lead(){
 UnitTestResult test_grind_shiny_stops(){
     StubGame game;
     game.patch.shiny = true;
-    Pokemon::StoryStep step = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
+    StoryStep step = grind_step("grind", "", {.member = 0, .level = 20, .max_encounters = 5, .pace = Pokemon::Direction::EAST, .heal_every = 0}, {});
     try{
         run_step(game, step);
     }catch (ProgramFinishedException&){
@@ -350,14 +355,14 @@ UnitTestResult test_level_args(){
     if (!back || back->slot != 1 || back->level != 23){
         return "Expected slot 2, level 23 to read back.";
     }
-    const std::vector<Pokemon::StoryActionArgs> bad_args{
+    const std::vector<FrlgArgMap> bad_args{
         {},
         {{"slot", int64_t(1)}},
         {{"min", int64_t(5)}},
         {{"slot", int64_t(0)}, {"min", int64_t(5)}},
         {{"slot", int64_t(1)}, {"min", int64_t(101)}},
     };
-    for (const Pokemon::StoryActionArgs& bad : bad_args){
+    for (const FrlgArgMap& bad : bad_args){
         if (level_check_of(bad)){
             return "Expected args with a missing or out-of-range value refused.";
         }

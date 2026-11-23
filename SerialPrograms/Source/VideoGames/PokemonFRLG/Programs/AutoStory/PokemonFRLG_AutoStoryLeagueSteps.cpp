@@ -8,7 +8,7 @@
 #include <format>
 #include <initializer_list>
 #include "Common/Cpp/Color.h"
-#include "Pokemon/AutoStory/Pokemon_StorySegments.h"
+#include "Pokemon/AutoStory/Types/Pokemon_StoryVerify.h"
 #include "CommonFramework/Tools/DebugDumper.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include "PokemonFRLG_AutoStoryBagUse.h"
@@ -28,8 +28,7 @@ namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
 
-using Pokemon::Outcome;
-using Pokemon::StoryStep;
+using Pokemon::StoryFailure;
 
 namespace{
 
@@ -155,12 +154,12 @@ bool top_up(StoryEnv& env, const StoryStep& step, const LeagueFightData& fight, 
 }
 
 //  LEAGUE_TOP_UP_ACTION.
-Outcome league_top_up(StoryEnv& env, const StoryStep& step){
+std::optional<StoryFailure> league_top_up(StoryEnv& env, const StoryStep& step){
     const std::string* name = game_arg<std::string>(step.args, "fight");
     const int64_t* fallback_max_hp = game_arg<int64_t>(step.args, "max_hp");
     const LeagueFightData* fight = name ? league_fight_data(league_plan_data(), *name) : nullptr;
     if (fight == nullptr || fallback_max_hp == nullptr){
-        return Pokemon::outcome_failed("bad_args", std::format("{}: no League fight {}", step.name, name ? *name : "named"));
+        return frlg_failure("bad_args", std::format("{}: no League fight {}", step.name, name ? *name : "named"));
     }
     const bool* full_if_unknown = game_arg<bool>(step.args, "full_if_unknown");
     const int max_hp = env.supplies.lead.stats && env.supplies.lead.stats->hp > 0
@@ -169,7 +168,7 @@ Outcome league_top_up(StoryEnv& env, const StoryStep& step){
 
     const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
     if (rows.empty()){
-        return Pokemon::outcome_failed("precondition_failed", std::format("{}: the Items pocket wasn't read", step.name));
+        return frlg_failure("precondition_failed", std::format("{}: the Items pocket wasn't read", step.name), true);
     }
     set_from_bag(env.supplies, rows);
     env.supplies.counts_read = true;
@@ -183,10 +182,10 @@ Outcome league_top_up(StoryEnv& env, const StoryStep& step){
     //  try 1's PP after its Elixir).
     read_lead_moves(env, step_start_menu(step.args));
     if (!know_lead_hp(env, step, max_hp, full_if_unknown != nullptr && *full_if_unknown)){
-        return Pokemon::outcome_failed("precondition_failed", std::format("{}: the lead's HP is unknown before {}", step.name, fight->name));
+        return frlg_failure("precondition_failed", std::format("{}: the lead's HP is unknown before {}", step.name, fight->name), true);
     }
     if (!top_up(env, step, *fight, max_hp)){
-        return Pokemon::outcome_failed("precondition_failed", std::format("{}: the top-up before {} didn't finish", step.name, fight->name));
+        return frlg_failure("precondition_failed", std::format("{}: the top-up before {} didn't finish", step.name, fight->name), true);
     }
     std::optional<PlannedCarry> carry = top_up_carry(env.supplies, max_hp);
     const LeagueEntryCheck check = league_entry_check(*fight, LeagueSide{
@@ -196,20 +195,20 @@ Outcome league_top_up(StoryEnv& env, const StoryStep& step){
     if (!check.short_of.empty()){
         //  Before Lorelei this is the Indigo Plateau Center, where the Mart
         //  still sells: the shopping list, and never into the League.
-        return Pokemon::outcome_failed("precondition_failed", std::format(
+        return frlg_failure("precondition_failed", std::format(
             "{}: {}'s entry contract is short of {}", step.name, fight->name, joined_lines(check.short_of)
-        ));
+        ), true);
     }
-    return Pokemon::outcome_ok();
+    return std::nullopt;
 }
 
 //  Fails "postcondition_unread" for `what`, keeping the screen.
-Outcome unread(StoryEnv& env, std::string_view row, std::string_view what){
+StoryFailure unread(StoryEnv& env, std::string_view row, std::string_view what){
     if (VideoSnapshot screen = env.console.video().snapshot()){
         dump_debug_image(env.console.logger(), "AutoStory/league", "postcondition_unread", screen);
     }
     env.console.log(std::format("Story: {}: no save: {}.", row, what), COLOR_RED);
-    return Pokemon::outcome_failed(std::string(Pokemon::VERIFY_UNREAD), std::format("{}: {}", row, what));
+    return frlg_failure(std::string(Pokemon::VERIFY_UNREAD), std::format("{}: {}", row, what), true);
 }
 
 //  The row's top-up step's max_hp; 0 if it has none.
@@ -226,7 +225,7 @@ int row_max_hp(const StoryCheckpoint& row){
 
 //  The lead's HP and moves' PP off its summary into `side`; the failure
 //  (VERIFY_UNREAD) if a read failed or is unsure.
-std::optional<Outcome> read_lead(StoryEnv& env, const StoryCheckpoint& row, const LeagueFightData& fight, LeagueSide& side){
+std::optional<StoryFailure> read_lead(StoryEnv& env, const StoryCheckpoint& row, const LeagueFightData& fight, LeagueSide& side){
     const std::optional<SummaryRead> summary = read_party_summary(env.console, env.context, row.menu, env.language, /*slot=*/0);
     if (!summary){
         return unread(env, row.id, "the lead's summary wasn't read");
@@ -265,7 +264,7 @@ std::optional<Outcome> read_lead(StoryEnv& env, const StoryCheckpoint& row, cons
 
 //  The Items pocket off the bag into `now`; the failure (VERIFY_UNREAD) if
 //  it wasn't read or a row is unsure.
-std::optional<Outcome> read_bag(StoryEnv& env, const StoryCheckpoint& row, Supplies& now){
+std::optional<StoryFailure> read_bag(StoryEnv& env, const StoryCheckpoint& row, Supplies& now){
     const std::vector<BagRow> rows = read_items_pocket(env.console, env.context, env.language);
     if (rows.empty()){
         return unread(env, row.id, "the Items pocket wasn't read");
@@ -299,46 +298,36 @@ void log_save_read(StoryEnv& env, const StoryCheckpoint& row, const LeagueFightD
 } // namespace
 
 
-Outcome check_league_save(StoryEnv& env, const StoryCheckpoint& row){
+std::optional<StoryFailure> check_league_save(StoryEnv& env, const StoryCheckpoint& row){
     const LeagueFightData* fight = league_row_fight(row);
     if (fight == nullptr){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     //  The last fight passes on the win: the Hall of Fame after it saved the
     //  game and runs into the credits, with no menu to read.
     if (next_league_fight(*fight) == nullptr){
-        return Pokemon::outcome_ok();
+        return std::nullopt;
     }
     Supplies now = env.supplies;
-    if (std::optional<Outcome> failed = read_bag(env, row, now)){
-        return *failed;
+    if (std::optional<StoryFailure> failed = read_bag(env, row, now)){
+        return failed;
     }
     LeagueSide side{.bag = league_bag(now)};
-    if (std::optional<Outcome> failed = read_lead(env, row, *fight, side)){
-        return *failed;
+    if (std::optional<StoryFailure> failed = read_lead(env, row, *fight, side)){
+        return failed;
     }
     log_save_read(env, row, *fight, side);
-    const Outcome passed = league_row_pass(row, side);
-    if (passed.succeeded()){
+    std::optional<StoryFailure> failed = league_row_pass(row, side);
+    if (!failed){
         //  The story's counts are the console's from here.
         env.supplies = std::move(now);
         env.supplies.counts_read = true;
         measured_hp(env.supplies, static_cast<double>(side.hp) / side.max_hp);
     }
-    return passed;
+    return failed;
 }
 
-std::vector<Pokemon::StoryActionSpec> league_action_specs(){
-    return {
-        {.kind = Pokemon::StoryStepKind::GAME, .name = LEAGUE_TOP_UP_ACTION, .args = {
-            required_arg("fight", Pokemon::StoryArgType::WORD, "the row's fight, as the League plan names it"),
-            required_arg("max_hp", Pokemon::StoryArgType::INTEGER, "the lead's maximum HP when its summary wasn't read"),
-            optional_arg("full_if_unknown", Pokemon::StoryArgType::BOOLEAN, false, "the HP is full when unread: the row starts after the nurse"),
-        }},
-    };
-}
-
-std::optional<Outcome> run_league_step(StoryEnv& env, const StoryStep& step){
+std::optional<std::optional<StoryFailure>> run_league_step(StoryEnv& env, const StoryStep& step){
     if (step.action != LEAGUE_TOP_UP_ACTION){
         return std::nullopt;
     }

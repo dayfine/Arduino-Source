@@ -4,77 +4,160 @@
   "checkpoint": {
     "id": "02.03",
     "title": "Viridian shopping, then into Viridian Forest",
-    "start": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[6, 4]], "facing": "south"},
+    "start": {
+      "map": "PalletTown_ProfessorOaksLab",
+      "tiles": [
+        [
+          6,
+          4
+        ]
+      ],
+      "facing": "south"
+    },
     "events": [
       {
         "id": "mart_clerk",
-        "kind": "route",
+        "action": "route",
+        "why": "Route 1 again",
         "args": {
-          "target": {"map": "ViridianCity_Mart", "tiles": [[4, 3]], "facing": "west"}
-        },
-        "why": "Route 1 again"
+          "target": {
+            "map": "ViridianCity_Mart",
+            "tiles": [
+              [
+                4,
+                3
+              ]
+            ],
+            "facing": "west"
+          }
+        }
       },
       {
         "id": "potions_and_antidotes",
-        "kind": "shop",
+        "action": "shop",
+        "why": "5 Potions, 3 Antidotes, 1 Parlyz Heal",
         "args": {
-          "items": [{"item": "potion", "quantity": 5}, {"item": "antidote", "quantity": 3}, {"item": "parlyz_heal", "quantity": 1}]
-        },
-        "why": "5 Potions, 3 Antidotes, 1 Parlyz Heal"
+          "items": [
+            {
+              "item": "potion",
+              "quantity": 5
+            },
+            {
+              "item": "antidote",
+              "quantity": 3
+            },
+            {
+              "item": "parlyz_heal",
+              "quantity": 1
+            }
+          ]
+        }
       },
       {
         "id": "viridian_nurse",
-        "kind": "route",
+        "action": "route",
+        "why": "heal before the forest",
         "args": {
-          "target": {"map": "ViridianCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "why": "heal before the forest"
+          "target": {
+            "map": "ViridianCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "heal_viridian",
-        "kind": "heal",
+        "action": "heal",
         "why": "full HP"
       },
       {
         "id": "below_old_man_trigger",
-        "kind": "route",
+        "action": "route",
+        "why": "short of the tutorial trigger (20, 8)",
         "args": {
-          "target": {"map": "ViridianCity", "tiles": [[20, 9]], "facing": "north"}
-        },
-        "why": "short of the tutorial trigger (20, 8)"
+          "target": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                20,
+                9
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "old_man_trigger",
-        "kind": "step",
+        "action": "step",
+        "why": "the old man's catching tutorial can't be walked around",
         "args": {
           "direction": "north"
-        },
-        "why": "the old man's catching tutorial can't be walked around"
+        }
       },
       {
         "id": "old_man_tutorial",
-        "kind": "scene",
-        "declared_after": {"map": "ViridianCity", "tiles": [[20, 8]], "facing": "east"},
-        "flags_after": ["old_man_tutorial_done"],
-        "why": "about 60 lines and his demo battle; TEACHY TV"
+        "action": "scene",
+        "why": "about 60 lines and his demo battle; TEACHY TV",
+        "args": {
+          "pose_after": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                20,
+                8
+              ]
+            ],
+            "facing": "east"
+          },
+          "flags_after": [
+            "old_man_tutorial_done"
+          ]
+        }
       },
       {
         "id": "past_old_man",
-        "kind": "route",
+        "action": "route",
+        "why": "north along column 20, clear of the old man",
         "args": {
-          "target": {"map": "ViridianCity", "tiles": [[20, 5]], "facing": "north"}
-        },
-        "why": "north along column 20, clear of the old man"
+          "target": {
+            "map": "ViridianCity",
+            "tiles": [
+              [
+                20,
+                5
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       },
       {
         "id": "forest_entrance",
-        "kind": "route",
+        "action": "route",
+        "why": "Route 2 and the south gate, running from wild battles",
         "args": {
-          "target": {"map": "ViridianForest", "tiles": [[29, 62]], "facing": "north"}
-        },
-        "why": "Route 2 and the south gate, running from wild battles"
+          "target": {
+            "map": "ViridianForest",
+            "tiles": [
+              [
+                29,
+                62
+              ]
+            ],
+            "facing": "north"
+          }
+        }
       }
-    ]
+    ],
+    "metadata": {
+      "phase": "testing"
+    }
   },
   "execution": {
     "menu": "full",
@@ -92,6 +175,5 @@
         "The gate's north warp lands on the forest's exit mat (29, 62), facing north. The save there keeps a forest failure from going back to Pallet."
       ]
     }
-  },
-  "metadata": {"phase": "testing"}
+  }
 }

@@ -101,7 +101,7 @@ void bad_poison_survival_steps(JsonObject& root){
     ps["max_hp"] = 55;
     JsonObject post;
     post["poison_survival"] = std::move(ps);
-    root.get_object_throw("metadata")["postconditions"] = std::move(post);
+    root.get_object_throw("checkpoint").get_object_throw("metadata")["postconditions"] = std::move(post);
 }
 
 JsonValue builtin_document(std::string_view name){
@@ -141,7 +141,7 @@ std::string_view handoff_name(StoryHandoff handoff){
 
 //  The marks of row `row` of `story`: FRLG's handoff, gift and live start,
 //  and the shared execution fields; empty if it has none.
-std::string row_marks(const Pokemon::StoryData<StoryCheckpoint>& story, const StoryCheckpoint& row){
+std::string row_marks(const StoryCheckpoint& row){
     std::vector<std::string> marks;
     if (row.handoff != StoryHandoff::NONE){
         marks.emplace_back(handoff_name(row.handoff));
@@ -155,13 +155,13 @@ std::string row_marks(const Pokemon::StoryData<StoryCheckpoint>& story, const St
     if (row.live_start){
         marks.emplace_back("live");
     }
-    if (story.autosaves.contains(row.id)){
+    if (row.autosave){
         marks.emplace_back("autosave");
     }
-    if (story.reload_when_chained.contains(row.id)){
+    if (row.reload_when_chained){
         marks.emplace_back("reload");
     }
-    if (story.dev_only.contains(row.id)){
+    if (row.dev_only){
         marks.emplace_back("dev_only");
     }
     std::string text;
@@ -174,14 +174,14 @@ std::string row_marks(const Pokemon::StoryData<StoryCheckpoint>& story, const St
 //  The loaded story in one line: whether its rows are PINNED_ORDER, 01.01's
 //  title, the marks of each row that has some, how many rows a user sees
 //  and the dev files used.
-std::string story_summary(const Pokemon::StoryData<StoryCheckpoint>& story){
+std::string story_summary(const FrlgStoryData& story){
     bool in_order = story.checkpoints.size() == PINNED_ORDER.size();
     for (size_t c = 0; in_order && c < PINNED_ORDER.size(); c++){
         in_order = story.checkpoints[c].id == PINNED_ORDER[c];
     }
     std::string marks;
     for (const StoryCheckpoint& row : story.checkpoints){
-        const std::string mark = row_marks(story, row);
+        const std::string mark = row_marks(row);
         if (!mark.empty()){
             marks += std::format("{}{}[{}]", marks.empty() ? "" : " ", row.id, mark);
         }
@@ -190,7 +190,7 @@ std::string story_summary(const Pokemon::StoryData<StoryCheckpoint>& story){
     for (const auto& [name, path] : story.dev_files){
         used += std::format(" {}", name);
     }
-    const size_t user_rows = Pokemon::story_rows_for_mode(story, Pokemon::StoryRowsShown::USER).size();
+    const size_t user_rows = frlg_rows_for_mode(story, false).size();
     return std::format(
         "{} | {} | {} | {} user rows | dev{}",
         in_order ? "story order" : "not story order", story.checkpoints.front().title, marks, user_rows, used

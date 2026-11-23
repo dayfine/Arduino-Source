@@ -7,14 +7,17 @@
 #include <algorithm>
 #include <format>
 #include <iterator>
+#include <map>
 #include <set>
 #include <string_view>
+#include <utility>
 #include <vector>
 #include "Common/Cpp/Exceptions.h"
 #include "Common/Cpp/Json/JsonArray.h"
 #include "Common/Cpp/Json/JsonObject.h"
-#include "Pokemon/AutoStory/Data/Pokemon_AuthoredCheckpointJson.h"
-#include "PokemonFRLG_AutoStoryItemUse.h"
+#include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
+#include "Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.h"
+#include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryMart.h"
 #include "PokemonFRLG_AutoStoryParty.h"
 #include "PokemonFRLG_AutoStoryStepTable.h"
@@ -28,7 +31,6 @@ namespace PokemonFRLG{
 
 namespace{
 
-//  The wire names of the START menus.
 StartMenu read_start_menu(std::string_view name, std::string_view source){
     if (name == "before_pokemon"){
         return StartMenu::BEFORE_POKEMON;
@@ -42,7 +44,6 @@ StartMenu read_start_menu(std::string_view name, std::string_view source){
     throw ParseException(std::format("{}: unknown START menu {}", source, name));
 }
 
-//  The wire names of the handoffs.
 StoryHandoff read_handoff(std::string_view name, std::string_view source){
     if (name == "sid_helper"){
         return StoryHandoff::SID_HELPER;
@@ -56,7 +57,6 @@ StoryHandoff read_handoff(std::string_view name, std::string_view source){
     throw ParseException(std::format("{}: unknown handoff {}", source, name));
 }
 
-//  The wire names of the gifts Gift RNG's handoff takes.
 PokemonFRLG_RngTarget read_gift(std::string_view name, std::string_view source){
     if (name == "magikarp"){
         return PokemonFRLG_RngTarget::magikarp;
@@ -70,7 +70,6 @@ PokemonFRLG_RngTarget read_gift(std::string_view name, std::string_view source){
     throw ParseException(std::format("{}: unknown gift {}", source, name));
 }
 
-//  `object`'s fields, each of which must be one of `keys`.
 void only_fields(const JsonObject& object, std::initializer_list<std::string_view> keys, std::string_view source){
     for (const auto& [key, unused] : object){
         bool known = false;
@@ -78,7 +77,7 @@ void only_fields(const JsonObject& object, std::initializer_list<std::string_vie
             known |= key == allowed;
         }
         if (!known){
-            throw ParseException(std::format("{}: unsupported execution field {}", source, key));
+            throw ParseException(std::format("{}: unsupported field \"{}\"", source, key));
         }
     }
 }
@@ -92,7 +91,7 @@ int read_count(const JsonObject& object, const std::string& key, std::string_vie
     if (count < 0 || count > 999){
         throw ParseException(std::format("{}: {} out of range", source, key));
     }
-    return (int)count;
+    return static_cast<int>(count);
 }
 
 Supplies read_supplies(const JsonObject& execution, std::string_view source){
@@ -111,21 +110,18 @@ Supplies read_supplies(const JsonObject& execution, std::string_view source){
     }else if (execution.get_value("lead") != nullptr){
         throw ParseException(std::format("{}: lead must be a string", source));
     }
-    //  Party slots, from 1 as the game shows them, never sent into a
-    //  battle: the lead (1) always fights.
     if (const JsonValue* slots = execution.get_value("protected_slots")){
         for (const JsonValue& slot : slots->to_array_throw(std::string(source))){
             const int64_t number = slot.to_integer_throw(std::string(source));
             if (number < 2 || number > 6){
                 throw ParseException(std::format("{}: protected slot {} out of range (2-6)", source, number));
             }
-            supplies.protected_slots.push_back((size_t)number - 1);
+            supplies.protected_slots.push_back(static_cast<size_t>(number) - 1);
         }
     }
     return supplies;
 }
 
-//  The keys of the notes: "checkpoint" or a step's id, each a list of lines.
 std::set<std::string> read_note_keys(const JsonObject& execution, std::string_view source){
     std::set<std::string> keys;
     const JsonValue* notes = execution.get_value("notes");
@@ -141,29 +137,44 @@ std::set<std::string> read_note_keys(const JsonObject& execution, std::string_vi
     return keys;
 }
 
-//  Checks the metadata's "postconditions": what the postcondition check
-//  after a run reads. "position" where the player ends, as a step's
-//  target; "items" the bag's counts by item; "flags" the game's flags
-//  that moved; "poison_survival" the lead's overworld poison survival
-//  across `steps` with `max_hp` fallback.
-void check_postconditions(const JsonObject& postconditions, std::string_view source, StoryCheckpoint& checkpoint){
+Pokemon::StoryVerify read_verify(const JsonObject& verify, std::string_view source){
+    only_fields(verify, {"tries", "min_pass", "reset_budget"}, source);
+    const int64_t tries = verify.get_integer_throw("tries", std::string(source));
+    const int64_t min_pass = verify.get_integer_throw("min_pass", std::string(source));
+    const int64_t reset_budget = verify.get_integer_throw("reset_budget", std::string(source));
+    if (tries < 0 || min_pass < 0 || min_pass > tries || (tries > 0 && min_pass == 0) || reset_budget <= 0){
+        throw ParseException(std::format(
+            "{}: invalid verify policy (tries={}, min_pass={}, reset_budget={})",
+            source, tries, min_pass, reset_budget
+        ));
+    }
+    return Pokemon::StoryVerify{
+        .tries = static_cast<size_t>(tries),
+        .min_pass = static_cast<size_t>(min_pass),
+        .reset_budget = static_cast<size_t>(reset_budget),
+    };
+}
+
+void read_postconditions(const JsonObject& postconditions, std::string_view source, StoryCheckpoint& checkpoint){
     only_fields(postconditions, {"position", "items", "flags", "poison_survival"}, source);
     if (const JsonValue* position = postconditions.get_value("position")){
-        const JsonObject& pose = position->to_object_throw(std::string(source));
-        only_fields(pose, {"map", "tiles", "facing"}, source);
-        pose.get_string_throw("map", std::string(source));
-        pose.get_array_throw("tiles", std::string(source));
+        checkpoint.postconditions.position = Pokemon::read_grid_pose(*position, source);
     }
     if (const JsonValue* items = postconditions.get_value("items")){
         for (const auto& [item, count] : items->to_object_throw(std::string(source))){
-            if (count.to_integer_throw(std::string(source)) < 0){
+            const int64_t n = count.to_integer_throw(std::string(source));
+            if (n < 0){
                 throw ParseException(std::format("{}: negative count of {}", source, item));
             }
+            checkpoint.postconditions.items.push_back(StoryItem{
+                .item = item,
+                .quantity = static_cast<size_t>(n),
+            });
         }
     }
     if (const JsonValue* flags = postconditions.get_value("flags")){
         for (const JsonValue& flag : flags->to_array_throw(std::string(source))){
-            flag.to_string_throw(std::string(source));
+            checkpoint.postconditions.flags.push_back(flag.to_string_throw(std::string(source)));
         }
     }
     if (const JsonValue* poison = postconditions.get_value("poison_survival")){
@@ -181,89 +192,27 @@ void check_postconditions(const JsonObject& postconditions, std::string_view sou
     }
 }
 
-//  The file without its "metadata", which the shared reader doesn't take
-//  (yet): {"phase": testing, verification or reproduction}, how far the
-//  checkpoint is trusted to save (the engine's save policy reads it), and
-//  optionally "postconditions" (check_postconditions()).
-JsonValue without_metadata(const JsonValue& value, std::string_view source, StoryCheckpoint& checkpoint){
-    JsonObject stripped;
-    for (const auto& [key, field] : value.to_object_throw(std::string(source))){
-        if (key != "metadata"){
-            stripped[key] = field.clone();
-            continue;
-        }
-        const JsonObject& metadata = field.to_object_throw(std::string(source));
-        for (const auto& [metadata_key, unused] : metadata){
-            if (metadata_key != "phase" && metadata_key != "postconditions"){
-                throw ParseException(std::format("{}: unsupported metadata field {}", source, metadata_key));
-            }
-        }
-        if (const JsonValue* postconditions = metadata.get_value("postconditions")){
-            check_postconditions(postconditions->to_object_throw(std::string(source)), source, checkpoint);
-        }
-        const std::string& phase = metadata.get_string_throw("phase", std::string(source));
-        if (phase != "testing" && phase != "verification" && phase != "reproduction"){
+void read_metadata(const JsonObject& cp_obj, std::string_view source, StoryCheckpoint& checkpoint){
+    const JsonValue* meta_val = cp_obj.get_value("metadata");
+    if (meta_val == nullptr){
+        return;
+    }
+    const JsonObject& metadata = meta_val->to_object_throw(std::string(source));
+    only_fields(metadata, {"phase", "postconditions"}, source);
+    if (const JsonValue* post = metadata.get_value("postconditions")){
+        read_postconditions(post->to_object_throw(std::string(source)), source, checkpoint);
+    }
+    if (const JsonValue* phase_val = metadata.get_value("phase")){
+        const std::string& phase = phase_val->to_string_throw(std::string(source));
+        try{
+            checkpoint.phase = Pokemon::CHECKPOINT_TESTING_STATUS_NAMES().get_enum(phase);
+        }catch (const ParseException&){
             throw ParseException(std::format("{}: unknown phase {}", source, phase));
         }
     }
-    return JsonValue(std::move(stripped));
 }
 
-} // namespace
-
-
-namespace{
-
-//  The file's checkpoint and its shared execution fields
-//  (Pokemon_StoryRowExecution.h), beside which FRLG reads its own.
-Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, std::string_view source){
-    StoryCheckpoint checkpoint;
-    Pokemon::StoryRowExecution shared;
-    std::set<std::string> note_keys;
-    const Pokemon::ExecutionReader read_execution = [&](const JsonObject& execution, std::string_view where){
-        shared = Pokemon::read_story_row_execution(
-            execution, where, {"menu", "supplies", "lead", "protected_slots", "handoff", "gift", "live_start", "notes"}
-        );
-        checkpoint.menu = read_start_menu(execution.get_string_throw("menu", std::string(where)), where);
-        checkpoint.supplies = read_supplies(execution, where);
-        if (execution.get_value("handoff") != nullptr){
-            checkpoint.handoff = read_handoff(execution.get_string_throw("handoff", std::string(where)), where);
-        }
-        if (execution.get_value("gift") != nullptr){
-            checkpoint.gift = read_gift(execution.get_string_throw("gift", std::string(where)), where);
-        }
-        if (execution.get_value("live_start") != nullptr){
-            checkpoint.live_start = execution.get_boolean_throw("live_start", std::string(where));
-        }
-        note_keys = read_note_keys(execution, where);
-    };
-    static_cast<Pokemon::StoryCheckpoint&>(checkpoint) = Pokemon::read_authored_checkpoint(
-        without_metadata(value, source, checkpoint), "frlg", source, read_execution, story_action_specs()
-    );
-    checkpoint.verify = shared.verify;
-    for (const std::string& key : note_keys){
-        bool found = key == "checkpoint";
-        for (const StoryStep& step : checkpoint.steps){
-            found |= step.name == key;
-        }
-        if (!found){
-            throw ParseException(std::format("{}: notes for unknown step {}", source, key));
-        }
-    }
-    //  A Mart spends money, a TEACH a TM, and the Bicycle's registration is
-    //  saved with the game: once per save. A step with a skip_if is already
-    //  conditional (the two together are refused).
-    for (StoryStep& step : checkpoint.steps){
-        const bool spends = step.action == MART_ACTION || step.action == TEACH_ACTION || step.action == REGISTER_BIKE_VARIANT;
-        step.once_per_save = spends && step.skip_if.empty();
-    }
-    return {std::move(checkpoint), shared};
-}
-
-//  The checkpoints' ids in the order the story plays them. Ids are labels,
-//  not positions: a gym's rows may be numbered before rows that come first
-//  in the story (the table is not sorted by id). Every file in StoryData/
-//  is listed once; a new checkpoint is added at its place in the story.
+//  The checkpoints' ids in the order the story plays them.
 constexpr std::string_view STORY_ORDER[] = {
     "01.01", "01.02", "01.03", "01.04", "01.05", "01.06", "02.01", "02.02", "02.03", "03.01",
     "03.02", "03.03", "04.01", "04.02", "04.03", "04.04", "04.05", "04.06", "05.01", "05.02", "05.02b", "05.02c",
@@ -278,14 +227,10 @@ constexpr std::string_view STORY_ORDER[] = {
     "20.01a", "20.01", "20.02", "20.03", "20.04", "20.05",
 };
 
-//  Where checkpoint `id` plays in STORY_ORDER; past its end if it is not
-//  listed.
 size_t story_position(std::string_view id){
-    return (size_t)(std::find(std::begin(STORY_ORDER), std::end(STORY_ORDER), id) - std::begin(STORY_ORDER));
+    return static_cast<size_t>(std::find(std::begin(STORY_ORDER), std::end(STORY_ORDER), id) - std::begin(STORY_ORDER));
 }
 
-//  StoryData's checkpoint files: every one but the League plan
-//  (league_plan_data()).
 const std::vector<std::pair<std::string, std::string>>& checkpoint_files(){
     static const std::vector<std::pair<std::string, std::string>> FILES = []{
         std::vector<std::pair<std::string, std::string>> files;
@@ -301,37 +246,190 @@ const std::vector<std::pair<std::string, std::string>>& checkpoint_files(){
 
 } // namespace
 
-StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source){
-    return read_story_file(value, source).checkpoint;
+
+std::vector<StoryCheckpoint> frlg_rows_for_mode(const FrlgStoryData& data, bool developer_mode){
+    std::vector<StoryCheckpoint> rows;
+    for (const StoryCheckpoint& row : data.checkpoints){
+        if (developer_mode || !row.dev_only){
+            rows.push_back(row);
+        }
+    }
+    return rows;
 }
 
-Pokemon::StoryData<StoryCheckpoint> load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files){
-    Pokemon::StoryData<StoryCheckpoint> story = Pokemon::load_story_data<StoryCheckpoint>(checkpoint_files(), dev_files, {
-        .read = [](std::string_view text, std::string_view source){
-            return read_story_file(parse_json(std::string(text)), source);
-        },
-        //  A new game has no save; a live start begins from the game as
-        //  another program left it, not from its own save.
-        .starts_without_save = [](const StoryCheckpoint& row){
-            return !row.start || row.live_start;
-        },
-        .plays_before = [](const StoryCheckpoint& a, const StoryCheckpoint& b){
-            return story_position(a.id) < story_position(b.id);
-        },
-        .in_story_order = [](std::string_view id){
-            return story_position(id) < std::size(STORY_ORDER);
-        },
-    });
-    //  Every id is in STORY_ORDER (in_story_order) and the rows are sorted
-    //  by it, so two files of one id sit next to each other.
-    for (size_t c = 1; c < story.checkpoints.size(); c++){
-        if (story.checkpoints[c].id == story.checkpoints[c - 1].id){
+namespace{
+
+void read_execution_block(const JsonObject& execution, std::string_view source, StoryCheckpoint& checkpoint){
+    only_fields(execution, {
+        "menu", "supplies", "lead", "protected_slots", "handoff", "gift",
+        "live_start", "notes", "verify", "dev_only", "save", "reload_when_chained",
+        "start_flags", "start_gates",
+    }, source);
+    checkpoint.menu = read_start_menu(execution.get_string_throw("menu", std::string(source)), source);
+    checkpoint.supplies = read_supplies(execution, source);
+    if (execution.get_value("handoff") != nullptr){
+        checkpoint.handoff = read_handoff(execution.get_string_throw("handoff", std::string(source)), source);
+    }
+    if (execution.get_value("gift") != nullptr){
+        checkpoint.gift = read_gift(execution.get_string_throw("gift", std::string(source)), source);
+    }
+    if (execution.get_value("live_start") != nullptr){
+        checkpoint.live_start = execution.get_boolean_throw("live_start", std::string(source));
+    }
+    if (execution.get_value("dev_only") != nullptr){
+        checkpoint.dev_only = execution.get_boolean_throw("dev_only", std::string(source));
+    }
+    if (execution.get_value("save") != nullptr){
+        const std::string& save = execution.get_string_throw("save", std::string(source));
+        if (save == "autosave"){
+            checkpoint.autosave = true;
+        }else if (save != "manual"){
+            throw ParseException(std::format("{}: unknown save kind \"{}\"", source, save));
+        }
+    }
+    if (execution.get_value("reload_when_chained") != nullptr){
+        checkpoint.reload_when_chained = execution.get_boolean_throw("reload_when_chained", std::string(source));
+    }
+}
+
+void read_execution_state_and_notes(const JsonObject& execution, std::string_view source, StoryCheckpoint& checkpoint){
+    if (const JsonValue* verify_val = execution.get_value("verify")){
+        checkpoint.verify = read_verify(verify_val->to_object_throw(std::string(source)), source);
+    }
+    if (const JsonValue* flags_val = execution.get_value("start_flags")){
+        for (const JsonValue& flag : flags_val->to_array_throw(std::string(source))){
+            checkpoint.start_flags.insert(flag.to_string_throw(std::string(source)));
+        }
+    }
+    if (const JsonValue* gates_val = execution.get_value("start_gates")){
+        Pokemon::apply_gate_change(checkpoint.start_gates, read_gate_change(*gates_val, source));
+    }
+    const std::set<std::string> note_keys = read_note_keys(execution, source);
+    for (const std::string& key : note_keys){
+        bool found = key == "checkpoint";
+        for (const StoryStep& step : checkpoint.steps){
+            found |= step.name == key;
+        }
+        if (!found){
+            throw ParseException(std::format("{}: notes for unknown step {}", source, key));
+        }
+    }
+}
+
+void apply_dev_overrides(
+    std::span<const Pokemon::StoryDevFile> dev_files,
+    std::map<std::string, std::string>& by_name,
+    std::map<std::string, std::string>& dev_by_name,
+    FrlgStoryData& data
+){
+    for (const Pokemon::StoryDevFile& file : dev_files){
+        if (!by_name.contains(file.name)){
+            throw ParseException(std::format("{}: unknown checkpoint file \"{}\"", file.path, file.name));
+        }
+        if (!dev_by_name.emplace(file.name, file.path).second){
+            throw ParseException(std::format("{}: duplicate dev checkpoint \"{}\"", file.path, file.name));
+        }
+        const StoryCheckpoint orig = read_story_checkpoint_file(parse_json(by_name.at(file.name)), file.name);
+        const StoryCheckpoint override_cp = read_story_checkpoint_file(parse_json(file.text), file.path);
+        if (override_cp.id != orig.id){
             throw ParseException(std::format(
-                "Checkpoint {} needs its id once in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).", story.checkpoints[c].id
+                "{}: dev checkpoint changed id from {} to {}", file.path, orig.id, override_cp.id
+            ));
+        }
+        by_name[file.name] = file.text;
+        data.dev_files.emplace_back(file.name, file.path);
+    }
+}
+
+void validate_story_checkpoints(std::vector<StoryCheckpoint>& checkpoints){
+    std::sort(checkpoints.begin(), checkpoints.end(), [](const StoryCheckpoint& a, const StoryCheckpoint& b){
+        return story_position(a.id) < story_position(b.id);
+    });
+    for (size_t c = 0; c < checkpoints.size(); c++){
+        const StoryCheckpoint& row = checkpoints[c];
+        if (!row.reload_when_chained){
+            continue;
+        }
+        if (c == 0 || !checkpoints[c - 1].autosave){
+            throw ParseException(std::format(
+                "{}: reload_when_chained requires the previous checkpoint to end on autosave", row.id
             ));
         }
     }
-    return story;
+    for (size_t c = 1; c < checkpoints.size(); c++){
+        if (checkpoints[c].id == checkpoints[c - 1].id){
+            throw ParseException(std::format(
+                "Checkpoint {} needs its id once in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).", checkpoints[c].id
+            ));
+        }
+    }
+}
+
+} // namespace
+
+StoryCheckpoint read_story_checkpoint_file(const JsonValue& value, std::string_view source){
+    std::vector<StoryStep> parsed_steps;
+    Pokemon::StoryActions parsers = make_frlg_action_parsers(
+        [&parsed_steps](StoryStep parsed) -> Pokemon::StoryStepRun{
+            parsed_steps.push_back(std::move(parsed));
+            return {};
+        }
+    );
+    const Pokemon::StoryCheckpoint core = Pokemon::read_story_checkpoint(value, "frlg", source, parsers);
+    const JsonObject& root = value.to_object_throw(std::string(source));
+    const JsonObject& cp_obj = root.get_object_throw("checkpoint", std::string(source));
+    const JsonObject& execution = root.get_object_throw("execution", std::string(source));
+
+    StoryCheckpoint checkpoint;
+    checkpoint.id = core.id;
+    checkpoint.title = core.title;
+    if (parsed_steps.size() != core.steps.size()){
+        throw ParseException(std::format("{}: parsed step count mismatch", source));
+    }
+    for (size_t i = 0; i < core.steps.size(); i++){
+        StoryStep& step = parsed_steps[i];
+        step.name = core.steps[i].name;
+        step.why = core.steps[i].why;
+        const bool spends = step.action == MART_ACTION
+            || step.action == TEACH_ACTION
+            || step.action == "register_bike";
+        step.once_per_save = spends && step.skip_if.empty();
+    }
+    checkpoint.steps = std::move(parsed_steps);
+    if (const JsonValue* start_val = cp_obj.get_value("start")){
+        checkpoint.start = Pokemon::read_grid_pose(*start_val, source);
+    }
+    read_metadata(cp_obj, source, checkpoint);
+    read_execution_block(execution, source, checkpoint);
+    read_execution_state_and_notes(execution, source, checkpoint);
+    return checkpoint;
+}
+
+FrlgStoryData load_frlg_story(std::span<const Pokemon::StoryDevFile> dev_files){
+    const auto& embedded = checkpoint_files();
+    std::map<std::string, std::string> by_name;
+    for (const auto& [name, text] : embedded){
+        const std::string key = name.ends_with(".json") ? std::string(name) : std::string(name) + ".json";
+        by_name.emplace(key, text);
+    }
+
+    FrlgStoryData data;
+    std::map<std::string, std::string> dev_by_name;
+    apply_dev_overrides(dev_files, by_name, dev_by_name, data);
+
+    for (const auto& [name, text] : by_name){
+        const auto dev_it = dev_by_name.find(name);
+        const std::string& source = dev_it != dev_by_name.end() ? dev_it->second : name;
+        StoryCheckpoint cp = read_story_checkpoint_file(parse_json(text), source);
+        if (story_position(cp.id) >= std::size(STORY_ORDER)){
+            throw ParseException(std::format(
+                "{}: checkpoint {} is not listed in STORY_ORDER (PokemonFRLG_AutoStoryTable.cpp).", source, cp.id
+            ));
+        }
+        data.checkpoints.push_back(std::move(cp));
+    }
+    validate_story_checkpoints(data.checkpoints);
+    return data;
 }
 
 const std::vector<StoryCheckpoint>& story_checkpoints(){

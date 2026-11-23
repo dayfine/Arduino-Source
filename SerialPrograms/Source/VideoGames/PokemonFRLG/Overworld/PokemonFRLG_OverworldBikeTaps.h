@@ -27,7 +27,7 @@ namespace PokemonFRLG{
 //  the screen moved, and which of the leg's interrupts showed, if one did.
 struct BikeTap{
     bool moved = false;
-    std::optional<size_t> interrupt;
+    std::optional<size_t> interrupt = std::nullopt;
     //  The tap didn't move, and then an interrupt showed, which the tap
     //  cleared already: a trainer who saw the player, a battle seen late.
     bool cleared_late = false;
