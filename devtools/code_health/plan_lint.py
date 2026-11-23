@@ -8,15 +8,18 @@ FRLG at test time; this check applies it to every game's `StoryData/*.plan.json`
 
 An event is a legs event when its `kind` or `action` is "legs" or its `args` hold a "legs"
 list (FRLG `kind: legs`, PLZA `action: walk` with `args.legs`). A new legs event, or one this
-change edits, must say "not planned: <reason>" in its `why`. Events already at the base and
-left unchanged are grandfathered; their count per game is printed with each run."""
+change edits, must say "not_using_planner_route: <reason>" in its `why` (legacy "not planned: "
+is still accepted during transition). Events already at the base and left unchanged are
+grandfathered; their count per game is printed with each run."""
 import json
 import re
 from pathlib import PurePosixPath
 
 from .findings import Finding
 
-NOT_PLANNED = 'not planned: '
+NOT_USING_PLANNER_ROUTE = 'not_using_planner_route: '
+LEGACY_NOT_PLANNED = 'not planned: '
+ACCEPTED_PREFIXES = (NOT_USING_PLANNER_ROUTE, LEGACY_NOT_PLANNED)
 CITE = 'user, 2026-11-15: walks are planned routes'
 PLAN = re.compile(r'(?:^|/)StoryData/[^/]+\.plan\.json$')
 
@@ -46,7 +49,7 @@ def is_legs(event):
 
 def reasoned(event):
     why = event.get('why')
-    return isinstance(why, str) and NOT_PLANNED in why
+    return isinstance(why, str) and any(prefix in why for prefix in ACCEPTED_PREFIXES)
 
 
 def game(path, text):
@@ -66,7 +69,7 @@ def id_line(text, event_id):
 
 
 def check(path, text, previous_text):
-    """Findings for new or changed legs events in plan `path` without a "not planned:" reason."""
+    """Findings for new or changed legs events in plan `path` without a "not_using_planner_route:" reason."""
     if not is_plan(path):
         return []
     current = events(text)
@@ -74,7 +77,7 @@ def check(path, text, previous_text):
         return [Finding(path, 1, 'plan lint: not a plan with checkpoint.events; cannot check its walks')]
     before = (events(previous_text) if previous_text is not None else None) or {}
     return [Finding(path, id_line(text, event_id), f'hand-written legs: {event_id} in {path} '
-                    f'has no "{NOT_PLANNED}<reason>" in its why; make it a planned route to its '
+                    f'has no "{NOT_USING_PLANNER_ROUTE}<reason>" in its why; make it a planned route to its '
                     f'target, or say why the planner cannot walk it ({CITE})')
             for event_id, event in current.items()
             if is_legs(event) and before.get(event_id) != event and not reasoned(event)]
