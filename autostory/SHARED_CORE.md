@@ -31,26 +31,22 @@ main  (includes #572 -> #667 -> #648 -> #653 + #783)
                                  └─ #797 autostory/story-policies-seam       [CLEAN]
                                      └─ #799 autostory/story-launch-seam     [CLEAN]
                                          └─ #800 autostory/readings-replay-door-seam [CLEAN]
-                                             ├─ #652 frlg/lean   (FRLG only, 706 files, 0 shared diff)
-                                             ├─ #753 bdsp/lean   (BDSP only, 305 files, 0 shared diff)
+                                             ├─ #753 bdsp/lean   (BDSP only; #811 open to advance onto #801)
                                              └─ #801 autostory/phase1-utils-seam     [CLEAN]
+                                                 └─ #652 frlg/lean (FRLG only, 0 shared diff)
 ```
 
 Game lean branches (all cleanly separated from shared code):
 - `plza/lean` ([#644](https://github.com/dayfine/Arduino-Source/pull/644)): bases on `#654` (`autostory/logic-tests`), 127 files.
-- `frlg/lean` ([#652](https://github.com/dayfine/Arduino-Source/pull/652)): `#779` (`frlg/core-adopt`) **MERGED**, `#807` (`frlg/layer0-adopt`) **MERGED**; retargeted onto `#800` (`autostory/readings-replay-door-seam`) — 706 files (`-229` shared files), **0 diff** in `Pokemon/AutoStory/` or `Pokemon/Navigation/`. Phase 1 adoption PR [#812](https://github.com/dayfine/Arduino-Source/pull/812) (`frlg/phase1-adopt → frlg/lean`) open (CI running).
-- `bdsp/lean` ([#753](https://github.com/dayfine/Arduino-Source/pull/753)): `#772` (`bdsp/core-adopt`) **MERGED**, `#802` (`bdsp/layer0-adopt`) **MERGED**; retargeted onto `#800` (`autostory/readings-replay-door-seam`) — 305 files (`-229` shared files), **0 diff** in `Pokemon/AutoStory/` or `Pokemon/Navigation/`. Phase 1 adoption PR [#811](https://github.com/dayfine/Arduino-Source/pull/811) (`bdsp/phase1-adopt → bdsp/lean`, also fixing the 2 pre-existing Windows MSVC/Clang errors) open (CI running).
+- `frlg/lean` ([#652](https://github.com/dayfine/Arduino-Source/pull/652)): `#779` (`frlg/core-adopt`) **MERGED**, `#807` (`frlg/layer0-adopt`) **MERGED**, `#812` (`frlg/phase1-adopt`) **MERGED**; retargeted onto `#801` (`autostory/phase1-utils-seam`) — **0 diff** in `Pokemon/AutoStory/` or `Pokemon/Navigation/`.
+- `bdsp/lean` ([#753](https://github.com/dayfine/Arduino-Source/pull/753)): `#772` (`bdsp/core-adopt`) **MERGED**, `#802` (`bdsp/layer0-adopt`) **MERGED**; retargeted onto `#800` (`autostory/readings-replay-door-seam`) — **0 diff** in `Pokemon/AutoStory/` or `Pokemon/Navigation/`. Phase 1 adoption PR [#811](https://github.com/dayfine/Arduino-Source/pull/811) (`bdsp/phase1-adopt → bdsp/lean`, fixing all 3 pre-existing Windows MSVC/Clang errors incl. `tiles_walked()` `C4267`) open — CI running on `c5f693f78`.
 
 ## What still needs to happen (resumable playbook)
 
-Both `frlg/lean` and `bdsp/lean` sit cleanly on the identical `#800` shared chain with zero unextracted files in `Pokemon/AutoStory/` or `Pokemon/Navigation/`, and both Phase 1 adoption PRs (`#811`, `#812`) are open. Remaining work:
+`frlg/lean` already sits cleanly on `#801` (`autostory/phase1-utils-seam`), and `bdsp/lean`'s matching Phase 1 adoption PR (`#811`) is running CI. Remaining work:
 
-### 1. Land Phase 1 adoption PRs (`#811` & `#812`) and advance lean bases onto `#801`
-- **BDSP — [#811](https://github.com/dayfine/Arduino-Source/pull/811)** (`bdsp/phase1-adopt → bdsp/lean`): adopts `#801` (`Pokemon_AutoStoryResources`, `Pokemon_OverlayLog`, `Pokemon_MapPackLoader`), deletes `PokemonBDSP_AutoStoryOverlayLog.{h,cpp}` and local `crop()`, and fixes the 2 pre-existing Windows CI errors (`PokemonBDSP_AutoStoryPlaces.cpp:106` `C4456`, `PokemonBDSP_AutoStoryNewGame.cpp:369` `capture_tag` default initializer).
-- **FRLG — [#812](https://github.com/dayfine/Arduino-Source/pull/812)** (`frlg/phase1-adopt → frlg/lean`): adopts `#801` (`Pokemon_AutoStoryResources`, `Pokemon_OverlayLog` [#159], `Pokemon_MapPackLoader` in `PokemonFRLG_OverworldMaps.cpp`).
-- Once CI passes on `#811` and `#812`:
-  1. Merge `#811` into `bdsp/lean` and retarget `#753` (`bdsp/lean`) from `#800` → `#801`.
-  2. Merge `#812` into `frlg/lean` and retarget `#652` (`frlg/lean`) from `#800` → `#801`.
+### 1. Land `#811` (`bdsp/phase1-adopt → bdsp/lean`) and advance `#753` onto `#801`
+- Once `#811` CI passes on `c5f693f78`, merge `#811` into `bdsp/lean` and retarget `#753` (`bdsp/lean`) from `#800` → `#801` so both `frlg/lean` and `bdsp/lean` sit identically on `#801`.
 
 ### 2. Optional lean hygiene
 - **BDSP:** migrate `StoryData/bdsp-*.plan.json` `"not planned: "` prefixes to `"not_using_planner_route: "` (matching `#805` and FRLG).
