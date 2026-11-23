@@ -597,21 +597,19 @@ UnitTestResult test_pc_transfers(){
 }
 
 
-//  The dialog alone on screens the fake PC doesn't reach: a storage menu
-//  left on another option, a Pokemon's menu not on its top row, nothing
-//  recognized.
-UnitTestResult test_pc_dialog_screens(){
-    struct Case{
-        std::string name = {};
-        PcTransfer transfer = {};
-        std::vector<PcView> views = {};
-        //  The last view's decision.
-        PcPress press = PcPress::WAIT;
-    };
+struct PcDialogScreenCase{
+    std::string name = {};
+    PcTransfer transfer = {};
+    std::vector<PcView> views = {};
+    //  The last view's decision.
+    PcPress press = PcPress::WAIT;
+};
+
+std::vector<PcDialogScreenCase> pc_dialog_screen_cases(){
     const PcTransfer deposit{.action = PcAction::DEPOSIT, .party_slot = 1};
     const PcTransfer withdraw{.action = PcAction::WITHDRAW};
     std::vector<PcView> others(PC_MAX_OTHER_IN_A_ROW, PcView{});
-    const std::vector<Case> cases = {
+    return {
         {.name = "DEPOSIT from MOVE ITEMS: up", .transfer = deposit,
             .views = {{.screen = PcScreen::STORAGE_MENU, .cursor = 3}}, .press = PcPress::UP},
         {.name = "DEPOSIT from SEE YA: down, wrapping", .transfer = deposit,
@@ -647,7 +645,13 @@ UnitTestResult test_pc_dialog_screens(){
             },
             .press = PcPress::A},
     };
-    for (const Case& item : cases){
+}
+
+//  The dialog alone on screens the fake PC doesn't reach: a storage menu
+//  left on another option, a Pokemon's menu not on its top row, nothing
+//  recognized.
+UnitTestResult test_pc_dialog_screens(){
+    for (const PcDialogScreenCase& item : pc_dialog_screen_cases()){
         PcStorageDialog dialog(item.transfer);
         PcDecision decision;
         for (const PcView& view : item.views){

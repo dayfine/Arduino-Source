@@ -86,6 +86,9 @@ private:
     PcDecision on_storage_menu(const PcView& view);
     PcDecision on_party_panel(const PcView& view);
     PcDecision on_box_grid(const PcView& view);
+    PcDecision on_box_header(const PcView& view);
+    std::optional<PcDecision> switch_box_if_needed(const PcView& view);
+    std::optional<PcDecision> advance_species_search(const PcView& view);
     PcDecision on_mon_menu(const PcView& view);
     PcDecision on_box_chooser(const PcView& view);
 

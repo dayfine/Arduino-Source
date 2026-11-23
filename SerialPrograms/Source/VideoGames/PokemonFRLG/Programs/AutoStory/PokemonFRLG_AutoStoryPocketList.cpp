@@ -20,20 +20,28 @@ using namespace std::chrono_literals;
 //  The Items pocket's capacity (pokefirered BAG_ITEMS_COUNT).
 constexpr size_t MAX_POCKET_ROWS = 42;
 
-PocketRead read_whole_pocket(PocketList& list){
-    PocketRead read;
-    std::vector<BagRow> reads;
-    bool end = false;
-    for (int shown = 0; !end && shown < ITEM_LIST_ROWS; shown++){
+namespace{
+
+bool read_initial_pocket_page(PocketList& list, std::vector<BagRow>& reads, PocketRead& read){
+    for (int shown = 0; shown < ITEM_LIST_ROWS; shown++){
         std::optional<BagRow> row = list.read_shown(shown);
         if (row && row->item == "cancel"){
             read.saw_cancel = true;
         }
-        end = !row || row->item == "cancel";
-        if (!end){
-            reads.push_back(std::move(*row));
+        if (!row || row->item == "cancel"){
+            return true;
         }
+        reads.push_back(std::move(*row));
     }
+    return false;
+}
+
+} // namespace
+
+PocketRead read_whole_pocket(PocketList& list){
+    PocketRead read;
+    std::vector<BagRow> reads;
+    bool end = read_initial_pocket_page(list, reads, read);
     //  The rows below the first six: DOWN to the fourth row shown, then
     //  each DOWN scrolls the next row into the last. Reading one page only
     //  missed the X Specials under a MOON STONE, a NUGGET and four more,

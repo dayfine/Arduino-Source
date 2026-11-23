@@ -195,8 +195,7 @@ public:
         m_pages = 0;
     }
 
-    int x() const{ return m_x; }
-    int y() const{ return m_y; }
+    std::pair<int, int> pos() const{ return {m_x, m_y}; }
     const std::vector<std::string>& seen() const{ return m_seen; }
     const std::vector<std::string>& picked() const{ return m_picked; }
 
@@ -363,7 +362,7 @@ UnitTestResult test_slope_moves(){
     SlopeModel model(14, -1);
     const SlopeResult result = ride_on_model(model, *parse_slope_step(*step));
     if (result.end != SlopeEnd::DONE || result.found != std::vector<std::string>{"rare-candy", "max-elixir"}){
-        return std::format("11.02: the slope ended at move {}, at ({}, {}), {} item(s) found.", result.move + 1, model.x(), model.y(), result.found.size());
+        return std::format("11.02: the slope ended at move {}, at ({}, {}), {} item(s) found.", result.move + 1, model.pos().first, model.pos().second, result.found.size());
     }
     //  11.02's second run (console B, 2026-11-12): the RARE CANDY's message,
     //  still closing, was taken for the MAX ELIXIR's, which was never
@@ -371,8 +370,8 @@ UnitTestResult test_slope_moves(){
     if (model.picked() != std::vector<std::string>{"rare-candy", "max-elixir"}){
         return std::format("11.02: {} item(s) picked up, not both.", model.picked().size());
     }
-    if (model.x() != 12 || model.y() != ROUTE18_ROW + 10){
-        return std::format("11.02: the slope ended at ({}, {}), not Route 18's (12, 10).", model.x(), model.y());
+    if (model.pos() != std::pair<int, int>{12, ROUTE18_ROW + 10}){
+        return std::format("11.02: the slope ended at ({}, {}), not Route 18's (12, 10).", model.pos().first, model.pos().second);
     }
     if (!model.seen().empty()){
         return "11.02: a Biker sees the player at " + model.seen().front();
@@ -393,10 +392,10 @@ UnitTestResult test_gap_rolls(){
         gapped.send(slope_move_presses(SlopeMove{.kind = SlopeMoveKind::STEP, .direction = Direction::EAST, .tiles = 1}), false);
         gapped.send({SlopePress{.hold = Milliseconds(300)}}, false);
     }
-    if (batched.x() != 17 || batched.y() != 20){
-        return std::format("B held: ended ({}, {}), expected (17, 20).", batched.x(), batched.y());
+    if (batched.pos() != std::pair<int, int>{17, 20}){
+        return std::format("B held: ended ({}, {}), expected (17, 20).", batched.pos().first, batched.pos().second);
     }
-    if (gapped.y() == 20){
+    if (gapped.pos().second == 20){
         return "A gap with B released should roll the player.";
     }
     //  Every press of a STEP or SEARCH holds B.
@@ -433,10 +432,10 @@ UnitTestResult check_caught_and_done(int x, int y){
     model.catch_on(x, y);
     const SlopeResult result = ride_on_model(model, *parse_slope_step(*slope_step(checkpoint("11.02"))));
     if (result.end != SlopeEnd::DONE || result.found != std::vector<std::string>{"rare-candy", "max-elixir"}){
-        return std::format("Caught on ({}, {}): ended {} at move {}, at ({}, {}), {} item(s) found.", x, y, int(result.end), result.move + 1, model.x(), model.y(), result.found.size());
+        return std::format("Caught on ({}, {}): ended {} at move {}, at ({}, {}), {} item(s) found.", x, y, int(result.end), result.move + 1, model.pos().first, model.pos().second, result.found.size());
     }
-    if (model.x() != 12 || model.y() != ROUTE18_ROW + 10){
-        return std::format("Caught on ({}, {}): ended at ({}, {}), not Route 18's (12, 10).", x, y, model.x(), model.y());
+    if (model.pos() != std::pair<int, int>{12, ROUTE18_ROW + 10}){
+        return std::format("Caught on ({}, {}): ended at ({}, {}), not Route 18's (12, 10).", x, y, model.pos().first, model.pos().second);
     }
     return true;
 }
@@ -473,8 +472,8 @@ UnitTestResult test_repel_wore_off_during_roll(){
     if (model.picked() != std::vector<std::string>{"rare-candy", "max-elixir"}){
         return std::format("Repel on (19, 120): {} item(s) picked up, not both.", model.picked().size());
     }
-    if (model.x() != 12 || model.y() != ROUTE18_ROW + 10){
-        return std::format("Repel on (19, 120): ended at ({}, {}), not Route 18's (12, 10).", model.x(), model.y());
+    if (model.pos() != std::pair<int, int>{12, ROUTE18_ROW + 10}){
+        return std::format("Repel on (19, 120): ended at ({}, {}), not Route 18's (12, 10).", model.pos().first, model.pos().second);
     }
     return true;
 }

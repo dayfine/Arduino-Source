@@ -321,6 +321,73 @@ PcDecision PcStorageDialog::on_party_panel(const PcView& view){
     return {PcPress::A};
 }
 
+PcDecision PcStorageDialog::on_box_header(const PcView& view){
+    m_tried_header_up = false;
+    m_search_slot = 0;
+    if (view.box){
+        if (*view.box == m_transfer.box){
+            m_box_switch_step = m_transfer.box + 1;
+            return {PcPress::DOWN};
+        }
+        const size_t right = (m_transfer.box + BOX_COUNT - *view.box) % BOX_COUNT;
+        m_box_slide_wait = true;
+        return {right <= BOX_COUNT / 2 ? PcPress::RIGHT : PcPress::LEFT};
+    }
+    if (m_box_switch_step > 0 && m_box_switch_step <= m_transfer.box){
+        m_box_switch_step++;
+        m_box_slide_wait = true;
+        return {PcPress::RIGHT};
+    }
+    return {PcPress::DOWN};
+}
+
+std::optional<PcDecision> PcStorageDialog::switch_box_if_needed(const PcView& view){
+    if (view.box){
+        if (*view.box == m_transfer.box){
+            m_box_switch_step = m_transfer.box + 1;
+            return std::nullopt;
+        }
+        m_search_slot = 0;
+        if (m_tried_header_up){
+            return PcDecision{PcPress::FAIL, std::format("the PC shows box {}, not box {}", *view.box + 1, m_transfer.box + 1)};
+        }
+        if (*view.cursor >= BOX_COLUMNS){
+            return PcDecision{PcPress::UP};
+        }
+        m_tried_header_up = true;
+        return PcDecision{PcPress::UP};
+    }
+    if (m_transfer.box > 0 && m_box_switch_step == 0){
+        if (*view.cursor >= BOX_COLUMNS){
+            return PcDecision{PcPress::UP};
+        }
+        m_box_switch_step = 1;
+        return PcDecision{PcPress::UP};
+    }
+    return std::nullopt;
+}
+
+std::optional<PcDecision> PcStorageDialog::advance_species_search(const PcView& view){
+    if (!m_transfer.species || *view.cursor != m_search_slot){
+        return std::nullopt;
+    }
+    if (view.occupied != false && !view.species){
+        return PcDecision{PcPress::FAIL, std::format("box {} slot {}: the species wasn't read", m_transfer.box + 1, m_search_slot + 1)};
+    }
+    if (view.occupied != false && *view.species == *m_transfer.species){
+        return PcDecision{PcPress::A};
+    }
+    if (++m_search_slot >= BOX_SLOTS){
+        if (m_transfer.if_missing == PcMissing::SKIP){
+            m_transferred = true;
+            m_skipped = true;
+            return PcDecision{PcPress::B};
+        }
+        return PcDecision{PcPress::FAIL, std::format("no {} in box {}", *m_transfer.species, m_transfer.box + 1)};
+    }
+    return std::nullopt;
+}
+
 PcDecision PcStorageDialog::on_box_grid(const PcView& view){
     if (m_transferred){
         return {PcPress::B};
@@ -329,67 +396,19 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
         return {PcPress::FAIL, "the box grid opened for a deposit"};
     }
     if (view.on_box_header){
-        m_tried_header_up = false;
-        m_search_slot = 0;
-        if (view.box){
-            if (*view.box == m_transfer.box){
-                m_box_switch_step = m_transfer.box + 1;
-                return {PcPress::DOWN};
-            }
-            const size_t right = (m_transfer.box + BOX_COUNT - *view.box) % BOX_COUNT;
-            m_box_slide_wait = true;
-            return {right <= BOX_COUNT / 2 ? PcPress::RIGHT : PcPress::LEFT};
-        }
-        if (m_box_switch_step > 0 && m_box_switch_step <= m_transfer.box){
-            m_box_switch_step++;
-            m_box_slide_wait = true;
-            return {PcPress::RIGHT};
-        }
-        return {PcPress::DOWN};
+        return on_box_header(view);
     }
     if (!view.cursor || *view.cursor >= BOX_SLOTS){
         return {PcPress::FAIL, "the hand wasn't read on the box"};
     }
-    if (view.box){
-        if (*view.box == m_transfer.box){
-            m_box_switch_step = m_transfer.box + 1;
-        }else{
-            m_search_slot = 0;
-            if (m_tried_header_up){
-                return {PcPress::FAIL, std::format("the PC shows box {}, not box {}", *view.box + 1, m_transfer.box + 1)};
-            }
-            if (*view.cursor >= BOX_COLUMNS){
-                return {PcPress::UP};
-            }
-            m_tried_header_up = true;
-            return {PcPress::UP};
-        }
-    }
-    if (!view.box && m_transfer.box > 0 && m_box_switch_step == 0){
-        if (*view.cursor >= BOX_COLUMNS){
-            return {PcPress::UP};
-        }
-        m_box_switch_step = 1;
-        return {PcPress::UP};
+    if (std::optional<PcDecision> decision = switch_box_if_needed(view)){
+        return std::move(*decision);
     }
     m_tried_header_up = false;
     //  A species: each cell the hand reaches is read, its Pokemon taken if
     //  it is the one, else the hand goes on to the next cell.
-    if (m_transfer.species && *view.cursor == m_search_slot){
-        if (view.occupied != false && !view.species){
-            return {PcPress::FAIL, std::format("box {} slot {}: the species wasn't read", m_transfer.box + 1, m_search_slot + 1)};
-        }
-        if (view.occupied != false && *view.species == *m_transfer.species){
-            return {PcPress::A};
-        }
-        if (++m_search_slot >= BOX_SLOTS){
-            if (m_transfer.if_missing == PcMissing::SKIP){
-                m_transferred = true;
-                m_skipped = true;
-                return {PcPress::B};
-            }
-            return {PcPress::FAIL, std::format("no {} in box {}", *m_transfer.species, m_transfer.box + 1)};
-        }
+    if (std::optional<PcDecision> decision = advance_species_search(view)){
+        return std::move(*decision);
     }
     const size_t row = *view.cursor / BOX_COLUMNS;
     const size_t column = *view.cursor % BOX_COLUMNS;
@@ -452,12 +471,14 @@ PcDecision PcStorageDialog::on_box_chooser(const PcView& view){
 }
 
 
-PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTransfer& transfer){
-    const std::string name = pc_transfer_text(transfer);
-    const std::vector<PcPartyMember> party = actions.read_party();
+namespace{
+
+std::optional<PcResult> precheck_pc_transfer(
+    Logger& logger, const std::string& name, const PcTransfer& transfer, const std::vector<PcPartyMember>& party
+){
     if (transfer.action == PcAction::DEPOSIT && transfer.if_missing == PcMissing::SKIP && transfer.party_slot >= party.size()){
         logger.log(std::format("PC: skipped \"{}\": the party has {} Pokemon.", name, party.size()));
-        return {PcEnd::SKIPPED, ""};
+        return PcResult{PcEnd::SKIPPED, ""};
     }
     //  A species the party already has was withdrawn on an earlier try
     //  (a retry from a save made after it, console B 2026-11-17: 20.01a's
@@ -466,14 +487,25 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
         for (size_t c = 0; c < party.size(); c++){
             if (party[c].species == *transfer.species){
                 logger.log(std::format("PC: skipped \"{}\": party slot {} has it.", name, c + 1));
-                return {.end = PcEnd::SKIPPED, .detail = "", .party_slot = c};
+                return PcResult{.end = PcEnd::SKIPPED, .detail = "", .party_slot = c};
             }
         }
     }
     const std::string refused = pc_transfer_error(transfer, party);
     if (!refused.empty()){
         logger.log("PC: refused \"" + name + "\": " + refused + ".", COLOR_RED);
-        return {PcEnd::REFUSED, refused};
+        return PcResult{PcEnd::REFUSED, refused};
+    }
+    return std::nullopt;
+}
+
+} // namespace
+
+PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTransfer& transfer){
+    const std::string name = pc_transfer_text(transfer);
+    const std::vector<PcPartyMember> party = actions.read_party();
+    if (std::optional<PcResult> early = precheck_pc_transfer(logger, name, transfer, party)){
+        return std::move(*early);
     }
     PcStorageDialog dialog(transfer);
     for (size_t c = 0; c < PC_MAX_PRESSES; c++){

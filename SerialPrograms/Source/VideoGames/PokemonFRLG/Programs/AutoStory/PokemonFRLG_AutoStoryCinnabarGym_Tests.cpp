@@ -598,17 +598,41 @@ UnitTestResult check_lead_level_precondition(Logger& logger, std::string_view id
     return true;
 }
 
-UnitTestResult test_cinnabar_center_avoids_wanderers(){
-    const std::vector<MapData>& maps = story_maps();
-    auto find_center = [&](const std::string& name) -> const MapData*{
-        for (const MapData& map : maps){
-            if (map.name == name){
-                return &map;
+const MapData* find_map_named(const std::vector<MapData>& maps, std::string_view name){
+    for (const MapData& map : maps){
+        if (map.name == name){
+            return &map;
+        }
+    }
+    return nullptr;
+}
+
+struct WanderCheckResult{
+    MapPosition end;
+    std::string crossed_leg;
+};
+
+WanderCheckResult check_route_avoids_wanderers(
+    const std::vector<MapData>& maps,
+    MapPosition cur,
+    const std::vector<RouteStep>& route,
+    std::string_view filter_map
+){
+    for (const RouteStep& rs : route){
+        if (filter_map.empty() || cur.map == filter_map){
+            const std::vector<MapPosition> tiles = leg_tiles(maps, cur, rs);
+            if (leg_touches_wander_box(tiles, [&](const MapPosition& pos){ return find_map_named(maps, pos.map); })){
+                return {cur, to_string(rs)};
             }
         }
-        return nullptr;
-    };
-    const MapData* center = find_center("CinnabarIsland_PokemonCenter_1F");
+        cur = rs.end;
+    }
+    return {cur, {}};
+}
+
+UnitTestResult test_cinnabar_center_avoids_wanderers(){
+    const std::vector<MapData>& maps = story_maps();
+    const MapData* center = find_map_named(maps, "CinnabarIsland_PokemonCenter_1F");
     if (center == nullptr){
         return "CinnabarIsland_PokemonCenter_1F is missing from story_maps().";
     }
@@ -618,15 +642,12 @@ UnitTestResult test_cinnabar_center_avoids_wanderers(){
     if (wander_object_at(*center, {9, 7}) == nullptr){
         return "Expected CinnabarIsland_PokemonCenter_1F to include Gentleman wandering (8..10, 6..8).";
     }
-    const StoryCheckpoint& row = checkpoint("14.01");
-    for (const StoryStep& step : row.steps){
+    for (const StoryStep& step : checkpoint("14.01").steps){
         if (step.name != "center_northeast_corner"){
             continue;
         }
         const auto legs_it = step.args.find("legs");
-        const std::vector<Pokemon::StoryLeg>* legs = legs_it == step.args.end()
-            ? nullptr
-            : std::get_if<std::vector<Pokemon::StoryLeg>>(&legs_it->second);
+        const auto* legs = legs_it == step.args.end() ? nullptr : std::get_if<std::vector<Pokemon::StoryLeg>>(&legs_it->second);
         if (legs == nullptr){
             return "14.01/center_northeast_corner: expected legs.";
         }
@@ -634,26 +655,17 @@ UnitTestResult test_cinnabar_center_avoids_wanderers(){
         if (!route){
             return "14.01/center_northeast_corner: fixed_route failed.";
         }
-        MapPosition cur{"CinnabarIsland_PokemonCenter_1F", {7, 4}};
-        for (const RouteStep& rs : *route){
-            const std::vector<MapPosition> tiles = leg_tiles(maps, cur, rs);
-            if (leg_touches_wander_box(tiles, [&](const MapPosition& pos){ return find_center(pos.map); })){
-                return std::format("14.01/center_northeast_corner: {} crosses a Center wanderer.", to_string(rs));
-            }
-            cur = rs.end;
+        const WanderCheckResult anchor = check_route_avoids_wanderers(maps, MapPosition{"CinnabarIsland_PokemonCenter_1F", {7, 4}}, *route, "");
+        if (!anchor.crossed_leg.empty()){
+            return std::format("14.01/center_northeast_corner: {} crosses a Center wanderer.", anchor.crossed_leg);
         }
-        const auto out = plan_overworld_route(maps, cur, RouteGoal{MapPosition{"CinnabarIsland_Gym", {25, 16}}, Direction::NORTH});
+        const auto out = plan_overworld_route(maps, anchor.end, RouteGoal{MapPosition{"CinnabarIsland_Gym", {25, 16}}, Direction::NORTH});
         if (!out){
             return "14.01/to_gym_east_room: plan_overworld_route failed from northeast corner.";
         }
-        for (const RouteStep& rs : *out){
-            if (cur.map == "CinnabarIsland_PokemonCenter_1F"){
-                const std::vector<MapPosition> tiles = leg_tiles(maps, cur, rs);
-                if (leg_touches_wander_box(tiles, [&](const MapPosition& pos){ return find_center(pos.map); })){
-                    return std::format("14.01/to_gym_east_room: {} crosses a Center wanderer.", to_string(rs));
-                }
-            }
-            cur = rs.end;
+        const WanderCheckResult exit = check_route_avoids_wanderers(maps, anchor.end, *out, "CinnabarIsland_PokemonCenter_1F");
+        if (!exit.crossed_leg.empty()){
+            return std::format("14.01/to_gym_east_room: {} crosses a Center wanderer.", exit.crossed_leg);
         }
         return true;
     }

@@ -148,10 +148,6 @@ struct SlopeCalls{
     std::function<bool()> clear_dialog = {};
 };
 
-//  The most battles one ride goes on from.
-inline constexpr size_t SLOPE_MAX_BATTLES = 3;
-//  The most unexpected non-battle dialogs (e.g. Repel wore off) one ride clears.
-inline constexpr size_t SLOPE_MAX_DIALOGS = 5;
 //  After a battle that cut `moves[move]` short ("if a Biker catches us,
 //  fight", user 2026-11-12): the ROLL to go on from, which pulls the player
 //  down the column they were caught in to a stop the moves know. Only

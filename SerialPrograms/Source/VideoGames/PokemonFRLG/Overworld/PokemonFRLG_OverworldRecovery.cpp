@@ -677,6 +677,20 @@ private:
         return candidates;
     }
 
+    std::optional<bool> rejoin_wall_trainer(
+        const RouteStep& step, const std::optional<MapPosition>& start,
+        const std::optional<TrainerCrossing>& crossing, WalkedTiles walked
+    ){
+        if (!crossing || step.wild || maps() == nullptr){
+            return std::nullopt;
+        }
+        const std::vector<StopCandidate> candidates = stop_candidates(*maps(), start, step, walked);
+        if (candidates.size() == 1 && candidates[0].trainer){
+            return rejoin(step, candidates, walked);
+        }
+        return std::nullopt;
+    }
+
     //  A leg to a wall seen interrupted after its hold is walked again: the
     //  wall stops the player at its end however far they got. Unless, off
     //  the grass, the maps place a trainer who saw them on one tile of it:
@@ -687,11 +701,9 @@ private:
         const std::optional<MapPosition>& start, const std::optional<TrainerCrossing>& crossing
     ){
         if (outcome.end == StepEnd::STOPPED && step.tapped){
-            if (!outcome.blocked && crossing && !step.wild && maps() != nullptr){
-                const WalkedTiles walked = outcome.walked.value_or(whole_leg(step));
-                const std::vector<StopCandidate> candidates = stop_candidates(*maps(), start, step, walked);
-                if (candidates.size() == 1 && candidates[0].trainer){
-                    return rejoin(step, candidates, walked);
+            if (!outcome.blocked){
+                if (const std::optional<bool> ok = rejoin_wall_trainer(step, start, crossing, outcome.walked.value_or(whole_leg(step)))){
+                    return *ok;
                 }
             }
             //  A tap that showed no step may have stepped unseen, or a transient
@@ -726,11 +738,8 @@ private:
         if (outcome.end == StepEnd::STOPPED){
             return after_blocked(step, start);
         }
-        if (crossing && !step.wild && maps() != nullptr){
-            const std::vector<StopCandidate> candidates = stop_candidates(*maps(), start, step, whole_leg(step));
-            if (candidates.size() == 1 && candidates[0].trainer){
-                return rejoin(step, candidates, whole_leg(step));
-            }
+        if (const std::optional<bool> ok = rejoin_wall_trainer(step, start, crossing, whole_leg(step))){
+            return *ok;
         }
         m_lines.end(step, std::nullopt, EndBasis::UNKNOWN, "something seen after the hold; walking it again");
         m_held_again = true;
@@ -992,47 +1001,6 @@ private:
 };
 
 } // namespace
-
-bool open_leg_needs_reanchor(
-    const std::vector<MapData>& maps,
-    const MapPosition& start,
-    const RouteStep& step
-){
-    if (step.wild || step.surfing || step.lands_after > 0 || step.spin_tiles
-        || !step.connection_steps.empty() || step.end.map != start.map
-    ){
-        return true;
-    }
-    const auto map_it = std::find_if(maps.begin(), maps.end(), [&](const MapData& map){
-        return map.name == start.map;
-    });
-    if (map_it == maps.end()){
-        return true;
-    }
-    const std::vector<MapPosition> tiles = leg_tiles(maps, start, step);
-    if (tiles.size() < (size_t)(step.tiles + 1)){
-        return true;
-    }
-    for (const MapPosition& tile : tiles){
-        if (tile.map != start.map){
-            return true;
-        }
-        const TileKind kind = tile_at(*map_it, tile.point);
-        if (is_tall_grass(*map_it, tile.point)
-            || is_water(*map_it, tile.point)
-            || is_ledge(*map_it, tile.point)
-            || warp_at(*map_it, tile.point) != nullptr
-            || kind == TileKind::DOOR
-            || spin_direction(*map_it, tile.point).has_value()
-            || stops_spinning(*map_it, tile.point)
-            || kind == TileKind::FALL_HOLE
-            || kind == TileKind::STRENGTH_BUTTON
-        ){
-            return true;
-        }
-    }
-    return false;
-}
 
 WalkedTiles walked_before_warp(const RouteStep& step){
     return WalkedTiles{.min = 1, .max = step.tiles - 1};

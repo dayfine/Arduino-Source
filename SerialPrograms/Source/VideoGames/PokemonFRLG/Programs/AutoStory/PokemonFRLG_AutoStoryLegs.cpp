@@ -38,17 +38,57 @@ bool has_connection(const MapData& map, Direction side){
     });
 }
 
+const MapData* find_map(const std::vector<MapData>& maps, const std::string& name){
+    for (const MapData& candidate : maps){
+        if (candidate.name == name){
+            return &candidate;
+        }
+    }
+    return nullptr;
+}
+
+std::optional<RouteStep> build_fixed_leg(const MapData& map, const StoryLeg& leg, PlayerState& player){
+    RouteStep step;
+    step.direction = leg.direction;
+    step.tiles = leg.tiles;
+    step.facing_after = leg.direction;
+    step.walk_only = !map.allow_running;
+    step.surfing = player.surfing;
+    for (int c = 0; c < leg.tiles; c++){
+        const StepKind kind = classify_step(map, player, leg.direction);
+        const TilePos next = player.position.next(leg.direction);
+        //  The step off the water is a leg of its own, as the planner
+        //  makes it: the player walks at half the speed from there.
+        const bool lands = kind == StepKind::STOP_SURFING && leg.tiles == 1;
+        if ((kind != StepKind::WALK && !lands) || !in_bounds(map, next) || warps_on_step(map, next)){
+            return std::nullopt;
+        }
+        step.wild |= is_tall_grass(map, next) || player.surfing;
+        player = after_step(map, player, leg.direction, kind);
+        if (spin_direction(map, player.position) && !land_on_spinner(map, player, c + 1 == leg.tiles, step)){
+            return std::nullopt;
+        }
+    }
+    //  Water ahead stops a hold as a wall does, until the player Surfs
+    //  (stops_at()): 11.02's "south 1" down to Route 18's water finds
+    //  the row from a tile north of it too. A map edge with a connection
+    //  (Route 16 south to Route 17) is not a wall, even when the connected
+    //  map isn't loaded.
+    const StepKind ahead = classify_step(map, player, leg.direction);
+    const bool connects = !in_bounds(map, player.position.next(leg.direction))
+        && has_connection(map, leg.direction);
+    step.to_wall = !step.spin_tiles && !connects
+        && (ahead == StepKind::BLOCKED || ahead == StepKind::START_SURF);
+    step.end = MapPosition{map.name, player.position};
+    return step;
+}
+
 } // namespace
 
 std::optional<std::vector<RouteStep>> fixed_route(
     const std::vector<MapData>& maps, const MapPosition& start, const std::vector<StoryLeg>& legs
 ){
-    const MapData* map = nullptr;
-    for (const MapData& candidate : maps){
-        if (candidate.name == start.map){
-            map = &candidate;
-        }
-    }
+    const MapData* map = find_map(maps, start.map);
     if (map == nullptr || !in_bounds(*map, start.point)){
         return std::nullopt;
     }
@@ -56,39 +96,11 @@ std::optional<std::vector<RouteStep>> fixed_route(
     //  On the water, after a Surf: surfing until a step onto land.
     PlayerState player{start.point, elevation_at(*map, start.point), is_water(*map, start.point)};
     for (const StoryLeg& leg : legs){
-        RouteStep step;
-        step.direction = leg.direction;
-        step.tiles = leg.tiles;
-        step.facing_after = leg.direction;
-        step.walk_only = !map->allow_running;
-        step.surfing = player.surfing;
-        for (int c = 0; c < leg.tiles; c++){
-            const StepKind kind = classify_step(*map, player, leg.direction);
-            const TilePos next = player.position.next(leg.direction);
-            //  The step off the water is a leg of its own, as the planner
-            //  makes it: the player walks at half the speed from there.
-            const bool lands = kind == StepKind::STOP_SURFING && leg.tiles == 1;
-            if ((kind != StepKind::WALK && !lands) || !in_bounds(*map, next) || warps_on_step(*map, next)){
-                return std::nullopt;
-            }
-            step.wild |= is_tall_grass(*map, next) || player.surfing;
-            player = after_step(*map, player, leg.direction, kind);
-            if (spin_direction(*map, player.position) && !land_on_spinner(*map, player, c + 1 == leg.tiles, step)){
-                return std::nullopt;
-            }
+        std::optional<RouteStep> step = build_fixed_leg(*map, leg, player);
+        if (!step){
+            return std::nullopt;
         }
-        //  Water ahead stops a hold as a wall does, until the player Surfs
-        //  (stops_at()): 11.02's "south 1" down to Route 18's water finds
-        //  the row from a tile north of it too. A map edge with a connection
-        //  (Route 16 south to Route 17) is not a wall, even when the connected
-        //  map isn't loaded.
-        const StepKind ahead = classify_step(*map, player, leg.direction);
-        const bool connects = !in_bounds(*map, player.position.next(leg.direction))
-            && has_connection(*map, leg.direction);
-        step.to_wall = !step.spin_tiles && !connects
-            && (ahead == StepKind::BLOCKED || ahead == StepKind::START_SURF);
-        step.end = MapPosition{map->name, player.position};
-        route.push_back(step);
+        route.push_back(std::move(*step));
     }
     return route;
 }

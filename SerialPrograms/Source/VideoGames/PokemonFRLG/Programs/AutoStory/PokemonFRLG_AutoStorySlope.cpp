@@ -166,6 +166,11 @@ std::vector<SlopePress> close_message_presses(){
 
 namespace{
 
+//  The most battles one ride goes on from.
+constexpr size_t SLOPE_MAX_BATTLES = 3;
+//  The most unexpected non-battle dialogs (e.g. Repel wore off) one ride clears.
+constexpr size_t SLOPE_MAX_DIALOGS = 5;
+
 //  A move that keeps the player's column: a step south.
 bool keeps_column(const SlopeMove& move){
     return move.kind == SlopeMoveKind::STEP && move.direction == Pokemon::Direction::SOUTH;
@@ -181,6 +186,171 @@ size_t move_at_press(const std::vector<size_t>& ends, size_t first, size_t press
     }
     return first + ends.size() - 1;
 }
+
+class SlopeRide{
+public:
+    SlopeRide(const std::vector<SlopeMove>& moves, const SlopeCalls& calls)
+        : m_moves(moves)
+        , m_calls(calls)
+    {}
+
+    SlopeResult run(){
+        for (size_t m = m_first; m < m_moves.size(); m++){
+            const size_t move_start = m_batch.size();
+            const std::vector<SlopePress> presses = slope_move_presses(m_moves[m]);
+            m_batch.insert(m_batch.end(), presses.begin(), presses.end());
+            m_ends.push_back(m_batch.size());
+            const bool search = m_moves[m].kind == SlopeMoveKind::SEARCH;
+            if (!search && m + 1 < m_moves.size()){
+                continue;
+            }
+            //  A hidden item's message can only open once the SEARCH move's first
+            //  A press has been sent (press 3 of slope_move_presses(SEARCH)).
+            m_search_a_start = search ? move_start + 3 : m_batch.size();
+            m_calls.log(std::format("Slope: moves {} to {}, {} presses.", m_first + 1, m + 1, m_batch.size()));
+            if (std::optional<SlopeResult> done = send_batch(search, m)){
+                return std::move(*done);
+            }
+        }
+        if (!m_batch.empty()){
+            //  A search was the last move: its message is closed with B held.
+            m_calls.send(m_batch, false);
+        }
+        return std::move(m_result);
+    }
+
+private:
+    enum class DialogOutcome{
+        CONTINUE_BATCH,
+        NEXT_MOVE,
+        BATTLE,
+        STOP,
+    };
+
+    void clear_batch(size_t next_first){
+        m_batch.clear();
+        m_ends.clear();
+        m_first = next_first;
+    }
+
+    DialogOutcome resume_remaining_batch(
+        const SlopeSendResult& sent,
+        bool search,
+        size_t under_way,
+        size_t move_index,
+        std::optional<SlopeResult>& stop_result
+    ){
+        //  B stayed held while clearing the dialog (e.g. "REPEL's effect wore
+        //  off!"), so the player did not roll: continue with the remaining presses.
+        const bool keep_current = sent.press < m_batch.size()
+            && !m_batch[sent.press].b
+            && sent.press_remaining > Milliseconds(0);
+        const size_t drop = keep_current ? sent.press : std::min(sent.press + 1, m_batch.size());
+        if (drop >= m_batch.size()){
+            clear_batch(move_index + 1);
+            if (search){
+                stop_result = SlopeResult{.end = SlopeEnd::NOT_FOUND, .found = m_result.found, .move = move_index};
+                return DialogOutcome::STOP;
+            }
+            return DialogOutcome::NEXT_MOVE;
+        }
+        std::vector<SlopePress> remaining(m_batch.begin() + drop, m_batch.end());
+        if (keep_current){
+            remaining.front().hold = sent.press_remaining;
+        }
+        for (size_t& end : m_ends){
+            end = end > drop ? end - drop : 0;
+        }
+        m_search_a_start = m_search_a_start > drop ? m_search_a_start - drop : 0;
+        m_batch = std::move(remaining);
+        m_calls.log(std::format("Slope: dialog cleared in move {}; resuming {} remaining presses.", under_way + 1, m_batch.size()));
+        return DialogOutcome::CONTINUE_BATCH;
+    }
+
+    DialogOutcome handle_unexpected_dialog(
+        const SlopeSendResult& sent,
+        bool search,
+        size_t under_way,
+        size_t& m,
+        std::optional<SlopeResult>& stop_result
+    ){
+        m_calls.log(std::format("Slope: unexpected dialog in move {}; clearing it.", under_way + 1));
+        if (m_calls.clear_dialog && m_calls.clear_dialog()){
+            return DialogOutcome::BATTLE;
+        }
+        if (++m_dialogs > SLOPE_MAX_DIALOGS){
+            stop_result = SlopeResult{.end = SlopeEnd::BATTLE, .found = m_result.found, .move = under_way};
+            return DialogOutcome::STOP;
+        }
+        if (const std::optional<size_t> resume = slope_resume_move(m_moves, under_way)){
+            m_calls.log(std::format("Slope: dialog cleared in move {}; on from move {}.", under_way + 1, *resume + 1));
+            clear_batch(*resume);
+            m = m_first - 1;
+            return DialogOutcome::NEXT_MOVE;
+        }
+        return resume_remaining_batch(sent, search, under_way, m, stop_result);
+    }
+
+    std::optional<SlopeResult> handle_battle(size_t under_way, size_t& m){
+        const bool won = m_calls.fight();
+        const std::optional<size_t> resume = slope_resume_move(m_moves, under_way);
+        if (!won || !resume || ++m_battles > SLOPE_MAX_BATTLES){
+            return SlopeResult{.end = SlopeEnd::BATTLE, .found = m_result.found, .move = under_way};
+        }
+        m_calls.log(std::format("Slope: a battle in move {}; on from move {}, rolled to its stop.", under_way + 1, *resume + 1));
+        m_first = *resume;
+        m = m_first - 1;
+        return std::nullopt;
+    }
+
+    std::optional<SlopeResult> send_batch(bool search, size_t& m){
+        while (true){
+            const SlopeSendResult sent = m_calls.send(m_batch, true);
+            const size_t under_way = move_at_press(m_ends, m_first, sent.press);
+            const bool item_message = search
+                && sent.sent == SlopeSent::MESSAGE
+                && sent.press >= m_search_a_start;
+            bool battle = sent.sent == SlopeSent::BATTLE;
+            if (sent.sent == SlopeSent::MESSAGE && !item_message){
+                std::optional<SlopeResult> stop_result;
+                const DialogOutcome outcome = handle_unexpected_dialog(sent, search, under_way, m, stop_result);
+                if (outcome == DialogOutcome::STOP){
+                    return stop_result;
+                }
+                if (outcome == DialogOutcome::NEXT_MOVE){
+                    return std::nullopt;
+                }
+                if (outcome == DialogOutcome::CONTINUE_BATCH){
+                    continue;
+                }
+                battle = true;
+            }
+            clear_batch(m + 1);
+            if (battle){
+                return handle_battle(under_way, m);
+            }
+            if (search && !item_message){
+                return SlopeResult{.end = SlopeEnd::NOT_FOUND, .found = m_result.found, .move = m};
+            }
+            if (search){
+                m_calls.log("Slope: " + m_moves[m].item + "'s message opened.");
+                m_result.found.push_back(m_moves[m].item);
+                m_batch = close_message_presses();
+            }
+            return std::nullopt;
+        }
+    }
+
+    const std::vector<SlopeMove>& m_moves;
+    const SlopeCalls& m_calls;
+    SlopeResult m_result;
+    std::vector<SlopePress> m_batch;
+    std::vector<size_t> m_ends;
+    size_t m_first = 0;
+    size_t m_search_a_start = 0;
+    size_t m_battles = 0;
+    size_t m_dialogs = 0;
+};
 
 } // namespace
 
@@ -204,113 +374,7 @@ std::optional<size_t> slope_resume_move(const std::vector<SlopeMove>& moves, siz
 }
 
 SlopeResult ride_slope(const std::vector<SlopeMove>& moves, const SlopeCalls& calls){
-    SlopeResult result;
-    std::vector<SlopePress> batch;
-    std::vector<size_t> ends;
-    size_t first = 0;
-    size_t battles = 0;
-    size_t dialogs = 0;
-    for (size_t m = first; m < moves.size(); m++){
-        const size_t move_start = batch.size();
-        const std::vector<SlopePress> presses = slope_move_presses(moves[m]);
-        batch.insert(batch.end(), presses.begin(), presses.end());
-        ends.push_back(batch.size());
-        const bool search = moves[m].kind == SlopeMoveKind::SEARCH;
-        if (!search && m + 1 < moves.size()){
-            continue;
-        }
-        //  A hidden item's message can only open once the SEARCH move's first
-        //  A press has been sent (press 3 of slope_move_presses(SEARCH)).
-        size_t search_a_start = search ? move_start + 3 : batch.size();
-        calls.log(std::format("Slope: moves {} to {}, {} presses.", first + 1, m + 1, batch.size()));
-        bool resumed_from_move = false;
-        while (true){
-            const SlopeSendResult sent = calls.send(batch, true);
-            const size_t under_way = move_at_press(ends, first, sent.press);
-            const bool item_message = search
-                && sent.sent == SlopeSent::MESSAGE
-                && sent.press >= search_a_start;
-            bool battle = sent.sent == SlopeSent::BATTLE;
-            if (sent.sent == SlopeSent::MESSAGE && !item_message){
-                calls.log(std::format("Slope: unexpected dialog in move {}; clearing it.", under_way + 1));
-                battle = calls.clear_dialog && calls.clear_dialog();
-                if (!battle){
-                    if (++dialogs > SLOPE_MAX_DIALOGS){
-                        return SlopeResult{.end = SlopeEnd::BATTLE, .found = result.found, .move = under_way};
-                    }
-                    const std::optional<size_t> resume = slope_resume_move(moves, under_way);
-                    if (resume){
-                        calls.log(std::format("Slope: dialog cleared in move {}; on from move {}.", under_way + 1, *resume + 1));
-                        batch.clear();
-                        ends.clear();
-                        first = *resume;
-                        m = first - 1;
-                        resumed_from_move = true;
-                        break;
-                    }
-                    //  B stayed held while clearing the dialog (e.g. "REPEL's
-                    //  effect wore off!"), so the player did not roll: continue
-                    //  with the remaining presses of the batch.
-                    const bool keep_current = sent.press < batch.size()
-                        && !batch[sent.press].b
-                        && sent.press_remaining > Milliseconds(0);
-                    const size_t drop = keep_current ? sent.press : std::min(sent.press + 1, batch.size());
-                    if (drop >= batch.size()){
-                        batch.clear();
-                        ends.clear();
-                        first = m + 1;
-                        if (search){
-                            return SlopeResult{.end = SlopeEnd::NOT_FOUND, .found = result.found, .move = m};
-                        }
-                        break;
-                    }
-                    std::vector<SlopePress> remaining(batch.begin() + drop, batch.end());
-                    if (keep_current){
-                        remaining.front().hold = sent.press_remaining;
-                    }
-                    for (size_t& end : ends){
-                        end = end > drop ? end - drop : 0;
-                    }
-                    search_a_start = search_a_start > drop ? search_a_start - drop : 0;
-                    batch = std::move(remaining);
-                    calls.log(std::format("Slope: dialog cleared in move {}; resuming {} remaining presses.", under_way + 1, batch.size()));
-                    continue;
-                }
-            }
-            batch.clear();
-            ends.clear();
-            first = m + 1;
-            if (battle){
-                const bool won = calls.fight();
-                const std::optional<size_t> resume = slope_resume_move(moves, under_way);
-                if (!won || !resume || ++battles > SLOPE_MAX_BATTLES){
-                    return SlopeResult{.end = SlopeEnd::BATTLE, .found = result.found, .move = under_way};
-                }
-                calls.log(std::format("Slope: a battle in move {}; on from move {}, rolled to its stop.", under_way + 1, *resume + 1));
-                first = *resume;
-                m = first - 1;
-                resumed_from_move = true;
-                break;
-            }
-            if (search && !item_message){
-                return SlopeResult{.end = SlopeEnd::NOT_FOUND, .found = result.found, .move = m};
-            }
-            if (search){
-                calls.log("Slope: " + moves[m].item + "'s message opened.");
-                result.found.push_back(moves[m].item);
-                batch = close_message_presses();
-            }
-            break;
-        }
-        if (resumed_from_move){
-            continue;
-        }
-    }
-    if (!batch.empty()){
-        //  A search was the last move: its message is closed with B held.
-        calls.send(batch, false);
-    }
-    return result;
+    return SlopeRide(moves, calls).run();
 }
 
 
