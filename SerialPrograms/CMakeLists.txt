@@ -103,6 +103,9 @@ option(PA_CORE_ONLY "Build only the GUI-free core (basic microcontroller functio
 # listing, so every file would be recompiled on every run.
 option(PA_ASSEMBLY_LISTINGS "Write an assembly listing of every source file to Assembly/ (MSVC and clang-cl only)" ON)
 
+# Enable SDL by giving -DPA_SDL=ON on the CMake command line
+option(PA_SDL "Enable SDL library" OFF)
+
 if(PA_CORE_ONLY)
     message(STATUS "PA_CORE_ONLY: building only the GUI-free core")
     set(CMAKE_AUTOMOC OFF)
@@ -277,6 +280,12 @@ target_link_libraries(
     $<LINK_LIBRARY:WHOLE_ARCHIVE,SerialProgramsLib>
 )
 
+if (PA_SDL)
+    message(STATUS "Compiling with gamepad (via SDL) integration enabled")
+    target_compile_definitions(SerialProgramsLib PRIVATE PA_SDL)
+    target_compile_definitions(SerialPrograms PRIVATE PA_SDL)
+endif()
+
 # Add source code exclusive to the internal repo and add C++ macro of official release
 if (EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/../../Internal/SerialPrograms/Internal0.cpp")
     message(STATUS "Building internal SerialPrograms")
@@ -387,6 +396,14 @@ if(TEST_RUNNER_EXE)
 endif()
 
 if (WIN32)
+    if (PA_SDL)
+        add_library(SDL3_lib IMPORTED UNKNOWN)
+        set_target_properties(SDL3_lib PROPERTIES
+            IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/../3rdPartyBinaries/SDL3.lib
+        )
+        target_link_libraries(SerialProgramsLib PRIVATE SDL3_lib)
+    endif()
+
     add_library(OpenCV_lib IMPORTED UNKNOWN)
     target_include_directories(SerialProgramsLib SYSTEM PRIVATE ../3rdParty/opencv-4.12.0/)
     set_target_properties(OpenCV_lib PROPERTIES
@@ -483,6 +500,18 @@ if (WIN32)
 #    target_compile_options(SerialProgramsLib PRIVATE /arch:AVX512 /DPA_Arch_x64_AVX512GF)
 else() # macOS and Linux
     find_package(PkgConfig REQUIRED)  # required to execute `pkg_search_module()` below
+    if (PA_SDL)
+        # Resolve Homebrew's config symlinks so SDL uses its own include directory,
+        # not the shared include root that also exposes incompatible Qt headers.
+        set(PA_SAVED_FIND_PACKAGE_RESOLVE_SYMLINKS "${CMAKE_FIND_PACKAGE_RESOLVE_SYMLINKS}")
+        set(CMAKE_FIND_PACKAGE_RESOLVE_SYMLINKS TRUE)
+        find_package(SDL3 3.2 REQUIRED CONFIG)
+        set(CMAKE_FIND_PACKAGE_RESOLVE_SYMLINKS "${PA_SAVED_FIND_PACKAGE_RESOLVE_SYMLINKS}")
+        get_target_property(SDL3_INCLUDE_DIRS SDL3::Headers INTERFACE_INCLUDE_DIRECTORIES)
+        # BEFORE to prefer the packaged SDL headers over the bundled Windows headers.
+        target_include_directories(SerialProgramsLib SYSTEM BEFORE PRIVATE ${SDL3_INCLUDE_DIRS})
+        target_link_libraries(SerialProgramsLib PRIVATE SDL3::SDL3)
+    endif()
     if (APPLE)
         # prepare onnxruntime if needed
         set(ONNXRUNTIME_VERSION "1.23.2")
@@ -555,17 +584,45 @@ else() # macOS and Linux
                         STATUS download_status
                     )
                     list(GET download_status 0 error_code)
-                    if(NOT error_code EQUAL 0)
+                    if(error_code EQUAL 0)
+                        # logic for extracting the tarball to our working directory
+                        message(STATUS "Extracting ONNX Runtime...")
+                        execute_process(
+                            COMMAND ${CMAKE_COMMAND} -E tar xzf "${DOWNLOAD_LOCATION}"
+                            WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+                        )
+                    else()
+                        # The GitHub release is not reachable: the same build is on NuGet
+                        # (Microsoft.ML.OnnxRuntime, a zip), laid out as include/ + runtimes/<rid>/native/.
                         list(GET download_status 1 error_message)
-                        message(FATAL_ERROR "Failed to download ONNX Runtime: ${error_message}")
+                        message(STATUS "GitHub download failed (${error_message}); trying NuGet...")
+                        if(ONNXRUNTIME_ARCH STREQUAL "aarch64")
+                            set(ONNXRUNTIME_NUGET_RID "linux-arm64")
+                        else()
+                            set(ONNXRUNTIME_NUGET_RID "linux-x64")
+                        endif()
+                        set(NUGET_LOCATION "${CMAKE_BINARY_DIR}/onnxruntime-${ONNXRUNTIME_VERSION}.nupkg")
+                        file(DOWNLOAD
+                            "https://www.nuget.org/api/v2/package/Microsoft.ML.OnnxRuntime/${ONNXRUNTIME_VERSION}"
+                            ${NUGET_LOCATION}
+                            STATUS nuget_status
+                        )
+                        list(GET nuget_status 0 nuget_error_code)
+                        if(NOT nuget_error_code EQUAL 0)
+                            list(GET nuget_status 1 nuget_error_message)
+                            message(FATAL_ERROR "Failed to download ONNX Runtime from GitHub (${error_message}) and NuGet (${nuget_error_message})")
+                        endif()
+                        set(NUGET_EXTRACT_DIR "${CMAKE_BINARY_DIR}/onnxruntime-nuget-${ONNXRUNTIME_VERSION}")
+                        file(MAKE_DIRECTORY "${NUGET_EXTRACT_DIR}")
+                        execute_process(
+                            COMMAND ${CMAKE_COMMAND} -E tar xf "${NUGET_LOCATION}"
+                            WORKING_DIRECTORY "${NUGET_EXTRACT_DIR}"
+                        )
+                        file(COPY "${NUGET_EXTRACT_DIR}/build/native/include/" DESTINATION "${EXTRACTED_ONNX_PATH}/include")
+                        file(COPY "${NUGET_EXTRACT_DIR}/runtimes/${ONNXRUNTIME_NUGET_RID}/native/" DESTINATION "${EXTRACTED_ONNX_PATH}/lib")
+                        # The library's SONAME is libonnxruntime.so.1, which the release tarball ships as a link.
+                        file(COPY_FILE "${EXTRACTED_ONNX_PATH}/lib/libonnxruntime.so" "${EXTRACTED_ONNX_PATH}/lib/libonnxruntime.so.1")
                     endif()
-
-                    # logic for extracting the tarball to our working directory
-                    message(STATUS "Extracting ONNX Runtime...")
-                    execute_process(
-                        COMMAND ${CMAKE_COMMAND} -E tar xzf "${DOWNLOAD_LOCATION}"
-                        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-                    )
                 endif()
 
                 # Update the ONNX_ROOT_PATH to point to our downloaded version, force ensures we update it
@@ -895,6 +952,9 @@ if (WIN32)
 
     # Copy 3rd party DLLs if missing/different
     file(GLOB THIRD_PARTY_DLLS "${REPO_ROOT_DIR}/3rdPartyBinaries/*.dll")
+    if (NOT PA_SDL)
+        list(REMOVE_ITEM THIRD_PARTY_DLLS "${REPO_ROOT_DIR}/3rdPartyBinaries/SDL3.dll")
+    endif()
     foreach(DLL IN LISTS THIRD_PARTY_DLLS)
         get_filename_component(DLL_NAME "${DLL}" NAME)
         add_custom_command(

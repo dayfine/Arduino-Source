@@ -27,6 +27,7 @@ struct StartupPlan{
     std::optional<std::string> run_program = std::nullopt;
     std::optional<std::string> options_path = std::nullopt;
     bool augment_color_distortions = false;
+    std::string test_substring = {};
     std::string error = {};
     std::vector<std::string> qt_arguments = {};
 };

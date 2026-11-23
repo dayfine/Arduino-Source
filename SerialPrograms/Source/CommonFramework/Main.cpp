@@ -1,4 +1,5 @@
 
+#include <cstdlib>
 #include <iostream>
 #include <memory>
 #include <stdexcept>
@@ -30,6 +31,9 @@
 #include "CommonTools/OCR/OCR_Routines.h"
 #include "Tests/CommandLineTests.h"
 #include "ControllerInput/ControllerInput.h"
+#ifdef PA_SDL
+#include "ControllerInput/Gamepad/GlobalGamepadTracker.h"
+#endif
 #include "Controllers/SerialPort/SerialPortPollerQt.h"
 #include "Integrations/DiscordSettingsOption.h"
 #include "Integrations/DiscordSocial/DiscordSocial.h"
@@ -205,10 +209,13 @@ int run_program(int argc, char *argv[]){
         return 1;
     }
     if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
-        return run_command_line_tests(false);
+        return run_command_line_tests(false, "");
     }
 
     ScopeExit cleanup([]{
+#ifdef PA_SDL
+        global_gamepad_tracker().stop();
+#endif
         SerialPortPoller::instance().stop();
         GlobalMediaServices::instance().stop();
     });
@@ -246,6 +253,9 @@ int run_program(int argc, char *argv[]){
 #endif
 
 
+#ifdef PA_SDL
+    global_gamepad_tracker().start();
+#endif
     MainWindow w;
     w.show();
     w.raise(); // bring the window to front on macOS
@@ -333,9 +343,19 @@ int run_gui_application(int argc, char *argv[]){
 //
 //  Joining threads on Qt 6.9+ Windows will hang!
 //
+//  Command-line test mode gets the same exit treatment: the tests are
+//  done by the time we get here, nothing after this needs the thread
+//  pools, and skipping the joins avoids a hang with no diagnostics when
+//  a thread is still inside a task that never finishes.
+//
 #ifdef PA_ENABLE_QT_ADOPTION_WORKAROUND
     std::cout << "Qt6.9 bug workaround: std::quick_exit() to avoid thread join hangs." << std::endl;
     std::quick_exit(ret);
+#else
+    if (GlobalSettings::instance().COMMAND_LINE_TEST_MODE){
+        std::cout << "Command-line test mode: std::quick_exit() to avoid thread join hangs." << std::endl;
+        std::quick_exit(ret);
+    }
 #endif
 
     stop_thread_pools();
@@ -415,15 +435,14 @@ int run_test_application(int argc, char* argv[], const StartupPlan& plan){
     register_all_statics();
     GlobalThreadPools::qt_worker_threadpool();
     GlobalThreadPools::qt_event_threadpool();
-    const int ret = run_command_line_tests(plan.augment_color_distortions);
+    const int ret = run_command_line_tests(plan.augment_color_distortions, plan.test_substring);
     OCR::clear_ocr_cache();
     global_periodic_runner().stop();
     global_watchdog().stop();
-#ifdef PA_ENABLE_QT_ADOPTION_WORKAROUND
+    //  The tests are done and nothing after this needs the thread pools: skip the joins, which
+    //  hang on Qt 6.9+ Windows and hang with no diagnostics when a task never finishes.
+    std::cout << "Command-line test mode: std::quick_exit() to avoid thread join hangs." << std::endl;
     std::quick_exit(ret);
-#endif
-    stop_thread_pools();
-    return ret;
 }
 
 int run_with_profile_lease(

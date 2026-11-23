@@ -2,6 +2,7 @@
 
 Guidance for AI coding agents working in this repository.
 For how to write a new automation program, see also `CodingAgentContext/AutomationProgramPatterns.md`.
+For the concerns a story, hunting or farming program must cover (world model, anchors, recovery, tests), see `CodingAgentContext/AgentProgramFramework.md`.
 
 ## What this project is
 

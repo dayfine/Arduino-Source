@@ -13,6 +13,7 @@
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/TestRunners/ParallelUnitTestRunner.h"
+#include "Common/Cpp/Options/BooleanCheckBoxOption.h"
 #include "Common/Cpp/Options/StaticTextOption.h"
 #include "Common/Cpp/Options/EnumDropdownOption.h"
 #include "Common/Cpp/Options/StringOption.h"
@@ -74,6 +75,10 @@ private:
     StaticTextOption SUBSTRING_TEST_LABEL;
     StringCell SUBSTRING_TEST;
 
+    //  When checked, will run each image test with additional recorded image augmentations
+    //  to increase the test coverage on different capture card distortions.
+    BooleanCheckBoxOption USE_IMAGE_DISTORTION_AUGMENTATIONS;
+
     TextEditOption TESTS_TO_RUN;
     TextEditOption PASSED_TESTS;
     TextEditOption FAILED_TESTS;
@@ -94,7 +99,9 @@ public:
     {}
 
     //  Run the unit tests whose names contain any of `filters`, or all of them if `filters` is
-    //  empty. Return the number of failed tests.
+    //  empty (case sensitive, the same matching as the GUI's "Run All Tests Containing This
+    //  Substring" mode). If nothing matches, no test runs and a warning is logged.
+    //  Return the number of failed tests.
     //  If `augment_color_distortions` is true, also run each image test under different color
     //  distortion augmentation to widen the test coverage, using the distortion data in the
     //  CaptureCardCalibration/ folder of the test repo. If that data can't be loaded, log the

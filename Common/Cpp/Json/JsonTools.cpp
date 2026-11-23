@@ -84,7 +84,7 @@ nlohmann::json to_nlohmann(const JsonValue& json){
         return ret;
     }
     if (json.is_object()){
-        nlohmann::json ret;
+        nlohmann::json::object_t ret;
         for (const auto& item : *json.to_object()){
             ret[item.first] = to_nlohmann(item.second);
         }

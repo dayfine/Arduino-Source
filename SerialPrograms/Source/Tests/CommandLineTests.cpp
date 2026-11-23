@@ -18,8 +18,12 @@ using std::endl;
 namespace PokemonAutomation{
 
 
-int run_command_line_tests(bool augment_color_distortions){
-    return run_unit_tests(augment_color_distortions, {}) == 0 ? 0 : 1;
+int run_command_line_tests(bool augment_color_distortions, const std::string& test_substring){
+    if (test_substring.empty()){
+        return run_unit_tests(augment_color_distortions, {}) == 0 ? 0 : 1;
+    }
+    const std::string_view filter = test_substring;
+    return run_unit_tests(augment_color_distortions, std::span<const std::string_view>(&filter, 1)) == 0 ? 0 : 1;
 }
 
 size_t run_unit_tests(bool augment_color_distortions, std::span<const std::string_view> filters){
