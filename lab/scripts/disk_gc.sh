@@ -21,6 +21,11 @@
 #     media older than 14 days deleted except under ErrorReportsLocal (and */saves/*, 30 days as above).
 #  6. ccache (~/Library/Caches/pokemonautomation-ccache): max size 8G, cleanup each run.
 #  7. ~/Projects/dev-builds: a slot build folder not built in 3 days goes (slot-A, slot-B, slot-B-frlg stay).
+#  8. GamePilot runs (~/FRLGLab/gamepilot-runs/<run>/): wire logs (*.jsonl) older than 1 day gzipped; a run
+#     folder whose newest file is 14 days old is deleted, unless it holds a KEEP file (replay-test
+#     candidates). Agent scratchpads (/private/tmp/claude-*/<project>/<session>/scratchpad): files older
+#     than 3 days deleted, then empty folders. Save states and saves (*.ss, *.sav*) are never touched.
+#     User 2026-11-23.
 # Trees listed in ~/BDSPLab/keep-worktrees.txt, lab slot trees/builds named in
 # ~/.config/pokemonautomation/dev-labs*.json, locked worktrees and paths a process runs in are never touched.
 # Prints free space at the end and warns when it is below $MIN_FREE_GB (default 30).
@@ -231,6 +236,34 @@ for b in $HOME/Projects/dev-builds/*/; do
   busy "$b" && { say "dev-build $(basename "$b"): in use, kept"; continue; }
   [ -n "$(find "$b" -maxdepth 1 \( -name .ninja_log -o -name build.ninja -o -name CMakeCache.txt \) -mtime -3 | head -1)" ] && continue
   say "dev-build $(basename "$b"): not built for 3d ($(du -sh "$b" | cut -f1))"; del "${b:?}"
+done
+
+# 8. GamePilot runs and agent scratchpads (user 2026-11-23).
+GP_RUNS=${GP_RUNS:-$HOME/FRLGLab/gamepilot-runs}
+for r in "$GP_RUNS"/*/; do
+  r=${r%/}; [ -d "$r" ] || continue
+  [ -f "$r/KEEP" ] && continue
+  if [ -z "$(find "$r" -type f -mtime -14 | head -1)" ]; then
+    say "gamepilot run $(basename "$r"): untouched for 14d ($(du -sh "$r" | cut -f1)); save states kept"
+    if [ $APPLY = 1 ]; then
+      find "$r" -type f ! -name '*.ss' ! -name '*.sav*' -delete
+      find "$r" -depth -type d -empty -delete
+    fi
+    continue
+  fi
+  n=$(find "$r" -type f -name '*.jsonl' -mtime +1 | wc -l | tr -d ' ')
+  [ "$n" -gt 0 ] && say "gamepilot run $(basename "$r"): $n wire logs older than 1d to gzip"
+  [ $APPLY = 1 ] && find "$r" -type f -name '*.jsonl' -mtime +1 -exec gzip -f {} \;
+done
+for sp in ${CLAUDE_TMP:-/private/tmp}/claude-*/*/*/scratchpad; do
+  [ -d "$sp" ] || continue
+  n=$(find "$sp" -type f -mtime +3 ! -name '*.ss' ! -name '*.sav*' | wc -l | tr -d ' ')
+  [ "$n" -gt 0 ] || continue
+  say "scratchpad $(basename "$(dirname "$sp")"): $n files older than 3d"
+  if [ $APPLY = 1 ]; then
+    find "$sp" -type f -mtime +3 ! -name '*.ss' ! -name '*.sav*' -delete
+    find "$sp" -mindepth 1 -type d -empty -delete
+  fi
 done
 
 kb=$(df -k "$HOME" | awk 'NR==2{print $4}')
