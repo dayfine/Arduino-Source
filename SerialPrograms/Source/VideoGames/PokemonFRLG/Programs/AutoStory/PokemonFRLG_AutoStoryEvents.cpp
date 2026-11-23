@@ -36,6 +36,7 @@
 #include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
+#include "PokemonFRLG_AutoStoryLeagueFightData.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
 #include "PokemonFRLG_AutoStoryRepelStep.h"
 #include "PokemonFRLG_AutoStoryRoutePose.h"
@@ -275,11 +276,18 @@ std::optional<StoryFailure> battle(StoryEnv& env, const StoryStep& step){
             step.name, env.supplies.trainer, party, battle_risk_name(env.supplies.risk)
         ));
     }
+    const bool champion_win_scene = league_fight_name(env.supplies.trainer) == "champion";
     const BattleKind kind = arg<bool>(step, "run") ? BattleKind::WILD_RUN : BattleKind::TRAINER;
     const BattleEnd end = fight_battle(env.console, env.context, env.supplies, kind, env.checks, env.language);
     end_trainer_battle(env.supplies);
     if (end != BattleEnd::WON && (end != BattleEnd::LOST || !arg<bool>(step, "may_lose"))){
         return frlg_failure(end == BattleEnd::LOST ? "blackout" : end == BattleEnd::ROARED ? "league_roar_reset" : "league_early_reset");
+    }
+    if (end == BattleEnd::WON && champion_win_scene){
+        //  Winning the Champion's battle runs straight into Oak's entrance and
+        //  the Hall of Fame with no overworld START menu in between; hand off
+        //  immediately to the hall_of_fame step instead of mashing past it.
+        return std::nullopt;
     }
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     wait_out_battle_exit(env.console, env.context);
