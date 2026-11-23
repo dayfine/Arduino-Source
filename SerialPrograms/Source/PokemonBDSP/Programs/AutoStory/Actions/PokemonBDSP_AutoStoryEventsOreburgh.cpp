@@ -200,6 +200,7 @@ void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context,
 void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& context){
     const JoystickPosition north_stick{0, 1};
     size_t east_shifts = 0;
+    size_t wall_steps = 0;
     for (size_t legs = 0; legs < 12; legs++){
         const WalkResult north = walk_until(stream, context, run_from_wild_battle, north_stick, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center",
             [](const ImageViewRGB32& screen){ return pokemon_center_inside(screen); });
@@ -223,16 +224,16 @@ void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& con
             if (east_shifts == 0){
                 dpad_tiles(stream, context, DPAD_RIGHT, 1, "column 47 toward Oreburgh Center door");
                 east_shifts++;
-            }else if (north.moved_chunks <= 1 && east_shifts < 4){
-                //  Grazing the Hiker on the street can slide Dawn west onto the
-                //  door's left pillar (lab-B 2026-11-22 20:41, 20:48): clear the
-                //  pillar and sweep east ~0.6 tile across the doorway.
-                pbf_move_left_joystick(context, {0, -1}, 120ms, 100ms);
-                pbf_move_left_joystick(context, {1, 0}, 240ms, 200ms);
-                east_shifts++;
-            }else if (north.moved_chunks <= 1){
-                pbf_move_left_joystick(context, {0, -1}, 120ms, 100ms);
-                pbf_move_left_joystick(context, {-1, 0}, 300ms, 200ms);
+            }else if (north.moved_chunks <= 1 && wall_steps < 4){
+                //  Against the Center's front but not in its door. Grazing the
+                //  Hiker can slide Dawn west, or spend the shift above in the
+                //  street (lab-B 2026-11-22 20:41, 20:48), and joystick nudges
+                //  moved less than a tile, so whole D-pad tiles along the wall:
+                //  east twice, then back west past where the wall was met.
+                const bool east = wall_steps < 2;
+                const size_t tiles = wall_steps == 2 ? 3 : 1;
+                dpad_tiles(stream, context, east ? DPAD_RIGHT : DPAD_LEFT, tiles, "along the Oreburgh Center wall toward the door");
+                wall_steps++;
             }else{
                 context.wait_for(2000ms);
             }
