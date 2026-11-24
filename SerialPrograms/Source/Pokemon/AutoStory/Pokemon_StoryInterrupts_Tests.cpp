@@ -67,6 +67,10 @@ ScreenLook warp(){
 ScreenLook white_unsettled(){
     return look_of({{0, WALK}, {100, WHITE}, {700, WALK}}, 1000);
 }
+//  A trainer's battle after her lines were pressed through.
+ScreenLook battle_after_lines(){
+    return look_of({{0, WALK}, {100, BLACK}, {1500, BATTLE}}, 2000);
+}
 ScreenLook trainer_opening(){
     return look_of({{0, WALK}, {100, BOX}, {2000, BLACK}}, 2100);
 }
@@ -86,9 +90,13 @@ ScreenLook home_read_as_overworld(){
 }
 
 
+//  Shows `screens`, the last one again once they run out. Each clear shows
+//  the next of `after_clears`, or a quiet screen once they run out.
 struct FakeGame{
     std::vector<ScreenLook> screens;
+    std::vector<std::vector<ScreenLook>> after_clears;
     size_t looks = 0;
+    size_t clears = 0;
     std::vector<std::string> trace;
 
     ScreenLook look(bool fresh){
@@ -97,12 +105,18 @@ struct FakeGame{
         looks++;
         return out;
     }
+    void clear(std::string_view name){
+        trace.push_back(std::format("clear {}", name));
+        screens = clears < after_clears.size() ? after_clears[clears] : std::vector<ScreenLook>{};
+        clears++;
+        looks = 0;
+    }
 };
 
 InterruptHandler noting(std::string name, InterruptPose pose, std::string failure, FakeGame& game){
     return InterruptHandler{
         .handle = [&game, name, failure](const InterruptVerdict&) -> std::optional<StoryFailure>{
-            game.trace.push_back(std::format("clear {}", name));
+            game.clear(name);
             if (failure.empty()){
                 return std::nullopt;
             }
@@ -165,7 +179,7 @@ UnitTestResult test_cleared(ScreenLook screen, InterruptKind expected_kind, cons
     if (check.pose_lost != expect_pose_lost){
         return std::format("Expected pose_lost={}, got {}", expect_pose_lost, check.pose_lost);
     }
-    return expect_trace(game, {"look", std::format("clear {}", handler)});
+    return expect_trace(game, {"look", std::format("clear {}", handler), "look"});
 }
 
 UnitTestResult test_wild_encounter(){
@@ -225,7 +239,7 @@ UnitTestResult test_unsettled_looks_again(){
     if (check.failure || check.verdict.kind != InterruptKind::WARP){
         return "Expected unsettled white to settle as warp.";
     }
-    return expect_trace(game, {"look", "look again", "clear warp"});
+    return expect_trace(game, {"look", "look again", "clear warp", "look"});
 }
 
 UnitTestResult test_unsettled_is_bounded(){
@@ -261,7 +275,7 @@ UnitTestResult test_opening_before_a_walk(ScreenLook opening, ScreenLook battle,
     }
     return expect_trace(game, {
         "look", "look again", "look again", "look again", "look again",
-        std::format("clear {}", handler),
+        std::format("clear {}", handler), "look",
     });
 }
 UnitTestResult test_wild_opening_before_a_walk(){
@@ -269,6 +283,33 @@ UnitTestResult test_wild_opening_before_a_walk(){
 }
 UnitTestResult test_trainer_opening_before_a_walk(){
     return test_opening_before_a_walk(trainer_opening(), trainer(), "trainer");
+}
+
+UnitTestResult test_lines_then_battle(){
+    FakeGame game;
+    game.screens = {dialog()};
+    game.after_clears = {{battle_after_lines()}};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    const InterruptCheck check = clear_story_interrupt(interrupts, "walk", "route");
+    if (check.failure || check.verdict.kind != InterruptKind::TRAINER_SIGHT){
+        return std::format(
+            "Expected the trainer's battle cleared, got {} {}",
+            interrupt_kind_name(check.verdict.kind), check.failure ? std::format("{}", *check.failure) : std::string("")
+        );
+    }
+    return expect_trace(game, {"look", "clear dialog", "look", "clear trainer", "look"});
+}
+
+UnitTestResult test_interrupts_are_bounded(){
+    FakeGame game;
+    game.screens = {dialog()};
+    game.after_clears = {{dialog()}, {dialog()}, {dialog()}};
+    StoryInterrupts interrupts = fake_interrupts(game);
+    const InterruptCheck check = clear_story_interrupt(interrupts, "walk", "route");
+    if (!check.failure || check.failure->code != "too_many_interrupts"){
+        return "Expected too_many_interrupts after max_per_step clears.";
+    }
+    return expect_trace(game, {"look", "clear dialog", "look", "clear dialog", "look", "clear dialog", "look"});
 }
 
 UnitTestResult test_opening_is_bounded(){
@@ -400,6 +441,8 @@ const StoryInterruptsCase STORY_INTERRUPTS_CASES[] = {
     {.name = "unsettled: a battle's opening before a battle step", .input = {.test = test_unsettled_before_a_battle}, .expectation = {.description = "the step's, after one look"}},
     {.name = "unsettled: a wild battle's opening before a walk", .input = {.test = test_wild_opening_before_a_walk}, .expectation = {.description = "waits for battle and clears it"}},
     {.name = "unsettled: a trainer battle's opening before a walk", .input = {.test = test_trainer_opening_before_a_walk}, .expectation = {.description = "waits for battle and clears it"}},
+    {.name = "a trainer's lines, then her battle", .input = {.test = test_lines_then_battle}, .expectation = {.description = "dialog cleared, looked again, the battle fought as a trainer's"}},
+    {.name = "at most max_per_step interrupts a step", .input = {.test = test_interrupts_are_bounded}, .expectation = {.description = "too_many_interrupts"}},
     {.name = "unsettled: at most max_opening_looks for an opening", .input = {.test = test_opening_is_bounded}, .expectation = {.description = "interrupt_unsettled"}},
     {.name = "table: one handler a kind that can be cleared", .input = {.test = test_table_rejects}, .expectation = {.description = "rejects invalid kinds"}},
     {.name = "the HOME menu fails as game_not_running", .input = {.test = test_home_menu_before_a_step}, .expectation = {.description = "stops with repeats=true"}},
