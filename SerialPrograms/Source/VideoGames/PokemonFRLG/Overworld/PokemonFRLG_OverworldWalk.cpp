@@ -168,7 +168,9 @@ private:
 
 Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     Pokemon::LegSpec leg{step.direction, step.tiles + step.warp_slack, step.to_wall, tile_time(step, speed)};
-    leg.stalled_steps = step.connection_steps;
+    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator || speed == MoveSpeed::WALK){
+        leg.stalled_steps = step.connection_steps;
+    }
     return leg;
 }
 
@@ -219,26 +221,30 @@ MoveSpeed step_speed(const RouteStep& step, MoveSpeed speed){
 }
 
 Milliseconds tile_time(const RouteStep& step, MoveSpeed speed){
+    const bool gba_clock = GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator;
+    const Milliseconds walk_tile = gba_clock ? Milliseconds(268) : TILE_TIME;
+    const Milliseconds run_tile = gba_clock ? Milliseconds(134) : RUN_TILE_TIME;
+    const Milliseconds surf_tile = gba_clock ? Milliseconds(134) : SURF_TILE_TIME;
     if (step.surfing && step.lands_after > 0 && step.tiles > 0){
         //  The surfed tiles, then the hop onto land and the walked ones
         //  (B isn't held on a leg that starts on the water), each hop or
         //  walked tile taken at walking pace, averaged and rounded up.
         const int walked = step.tiles - step.lands_after + 1;
-        const Milliseconds total = SURF_TILE_TIME * (step.lands_after - 1) + TILE_TIME * walked;
+        const Milliseconds total = surf_tile * (step.lands_after - 1) + walk_tile * walked;
         return (total + Milliseconds(step.tiles - 1)) / step.tiles;
     }
     if (step.surfing){
-        return SURF_TILE_TIME;
+        return surf_tile;
     }
     switch (step_speed(step, speed)){
     case MoveSpeed::RUN:
-        return RUN_TILE_TIME;
+        return run_tile;
     case MoveSpeed::BIKE:
         return BIKE_TILE_TIME;
     case MoveSpeed::WALK:
         break;
     }
-    return TILE_TIME;
+    return walk_tile;
 }
 
 bool turns_first(const RouteStep& step, MoveSpeed speed, std::optional<Direction> facing){
@@ -400,7 +406,7 @@ bool arrived_unseen(ConsoleHandle& console, ProControllerContext& context, const
     }
     context.wait_for_all_requests();
     const VideoSnapshot now = console.video().snapshot();
-    context.wait_for(DIM_WARP_POLL);
+    context.wait_for(scale_emulator_duration(DIM_WARP_POLL));
     const VideoSnapshot later = console.video().snapshot();
     if (!now || !later){
         return false;
@@ -466,8 +472,9 @@ void wait_out_dim_warp(ConsoleHandle& console, ProControllerContext& context, co
     const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
     VideoSnapshot last;
     const WallClock deadline = current_time() + WARP_TIMEOUT;
+    const Milliseconds poll = scale_emulator_duration(DIM_WARP_POLL);
     while (current_time() < deadline){
-        context.wait_for(DIM_WARP_POLL);
+        context.wait_for(poll);
         VideoSnapshot now = console.video().snapshot();
         if (!now){
             continue;

@@ -13,6 +13,7 @@
 #include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/VisualDetector.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
     class CancellableScope;
@@ -40,7 +41,7 @@ private:
 class BattleFaintWatcher : public DetectorToFinder<BattlePokemonDetector>{
 public:
     BattleFaintWatcher(Color color)
-        : DetectorToFinder("BattleFaintWatcher", FinderType::GONE, std::chrono::milliseconds(2000), color)
+        : DetectorToFinder("BattleFaintWatcher", FinderType::GONE, scale_emulator_duration(std::chrono::milliseconds(2000)), color)
     {}
 };
 
@@ -64,7 +65,7 @@ private:
 class BattleOpponentFaintWatcher : public DetectorToFinder<BattleOpponentDetector>{
 public:
     BattleOpponentFaintWatcher(Color color)
-        : DetectorToFinder("BattleOPponentFaintWatcher", FinderType::GONE, std::chrono::milliseconds(1000), color)
+        : DetectorToFinder("BattleOPponentFaintWatcher", FinderType::GONE, scale_emulator_duration(std::chrono::milliseconds(1000)), color)
     {}
 };
 

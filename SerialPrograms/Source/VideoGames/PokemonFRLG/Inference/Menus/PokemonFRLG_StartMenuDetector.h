@@ -12,6 +12,7 @@
 #include "CommonFramework/VideoPipeline/VideoOverlayScopes.h"
 #include "CommonTools/VisualDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 
 namespace PokemonAutomation{
     class CancellableScope;
@@ -35,7 +36,7 @@ private:
 class StartMenuWatcher : public DetectorToFinder<StartMenuDetector>{
 public:
     StartMenuWatcher(Color color = COLOR_RED)
-        : DetectorToFinder("StartMenuWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("StartMenuWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

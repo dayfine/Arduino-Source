@@ -37,7 +37,11 @@ public:
     BlackScreenWatcher(Color color = COLOR_RED)
         : PokemonAutomation::BlackScreenWatcher(
             color,
-            GameSettings::instance().GAME_BOX.inner_to_outer({0.231692, 0.0616538, 0.551385, 0.9045})
+            GameSettings::instance().GAME_BOX.inner_to_outer({0.231692, 0.0616538, 0.551385, 0.9045}),
+            100,
+            10,
+            FinderType::PRESENT,
+            scale_emulator_duration(std::chrono::milliseconds(100))
         )
     {}
 };
@@ -46,7 +50,11 @@ public:
     BlackScreenOverWatcher(Color color = COLOR_RED)
         : PokemonAutomation::BlackScreenOverWatcher(
             color,
-            GameSettings::instance().GAME_BOX.inner_to_outer({0.231692, 0.0616538, 0.551385, 0.9045})
+            GameSettings::instance().GAME_BOX.inner_to_outer({0.231692, 0.0616538, 0.551385, 0.9045}),
+            100,
+            10,
+            scale_emulator_duration(std::chrono::milliseconds(100)),
+            scale_emulator_duration(std::chrono::milliseconds(100))
         )
     {}
 };
@@ -78,14 +86,14 @@ private:
 class WhiteDialogWatcher : public DetectorToFinder<WhiteDialogDetector>{
 public:
     WhiteDialogWatcher(Color color)
-        : DetectorToFinder("WhiteDialogWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("WhiteDialogWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
 class WhiteDialogOverWatcher : public DetectorToFinder<WhiteDialogDetector>{
 public:
     WhiteDialogOverWatcher(Color color)
-        : DetectorToFinder("WhiteDialogOverWatcher", FinderType::GONE, std::chrono::milliseconds(250), color)
+        : DetectorToFinder("WhiteDialogOverWatcher", FinderType::GONE, scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -110,7 +118,7 @@ private:
 class AdvanceWhiteDialogWatcher : public DetectorToFinder<AdvanceWhiteDialogDetector>{
 public:
     AdvanceWhiteDialogWatcher(Color color)
-        : DetectorToFinder("AdvanceWhiteDialogWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("AdvanceWhiteDialogWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 
@@ -131,7 +139,7 @@ private:
 class SelectionDialogWatcher : public DetectorToFinder<SelectionDialogDetector>{
 public:
     SelectionDialogWatcher(Color color)
-        : DetectorToFinder("SelectionDialogWatcher", std::chrono::milliseconds(250), color)
+        : DetectorToFinder("SelectionDialogWatcher", scale_emulator_duration(std::chrono::milliseconds(250)), color)
     {}
 };
 

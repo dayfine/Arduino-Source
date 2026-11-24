@@ -54,7 +54,9 @@ Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     leg.tile_time = tile_time(step, speed);
     leg.stop_on_interrupt = !step.to_wall;
     leg.stop_if_blocked = step.to_wall;
-    leg.stalled_steps = step.connection_steps;
+    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator || speed == MoveSpeed::WALK){
+        leg.stalled_steps = step.connection_steps;
+    }
     return leg;
 }
 
@@ -375,19 +377,22 @@ HoldMovement measure_movement(
     const VideoSnapshot& before, Direction direction, Milliseconds first_tile, WallClock hold_start
 ){
     const Milliseconds since_start = std::chrono::duration_cast<Milliseconds>(current_time() - hold_start);
-    if (since_start < first_tile + TURN_SETTLE){
-        context.wait_for(first_tile + TURN_SETTLE - since_start);
+    const Milliseconds scaled_first_tile = scale_emulator_duration(first_tile);
+    const Milliseconds settle_target = scale_emulator_duration(first_tile + TURN_SETTLE);
+    if (since_start < settle_target){
+        context.wait_for(settle_target - since_start);
     }
     context.wait_for_all_requests();
     VideoSnapshot after = console.video().snapshot();
-    for (int wait = 0; after && !detail::frame_shows_hold(after.timestamp, hold_start, first_tile) && wait < STALE_FRAME_WAITS; wait++){
-        context.wait_for(STALE_FRAME_WAIT);
+    const Milliseconds stale_wait = scale_emulator_duration(STALE_FRAME_WAIT);
+    for (int wait = 0; after && !detail::frame_shows_hold(after.timestamp, hold_start, scaled_first_tile) && wait < STALE_FRAME_WAITS; wait++){
+        context.wait_for(stale_wait);
         after = console.video().snapshot();
     }
     if (!before || !after){
         return HoldMovement::UNMEASURED;
     }
-    if (!detail::frame_shows_hold(after.timestamp, hold_start, first_tile)){
+    if (!detail::frame_shows_hold(after.timestamp, hold_start, scaled_first_tile)){
         console.log("Position check: the video shows no frame from after the hold's first tile: not measured.", COLOR_ORANGE);
         return HoldMovement::UNMEASURED;
     }
@@ -405,15 +410,16 @@ HoldMovement measure_movement(
 //  on the map scrolls a tile per SPIN_TILE_TIME, so no two match.
 bool wait_out_slide(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
     const int tiles = step.spin_tiles.value_or(0);
-    const Milliseconds limit = slide_wait_limit(tiles);
+    const Milliseconds limit = scale_emulator_duration(slide_wait_limit(tiles));
+    const Milliseconds poll = scale_emulator_duration(SLIDE_STILL_POLL);
     const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
     context.wait_for_all_requests();
     VideoSnapshot last = console.video().snapshot();
-    for (Milliseconds waited(0); waited < limit; waited += SLIDE_STILL_POLL){
-        context.wait_for(SLIDE_STILL_POLL);
+    for (Milliseconds waited(0); waited < limit; waited += poll){
+        context.wait_for(poll);
         VideoSnapshot now = console.video().snapshot();
         if (last && now && ImageMatch::pixel_RMSD(extract_box_reference(*last.frame, game), extract_box_reference(*now.frame, game)) <= HOLD_UNMOVED_RMSD){
-            console.log(std::format("[Speed] slide: {} tiles, the screen still {} ms after the leg.", tiles, (waited + SLIDE_STILL_POLL).count()));
+            console.log(std::format("[Speed] slide: {} tiles, the screen still {} ms after the leg.", tiles, (waited + poll).count()));
             return true;
         }
         last = std::move(now);

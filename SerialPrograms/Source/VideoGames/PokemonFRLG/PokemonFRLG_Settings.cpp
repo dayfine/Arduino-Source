@@ -4,8 +4,11 @@
  *
  */
 
+#include <algorithm>
+#include <cmath>
 #include "Common/Cpp/Json/JsonObject.h"
 #include "CommonFramework/PersistentSettings.h"
+#include "Controllers/MgbaLink/MgbaLink_Protocol.h"
 #include "Pokemon/Pokemon_Strings.h"
 
 #include "PokemonFRLG_Settings.h"
@@ -180,6 +183,20 @@ GameSettingsPanel::GameSettingsPanel()
     : settings(GameSettings::instance())
 {
     PA_ADD_OPTION(settings);
+}
+
+Milliseconds scale_duration_for_speed(Milliseconds duration, double speed){
+    if (duration <= Milliseconds::zero() || !std::isfinite(speed) || speed <= 0.0 || speed == 1.0){
+        return duration;
+    }
+    return Milliseconds(std::max<int64_t>(1, (int64_t)std::llround((double)duration.count() / speed)));
+}
+
+Milliseconds scale_emulator_duration(Milliseconds duration){
+    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator){
+        return duration;
+    }
+    return scale_duration_for_speed(duration, MgbaLink::speed_multiplier());
 }
 
 
