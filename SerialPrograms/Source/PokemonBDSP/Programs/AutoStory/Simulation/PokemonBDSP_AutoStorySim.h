@@ -135,6 +135,9 @@ struct SimWorldKnobs{
     std::map<std::string, detail::SimScene> scenes = {};
     std::function<bool(const std::string& row, const std::string& step)> dialog_before = nullptr;
     std::function<bool(const std::string& row, const std::string& step)> battle_opening_before = nullptr;
+    //  A trainer sees the player before the step: her lines pop up, and
+    //  pressing through them starts her battle (lab-B run 8, 01.02).
+    std::function<bool(const std::string& row, const std::string& step)> trainer_lines_before = nullptr;
     bool clear_interrupts = true;
     std::map<std::string, Pokemon::GridPose> lands = {};
     SimGrassBattles grass = {};
@@ -397,6 +400,10 @@ private:
     bool m_dialog_rose = false;
     bool m_battle_opening = false;
     size_t m_opening_looks = 0;
+    //  The dialog up is a trainer's lines: clearing it starts her battle.
+    bool m_trainer_lines = false;
+    //  The battle opening is a trainer's: it can't be fled.
+    bool m_trainer_battle = false;
     mutable std::map<std::pair<const StoryWorld*, std::string>, std::unique_ptr<StoryWorld>> m_peopled;
     std::set<std::string> m_ran;
     std::string m_row;

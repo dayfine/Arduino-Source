@@ -25,12 +25,13 @@ namespace NintendoSwitch{
 namespace PokemonBDSP{
 
 
-//  What BATTLE_STARTED is.
+//  What BATTLE_STARTED is besides a battle's menu, wild or a trainer's: a
+//  trainer can see the player on a step that expects no battle (run 8,
+//  01.02 into_oreburgh).
 enum class BattleCue{
-    //  A wild battle's menu. A black screen is a fade.
+    //  Only the menu. A black screen is a fade.
     WILD_MENU,
-    //  Also a trainer's battle: its menu (Roark's read as STANDARD, r210d)
-    //  or the black screen it opens with.
+    //  Also the black screen a trainer's battle opens with.
     TRAINER,
 };
 
@@ -48,6 +49,11 @@ public:
     bool player_still() const{
         return m_player_still;
     }
+    //  Whether the last frame showed a wild battle's menu (BattleType::STANDARD).
+    //  A trainer's menu fails it (Picnicker Diana, run 8); Roark's passed it (r210d).
+    bool wild_menu() const{
+        return m_wild_shown;
+    }
 
 private:
     BattleCue m_cue;
@@ -60,6 +66,7 @@ private:
     LocationBannerReads m_reads;
     VideoSnapshot m_previous;
     bool m_player_still = false;
+    bool m_wild_shown = false;
 };
 
 

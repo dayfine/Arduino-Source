@@ -48,8 +48,9 @@ constexpr Milliseconds TALK_OVER_HOLD = Milliseconds(80);
 
 //  What counts as a battle starting during a talk-over.
 enum class TalkOverWatch{
-    //  A wild battle's menu; it is fled and the talk-over goes on. A black
-    //  screen is a fade (a scene that changes map).
+    //  A wild battle's menu; it is fled and the talk-over goes on. A
+    //  trainer's menu ends it. A black screen is a fade (a scene that
+    //  changes map).
     SCENE,
     //  A trainer's battle: its menu (Roark's read as STANDARD, r210d) or the
     //  black screen it opens with. The talk-over ends there.
@@ -73,7 +74,7 @@ struct TalkOverSpec{
 enum class TalkOverEnd{
     QUIET,      //  Quiet without observing dialogue.
     DIALOGUE,   //  Quiet after pressing through dialogue.
-    BATTLE,     //  Only with TalkOverWatch::TRAINER.
+    BATTLE,     //  A trainer's battle; any battle with TalkOverWatch::TRAINER.
 };
 
 //  Presses through any text and scene on the console until TalkOver says it
