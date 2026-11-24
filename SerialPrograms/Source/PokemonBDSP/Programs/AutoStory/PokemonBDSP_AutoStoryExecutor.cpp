@@ -322,7 +322,9 @@ std::optional<StoryFailure> ConsoleStory::battle(BdspRunState&, const BdspStep& 
     //  tag battle there and was called lost).
     const bool center_before = !args.may_lose && in_pokemon_center(stream());
     const BattleFormat format = args.variant == "doubles" ? BattleFormat::DOUBLES : BattleFormat::SINGLES;
-    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, format)){
+    //  The plan's foe was checked when it was read.
+    const FoeTeam foe = args.foe ? known_foe_team(*args.foe).value_or(FoeTeam{}) : FoeTeam{};
+    if (!talk_or_fight(stream(), context(), label_of(step), TalkExpect::BATTLE, format, foe)){
         fail_step(stream(), label_of(step) + ": talked but did not battle.");
     }
     if (center_before){

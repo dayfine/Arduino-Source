@@ -95,7 +95,10 @@ struct MoveMenuWatch{
 
 //  One look at the move menu. Returns whether the target is confirmed
 //  under the cursor; otherwise moves the cursor toward it or waits.
-bool move_menu_step(VideoStream& stream, ProControllerContext& context, MoveMenuWatch& watch, const std::string& label){
+bool move_menu_step(
+    VideoStream& stream, ProControllerContext& context, MoveMenuWatch& watch,
+    const FoeTeam& foe, const std::string& label
+){
     context.wait_for_all_requests();
     auto frame = stream.video().snapshot();
     const BattleMoveMenuState moves = frame ? detect_battle_move_menu(frame) : BattleMoveMenuState{};
@@ -115,7 +118,7 @@ bool move_menu_step(VideoStream& stream, ProControllerContext& context, MoveMenu
     }
     // Pick the best move once the menu has settled.
     if (watch.target == 0 && watch.stable_move_count >= 3 && frame){
-        watch.target = pick_best_move(stream, *frame.frame, moves, label);
+        watch.target = pick_best_move(stream, *frame.frame, moves, foe, label);
     }
     if (moves.move_count > 0 && moves.move_count < watch.target && watch.stable_move_count >= 3){
         OperationFailedExceptionWithScreenshot::fire(ErrorReportMode::SEND_ERROR_REPORT,
@@ -138,13 +141,16 @@ bool move_menu_step(VideoStream& stream, ProControllerContext& context, MoveMenu
     return false;
 }
 
-//  On the battle menu: Battle, then the best move on the move menu once
-//  it has settled, confirmed under the cursor, then A.
-void use_best_move(VideoStream& stream, ProControllerContext& context, BattleType battle_type, const std::string& label){
+//  On the battle menu: Battle, then the best move against `foe` on the move
+//  menu once it has settled, confirmed under the cursor, then A.
+void use_best_move(
+    VideoStream& stream, ProControllerContext& context, BattleType battle_type,
+    const FoeTeam& foe, const std::string& label
+){
     choose_battle_command(stream, context, battle_type, label);
     MoveMenuWatch watch;
     for (size_t check = 0; check < 30; check++){
-        if (move_menu_step(stream, context, watch, label)){
+        if (move_menu_step(stream, context, watch, foe, label)){
             stream.log("[" + label + "] Move " + std::to_string(watch.target) + " confirmed; using it.");
             pbf_press_button(context, BUTTON_A, 80ms, 3000ms);
             return;
@@ -254,6 +260,8 @@ struct BestMoveBattle{
     //  In wild training: if the lead faints and a backup switches in, flee
     //  at the battle menu instead of fighting on with the backup.
     bool flee_after_faint = false;
+    //  Who we fight, when the story knows; else every move counts at its power.
+    FoeTeam foe = {};
 };
 
 //  What a battle has done so far, across turns.
@@ -289,7 +297,7 @@ void take_turn(
         progress.out_of_potions = heal == BattleHeal::NONE_LEFT;
     }
     stream.log("[" + label + "] Move list position 1: use move 0.");
-    use_best_move(stream, context, battle.battle_type, label);
+    use_best_move(stream, context, battle.battle_type, battle.foe, label);
     // A double battle asks for the target next; B would
     // back out of it. The default target is an opponent.
     if (battle.format == BattleFormat::DOUBLES){
@@ -399,9 +407,17 @@ void confirm_battle_overworld(VideoStream& stream, ProControllerContext& context
     talk_over(stream, context, label);
 }
 
-void fight_story_battle(VideoStream& stream, ProControllerContext& context, const std::string& label, BattleFormat format){
+void fight_story_battle(
+    VideoStream& stream, ProControllerContext& context, const std::string& label,
+    BattleFormat format, const FoeTeam& foe
+){
     // The best move each turn; the next Pokemon after a faint; no new moves.
-    fight_with_best_move(stream, context, {.battle_type = BattleType::TRAINER, .format = format, .switch_on_faint = true}, label);
+    fight_with_best_move(stream, context, {
+        .battle_type = BattleType::TRAINER,
+        .format = format,
+        .switch_on_faint = true,
+        .foe = foe,
+    }, label);
 }
 
 void fight_trainer(VideoStream& stream, ProControllerContext& context, const std::string& label){
