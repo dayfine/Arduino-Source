@@ -407,6 +407,30 @@ UnitTestResult test_story_routes_keep_off_wander_zones(Logger& logger){
     return out.empty() ? UnitTestResult(true) : UnitTestResult("ROUTE steps:" + out);
 }
 
+//  Lab-B, 9 runs to 2026-11-23: the leg east along Twinleaf's row 4 stopped
+//  at (11, 4) every time; the guitarist stands on (12, 4), one row north of
+//  Diamond's (12, 5).
+UnitTestResult test_catch_tutorial_walk_keeps_off_the_guitarist(Logger& logger){
+    for (const PlannedStoryRoute& route : plan_story_routes(logger)){
+        if (route.name != "00.04 short_of_the_catch_tutorial"){
+            continue;
+        }
+        if (!route.legs){
+            return "00.04 short_of_the_catch_tutorial: no plan.";
+        }
+        const StoryWorld& world = *route.world;
+        const auto guitarist = [&](const TilePos& pos){
+            return story_to_local(world, "TwinleafTown", pos) == TilePos{12, 4};
+        };
+        const auto [most, leg] = most_zone_tiles(world, route.from, *route.legs, guitarist);
+        if (most > 0){
+            return std::format("the leg {} walks through the guitarist on Twinleaf (12, 4).", leg);
+        }
+        return true;
+    }
+    return "00.04 short_of_the_catch_tutorial is not a ROUTE step from a known place.";
+}
+
 UnitTestResult test_ravaged_path_keeps_off_the_youngster(Logger& logger){
     for (const PlannedStoryRoute& route : plan_story_routes(logger)){
         if (route.name != "01.08 below_the_ravaged_path"){
@@ -728,6 +752,7 @@ const AutoStoryStoryTableCase AUTO_STORY_STORY_TABLE_CASES[] = {
     {.name = "Story table: no open leg ends before a door it walks toward (lab-B, 2026-11-08)", .input = {test_story_routes_stop_short_of_doors}, .expectation = {}},
     {.name = "Story table: every ROUTE step plans as Data/route_plans.golden.txt says", .input = {test_route_plans_golden}, .expectation = {}},
     {.name = "Story table: every route plans, and none runs along a wander zone", .input = {test_story_routes_keep_off_wander_zones}, .expectation = {}},
+    {.name = "00.04: the walk to the catch tutorial keeps off the Twinleaf guitarist on (12, 4) (lab-B, 2026-11-23)", .input = {test_catch_tutorial_walk_keeps_off_the_guitarist}, .expectation = {}},
     {.name = "01.08: the walk below the Ravaged Path keeps off the youngster's row (lab-B, 2026-11-08)", .input = {test_ravaged_path_keeps_off_the_youngster}, .expectation = {}},
     {.name = "Starter RNG handoff: stops after 00.01 saved at the Verity Lakefront", .input = {test_plan_story_run_starter_rng}, .expectation = {}},
     {.name = "Run Starter RNG: 00.02 runs the starter_rng event", .input = {test_plan_story_run_in_program}, .expectation = {}},
