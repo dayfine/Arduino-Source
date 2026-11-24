@@ -1536,12 +1536,31 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Types/Pokemon_StoryCheckpoint.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryPostconditions.h
     Source/Pokemon/AutoStory/Types/Pokemon_StoryStep.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_ConnectedMaps.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_ConnectedMaps.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_ConnectedMaps_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_ConnectedMaps_Tests.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.cpp
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_Direction.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_GateState.cpp
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_GateState.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.cpp
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_Grid.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapData.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapData.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapData_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapData_Tests.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapFeatures.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapGates.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapTiles.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics_Tests.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_NavigationTestMaps.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_RuntimeMap.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_RuntimeMap.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_RuntimeMap_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_RuntimeMap_Tests.h
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner.h
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner_Tests.cpp
     Source/Pokemon/Navigation/Grid/Planning/Pokemon_RobustLegPlanner_Tests.h
