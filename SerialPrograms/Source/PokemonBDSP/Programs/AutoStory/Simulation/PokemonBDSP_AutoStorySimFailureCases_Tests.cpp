@@ -351,6 +351,14 @@ UnitTestResult starly_opening_after_the_starter(Logger& logger){
     return passes(run_case(logger, "00.02", "00.02", {.fade = {}, .banner = {}}, knobs));
 }
 
+UnitTestResult trainer_battle_after_lines_on_a_step(Logger& logger){
+    SimWorldKnobs knobs;
+    knobs.trainer_lines_before = [](const std::string& row, const std::string& step){
+        return row == "01.02" && step == "into_oreburgh";
+    };
+    return passes(run_case(logger, "01.02", "01.02", {.fade = {}, .banner = {}}, knobs));
+}
+
 UnitTestResult sandgem_entry_two_columns_west(Logger& logger){
     SimWorldKnobs knobs;
     knobs.lands["into_sandgem"] = GridPose{.map = "SandgemTown", .tiles = {TilePos{27, 5}}, .facing = Direction::SOUTH};
@@ -586,6 +594,7 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
     {.name = "00.03 Rowan's scene opens with no box and fades home", .input = {rowans_scene_opens_with_no_box}, .expectation = {}},
     {.name = "00.03 Mom's scene ends with a closing fade: over once it is back up (lab-B 2026-11-09)", .input = {moms_scene_ends_with_a_fade}, .expectation = {}},
     {.name = "00.02 the Starly battle's opening still plays after the starter (lab-B 2026-11-09)", .input = {starly_opening_after_the_starter}, .expectation = {}},
+    {.name = "01.02 a trainer's lines, then her battle, before a step with no trainer cue: fought, then the step (lab-B run 8)", .input = {trainer_battle_after_lines_on_a_step}, .expectation = {}},
     {.name = "00.03 out of the house from (6, 8), where Rowan's scene ends, and from a column west", .input = {home_from_each_scene_end}, .expectation = {}},
     {.name = "00.03 the walk into Rowan's scene routes onto his row and stops on his trigger mid-run", .input = {rowans_scene_from_each_start}, .expectation = {}},
     {.name = "00.03 the walk into Sandgem stops on Dawn's trigger mid-run", .input = {dawns_scene_mid_run}, .expectation = {}},
