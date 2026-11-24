@@ -26,16 +26,18 @@ const Milliseconds PRE_BRIEFCASE_DURATION = 21000ms;
 //  box comes up once the question has typed out. Short in English and the CJK
 //  languages (1 s held for every run in them). French types out far longer: on
 //  console B (2026-11-23) the question was still typing 2 s after the press,
-//  so UP at 1 s was dropped and the confirming press landed on "Non". The
-//  long-text languages get a wait that covers it until it is measured: the
-//  sequence logs when the box shows.
+//  so UP at 1 s was dropped and the confirming press landed on "Non". Measured
+//  on console B (2026-11-23), the box showed 1452 ms after the press in French,
+//  1352 ms in German and 1151 ms in Spanish; the long-text languages wait 2 s.
+//  Every extra second here costs reach: the confirm press needs a blink-free
+//  gap this long, and at 6 s about four in five shiny advances were unreachable.
 static Milliseconds starter_prompt_wait(Language language){
     switch (language){
     case Language::French:
     case Language::German:
     case Language::Spanish:
     case Language::Italian:
-        return 6000ms;
+        return 2000ms;
     default:
         return 1000ms;
     }

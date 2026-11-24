@@ -123,7 +123,8 @@ TargetSelectionResult select_target(const TargetSearchRequest& request){
         request, wanted_targets, lowest_span, highest_span, last_press
     );
     if (!pick_earliest_schedule(request, wanted_targets, candidate_presses, result)){
-        //  Around one advance in fifty is unreachable due to rapid blinks
+        //  With the 1-2 s select-to-confirm waits, about one advance in twenty
+        //  is unreachable: no blink-free gap long enough for the confirm press
         result.failure_reason = std::to_string(wanted_targets.size())
             + " matching advance(s) in range, but none reachable";
         return result;
