@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include <iterator>
 #include <utility>
@@ -474,6 +475,55 @@ Pokemon::DoorApproachPlan bdsp_door_approach_plan(
         .dark_from_share = options.ignore_early_dark ? DOOR_DARK_FROM_SHARE : 0.0,
     };
     return Pokemon::plan_door_approach(tile_distances, timing);
+}
+
+WarpSeen run_into_center_door(bool run, StoryStepIO& io){
+    return io.run_into_door(
+        Direction::NORTH,
+        run,
+        bdsp_door_approach_plan(/*tile_distances=*/{1, 2}, Direction::NORTH, {.can_run = run, .ignore_early_dark = false})
+    );
+}
+
+WarpSeen sweep_wall_into_door(const std::function<WarpSeen()>& run_in, RouteIO& route){
+    //  Taps east (positive) or west to each next column: +1, -1, +2, -2.
+    constexpr int SWEEP_TAPS[] = {1, -2, 3, -4};
+    for (const int taps : SWEEP_TAPS){
+        route.walk_taps(taps > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(taps), "along the wall toward the door");
+        const WarpSeen seen = run_in();
+        if (seen.any()){
+            return seen;
+        }
+    }
+    route.walk_taps(Direction::EAST, /*tiles=*/2, "back to where the wall was met");
+    return {};
+}
+
+namespace{
+//  Pokemon Centers whose lit doorway misleads the lineup by sight: in
+//  afternoon sun, Oreburgh's sunlit roof and side walls read as lit doorway
+//  pixels and its shaded door glass does not, so the lineup walked Dawn a
+//  column west of the door into the wall (lab-B 2026-11-22 19:35, 2026-11-23
+//  19:57 and 20:04).
+bool center_door_by_wall_sweep(std::string_view map){
+    return map == "OreburghCity";
+}
+} // namespace
+
+BdspCenterVisit::BdspCenterVisit(StoryStepIO& io, bool run, std::string_view map)
+    : m_io(io)
+    , m_run(run)
+    , m_wall_sweep(center_door_by_wall_sweep(map))
+{}
+
+void BdspCenterVisit::line_up_and_walk_in(){
+    if (!m_wall_sweep){
+        line_up_by_sight();
+        return;
+    }
+    sweep_wall_into_door([this]{
+        return walk_in();
+    }, m_io.route());
 }
 
 namespace{

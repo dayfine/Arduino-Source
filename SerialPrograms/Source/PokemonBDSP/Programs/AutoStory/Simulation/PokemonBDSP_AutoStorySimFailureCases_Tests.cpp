@@ -529,6 +529,15 @@ private:
     FailureCase m_case;
 };
 
+//  01.03's walk below Oreburgh's Center ending `column` instead of on the
+//  door's column 47: its tap east replaced by `legs`.
+UnitTestResult oreburgh_heal_from_column(Logger& logger, int column, std::vector<Pokemon::StoryLeg> legs){
+    BdspStep step = table_step("01.03", "east_below_the_centers_door");
+    std::get<LegsStepArgs>(step.args).legs = std::move(legs);
+    step.pose_after = GridPose{.map = "OreburghCity", .tiles = {{column, 21}}, .facing = Direction::NORTH};
+    return passes(run_case(logger, "01.03", "01.03", {.fade = {}, .banner = {}}, /*knobs=*/{}, table_with("01.03", step)));
+}
+
 UnitTestResult barrys_warning_with_still_taps(Logger& logger){
     SimWorldKnobs knobs;
     knobs.still_taps = {{.step = "below_barrys_warning", .direction = Direction::NORTH, .taps = {13, 14}}};
@@ -554,6 +563,12 @@ const FailureCase AUTO_STORY_FAILURE_CASES[] = {
         return gate_old_walk_slides(logger, SimFade::WHITE, true);
     }}, .expectation = {}},
     {.name = "01.05 through_the_gate is one run west", .input = {gate_plan_one_run}, .expectation = {}},
+    {.name = "01.03 heal_oreburgh from a column west of the Center's door gets in (lab-B 2026-11-23 19:57, 20:04)", .input = {[](Logger& logger){
+        return oreburgh_heal_from_column(logger, /*column=*/46, {{.direction = Direction::WEST, .tiles = 1}, {.direction = Direction::EAST, .tiles = 1}});
+    }}, .expectation = {}},
+    {.name = "01.03 heal_oreburgh from a column east of the Center's door gets in", .input = {[](Logger& logger){
+        return oreburgh_heal_from_column(logger, /*column=*/48, {{.direction = Direction::EAST, .tiles = 2}});
+    }}, .expectation = {}},
     {.name = "00.01 taps 13 and 14 up Twinleaf's exit read still: the run north still ends in Barry's warning (lab-B 2026-11-15)",
         .input = {barrys_warning_with_still_taps}, .expectation = {}},
     {.name = "any one missed fade or banner from 00.00 to 01.11: every row still passes", .input = {[](Logger& logger){

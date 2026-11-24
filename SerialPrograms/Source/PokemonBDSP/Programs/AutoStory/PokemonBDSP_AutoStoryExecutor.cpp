@@ -51,8 +51,8 @@ std::string label_of(const BdspStep& step){
 //  lit-doorway lineup, the nurse, and the reads of the inside.
 class ConsoleCenterVisit : public BdspCenterVisit{
 public:
-    ConsoleCenterVisit(VideoStream& stream, ProControllerContext& context, StoryStepIO& io, bool run, std::string label)
-        : BdspCenterVisit(io, run)
+    ConsoleCenterVisit(VideoStream& stream, ProControllerContext& context, StoryStepIO& io, bool run, std::string_view map, std::string label)
+        : BdspCenterVisit(io, run, map)
         , m_stream(stream)
         , m_context(context)
         , m_label(std::move(label))
@@ -65,7 +65,7 @@ public:
     //  The lineup is for when the run in finds no door: people on the way
     //  can leave the route unsure of the column (r59, Jubilife). Below
     //  Sandgem's door the lineup read 0.7 tile off and stepped us off it (r48).
-    virtual void line_up_and_walk_in() override{
+    virtual void line_up_by_sight() override{
         enter_lit_door(m_stream, m_context, m_label);
     }
     //  The Center's own views, or any room: the walk out's room check
@@ -344,11 +344,11 @@ std::optional<StoryFailure> ConsoleStory::train(BdspRunState&, const BdspStep& s
     return std::nullopt;
 }
 
-std::optional<StoryFailure> ConsoleStory::heal(BdspRunState&, const BdspStep& step){
+std::optional<StoryFailure> ConsoleStory::heal(BdspRunState& state, const BdspStep& step){
     //  From the planned tile below the door, run in like any door, and out
     //  again to the tile below it. With no fade, the run can have gone on in
     //  to the counter (lab-B 2026-11-08, Oreburgh).
-    ConsoleCenterVisit visit(stream(), context(), m_io, m_walks.can_run(), label_of(step));
+    ConsoleCenterVisit visit(stream(), context(), m_io, m_walks.can_run(), state.pose.map, label_of(step));
     return Pokemon::run_center_visit(std::format("[{}] {}", m_checkpoint, step.name), visit);
 }
 
