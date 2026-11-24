@@ -26,6 +26,7 @@
 #include "Pokemon/AutoStory/Engine/Pokemon_StoryVerifyRuns.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStorySelect.h"
 #include "Pokemon/AutoStory/Pokemon_AutoStoryStats.h"
+#include "Pokemon/AutoStory/Pokemon_OverlayLog.h"
 #include "Pokemon/AutoStory/Pokemon_StoryLog.h"
 #include "Pokemon/AutoStory/Pokemon_StoryPreflight.h"
 #include "Pokemon/AutoStory/Pokemon_StoryRngHandoff.h"
@@ -98,7 +99,7 @@ public:
     virtual void log(std::string_view line) override{
         const std::string text(line);
         m_env.console.log(tag_failure_line(text));
-        m_env.console.overlay().add_log(Pokemon::story_short_line(text));
+        Pokemon::add_wrapped_overlay_log(m_env.console.overlay(), Pokemon::story_short_line(text), COLOR_WHITE);
     }
     virtual void log_detail(std::string_view line) override{
         m_env.console.log(tag_failure_line(std::string(line)));
@@ -506,7 +507,7 @@ static void stop_for_handoff(
 ){
     const std::string full = Pokemon::report_rng_handoff_stop(
         env.console, message, lines,
-        [&](const std::string& line){ env.console.overlay().add_log(line); }
+        [&](const std::string& line){ Pokemon::add_wrapped_overlay_log(env.console.overlay(), line, COLOR_WHITE); }
     );
     send_program_finished_notification(env, notification, full);
 }
@@ -737,7 +738,7 @@ static bool run_handoff_to_shiny(
         stop_for_handoff(env, finished, *user_turn);
         return false;
     }
-    env.console.overlay().add_log(result.summary);
+    Pokemon::add_wrapped_overlay_log(env.console.overlay(), result.summary, COLOR_WHITE);
     return true;
 }
 
