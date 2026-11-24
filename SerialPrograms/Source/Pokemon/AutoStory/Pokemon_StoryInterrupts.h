@@ -43,22 +43,28 @@ bool is_settled(const ScreenSettle& settle);
 std::string describe(const ScreenSettle& settle);
 
 
-//  What a look between steps found, and what clearing it came to.
+//  What the looks between steps found, and what clearing it came to.
 struct InterruptCheck{
-    //  How the screen looked when the look ended, judged or not.
+    //  How the screen looked when the last look ended, judged or not.
     ScreenSettle screen = {};
-    //  NONE when nothing interrupted, or when the step starts on it.
+    //  The last interrupt cleared, or the one that failed the step. NONE
+    //  when nothing interrupted, or when the step starts on it.
     InterruptVerdict verdict = {};
-    //  Set when the look stayed unsettled, the kind had no handler, or
-    //  the handler failed; GAME_NOT_RUNNING, with no verdict, when the
-    //  look ended on the Switch's HOME menu.
+    //  Set when a look stayed unsettled, the kind had no handler, a
+    //  handler failed, or more than max_per_step interrupts came;
+    //  GAME_NOT_RUNNING, with no verdict, when a look ended on the
+    //  Switch's HOME menu.
     std::optional<StoryFailure> failure = std::nullopt;
-    //  True when clearing the interrupt invalidated the player's pose (a warp).
+    //  True when clearing an interrupt invalidated the player's pose (a warp).
     bool pose_lost = false;
 };
 
 //  Looks at the screen before step `step_name` (`action`) and clears what
-//  interrupted the player, if anything. On the HOME menu it fails as
+//  interrupted the player, if anything. After each handler it looks again,
+//  until a look finds nothing or what the step starts on: clearing one
+//  interrupt can show the next (a trainer's lines, then the battle). A
+//  battle right after a cleared dialog is that trainer's (TRAINER_SIGHT),
+//  though the new look saw no lines. On the HOME menu it fails as
 //  GAME_NOT_RUNNING and clears nothing, whatever the step starts on.
 InterruptCheck clear_story_interrupt(
     const StoryInterrupts& interrupts, std::string_view step_name, std::string_view action
