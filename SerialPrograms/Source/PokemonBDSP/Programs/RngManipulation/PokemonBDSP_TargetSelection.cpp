@@ -83,6 +83,28 @@ bool pick_earliest_schedule(
     return found;
 }
 
+struct AdvanceRange{
+    uint64_t first = 0;
+    uint64_t last = 0;
+};
+
+//  The advances a press from `first_press` to `last_press` can generate on.
+AdvanceRange target_scan_range(
+    const TargetSearchRequest& request,
+    uint64_t lowest_span,
+    uint64_t highest_span,
+    int64_t last_press
+){
+    return AdvanceRange{
+        .first = (uint64_t)std::max<int64_t>(
+            0, (int64_t)request.first_press + (int64_t)lowest_span + request.bias
+        ),
+        .last = (uint64_t)std::max<int64_t>(
+            0, last_press + (int64_t)highest_span + request.bias
+        ),
+    };
+}
+
 } // namespace
 
 TargetSelectionResult select_target(const TargetSearchRequest& request){
@@ -100,18 +122,13 @@ TargetSelectionResult select_target(const TargetSearchRequest& request){
 
     const int64_t last_press = (int64_t)(request.first_press + request.window_advances);
     //  One sweep, walking the RNG forward rather than jumping to each advance.
-    const uint64_t scan_from = (uint64_t)std::max<int64_t>(
-        0, (int64_t)request.first_press + (int64_t)lowest_span + request.bias
-    );
-    const uint64_t scan_to = (uint64_t)std::max<int64_t>(
-        0, last_press + (int64_t)highest_span + request.bias
-    );
+    const AdvanceRange scan = target_scan_range(request, lowest_span, highest_span, last_press);
     std::map<uint64_t, BdspPokemonResult> wanted_targets;
-    for (const BdspRngHit& hit : searcher.scan(scan_from, scan_to, request.wanted)){
+    for (const BdspRngHit& hit : searcher.scan(scan.first, scan.last, request.wanted)){
         wanted_targets.emplace(hit.advances, hit.result);
     }
 
-    result.advances_scanned = scan_to - scan_from + 1;
+    result.advances_scanned = scan.last - scan.first + 1;
     result.matches_found = wanted_targets.size();
     if (wanted_targets.empty()){
         result.failure_reason = "no matches found within "

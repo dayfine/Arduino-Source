@@ -279,6 +279,12 @@ void report_skip_arrival(
     );
 }
 
+//  From the state's anchor to the first press the scene can make: the walk
+//  to the briefcase plus room to start it.
+double starter_lead_seconds(Language language){
+    return StarterSceneDurations::measured(language).to_pre_briefcase + 15;
+}
+
 } // namespace
 
 
@@ -388,6 +394,42 @@ static bool settle_after_shiny(
         env.log("Closed the menu.");
     }
     return true;
+}
+
+
+TargetSearchRequest starter_target_search(
+    const StarterRngSettings& settings,
+    const BdspRngTargetInfo& target_info,
+    const Xorshift128State& state,
+    const AdvanceClock& clock,
+    int64_t bias,
+    uint64_t now_advance
+){
+    const StarterSceneDurations durations = StarterSceneDurations::measured(settings.language);
+    NavigationTimings timings;
+    timings.ready_seconds = durations.briefcase_to_starly_ready;
+    timings.move_seconds = seconds_to_move_to_starter(settings.starter, settings.language) + 0.25;
+    timings.prompt_seconds = durations.select_to_confirm;
+    timings.guard_seconds = GAP_GUARD_SECONDS;
+
+    const uint64_t lead_advances = (uint64_t)(
+        starter_lead_seconds(settings.language) * clock.npcs / clock.tick_seconds
+    ) + 1;
+
+    TargetSearchRequest search;
+    search.state = state;
+    search.timeline = starter_scene_timeline(target_info.timeline, settings.language);
+    search.timings = timings;
+    search.pokemon = target_info.pokemon;
+    search.npcs = clock.npcs;
+    search.tick_seconds = clock.tick_seconds;
+    search.bias = bias;
+    search.first_press = now_advance + lead_advances;
+    search.window_advances = (uint64_t)(
+        (double)settings.max_target_wait_minutes * 60 * clock.npcs / clock.tick_seconds
+    );
+    search.max_schedules = MAX_SCHEDULES;
+    return search;
 }
 
 namespace{
@@ -516,31 +558,11 @@ TargetSelectionResult find_starter_target(
     const RngAim& aim,
     double& lead_seconds
 ){
-    const StarterSceneDurations durations = StarterSceneDurations::measured(settings.language);
-    NavigationTimings timings;
-    timings.ready_seconds = durations.briefcase_to_starly_ready;
-    timings.move_seconds = seconds_to_move_to_starter(settings.starter, settings.language) + 0.25;
-    timings.prompt_seconds = durations.select_to_confirm;
-    timings.guard_seconds = GAP_GUARD_SECONDS;
-
-    lead_seconds = durations.to_pre_briefcase + 15;
-    const uint64_t lead_advances = (uint64_t)(
-        lead_seconds * recovery.clock.npcs / recovery.clock.tick_seconds
-    ) + 1;
-
-    TargetSearchRequest search;
-    search.state = recovery.state;
-    search.timeline = starter_scene_timeline(target_info.timeline, settings.language);
-    search.timings = timings;
-    search.pokemon = target_info.pokemon;
-    search.npcs = recovery.clock.npcs;
-    search.tick_seconds = recovery.clock.tick_seconds;
-    search.bias = aim.bias();
-    search.first_press = recovery.clock.advance_at(current_time()) + lead_advances;
-    search.window_advances = (uint64_t)(
-        (double)settings.max_target_wait_minutes * 60 * recovery.clock.npcs / recovery.clock.tick_seconds
+    lead_seconds = starter_lead_seconds(settings.language);
+    TargetSearchRequest search = starter_target_search(
+        settings, target_info, recovery.state, recovery.clock, aim.bias(),
+        recovery.clock.advance_at(current_time())
     );
-    search.max_schedules = MAX_SCHEDULES;
     search.wanted = wanted_fn;
 
     TargetSelectionResult selection = select_target(search);

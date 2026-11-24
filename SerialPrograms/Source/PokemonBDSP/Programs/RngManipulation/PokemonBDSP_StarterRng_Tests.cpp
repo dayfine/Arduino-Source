@@ -24,6 +24,7 @@
 #include "PokemonBDSP_StarterNavigation.h"
 #include "PokemonBDSP_StarterRngAttempts.h"
 #include "PokemonBDSP_StarterRng_Tests.h"
+#include "PokemonBDSP_TargetSelection.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -498,6 +499,78 @@ UnitTestResult test_state_found_as_window_fills(Logger&){
     return std::format("no state confirmed in {} ticks (provisional held: {})", ticks, found.has_value());
 }
 
+//  Lake solves from console B (2026-11-23) whose shiny targets the attempt
+//  abandoned as "none reachable": with a 6 s select-to-confirm wait no
+//  Starly-blink gap held the confirm press plus its guards.
+struct ReachableTargetCase{
+    std::string_view name;
+    struct Input{
+        Language language;
+        BdspStarter starter;
+        uint64_t seed0;
+        uint64_t seed1;
+        double tick_seconds;
+        uint8_t npcs;
+        uint64_t now_advance;
+    } input;
+    struct Expectation{
+        size_t matches_found;
+        uint64_t target_advance;
+    } expectation;
+};
+
+const ReachableTargetCase REACHABLE_TARGET_CASES[] = {
+    {
+        .name = "Spanish Turtwig, 23:40:05",
+        .input = {
+            .language = Language::Spanish, .starter = BdspStarter::Turtwig,
+            .seed0 = 0xf89244cdef3d6add, .seed1 = 0xc1a49a342e5316c5,
+            .tick_seconds = 1.0185, .npcs = 2, .now_advance = 398,
+        },
+        .expectation = {.matches_found = 4, .target_advance = 2301},
+    },
+};
+
+UnitTestResult test_shiny_targets_reachable(Logger&){
+    for (const ReachableTargetCase& test_case : REACHABLE_TARGET_CASES){
+        StarterRngSettings settings;
+        settings.language = test_case.input.language;
+        settings.starter = test_case.input.starter;
+        AdvanceClock clock;
+        clock.tick_seconds = test_case.input.tick_seconds;
+        clock.npcs = test_case.input.npcs;
+        TargetSearchRequest search = starter_target_search(
+            settings,
+            bdsp_rng_target_info(BdspRngTarget::Starter),
+            xorshift128_state_from_seed_pair(test_case.input.seed0, test_case.input.seed1),
+            clock,
+            /*bias=*/0,
+            test_case.input.now_advance
+        );
+        search.wanted = [](const BdspPokemonResult& pokemon){
+            return pokemon.shiny != BdspShiny::None;
+        };
+
+        const TargetSelectionResult selection = select_target(search);
+        if (selection.matches_found != test_case.expectation.matches_found){
+            return std::format(
+                "{}: {} shiny advance(s), expected {}",
+                test_case.name, selection.matches_found, test_case.expectation.matches_found
+            );
+        }
+        if (!selection.success){
+            return std::format("{}: no target: {}", test_case.name, selection.failure_reason);
+        }
+        if (selection.target_advance != test_case.expectation.target_advance){
+            return std::format(
+                "{}: target advance {}, expected {}",
+                test_case.name, selection.target_advance, test_case.expectation.target_advance
+            );
+        }
+    }
+    return true;
+}
+
 const StarterRngTestCase STARTER_RNG_CASES[] = {
     {.name = "per-starter tables and timings", .input = {.body = test_starter_tables}, .expectation = {}},
     {.name = "Starly-to-selecting gap per language", .input = {.body = test_move_seconds_per_language}, .expectation = {}},
@@ -509,6 +582,7 @@ const StarterRngTestCase STARTER_RNG_CASES[] = {
     {.name = "a provisional state that stops solving is dropped", .input = {.body = test_provisional_state_steps}, .expectation = {}},
     {.name = "a state found as the blink window fills is confirmed", .input = {.body = test_state_found_as_window_fills}, .expectation = {}},
     {.name = "blink log writes each sample once across overlapping polls", .input = {.body = test_blink_log_writes_each_sample_once}, .expectation = {}},
+    {.name = "shiny targets abandoned at a 6 s confirm wait are reachable", .input = {.body = test_shiny_targets_reachable}, .expectation = {}},
 };
 
 } // namespace

@@ -17,9 +17,12 @@
 #include "Pokemon/Pokemon_BdspRng.h"
 #include "Pokemon/Pokemon_Xorshift128.h"
 #include "PokemonBDSP/Options/PokemonBDSP_RngFilter.h"
+#include "PokemonBDSP_AdvanceClock.h"
 #include "PokemonBDSP_RngAim.h"
 #include "PokemonBDSP_RngDisplays.h"
+#include "PokemonBDSP_RngTargets.h"
 #include "PokemonBDSP_StarterNavigation.h"
+#include "PokemonBDSP_TargetSelection.h"
 
 namespace PokemonAutomation{
 namespace NintendoSwitch{
@@ -189,6 +192,19 @@ bool resolve_starter_rng_step(
     uint64_t resets_used,
     uint16_t max_resets,
     StarterRngRunResult& result
+);
+
+
+//  The target search an attempt runs once the lake blinks gave `state` and
+//  `clock`, `now_advance` advances in: presses from when the scene can first
+//  make one until `settings.max_target_wait_minutes`. `wanted` is left empty.
+TargetSearchRequest starter_target_search(
+    const StarterRngSettings& settings,
+    const BdspRngTargetInfo& target_info,
+    const Pokemon::Xorshift128State& state,
+    const AdvanceClock& clock,
+    int64_t bias,
+    uint64_t now_advance
 );
 
 
