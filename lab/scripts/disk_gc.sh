@@ -14,13 +14,18 @@
 #     a whole worktree is removed only if it is clean, its HEAD is on a remote branch, and git has not
 #     touched it for 3 days. Never touches a build whose app is running.
 #  4. Lab deployments (start_dev.py stages one per build in ~/Projects/dev-deployments/<slot>/): keep
-#     the newest $DEPLOY_KEEP (default 3) per slot folder by mtime; never one a running SerialPrograms
+#     the newest $DEPLOY_KEEP (default 2, user 2026-11-14) per slot folder by mtime; never one a running SerialPrograms
 #     process loads from; never a symlink. Build folders (~/Projects/dev-builds) are not touched.
 #  5. Media in every profile's Screenshots, ErrorReportsLocal, DebugDumps, CommandFiles/outbox: PNG older
 #     than 6 h -> same-name JPEG q80; mp4/mkv older than 1 day re-encoded (ffmpeg crf 30, <=720p, once);
 #     media older than 14 days deleted except under ErrorReportsLocal (and */saves/*, 30 days as above).
 #  6. ccache (~/Library/Caches/pokemonautomation-ccache): max size 8G, cleanup each run.
 #  7. ~/Projects/dev-builds: a slot build folder not built in 3 days goes (slot-A, slot-B, slot-B-frlg stay).
+#  8. GamePilot runs (~/FRLGLab/gamepilot-runs/<run>/): wire logs (*.jsonl) older than 1 day gzipped; a run
+#     folder whose newest file is 14 days old is deleted, unless it holds a KEEP file (replay-test
+#     candidates). Agent scratchpads (/private/tmp/claude-*/<project>/<session>/scratchpad): files older
+#     than 3 days deleted, then empty folders. Save states and saves (*.ss, *.sav*) are never touched.
+#     User 2026-11-23.
 # Trees listed in ~/BDSPLab/keep-worktrees.txt, lab slot trees/builds named in
 # ~/.config/pokemonautomation/dev-labs*.json, locked worktrees and paths a process runs in are never touched.
 # Prints free space at the end and warns when it is below $MIN_FREE_GB (default 30).
@@ -30,7 +35,7 @@ case "$1" in
   --dry-run|"") ;;
   *) echo "usage: disk_gc.sh [--dry-run|--apply]" >&2; exit 2 ;;
 esac
-AGE=${AGE:-7}; MIN_FREE_GB=${MIN_FREE_GB:-30}; DEPLOY_KEEP=${DEPLOY_KEEP:-3}
+AGE=${AGE:-7}; MIN_FREE_GB=${MIN_FREE_GB:-30}; DEPLOY_KEEP=${DEPLOY_KEEP:-2}
 # Short on space: keep 3 days of lab output instead of 7.
 # Worktrees: a clean, pushed tree is cheap to recreate, so it goes after 12 h idle (6 h when
 # short on space); in-tree build folders after 6 h. User 2026-11-11 (twice): 3 d, then 1 d, too slow.
@@ -94,6 +99,15 @@ done
 if [ ! -f $S/prune_builds.sh ]; then :
 elif [ $APPLY = 1 ]; then sh $S/prune_builds.sh 3; else say "builds: would run prune_builds.sh 3"; fi
 find $S/stage-runs -mindepth 1 -maxdepth 1 -type d -mtime +14 2>/dev/null | while read r; do say "stage-run $(basename $r)"; del "$r"; done
+
+# 2b. Loose files agents leave at the top of ~/Projects/wt (build logs, .rc, notes): older than 1 day.
+#     Scripts/notes (.md .py .sh .json .patch) move to ~/BDSPLab/archive/wt-loose/, the rest is deleted.
+for f in $(find "$HOME/Projects/wt" -maxdepth 1 -type f -mmin +1440 2>/dev/null); do
+  case "$f" in
+    *.md|*.py|*.sh|*.json|*.patch) say "wt loose file $(basename "$f"): archive"; [ $APPLY = 1 ] && mkdir -p $S/archive/wt-loose && mv "$f" $S/archive/wt-loose/ ;;
+    *) say "wt loose file $(basename "$f")"; del "$f" ;;
+  esac
+done
 
 # 3. Agent worktrees and clones: any git tree up to three levels under ~/.claude/jobs (job scratch and
 #    agents' named folders like jobs/bagfix) and
@@ -188,11 +202,12 @@ FFMPEG=$(command -v ffmpeg || ls /opt/homebrew/bin/ffmpeg 2>/dev/null)
 FFPROBE=$(command -v ffprobe || ls /opt/homebrew/bin/ffprobe 2>/dev/null)
 for d in "$P"/*/; do
   d=${d%/}; prof=$(basename "$d")
+  # PLZA-capture PNGs are kept 3 days (user 2026-11-14): time to pick test frames before re-encoding.
   for sub in Screenshots ErrorReportsLocal DebugDumps CommandFiles/outbox; do
     [ -d "$d/$sub" ] || continue
-    n=$(find "$d/$sub" -type f -iname '*.png' -mmin +360 | wc -l | tr -d ' ')
+    n=$(find "$d/$sub" -type f -iname '*.png' -mmin +360 ! \( -path '*/PLZA-capture/*' -mmin -4320 \) | wc -l | tr -d ' ')
     [ "$n" -gt 0 ] && say "$prof/$sub: $n PNGs older than 6h to JPEG"
-    [ $APPLY = 1 ] && find "$d/$sub" -type f -iname '*.png' -mmin +360 | while IFS= read -r f; do
+    [ $APPLY = 1 ] && find "$d/$sub" -type f -iname '*.png' -mmin +360 ! \( -path '*/PLZA-capture/*' -mmin -4320 \) | while IFS= read -r f; do
       j="${f%.*}.jpg"; [ -e "$j" ] && continue
       sips -s format jpeg -s formatOptions 80 "$f" --out "$j" >/dev/null 2>&1
       if [ -s "$j" ]; then touch -r "$f" "$j"; rm -f "${f:?}"; else rm -f "$j"; fi
@@ -231,6 +246,34 @@ for b in $HOME/Projects/dev-builds/*/; do
   busy "$b" && { say "dev-build $(basename "$b"): in use, kept"; continue; }
   [ -n "$(find "$b" -maxdepth 1 \( -name .ninja_log -o -name build.ninja -o -name CMakeCache.txt \) -mtime -3 | head -1)" ] && continue
   say "dev-build $(basename "$b"): not built for 3d ($(du -sh "$b" | cut -f1))"; del "${b:?}"
+done
+
+# 8. GamePilot runs and agent scratchpads (user 2026-11-23).
+GP_RUNS=${GP_RUNS:-$HOME/FRLGLab/gamepilot-runs}
+for r in "$GP_RUNS"/*/; do
+  r=${r%/}; [ -d "$r" ] || continue
+  [ -f "$r/KEEP" ] && continue
+  if [ -z "$(find "$r" -type f -mtime -14 | head -1)" ]; then
+    say "gamepilot run $(basename "$r"): untouched for 14d ($(du -sh "$r" | cut -f1)); save states kept"
+    if [ $APPLY = 1 ]; then
+      find "$r" -type f ! -name '*.ss' ! -name '*.sav*' -delete
+      find "$r" -depth -type d -empty -delete
+    fi
+    continue
+  fi
+  n=$(find "$r" -type f -name '*.jsonl' -mtime +1 | wc -l | tr -d ' ')
+  [ "$n" -gt 0 ] && say "gamepilot run $(basename "$r"): $n wire logs older than 1d to gzip"
+  [ $APPLY = 1 ] && find "$r" -type f -name '*.jsonl' -mtime +1 -exec gzip -f {} \;
+done
+for sp in ${CLAUDE_TMP:-/private/tmp}/claude-*/*/*/scratchpad; do
+  [ -d "$sp" ] || continue
+  n=$(find "$sp" -type f -mtime +3 ! -name '*.ss' ! -name '*.sav*' | wc -l | tr -d ' ')
+  [ "$n" -gt 0 ] || continue
+  say "scratchpad $(basename "$(dirname "$sp")"): $n files older than 3d"
+  if [ $APPLY = 1 ]; then
+    find "$sp" -type f -mtime +3 ! -name '*.ss' ! -name '*.sav*' -delete
+    find "$sp" -mindepth 1 -type d -empty -delete
+  fi
 done
 
 kb=$(df -k "$HOME" | awk 'NR==2{print $4}')
