@@ -9,6 +9,7 @@
 #include <format>
 #include <optional>
 #include <string>
+#include <utility>
 #include "Common/Cpp/Exceptions.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonTools/ScreenEvents/ScreenFades.h"
@@ -113,6 +114,40 @@ std::optional<StoryFailure> run_handler(const InterruptHandler& handler, const I
     }
 }
 
+//  What a look found after `cleared` was cleared. A battle that follows a
+//  dialog is its trainer's: the lines were in the look before.
+InterruptKind after_cleared(InterruptKind cleared, InterruptKind found){
+    if (cleared == InterruptKind::DIALOG && found == InterruptKind::WILD_ENCOUNTER){
+        return InterruptKind::TRAINER_SIGHT;
+    }
+    return found;
+}
+
+//  Clears `verdict` with its handler; why it could not, if it could not.
+std::optional<StoryFailure> clear_one(
+    const InterruptHandlerTable& handlers, std::string_view step_name, const InterruptVerdict& verdict
+){
+    const InterruptKind kind = verdict.kind;
+    if (kind == InterruptKind::UNSETTLED){
+        return StoryFailure{.code = "interrupt_unsettled", .detail = std::string(step_name)};
+    }
+    const InterruptHandler* handler = handlers.find(kind);
+    if (handler == nullptr || !handler->handle){
+        return StoryFailure{
+            .code = "unhandled_interrupt",
+            .detail = std::format("{} before {}", interrupt_kind_name(kind), step_name),
+        };
+    }
+    const std::optional<StoryFailure> handled = run_handler(*handler, verdict);
+    if (handled){
+        return StoryFailure{
+            .code = "interrupt_failed",
+            .detail = std::format("{}: {}", interrupt_kind_name(kind), *handled),
+        };
+    }
+    return std::nullopt;
+}
+
 } // namespace
 
 
@@ -165,42 +200,33 @@ InterruptCheck clear_story_interrupt(
     const StoryInterrupts& interrupts, std::string_view step_name, std::string_view action
 ){
     InterruptCheck out;
-    out.verdict = settled_verdict(interrupts, action, out.screen);
-    if (on_home_menu(out.screen)){
-        out.verdict = {};
-        out.failure = game_not_running_failure();
-        return out;
+    for (size_t cleared = 0;; cleared++){
+        InterruptVerdict verdict = settled_verdict(interrupts, action, out.screen);
+        if (on_home_menu(out.screen)){
+            out.verdict = {};
+            out.failure = game_not_running_failure();
+            return out;
+        }
+        if (cleared > 0){
+            verdict.kind = after_cleared(out.verdict.kind, verdict.kind);
+        }
+        if (verdict.kind == InterruptKind::NONE || interrupts.handlers.action_starts_on(action, verdict.kind)){
+            return out;
+        }
+        out.verdict = std::move(verdict);
+        if (cleared >= interrupts.max_per_step){
+            out.failure = StoryFailure{
+                .code = "too_many_interrupts",
+                .detail = std::format("{} before {}", interrupt_kind_name(out.verdict.kind), step_name),
+            };
+            return out;
+        }
+        out.failure = clear_one(interrupts.handlers, step_name, out.verdict);
+        if (out.failure){
+            return out;
+        }
+        out.pose_lost = out.pose_lost || interrupts.handlers.find(out.verdict.kind)->pose == InterruptPose::LOST;
     }
-    const InterruptKind kind = out.verdict.kind;
-    if (kind == InterruptKind::NONE){
-        return out;
-    }
-    if (interrupts.handlers.action_starts_on(action, kind)){
-        out.verdict = {};
-        return out;
-    }
-    if (kind == InterruptKind::UNSETTLED){
-        out.failure = StoryFailure{.code = "interrupt_unsettled", .detail = std::string(step_name)};
-        return out;
-    }
-    const InterruptHandler* handler = interrupts.handlers.find(kind);
-    if (handler == nullptr || !handler->handle){
-        out.failure = StoryFailure{
-            .code = "unhandled_interrupt",
-            .detail = std::format("{} before {}", interrupt_kind_name(kind), step_name),
-        };
-        return out;
-    }
-    const std::optional<StoryFailure> handled = run_handler(*handler, out.verdict);
-    if (handled){
-        out.failure = StoryFailure{
-            .code = "interrupt_failed",
-            .detail = std::format("{}: {}", interrupt_kind_name(kind), *handled),
-        };
-        return out;
-    }
-    out.pose_lost = handler->pose == InterruptPose::LOST;
-    return out;
 }
 
 
