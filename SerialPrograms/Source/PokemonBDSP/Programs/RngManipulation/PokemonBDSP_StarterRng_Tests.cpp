@@ -96,12 +96,44 @@ UnitTestResult test_starter_tables(Logger&){
                 row.base_stats.spatk, row.base_stats.spdef, row.base_stats.speed
             );
         }
-        const double move_s = seconds_to_move_to_starter(row.starter);
+        const double move_s = seconds_to_move_to_starter(row.starter, Language::English);
         if (std::abs(move_s - row.move_seconds) > 1e-9){
             return std::format(
                 "seconds_to_move_to_starter({}) = {}, expected {}",
                 row.slug, move_s, row.move_seconds
             );
+        }
+    }
+    return true;
+}
+
+
+//  The Starly-to-selecting gap the schedule leaves per language. German types
+//  one more briefcase line before the hand shows: an 8.2 s gap pressed into it
+//  (console B, 2026-11-23 17:46). French reached the hand in a 10.1 s gap.
+struct MoveSecondsCase{
+    std::string_view name;
+    struct Input{
+        BdspStarter starter;
+        Language language;
+    } input;
+    struct Expectation{
+        double move_seconds;
+    } expectation;
+};
+
+const MoveSecondsCase MOVE_SECONDS_CASES[] = {
+    {.name = "English Turtwig", .input = {.starter = BdspStarter::Turtwig, .language = Language::English}, .expectation = {.move_seconds = 6.8}},
+    {.name = "French Turtwig", .input = {.starter = BdspStarter::Turtwig, .language = Language::French}, .expectation = {.move_seconds = 6.8}},
+    {.name = "German Turtwig", .input = {.starter = BdspStarter::Turtwig, .language = Language::German}, .expectation = {.move_seconds = 13.3}},
+    {.name = "German Piplup", .input = {.starter = BdspStarter::Piplup, .language = Language::German}, .expectation = {.move_seconds = 14.7}},
+};
+
+UnitTestResult test_move_seconds_per_language(Logger&){
+    for (const MoveSecondsCase& test_case : MOVE_SECONDS_CASES){
+        const double got = seconds_to_move_to_starter(test_case.input.starter, test_case.input.language);
+        if (std::abs(got - test_case.expectation.move_seconds) > 1e-9){
+            return std::format("{}: {} s, expected {} s", test_case.name, got, test_case.expectation.move_seconds);
         }
     }
     return true;
@@ -468,6 +500,7 @@ UnitTestResult test_state_found_as_window_fills(Logger&){
 
 const StarterRngTestCase STARTER_RNG_CASES[] = {
     {.name = "per-starter tables and timings", .input = {.body = test_starter_tables}, .expectation = {}},
+    {.name = "Starly-to-selecting gap per language", .input = {.body = test_move_seconds_per_language}, .expectation = {}},
     {.name = "bedroom skip buffer and landing math", .input = {.body = test_skip_buffer_and_landing_math}, .expectation = {}},
     {.name = "aim offset and calibration bias", .input = {.body = test_aim_and_calibration}, .expectation = {}},
     {.name = "attempt loop outcome resolution", .input = {.body = test_attempt_loop_transitions}, .expectation = {}},

@@ -40,6 +40,36 @@ static Milliseconds starter_prompt_wait(Language language){
         return 1000ms;
     }
 }
+//  The briefcase lines a language types on top of the English scene, between
+//  the A 5.5 s after the Starly press and the hand over the briefcase; each
+//  needs its own A once it has typed out.
+//  German has one ("Sieh mal, da liegen ..."). On console B (2026-11-23 17:46)
+//  it stopped typing 10.7 s after the Starly press, 5.0 s after that A; with
+//  TYPED_OUT_STILLNESS to see it stop and the A that clears it that is 6.1 s,
+//  given 6.5 s here. The German attempts that cleared it with the selecting
+//  press landed 9 and 10 advances late (16:28, 16:52) with Starly-to-selecting
+//  gaps of 17 s and 47 s: the line spends advances, not time, so the 9 go in
+//  the timeline. French reached the hand in a 10.1 s gap (06:30), so it has no
+//  extra line; Spanish and Italian are not measured and are taken as French.
+struct BriefcaseExtraLines{
+    uint8_t lines = 0;
+    Milliseconds duration = 0ms;
+    uint32_t advances = 0;
+};
+static BriefcaseExtraLines briefcase_extra_lines(Language language){
+    switch (language){
+    case Language::German:
+        return {.lines = 1, .duration = 6500ms, .advances = 9};
+    default:
+        return {};
+    }
+}
+//  Dialog text that stays this still has typed out.
+const Milliseconds TYPED_OUT_STILLNESS = 1000ms;
+//  The A 5.5 s after the Starly press, until the hand prompt has typed out.
+const Milliseconds OPENING_PRESS = 100ms;
+const Milliseconds HAND_PROMPT_TYPING = 1200ms;
+const Milliseconds CURSOR_STEP = 100ms + 600ms;
 //  After the Yes/No box shows: UP, then room for the confirming press.
 const Milliseconds UP_PRESS = 100ms;
 const Milliseconds AFTER_UP = 200ms;
@@ -189,9 +219,13 @@ static Milliseconds select_press_to_confirm_ready(Language language){
     return 80ms + starter_prompt_wait(language) + UP_PRESS + AFTER_UP;
 }
 
-static Milliseconds starly_press_to_select_ready(BdspStarter starter){
-    return 80ms + 5500ms + 100ms + 1200ms
-        + starter_cursor_steps(starter) * (100ms + 600ms);
+const Milliseconds STARLY_PRESS_TO_OPENING_DONE = 80ms + 5500ms + OPENING_PRESS;
+static Milliseconds hand_ready_after_lines(BdspStarter starter){
+    return HAND_PROMPT_TYPING + starter_cursor_steps(starter) * CURSOR_STEP;
+}
+static Milliseconds starly_press_to_select_ready(BdspStarter starter, Language language){
+    return STARLY_PRESS_TO_OPENING_DONE + briefcase_extra_lines(language).duration
+        + hand_ready_after_lines(starter);
 }
 
 
@@ -199,7 +233,7 @@ namespace{
 
 struct StarterSequenceWaits{
     Milliseconds before_starly = 0ms;
-    Milliseconds before_select = 0ms;
+    Milliseconds opening_to_select = 0ms;
     Milliseconds select_to_confirm = 0ms;
 };
 
@@ -222,7 +256,7 @@ bool compute_starter_waits(
     const Milliseconds select_at = seconds_to_ms(select_seconds);
     const Milliseconds confirm_at = seconds_to_ms(confirm_seconds);
     const Milliseconds after_dialog = BRIEFCASE_PRESS_TO_STARLY_READY;
-    const Milliseconds after_starly = starly_at + starly_press_to_select_ready(starter);
+    const Milliseconds after_starly = starly_at + starly_press_to_select_ready(starter, language);
     const Milliseconds after_select = select_at + select_press_to_confirm_ready(language);
 
     auto too_tight = [&](std::string_view what, Milliseconds needed, Milliseconds have){
@@ -242,12 +276,62 @@ bool compute_starter_waits(
         return too_tight("the confirming press", after_select, confirm_at);
     }
     waits.before_starly = starly_at - after_dialog;
-    waits.before_select = select_at - after_starly;
+    waits.opening_to_select = select_at - (starly_at + STARLY_PRESS_TO_OPENING_DONE);
     waits.select_to_confirm = confirm_at - select_at;
     return true;
 }
 
 } // namespace
+
+//  Waits until `deadline` for a dialog box whose text has stopped typing.
+static bool wait_for_typed_out_dialog(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    WallClock deadline
+){
+    while (current_time() < deadline){
+        FrozenImageDetector still_text(COLOR_CYAN, DIALOG_TEXT_BOX, TYPED_OUT_STILLNESS, DIALOG_STILL_RMSD);
+        if (wait_until(env.console, context, deadline, {{still_text}}) != 0){
+            return false;
+        }
+        const VideoSnapshot screen = env.console.video().snapshot();
+        if (screen && ShortDialogDetector().detect(*screen.frame)){
+            return true;
+        }
+    }
+    return false;
+}
+
+//  Clears this language's extra briefcase lines, each once it has typed out,
+//  in time for the hand to be ready by `select_time`.
+static bool clear_extra_briefcase_lines(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    BdspStarter starter,
+    Language language,
+    WallClock opening_done,
+    WallClock select_time,
+    std::string& failure_reason
+){
+    const WallClock deadline = select_time - OPENING_PRESS - hand_ready_after_lines(starter);
+    for (uint8_t line = 0; line < briefcase_extra_lines(language).lines; line++){
+        if (!wait_for_typed_out_dialog(env, context, deadline)){
+            failure_reason = std::format(
+                "briefcase line {} was still typing {} ms after the opening press, too late for the selecting press",
+                line + 1, std::chrono::duration_cast<Milliseconds>(current_time() - opening_done).count()
+            );
+            env.log(failure_reason, COLOR_RED);
+            return false;
+        }
+        env.log(std::format(
+            "Briefcase line {} typed out {} ms after the opening press: pressing A.",
+            line + 1, std::chrono::duration_cast<Milliseconds>(current_time() - opening_done).count()
+        ));
+        pbf_press_button(context, BUTTON_A, OPENING_PRESS, 0ms);
+        context.wait_for_all_requests();
+    }
+    return true;
+}
 
 //  Waits until `deadline` for the Yes/No box the selecting press brings up.
 //  While the dialog text stays still with no box, the press was lost: press A
@@ -334,8 +418,31 @@ static bool select_and_confirm(
     return true;
 }
 
-//  The whole button press sequence: blind up to the selecting press, then the
-//  Yes/No box is watched for and the confirming press keeps its scheduled time.
+//  Hover over the chosen ball, then the selecting press at `select_time`.
+static bool hover_and_select_on_time(
+    SingleSwitchProgramEnvironment& env,
+    ProControllerContext& context,
+    BdspStarter starter,
+    WallClock select_time,
+    Milliseconds select_to_confirm,
+    std::string& failure_reason
+){
+    pbf_wait(context, HAND_PROMPT_TYPING);
+    for (uint8_t c = 0; c < starter_cursor_steps(starter); c++){
+        pbf_press_dpad(context, DPAD_RIGHT, /*hold=*/100ms, /*release=*/600ms);
+    }
+    context.wait_for_all_requests();
+    const WallClock now = current_time();
+    if (now < select_time){
+        pbf_wait(context, std::chrono::duration_cast<Milliseconds>(select_time - now));
+    }
+    return select_and_confirm(env, context, select_to_confirm, failure_reason);
+}
+
+//  The whole button press sequence: blind up to the opening press, then this
+//  language's extra briefcase lines are cleared as they type out, the hand is
+//  moved, the selecting press waits for its scheduled time, the Yes/No box is
+//  watched for and the confirming press keeps its scheduled time.
 bool issue_starter_sequence(
     SingleSwitchProgramEnvironment& env,
     ProControllerContext& context,
@@ -358,18 +465,24 @@ bool issue_starter_sequence(
     pbf_wait(context, AFTER_BRIEFCASE);
     pbf_press_button(context, BUTTON_A, 100ms, 0ms);
 
-    //  The Starly press, then open the briefcase and hover over the chosen ball
+    //  The Starly press, then the opening press that opens the briefcase
     pbf_wait(context, waits.before_starly);
     pbf_press_button(context, BUTTON_A, 80ms, 0ms);
     pbf_wait(context, 5500ms);
-    pbf_press_button(context, BUTTON_A, 100ms, 0ms);
-    pbf_wait(context, 1200ms);
-    for (uint8_t c = 0; c < starter_cursor_steps(starter); c++){
-        pbf_press_dpad(context, DPAD_RIGHT, 100ms, 600ms);
+    pbf_press_button(context, BUTTON_A, OPENING_PRESS, 0ms);
+    context.wait_for_all_requests();
+    const WallClock opening_done = current_time();
+    const WallClock select_time = opening_done + waits.opening_to_select;
+
+    if (!clear_extra_briefcase_lines(
+        env, context, starter, language, opening_done, select_time, failure_reason
+    )){
+        return false;
     }
 
-    pbf_wait(context, waits.before_select);
-    return select_and_confirm(env, context, waits.select_to_confirm, failure_reason);
+    return hover_and_select_on_time(
+        env, context, starter, select_time, waits.select_to_confirm, failure_reason
+    );
 }
 
 
@@ -394,9 +507,9 @@ bool clear_starter_battle(SingleSwitchProgramEnvironment& env, ProControllerCont
 }
 
 
-double seconds_to_move_to_starter(BdspStarter starter){
+double seconds_to_move_to_starter(BdspStarter starter, Language language){
     return std::chrono::duration_cast<std::chrono::duration<double>>(
-        starly_press_to_select_ready(starter) - 80ms
+        starly_press_to_select_ready(starter, language) - 80ms
     ).count();
 }
 
@@ -412,18 +525,11 @@ StarterSceneDurations StarterSceneDurations::measured(Language language){
     };
 }
 
-//  German loses the first selecting press every time (4 of 4 attempts on
-//  console B, 2026-11-23), so its scene differs from the others before the
-//  Yes/No box, and both German attempts that got past the box landed late by
-//  9 and 10 with the confirming press on its scheduled time. The other
-//  languages land 1 late, which the aim's own calibration covers.
-int64_t starter_scene_extra_advances(Language language){
-    switch (language){
-    case Language::German:
-        return 9;
-    default:
-        return 0;
-    }
+//  The extra lines spend their advances between the Starly press and the
+//  first blink the schedule can use, where the scene's second delay is spent.
+BdspTimelineContext starter_scene_timeline(BdspTimelineContext timeline, Language language){
+    timeline.advance_delay_2 += briefcase_extra_lines(language).advances;
+    return timeline;
 }
 
 
