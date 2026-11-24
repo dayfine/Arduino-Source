@@ -1376,6 +1376,10 @@ file(GLOB LIBRARY_SOURCES
     Source/NintendoSwitch/Inference/NintendoSwitch_FailedToConnectDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_HomeMenuDetector.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeScreenObserver.h
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.cpp
+    Source/NintendoSwitch/Inference/NintendoSwitch_HomeTileReader.h
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.cpp
     Source/NintendoSwitch/Inference/NintendoSwitch_SelectedSettingDetector.h
     Source/NintendoSwitch/Inference/NintendoSwitch_StartGameUserSelectDetector.cpp
@@ -1522,6 +1526,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryEngine_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StoryGame.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch.h
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.cpp
+    Source/Pokemon/AutoStory/Engine/Pokemon_StoryLaunch_Tests.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.cpp
     Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy.h
     Source/Pokemon/AutoStory/Engine/Pokemon_StorySavePolicy_Tests.cpp
@@ -1572,6 +1580,14 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_StoryLog_Tests.h
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.cpp
     Source/Pokemon/AutoStory/Pokemon_StoryPostconditionCheck.h
+    Source/Pokemon/AutoStory/Pokemon_StoryPreflight.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryPreflight.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff.h
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_StoryRngHandoff_Tests.h
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.cpp
+    Source/Pokemon/AutoStory/Pokemon_StorySwitchPrompts.h
     Source/Pokemon/AutoStory/Pokemon_TestExpect.h
     Source/Pokemon/AutoStory/Pokemon_Transitions.cpp
     Source/Pokemon/AutoStory/Pokemon_Transitions.h

@@ -16,6 +16,7 @@
 #include "Engine/Pokemon_ScreenMatch_Tests.h"
 #include "Engine/Pokemon_StoryBackend_Tests.h"
 #include "Engine/Pokemon_StoryEngine_Tests.h"
+#include "Engine/Pokemon_StoryLaunch_Tests.h"
 #include "Engine/Pokemon_StorySavePolicy_Tests.h"
 #include "Engine/Pokemon_StoryVerifyRuns_Tests.h"
 #include "Grid/Pokemon_GridStoryActions_Tests.h"
@@ -28,6 +29,7 @@
 #include "Pokemon_StoryFailureClasses_Tests.h"
 #include "Pokemon_StoryInterrupts_Tests.h"
 #include "Pokemon_StoryLog_Tests.h"
+#include "Pokemon_StoryRngHandoff_Tests.h"
 #include "Pokemon_Transitions_Tests.h"
 #include "Types/Pokemon_StoryCheckLevel_Tests.h"
 
@@ -55,6 +57,8 @@ inline void add_tests_AutoStory(UnitTestDatabase& database){
     add_tests_StorySavePolicy(database);
     add_tests_StoryVerifyRuns(database);
     add_tests_StoryFailureClasses(database);
+    add_tests_StoryLaunch(database);
+    add_tests_StoryRngHandoff(database);
 }
 
 
