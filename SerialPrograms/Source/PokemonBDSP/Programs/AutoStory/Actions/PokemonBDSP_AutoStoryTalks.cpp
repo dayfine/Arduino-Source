@@ -56,7 +56,10 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
     return wait_until(stream, context, timeout, {{dialog}}) == 0;
 }
 
-bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std::string& label, TalkExpect expect, BattleFormat format){
+bool talk_or_fight(
+    VideoStream& stream, ProControllerContext& context, const std::string& label,
+    TalkExpect expect, BattleFormat format, const FoeTeam& foe
+){
     const TalkOverEnd end = talk_over(stream, context, label, {
         .settle = {.judge = {.end_on_quiet = expect != TalkExpect::BATTLE}},
         .watch = TalkOverWatch::TRAINER,
@@ -68,7 +71,7 @@ bool talk_or_fight(VideoStream& stream, ProControllerContext& context, const std
     route_status(stream, "Fighting " + label + ".");
     //  The battle ends with its speeches over (confirm_battle_overworld()):
     //  Roark's badge lines keep the Potion's menu from opening until then.
-    fight_story_battle(stream, context, label, format);
+    fight_story_battle(stream, context, label, format, foe);
     if (!in_pokemon_center(stream)){
         use_potion_first_pokemon(stream, context, 0.8);
     }

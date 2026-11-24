@@ -14,6 +14,7 @@
 #define PokemonAutomation_PokemonBDSP_AutoStoryBattleMoves_H
 
 #include <array>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -36,13 +37,26 @@ struct MoveSlot{
     std::string describe(size_t slot) const;
 };
 
-//  The best of `slots`, 1-based: the most powerful one we know, and on a
-//  tie one that is not Normal (an early starter's own type). A move with
-//  no PP left is passed over. A move whose name was not read is told by
-//  what the starters have in its slot and the PP it has left, which rules
-//  out moves with less most PP; one that might still be either comes after
-//  every attack, earliest first.
-size_t choose_move(const std::vector<MoveSlot>& slots);
+//  The Pokemon a battle's foe may send out, each by its types in lower case
+//  ("rock", "ground"). The rival's starter is the one strong against ours, so
+//  its types are told from our moves: `rival_starter`.
+struct FoeTeam{
+    std::vector<std::vector<std::string_view>> members = {};
+    bool rival_starter = false;
+};
+
+//  The foe team the story knows by `name` (a battle step's "foe"), if any.
+std::optional<FoeTeam> known_foe_team(std::string_view name);
+
+//  The best of `slots`, 1-based: the most powerful one we know against
+//  `foe`, and on a tie one that is not Normal (an early starter's own
+//  type). Which of the foe's Pokemon is out is not read, so a move counts
+//  as it does against the one that takes it worst; with no foe known every
+//  move counts at its power. A move with no PP left is passed over. A move
+//  whose name was not read is told by what the starters have in its slot
+//  and the PP it has left, which rules out moves with less most PP; one
+//  that might still be either comes after every attack, earliest first.
+size_t choose_move(const std::vector<MoveSlot>& slots, const FoeTeam& foe = {});
 
 //  The names, in the story's language, and PP of the moves on the move
 //  menu `moves` of `screen`.
@@ -59,10 +73,13 @@ void clear_remembered_moves();
 //  Whether the currently cached active move list contains `slug`.
 bool remembered_move_includes(std::string_view slug);
 
-//  The best move on the move menu `moves` of `screen`, 1-based, as
-//  choose_move() picks from the names read in the game's language and the
-//  PP left. Keeps a screenshot of the menu, labelled `label`.
-size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen, const BattleMoveMenuState& moves, const std::string& label);
+//  The best move against `foe` on the move menu `moves` of `screen`,
+//  1-based, as choose_move() picks from the names read in the game's
+//  language and the PP left. Keeps a screenshot of the menu, labelled `label`.
+size_t pick_best_move(
+    VideoStream& stream, const ImageViewRGB32& screen, const BattleMoveMenuState& moves,
+    const FoeTeam& foe, const std::string& label
+);
 
 
 

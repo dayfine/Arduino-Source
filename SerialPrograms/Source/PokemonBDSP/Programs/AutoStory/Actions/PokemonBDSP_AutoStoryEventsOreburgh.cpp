@@ -109,10 +109,12 @@ TopBattle after_battle_at_the_top(VideoStream& stream, ProControllerContext& con
 //  the second tier); their experience helps an under-levelled team, and
 //  after a whiteout they stay beaten. Butters' route goes round them.
 bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
+    const FoeTeam gym_trainer = known_foe_team("oreburgh-gym-trainer").value();
+    const FoeTeam roark = known_foe_team("roark").value();
     // The entry camera pans for about 7.5 s (Butters' reference video).
     context.wait_for(8000ms);
     if (dialogue_opens(stream, context, 3000ms)){
-        if (talk_or_fight(stream, context, "Gym trainer at the entrance") && in_pokemon_center(stream)){
+        if (talk_or_fight(stream, context, "Gym trainer at the entrance", TalkExpect::TALK_OR_BATTLE, BattleFormat::SINGLES, gym_trainer) && in_pokemon_center(stream)){
             return false;
         }
     }
@@ -120,7 +122,7 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
     for (size_t leg = 0; leg < 10; leg++){
         const WalkResult up = walk_until_no_wild(stream, context, {0, 1}, 8000ms, "north up the gym");
         if (up.stop == WalkStop::DIALOG){
-            if (talk_or_fight(stream, context, "Gym trainer") && in_pokemon_center(stream)){
+            if (talk_or_fight(stream, context, "Gym trainer", TalkExpect::TALK_OR_BATTLE, BattleFormat::SINGLES, gym_trainer) && in_pokemon_center(stream)){
                 return false;
             }
             continue;
@@ -137,7 +139,7 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
             // talked"), so the battle is expected.
             //  His badge speech is over when talk_or_fight() returns: the
             //  battle ends with its speeches (confirm_battle_overworld()).
-            if (talk_or_fight(stream, context, "Roark", TalkExpect::BATTLE)){
+            if (talk_or_fight(stream, context, "Roark", TalkExpect::BATTLE, BattleFormat::SINGLES, roark)){
                 const TopBattle top = after_battle_at_the_top(stream, context);
                 if (top != TopBattle::TRAINER){
                     return top == TopBattle::ROARK;
