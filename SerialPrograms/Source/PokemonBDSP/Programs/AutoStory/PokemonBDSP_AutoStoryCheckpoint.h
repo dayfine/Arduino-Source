@@ -83,6 +83,9 @@ struct SceneStepArgs{
 struct BattleStepArgs{
     bool may_lose = false;
     std::string variant = {};
+    //  The foe team the moves are picked against, by its name in
+    //  known_foe_team(); unset when the story does not know it.
+    std::optional<std::string> foe = std::nullopt;
 };
 
 struct AnswerStepArgs{
