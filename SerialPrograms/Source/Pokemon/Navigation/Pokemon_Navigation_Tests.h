@@ -24,6 +24,12 @@
 #include "Grid/Planning/Pokemon_WanderRecovery_Tests.h"
 #include "Grid/Trace/Pokemon_LegTrace_Tests.h"
 #include "Grid/Trace/Pokemon_RouteLog_Tests.h"
+#include "Grid/Walker/Pokemon_LegWalker_Tests.h"
+#include "Simulation/Pokemon_KnownFailing_Tests.h"
+#include "Simulation/Pokemon_SimFaults_Tests.h"
+#include "Simulation/Pokemon_SimGolden_Tests.h"
+#include "Simulation/Pokemon_SimSeeds_Tests.h"
+#include "Simulation/Pokemon_SimSweep_Tests.h"
 
 namespace PokemonAutomation{
 namespace Pokemon{
@@ -43,6 +49,12 @@ inline void add_tests_Navigation(UnitTestDatabase& database){
     add_tests_WanderRecovery(database);
     add_tests_RouteLog(database);
     add_tests_LegTrace(database);
+    add_tests_LegWalker(database);
+    add_tests_KnownFailing(database);
+    add_tests_SimFaults(database);
+    add_tests_SimGolden(database);
+    add_tests_SimSeeds(database);
+    add_tests_SimSweep(database);
 }
 
 
