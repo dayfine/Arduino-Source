@@ -16,6 +16,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <vector>
 #include "Pokemon/AutoStory/Pokemon_CenterVisit.h"
 #include "Pokemon/AutoStory/Pokemon_StoryFailure.h"
@@ -44,25 +45,30 @@ Pokemon::DoorApproachPlan bdsp_door_approach_plan(
     const BdspDoorApproachOptions& options
 );
 
+//  Runs north into the door straight ahead, running with `run`: a Pokemon
+//  Center's door a tile or two away.
+WarpSeen run_into_center_door(bool run, StoryStepIO& io);
+//  Against a building's front wall beside its door: whole D-pad tiles along
+//  the wall to a column one east, one west, two east, then two west of where
+//  we stand, running in with `run_in` from each until one sees the warp, and
+//  back where we stood if none does. D-pad taps move whole tiles where stick
+//  nudges drift (lab-B 2026-11-22 20:41, 20:48).
+WarpSeen sweep_wall_into_door(const std::function<WarpSeen()>& run_in, RouteIO& route);
+
 //  A Pokemon Center visit (Pokemon::run_center_visit()) on a StoryStepIO:
 //  the doors are runs north in and south out, running with `run`, and the
 //  settles are the step IO's, so the inside's fade-in is waited out before
 //  the walk to the nurse (lab-B 2026-11-10, 00.04b). The console and the
-//  simulation give the reads, the lineup and the nurse.
+//  simulation give the reads, the lineup by sight and the nurse. `map` is
+//  the town's: where its lit doorway misleads, the lineup is a wall sweep.
 class BdspCenterVisit : public Pokemon::CenterVisitIO{
 public:
-    BdspCenterVisit(StoryStepIO& io, bool run)
-        : m_io(io)
-        , m_run(run)
-    {}
+    BdspCenterVisit(StoryStepIO& io, bool run, std::string_view map);
 
     virtual WarpSeen walk_in() override{
-        return m_io.run_into_door(
-            Pokemon::Direction::NORTH,
-            m_run,
-            bdsp_door_approach_plan({1, 2}, Pokemon::Direction::NORTH, {.can_run = m_run, .ignore_early_dark = false})
-        );
+        return run_into_center_door(m_run, m_io);
     }
+    virtual void line_up_and_walk_in() override;
     virtual WarpSeen walk_out() override{
         return m_io.run_into_door(
             Pokemon::Direction::SOUTH,
@@ -75,8 +81,12 @@ public:
     }
 
 protected:
+    //  Lines up with the door by what the screen shows of it, and walks in.
+    virtual void line_up_by_sight() = 0;
+
     StoryStepIO& m_io;
     bool m_run;
+    bool m_wall_sweep;
 };
 
 //  Where a leg's taps end, and how many of them moved.
