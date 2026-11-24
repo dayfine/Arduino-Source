@@ -101,7 +101,8 @@ public:
         return m_saw_dialogue;
     }
     virtual bool flee_battle() override{
-        if (m_spec.watch == TalkOverWatch::TRAINER){
+        //  A trainer's battle can't be fled: the talk-over ends on it.
+        if (m_spec.watch == TalkOverWatch::TRAINER || !m_eyes.wild_menu()){
             return false;
         }
         run_from_wild_battle(m_stream, m_context);
