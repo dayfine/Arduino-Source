@@ -485,17 +485,39 @@ WarpSeen run_into_center_door(bool run, StoryStepIO& io){
     );
 }
 
+namespace{
+//  Taps whole tiles east (positive `tiles`) or west, and returns the columns
+//  the taps moved, signed the same way: a wall stops them short.
+int tap_columns(int tiles, const std::string& label, RouteIO& route){
+    if (tiles == 0){
+        return 0;
+    }
+    const WalkResult walked = route.walk_taps(tiles > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(tiles), label);
+    const int moved = (int)walked.moved_chunks;
+    return tiles > 0 ? moved : -moved;
+}
+} // namespace
+
 WarpSeen sweep_wall_into_door(const std::function<WarpSeen()>& run_in, RouteIO& route){
-    //  Taps east (positive) or west to each next column: +1, -1, +2, -2.
-    constexpr int SWEEP_TAPS[] = {1, -2, 3, -4};
-    for (const int taps : SWEEP_TAPS){
-        route.walk_taps(taps > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(taps), "along the wall toward the door");
+    //  The columns to try, east (positive) or west of where we stand. Each
+    //  walk there counts the taps that moved: beside a corner the wall can
+    //  stop them short, and the next column is from where they stopped, not
+    //  where they were meant to (east of Oreburgh's door, the Center's side
+    //  wall stopped the tap east, and the sweep missed the door's column).
+    constexpr int SWEEP_COLUMNS[] = {1, -1, 2, -2};
+    int column = 0;
+    for (const int target : SWEEP_COLUMNS){
+        column += tap_columns(target - column, "along the wall toward the door", route);
+        if (column != target){
+            //  Short of it: the columns on the way were tried already.
+            continue;
+        }
         const WarpSeen seen = run_in();
         if (seen.any()){
             return seen;
         }
     }
-    route.walk_taps(Direction::EAST, /*tiles=*/2, "back to where the wall was met");
+    tap_columns(-column, "back to where the wall was met", route);
     return {};
 }
 

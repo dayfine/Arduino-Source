@@ -51,8 +51,9 @@ WarpSeen run_into_center_door(bool run, StoryStepIO& io);
 //  Against a building's front wall beside its door: whole D-pad tiles along
 //  the wall to a column one east, one west, two east, then two west of where
 //  we stand, running in with `run_in` from each until one sees the warp, and
-//  back where we stood if none does. D-pad taps move whole tiles where stick
-//  nudges drift (lab-B 2026-11-22 20:41, 20:48).
+//  back where we stood if none does. A column the wall keeps the taps from
+//  is skipped. D-pad taps move whole tiles where stick nudges drift (lab-B
+//  2026-11-22 20:41, 20:48).
 WarpSeen sweep_wall_into_door(const std::function<WarpSeen()>& run_in, RouteIO& route);
 
 //  A Pokemon Center visit (Pokemon::run_center_visit()) on a StoryStepIO:
