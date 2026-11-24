@@ -300,6 +300,32 @@ UnitTestResult test_tiles_walked_back(){
 }
 
 
+UnitTestResult test_open_hold_stopped_short(){
+    //  A wall stops the hold two tiles before its shortest end: the hold
+    //  ends at the wall, off the goal.
+    const ToyMap toy({"...#...."});
+    const RouteScore got = score(toy, /*from=*/{{0, 0}}, /*goal=*/{6, 0}, {{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::OPEN_HOLD}});
+    const std::string why = std::format("may end on {}, off the goal", to_string(TilePos{2, 0}));
+    if (got.verdict != RouteVerdict::FAIL || got.why != why){
+        return std::format("{} ({}), expected FAIL ({})", verdict_name(got.verdict), got.why, why);
+    }
+    return true;
+}
+
+UnitTestResult test_wall_leg_without_a_wall(){
+    //  Floor in every direction, as a map whose edges loop round would be.
+    const ScoreMap endless{
+        .step = [](const TilePos& from, Direction direction){ return std::optional<TilePos>(from.next(direction)); },
+        .risk = [](const TilePos&){ return TileRisk::NONE; },
+    };
+    const RouteScore got = score_route(endless, /*from=*/{{0, 0}}, exactly({5, 0}),
+        {{.direction = Direction::EAST, .tiles = 5, .kind = ScoredLegKind::TO_WALL}}, toy_paces(), toy_model());
+    if (got.verdict != RouteVerdict::FAIL || !got.why.contains("meets no wall")){
+        return std::format("{} ({}), expected FAIL: meets no wall", verdict_name(got.verdict), got.why);
+    }
+    return true;
+}
+
 struct RouteScorerCase{
     struct Input{
         UnitTestResult (*test)() = nullptr;
@@ -407,6 +433,16 @@ const RouteScorerCase ROUTE_SCORER_CASES[] = {
         .name = "tiles walked back ignores wall bounce taps",
         .input = {.test = test_tiles_walked_back},
         .expectation = {.description = "0 for wall bounce, 3 for open backtrack"},
+    },
+    {
+        .name = "an open hold stopped short of its shortest end ends at the wall",
+        .input = {.test = test_open_hold_stopped_short},
+        .expectation = {.description = "FAIL: may end on the wall's tile, off the goal"},
+    },
+    {
+        .name = "a hold to a wall that never comes fails",
+        .input = {.test = test_wall_leg_without_a_wall},
+        .expectation = {.description = "FAIL, not an endless walk"},
     },
 };
 
