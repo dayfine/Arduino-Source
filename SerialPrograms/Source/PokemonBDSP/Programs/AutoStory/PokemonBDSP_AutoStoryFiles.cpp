@@ -14,6 +14,7 @@
 #include "Common/Cpp/Json/JsonObject.h"
 #include "Pokemon/AutoStory/Data/Pokemon_StoryCheckpointJson.h"
 #include "Pokemon/AutoStory/Grid/Pokemon_GridStoryArgs.h"
+#include "Actions/PokemonBDSP_AutoStoryBattleMoves.h"
 #include "Actions/PokemonBDSP_AutoStoryEvents.h"
 #include "PokemonBDSP_AutoStoryFiles.h"
 
@@ -192,6 +193,23 @@ std::optional<BdspStepArgs> parse_walk_step_args(std::string_view action, const 
     return std::nullopt;
 }
 
+BattleStepArgs parse_battle_step_args(const JsonObject& args){
+    Pokemon::reject_unknown_keys(args, {"may_lose", "variant", "foe", "pose_after"});
+    BattleStepArgs parsed;
+    parsed.may_lose = read_bool_default(args, "may_lose", false);
+    parsed.variant = read_string_default(args, "variant");
+    if (!is_known_battle_variant(parsed.variant)){
+        throw ParseException(std::format("unknown battle variant \"{}\"", parsed.variant));
+    }
+    if (args.get_value("foe")){
+        parsed.foe = args.get_string_throw("foe");
+        if (!known_foe_team(*parsed.foe)){
+            throw ParseException(std::format("unknown battle foe \"{}\"", *parsed.foe));
+        }
+    }
+    return parsed;
+}
+
 BdspStepArgs parse_action_step_args(std::string_view action, const JsonObject& args){
     if (action == "scene"){
         Pokemon::reject_unknown_keys(args, {"variant", "pose_after"});
@@ -202,14 +220,7 @@ BdspStepArgs parse_action_step_args(std::string_view action, const JsonObject& a
         return SceneStepArgs{.press_a = variant == "a"};
     }
     if (action == "battle"){
-        Pokemon::reject_unknown_keys(args, {"may_lose", "variant", "pose_after"});
-        BattleStepArgs parsed;
-        parsed.may_lose = read_bool_default(args, "may_lose", false);
-        parsed.variant = read_string_default(args, "variant");
-        if (!is_known_battle_variant(parsed.variant)){
-            throw ParseException(std::format("unknown battle variant \"{}\"", parsed.variant));
-        }
-        return parsed;
+        return parse_battle_step_args(args);
     }
     if (action == "answer"){
         Pokemon::reject_unknown_keys(args, {"yes", "pose_after"});

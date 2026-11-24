@@ -10,6 +10,8 @@
 #include <array>
 #include <cctype>
 #include <cmath>
+#include <optional>
+#include <utility>
 #include <string_view>
 #include <vector>
 #include "Common/Cpp/Filesystem/Filesystem.h"
@@ -49,7 +51,7 @@ const KnownMove KNOWN_MOVES[] = {
     {"quick-attack", "normal", 40, 30}, {"headbutt", "normal", 70, 15},
     {"water-gun", "water", 40, 25}, {"bubble", "water", 40, 30}, {"bubble-beam", "water", 65, 20},
     {"ember", "fire", 40, 25}, {"flame-wheel", "fire", 60, 25}, {"mach-punch", "fighting", 40, 30},
-    {"absorb", "grass", 20, 25}, {"razor-leaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
+    {"absorb", "grass", 20, 25}, {"leafage", "grass", 40, 40}, {"razor-leaf", "grass", 55, 25}, {"bite", "dark", 60, 25},
     {"thunder-shock", "electric", 40, 30}, {"spark", "electric", 65, 20},
     {"peck", "flying", 35, 35}, {"pluck", "flying", 60, 20}, {"wing-attack", "flying", 60, 35},
     {"metal-claw", "steel", 50, 35},
@@ -70,11 +72,12 @@ const KnownMove* known_move(std::string_view slug){
 
 //  What each starter has in each slot as BDSP teaches it, learnt in this
 //  order up to level 13: slot 1 is a Normal attack, slot 2 a status move,
-//  slot 3 the starter's own-type attack, slot 4 either.
+//  slot 3 the starter's own-type attack, slot 4 either. BDSP Turtwig learns
+//  Leafage, not Absorb, in slot 3 (lab-B 2026-11-23).
 const std::vector<std::vector<std::string_view>> STARTER_SLOTS = {
     {"tackle", "scratch", "pound"},
     {"withdraw", "leer", "growl"},
-    {"absorb", "ember", "water-gun"},
+    {"leafage", "absorb", "ember", "water-gun"},
     {"razor-leaf", "taunt", "charm"},
 };
 
@@ -110,6 +113,99 @@ const KnownMove* guess_unread_move(size_t slot, int pp){
         }
     }
     return weakest;
+}
+
+//  How the known attacks' types fare against each type, as BDSP (Gen 8)
+//  has it: the types they hit for double, for half and not at all. Every
+//  other pair is 1.
+struct AttackMatchups{
+    std::string_view attack;
+    std::vector<std::string_view> doubled;
+    std::vector<std::string_view> halved;
+    std::vector<std::string_view> immune;
+};
+const AttackMatchups TYPE_CHART[] = {
+    {"normal", {}, {"rock", "steel"}, {"ghost"}},
+    {"fire", {"grass", "ice", "bug", "steel"}, {"fire", "water", "rock", "dragon"}, {}},
+    {"water", {"fire", "ground", "rock"}, {"water", "grass", "dragon"}, {}},
+    {"grass", {"water", "ground", "rock"}, {"fire", "grass", "poison", "flying", "bug", "dragon", "steel"}, {}},
+    {"electric", {"water", "flying"}, {"electric", "grass", "dragon"}, {"ground"}},
+    {"fighting", {"normal", "ice", "rock", "dark", "steel"}, {"poison", "flying", "psychic", "bug", "fairy"}, {"ghost"}},
+    {"flying", {"grass", "fighting", "bug"}, {"electric", "rock", "steel"}, {}},
+    {"dark", {"psychic", "ghost"}, {"fighting", "dark", "fairy"}, {}},
+    {"steel", {"ice", "rock", "fairy"}, {"fire", "water", "electric", "steel"}, {}},
+};
+
+double type_factor(std::string_view attack, std::string_view defend){
+    for (const AttackMatchups& row : TYPE_CHART){
+        if (row.attack != attack){
+            continue;
+        }
+        auto has = [&](const std::vector<std::string_view>& types){
+            return std::find(types.begin(), types.end(), defend) != types.end();
+        };
+        if (has(row.immune)){
+            return 0;
+        }
+        if (has(row.doubled)){
+            return 2;
+        }
+        if (has(row.halved)){
+            return 0.5;
+        }
+        return 1;
+    }
+    return 1;
+}
+
+//  Each starter's own type, and the type of the rival's starter, the one
+//  strong against it.
+const std::pair<std::string_view, std::string_view> RIVAL_STARTER_TYPES[] = {
+    {"grass", "fire"}, {"fire", "water"}, {"water", "grass"},
+};
+
+//  The foe teams the story's battles name. Barry on Route 203 has Starly
+//  and his starter; Roark Geodude, Onix and Cranidos; the trainers in
+//  Roark's gym Geodude and Onix.
+const std::pair<std::string_view, FoeTeam> FOE_TEAMS[] = {
+    {"barry-route-203", {.members = {{"normal", "flying"}}, .rival_starter = true}},
+    {"roark", {.members = {{"rock", "ground"}, {"rock", "ground"}, {"rock"}}}},
+    {"oreburgh-gym-trainer", {.members = {{"rock", "ground"}}}},
+};
+
+//  The foe's Pokemon by their types, the rival's starter told from our
+//  starter's own-type attack among `moves`; left out if we have none.
+std::vector<std::vector<std::string_view>> foe_members(const FoeTeam& foe, const std::vector<const KnownMove*>& moves){
+    std::vector<std::vector<std::string_view>> members = foe.members;
+    if (!foe.rival_starter){
+        return members;
+    }
+    for (const KnownMove* move : moves){
+        if (!move || move->power == 0){
+            continue;
+        }
+        for (const auto& [ours, rivals] : RIVAL_STARTER_TYPES){
+            if (move->type == ours){
+                members.push_back({rivals});
+                return members;
+            }
+        }
+    }
+    return members;
+}
+
+//  How `attack` fares against the one of `members` that takes it worst; 1
+//  with none.
+double worst_factor(std::string_view attack, const std::vector<std::vector<std::string_view>>& members){
+    double worst = 1;
+    for (size_t i = 0; i < members.size(); i++){
+        double factor = 1;
+        for (std::string_view type : members[i]){
+            factor *= type_factor(attack, type);
+        }
+        worst = i == 0 ? factor : std::min(worst, factor);
+    }
+    return worst;
 }
 
 //  Every language's names of the known moves, from the move name dictionary.
@@ -343,19 +439,31 @@ std::string MoveSlot::describe(size_t slot) const{
     return what + ", PP left " + (pp < 0 ? std::string("unread") : std::to_string(pp));
 }
 
-size_t choose_move(const std::vector<MoveSlot>& slots){
+std::optional<FoeTeam> known_foe_team(std::string_view name){
+    for (const auto& [team_name, team] : FOE_TEAMS){
+        if (name == team_name){
+            return team;
+        }
+    }
+    return std::nullopt;
+}
+
+size_t choose_move(const std::vector<MoveSlot>& slots, const FoeTeam& foe){
+    std::vector<const KnownMove*> moves;
+    for (size_t i = 0; i < slots.size(); i++){
+        const KnownMove* known = known_move(slots[i].slug);
+        moves.push_back(known ? known : guess_unread_move(i, slots[i].pp));
+    }
+    const std::vector<std::vector<std::string_view>> members = foe_members(foe, moves);
     size_t best = 0;
-    int best_score = -1;
+    double best_score = -1;
     for (size_t i = 0; i < slots.size(); i++){
         // A move with no PP left cannot be chosen; the game says so and
         // keeps the menu up.
         if (slots[i].pp == 0){
             continue;
         }
-        const KnownMove* known = known_move(slots[i].slug);
-        if (!known){
-            known = guess_unread_move(i, slots[i].pp);
-        }
+        const KnownMove* known = moves[i];
         // A move that might be either counts below any attack known for
         // sure, and an earlier one first: slot 1 is an attack for every
         // starter. Prefer starter STAB over tied Normal, keep Electric tied
@@ -363,8 +471,8 @@ size_t choose_move(const std::vector<MoveSlot>& slots){
         // Ground-type Oreburgh foes, and prefer Fighting (Mach Punch) over
         // Fire (Ember).
         const std::string_view type = known ? std::string_view(known->type) : std::string_view{};
-        const int score = known
-            ? known->power * 2
+        const double score = known
+            ? known->power * worst_factor(type, members) * 2
                 + (type != "normal" && type != "electric" ? 1 : 0)
                 + (type == "fighting" ? 1 : 0)
             : 1;
@@ -388,8 +496,10 @@ std::vector<MoveSlot> read_move_menu(const ImageViewRGB32& screen, const BattleM
     return slots;
 }
 
-size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
-    const BattleMoveMenuState& moves, const std::string& label){
+size_t pick_best_move(
+    VideoStream& stream, const ImageViewRGB32& screen, const BattleMoveMenuState& moves,
+    const FoeTeam& foe, const std::string& label
+){
     // Keep the menu as it looked, to check the reads against.
     const std::string folder = SCREENSHOTS_PATH() + "AutoStory/moves/";
     Filesystem::create_directories(Filesystem::Path(folder));
@@ -399,7 +509,7 @@ size_t pick_best_move(VideoStream& stream, const ImageViewRGB32& screen,
     for (size_t i = 0; i < slots.size(); i++){
         stream.log("[" + label + "] Move " + std::to_string(i + 1) + ": " + slots[i].describe(i) + ".");
     }
-    const size_t best = choose_move(slots);
+    const size_t best = choose_move(slots, foe);
     stream.log("[" + label + "] Best move: " + std::to_string(best) + ".");
     return best;
 }

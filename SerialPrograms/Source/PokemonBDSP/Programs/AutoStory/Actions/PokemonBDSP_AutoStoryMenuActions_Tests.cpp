@@ -813,6 +813,10 @@ UnitTestResult test_choose_move(Logger&){
         {"Growl unread, Tackle read", {{"", 40}, {"tackle", 35}}, 2},
         {"Scratch, Leer, Ember and Mach Punch", {{"scratch", 35}, {"leer", 30}, {"ember", 25}, {"mach-punch", 30}}, 4},
         {"Shinx Tackle beats Thunder Shock", {{"tackle", 35}, {"leer", 30}, {"thunder-shock", 30}, {"charge", 20}}, 1},
+        //  BDSP Turtwig has Leafage in slot 3 (lab-B 2026-11-23, French: unread,
+        //  Tackle only, six losses to Roark).
+        {"Turtwig Tackle, Withdraw and Leafage", {{"tackle", 35}, {"withdraw", 40}, {"leafage", 40}}, 3},
+        {"Turtwig Leafage unread at 40 PP", {{"tackle", 35}, {"withdraw", 40}, {"", 40}}, 3},
     };
     for (const Case& c : cases){
         const size_t best = choose_move(c.slots);
@@ -825,6 +829,31 @@ UnitTestResult test_choose_move(Logger&){
     apply_remembered_moves(shinx, cache);
     if (!shinx[2].slug.empty() || !shinx[3].slug.empty()){
         return "Switching active Pokemon must clear stale unread move cache slots.";
+    }
+    return true;
+}
+
+//  Against a foe the story knows, a move counts as it does against the foe's
+//  Pokemon that takes it worst.
+struct ChooseMoveAgainstFoeCase{
+    std::string_view name;
+    struct Input{ std::vector<MoveSlot> slots; std::string_view foe; } input;
+    size_t best;
+};
+const ChooseMoveAgainstFoeCase CHOOSE_MOVE_AGAINST_FOE_CASES[] = {
+    //  Leafage into Barry's Starly and Chimchar every turn, 87% to 4% HP
+    //  (lab-B 2026-11-23, run 8, German).
+    {"Turtwig against Barry: Tackle", {{{"tackle", 35}, {"withdraw", 40}, {"leafage", 40}}, "barry-route-203"}, 1},
+    {"Piplup against Barry: Pound", {{{"pound", 35}, {"growl", 40}, {"water-gun", 25}}, "barry-route-203"}, 1},
+    //  Leafage is what Turtwig needs against Roark's Rock types (#813).
+    {"Turtwig against Roark: Leafage", {{{"tackle", 35}, {"withdraw", 40}, {"leafage", 40}}, "roark"}, 3},
+};
+UnitTestResult test_choose_move_against_foe(Logger&){
+    for (const ChooseMoveAgainstFoeCase& c : CHOOSE_MOVE_AGAINST_FOE_CASES){
+        const size_t best = choose_move(c.input.slots, known_foe_team(c.input.foe).value_or(FoeTeam{}));
+        if (best != c.best){
+            return std::format("{}: picked move {}, expected {}.", c.name, best, c.best);
+        }
     }
     return true;
 }
@@ -930,6 +959,7 @@ const AutoStoryActionsCase AUTO_STORY_ACTIONS_CASES[] = {
     {.name = "Pokemon Center inside: Oreburgh's counter, exit mat and doorstep", .input = {test_pokemon_center_counter}, .expectation = {}},
     {.name = "Jubilife School lamp", .input = {test_school_lamp}, .expectation = {}},
     {.name = "battle moves: the pick from names and PP", .input = {test_choose_move}, .expectation = {}},
+    {.name = "battle moves: the pick against a known foe", .input = {test_choose_move_against_foe}, .expectation = {}},
     {.name = "battle moves: unreadable menu reads nothing", .input = {test_move_menu_unreadable}, .expectation = {}},
     {.name = "battle moves: move menu screenshots in each language", .input = {test_move_menu_screenshots}, .expectation = {}},
 };
