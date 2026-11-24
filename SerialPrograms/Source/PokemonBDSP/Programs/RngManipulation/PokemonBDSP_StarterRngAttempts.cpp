@@ -507,6 +507,19 @@ std::string recover_lake_session(
     return {};
 }
 
+//  The aim's measured correction plus what this language's scene spends
+//  beyond the timeline.
+int64_t starter_bias(SingleSwitchProgramEnvironment& env, Language language, const RngAim& aim){
+    const int64_t language_advances = starter_scene_extra_advances(language);
+    if (language_advances != 0){
+        env.log(std::format(
+            "This language's starter scene spends {} advance(s) more than the timeline; aiming that much further on.",
+            language_advances
+        ), COLOR_BLUE);
+    }
+    return aim.bias() + language_advances;
+}
+
 TargetSelectionResult find_starter_target(
     SingleSwitchProgramEnvironment& env,
     const StarterRngSettings& settings,
@@ -535,7 +548,7 @@ TargetSelectionResult find_starter_target(
     search.pokemon = target_info.pokemon;
     search.npcs = recovery.clock.npcs;
     search.tick_seconds = recovery.clock.tick_seconds;
-    search.bias = aim.bias();
+    search.bias = starter_bias(env, settings.language, aim);
     search.first_press = recovery.clock.advance_at(current_time()) + lead_advances;
     search.window_advances = (uint64_t)(
         (double)settings.max_target_wait_minutes * 60 * recovery.clock.npcs / recovery.clock.tick_seconds

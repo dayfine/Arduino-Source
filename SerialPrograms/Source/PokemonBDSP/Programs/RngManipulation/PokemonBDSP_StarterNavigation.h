@@ -99,6 +99,10 @@ struct StarterSceneDurations{
     static StarterSceneDurations measured(Language language);
 };
 
+//  Advances the starter scene spends, in this language, beyond what the
+//  starter timeline counts. Added to the aim.
+int64_t starter_scene_extra_advances(Language language);
+
 
 } // namespace PokemonBDSP
 } // namespace NintendoSwitch

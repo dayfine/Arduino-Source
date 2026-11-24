@@ -412,6 +412,20 @@ StarterSceneDurations StarterSceneDurations::measured(Language language){
     };
 }
 
+//  German loses the first selecting press every time (4 of 4 attempts on
+//  console B, 2026-11-23), so its scene differs from the others before the
+//  Yes/No box, and both German attempts that got past the box landed late by
+//  9 and 10 with the confirming press on its scheduled time. The other
+//  languages land 1 late, which the aim's own calibration covers.
+int64_t starter_scene_extra_advances(Language language){
+    switch (language){
+    case Language::German:
+        return 9;
+    default:
+        return 0;
+    }
+}
+
 
 
 
