@@ -5,6 +5,7 @@
  */
 
 #include <algorithm>
+#include <cstdlib>
 #include <format>
 #include <iterator>
 #include <utility>
@@ -474,6 +475,77 @@ Pokemon::DoorApproachPlan bdsp_door_approach_plan(
         .dark_from_share = options.ignore_early_dark ? DOOR_DARK_FROM_SHARE : 0.0,
     };
     return Pokemon::plan_door_approach(tile_distances, timing);
+}
+
+WarpSeen run_into_center_door(bool run, StoryStepIO& io){
+    return io.run_into_door(
+        Direction::NORTH,
+        run,
+        bdsp_door_approach_plan(/*tile_distances=*/{1, 2}, Direction::NORTH, {.can_run = run, .ignore_early_dark = false})
+    );
+}
+
+namespace{
+//  Taps whole tiles east (positive `tiles`) or west, and returns the columns
+//  the taps moved, signed the same way: a wall stops them short.
+int tap_columns(int tiles, const std::string& label, RouteIO& route){
+    if (tiles == 0){
+        return 0;
+    }
+    const WalkResult walked = route.walk_taps(tiles > 0 ? Direction::EAST : Direction::WEST, (size_t)std::abs(tiles), label);
+    const int moved = (int)walked.moved_chunks;
+    return tiles > 0 ? moved : -moved;
+}
+} // namespace
+
+WarpSeen sweep_wall_into_door(const std::function<WarpSeen()>& run_in, RouteIO& route){
+    //  The columns to try, east (positive) or west of where we stand. Each
+    //  walk there counts the taps that moved: beside a corner the wall can
+    //  stop them short, and the next column is from where they stopped, not
+    //  where they were meant to (east of Oreburgh's door, the Center's side
+    //  wall stopped the tap east, and the sweep missed the door's column).
+    constexpr int SWEEP_COLUMNS[] = {1, -1, 2, -2};
+    int column = 0;
+    for (const int target : SWEEP_COLUMNS){
+        column += tap_columns(target - column, "along the wall toward the door", route);
+        if (column != target){
+            //  Short of it: the columns on the way were tried already.
+            continue;
+        }
+        const WarpSeen seen = run_in();
+        if (seen.any()){
+            return seen;
+        }
+    }
+    tap_columns(-column, "back to where the wall was met", route);
+    return {};
+}
+
+namespace{
+//  Pokemon Centers whose lit doorway misleads the lineup by sight: in
+//  afternoon sun, Oreburgh's sunlit roof and side walls read as lit doorway
+//  pixels and its shaded door glass does not, so the lineup walked Dawn a
+//  column west of the door into the wall (lab-B 2026-11-22 19:35, 2026-11-23
+//  19:57 and 20:04).
+bool center_door_by_wall_sweep(std::string_view map){
+    return map == "OreburghCity";
+}
+} // namespace
+
+BdspCenterVisit::BdspCenterVisit(StoryStepIO& io, bool run, std::string_view map)
+    : m_io(io)
+    , m_run(run)
+    , m_wall_sweep(center_door_by_wall_sweep(map))
+{}
+
+void BdspCenterVisit::line_up_and_walk_in(){
+    if (!m_wall_sweep){
+        line_up_by_sight();
+        return;
+    }
+    sweep_wall_into_door([this]{
+        return walk_in();
+    }, m_io.route());
 }
 
 namespace{

@@ -17,14 +17,18 @@
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Data/PokemonBDSP_AutoStoryMaps.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryIndoors.h"
+#include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryRouteInput.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryRouteWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryWalk.h"
 #include "PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryWalkResult.h"
 #include "PokemonBDSP_AutoStoryBattle.h"
 #include "PokemonBDSP_AutoStoryBattleMoves.h"
 #include "PokemonBDSP_AutoStoryCenter.h"
+#include "PokemonBDSP_AutoStoryLitDoorway.h"
 #include "PokemonBDSP_AutoStoryMenuActions.h"
 #include "PokemonBDSP_AutoStoryTalks.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryStepIO.h"
+#include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryWalkSteps.h"
 #include "PokemonBDSP/Programs/AutoStory/PokemonBDSP_AutoStoryWalks.h"
 #include "PokemonBDSP_AutoStoryWildBattle.h"
 #include "PokemonBDSP_AutoStoryEvents.h"
@@ -62,16 +66,44 @@ void oreburgh_street_to_gym(VideoStream& stream, ProControllerContext& context){
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
     }
-    //  The gym's wall stopped us: try the column west, then the one east.
-    dpad_tiles(stream, context, DPAD_LEFT, 1, "a column west of the gym's door");
-    if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
-        return;
+    //  The gym's wall stopped us. Taps that moved while a passer-by changed
+    //  the view can go uncounted and overshoot west (lab-B 2026-11-22 22:08:
+    //  three uncounted taps left us 3 columns west of the door), so sweep
+    //  east a column at a time first, then the column west of the start.
+    for (size_t east = 1; east <= 4; east++){
+        dpad_tiles(stream, context, DPAD_RIGHT, 1, "a column east toward the gym's door");
+        if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
+            return;
+        }
     }
-    dpad_tiles(stream, context, DPAD_RIGHT, 2, "a column east of the gym's door");
+    dpad_tiles(stream, context, DPAD_LEFT, 5, "a column west of the gym's door");
     if (dpad_through_door_north(stream, context, "Oreburgh Gym door")){
         return;
     }
     fail_step(stream, "Oreburgh: no column near the gym's door went in.");
+}
+
+enum class TopBattle{ ROARK, TRAINER, WHITEOUT };
+
+//  After a battle won from A on a blocked walk north. The entrance trainer
+//  can stand in the middle column and answer A too: a two-turn battle there
+//  was taken for Roark, and the run went on with no badge, so Jubilife's
+//  Galactic scene never came (lab-B 2026-11-22 22:23). Roark stands at the
+//  top: past him nothing walks on.
+TopBattle after_battle_at_the_top(VideoStream& stream, ProControllerContext& context){
+    if (in_pokemon_center(stream)){
+        return TopBattle::WHITEOUT;
+    }
+    const WalkResult beyond = walk_until_no_wild(stream, context, {0, 1}, 2000ms, "north past that battle");
+    if (beyond.stop == WalkStop::BLOCKED && beyond.moved_chunks <= 1){
+        return TopBattle::ROARK;
+    }
+    stream.log("[01.04] Walked on past that battle: a gym trainer, not Roark.", COLOR_ORANGE);
+    const FoeTeam gym_trainer = known_foe_team("oreburgh-gym-trainer").value();
+    if (beyond.stop == WalkStop::DIALOG && talk_or_fight(stream, context, "Gym trainer", TalkExpect::TALK_OR_BATTLE, BattleFormat::SINGLES, gym_trainer) && in_pokemon_center(stream)){
+        return TopBattle::WHITEOUT;
+    }
+    return TopBattle::TRAINER;
 }
 
 //  Inside the Oreburgh Gym: straight up the middle, fighting the trainers
@@ -112,7 +144,10 @@ bool oreburgh_gym_battles(VideoStream& stream, ProControllerContext& context){
             //  His badge speech is over when talk_or_fight() returns: the
             //  battle ends with its speeches (confirm_battle_overworld()).
             if (talk_or_fight(stream, context, "Roark", TalkExpect::BATTLE, BattleFormat::SINGLES, roark)){
-                return !in_pokemon_center(stream);
+                const TopBattle top = after_battle_at_the_top(stream, context);
+                if (top != TopBattle::TRAINER){
+                    return top == TopBattle::ROARK;
+                }
             }
             continue;
         }
@@ -127,7 +162,7 @@ constexpr Milliseconds MINE_PACE_STEP_HOLD = 400ms;
 constexpr Milliseconds MINE_PACE_STEP_WAIT = 400ms;
 constexpr Milliseconds MINE_ENCOUNTER_TIMEOUT = 120s;
 constexpr Milliseconds MINE_BATTLE_MENU_WAIT = 20s;
-constexpr Milliseconds MINE_COLUMN_WALK_LIMIT = 15000ms;
+constexpr Milliseconds MINE_COLUMN_WALK_LIMIT = 25000ms;
 constexpr Milliseconds MINE_CAVERN_STEP_HOLD = 1500ms;
 constexpr size_t MINE_TRAINING_BATTLES = 3;
 constexpr size_t MINE_MAX_PREP_TRIPS = 6;
@@ -164,23 +199,50 @@ void pace_for_mine_encounter(VideoStream& stream, ProControllerContext& context,
 
 //  Walks north out of OreburghMineB1F back up column 46/47 to Oreburgh
 //  Pokemon Center, heals, and returns to the Center doorstep (47, 21).
+//  Avoids find_lit_doorway() / enter_lit_door(): in afternoon sun, Oreburgh
+//  Center's sunlit left roof corner matches lit_doorway_pixel() while the
+//  shaded door glass does not, walking Dawn west off (47, 21) into the wall
+//  (lab-B 2026-11-22 19:35).
 void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& context){
-    //  Walk straight north across any mine floor warps until we either enter
-    //  Oreburgh Center directly (column 47) or hit its south wall at (46, 21).
     const JoystickPosition north_stick{0, 1};
-    for (size_t legs = 0; legs < 6; legs++){
-        const WalkResult north = walk_until(stream, context, run_from_wild_battle, north_stick, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center");
-        if (north.stop == WalkStop::TRANSITION){
-            confirm_battle_overworld(stream, context, "north transition to Oreburgh Center");
+    ConsoleStoryStepIO io(stream, context);
+    for (size_t legs = 0; legs < 12; legs++){
+        const WalkResult north = walk_until(stream, context, run_from_wild_battle, north_stick, MINE_COLUMN_WALK_LIMIT, "north to Oreburgh Center",
+            [](const ImageViewRGB32& screen){ return pokemon_center_inside(screen); });
+        if (north.stop == WalkStop::TRANSITION || north.stop == WalkStop::ARRIVED){
+            if (north.stop == WalkStop::TRANSITION){
+                confirm_battle_overworld(stream, context, "north transition to Oreburgh Center");
+            }else{
+                pbf_wait(context, 2000ms);
+            }
             if (in_pokemon_center(stream)){
                 heal_inside_pokemon_center(stream, context, "Oreburgh");
                 return;
             }
             continue;
         }
-        if (north.stop == WalkStop::BLOCKED){
-            dpad_tiles(stream, context, DPAD_RIGHT, 1, "below Oreburgh Center door");
-            heal_at_pokemon_center(stream, context, "Oreburgh");
+        if (north.stop != WalkStop::BLOCKED){
+            continue;
+        }
+        if (in_pokemon_center(stream)){
+            heal_inside_pokemon_center(stream, context, "Oreburgh");
+            return;
+        }
+        //  Stopped after walking: the Center's front, or the Hiker in the
+        //  street; the next walk tells which.
+        if (north.moved_chunks > 1){
+            continue;
+        }
+        //  Against the Center's front but not in its door: up column 46 from
+        //  the mine, or slid off it grazing the Hiker (lab-B 2026-11-22 20:41,
+        //  20:48). The same wall sweep as 01.03's heal.
+        sweep_wall_into_door([&]{
+            route_turn(stream, context, Pokemon::Direction::NORTH);
+            return run_into_center_door(/*run=*/false, io);
+        }, io.route());
+        pbf_wait(context, 2000ms);
+        if (in_pokemon_center(stream)){
+            heal_inside_pokemon_center(stream, context, "Oreburgh");
             return;
         }
     }
@@ -194,7 +256,7 @@ void exit_mine_to_oreburgh_center(VideoStream& stream, ProControllerContext& con
 bool train_in_oreburgh_mine(VideoStream& stream, ProControllerContext& context, size_t battles){
     stream.log(std::format("[Oreburgh Mine] Training (up to {} wild battles).", battles), COLOR_BLUE);
     dpad_tiles(stream, context, DPAD_LEFT, 1, "column 46 to Oreburgh Mine");
-    const WalkResult enter = walk_until_no_wild(stream, context, {0, -1}, MINE_COLUMN_WALK_LIMIT, "south into Oreburgh Mine");
+    const WalkResult enter = walk_until(stream, context, run_from_wild_battle, {0, -1}, MINE_COLUMN_WALK_LIMIT, "south into Oreburgh Mine");
     if (enter.stop != WalkStop::TRANSITION){
         fail_step(stream, "Oreburgh Mine training: did not enter Oreburgh Mine.");
     }
