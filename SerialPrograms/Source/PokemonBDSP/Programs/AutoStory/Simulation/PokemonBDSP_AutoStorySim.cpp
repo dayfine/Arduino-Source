@@ -616,7 +616,7 @@ Pokemon::ScreenLook SimExecutor::look(bool fresh){
         out.log.record({ScreenEvent::DIALOG_BOX, ScreenEvent::PLAYER_CAN_MOVE}, start + 33ms);
     }
     if (m_battle_opening){
-        out.log.record({ScreenEvent::FADE_WHITE}, start + 33ms);
+        out.log.record({m_trainer_battle ? ScreenEvent::FADE_BLACK : ScreenEvent::FADE_WHITE}, start + 33ms);
         m_opening_looks = fresh ? 1 : m_opening_looks + 1;
         if (m_opening_looks >= OPENING_LOOKS){
             out.log.record({ScreenEvent::BATTLE_STARTED}, start + BETWEEN_STEPS_LOOK - 33ms);
@@ -632,18 +632,29 @@ StoryInterruptActions SimExecutor::sim_interrupt_actions(){
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
             m_dialog_up = false;
             m_sim.end_dialogue();
+            if (std::exchange(m_trainer_lines, false)){
+                m_logger.log(std::format("[{}] {}: the trainer's battle opens.", m_row, m_step));
+                m_battle_opening = m_trainer_battle = true;
+                m_opening_looks = 0;
+            }
             return std::nullopt;
         };
     };
     const auto battled = [this](std::string_view what){
         return [this, what](const Pokemon::InterruptVerdict&) -> std::optional<StoryFailure>{
             m_logger.log(std::format("[{}] {}: {} cleared before it.", m_row, m_step, what));
-            m_battle_opening = false;
+            m_battle_opening = m_trainer_battle = false;
             return std::nullopt;
         };
     };
+    const auto flee = battled("a wild battle");
     return StoryInterruptActions{
-        .wild = battled("a wild battle"),
+        .wild = [this, flee](const Pokemon::InterruptVerdict& verdict) -> std::optional<StoryFailure>{
+            if (m_trainer_battle){
+                return StoryFailure{.code = "flee", .detail = std::format("{}: a trainer's battle can't be fled", m_step)};
+            }
+            return flee(verdict);
+        },
         .trainer = battled("a trainer's battle"),
         .dialog = cleared("a dialog"),
         .warp = cleared("a warp"),
@@ -658,6 +669,10 @@ void SimExecutor::show_before(const BdspStep& step){
     m_battle_opening = m_knobs.battle_opening_before && m_knobs.battle_opening_before(m_row, step.name);
     if (m_battle_opening){
         m_logger.log(std::format("[{}] {}: a battle's opening is still playing before it.", m_row, step.name));
+    }
+    if (m_knobs.trainer_lines_before && m_knobs.trainer_lines_before(m_row, step.name)){
+        m_dialog_up = m_dialog_rose = m_trainer_lines = true;
+        m_logger.log(std::format("[{}] {}: a trainer's lines pop up before it.", m_row, step.name));
     }
 }
 
@@ -712,6 +727,9 @@ std::optional<StoryFailure> SimExecutor::run_sim_step(
         }
         m_dialog_up = false;
     }
+    if (walks && m_battle_opening){
+        return StoryFailure{.code = "battle", .detail = std::format("{}: a battle is up", step.name)};
+    }
     return run_action();
 }
 
@@ -757,7 +775,7 @@ std::optional<StoryFailure> SimExecutor::wrap_step(
     }catch (const GridSimFailure& e){
         failure = StoryFailure{.code = "sim_failure", .detail = e.message};
     }
-    m_battle_opening = false;
+    m_battle_opening = m_trainer_battle = m_trainer_lines = false;
     m_astray |= std::exchange(m_misses.slid, false);
     const std::string mismatch = !failure && !m_passed_over ? check(step, state.pose, pose_expected) : "";
     if (!mismatch.empty()){

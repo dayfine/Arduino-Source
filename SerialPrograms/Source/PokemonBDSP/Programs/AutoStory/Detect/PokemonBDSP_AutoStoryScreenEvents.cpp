@@ -36,11 +36,13 @@ ScreenEvents BdspScreenObserver::observe(const VideoSnapshot& frame, WallClock n
     if (!frame){
         m_previous = VideoSnapshot();
         m_player_still = false;
+        m_wild_shown = false;
         return out;
     }
     const ImageViewRGB32& screen = *frame.frame;
-    out.set(ScreenEvent::BATTLE_STARTED, m_wild_menu.detect(screen) || (m_cue == BattleCue::TRAINER &&
-        (m_trainer_menu.detect(screen) || m_black.detect(screen))));
+    m_wild_shown = m_wild_menu.detect(screen);
+    out.set(ScreenEvent::BATTLE_STARTED, m_wild_shown || m_trainer_menu.detect(screen) ||
+        (m_cue == BattleCue::TRAINER && m_black.detect(screen)));
     out.set(ScreenEvent::DIALOG_BOX, m_dialog.detect(screen));
     out.set(ScreenEvent::PLAYER_CAN_MOVE, m_overworld.detect(screen));
     out.set(ScreenEvent::SCREEN_STILL, m_previous && walk_screen_change(*m_previous.frame, screen) < WALK_TAP_BLOCKED_CHANGE);
