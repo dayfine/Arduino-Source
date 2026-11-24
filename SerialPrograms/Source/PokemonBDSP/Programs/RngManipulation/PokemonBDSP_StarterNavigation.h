@@ -89,7 +89,9 @@ bool issue_starter_sequence(
 //  Mash A until the battle with the wild Starly is over.
 bool clear_starter_battle(SingleSwitchProgramEnvironment& env, ProControllerContext& context);
 
-double seconds_to_move_to_starter(BdspStarter starter);
+//  From the Starly press until the hand over the briefcase is on `starter`,
+//  ready for the selecting press.
+double seconds_to_move_to_starter(BdspStarter starter, Language language);
 
 struct StarterSceneDurations{
     double briefcase_to_starly_ready = 0;
@@ -99,9 +101,9 @@ struct StarterSceneDurations{
     static StarterSceneDurations measured(Language language);
 };
 
-//  Advances the starter scene spends, in this language, beyond what the
-//  starter timeline counts. Added to the aim.
-int64_t starter_scene_extra_advances(Language language);
+//  The starter timeline with the advances this language's briefcase lines
+//  spend on top of the English scene.
+BdspTimelineContext starter_scene_timeline(BdspTimelineContext timeline, Language language);
 
 
 } // namespace PokemonBDSP
