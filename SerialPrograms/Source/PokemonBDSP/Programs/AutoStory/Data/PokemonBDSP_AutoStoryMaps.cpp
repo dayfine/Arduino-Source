@@ -7,7 +7,7 @@
 #include <format>
 #include <map>
 #include "Common/Cpp/Exceptions.h"
-#include "Common/Cpp/Json/JsonValue.h"
+#include "Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader.h"
 #include "PokemonBDSP_AutoStoryMaps.h"
 
 namespace PokemonAutomation{
@@ -21,17 +21,7 @@ using Pokemon::TilePos;
 namespace{
 
 const std::map<std::string, MapData, std::less<>>& story_maps_by_name(){
-    static const std::map<std::string, MapData, std::less<>> maps = []{
-        std::map<std::string, MapData, std::less<>> parsed;
-        for (const auto& [name, json] : bdsp_map_json()){
-            MapData map = Pokemon::parse_map(parse_json(json), name + ".json");
-            if (map.name != name){
-                throw ParseException(std::format("{}.json: name is \"{}\".", name, map.name));
-            }
-            parsed.emplace(name, std::move(map));
-        }
-        return parsed;
-    }();
+    static const std::map<std::string, MapData, std::less<>> maps = Pokemon::load_embedded_map_pack(bdsp_map_json());
     return maps;
 }
 
@@ -47,27 +37,11 @@ const MapData& story_map(std::string_view name){
 }
 
 TilePos map_point(std::string_view map, std::string_view point){
-    const MapData& data = story_map(map);
-    if (auto iter = data.points.find(std::string(point)); iter != data.points.end()){
-        return iter->second;
-    }
-    throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("{} has no point \"{}\".", map, point));
+    return Pokemon::require_map_point(story_map(map), point);
 }
 
 std::vector<TilePos> map_region(std::string_view map, std::string_view region){
-    const MapData& data = story_map(map);
-    std::vector<TilePos> tiles;
-    while (true){
-        const auto iter = data.points.find(std::format("{}.{}", region, tiles.size() + 1));
-        if (iter == data.points.end()){
-            break;
-        }
-        tiles.push_back(iter->second);
-    }
-    if (tiles.empty()){
-        throw InternalProgramError(nullptr, PA_CURRENT_FUNCTION, std::format("{} has no region \"{}\".", map, region));
-    }
-    return tiles;
+    return Pokemon::require_numbered_map_region(story_map(map), region);
 }
 
 
