@@ -111,7 +111,7 @@ void BlinkSampleLog::decision(
         for (const BlinkEvent& event : streams[w]){
             events += std::format(
                 "{}{:.4f}:{}", events.empty() ? "" : ",",
-                offset + event.seconds, event.type == BlinkType::Double ? 'D' : 'S'
+                offset + event.seconds, !event.type ? '?' : *event.type == BlinkType::Double ? 'D' : 'S'
             );
         }
         write(std::format("events\t{:.3f}\t{}\t{}\n", now, w, events));
