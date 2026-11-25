@@ -727,6 +727,12 @@ UnitTestResult test_planned_battle_items(Logger&){
     if (other.choice != TurnChoice::BATTLE_ITEM || red.turn(GREEN).choice != TurnChoice::MOVE || red_supplies.other_counts.at("x-special") != 5){
         return "Expected no item after the bag's row read as another item.";
     }
+    red_supplies.potions = 3;
+    red_supplies.counts_read = false;
+    BattleDecisions trainer_lose(red_supplies, BattleKind::TRAINER_LOSE);
+    if (trainer_lose.turn(RED).choice != TurnChoice::MOVE || battle_needs_bag_read(red_supplies, BattleKind::TRAINER_LOSE)){
+        return "Expected TRAINER_LOSE to attack without healing or reading the bag.";
+    }
     return true;
 }
 

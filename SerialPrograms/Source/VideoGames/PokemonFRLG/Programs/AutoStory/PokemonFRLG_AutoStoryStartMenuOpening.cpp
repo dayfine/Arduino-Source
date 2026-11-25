@@ -11,6 +11,7 @@
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryStepInterrupts.h"
 #include "PokemonFRLG_AutoStoryStartMenuOpening.h"
 
@@ -62,7 +63,7 @@ StartOpenScreen read_start_open_screen(const Pokemon::ScreenSettle& settle, cons
     if (settle.showing.has(ScreenEvent::DIALOG_BOX) || settle.showing.has(ScreenEvent::CHOICE_BOX)){
         return StartOpenScreen::BOX;
     }
-    if (quiet_overworld(settle, START_QUIET)){
+    if (quiet_overworld(settle, scale_emulator_duration(START_QUIET))){
         return StartOpenScreen::QUIET_OVERWORLD;
     }
     return StartOpenScreen::SETTLING;
@@ -87,7 +88,7 @@ bool press_start(ConsoleHandle& console, ProControllerContext& context){
 void open_start_menu_settled(ConsoleHandle& console, ProControllerContext& context){
     ConsoleScreenLook eyes(console, context);
     StartMenuOpening opening;
-    const WallClock deadline = current_time() + START_OPEN_TIMEOUT;
+    const WallClock deadline = current_time() + scale_emulator_duration(START_OPEN_TIMEOUT);
     while (current_time() < deadline){
         const Pokemon::ScreenSettle settle = wait_for_quiet_overworld(
             [&eyes](bool fresh){ return eyes.look(fresh); }, START_QUIET, START_SETTLE_TIMEOUT

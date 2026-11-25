@@ -498,8 +498,12 @@ UnitTestResult test_foe_rows(){
         return "Expected the row to read.";
     }
     const std::optional<std::vector<FoeThreat>> charging = foe_threats_of({{125, 194, 182, 396, 198, 0, 0, 0, 1}});
-    if (!charging || charging->size() != 1 || !(*charging)[0].charges || (*charging)[0].phazes){
+    if (!charging || charging->size() != 1 || !(*charging)[0].charges || (*charging)[0].phazes || (*charging)[0].priority){
         return "Expected a row of 9 to read as a foe whose hit charges a turn first.";
+    }
+    const std::optional<std::vector<FoeThreat>> priority = foe_threats_of({{139, 45, 45, 92, 46, 0, 0, 1, 0, 1}});
+    if (!priority || priority->size() != 1 || !(*priority)[0].phazes || (*priority)[0].charges || !(*priority)[0].priority){
+        return "Expected a row of 10 to read as a foe with a priority move.";
     }
     if (battle_policy_kind("goal-based-setup") != BattlePolicyKind::GOAL_BASED_SETUP || battle_policy_kind("x")){
         return "Expected the policy words to read.";
@@ -786,6 +790,8 @@ const LeagueTurnCase LEAGUE_TURN_CASES[] = {
     {"Lorelei's Dewgong at +0: X Special", {"20.01", "lorelei", 0, 0, 165}, {"x-special", ""}},
     {"the Champion's Pidgeot (Whirlwind): no X item", {"20.05", "champion", 0, 0, 165}, {"", ""}},
     {"the Champion's Arcanine (Roar): no X item", {"20.05", "champion", 4, 0, 165}, {"", ""}},
+    {"the Champion's Arcanine (Extreme Speed, HP 18 <= 46): full-restore", {"20.05", "champion", 4, 2, 18}, {"full-restore", ""}},
+    {"the Champion's Arcanine (Extreme Speed, HP 165 > 46): attack", {"20.05", "champion", 4, 2, 165}, {"", ""}},
 };
 
 UnitTestResult test_league_turns(){

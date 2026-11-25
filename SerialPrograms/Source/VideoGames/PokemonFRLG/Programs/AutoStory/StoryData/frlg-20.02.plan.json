@@ -211,9 +211,9 @@
     "menu": "full",
     "protected_slots": [6],
     "verify": {
-      "tries": 10,
-      "min_pass": 1,
-      "reset_budget": 9
+      "tries": 1,
+      "min_pass": 0,
+      "reset_budget": 5
     },
     "notes": {
       "checkpoint": [

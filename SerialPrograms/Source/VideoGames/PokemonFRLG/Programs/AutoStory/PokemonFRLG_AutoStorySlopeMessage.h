@@ -31,7 +31,7 @@ public:
     //  As WhiteDialogWatcher holds its dialog.
     static constexpr Milliseconds HOLD = Milliseconds(250);
 
-    bool opened(bool shows, WallClock now){
+    bool opened(bool shows, WallClock now, Milliseconds hold = HOLD){
         if (!shows){
             m_clear_seen = true;
             m_since.reset();
@@ -43,7 +43,7 @@ public:
         if (!m_since){
             m_since = now;
         }
-        return now - *m_since >= HOLD;
+        return now - *m_since >= hold;
     }
 
 private:

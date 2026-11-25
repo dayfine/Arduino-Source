@@ -146,9 +146,10 @@ std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vect
     constexpr size_t COLUMNS = 7;
     constexpr size_t WITH_PHAZES = 8;
     constexpr size_t WITH_CHARGES = 9;
+    constexpr size_t WITH_PRIORITY = 10;
     std::vector<FoeThreat> foes;
     for (const std::vector<int64_t>& row : rows){
-        if (row.size() < COLUMNS || row.size() > WITH_CHARGES){
+        if (row.size() < COLUMNS || row.size() > WITH_PRIORITY){
             return std::nullopt;
         }
         foes.push_back(FoeThreat{
@@ -160,7 +161,8 @@ std::optional<std::vector<FoeThreat>> foe_threats_of(const std::vector<std::vect
             .lowers_accuracy = row[5] != 0,
             .explodes = row[6] != 0,
             .phazes = row.size() >= WITH_PHAZES && row[7] != 0,
-            .charges = row.size() == WITH_CHARGES && row[8] != 0,
+            .charges = row.size() >= WITH_CHARGES && row[8] != 0,
+            .priority = row.size() == WITH_PRIORITY && row[9] != 0,
         });
     }
     return foes;
@@ -665,8 +667,12 @@ PolicyState::Turn PolicyState::choose_budgeted(const Supplies& supplies, const P
     return Turn{.item = std::move(choice.item), .move = std::move(choice.move)};
 }
 
-std::optional<PolicyState::Choice> PolicyState::row_sure_ko(const Supplies& supplies, const PolicyView& view, const Danger&) const{
+std::optional<PolicyState::Choice> PolicyState::row_sure_ko(const Supplies& supplies, const PolicyView& view, const Danger& danger) const{
     if (!sure_ko_first(supplies, view)){
+        return std::nullopt;
+    }
+    const FoeThreat* threat = foe(view);
+    if (threat != nullptr && threat->priority && view.hp <= danger.normal_max){
         return std::nullopt;
     }
     if (strength_kos(supplies, view)){

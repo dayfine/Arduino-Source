@@ -451,28 +451,37 @@ bool ConsoleTeachScreens::open_bag(){
 }
 
 bool ConsoleTeachScreens::talk_to_tutor(){
-    try{
-        //  A talks, pages through its lines and says YES, the top row.
-        answer_yes_no(m_console, m_context, true, BUTTON_A, 30000ms);
-        answer_yes_no(m_console, m_context, true, BUTTON_A, 15000ms);
-    }catch (OperationFailedException& e){
-        m_console.log("Teach: " + e.message(), COLOR_RED);
-        return false;
-    }
-    //  "Which POKEMON wants to learn it?": FRLG has no advance arrow on the
-    //  final dialog line before the party menu, so press A on an advance arrow
-    //  or once a plain white dialog has stayed still past video lag.
+    //  Talk to the tutor, answer YES to all prompts (offer, "can only be
+    //  learned once"), and advance through the final white dialog ("Which
+    //  POKEMON wants to learn it?") until the party menu opens. Checking
+    //  PARTY_PROMPT first ensures we never press A on the party menu itself.
+    pbf_press_button(m_context, BUTTON_A, 160ms, 300ms);
     size_t dialog_still = 0;
-    for (size_t c = 0; c < 50; c++){
+    size_t quiet_looks = 0;
+    for (size_t c = 0; c < 150; c++){
         m_context.wait_for_all_requests();
         VideoSnapshot snapshot = m_console.video().snapshot();
-        if (snapshot && read_teach_screen(snapshot) == TeachScreen::PARTY_PROMPT){
+        if (!snapshot){
+            pbf_wait(m_context, 300ms);
+            continue;
+        }
+        if (read_teach_screen(snapshot) == TeachScreen::PARTY_PROMPT){
             return true;
         }
-        if (snapshot && AdvanceWhiteDialogDetector(COLOR_RED).detect(snapshot)){
+        if (const std::optional<bool> on_yes = yes_no_cursor(snapshot)){
             dialog_still = 0;
+            quiet_looks = 0;
+            m_console.log("Answering YES.");
+            if (!*on_yes){
+                pbf_press_dpad(m_context, DPAD_UP, 160ms, 200ms);
+            }
+            pbf_press_button(m_context, BUTTON_A, 160ms, 500ms);
+        }else if (AdvanceWhiteDialogDetector(COLOR_RED).detect(snapshot)){
+            dialog_still = 0;
+            quiet_looks = 0;
             pbf_press_button(m_context, BUTTON_A, 160ms, 240ms);
-        }else if (snapshot && WhiteDialogDetector(COLOR_RED).detect(snapshot)){
+        }else if (WhiteDialogDetector(COLOR_RED).detect(snapshot)){
+            quiet_looks = 0;
             dialog_still++;
             if (dialog_still >= 2){
                 dialog_still = 0;
@@ -482,7 +491,13 @@ bool ConsoleTeachScreens::talk_to_tutor(){
             }
         }else{
             dialog_still = 0;
-            pbf_wait(m_context, 300ms);
+            quiet_looks++;
+            if (quiet_looks >= 12){
+                quiet_looks = 0;
+                pbf_press_button(m_context, BUTTON_A, 160ms, 300ms);
+            }else{
+                pbf_wait(m_context, 300ms);
+            }
         }
     }
     return false;

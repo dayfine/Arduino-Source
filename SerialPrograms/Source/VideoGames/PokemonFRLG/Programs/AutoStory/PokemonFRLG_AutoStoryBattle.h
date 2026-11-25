@@ -52,7 +52,12 @@ enum class BattleKind{
     WILD_RUN,       //  RUN, or fight after a few "Can't escape!"
     WILD_FIGHT,     //  fight for EXP with green HP, no status and 2 Potions, else RUN
     TRAINER,
+    TRAINER_LOSE,   //  trainer battle meant to be lost (no healing, switching, or bag reads)
 };
+
+inline bool is_trainer_battle(BattleKind kind){
+    return kind == BattleKind::TRAINER || kind == BattleKind::TRAINER_LOSE;
+}
 
 //  Terminal state of a battle encounter.
 enum class BattleEnd{

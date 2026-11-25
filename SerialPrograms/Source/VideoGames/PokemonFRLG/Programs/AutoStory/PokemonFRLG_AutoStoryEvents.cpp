@@ -4,10 +4,12 @@
  *
  */
 
+#include <cstdlib>
 #include <format>
 #include <memory>
 #include <set>
 #include "Common/Cpp/Exceptions.h"
+#include "Common/Cpp/Filesystem/Filesystem.h"
 #include "CommonFramework/Exceptions/OperationFailedException.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
@@ -35,6 +37,7 @@
 #include "PokemonFRLG_AutoStoryBoulderPresses.h"
 #include "PokemonFRLG_AutoStoryBoulders.h"
 #include "PokemonFRLG_AutoStoryGameArgs.h"
+#include "PokemonFRLG_AutoStoryHealing.h"
 #include "PokemonFRLG_AutoStoryHealingSteps.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
 #include "PokemonFRLG_AutoStoryLegs.h"
@@ -124,9 +127,7 @@ WallCheck wall_check(const StoryEnv& env){
 }
 
 OpenLegCheck open_leg_check(){
-    return GameSettings::instance().DEVICE == GameSettings::Device::GbaEmulator
-        ? OpenLegCheck::TRUST
-        : OpenLegCheck::REANCHOR;
+    return OpenLegCheck::REANCHOR;
 }
 
 //  On GbaEmulator with a known start tile, open legs have exact timing, so
@@ -136,6 +137,7 @@ const RouteCosts& precise_story_route_costs(){
         RouteCosts costs = story_route_costs();
         costs[RouteCost::OPEN_STOP] = 0;
         costs[RouteCost::OPEN_WILD_STOP] = 0;
+        costs[RouteCost::OPEN_CONNECTION_STOP] = 60;
         return costs;
     }();
     return COSTS;
@@ -305,6 +307,9 @@ Outcome battle(StoryEnv& env, const StoryStep& step){
     if (end != BattleEnd::WON && (end != BattleEnd::LOST || !arg<bool>(step, "may_lose"))){
         return Pokemon::outcome_failed(end == BattleEnd::LOST ? "blackout" : end == BattleEnd::ROARED ? "league_roar_reset" : "league_early_reset");
     }
+    if (arg<bool>(step, "no_overworld_after")){
+        return Pokemon::outcome_ok();
+    }
     mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
     //  A trainer's script can go on after the battle, its black while the
     //  game takes the trainer away taking no input: east_of_silph_scope's
@@ -349,7 +354,6 @@ const RouteCosts& story_route_costs(){
         RouteCosts costs = default_route_costs();
         costs[RouteCost::SURF] = -1;
         costs[RouteCost::LINE_TILE] = 100;
-        costs[RouteCost::OPEN_CHECK] = 0;
         return costs;
     }();
     return COSTS;
@@ -513,6 +517,7 @@ bool grind_heal_trip(StoryEnv& env, RunState& state, const StoryStep& step, cons
     state.pose = to_pose(*here);
     StoryStep walk;
     walk.kind = StoryStepKind::ROUTE;
+    walk.action = "run";
     walk.name = step.name + "_to_nurse";
     walk.args = {{"target", *nurse}, {"fight_wild", false}};
     if (!walked(env, state, walk)){
@@ -535,6 +540,7 @@ void pace_trainer_battle(StoryEnv& env, RunState& state, const StoryStep& step, 
     walk.kind = StoryStepKind::ROUTE;
     walk.name = step.name + "_back_after_trainer";
     walk.args["target"] = Pokemon::GridPose{patch.map, Pokemon::tiles_of(patch), Pokemon::facing_of(patch)};
+    walk.args["fight_wild"] = false;
     if (!walked(env, state, walk)){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
@@ -612,7 +618,7 @@ Outcome push_boulder(StoryEnv& env, RunState& state, const StoryStep& step){
             return Pokemon::outcome_failed("boulder_push", *failure);
         }
     }
-    ConsoleBoulderPresses presses(env.console, env.context, env.player_gender);
+    ConsoleBoulderPresses presses(env.console, env.context, env.player_gender, &env.supplies, env.language);
     return boulder_push_outcome(step, story_maps(), push_boulder_tiles(direction, tiles, presses), state);
 }
 
@@ -680,7 +686,7 @@ Outcome nugget_farm(StoryEnv& env, RunState& state, const StoryStep& step){
     if (!nurse_pose){
         return Pokemon::outcome_failed("bad_nurse", Pokemon::to_string(nurse_input));
     }
-    const Pokemon::GridPose approach{"Route24", {TilePos{11, 16}}, Direction::NORTH};
+    const Pokemon::GridPose approach{"Route24", {TilePos{11, 15}}, Direction::NORTH};
     for (int64_t i = 0; i < count; i++){
         StoryStep walk;
         walk.kind = StoryStepKind::ROUTE;
@@ -694,12 +700,11 @@ Outcome nugget_farm(StoryEnv& env, RunState& state, const StoryStep& step){
         if (advance_text(env.console, env.context, BATTLE_TEXT_TIMEOUT, true) != TextEnd::BATTLE){
             return Pokemon::outcome_failed("no_battle");
         }
-        const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER, env.checks, env.language);
+        const BattleEnd end = fight_battle(env.console, env.context, env.supplies, BattleKind::TRAINER_LOSE, env.checks, env.language);
         end_trainer_battle(env.supplies);
         if (end != BattleEnd::LOST){
             return Pokemon::outcome_failed("nugget_farm_not_lost");
         }
-        mash_until_overworld(env.console, env.context, SCENE_TIMEOUT);
         wait_out_battle_exit(env.console, env.context);
         healed_by_nurse(env.supplies);
         state.pose = to_pose(*nurse_pose);
@@ -1013,6 +1018,42 @@ std::optional<Pokemon::Pose> checked_start_pose(const StoryCheckpoint& data){
     return data.live_start ? std::nullopt : start_pose(data);
 }
 
+void copy_mgba_checkpoint_save(ConsoleHandle& console, const std::string& checkpoint_id){
+    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator){
+        return;
+    }
+    const char* link = std::getenv("PA_MGBA_LINK");
+    if (link == nullptr || std::string_view(link) != "1"){
+        return;
+    }
+    const char* save_env = std::getenv("PA_MGBA_SAVE_FILE");
+    if (save_env == nullptr || save_env[0] == '\0'){
+        return;
+    }
+    const std::string src(save_env);
+    if (!Filesystem::exists(src)){
+        return;
+    }
+    const size_t slash = src.find_last_of("/\\");
+    const std::string parent = slash == std::string::npos ? "." : src.substr(0, slash);
+    const std::string filename = slash == std::string::npos ? src : src.substr(slash + 1);
+    const char* dir_env = std::getenv("PA_MGBA_CHECKPOINT_SAVES_DIR");
+    const std::string saves_dir = (dir_env != nullptr && dir_env[0] != '\0')
+        ? std::string(dir_env)
+        : (parent + "/saves");
+    const std::string dst = saves_dir + "/" + filename + "." + checkpoint_id;
+    try{
+        Filesystem::create_directories(saves_dir);
+        if (Filesystem::exists(dst)){
+            Filesystem::remove(dst);
+        }
+        Filesystem::copy_file(src, dst);
+        console.log("Saved mGBA checkpoint copy: " + dst);
+    }catch (const std::exception& e){
+        console.log(std::string("Warning: failed to copy mGBA checkpoint save: ") + e.what(), COLOR_ORANGE);
+    }
+}
+
 Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor& executor){
     executor.set_menu(data.menu);
     StoryEnv& env = executor.env();
@@ -1029,6 +1070,21 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     env.start_map = data.start ? Pokemon::grid_pose_of(*data.start).map : "";
     env.checkpoint = data.id;
     env.start_menu = data.menu;
+    if (data.poison_survival){
+        const PoisonSurvivalPostcondition cond = *data.poison_survival;
+        checkpoint.events.push_back(Pokemon::Event{
+            .name = "postcondition_poison_survival",
+            .act = [&env, cond](Pokemon::RunState&){
+                const Pokemon::Outcome outcome = check_poison_survival(cond.steps, cond.max_hp, env.supplies);
+                if (outcome.succeeded()){
+                    env.console.log("[Postcondition] poison_survival: passed.");
+                }else{
+                    env.console.log("[Postcondition] " + Pokemon::to_string(outcome), COLOR_RED);
+                }
+                return outcome;
+            },
+        });
+    }
     //  The Hall of Fame saves the game itself, so it is the row's save: a
     //  verify phase 1 try, which never saves, ends at the Champion's win
     //  before it (console B, 2026-11-17: the win's 60 s wait for a START
@@ -1038,9 +1094,10 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
     ){
         Pokemon::Act hall = std::move(checkpoint.events.back().act);
         checkpoint.events.pop_back();
-        checkpoint.save = [&env, hall = std::move(hall)](RunState& state) mutable{
+        checkpoint.save = [&env, hall = std::move(hall), id = data.id](RunState& state) mutable{
             const Pokemon::Outcome saved = hall(state);
             if (saved.succeeded()){
+                copy_mgba_checkpoint_save(env.console, id);
                 env.has_save = true;
                 env.saved_supplies = env.supplies;
             }
@@ -1055,6 +1112,7 @@ Pokemon::Checkpoint build_checkpoint(const StoryCheckpoint& data, StoryExecutor&
                 return save_end_error(end_map, place);
             });
             keep_next_start_frame(env, id);
+            copy_mgba_checkpoint_save(env.console, id);
             env.has_save = true;
             env.saved_supplies = env.supplies;
             env.saved_field_moves.save(env.party.users());

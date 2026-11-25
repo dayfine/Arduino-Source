@@ -247,7 +247,7 @@ std::vector<LeagueFight> league_fights(){
             {159, 70, 64, 144, 72, 0, 0},   //  Alakazam
             {70, 0, 8, 183, 91, 0, 0},      //  Rhydon
             {118, 44, 43, 96, 48, 0, 0},    //  Gyarados
-            {139, 45, 45, 92, 46, 0, 0, 1}, //  Arcanine (Roar)
+            {139, 45, 45, 92, 46, 0, 0, 1, 0, 1},  //  Arcanine (Roar, Extreme Speed)
             {125, 194, 182, 396, 198, 0, 0, 0, 1},  //  Venusaur (Solar Beam charges a turn)
         }},
     };

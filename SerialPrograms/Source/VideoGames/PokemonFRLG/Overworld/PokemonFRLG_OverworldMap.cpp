@@ -213,18 +213,6 @@ const MapObject* stationary_object_at(const MapData& map, const TilePos& point){
     return nullptr;
 }
 
-const MapObject* wander_object_at(const MapData& map, const TilePos& point){
-    for (const MapObject& object : map.objects){
-        if (object.wander
-            && object.wander->x0 <= point.x && point.x <= object.wander->x1
-            && object.wander->y0 <= point.y && point.y <= object.wander->y1
-        ){
-            return &object;
-        }
-    }
-    return nullptr;
-}
-
 bool trainer_may_see(const MapData& map, const MapObject& object, const TilePos& tile){
     if (!object.trainer){
         return false;

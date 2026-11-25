@@ -49,9 +49,35 @@
         "action": "mart",
         "args": {
           "map": "CeladonCity_DepartmentStore_5F",
-          "items": [{"item": "x-accuracy", "quantity": 2}]
+          "items": [{"item": "x-accuracy", "quantity": 4}],
+          "fill_to": 4,
+          "if_affordable": true
         },
-        "why": "2 X Accuracies (950 each, 1,900) for the Route 22 rival and the League (user's decision 2026-11-15, from the shopping audit): PokeGuy's bag holds xaccuracy x5 at the Silph rival, x4 at Silph's Giovanni, Sabrina and the Route 22 rival, and x3 at Lorelei (PokemonSimulation docs/battles/pokeguy-conditions.md); 10.01 bought 5, and the C policy's X Accuracies in the Silph and Saffron fights may leave fewer. Only Celadon's 5F sells them, so after Sabrina (18.02b) and before 17.02's Fly to Viridian, the last point before the rival where Saffron's Fly reaches it with one detour. Bought blind after Silph's Giovanni and Sabrina's prizes; a short purse fails the step here, early in the row"
+        "why": "top up X Accuracies to 4 (950 each) for the Route 22 rival and the League (Lorelei entry contract wants 3; 10.01 bought 5, and Silph/Saffron may spend some)"
+      },
+      {
+        "id": "buy_guard_specs",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "CeladonCity_DepartmentStore_5F",
+          "items": [{"item": "guard-spec", "quantity": 2}],
+          "fill_to": 2,
+          "if_affordable": true
+        },
+        "why": "top up Guard Specs to 2 (700 each) for Lorelei's entry contract in case earlier fights spent them"
+      },
+      {
+        "id": "buy_x_speeds",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {
+          "map": "CeladonCity_DepartmentStore_5F",
+          "items": [{"item": "x-speed", "quantity": 6}],
+          "fill_to": 6,
+          "if_affordable": true
+        },
+        "why": "top up X Speeds to 6 (350 each) for Route 22 rival and Lorelei's entry contract (wants 5)"
       },
       {
         "id": "below_5f_lift",

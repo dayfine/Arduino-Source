@@ -14,6 +14,10 @@
 #include "PokemonFRLG_MovementMechanics.h"
 #include "PokemonFRLG_OverworldReanchor.h"
 #include "PokemonFRLG_OverworldResume.h"
+#include "PokemonFRLG_OverworldSpin.h"
+#include "PokemonFRLG_OverworldTileRules.h"
+#include "PokemonFRLG_OverworldTiles.h"
+#include "PokemonFRLG_OverworldWildTiles.h"
 #include "PokemonFRLG_OverworldRecovery.h"
 
 namespace PokemonAutomation{
@@ -914,6 +918,10 @@ private:
         const bool last = std::all_of(m_plan.begin() + (std::ptrdiff_t)m_next, m_plan.end(), [](const RouteStep& next){
             return next.action == RouteAction::FACE;
         });
+        const bool next_spin = !last && is_slide(m_plan[m_next]);
+        if (!next_spin && !open_leg_needs_reanchor(*maps(), *start, step)){
+            return;
+        }
         const bool water_chain = !last && open_water_chain(step, m_plan[m_next]);
         if (!(last || is_wall_hold(m_plan[m_next]) || is_slide(m_plan[m_next]) || water_chain)){
             return;
@@ -1084,6 +1092,48 @@ private:
 };
 
 } // namespace
+
+bool open_leg_needs_reanchor(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteStep& step
+){
+    if (step.wild || step.surfing || step.lands_after > 0 || step.spin_tiles
+        || !step.connection_steps.empty() || step.end.map != start.map
+    ){
+        return true;
+    }
+    const auto map_it = std::find_if(maps.begin(), maps.end(), [&](const MapData& map){
+        return map.name == start.map;
+    });
+    if (map_it == maps.end()){
+        return true;
+    }
+    const std::vector<MapPosition> tiles = leg_tiles(maps, start, step);
+    if (tiles.size() < (size_t)(step.tiles + 1)){
+        return true;
+    }
+    for (size_t i = 0; i < tiles.size(); i++){
+        const MapPosition& tile = tiles[i];
+        if (tile.map != start.map){
+            return true;
+        }
+        const TileKind kind = tile_at(*map_it, tile.point);
+        const bool entered_warp = i > 0 && (warp_at(*map_it, tile.point) != nullptr || kind == TileKind::DOOR);
+        if (is_tall_grass(*map_it, tile.point)
+            || is_water(*map_it, tile.point)
+            || is_ledge(*map_it, tile.point)
+            || entered_warp
+            || spin_direction(*map_it, tile.point).has_value()
+            || stops_spinning(*map_it, tile.point)
+            || kind == TileKind::FALL_HOLE
+            || kind == TileKind::STRENGTH_BUTTON
+        ){
+            return true;
+        }
+    }
+    return false;
+}
 
 WalkedTiles walked_before_warp(const RouteStep& step){
     return WalkedTiles{.min = 1, .max = step.tiles - 1};

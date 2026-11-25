@@ -304,6 +304,22 @@ const PolicyCase POLICY_CASES[] = {
             .foe = venusaur(), .foe_party_alive = 1, .bag = without(BAG, "elixir")}, .fight = "champion"},
         .expectation = {.pick = "blizzard"},
     },
+    {
+        .name = "Champion Arcanine Extreme Speed at 18 HP: ko_heal instead of sure_ko",
+        .input = {.state = {
+            .own = blastoise_at({.bite = rolls(30, 36), .strength = rolls(25, 30), .surf = rolls(220, 260), .blizzard = rolls(95, 112)}, CHAMPION_PP, {.spa = 2, .speed = 1, .accuracy = 2, .hp = 18}),
+            .foe = {.species = "arcanine", .slot = 4, .hp = 199, .max_hp = 199, .speed = 139, .moves = {{.id = "extreme-speed", .pp = 5, .accuracy = 1.0, .damage = rolls(39, 46), .priority = 1}}},
+            .foe_party_alive = 1, .bag = BAG}, .fight = "champion"},
+        .expectation = {.row = "ko_heal"},
+    },
+    {
+        .name = "Champion Arcanine Extreme Speed at 121 HP: sure_ko Surf",
+        .input = {.state = {
+            .own = blastoise_at({.bite = rolls(30, 36), .strength = rolls(25, 30), .surf = rolls(220, 260), .blizzard = rolls(95, 112)}, CHAMPION_PP, {.spa = 2, .speed = 1, .accuracy = 2, .hp = 121}),
+            .foe = {.species = "arcanine", .slot = 4, .hp = 199, .max_hp = 199, .speed = 139, .moves = {{.id = "extreme-speed", .pp = 5, .accuracy = 1.0, .damage = rolls(39, 46), .priority = 1}}},
+            .foe_party_alive = 1, .bag = BAG}, .fight = "champion"},
+        .expectation = {.row = "sure_ko", .pick = "surf"},
+    },
 };
 
 

@@ -15,6 +15,7 @@
 #include "CommonFramework/ImageTypes/ImageRGB32.h"
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementMechanics.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "PokemonFRLG_AutoStoryActions.h"
 #include "PokemonFRLG_AutoStoryFieldMoves.h"
 #include "PokemonFRLG_AutoStoryHideout.h"
@@ -139,6 +140,8 @@ Pokemon::StoryInterrupts step_interrupts(Pokemon::ScreenLookFunction look, const
             out.handlers.starts_on(step, kind);
         }
     }
+    out.handlers.starts_on(StoryStepKind::MASH, InterruptKind::WARP);
+    out.handlers.starts_on(StoryStepKind::MASH, InterruptKind::UNSETTLED);
     return out;
 }
 
@@ -156,7 +159,7 @@ Pokemon::ScreenLook ConsoleScreenLook::look(bool fresh){
         m_watcher.reset();
         m_start = current_time();
     }
-    wait_until(m_stream, m_context, BETWEEN_STEPS_LOOK, {m_watcher});
+    wait_until(m_stream, m_context, scale_emulator_duration(BETWEEN_STEPS_LOOK), {m_watcher});
     return {.log = m_watcher.log(), .window = {.start = m_start, .end = current_time()}};
 }
 
@@ -168,13 +171,15 @@ bool quiet_overworld(const Pokemon::ScreenSettle& settle, Milliseconds quiet){
 Pokemon::ScreenSettle wait_for_quiet_overworld(
     const Pokemon::ScreenLookFunction& look, Milliseconds quiet, Milliseconds timeout
 ){
+    const Milliseconds scaled_quiet = scale_emulator_duration(quiet);
+    const Milliseconds scaled_timeout = scale_emulator_duration(timeout);
     Pokemon::ScreenLook seen = look(true);
     Pokemon::ScreenSettle settle = Pokemon::judge_settle(seen);
     //  Each look takes about BETWEEN_STEPS_LOOK; the cap also ends a look
     //  that takes no time.
     const size_t max_looks = (size_t)(timeout / BETWEEN_STEPS_LOOK) + 1;
-    for (size_t looks = 1; looks < max_looks && !quiet_overworld(settle, quiet); looks++){
-        if (seen.window.end - seen.window.start >= timeout){
+    for (size_t looks = 1; looks < max_looks && !quiet_overworld(settle, scaled_quiet); looks++){
+        if (seen.window.end - seen.window.start >= scaled_timeout){
             break;
         }
         seen = look(false);

@@ -11,9 +11,9 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "VermilionCity", "tiles": [[14, 10]]}
+          "target": {"map": "VermilionCity", "tiles": [[22, 7]]}
         },
-        "why": "out of the Center, down to the water (14, 10): off Oak's aide's row 7"
+        "why": "out of the Center, east along row 7 to (22, 7) north of the wandering old man and west of Oak's aide"
       },
       {
         "id": "beside_chairman",
@@ -68,13 +68,22 @@
         "why": "onto Jeff's row (11, 33), west to the wall (7, 33), up to (7, 31), east along row 31 to the wall (16, 31), up column 16 to the ledge (16, 12): out of Isabelle's and Elijah's lines"
       },
       {
+        "id": "cerulean_south_hedge",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[29, 33]]}
+        },
+        "why": "the Underground Path north, up Route 5's side into Cerulean to the hedge wall (29, 33) so the long north leg cannot under-walk onto the fence row"
+      },
+      {
         "id": "below_cerulean_tree",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "CeruleanCity", "tiles": [[26, 33]], "facing": "north"}
         },
-        "why": "the Underground Path north, up Route 5's side into Cerulean, below the tree (26, 32)"
+        "why": "west along the hedge row to below the cuttable tree (26, 32)"
       },
       {
         "id": "cut_cerulean_tree",
@@ -105,6 +114,12 @@
         "kind": "scene",
         "declared_after": {"map": "CeruleanCity_BikeShop", "tiles": [[7, 3]], "facing": "east"},
         "why": "the voucher exchanged for a BICYCLE"
+      },
+      {
+        "id": "register_bike",
+        "kind": "game_action",
+        "action": "register_bike",
+        "why": "register the BICYCLE for SELECT right away so a missing Bicycle fails early in 07.01"
       },
       {
         "id": "mart_clerk",

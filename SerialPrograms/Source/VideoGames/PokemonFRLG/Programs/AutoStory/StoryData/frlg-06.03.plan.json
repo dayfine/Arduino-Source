@@ -12,7 +12,7 @@
         "action": "grind_check",
         "args": {
           "slot": 1,
-          "level": 31,
+          "level": 29,
           "encounters": 150,
           "pace": "east",
           "heal_every": 0
@@ -24,20 +24,10 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "Route6", "tiles": [[11, 34]], "facing": "north"}
+          "target": {"map": "Route6", "tiles": [[15, 30]], "facing": "east"}
         },
         "skip_if": ["ready_for_surge"],
-        "why": "out of the Center, north out of the city onto Route 6's path, below Jeff's row"
-      },
-      {
-        "id": "round_isabelle_line",
-        "kind": "legs",
-        "action": "run",
-        "args": {
-          "legs": [{"direction": "north", "tiles": 1}, {"direction": "west", "tiles": 4}, {"direction": "north", "tiles": 2}, {"direction": "east", "tiles": 5}, {"direction": "east", "tiles": 1}]
-        },
-        "skip_if": ["ready_for_surge"],
-        "why": "onto Jeff's row (11, 33), west to the wall (7, 33), up to (7, 31), east along row 31 to (12, 31) and a step onto the grass, (13, 31): out of Isabelle's line"
+        "why": "out of the Center, north onto Route 6's south grass patch (15, 30)"
       },
       {
         "id": "grind_for_surge",
@@ -45,7 +35,7 @@
         "action": "grind",
         "args": {
           "slot": 1,
-          "level": 32,
+          "level": 29,
           "encounters": 150,
           "pace": "east",
           "heal_every": 0,
@@ -53,42 +43,6 @@
         },
         "skip_if": ["ready_for_surge"],
         "why": "wild battles until the lead is Lv31, where it outspeeds Lt. Surge's Raichu (m73 lost at Lv29); the nurse when hurt or low on PP"
-      },
-      {
-        "id": "west_on_row_31",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "Route6", "tiles": [[7, 31]]}
-        },
-        "skip_if": ["ready_for_surge"],
-        "why": "west along row 31, out of the grass, to the wall (7, 31)"
-      },
-      {
-        "id": "down_to_jeff_row",
-        "kind": "legs",
-        "action": "run",
-        "args": {
-          "legs": [{"direction": "south", "tiles": 2}, {"direction": "east", "tiles": 4}]
-        },
-        "skip_if": ["ready_for_surge"],
-        "why": "down to the wall (7, 33), east along Jeff's row to (11, 33): out of Isabelle's line"
-      },
-      {
-        "id": "vermilion_nurse",
-        "kind": "route",
-        "action": "run",
-        "args": {
-          "target": {"map": "VermilionCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
-        },
-        "skip_if": ["ready_for_surge"],
-        "why": "south into the city to the Pokemon Center"
-      },
-      {
-        "id": "heal_vermilion",
-        "kind": "heal",
-        "skip_if": ["ready_for_surge"],
-        "why": "full HP"
       },
       {
         "id": "above_gym_tree",

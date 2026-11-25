@@ -4,14 +4,32 @@
   "checkpoint": {
     "id": "20.01a",
     "title": "Indigo Plateau: the Magikarp from BOX 1, Full Restores before the Elite Four",
-    "start": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[13, 12]], "facing": "north"},
+    "start": {
+      "map": "IndigoPlateau_PokemonCenter_1F",
+      "tiles": [
+        [
+          13,
+          12
+        ]
+      ],
+      "facing": "north"
+    },
     "events": [
       {
         "id": "indigo_pc_front",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[17, 10]], "facing": "north"}
+          "target": {
+            "map": "IndigoPlateau_PokemonCenter_1F",
+            "tiles": [
+              [
+                17,
+                10
+              ]
+            ],
+            "facing": "north"
+          }
         },
         "why": "from the nurse to below the PC (17, 9), right of her counter, facing it"
       },
@@ -23,7 +41,8 @@
           "do": "withdraw",
           "species": "magikarp",
           "box": 1,
-          "protect": true
+          "protect": true,
+          "if_present": true
         },
         "why": "the shiny Magikarp (Gift RNG at 00.12b, put in BOX 1 at 04.04) rides into the League with the team for the Hall of Fame (user, 2026-11-16): WITHDRAW, found by reading each cell's species in BOX 1. protect: its party slot is never sent into a battle. A full party refuses the withdrawal and stops the row: which member goes to the box is the user's call"
       },
@@ -32,7 +51,16 @@
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[2, 7]], "facing": "west"}
+          "target": {
+            "map": "IndigoPlateau_PokemonCenter_1F",
+            "tiles": [
+              [
+                2,
+                7
+              ]
+            ],
+            "facing": "west"
+          }
         },
         "why": "from the PC across the lobby to the Mart's counter, facing the clerk (0, 7) across it (1, 7)"
       },
@@ -42,7 +70,12 @@
         "action": "mart",
         "args": {
           "map": "IndigoPlateau_PokemonCenter_1F",
-          "items": [{"item": "full-restore", "quantity": 13}],
+          "items": [
+            {
+              "item": "full-restore",
+              "quantity": 13
+            }
+          ],
           "fill_to": 13,
           "if_affordable": true
         },
@@ -54,7 +87,12 @@
         "action": "mart",
         "args": {
           "map": "IndigoPlateau_PokemonCenter_1F",
-          "items": [{"item": "full-heal", "quantity": 4}],
+          "items": [
+            {
+              "item": "full-heal",
+              "quantity": 4
+            }
+          ],
           "if_affordable": true
         },
         "why": "4 Full Heals (600 each; with the 2 from earlier rows, the League plan's 6: two each for Lorelei's Lapras and Agatha's Hypnosis, one each for Lance and the Champion; user, 2026-11-16) at the same counter after the Full Restores, only if the money left covers them (user's decision 2026-11-15: keep the Full Restores at 13 and their money check; the Full Heals are extra): not in PokeGuy's bag at Lorelei (PokemonSimulation docs/battles/pokeguy-conditions.md, lorelei: antidote x1 and parlyzheal x2 only, which 19.01a buys): they cure the sleep and freeze those don't without spending a Full Restore. if_affordable: a refused buy, or a quantity box that can't reach 2, is skipped with a log line and the row goes on. The console buys blind (no money reader), so there the skip is the game's refusal dialog passed by the presses, not a read"
@@ -74,7 +112,16 @@
   "metadata": {
     "phase": "testing",
     "postconditions": {
-      "position": {"map": "IndigoPlateau_PokemonCenter_1F", "tiles": [[2, 7]], "facing": "west"}
+      "position": {
+        "map": "IndigoPlateau_PokemonCenter_1F",
+        "tiles": [
+          [
+            2,
+            7
+          ]
+        ],
+        "facing": "west"
+      }
     }
   }
 }

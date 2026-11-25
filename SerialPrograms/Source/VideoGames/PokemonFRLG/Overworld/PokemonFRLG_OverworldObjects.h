@@ -17,6 +17,7 @@
 #include <vector>
 #include "Pokemon/Navigation/Pokemon_Grid.h"
 #include "Pokemon/Navigation/Pokemon_MapData.h"
+#include "Pokemon/Navigation/Pokemon_WanderRules.h"
 #include "PokemonFRLG_OverworldTileRules.h"
 
 namespace PokemonAutomation{
@@ -31,7 +32,7 @@ const MapObject* object_at(const MapData& map, const TilePos& point);
 const MapObject* stationary_object_at(const MapData& map, const TilePos& point);
 
 //  A wandering object whose wander box contains this tile.
-const MapObject* wander_object_at(const MapData& map, const TilePos& point);
+using Pokemon::wander_object_at;
 
 //  Whether `object`, a trainer, may see the player on `tile`: up to its
 //  sight ahead, any way it looks, short of a wall, from its tile or, for

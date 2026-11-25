@@ -136,7 +136,7 @@ private:
     static void check_no_trainer_battle(ConsoleHandle& console, ProControllerContext& context){
         BattleScreenWatcher battle(COLOR_RED);
         context.wait_for_all_requests();
-        if (wait_until(console, context, TRAINER_BATTLE_WATCH, {battle}) >= 0){
+        if (wait_until(console, context, scale_emulator_duration(TRAINER_BATTLE_WATCH), {battle}) >= 0){
             OperationFailedExceptionWithScreenshot::fire(
                 ErrorReportMode::NO_ERROR_REPORT,
                 "walk_overworld_route(): trainer battle: a battle started after a message on the overworld.",
@@ -168,7 +168,7 @@ private:
 
 Pokemon::LegSpec leg_spec(const RouteStep& step, MoveSpeed speed){
     Pokemon::LegSpec leg{step.direction, step.tiles + step.warp_slack, step.to_wall, tile_time(step, speed)};
-    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator){
+    if (GameSettings::instance().DEVICE != GameSettings::Device::GbaEmulator || speed == MoveSpeed::WALK){
         leg.stalled_steps = step.connection_steps;
     }
     return leg;
@@ -357,11 +357,16 @@ constexpr double BLACK_BELOW_MAX = 45.0;
 //  below a building's map, which a door north into it ends on.
 bool black_below(const ImageViewRGB32& box){
     const size_t row = box.height() / SCREEN_TILES_Y;
-    if (row == 0){
+    const size_t col = box.width() / SCREEN_TILES_X;
+    if (row == 0 || col == 0){
         return false;
     }
     const ImageViewRGB32 bottom = box.sub_image(0, box.height() - row, box.width(), row);
-    return image_stats(bottom).average.sum() < BLACK_BELOW_MAX;
+    const ImageViewRGB32 left = box.sub_image(0, 0, col, box.height());
+    const ImageViewRGB32 right = box.sub_image(box.width() - col, 0, col, box.height());
+    return image_stats(bottom).average.sum() < BLACK_BELOW_MAX
+        || image_stats(left).average.sum() < BLACK_BELOW_MAX
+        || image_stats(right).average.sum() < BLACK_BELOW_MAX;
 }
 
 } // namespace
@@ -370,24 +375,28 @@ bool arrived_without_fade(
     const ImageViewRGB32& before, const ImageViewRGB32& now, const ImageViewRGB32& later,
     const ImageFloatBox& game, const RouteStep& step
 ){
-    if (BlackScreenDetector(COLOR_RED).detect(later)){
+    if (BlackScreenDetector(COLOR_RED).detect(now) || BlackScreenDetector(COLOR_RED).detect(later)){
         return false;
     }
+    const ImageViewRGB32 before_box = extract_box_reference(before, game);
     const ImageViewRGB32 now_box = extract_box_reference(now, game);
     const ImageViewRGB32 later_box = extract_box_reference(later, game);
     if (now_box.width() != later_box.width() || now_box.height() != later_box.height()){
         return false;
     }
-    if (scrolled_rmsd(now_box, later_box, 0, 0) >= SAME_SCENE_RMSD){
+    const bool entered_indoor = !black_below(before_box) && black_below(now_box) && black_below(later_box);
+    const bool dialog_after = WhiteDialogDetector(COLOR_RED).detect(later);
+    if (!entered_indoor && !dialog_after && scrolled_rmsd(now_box, later_box, 0, 0) >= SAME_SCENE_RMSD){
         return false;
     }
     //  A still screen is no proof of a warp: a wall stops the player as
     //  still, and water's waves make any scene after it look like another
-    //  one. The screen has to show a building's or a gate's map, with the
-    //  black below it (console B, 2026-11-14 20:27, 15.01: "east 9 (warp)"
+    //  one. Either the destination is a building or gate (black below
+    //  `later_box`), or the player exited one onto an outdoor map (black
+    //  below `before_box`). (console B, 2026-11-14 20:27, 15.01: "east 9 (warp)"
     //  held into Route 7's gate wall a row above its door was taken as the
     //  warp).
-    if (!black_below(later_box)){
+    if (!dialog_after && !black_below(later_box) && !black_below(before_box)){
         return false;
     }
     return warp_left_scene(before, later, game, step.direction, step.tiles + step.warp_slack + 2);
@@ -427,7 +436,7 @@ void wait_out_fade(
         return;
     }
     context.wait_for_all_requests();
-    if (wait_until(console, context, WARP_TIMEOUT, {fade.watcher()}) >= 0){
+    if (wait_until(console, context, scale_emulator_duration(WARP_TIMEOUT), {fade.watcher()}) >= 0){
         return;
     }
     if (arrived_unseen(console, context, step, before)){
@@ -441,7 +450,10 @@ void wait_out_fade(
         BlackScreenOverWatcher arrival(COLOR_RED);
         Pokemon::WatchAlong retry_fade(arrival);
         pbf_press_dpad(context, dpad(step.direction), STEP_TAP, STEP_TAP_RELEASE);
-        if (wait_until(console, context, WARP_TIMEOUT, {retry_fade.watcher()}) >= 0){
+        if (wait_until(console, context, scale_emulator_duration(WARP_TIMEOUT), {retry_fade.watcher()}) >= 0){
+            return;
+        }
+        if (arrived_unseen(console, context, step, before)){
             return;
         }
     }
@@ -665,7 +677,7 @@ WarpBattle run_from_battle_after_warp(ConsoleHandle& console, ProControllerConte
     const bool overworld = battle_on_its_way(console, context).empty();
     BattleScreenWatcher battle(COLOR_RED);
     context.wait_for_all_requests();
-    if (wait_until(console, context, AFTER_WARP_BATTLE_WATCH, {battle}) < 0){
+    if (wait_until(console, context, scale_emulator_duration(AFTER_WARP_BATTLE_WATCH), {battle}) < 0){
         return WarpBattle::NONE;
     }
     flee_battle(console, context);
@@ -697,7 +709,7 @@ void start_surf(ConsoleHandle& console, ProControllerContext& context, Direction
     pbf_press_button(context, BUTTON_A, 160ms, 0ms);
     SelectionDialogWatcher prompt(COLOR_RED);
     context.wait_for_all_requests();
-    if (wait_until(console, context, SURF_PROMPT_TIMEOUT, {prompt}) < 0){
+    if (wait_until(console, context, scale_emulator_duration(SURF_PROMPT_TIMEOUT), {prompt}) < 0){
         OperationFailedExceptionWithScreenshot::fire(
             ErrorReportMode::SEND_ERROR_REPORT,
             "walk_overworld_route(): no Surf prompt facing the water.",
@@ -758,7 +770,7 @@ void press_switch(ConsoleHandle& console, ProControllerContext& context, Directi
         SelectionDialogWatcher prompt(COLOR_RED);
         AdvanceWhiteDialogWatcher page(COLOR_RED);
         context.wait_for_all_requests();
-        switch (wait_until(console, context, SWITCH_PROMPT_TIMEOUT, {prompt, page})){
+        switch (wait_until(console, context, scale_emulator_duration(SWITCH_PROMPT_TIMEOUT), {prompt, page})){
         case 0:
             return StatueScreen::PROMPT;
         case 1:

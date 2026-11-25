@@ -110,7 +110,9 @@ std::optional<std::string> heal(const PlannedState& state, const PlannedDanger& 
             continue;
         }
         const int gained = std::min(missing, heal_hp(name));
-        if (own.hp + gained > danger.normal_max && gained - danger.normal_max >= danger.mean){
+        if (own.hp + gained > danger.normal_max
+            && (gained - danger.normal_max >= danger.mean || (own.hp > danger.normal_max && gained > danger.mean))
+        ){
             return std::string(name);
         }
     }
@@ -275,13 +277,28 @@ PlannedChoice move_choice(std::string_view row, std::optional<size_t> slot){
     return {.row = std::string(row), .move_slot = slot};
 }
 
+bool foe_moves_first_to_ko(const PlannedState& state, const PlannedMove& move){
+    if (state.foe.recharging || state.foe.sleeping || state.foe.frozen){
+        return false;
+    }
+    for (const PlannedMove& foe_move : state.foe.moves){
+        if (!foe_move.usable() || foe_move.priority <= move.priority){
+            continue;
+        }
+        if (foe_move.max_damage() >= state.own.hp){
+            return true;
+        }
+    }
+    return false;
+}
+
 //  sure_ko's row: the cheapest move that KOs for certain, moving first.
 std::optional<PlannedChoice> sure_ko_row(const PlannedState& state, const LeagueFightData& fight, int danger){
     const PlannedOwn& own = state.own;
     const int target_hp = foe_hp_at_our_move(state);
     const PlannedMove* cheapest = nullptr;
     for (const PlannedMove& move : own.moves){
-        if (!move.usable() || !sure_ko(move, target_hp) || !we_move_first(state, move)){
+        if (!move.usable() || !sure_ko(move, target_hp) || !we_move_first(state, move) || foe_moves_first_to_ko(state, move)){
             continue;
         }
         if (pp_above_reserve(fight, move.id, move.pp) <= 0 && own.hp > danger){

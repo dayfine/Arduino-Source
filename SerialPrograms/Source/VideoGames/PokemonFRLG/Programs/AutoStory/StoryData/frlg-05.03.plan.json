@@ -3,85 +3,92 @@
   "game": "frlg",
   "checkpoint": {
     "id": "05.03",
-    "title": "Cerulean: Water Pulse, Potions, a GRIND until the rival is winnable, then saved below his trigger",
+    "title": "Nugget Bridge: Beat trainers 1-3 (Cale, Ali, Timmy)",
     "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
-        "id": "teach_water_pulse",
-        "kind": "game_action",
-        "action": "teach",
-        "args": {
-          "item": "tm03",
-          "move": "water-pulse",
-          "slot": 1,
-          "keep": ["tackle", "withdraw", "water-gun", "bubble", "bite", "mega-kick", "dig", "surf"]
-        },
-        "why": "TM03 Water Pulse in place of Tail Whip, unless the lead knows it or there is no TM03; keep list: the damaging moves, Bite, Withdraw and Mega Kick, so the one other move (Tail Whip) goes; fails if none or several are outside the list"
-      },
-      {
-        "id": "mart_clerk",
+        "id": "below_cale_line",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CeruleanCity_Mart", "tiles": [[4, 3]], "facing": "west"}
+          "target": {"map": "Route24", "tiles": [[11, 32]], "facing": "north"}
         },
-        "why": "out of the Center to the Mart's clerk"
+        "why": "onto Nugget Bridge below Cale's row"
       },
       {
-        "id": "buy_potions",
-        "kind": "game_action",
-        "action": "mart",
+        "id": "cale_line",
+        "kind": "step",
+        "action": "trainer_line",
         "args": {
-          "map": "CeruleanCity_Mart",
-          "items": [{"item": "potion", "quantity": 3}, {"item": "awakening", "quantity": 3}]
+          "direction": "north"
         },
-        "why": "3 Potions: the GRIND fights wild battles only with 2 or more; 3 Awakenings, the rival's Sleep Powder and the 3 PokeGuy brings to Koga (PokemonSimulation docs/battles/pokeguy-conditions.md); $250 more than before"
+        "why": "onto (11, 31), beside Cale"
       },
       {
-        "id": "grind_patch",
-        "kind": "route",
+        "id": "bug_catcher_cale",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_BUG_CATCHER_CALE",
+          "foes": ["caterpie", "weedle", "metapod", "kakuna"]
+        },
+        "declared_after": {"map": "Route24", "tiles": [[11, 31]], "facing": "north"},
+        "why": "trainer 1 on Nugget Bridge"
+      },
+      {
+        "id": "below_ali_line",
+        "kind": "legs",
         "action": "run",
         "args": {
-          "target": {"map": "Route4", "tiles": [[86, 16]], "facing": "west"}
+          "legs": [{"direction": "north", "tiles": 2}]
         },
-        "why": "west out of the city along Route 4's lower road onto its grass's east edge"
+        "why": "up to (11, 29)"
       },
       {
-        "id": "grind_for_rival",
-        "kind": "game_action",
-        "action": "grind",
+        "id": "ali_line",
+        "kind": "step",
+        "action": "trainer_line",
         "args": {
-          "slot": 1,
-          "level": 22,
-          "encounters": 150,
-          "pace": "west",
-          "heal_every": 0,
-          "nurse": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+          "direction": "north"
         },
-        "why": "wild battles to Lv22, where console B's Wartortle beat the rival (m56); the nurse when hurt or low on PP"
+        "why": "onto (11, 28), beside Ali"
       },
       {
-        "id": "cerulean_nurse",
-        "kind": "route",
+        "id": "lass_ali",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LASS_ALI",
+          "foes": ["pidgey", "oddish", "bellsprout"]
+        },
+        "declared_after": {"map": "Route24", "tiles": [[11, 28]], "facing": "north"},
+        "why": "trainer 2 on Nugget Bridge"
+      },
+      {
+        "id": "below_timmy_line",
+        "kind": "legs",
         "action": "run",
         "args": {
-          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+          "legs": [{"direction": "north", "tiles": 2}]
         },
-        "why": "back to the Center: the rival's battle starts at full HP and PP"
+        "why": "up to (11, 26)"
       },
       {
-        "id": "heal_cerulean",
-        "kind": "heal",
-        "why": "full HP"
-      },
-      {
-        "id": "below_rival_trigger",
-        "kind": "route",
-        "action": "run",
+        "id": "timmy_line",
+        "kind": "step",
+        "action": "trainer_line",
         "args": {
-          "target": {"map": "CeruleanCity", "tiles": [[23, 7]], "facing": "north"}
+          "direction": "north"
         },
-        "why": "out of the Center, north up to (23, 7), short of the trigger row 6"
+        "why": "onto (11, 25), beside Timmy"
+      },
+      {
+        "id": "youngster_timmy",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_YOUNGSTER_TIMMY",
+          "foes": ["sandshrew", "ekans"]
+        },
+        "declared_after": {"map": "Route24", "tiles": [[11, 25]], "facing": "north"},
+        "why": "trainer 3 on Nugget Bridge"
       }
     ]
   },
@@ -90,7 +97,7 @@
     "lead": "after_brock",
     "notes": {
       "checkpoint": [
-        "Before the rival north of Cerulean (05.04), from the Center: first TM03 Water Pulse over Tail Whip, if the lead doesn't know it yet, so the GRIND's sim plays it (a run without TM03 from Misty skips the step). Then 3 Potions at the Mart (CeruleanCity_Mart_Items: POTION is row 3, 300 each; Mt. Moon's trainers leave well over the floor) and 2 Awakenings (row 6, 250 each; pokefirered items.json) for the rival's Bulbasaur's Sleep Powder (console B, m56: asleep at 34/65 HP, it fainted two turns later with 15 Potions), 1400 of the floor's 1500. Then a GRIND on Route 4's grass east of Mt. Moon (75..86, 11..17; Spearow, Rattata, Ekans and Mankey around Lv10, about 80 EXP each), healing at the Center, until the battle sim beats the rival 05.04 fights 50% or more: the win chance his battle refuses below. Console B's Wartortle (Lv22, 65 HP, Water Pulse) is about 42% there and 62% at Lv23; Lv28 (about 88%, some 120 battles from Lv22) is the cap. Then the nurse, and the save on (23, 7), the tile below his trigger: his battle is its own checkpoint, 05.04, verified and retried from this save."
+        "Cerulean 05.03: beat Nugget Bridge trainers 1-3 (Cale, Ali, Timmy)."
       ]
     }
   },

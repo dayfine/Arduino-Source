@@ -1,0 +1,170 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "05.06b",
+    "title": "Route 25 to Bill's Sea Cottage: Nob and Haley",
+    "start": {
+      "map": "Route25",
+      "tiles": [
+        [
+          24,
+          8
+        ]
+      ],
+      "facing": "south"
+    },
+    "events": [
+      {
+        "id": "west_of_nob_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ]
+        },
+        "why": "along row 8 to (26, 8)"
+      },
+      {
+        "id": "nob_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "east"
+        },
+        "why": "onto (27, 8), above Nob"
+      },
+      {
+        "id": "hiker_nob",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_HIKER_NOB",
+          "foes": [
+            "geodude",
+            "geodude",
+            "machop",
+            "geodude"
+          ]
+        },
+        "declared_after": {
+          "map": "Route25",
+          "tiles": [
+            [
+              27,
+              8
+            ]
+          ],
+          "facing": "east"
+        },
+        "why": "three Geodude and a Machop, Lv13"
+      },
+      {
+        "id": "below_haley_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "south",
+              "tiles": 1
+            },
+            {
+              "direction": "east",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 5
+            },
+            {
+              "direction": "south",
+              "tiles": 3
+            },
+            {
+              "direction": "east",
+              "tiles": 8
+            }
+          ]
+        },
+        "why": "below Flint's column to (29, 9), up to (29, 6), east to (34, 6), down to (34, 9), east along row 9 past Chad's column to the water, (42, 9)"
+      },
+      {
+        "id": "haley_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (42, 8), at the end of Haley's line"
+      },
+      {
+        "id": "lass_haley",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LASS_HALEY",
+          "foes": [
+            "oddish",
+            "pidgey",
+            "oddish"
+          ]
+        },
+        "declared_after": {
+          "map": "Route25",
+          "tiles": [
+            [
+              42,
+              8
+            ]
+          ],
+          "facing": "north"
+        },
+        "why": "Oddish, Pidgey and Oddish, Lv13; Haley stops at (42, 7)"
+      },
+      {
+        "id": "sea_cottage",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "Route25_SeaCottage",
+            "tiles": [
+              [
+                7,
+                8
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "east along row 8, up column 51 into the Sea Cottage (51, 4), a step in from its mat"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Hiker Nob (27, 9) faces north over (27, 6..8), Camper Flint (28, 4) south over (28, 5..7): every way east crosses one. Nob is fought on the step onto (27, 8), beside him; the way on keeps off Flint's column, by one-tile legs and legs to walls.",
+        "Youngster Chad (36, 4) walks up and down column 36 (the map's wander box, rows 1..7), so he may see any tile of it down to row 9: every way east crosses it within his sight. The way crosses his column on row 9, a leg to the water at (42, 9), where he can only walk up beside it; if he sees the player, story_interrupts() fight him, as the sim, which looks from every tile of his box, always does.",
+        "Lass Haley (42, 5) faces south over (42, 6..8), the only way east of x 42: fought on the step onto (42, 8); she walks up to (42, 7).",
+        "The row saves inside the Sea Cottage, which the save card names ROUTE 25."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

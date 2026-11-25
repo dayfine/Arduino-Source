@@ -3,67 +3,63 @@
   "game": "frlg",
   "checkpoint": {
     "id": "05.02",
-    "title": "Cerulean Gym: Misty, then Water Pulse",
-    "start": {"map": "CeruleanCity_Gym", "tiles": [[9, 7]], "facing": "west"},
+    "title": "Cerulean: Grind to Lv19 (Bite), return to Center",
+    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
-        "id": "beside_misty",
+        "id": "grind_patch",
         "kind": "route",
         "action": "run",
         "args": {
-          "target": {"map": "CeruleanCity_Gym", "tiles": [[9, 6]], "facing": "west"}
+          "target": {"map": "Route4", "tiles": [[86, 16]], "facing": "west"}
         },
-        "why": "up onto (9, 6), facing Misty (8, 6)"
+        "why": "west to Route 4 grass to reach Lv19 for Bite"
       },
       {
-        "id": "challenge_misty",
-        "kind": "talk",
-        "why": "Misty's speech"
-      },
-      {
-        "id": "misty",
-        "kind": "battle",
+        "id": "grind_to_lv19",
+        "kind": "game_action",
+        "action": "grind",
         "args": {
-          "trainer": "TRAINER_LEADER_MISTY",
-          "foes": ["staryu", "starmie"]
+          "slot": 1,
+          "level": 19,
+          "encounters": 20,
+          "pace": "west",
+          "heal_every": 25,
+          "nurse": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
         },
-        "declared_after": {"map": "CeruleanCity_Gym", "tiles": [[9, 6]], "facing": "west"},
-        "why": "Staryu and Starmie, with Bite; CASCADE BADGE and TM03"
+        "why": "reach Lv19 for Bite before Rival"
       },
       {
-        "id": "gym_way_out",
-        "kind": "legs",
+        "id": "cerulean_road",
+        "kind": "route",
         "action": "run",
         "args": {
-          "legs": [{"direction": "south", "tiles": 1}, {"direction": "east", "tiles": 3}, {"direction": "south", "tiles": 3}, {"direction": "west", "tiles": 8}, {"direction": "south", "tiles": 3}, {"direction": "east", "tiles": 5}]
+          "target": {"map": "Route4", "tiles": [[94, 11]], "facing": "east"}
         },
-        "why": "walls (12, 7), (12, 10), (4, 10), (4, 13), (9, 13), round Luis's (9, 12)"
+        "why": "align on Route 4 row 11 before crossing into Cerulean City"
       },
       {
-        "id": "cerulean_nurse",
+        "id": "cerulean_east_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[26, 21]], "facing": "east"}
+        },
+        "why": "run east to the Pokecenter sign wall (26, 21) to absorb the Route4->CeruleanCity connection stall"
+      },
+      {
+        "id": "cerulean_nurse_pre",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
         },
-        "why": "down column 9 out of the Gym, to the Center"
+        "why": "heal before Rival"
       },
       {
-        "id": "heal_cerulean",
+        "id": "heal_cerulean_pre",
         "kind": "heal",
-        "why": "full HP"
-      },
-      {
-        "id": "teach_water_pulse",
-        "kind": "game_action",
-        "action": "teach",
-        "args": {
-          "item": "tm03",
-          "move": "water-pulse",
-          "slot": 1,
-          "keep": ["tackle", "withdraw", "water-gun", "bubble", "bite", "mega-kick", "dig", "surf"]
-        },
-        "why": "TM03 Water Pulse in place of Tail Whip; keep list: the damaging moves, Bite, Withdraw and Mega Kick, so the one other move (Tail Whip) goes; fails if none or several are outside the list"
+        "why": "full HP before Rival"
       }
     ]
   },
@@ -72,7 +68,7 @@
     "lead": "after_brock",
     "notes": {
       "checkpoint": [
-        "Misty (TRAINER_LEADER_MISTY: Staryu Lv18, Starmie Lv21), talked to from (9, 6), beside her on the platform. Her win text runs on to the CASCADE BADGE, TM03 (Water Pulse) and its explanation, all read with the battle's. Bite is chosen against her party (Starmie is Water/Psychic). Back to the nurse round the pool's west side, out of Luis's line; then Water Pulse in place of Tail Whip, last, at the Center, from the bag's TM CASE. Ends where 05.03 starts."
+        "Cerulean 05.02: grind to Lv19 (Bite) and return to Cerulean Center."
       ]
     }
   },

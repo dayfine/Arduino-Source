@@ -19,9 +19,24 @@
         ],
         "events": [
             {
+                "id": "above_lapras_guy",
+                "kind": "route",
+                "args": {
+                    "target": {
+                        "map": "SilphCo_7F",
+                        "tiles": [
+                            [
+                                0,
+                                4
+                            ]
+                        ]
+                    }
+                },
+                "why": "west to the wall (0, 4) so the route down to LaprasGuy avoids the cleared Rival tile (2, 6)"
+            },
+            {
                 "id": "to_lapras_guy",
                 "kind": "route",
-                "action": "run",
                 "args": {
                     "target": {
                         "map": "SilphCo_7F",

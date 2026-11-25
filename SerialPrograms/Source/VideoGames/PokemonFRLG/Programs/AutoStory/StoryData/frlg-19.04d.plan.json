@@ -110,21 +110,24 @@
       {
         "id": "exit_way_1",
         "kind": "route",
-        "action": "run",
         "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[31, 19]]}},
         "why": "back east along row 19 to (31, 19), south of Daisuke's line (the black belt at (20, 11), looking south and west, sight 4)"
       },
       {
         "id": "exit_way_2",
         "kind": "route",
-        "action": "run",
         "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[35, 17]]}},
         "why": "north by (31, 18) and east through the opened barrier (33, 17) to beside the ladder (36, 17), below Nelson (the rocker at (31, 16), facing west)"
       },
       {
+        "id": "corridor_north_wall",
+        "kind": "route",
+        "args": {"target": {"map": "VictoryRoad_3F", "tiles": [[40, 9]]}},
+        "why": "up 3F's east corridor to the north wall (40, 9) so north 8 is to_wall and never misread as unmoved on the uniform pebble floor"
+      },
+      {
         "id": "above_exit",
         "kind": "route",
-        "action": "run",
         "args": {"target": {"map": "VictoryRoad_2F", "tiles": [[48, 11]], "facing": "south"}},
         "why": "onto the ladder (36, 17), 3F's east corridor to its ladder (37, 10), down to 2F (38, 9) and east to above the exit (48, 12)"
       },

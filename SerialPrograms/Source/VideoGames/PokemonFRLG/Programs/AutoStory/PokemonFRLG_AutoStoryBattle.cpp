@@ -56,8 +56,6 @@ constexpr Milliseconds POLL = 300ms;
 constexpr Milliseconds BATTLE_TIMEOUT = 600000ms;
 //  To see the battle at all, from its first flash.
 constexpr Milliseconds BATTLE_START_TIMEOUT = 20000ms;
-//  No battle screen for this long: check for the overworld with START.
-constexpr Milliseconds BATTLE_GONE = 2000ms;
 //  After a won battle, how long without a START menu before the scene after
 //  it is taken as the next step's.
 constexpr Milliseconds WON_SCENE = 10000ms;
@@ -69,10 +67,6 @@ constexpr Milliseconds STUCK = 8000ms;
 //  would talk to them again.
 constexpr Milliseconds NO_MENU = 60000ms;
 constexpr Milliseconds NO_MENU_NEAR = 10000ms;
-//  No battle screen yet and no turn taken: whether the overworld is back
-//  is checked by START this often (a trainer's battle that never started,
-//  console B, 2026-11-01: 10 minutes of B on the overworld).
-constexpr Milliseconds OVERWORLD_CHECK = 3000ms;
 //  No battle menu or HP box this long after a battle was seen: there was
 //  none (console B, 2026-11-01, Viridian Forest's north gate mat).
 constexpr Milliseconds NOT_A_BATTLE = 15000ms;
@@ -270,12 +264,12 @@ public:
         , m_last_battle(m_start)
         , m_last_press(m_start)
         , m_last_menu(m_start)
-        , m_last_overworld_check(m_start)
     {}
 
     BattleEnd run(){
         m_console.log(
             m_kind == BattleKind::TRAINER ? "Battle: fighting a trainer." :
+            m_kind == BattleKind::TRAINER_LOSE ? "Battle: losing to a trainer." :
             m_kind == BattleKind::WILD_FIGHT ? "Battle: fighting a wild Pokemon." : "Battle: running from a wild Pokemon."
         );
         bool over = false;
@@ -355,7 +349,7 @@ private:
             m_last_press = now;
             return true;
         }
-        if (m_decisions.lost() && PartyMenuDetector(COLOR_RED).detect(screen)){
+        if (m_decisions.turns() > 0 && PartyMenuDetector(COLOR_RED).detect(screen)){
             send_next_member(now);
             return true;
         }
@@ -404,7 +398,6 @@ private:
         if (!m_end.check_overworld(now)){
             return false;
         }
-        m_last_overworld_check = now;
         return overworld_shows(m_console, m_context);
     }
 
@@ -437,12 +430,6 @@ private:
             answer_prompt(screen, now);
             return false;
         }
-        if (now - m_last_battle > BATTLE_GONE && now - m_last_overworld_check > OVERWORLD_CHECK){
-            m_last_overworld_check = now;
-            if (overworld_shows(m_console, m_context)){
-                return true;
-            }
-        }
         //  Won, and no START menu after it: a scene follows the battle (the
         //  Champion's, Oak into the Hall of Fame: console B, 2026-11-17),
         //  which is the next step's.
@@ -452,7 +439,7 @@ private:
         }
         //  Oak's white text box in the rival's battle reads as no battle screen:
         //  B moves it on, and B does nothing on the overworld once the battle is over.
-        if (now - m_last_press > 1500ms){
+        if (now - m_last_press > scale_emulator_duration(m_decisions.lost() ? 400ms : 1500ms)){
             pbf_press_button(m_context, BUTTON_B, 160ms, 200ms);
             m_last_press = now;
             return false;
@@ -666,7 +653,7 @@ private:
     //  running from a trainer battle!" makes the battle a trainer's.
     void check_run_refused(BattleScreen seen, const ImageViewRGB32& screen){
         const bool text = seen == BattleScreen::ADVANCE || seen == BattleScreen::OTHER;
-        if (!m_ran || !text || m_kind == BattleKind::TRAINER || !run_refused_shows(m_language, screen)){
+        if (!m_ran || !text || is_trainer_battle(m_kind) || !run_refused_shows(m_language, screen)){
             return;
         }
         m_console.log("Battle: \"No! There's no running from a trainer battle!\": fighting it as a trainer's.", COLOR_ORANGE);
@@ -717,7 +704,6 @@ private:
     WallClock m_last_battle;
     WallClock m_last_press;
     WallClock m_last_menu;
-    WallClock m_last_overworld_check;
     WallClock m_last_policy_text = WallClock{};
     std::vector<std::string> m_policy_texts;
     BattleScreen m_last_seen = BattleScreen::NONE;

@@ -250,9 +250,14 @@ Pokemon::Outcome launch_frlg_save_emulator(ConsoleHandle& console, ProController
     pbf_wait(context, 500ms);
     pbf_press_button(context, BUTTON_A, 160ms, 320ms);
     BlackScreenOverWatcher black_over(COLOR_RED);
-    int entered = wait_until(
+    int entered = run_until<ProControllerContext>(
         console, context,
-        GameSettings::instance().ENTER_GAME_WAIT0,
+        [](ProControllerContext& ctx){
+            pbf_wait(ctx, GameSettings::instance().ENTER_GAME_WAIT0);
+            for (int i = 0; i < 6; i++){
+                pbf_press_button(ctx, BUTTON_B, 160ms, 640ms);
+            }
+        },
         {black_over}
     );
     if (entered != 0){

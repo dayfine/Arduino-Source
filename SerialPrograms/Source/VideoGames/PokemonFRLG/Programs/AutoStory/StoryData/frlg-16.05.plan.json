@@ -26,7 +26,6 @@
             {
                 "id": "to_left_wall",
                 "kind": "route",
-                "action": "run",
                 "args": {
                     "target": {
                         "map": "SilphCo_11F",

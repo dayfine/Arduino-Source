@@ -75,7 +75,7 @@ Pokemon::StoryActionArgs pc_args(const PcTransfer& transfer){
     Pokemon::StoryActionArgs args = {
         {"do", std::string("withdraw")},
         {"box", int64_t(transfer.box + 1)},
-        {"if_present", false},
+        {"if_present", transfer.if_missing == PcMissing::SKIP},
         {"protect", transfer.protect},
     };
     if (transfer.species){
@@ -109,6 +109,10 @@ std::optional<PcTransfer> pc_transfer_of(const Pokemon::StoryActionArgs& args){
         return std::nullopt;
     }
     transfer.action = PcAction::WITHDRAW;
+    const bool* if_present = game_arg<bool>(args, "if_present");
+    if (if_present != nullptr && *if_present){
+        transfer.if_missing = PcMissing::SKIP;
+    }
     const bool* protect = game_arg<bool>(args, "protect");
     transfer.protect = protect != nullptr && *protect;
     const std::string* species = game_arg<std::string>(args, "species");
@@ -173,6 +177,17 @@ PcStorageDialog::PcStorageDialog(const PcTransfer& transfer)
 {}
 
 PcDecision PcStorageDialog::next(const PcView& view){
+    if (m_transfer.action == PcAction::WITHDRAW && !m_transferred && view.screen == PcScreen::BOX_GRID
+        && m_box_switch_step > 0 && m_box_switch_step <= m_transfer.box + 1
+    ){
+        m_others_in_a_row = 0;
+        if (m_box_switch_step <= m_transfer.box){
+            m_box_switch_step++;
+            return {PcPress::RIGHT};
+        }
+        m_box_switch_step++;
+        return {PcPress::DOWN};
+    }
     //  A fade, or a box screen still drawing its hand: wait for the screen,
     //  as long as a PC screen change takes, and press nothing into it.
     if (!settled(view, m_transferred)){
@@ -181,6 +196,13 @@ PcDecision PcStorageDialog::next(const PcView& view){
                 ? std::format("no PC screen recognized in {} reads", m_others_in_a_row)
                 : std::format("the hand wasn't read on the {} in {} reads", pc_screen_name(view.screen), m_others_in_a_row)
             };
+        }
+        //  After switching boxes, DOWN can be dropped during the box-slide
+        //  animation, leaving the hand on the box banner (cursor unread).
+        if (m_transfer.action == PcAction::WITHDRAW && !m_transferred && view.screen == PcScreen::BOX_GRID
+            && m_box_switch_step > m_transfer.box + 1 && (m_others_in_a_row == 5 || m_others_in_a_row == 8)
+        ){
+            return {PcPress::DOWN};
         }
         return {PcPress::WAIT};
     }
@@ -284,6 +306,13 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
     if (!view.cursor || *view.cursor >= BOX_SLOTS){
         return {PcPress::FAIL, "the hand wasn't read on the box"};
     }
+    if (m_transfer.box > 0 && m_box_switch_step == 0){
+        if (*view.cursor >= BOX_COLUMNS){
+            return {PcPress::UP};
+        }
+        m_box_switch_step = 1;
+        return {PcPress::UP};
+    }
     //  A species: each cell the hand reaches is read, its Pokemon taken if
     //  it is the one, else the hand goes on to the next cell.
     if (m_transfer.species && *view.cursor == m_search_slot){
@@ -294,6 +323,10 @@ PcDecision PcStorageDialog::on_box_grid(const PcView& view){
             return {PcPress::A};
         }
         if (++m_search_slot >= BOX_SLOTS){
+            if (m_transfer.if_missing == PcMissing::SKIP){
+                m_transferred = true;
+                return {PcPress::B};
+            }
             return {PcPress::FAIL, std::format("no {} in box {}", *m_transfer.species, m_transfer.box + 1)};
         }
     }
@@ -382,10 +415,15 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
         return {PcEnd::REFUSED, refused};
     }
     PcStorageDialog dialog(transfer);
+    bool did_transfer = false;
     for (size_t c = 0; c < PC_MAX_PRESSES; c++){
         const PcView view = actions.read_view();
         const PcDecision decision = dialog.next(view);
         if (decision.press == PcPress::DONE){
+            if (transfer.action == PcAction::WITHDRAW && transfer.if_missing == PcMissing::SKIP && !did_transfer){
+                logger.log(std::format("PC: skipped \"{}\": not in box {}.", name, transfer.box + 1));
+                return {PcEnd::SKIPPED, ""};
+            }
             logger.log("PC: \"" + name + "\" done.");
             if (transfer.action == PcAction::WITHDRAW){
                 //  A withdrawal joins the party at its end.
@@ -396,6 +434,9 @@ PcResult run_pc_transfer(Logger& logger, PcStorageActions& actions, const PcTran
         if (decision.press == PcPress::FAIL){
             logger.log(std::format("PC: \"{}\" failed on the {}: {}.", name, pc_screen_name(view.screen), decision.reason), COLOR_RED);
             return {PcEnd::FAILED, decision.reason};
+        }
+        if (view.screen == PcScreen::MON_MENU && decision.press == PcPress::A){
+            did_transfer = true;
         }
         logger.log(std::format(
             "PC: {} (cursor {}): {}.",

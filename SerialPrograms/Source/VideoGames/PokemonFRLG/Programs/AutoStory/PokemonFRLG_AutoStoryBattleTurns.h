@@ -50,7 +50,7 @@ enum class TurnChoice{
 //  runs. Console B, 2026-11-15, 19.01: the rival was fought with 0 Potions
 //  and no X item from the counts a skipped check left.
 inline bool battle_needs_bag_read(const Supplies& supplies, BattleKind kind){
-    return !supplies.counts_read && kind != BattleKind::WILD_RUN;
+    return !supplies.counts_read && kind != BattleKind::WILD_RUN && kind != BattleKind::TRAINER_LOSE;
 }
 
 //  Decided battle action including slot or item index.

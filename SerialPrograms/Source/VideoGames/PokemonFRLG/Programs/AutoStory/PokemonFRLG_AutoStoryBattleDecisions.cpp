@@ -238,7 +238,7 @@ TurnAction BattleDecisions::turn(const PartyStatus& status){
     }
     //  The next member is out: it runs from a wild Pokemon for as long as
     //  it takes, and against a trainer uses its first move.
-    if (m_kind != BattleKind::TRAINER){
+    if (!is_trainer_battle(m_kind)){
         return TurnAction{.choice = TurnChoice::RUN};
     }
     return TurnAction{.choice = TurnChoice::MOVE, .slot = TOP_LEFT_MOVE};
@@ -256,7 +256,7 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     //  A wild Pokemon is fought for EXP only at full strength: fighting
     //  every one in Viridian Forest used up all 4 Potions and then the
     //  starter (console B, 2026-11-01). With a status, it is run from too.
-    const bool weak = hurt || status.status != StatusCondition::NONE || m_supplies.potions < MIN_POTIONS_TO_FIGHT;
+    const bool weak = hurt || status.status != StatusCondition::NONE || (m_supplies.potions + m_supplies.super_potions) < MIN_POTIONS_TO_FIGHT;
     const bool run = m_kind == BattleKind::WILD_RUN || (m_kind == BattleKind::WILD_FIGHT && weak);
     if (run && m_run_tries < RUN_TRIES){
         m_run_tries++;
@@ -268,6 +268,9 @@ TurnAction BattleDecisions::lead_turn(const PartyStatus& status){
     }
     if (m_policy){
         return policy_turn(status, {});
+    }
+    if (m_kind == BattleKind::TRAINER_LOSE){
+        return move_turn();
     }
     //  Cures are kept for trainers: a wild battle with a status is run from.
     const ItemTurn items = m_items_off ? ItemTurn{} : item_turn(m_supplies, status, m_seen_hit, m_kind == BattleKind::TRAINER);
@@ -625,7 +628,7 @@ void BattleDecisions::refused(TurnChoice choice){
         move_refused();
         return;
     }
-    if (m_kind == BattleKind::TRAINER){
+    if (is_trainer_battle(m_kind)){
         return;
     }
     m_kind = BattleKind::TRAINER;

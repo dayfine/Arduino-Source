@@ -415,7 +415,7 @@ UnitTestResult test_lead_ready_skips_grind(){
         }
     }
     const std::vector<std::string> expected{
-        "route6_south_path", "round_isabelle_line", "grind_for_surge", "west_on_row_31", "down_to_jeff_row", "vermilion_nurse", "heal_vermilion",
+        "route6_south_path", "grind_for_surge",
     };
     if (skipped != expected || !(sim.state().position == MapPosition{GYM, {5, 3}})){
         return std::format("Expected the trip to Route 6 skipped and below Surge reached; {} skipped, on {}.", skipped.size(), to_string(sim.state().position));

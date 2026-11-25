@@ -32,11 +32,11 @@
       },
       {
         "id": "above_rival_trigger",
-        "kind": "route",
+        "kind": "legs",
         "args": {
-          "target": {"map": "PalletTown_ProfessorOaksLab", "tiles": [[7, 7]], "facing": "south"}
+          "legs": [{"direction": "south", "tiles": 1}, {"direction": "west", "tiles": 2}, {"direction": "south", "tiles": 1}]
         },
-        "why": "short of the rival's trigger row 8"
+        "why": "not planned: the rival stands at (8, 5) right after picking Bulbasaur, so step south to row 6 first before heading to (7, 7) short of the rival's trigger row 8"
       },
       {
         "id": "rival_trigger",

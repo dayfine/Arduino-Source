@@ -38,6 +38,9 @@ enum class RouteCost{
     //  battle is likely to stop it: the walker can't tell where it did
     //  (console B, 2026-11-01, Route 1, four runs).
     OPEN_WILD_STOP,
+    //  Extra when an open leg crosses a map connection, where map-load
+    //  stalls can shift the stopping tile unless it runs to a wall.
+    OPEN_CONNECTION_STOP,
     //  Extra for a step onto a tile a trainer may see, any way it may look
     //  (trainer_may_see()): a battle the route would rather not start. A
     //  cost, not a ban: a route walks past a trainer when the way round

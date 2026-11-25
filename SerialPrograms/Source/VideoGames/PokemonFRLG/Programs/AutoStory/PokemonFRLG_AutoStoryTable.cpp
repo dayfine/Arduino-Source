@@ -144,9 +144,10 @@ std::set<std::string> read_note_keys(const JsonObject& execution, std::string_vi
 //  Checks the metadata's "postconditions": what the postcondition check
 //  after a run reads. "position" where the player ends, as a step's
 //  target; "items" the bag's counts by item; "flags" the game's flags
-//  that moved.
-void check_postconditions(const JsonObject& postconditions, std::string_view source){
-    only_fields(postconditions, {"position", "items", "flags"}, source);
+//  that moved; "poison_survival" the lead's overworld poison survival
+//  across `steps` with `max_hp` fallback.
+void check_postconditions(const JsonObject& postconditions, std::string_view source, StoryCheckpoint& checkpoint){
+    only_fields(postconditions, {"position", "items", "flags", "poison_survival"}, source);
     if (const JsonValue* position = postconditions.get_value("position")){
         const JsonObject& pose = position->to_object_throw(std::string(source));
         only_fields(pose, {"map", "tiles", "facing"}, source);
@@ -165,13 +166,26 @@ void check_postconditions(const JsonObject& postconditions, std::string_view sou
             flag.to_string_throw(std::string(source));
         }
     }
+    if (const JsonValue* poison = postconditions.get_value("poison_survival")){
+        const JsonObject& ps = poison->to_object_throw(std::string(source));
+        only_fields(ps, {"steps", "max_hp"}, source);
+        const int64_t steps = ps.get_integer_throw("steps", std::string(source));
+        const int64_t max_hp = ps.get_integer_throw("max_hp", std::string(source));
+        if (steps <= 0 || max_hp <= 0){
+            throw ParseException(std::format("{}: poison_survival steps and max_hp must be positive", source));
+        }
+        checkpoint.poison_survival = PoisonSurvivalPostcondition{
+            .steps = static_cast<int>(steps),
+            .max_hp = static_cast<int>(max_hp),
+        };
+    }
 }
 
 //  The file without its "metadata", which the shared reader doesn't take
 //  (yet): {"phase": testing, verification or reproduction}, how far the
 //  checkpoint is trusted to save (the engine's save policy reads it), and
 //  optionally "postconditions" (check_postconditions()).
-JsonValue without_metadata(const JsonValue& value, std::string_view source){
+JsonValue without_metadata(const JsonValue& value, std::string_view source, StoryCheckpoint& checkpoint){
     JsonObject stripped;
     for (const auto& [key, field] : value.to_object_throw(std::string(source))){
         if (key != "metadata"){
@@ -185,7 +199,7 @@ JsonValue without_metadata(const JsonValue& value, std::string_view source){
             }
         }
         if (const JsonValue* postconditions = metadata.get_value("postconditions")){
-            check_postconditions(postconditions->to_object_throw(std::string(source)), source);
+            check_postconditions(postconditions->to_object_throw(std::string(source)), source, checkpoint);
         }
         const std::string& phase = metadata.get_string_throw("phase", std::string(source));
         if (phase != "testing" && phase != "verification" && phase != "reproduction"){
@@ -224,7 +238,7 @@ Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, s
         note_keys = read_note_keys(execution, where);
     };
     static_cast<Pokemon::StoryCheckpoint&>(checkpoint) = Pokemon::read_authored_checkpoint(
-        without_metadata(value, source), "frlg", source, read_execution, story_action_specs()
+        without_metadata(value, source, checkpoint), "frlg", source, read_execution, story_action_specs()
     );
     checkpoint.verify = shared.verify;
     for (const std::string& key : note_keys){
@@ -252,8 +266,8 @@ Pokemon::StoryFileRow<StoryCheckpoint> read_story_file(const JsonValue& value, s
 //  is listed once; a new checkpoint is added at its place in the story.
 constexpr std::string_view STORY_ORDER[] = {
     "01.01", "01.02", "01.03", "01.04", "01.05", "01.06", "02.01", "02.02", "02.03", "03.01",
-    "03.02", "03.03", "04.01", "04.02", "04.03", "04.04", "04.05", "04.06", "05.01", "05.02",
-    "05.03", "05.04", "05.05", "05.06", "05.07", "05.08", "05.09", "05.10", "06.01", "06.02",
+    "03.02", "03.03", "04.01", "04.02", "04.03", "04.04", "04.05", "04.06", "05.01", "05.02", "05.02b", "05.02c",
+    "05.03", "05.03b", "05.04", "05.05", "05.06", "05.06b", "05.07", "05.08", "05.09", "05.10", "05.10b", "06.01", "06.02",
     "06.03", "06.04", "07.01", "07.02", "08.01", "08.02", "08.03", "09.01", "09.02", "09.03",
     "09.04", "10.01", "10.02", "10.03", "10.04", "10.05", "10.06", "11.01", "11.02", "11.03",
     "12.01", "12.02", "12.02b", "12.03",

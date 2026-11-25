@@ -3,38 +3,74 @@
   "game": "frlg",
   "checkpoint": {
     "id": "05.04",
-    "title": "Cerulean: Water Pulse if not known, then the rival north of the city",
-    "start": {"map": "CeruleanCity", "tiles": [[23, 7]], "facing": "north"},
+    "title": "Nugget Bridge 10x farm, withdraw lead",
+    "start": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
     "events": [
       {
-        "id": "teach_water_pulse",
+        "id": "nugget_bridge_10x",
         "kind": "game_action",
-        "action": "teach",
+        "action": "nugget_farm",
         "args": {
-          "item": "tm03",
-          "move": "water-pulse",
-          "slot": 1,
-          "keep": ["tackle", "withdraw", "water-gun", "bubble", "bite", "mega-kick", "dig", "surf"]
+          "count": 10,
+          "nurse": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
         },
-        "why": "TM03 Water Pulse in place of Tail Whip, unless the lead knows it; keep list: the damaging moves, Bite, Withdraw and Mega Kick, so the one other move (Tail Whip) goes; fails if none or several are outside the list"
+        "why": "farm 10 Nuggets by losing to the Nugget Bridge Rocket"
       },
       {
-        "id": "rival_trigger",
-        "kind": "step",
+        "id": "pc_front",
+        "kind": "route",
+        "action": "run",
         "args": {
-          "direction": "north"
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"}
         },
-        "why": "onto (23, 6), the middle trigger: \"Yo! <player>!\""
+        "why": "back to PC to withdraw lead"
       },
       {
-        "id": "rival_cerulean",
-        "kind": "battle",
+        "id": "withdraw_lead",
+        "kind": "game_action",
+        "action": "pc",
         "args": {
-          "trainer": "TRAINER_RIVAL_CERULEAN_BULBASAUR",
-          "foes": ["pidgeotto", "abra", "rattata", "bulbasaur"]
+          "do": "withdraw",
+          "box": 1,
+          "slot": 1
         },
-        "declared_after": {"map": "CeruleanCity", "tiles": [[23, 6]], "facing": "south"},
-        "why": "Pidgeotto, Abra, Rattata and Bulbasaur; then the FAME CHECKER"
+        "why": "withdraw lead into slot 2"
+      },
+      {
+        "id": "deposit_rattata",
+        "kind": "game_action",
+        "action": "pc",
+        "args": {
+          "do": "deposit",
+          "box": 1,
+          "slot": 1
+        },
+        "why": "deposit Rattata so lead moves to slot 1"
+      },
+      {
+        "id": "withdraw_rattata",
+        "kind": "game_action",
+        "action": "pc",
+        "args": {
+          "do": "withdraw",
+          "box": 1,
+          "slot": 1
+        },
+        "why": "withdraw Rattata into slot 2"
+      },
+      {
+        "id": "cerulean_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "heal before Rocket"
+      },
+      {
+        "id": "heal_cerulean",
+        "kind": "heal",
+        "why": "full HP"
       }
     ]
   },
@@ -43,7 +79,7 @@
     "lead": "after_brock",
     "notes": {
       "checkpoint": [
-        "The rival north of Cerulean (CeruleanCity scripts.inc): the only way north to Nugget Bridge is columns 22..24, and a step onto row 6 there (CeruleanCity_EventScript_RivalTrigger*, VAR_MAP_SCENE_CERULEAN_CITY_RIVAL 0) brings him down to the player. From the middle, (23, 6), he stops at (23, 5); after the battle he walks round the player and off south, and the player, turning to watch him, ends facing south. His FAME CHECKER's text is read to the overworld with the battle's. For a player who took Squirtle he has Pidgeotto Lv17, Abra Lv16, Rattata Lv15 and Bulbasaur Lv18 (sParty_RivalCeruleanBulbasaur), whose Vine Whip and Sleep Powder are the danger. The row starts from 05.03's save below the trigger, and saves after him. First TM03 Water Pulse over Tail Whip (from the bag, where the player stands), if the lead doesn't know it yet: console B's save (2026-11-03) is past Misty's TEACH, which failed there. Where she taught it, the step reads the moves and does nothing."
+        "Cerulean 05.04: farm 10 Nuggets and withdraw lead back to slot 1."
       ]
     }
   },

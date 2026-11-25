@@ -56,6 +56,7 @@ struct StepOutcome{
     //  ahead of where they stand is blocked (count_bike_taps()).
     bool blocked = false;
     HoldMovement movement = HoldMovement::UNMEASURED;
+    bool trainer_sight = false;
 };
 
 //  Whether, after each leg to a wall, the walker taps once more toward the
@@ -83,6 +84,15 @@ enum class OpenLegCheck{
     REANCHOR,
     TRUST,      //  taken to have ended where planned
 };
+
+//  Whether `step`, an open WALK leg from `start` on `maps`, crosses grass,
+//  cave/wild-encounter tiles, special tiles (warp/ledge/spin/fall/button/surf),
+//  or map boundaries. Plain safe open legs return false and are trusted.
+bool open_leg_needs_reanchor(
+    const std::vector<MapData>& maps,
+    const MapPosition& start,
+    const RouteStep& step
+);
 
 //  The ways, east-west and north-south, the player may be a tile off the
 //  plan along: from the route's start (an open leg of the route before, or

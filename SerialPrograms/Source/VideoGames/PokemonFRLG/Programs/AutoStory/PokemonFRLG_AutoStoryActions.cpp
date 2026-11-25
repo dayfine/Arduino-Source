@@ -26,6 +26,7 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_StartMenuDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_SelectionArrowDetector.h"
+#include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_MovementStepPresses.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalk.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
@@ -562,7 +563,11 @@ void answer_yes_no(ConsoleHandle& console, ProControllerContext& context, bool y
             }
             press(context, yes ? BUTTON_A : BUTTON_B, 800ms);
             context.wait_for_all_requests();
-            return;
+            VideoSnapshot after = console.video().snapshot();
+            if (!after || !yes_no_cursor(after)){
+                return;
+            }
+            continue;
         }
         const WallClock now = current_time();
         if ((screen && AdvanceWhiteDialogDetector(COLOR_RED).detect(screen)) || now - last_press > TEXT_STILL){
@@ -627,7 +632,7 @@ void wait_out_battle_exit(ConsoleHandle& console, ProControllerContext& context)
         [&eyes](bool fresh){ return eyes.look(fresh); },
         MovementMechanics::AFTER_BATTLE_QUIET, BATTLE_EXIT_TIMEOUT
     );
-    const bool quiet = quiet_overworld(settle, MovementMechanics::AFTER_BATTLE_QUIET);
+    const bool quiet = quiet_overworld(settle, scale_emulator_duration(MovementMechanics::AFTER_BATTLE_QUIET));
     console.log("Story: after the battle, " + Pokemon::describe(settle), quiet ? COLOR_BLACK : COLOR_RED);
 }
 

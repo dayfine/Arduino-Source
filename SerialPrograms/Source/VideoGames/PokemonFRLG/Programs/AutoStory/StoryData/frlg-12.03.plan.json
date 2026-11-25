@@ -56,7 +56,7 @@
         "action": "mart",
         "args": {
           "map": "FuchsiaCity_Mart",
-          "items": [{"item": "super-potion", "quantity": 4}]
+          "items": [{"item": "super-potion", "quantity": 8}]
         },
         "why": "4 Super Potions (700 each, 2,800) for Silph Co.'s fights (user's decision 2026-11-15, from the shopping audit: Fuchsia's Super Potions, not Saffron's Hyper Potions or Full Heals): PokeGuy's bag at the Silph rival, Silph's Giovanni and Sabrina holds superpotion x4 (PokemonSimulation docs/battles/pokeguy-conditions.md), and 12.01's Super Potions go to Kayden's and Kirk's damage before Koga, with no Mart after it before Silph Co. The last Fuchsia visit before Silph Co. (16.01), so no Fly detour. Bought blind after Koga's prize (12.02), which 12.01's 3,762 less its Super Potions doesn't count; a short purse fails the step here, before the Fly"
       },

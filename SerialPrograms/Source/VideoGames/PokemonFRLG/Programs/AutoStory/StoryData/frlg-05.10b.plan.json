@@ -1,0 +1,193 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "05.10b",
+    "title": "Route 5, Underground Path and Route 6 to Vermilion Center: Jeff",
+    "start": {
+      "map": "CeruleanCity",
+      "tiles": [
+        [
+          33,
+          7
+        ]
+      ],
+      "facing": "north"
+    },
+    "events": [
+      {
+        "id": "route5_fence",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "Route5",
+            "tiles": [
+              [
+                29,
+                33
+              ]
+            ],
+            "facing": "south"
+          }
+        },
+        "why": "align against the Route 5 horizontal fence (y=34) after the CeruleanCity->Route5 connection"
+      },
+      {
+        "id": "route6_column15",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "Route6",
+            "tiles": [
+              [
+                15,
+                14
+              ]
+            ]
+          }
+        },
+        "why": "round the yard and down Cerulean's east side, Route 5 into the Underground Path, through it onto Route 6, west to column 15"
+      },
+      {
+        "id": "round_keigo_and_elijah",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [
+            {
+              "direction": "south",
+              "tiles": 19
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "north",
+              "tiles": 1
+            },
+            {
+              "direction": "west",
+              "tiles": 8
+            },
+            {
+              "direction": "south",
+              "tiles": 2
+            },
+            {
+              "direction": "east",
+              "tiles": 2
+            }
+          ]
+        },
+        "why": "down column 15 to the wall (15, 33); up to (15, 31), west to the wall (7, 31), down to the wall (7, 33), east to (9, 33)"
+      },
+      {
+        "id": "jeff_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "east"
+        },
+        "why": "onto (10, 33), in Jeff's line"
+      },
+      {
+        "id": "camper_jeff",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CAMPER_JEFF",
+          "foes": [
+            "spearow",
+            "raticate"
+          ]
+        },
+        "declared_after": {
+          "map": "Route6",
+          "tiles": [
+            [
+              10,
+              33
+            ]
+          ],
+          "facing": "east"
+        },
+        "why": "Spearow and Raticate, Lv16; Jeff stops at (11, 33)"
+      },
+      {
+        "id": "vermilion_south",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "VermilionCity",
+            "tiles": [
+              [
+                19,
+                8
+              ]
+            ]
+          }
+        },
+        "why": "cross Route6->VermilionCity south past the house wall (y=6)"
+      },
+      {
+        "id": "vermilion_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "VermilionCity",
+            "tiles": [
+              [
+                19,
+                7
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "align against the house south wall (18, 6) before entering the Center"
+      },
+      {
+        "id": "vermilion_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {
+            "map": "VermilionCity_PokemonCenter_1F",
+            "tiles": [
+              [
+                7,
+                4
+              ]
+            ],
+            "facing": "north"
+          }
+        },
+        "why": "down Route 6's south path into Vermilion City, to the Pokemon Center"
+      },
+      {
+        "id": "heal_vermilion",
+        "kind": "heal",
+        "why": "full HP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Route 6: Bug Catcher Keigo (3, 16) faces east, sight 5, over the middle path (4..8, 16); Bug Catcher Elijah (20, 25) faces west, sight 3, over the east path (17..19, 25). The way goes down column 15, through the grass to the wall (15, 33), out of both lines; the open leg west to it, a tile short, leaves the player on column 16, out of them too.",
+        "Camper Ricky and Picnicker Nancy (12..13, 21) battle only when talked to.",
+        "Picnicker Isabelle (13, 32) and Camper Jeff (13, 33) face west, sight 3, over (10..12, 32) and (10..12, 33); the only way south, (10..12, 34), is from Jeff's row. Up to (15, 31), west to the wall (7, 31), down to the wall (7, 33), east: Jeff is fought on the step onto (10, 33) and walks up to (11, 33). Isabelle's row is kept off.",
+        "Then down into Vermilion City (offset 12) to its Pokemon Center."
+      ]
+    }
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

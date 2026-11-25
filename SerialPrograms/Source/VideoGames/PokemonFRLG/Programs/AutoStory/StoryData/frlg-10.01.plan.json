@@ -78,15 +78,8 @@
         "why": "down 1F and out of the door (2, 14) onto Celadon below the store's door (11, 14)"
       },
       {
-        "id": "ride_bike",
-        "kind": "game_action",
-        "action": "ride_bike",
-        "why": "on the BICYCLE with SELECT (registered in 08.03) outside the store"
-      },
-      {
         "id": "route16_below_cut_tree",
         "kind": "route",
-        "action": "bike",
         "args": {
           "target": {"map": "Route16", "tiles": [[41, 12]], "facing": "north"}
         },
@@ -101,6 +94,12 @@
         },
         "declared_after": {"map": "Route16", "tiles": [[41, 11]], "facing": "north"},
         "why": "the Oddish (HM01, 06.02) cuts the tree; a step onto its tile"
+      },
+      {
+        "id": "ride_bike",
+        "kind": "game_action",
+        "action": "ride_bike",
+        "why": "on the BICYCLE with SELECT (registered in 08.03) past the Cut tree"
       },
       {
         "id": "east_of_north_gate",

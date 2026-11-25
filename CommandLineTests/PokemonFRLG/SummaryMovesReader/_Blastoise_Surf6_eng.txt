@@ -1,0 +1,14 @@
+moves
+bite
+15
+25
+strength
+13
+15
+surf
+6
+15
+blizzard
+5
+5
+none

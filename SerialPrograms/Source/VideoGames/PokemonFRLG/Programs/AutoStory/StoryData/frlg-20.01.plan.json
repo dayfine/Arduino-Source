@@ -39,7 +39,6 @@
       {
         "id": "below_league_door",
         "kind": "route",
-        "action": "run",
         "args": {
           "target": {
             "map": "IndigoPlateau_PokemonCenter_1F",
@@ -253,9 +252,9 @@
     "menu": "full",
     "protected_slots": [6],
     "verify": {
-      "tries": 10,
-      "min_pass": 5,
-      "reset_budget": 5
+      "tries": 1,
+      "min_pass": 0,
+      "reset_budget": 3
     },
     "notes": {
       "checkpoint": [

@@ -90,7 +90,7 @@ std::array<ImageFloatBox, 4> edge_bands(const ImageFloatBox& game){
 //  How much hold_scroll_change() may read for a player who stood still (an
 //  animated tile, water). Not yet measured on the console: a guess, set low
 //  so that only a screen that did not move at all reads as not moved.
-constexpr double HOLD_UNMOVED_RMSD = 6.0;
+constexpr double HOLD_UNMOVED_RMSD = 3.5;
 
 //  How long measure_movement() waits for a frame that can show the hold
 //  (frame_shows_hold()), a wait at a time, when the feed has stalled.
@@ -295,7 +295,11 @@ BikeTap console_bike_tap(
         return BikeTap{.moved = false, .interrupt = (size_t)ret};
     }
     const VideoSnapshot after = console.video().snapshot();
-    if (before && after && tap_scroll_change(before, after, GameSettings::instance().GAME_BOX) > WALL_TAP_MOVED_RMSD){
+    const ImageFloatBox& game = GameSettings::instance().GAME_BOX;
+    if (before && after
+        && tap_scroll_change(*before.frame, *after.frame, game) > WALL_TAP_MOVED_RMSD
+        && (step.spin_tiles > 0 || tap_moved_on_water(*before.frame, *after.frame, game, step.direction))
+    ){
         return BikeTap{.moved = true};
     }
     const bool late = Pokemon::clear_late_interrupts(console, context, interrupts, AFTER_LEG_WATCH, MAX_INTERRUPTIONS_PER_LEG) > 0;
@@ -524,7 +528,7 @@ public:
 
     //  Where what was seen after `step`'s hold, from `hold_start`, stopped
     //  the player (place_late_stop()); nothing if not recorded or not placed.
-    std::optional<WalkedTiles> place(
+    std::optional<LateStop> place(
         ConsoleHandle& console, const RouteStep& step, Milliseconds tile_time, WallClock hold_start
     ) const{
         if (!m_watcher){
@@ -532,7 +536,7 @@ public:
         }
         const LateStop stop = place_late_stop(step, tile_time, m_watcher->log(), hold_start, current_time());
         console.log(late_stop_line(step, stop, hold_start), COLOR_ORANGE);
-        return stop.walked;
+        return stop;
     }
 
 private:
@@ -607,7 +611,7 @@ StepOutcome walk_and_watch(
         return StepOutcome{};
     }
     const HoldMovement movement = walked.movement;
-    const Milliseconds watch = step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH;
+    const Milliseconds watch = scale_emulator_duration(step.wild ? AFTER_WILD_LEG_WATCH : AFTER_LEG_WATCH);
     const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
     size_t late = Pokemon::clear_late_interrupts(console, context, watched, watch, MAX_INTERRUPTIONS_PER_LEG);
     if (late == 0){
@@ -618,11 +622,13 @@ StepOutcome walk_and_watch(
     if (done){
         return StepOutcome{.end = StepEnd::DONE, .walked = std::nullopt, .movement = movement};
     }
-    std::optional<WalkedTiles> placed = recorder.place(console, step, tile_time(step, speed), walked.hold_start);
+    const std::optional<LateStop> stop = recorder.place(console, step, tile_time(step, speed), walked.hold_start);
+    std::optional<WalkedTiles> placed = stop ? stop->walked : std::nullopt;
     if (walked.dark && step.action == RouteAction::WALK && !step.to_wall){
         placed = logged_stop_tiles(console, step, true, placed.value_or(whole_leg(step)));
     }
-    return StepOutcome{.end = StepEnd::LATE, .walked = placed};
+    const bool trainer_sight = stop && stop->verdict.kind == Pokemon::InterruptKind::TRAINER_SIGHT;
+    return StepOutcome{.end = StepEnd::LATE, .walked = placed, .trainer_sight = trainer_sight};
 }
 
 namespace{
@@ -701,13 +707,13 @@ StepEnd watch_for_trainer(
     const RouteStep& step, const TrainerCrossing& crossing, const OverworldInterruptSet& interrupts
 ){
     const OverworldInterrupts& watched = step.wild ? interrupts.wild : interrupts.other;
-    const Milliseconds look = trainer_first_look(crossing);
+    const Milliseconds look = scale_emulator_duration(trainer_first_look(crossing));
     const size_t first = Pokemon::clear_late_interrupts(console, context, watched, look, MAX_INTERRUPTIONS_PER_LEG);
     if (first == 0){
         console.log(std::format("Route: {} crosses a trainer's sight; watch {} ms: nothing.", to_string(step), look.count()));
         return StepEnd::DONE;
     }
-    const Milliseconds watch = trainer_full_watch(crossing.approach_tiles);
+    const Milliseconds watch = scale_emulator_duration(trainer_full_watch(crossing.approach_tiles));
     console.log(std::format("Route: {} crosses a trainer's sight; watch {} ms: something showed; watching {} ms more.", to_string(step), look.count(), watch.count()));
     Pokemon::clear_late_interrupts(console, context, watched, watch, MAX_INTERRUPTIONS_PER_LEG);
     return StepEnd::LATE;
@@ -718,6 +724,9 @@ StepEnd watch_for_trainer(
 //  steps if it can) and says whether the map scrolled: whether the player
 //  moved instead of bumping into the wall.
 bool moved_past_wall(ConsoleHandle& console, ProControllerContext& context, const RouteStep& step){
+    if (counts_step_taps(step)){
+        return false;
+    }
     context.wait_for_all_requests();
     VideoSnapshot before = console.video().snapshot();
     pbf_press_dpad(context, dpad(step.direction), TURN_TAP, TILE_TIME + TURN_SETTLE);

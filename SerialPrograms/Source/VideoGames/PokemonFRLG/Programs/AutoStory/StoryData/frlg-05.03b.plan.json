@@ -1,0 +1,120 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "05.03b",
+    "title": "Nugget Bridge: Beat trainers 4-5 (Reli, Ethan), return to PC, deposit lead",
+    "start": {"map": "Route24", "tiles": [[11, 25]], "facing": "north"},
+    "events": [
+      {
+        "id": "below_reli_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 2}]
+        },
+        "why": "up to (11, 23)"
+      },
+      {
+        "id": "reli_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (11, 22), beside Reli"
+      },
+      {
+        "id": "lass_reli",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_LASS_RELI",
+          "foes": ["nidoran-m", "nidoran-f"]
+        },
+        "declared_after": {"map": "Route24", "tiles": [[11, 22]], "facing": "north"},
+        "why": "trainer 4 on Nugget Bridge"
+      },
+      {
+        "id": "below_ethan_line",
+        "kind": "legs",
+        "action": "run",
+        "args": {
+          "legs": [{"direction": "north", "tiles": 2}]
+        },
+        "why": "up to (11, 20)"
+      },
+      {
+        "id": "ethan_line",
+        "kind": "step",
+        "action": "trainer_line",
+        "args": {
+          "direction": "north"
+        },
+        "why": "onto (11, 19), beside Ethan"
+      },
+      {
+        "id": "camper_ethan",
+        "kind": "battle",
+        "args": {
+          "trainer": "TRAINER_CAMPER_ETHAN",
+          "foes": ["mankey"]
+        },
+        "declared_after": {"map": "Route24", "tiles": [[11, 19]], "facing": "north"},
+        "why": "trainer 5 on Nugget Bridge"
+      },
+      {
+        "id": "cerulean_house_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity", "tiles": [[23, 15]], "facing": "south"}
+        },
+        "why": "south down column 23 to the wall at (23, 15) to absorb the Route24->CeruleanCity connection stall"
+      },
+      {
+        "id": "pc_front",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[11, 2]], "facing": "north"}
+        },
+        "why": "back to Cerulean Center PC to deposit lead"
+      },
+      {
+        "id": "deposit_lead",
+        "kind": "game_action",
+        "action": "pc",
+        "args": {
+          "do": "deposit",
+          "box": 1,
+          "slot": 1
+        },
+        "why": "deposit lead into Box 2 slot 1 so only Rattata remains for Nugget Bridge fainting"
+      },
+      {
+        "id": "cerulean_nurse",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "CeruleanCity_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"}
+        },
+        "why": "set nurse pose before Nugget Bridge 10x farm"
+      },
+      {
+        "id": "heal_cerulean",
+        "kind": "heal",
+        "why": "full HP"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full",
+    "lead": "after_brock",
+    "notes": {
+      "checkpoint": [
+        "Cerulean 05.03b: beat Nugget Bridge trainers 4-5 (Reli, Ethan), return to Cerulean Center PC, deposit lead in Box 2."
+      ]
+    }
+  },
+  "metadata": {"phase": "testing"}
+}

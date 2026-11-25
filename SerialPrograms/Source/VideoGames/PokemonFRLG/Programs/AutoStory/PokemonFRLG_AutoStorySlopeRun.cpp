@@ -5,11 +5,17 @@
  */
 
 #include <algorithm>
+#include <cctype>
 #include <format>
+#include "CommonFramework/ImageTools/ImageBoxes.h"
 #include "CommonTools/Async/InferenceRoutines.h"
+#include "CommonTools/Images/ImageFilter.h"
 #include "CommonTools/InferenceCallbacks/VisualInferenceCallback.h"
+#include "CommonTools/OCR/OCR_Routines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_BattleScreenDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_OcrPreprocessing.h"
 #include "VideoGames/PokemonFRLG/Inference/Dialogs/PokemonFRLG_DialogDetector.h"
 #include "VideoGames/PokemonFRLG/Overworld/PokemonFRLG_OverworldWalkMoves.h"
 #include "Pokemon/AutoStory/Pokemon_StoryStepExecutor.h"
@@ -48,7 +54,7 @@ Button slope_buttons(const SlopePress& press){
 size_t press_at(const std::vector<SlopePress>& presses, Milliseconds elapsed){
     Milliseconds end(0);
     for (size_t c = 0; c < presses.size(); c++){
-        end += presses[c].hold;
+        end += scale_emulator_duration(presses[c].hold);
         if (elapsed < end){
             return c;
         }
@@ -67,7 +73,7 @@ public:
         m_detector.make_overlays(items);
     }
     virtual bool process_frame(const ImageViewRGB32& frame, WallClock timestamp) override{
-        return m_gate.opened(m_detector.detect(frame), timestamp);
+        return m_gate.opened(m_detector.detect(frame), timestamp, scale_emulator_duration(SlopeMessageGate::HOLD));
     }
 
 private:
@@ -75,32 +81,95 @@ private:
     SlopeMessageGate m_gate;
 };
 
+bool is_repel_wore_off_message(Logger& logger, Language language, const ImageViewRGB32& screen){
+    if (language == Language::None){
+        return false;
+    }
+    const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+    const ImageRGB32 ready = preprocess_for_ocr(extract_box_reference(game, ImageFloatBox{0.08, 0.73, 0.84, 0.09}));
+    for (const OCR::TextColorRange& filter : DARK_TEXT_FILTERS()){
+        const ImageRGB32 bw = to_blackwhite_rgb32_range(ready, true, filter.mins, filter.maxs);
+        std::string text = OCR::ocr_read(language, bw, OCR::PageSegMode::SINGLE_LINE);
+        for (char& ch : text){
+            ch = static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+        }
+        logger.log("Slope: white dialog OCR: " + text);
+        if (text.find("repel") != std::string::npos || text.find("wore") != std::string::npos){
+            return true;
+        }
+    }
+    return false;
+}
+
 //  Sends `presses` back to back, one batch with no wait between, watching
 //  for a battle and, if `message`, for a message. A battle's press is the
 //  one under way by the time since the batch began.
 SlopeSendResult send_slope_presses(SlopeEnv& env, const std::vector<SlopePress>& presses, bool message){
-    SlopeMessageWatcher opened;
-    BattleScreenWatcher battle(COLOR_RED);
-    std::vector<PeriodicInferenceCallback> watchers{battle};
-    if (message){
-        watchers.push_back(opened);
-    }
-    const WallClock start = current_time();
-    const int seen = run_until<ProControllerContext>(
-        env.console, env.context,
-        [&presses](ProControllerContext& context){
-            for (const SlopePress& press : presses){
-                const DpadPosition dpad = press.dpad ? OverworldWalkSteps::dpad(*press.dpad) : DPAD_NONE;
-                pbf_controller_state(context, slope_buttons(press), dpad, {0, 0}, {0, 0}, press.hold);
-            }
-        },
-        watchers
-    );
-    if (seen == 0){
+    std::vector<SlopePress> pending = presses;
+    size_t offset = 0;
+    while (!pending.empty()){
+        SlopeMessageWatcher opened;
+        BattleScreenWatcher battle(COLOR_RED);
+        std::vector<PeriodicInferenceCallback> watchers{battle};
+        if (message){
+            watchers.push_back(opened);
+        }
+        const WallClock start = current_time();
+        const int seen = run_until<ProControllerContext>(
+            env.console, env.context,
+            [&pending](ProControllerContext& context){
+                for (const SlopePress& press : pending){
+                    const DpadPosition dpad = press.dpad ? OverworldWalkSteps::dpad(*press.dpad) : DPAD_NONE;
+                    pbf_controller_state(context, slope_buttons(press), dpad, {0, 0}, {0, 0}, press.hold);
+                }
+            },
+            watchers
+        );
         const Milliseconds elapsed = std::chrono::duration_cast<Milliseconds>(current_time() - start);
-        return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = press_at(presses, elapsed)};
+        const size_t local = press_at(pending, elapsed);
+        if (seen == 0){
+            return SlopeSendResult{.sent = SlopeSent::BATTLE, .press = offset + local};
+        }
+        if (seen == 1){
+            const VideoSnapshot snapshot = env.console.video().snapshot();
+            if (is_repel_wore_off_message(env.console, env.language, *snapshot.frame)){
+                env.console.log("Slope: Repel wore off; closing message and resuming.", COLOR_ORANGE);
+                for (const SlopePress& press : close_message_presses()){
+                    const DpadPosition dpad = press.dpad ? OverworldWalkSteps::dpad(*press.dpad) : DPAD_NONE;
+                    pbf_controller_state(env.context, slope_buttons(press), dpad, {0, 0}, {0, 0}, press.hold);
+                }
+                env.context.wait_for_all_requests();
+                Milliseconds spent(0);
+                for (size_t c = 0; c < local; c++){
+                    spent += scale_emulator_duration(pending[c].hold);
+                }
+                const Milliseconds full_scaled = scale_emulator_duration(pending[local].hold);
+                const Milliseconds used_in_local = std::max(Milliseconds(0), elapsed - spent);
+                const Milliseconds rem_scaled = std::max(Milliseconds(0), full_scaled - used_in_local);
+                std::vector<SlopePress> remaining;
+                if (rem_scaled > Milliseconds(0) && full_scaled > Milliseconds(0)){
+                    SlopePress partial = pending[local];
+                    partial.hold = Milliseconds(
+                        pending[local].hold.count() * rem_scaled.count() / full_scaled.count()
+                    );
+                    if (partial.hold > Milliseconds(0)){
+                        remaining.push_back(partial);
+                    }
+                    offset += local;
+                }else{
+                    offset += local + 1;
+                }
+                if (local + 1 < pending.size()){
+                    remaining.insert(remaining.end(), pending.begin() + static_cast<std::ptrdiff_t>(local + 1), pending.end());
+                }
+                pending = std::move(remaining);
+                continue;
+            }
+            return SlopeSendResult{.sent = SlopeSent::MESSAGE};
+        }
+        return SlopeSendResult{.sent = SlopeSent::ALL};
     }
-    return SlopeSendResult{.sent = seen == 1 ? SlopeSent::MESSAGE : SlopeSent::ALL};
+    return SlopeSendResult{.sent = SlopeSent::ALL};
 }
 
 std::string slope_end_name(SlopeEnd end){

@@ -252,6 +252,10 @@ std::vector<Pokemon::StoryArgSpec> battle_arg_specs(){
         .key = "run", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
         .why = "run from a scripted wild battle (Route 16's Snorlax) instead of fighting it",
     });
+    args.push_back(Pokemon::StoryArgSpec{
+        .key = "no_overworld_after", .type = Pokemon::StoryArgType::BOOLEAN, .required = false, .fallback = false,
+        .why = "skip mashing to the overworld after the battle when a non-overworld cutscene follows directly (the Champion into the Hall of Fame)",
+    });
     for (Pokemon::StoryArgSpec& arg : policy_arg_specs()){
         args.push_back(std::move(arg));
     }

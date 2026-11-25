@@ -7,6 +7,13 @@
     "start": {"map": "VictoryRoad_1F", "tiles": [[11, 20]], "facing": "north"},
     "events": [
       {
+        "id": "repel_victory_road_1f",
+        "kind": "game_action",
+        "action": "use_repel",
+        "args": {"if_any": true},
+        "why": "ensure a Repel is active on 1F (e.g., when resuming from 19.04b save) before pushing boulders"
+      },
+      {
         "id": "behind_boulder_1",
         "kind": "route",
         "action": "run",

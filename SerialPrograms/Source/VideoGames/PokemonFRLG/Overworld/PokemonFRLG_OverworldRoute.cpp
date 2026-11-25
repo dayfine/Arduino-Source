@@ -15,6 +15,7 @@
 #include "Pokemon/Navigation/Pokemon_GatedPlanner.h"
 #include "Pokemon/Navigation/Pokemon_GateTiles.h"
 #include "Pokemon/Navigation/Pokemon_LegPlanner.h"
+#include "Pokemon/Navigation/Pokemon_WanderRules.h"
 #include "PokemonFRLG_OverworldGatedRoute.h"
 #include "PokemonFRLG_OverworldMaps.h"
 #include "PokemonFRLG_OverworldObjects.h"
@@ -304,6 +305,7 @@ public:
         //  A slide ends the leg: the hold must let go on the spinner.
         step.ends_leg = transition->warped || transition->spin;
         step.warped = transition->warped;
+        step.connection = !transition->warped && transition->next.map != state.map;
         step.facing = transition->facing.value_or(direction);
         if (transition->spin){
             step.facing = transition->spin->facing;
@@ -495,6 +497,7 @@ Pokemon::LegCosts to_leg_costs(const RouteCosts& costs){
     leg_costs.per_turn = route_cost(costs, RouteCost::TURN);
     leg_costs.per_open_stop = route_cost(costs, RouteCost::OPEN_STOP);
     leg_costs.per_open_wild_stop = route_cost(costs, RouteCost::OPEN_WILD_STOP);
+    leg_costs.per_open_connection_stop = route_cost(costs, RouteCost::OPEN_CONNECTION_STOP);
     return leg_costs;
 }
 
@@ -644,6 +647,14 @@ RouteStep to_route_step(const std::vector<MapData>& maps, const Pokemon::Leg<Loc
     const std::vector<MapPosition> tiles = leg_tiles(maps, MapPosition{maps[leg.start.map].name, leg.start.state.position}, step);
     for (int c : std::views::iota(1, (int)tiles.size()) | std::views::filter([&](int n){ return tiles[n].map != tiles[n - 1].map; })){
         step.connection_steps.push_back(c);
+    }
+    if (!step.tapped && step.action == RouteAction::WALK && !step.surfing && !step.warps && !step.to_wall && !step.spin_tiles && step.connection_steps.empty()){
+        if (Pokemon::leg_touches_wander_box(tiles, [&](const MapPosition& pos){
+            const int idx = find_map(maps, pos.map);
+            return idx >= 0 ? &maps[idx] : nullptr;
+        })){
+            step.tapped = true;
+        }
     }
     return step;
 }

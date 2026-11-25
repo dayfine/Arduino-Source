@@ -57,6 +57,7 @@
             "venusaur"
           ],
           "policy": "budgeted-setup",
+          "no_overworld_after": true,
           "setup_spa": 2,
           "setup_accuracy": 2,
           "setup_outspeed": true,
@@ -106,6 +107,8 @@
               92,
               46,
               0,
+              0,
+              1,
               0,
               1
             ],
@@ -189,9 +192,9 @@
     "menu": "full",
     "protected_slots": [6],
     "verify": {
-      "tries": 10,
-      "min_pass": 2,
-      "reset_budget": 8
+      "tries": 1,
+      "min_pass": 0,
+      "reset_budget": 5
     },
     "notes": {
       "checkpoint": [

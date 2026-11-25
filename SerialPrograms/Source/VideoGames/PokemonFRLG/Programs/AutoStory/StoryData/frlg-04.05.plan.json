@@ -191,5 +191,13 @@
       ]
     }
   },
-  "metadata": {"phase": "testing"}
+  "metadata": {
+    "phase": "testing",
+    "postconditions": {
+      "poison_survival": {
+        "steps": 130,
+        "max_hp": 55
+      }
+    }
+  }
 }

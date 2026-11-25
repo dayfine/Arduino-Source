@@ -198,7 +198,13 @@ std::optional<size_t> slope_resume_move(const std::vector<SlopeMove>& moves, siz
         next++;
     }
     if (next < moves.size()){
-        return moves[next].kind == SlopeMoveKind::ROLL ? std::optional<size_t>(next) : std::nullopt;
+        if (moves[next].kind == SlopeMoveKind::ROLL){
+            return next;
+        }
+        if (moves[move].kind == SlopeMoveKind::STEP && move + 1 < moves.size() && moves[move + 1].kind == SlopeMoveKind::SEARCH){
+            return move + 1;
+        }
+        return std::nullopt;
     }
     for (size_t back = move; back-- > 0;){
         if (moves[back].kind == SlopeMoveKind::ROLL){

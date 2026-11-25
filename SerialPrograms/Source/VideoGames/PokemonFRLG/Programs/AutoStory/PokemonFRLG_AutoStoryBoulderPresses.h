@@ -10,6 +10,7 @@
 #ifndef PokemonAutomation_PokemonFRLG_AutoStoryBoulderPresses_H
 #define PokemonAutomation_PokemonFRLG_AutoStoryBoulderPresses_H
 
+#include "CommonFramework/Language.h"
 #include "CommonFramework/VideoPipeline/VideoFeed.h"
 #include <optional>
 #include <string>
@@ -21,6 +22,8 @@
 namespace PokemonAutomation{
 namespace NintendoSwitch{
 namespace PokemonFRLG{
+
+struct Supplies;
 
 
 //  Strength on, at the boulder `direction` of the player on `here`: A,
@@ -35,7 +38,10 @@ std::optional<std::string> use_strength(ConsoleHandle& console, ProControllerCon
 //  the screen before it and once still after it.
 class ConsoleBoulderPresses : public BoulderPresses{
 public:
-    ConsoleBoulderPresses(ConsoleHandle& console, ProControllerContext& context, PlayerGender player);
+    ConsoleBoulderPresses(
+        ConsoleHandle& console, ProControllerContext& context, PlayerGender player,
+        Supplies* supplies = nullptr, Language language = Language::English
+    );
 
     //  A step tap (step_once()), read once the screen is still.
     BoulderPressRead press(Direction direction) override;
@@ -50,6 +56,8 @@ private:
     ConsoleHandle& m_console;
     ProControllerContext& m_context;
     PlayerGender m_player;
+    Supplies* m_supplies;
+    Language m_language;
 };
 
 

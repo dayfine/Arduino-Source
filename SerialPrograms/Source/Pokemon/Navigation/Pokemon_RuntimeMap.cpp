@@ -93,6 +93,51 @@ JsonValue normalize_wander(const JsonValue& value, WireFormat format, const std:
     return result;
 }
 
+JsonValue wander_from_path(const JsonValue& value, TilePos start, const std::string& where){
+    const JsonArray& steps = array_at(value, where);
+    TilePos cur = start;
+    int x0 = start.x;
+    int y0 = start.y;
+    int x1 = start.x;
+    int y1 = start.y;
+    for (size_t i = 0; i < steps.size(); i++){
+        const std::string step_path = std::format("{}[{}]", where, i);
+        const JsonArray& step = array_at(steps[i], step_path);
+        if (step.size() != 2){
+            throw ParseException(std::format("{} requires [direction, steps].", step_path));
+        }
+        const std::string* dir = step[0].to_string();
+        if (!dir){
+            throw ParseException(std::format("{}[0] is not a direction string.", step_path));
+        }
+        const int count = coordinate(&step[1], std::format("{}[1]", step_path));
+        if (count < 0){
+            throw ParseException(std::format("{}[1] must be nonnegative.", step_path));
+        }
+        if (*dir == "north"){
+            cur.y -= count;
+        }else if (*dir == "south"){
+            cur.y += count;
+        }else if (*dir == "east"){
+            cur.x += count;
+        }else if (*dir == "west"){
+            cur.x -= count;
+        }else{
+            throw ParseException(std::format("{}[0] has unknown direction '{}'.", step_path, *dir));
+        }
+        x0 = std::min(x0, cur.x);
+        y0 = std::min(y0, cur.y);
+        x1 = std::max(x1, cur.x);
+        y1 = std::max(y1, cur.y);
+    }
+    JsonObject result;
+    result["x0"] = x0;
+    result["y0"] = y0;
+    result["x1"] = x1;
+    result["y1"] = y1;
+    return result;
+}
+
 JsonObject normalize_record(const JsonValue& value, WireFormat format, const std::string& where){
     const JsonObject& source = object_at(value, where);
     const TilePos pos = pair_at(source, {"x", "y", "coord"}, format, where);
@@ -153,6 +198,12 @@ void append_objects(const JsonArray& input, WireFormat format, const std::string
         }
         if (const JsonValue* wander = record.get_value("wander")){
             record["wander"] = normalize_wander(*wander, format, std::format("{}wander.", path));
+        }else if (const JsonValue* npc_path = record.get_value("path")){
+            const TilePos start{
+                (int)record.get_value("x")->to_integer_default(),
+                (int)record.get_value("y")->to_integer_default(),
+            };
+            record["wander"] = wander_from_path(*npc_path, start, std::format("{}path.", path));
         }
         output.push_back(std::move(record));
     }
