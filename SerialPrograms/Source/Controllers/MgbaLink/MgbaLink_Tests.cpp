@@ -320,17 +320,17 @@ private:
         m_listen_error = error_message;
         m_cv.notify_all();
     }
-    virtual void on_connect() override{
+    virtual void on_connect(AbstractServerSocket::ConnectionPtr connection) override{
         if (m_mode == BridgeMode::BUSY){
             //  Closed once the client's first line is read (no reset that
             //  could drop this line before the client reads it).
-            send("ERR busy\n");
+            send(connection, "ERR busy\n");
         }
     }
-    virtual void on_receive_data(const void* data, size_t bytes) override;
+    virtual void on_receive_data(AbstractServerSocket::ConnectionPtr connection, const void* data, size_t bytes) override;
 
-    void send(std::string_view text){
-        m_server.send(text.data(), text.size());
+    static void send(const AbstractServerSocket::ConnectionPtr& connection, std::string_view text){
+        connection->send(text.data(), text.size());
     }
 
     static std::string reply_for(std::string_view line);
@@ -363,13 +363,13 @@ std::optional<uint16_t> FakeBridge::start(){
     return std::nullopt;
 }
 
-void FakeBridge::on_receive_data(const void* data, size_t bytes){
+void FakeBridge::on_receive_data(AbstractServerSocket::ConnectionPtr connection, const void* data, size_t bytes){
     if (m_mode == BridgeMode::BUSY){
         //  Record what the client sent, then refuse it.
         std::lock_guard<Mutex> lg(m_lock);
         m_commands.emplace_back("(refused)");
         m_cv.notify_all();
-        m_server.close_connection();
+        connection->close();
         return;
     }
     std::vector<std::string> lines = m_splitter.push(std::string_view(static_cast<const char*>(data), bytes));
@@ -384,10 +384,10 @@ void FakeBridge::on_receive_data(const void* data, size_t bytes){
         }
         std::string reply = reply_for(line);
         //  Two writes, so the client has to reassemble the line.
-        send(std::string_view(reply).substr(0, 3));
-        send(std::string_view(reply).substr(3));
+        send(connection, std::string_view(reply).substr(0, 3));
+        send(connection, std::string_view(reply).substr(3));
         if (line == "BYE"){
-            m_server.close_connection();
+            connection->close();
         }
     }
 }

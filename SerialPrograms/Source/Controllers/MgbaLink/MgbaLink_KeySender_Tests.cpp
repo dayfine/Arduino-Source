@@ -122,7 +122,7 @@ private:
         m_listen_error = error_message;
         m_cv.notify_all();
     }
-    virtual void on_receive_data(const void* data, size_t bytes) override{
+    virtual void on_receive_data(AbstractServerSocket::ConnectionPtr connection, const void* data, size_t bytes) override{
         std::vector<std::string> lines = m_splitter.push(std::string_view(static_cast<const char*>(data), bytes));
         for (const std::string& line : lines){
             {
@@ -131,9 +131,9 @@ private:
                 m_cv.notify_all();
             }
             std::string reply = reply_for(line);
-            m_server.send(reply.data(), reply.size());
+            connection->send(reply.data(), reply.size());
             if (line == "BYE"){
-                m_server.close_connection();
+                connection->close();
             }
         }
     }
