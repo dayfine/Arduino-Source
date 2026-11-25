@@ -38,8 +38,9 @@ bool dialogue_opens(VideoStream& stream, ProControllerContext& context, Millisec
 //  overworld. Returns whether there was a battle. Between a trainer's last
 //  line and the battle the overworld shows with no dialogue for a moment,
 //  so "only talked" is talk_over()'s quiet, and never comes when `expect`
-//  is BATTLE. `format` DOUBLES for tag and twin battles. A lost battle ends
-//  in the last Pokemon Center; see in_pokemon_center().
+//  is BATTLE. `format` DOUBLES for tag and twin battles; `foe` the team
+//  fought, when the story knows it. A lost battle ends in the last Pokemon
+//  Center; see in_pokemon_center().
 enum class TalkExpect{
     TALK_OR_BATTLE,
     BATTLE,
@@ -47,7 +48,8 @@ enum class TalkExpect{
 //  Handles dialogue interaction or battle sequence with an NPC or trainer.
 bool talk_or_fight(
     VideoStream& stream, ProControllerContext& context, const std::string& label,
-    TalkExpect expect = TalkExpect::TALK_OR_BATTLE, BattleFormat format = BattleFormat::SINGLES
+    TalkExpect expect = TalkExpect::TALK_OR_BATTLE, BattleFormat format = BattleFormat::SINGLES,
+    const FoeTeam& foe = {}
 );
 
 //  Fights a trainer whose dialogue has opened, with whatever starter we

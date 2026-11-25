@@ -103,9 +103,9 @@ Pokemon::MapData jubilife_west_of_route_203(){
 //  (128, 736)): Route 203's rows 17..20 are Jubilife's street, rows 21..24.
 const StoryWorld& route_203_world(){
     static const StoryWorld world = []{
-        StoryWorld world = joined({{"Route203", {191, 740}}});
-        world.add(MAP_JUBILIFE_CITY, jubilife_west_of_route_203(), {128, 736});
-        return world;
+        StoryWorld combined = joined({{"Route203", {191, 740}}});
+        combined.add(MAP_JUBILIFE_CITY, jubilife_west_of_route_203(), {128, 736});
+        return combined;
     }();
     return world;
 }

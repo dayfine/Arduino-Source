@@ -316,8 +316,8 @@ bool step_computes_pose(const BdspStep& step, const GridPose& before){
 
 class SimCenterVisit : public BdspCenterVisit{
 public:
-    SimCenterVisit(StoryStepIO& io, bool run, GridSim& sim, SimMisses& misses, const SimCenterDoors& doors, std::string label)
-        : BdspCenterVisit(io, run)
+    SimCenterVisit(StoryStepIO& io, bool run, std::string_view map, GridSim& sim, SimMisses& misses, const SimCenterDoors& doors, std::string label)
+        : BdspCenterVisit(io, run, map)
         , m_sim(sim)
         , m_misses(misses)
         , m_doors(doors)
@@ -333,7 +333,7 @@ public:
         m_misses.fading_in = true;
         return m_doors.late_fade ? WarpSeen{} : seen;
     }
-    virtual void line_up_and_walk_in() override{
+    virtual void line_up_by_sight() override{
         throw GridSimFailure{std::format("{}: no door north of {}", m_label, to_string(m_sim.player().pos))};
     }
     virtual Pokemon::CenterPlace place() override{
@@ -560,7 +560,7 @@ std::optional<StoryFailure> SimExecutor::heal(BdspRunState& state, const BdspSte
     }
     static const SimCenterDoors PLAIN_DOORS;
     const auto doors = m_knobs.centers.find(step.name);
-    SimCenterVisit visit(m_io, m_walks.can_run(), m_sim, m_misses, doors == m_knobs.centers.end() ? PLAIN_DOORS : doors->second, step.name);
+    SimCenterVisit visit(m_io, m_walks.can_run(), state.pose.map, m_sim, m_misses, doors == m_knobs.centers.end() ? PLAIN_DOORS : doors->second, step.name);
     return Pokemon::run_center_visit(step.name, visit);
 }
 

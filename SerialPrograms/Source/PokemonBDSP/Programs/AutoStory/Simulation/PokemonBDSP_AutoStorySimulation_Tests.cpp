@@ -78,8 +78,8 @@ struct Walked{
     std::vector<std::string> golden = {};
 };
 
-int tiles_walked(const std::vector<PlannedLeg>& plan){
-    int tiles = 0;
+size_t tiles_walked(const std::vector<PlannedLeg>& plan){
+    size_t tiles = 0;
     for (const PlannedLeg& leg : plan){
         tiles += leg.leg.tiles;
     }
@@ -90,8 +90,8 @@ std::string detour_error(const StoryWorld& world, const std::vector<TilePos>& st
     const std::function<bool(const TilePos&)>& at_goal, const std::vector<PlannedLeg>& plan
 ){
     const auto shortest = plan_robust_route(world, start, at_goal, waypoint_plan_costs());
-    const int walked = tiles_walked(plan);
-    const int least = shortest ? tiles_walked(*shortest) : walked;
+    const size_t walked = tiles_walked(plan);
+    const size_t least = shortest ? tiles_walked(*shortest) : walked;
     if (walked <= least + least / 2 + 4){
         return "";
     }
