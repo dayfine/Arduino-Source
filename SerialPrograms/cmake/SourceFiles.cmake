@@ -1505,6 +1505,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Options/Pokemon_StatsHuntFilter.h
     Source/Pokemon/Options/Pokemon_StoryRunOptions.cpp
     Source/Pokemon/Options/Pokemon_StoryRunOptions.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryResources.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryResources.h
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryResources_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_AutoStoryResources_Tests.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect.h
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_AutoStorySelect_Tests.h
@@ -1567,6 +1571,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.cpp
     Source/Pokemon/AutoStory/Pokemon_Interrupts_Tests.h
     Source/Pokemon/AutoStory/Pokemon_MapUtil.h
+    Source/Pokemon/AutoStory/Pokemon_OverlayLog.cpp
+    Source/Pokemon/AutoStory/Pokemon_OverlayLog.h
+    Source/Pokemon/AutoStory/Pokemon_OverlayLog_Tests.cpp
+    Source/Pokemon/AutoStory/Pokemon_OverlayLog_Tests.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.cpp
     Source/Pokemon/AutoStory/Pokemon_SceneJudges.h
     Source/Pokemon/AutoStory/Pokemon_SceneJudges_Tests.cpp
@@ -1642,6 +1650,10 @@ file(GLOB LIBRARY_SOURCES
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapData_Tests.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapFeatures.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapGates.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader.h
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader_Tests.cpp
+    Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapPackLoader_Tests.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MapTiles.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics.h
     Source/Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics_Tests.cpp
@@ -1943,8 +1955,6 @@ file(GLOB LIBRARY_SOURCES
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryLocation.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryLocation.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryLocationBannerWatcher.h
-    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryOverlayLog.cpp
-    Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryOverlayLog.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryPlannedRoute.cpp
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryPlannedRoute.h
     Source/PokemonBDSP/Programs/AutoStory/Utils/PokemonBDSP_AutoStoryPlannedTalk.cpp
@@ -2355,6 +2365,8 @@ file(GLOB LIBRARY_SOURCES
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxGenderDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxNumberReader.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxNumberReader.h
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxSpacesReader.cpp
+    Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxSpacesReader.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxViewDetector.cpp
     Source/VideoGames/PokemonHome/Inference/PokemonHome_BoxViewDetector.h
     Source/VideoGames/PokemonHome/Inference/PokemonHome_ButtonDetector.cpp

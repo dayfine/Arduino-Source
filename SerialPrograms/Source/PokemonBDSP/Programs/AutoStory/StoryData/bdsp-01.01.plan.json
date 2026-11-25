@@ -48,6 +48,7 @@
         "why": "Barry's battle; a loss goes on, as it did on the console",
         "args": {
           "may_lose": true,
+          "foe": "barry-route-203",
           "pose_after": {
             "facing": "east",
             "map": "Route203",

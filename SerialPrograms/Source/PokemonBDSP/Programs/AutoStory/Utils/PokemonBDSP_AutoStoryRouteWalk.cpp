@@ -17,13 +17,13 @@
 #include "CommonTools/Async/InferenceRoutines.h"
 #include "NintendoSwitch/Commands/NintendoSwitch_Commands_PushButtons.h"
 #include "Pokemon/Navigation/Grid/Maps/Pokemon_MoveMechanics.h"
+#include "Pokemon/AutoStory/Pokemon_OverlayLog.h"
 #include "Pokemon/Navigation/Grid/Trace/Pokemon_RouteLog.h"
 #include "PokemonBDSP/Inference/PokemonBDSP_DialogDetector.h"
 #include "PokemonBDSP/Programs/AutoStory/Detect/PokemonBDSP_AutoStoryOverworldDetector.h"
 #include "PokemonBDSP_AutoStoryLocation.h"
 #include "PokemonBDSP_AutoStoryWalk.h"
 #include "PokemonBDSP_AutoStoryIndoors.h"
-#include "PokemonBDSP_AutoStoryOverlayLog.h"
 #include "PokemonBDSP_AutoStoryRouteWalk.h"
 #include "PokemonBDSP_AutoStoryWalkResult.h"
 
@@ -73,7 +73,7 @@ bool route_wall_readable(const StoryWorld& grid, const std::vector<TilePos>& aft
 
 void route_status(VideoStream& stream, const std::string& text){
     stream.log("[Route] " + text, COLOR_BLUE);
-    add_wrapped_log(stream.overlay(), text, COLOR_WHITE);
+    Pokemon::add_wrapped_overlay_log(stream.overlay(), text, COLOR_WHITE);
 }
 
 Milliseconds route_open_hold(Direction direction, size_t tiles){

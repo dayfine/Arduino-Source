@@ -27,8 +27,8 @@ ShortDialogDetector::ShortDialogDetector(Color color)
 //    , m_bottom(0.50, 0.91, 0.29, 0.05)
     , m_left_white(0.21, 0.835, 0.008, 0.12)
     , m_left(0.18, 0.835, 0.02, 0.12)
-    , m_right_white(0.785, 0.835, 0.008, 0.12)
-    , m_right_white_low(0.785, 0.915, 0.008, 0.04)
+    , m_right_white(0.789, 0.835, 0.007, 0.12)
+    , m_right_white_low(0.789, 0.915, 0.007, 0.04)
     , m_right(0.822, 0.835, 0.02, 0.12)
 {}
 void ShortDialogDetector::make_overlays(VideoOverlaySet& items) const{
@@ -49,6 +49,8 @@ bool ShortDialogDetector::detect(const ImageViewRGB32& screen){
 //    cout << right_white.average << right_white.stddev << endl;
     //  A long first line runs into m_right_white (Rowan's "Now, go on, and
     //  leap into the world of Pokemon!"). Check below that line as well.
+    //  Both start at 0.789: French lines end as far right as 0.787 (Rowan's
+    //  "... le Professeur Pokemon"), and the box stays white to 0.799.
     if (!is_white(right_white) && !is_white(image_stats(extract_box_reference(screen, m_right_white_low)))){
         return false;
     }

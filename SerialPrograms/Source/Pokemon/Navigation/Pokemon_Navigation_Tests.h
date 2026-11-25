@@ -14,6 +14,7 @@
 #include "Common/Cpp/TestRunners/UnitTestDatabase.h"
 #include "Grid/Maps/Pokemon_ConnectedMaps_Tests.h"
 #include "Grid/Maps/Pokemon_MapData_Tests.h"
+#include "Grid/Maps/Pokemon_MapPackLoader_Tests.h"
 #include "Grid/Maps/Pokemon_MoveMechanics_Tests.h"
 #include "Grid/Maps/Pokemon_RuntimeMap_Tests.h"
 #include "Grid/Planning/Pokemon_Gates_Tests.h"
@@ -40,6 +41,7 @@ namespace Pokemon{
 inline void add_tests_Navigation(UnitTestDatabase& database){
     add_tests_ConnectedMaps(database);
     add_tests_MapData(database);
+    add_tests_MapPackLoader(database);
     add_tests_MoveMechanics(database);
     add_tests_RuntimeMap(database);
     add_tests_Gates(database);
