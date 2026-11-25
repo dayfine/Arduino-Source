@@ -1,0 +1,27 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "mg-04c",
+    "title": "Escape Rope out of Pokemon Tower 5F to Lavender Town",
+    "start": {"map": "PokemonTower_5F", "tiles": [[10, 9]], "facing": "west"},
+    "events": [
+      {
+        "id": "escape_rope_tower",
+        "kind": "game_action",
+        "action": "use_item",
+        "args": {
+          "item": "escape-rope"
+        },
+        "declared_after": {"map": "LavenderTown", "tiles": [[18, 7]], "facing": "south"},
+        "why": "use Escape Rope out of Pokemon Tower 5F directly to Lavender Town (18, 7) and save"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

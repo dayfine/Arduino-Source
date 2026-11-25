@@ -23,7 +23,10 @@ constexpr std::string_view MAIL_GLITCH_ORDER[] = {
     "mg-01",
     "mg-02",
     "mg-03",
-    "mg-04",
+    "mg-04a",
+    "mg-04b",
+    "mg-04c",
+    "mg-05a",
     "mg-05",
 };
 

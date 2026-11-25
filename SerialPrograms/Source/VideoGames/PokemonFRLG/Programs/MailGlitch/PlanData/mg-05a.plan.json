@@ -1,0 +1,172 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "mg-05a",
+    "title": "Prepare Leppa and Retro Mail for Lea & Jed on Route 16",
+    "start": {"map": "LavenderTown", "tiles": [[18, 7]], "facing": "south"},
+    "events": [
+      {
+        "id": "lavender_mart_clerk",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "LavenderTown_Mart", "tiles": [[4, 3]], "facing": "west"}},
+        "why": "Face the Lavender Town Poké Mart clerk."
+      },
+      {
+        "id": "buy_blastoise_medicine",
+        "kind": "game_action",
+        "action": "mart",
+        "args": {"map": "LavenderTown_Mart", "items": [{"item": "antidote", "quantity": 2}, {"item": "super-potion", "quantity": 3}]},
+        "why": "Buy medicine to recover from the wild battles without restoring Blizzard PP."
+      },
+      {
+        "id": "out_of_lavender_mart",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "LavenderTown", "tiles": [[20, 16]], "facing": "south"}},
+        "why": "Return to the street south of the Mart."
+      },
+      {
+        "id": "return_to_tower_door",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "LavenderTown", "tiles": [[18, 7]], "facing": "south"}},
+        "why": "Return to the verified starting position before approaching the Route 8 Cut tree."
+      },
+      {
+        "id": "to_route8_cut_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route8", "tiles": [[48, 12]], "facing": "west"}},
+        "why": "walk west from Lavender Town into Route 8 to east of Cut tree (47, 12)"
+      },
+      {
+        "id": "cut_route8_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {"direction": "west"},
+        "declared_after": {"map": "Route8", "tiles": [[47, 12]], "facing": "west"},
+        "why": "cut Route 8 fence tree (47, 12) to enter the grass patch"
+      },
+      {
+        "id": "to_route8_grass",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route8", "tiles": [[45, 12]], "facing": "west"}},
+        "why": "step into Route 8 grass (45, 12) to faint Rattata cleanly"
+      },
+      {
+        "id": "face_route8_leppa_berry",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route8", "tiles": [[42, 14]], "facing": "south"}},
+        "why": "Face the hidden Leppa Berry at (42, 15)."
+      },
+      {
+        "id": "pick_up_leppa_berry",
+        "kind": "talk",
+        "why": "Pick up the Leppa Berry for the opening turn."
+      },
+      {
+        "id": "clear_leppa_text",
+        "kind": "scene",
+        "declared_after": {"map": "Route8", "tiles": [[42, 14]], "facing": "south"},
+        "why": "Clear the hidden item dialog."
+      },
+      {
+        "id": "return_to_route8_grass",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route8", "tiles": [[45, 12]], "facing": "west"}},
+        "why": "Return to the grass to use up Blizzard PP."
+      },
+      {
+        "id": "lead_blastoise",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {"species": "blastoise", "target_slot": 1},
+        "why": "Lead with Blastoise for the wild battles."
+      },
+      {
+        "id": "use_up_blizzard_pp",
+        "kind": "game_action",
+        "action": "prepare_berry_pp",
+        "args": {"species": "blastoise", "move": "blizzard", "backup_move": "surf"},
+        "declared_after": {"map": "Route8", "tiles": [[45, 12]], "facing": "west"},
+        "why": "Use up Blizzard PP so Leppa is consumed after the opening turn."
+      },
+      {
+        "id": "fly_celadon",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {"town": "CeladonCity", "species": "pidgey"},
+        "declared_after": {"map": "CeladonCity", "tiles": [[48, 12]], "facing": "south"},
+        "why": "Fly to Celadon City with Blastoise's PP still depleted."
+      },
+      {
+        "id": "to_route16_cut_tree",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route16", "tiles": [[41, 12]], "facing": "north"}},
+        "why": "Walk west out of Celadon to the north-side Cut tree."
+      },
+      {
+        "id": "cut_route16_tree",
+        "kind": "game_action",
+        "action": "cut_tree",
+        "args": {"direction": "north"},
+        "declared_after": {"map": "Route16", "tiles": [[41, 11]], "facing": "north"},
+        "why": "Open the northern path toward Lea & Jed."
+      },
+      {
+        "id": "to_lea_and_jed",
+        "kind": "route",
+        "action": "run",
+        "args": {"target": {"map": "Route16", "tiles": [[30, 7]], "facing": "north"}},
+        "why": "Stand one tile outside Lea's sightline."
+      },
+      {
+        "id": "arrange_slot1_chding",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {"species": "farfetchd", "target_slot": 1},
+        "why": "place CH'DING (Knock Off) in Party Slot 1"
+      },
+      {
+        "id": "arrange_slot2_blastoise",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {"species": "blastoise", "target_slot": 2},
+        "why": "Place Blastoise in the berry holder's battle position."
+      },
+      {
+        "id": "arrange_slot3_mimien",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {"species": "mr-mime", "target_slot": 3},
+        "why": "place MIMIEN (Recycle) in Party Slot 3"
+      },
+      {
+        "id": "give_leppa_berry_slot2",
+        "kind": "game_action",
+        "action": "give_bag_item",
+        "args": {"item": "leppa-berry", "target_slot": 2},
+        "why": "Equip Blastoise to restore Blizzard PP after the first turn."
+      },
+      {
+        "id": "give_retro_mail_slot3",
+        "kind": "game_action",
+        "action": "give_bag_item",
+        "args": {"item": "retro-mail", "target_slot": 3},
+        "why": "equip Retro Mail with 1 Easy Chat word onto Slot 3 (MIMIEN)"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

@@ -15,9 +15,10 @@
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_BagDetector.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_ItemListReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyHeldItemDetector.h"
-#include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMemberMenuReader.h"
 #include "VideoGames/PokemonFRLG/Inference/Menus/PokemonFRLG_PartyMenuDetector.h"
+#include "VideoGames/PokemonFRLG/Inference/PokemonFRLG_DigitReader.h"
 #include "VideoGames/PokemonFRLG/PokemonFRLG_Navigation.h"
+#include "VideoGames/PokemonFRLG/PokemonFRLG_Settings.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryActions.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryGameArgs.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryItemUse.h"
@@ -45,7 +46,6 @@ namespace{
 constexpr Milliseconds MENU_TAP = 100ms;
 constexpr Milliseconds MENU_WAIT = 250ms;
 constexpr Milliseconds DIALOG_TIMEOUT = 60000ms;
-constexpr Milliseconds TRADE_TIMEOUT = 90000ms;
 constexpr Milliseconds BAG_SLIDE_WAIT = 1500ms;
 
 void tap_dpad_times(ProControllerContext& context, DpadPosition dir, size_t count){
@@ -56,6 +56,85 @@ void tap_dpad_times(ProControllerContext& context, DpadPosition dir, size_t coun
 
 bool is_berry_item(std::string_view item){
     return item.ends_with("-berry");
+}
+
+//  Language-free Berry Pouch row finder using the fixed 2-digit berry index
+//  ("No.XX ", pokefirered/src/berry_pouch.c:686-697). Returns 0-based row from
+//  the top of the Berry Pouch (cursor reset back to top), or nullopt if not found.
+std::optional<int> berry_pouch_target_number(std::string_view item){
+    if (item == "leppa-berry"){
+        return 6;
+    }
+    if (item == "oran-berry"){
+        return 7;
+    }
+    if (item == "sitrus-berry"){
+        return 10;
+    }
+    return std::nullopt;
+}
+
+std::optional<size_t> find_berry_row_in_pouch(
+    ConsoleHandle& console,
+    ProControllerContext& context,
+    std::string_view item
+){
+    const std::optional<int> target_num = berry_pouch_target_number(item);
+    if (!target_num){
+        return std::nullopt;
+    }
+    //  Berry Pouch window (pokefirered/src/berry_pouch.c:218-225, 670-675):
+    //  Route 16 mGBA run, 2026-11-23: crop the two digits between "No" and the berry name.
+    constexpr int BERRY_POUCH_VISIBLE_ROWS = 7;
+    constexpr size_t MAX_BERRIES = 43;
+    auto read_row_num = [&](const ImageViewRGB32& screen, int shown) -> int{
+        const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
+        const ImageFloatBox box(105.0 / 240, (12.0 + 16.0 * shown) / 160, 11.0 / 240, 10.0 / 160);
+        return read_digits_waterfill_template(console.logger(), extract_box_reference(game, box), DigitTemplateType::StatBox);
+    };
+
+    context.wait_for_all_requests();
+    VideoSnapshot screen = console.video().snapshot();
+    if (!screen){
+        return std::nullopt;
+    }
+    for (int shown = 0; shown < BERRY_POUCH_VISIBLE_ROWS; shown++){
+        const int num = read_row_num(screen, shown);
+        if (num == *target_num){
+            return static_cast<size_t>(shown);
+        }
+    }
+    //  Scroll past the first 7 rows (Berry Pouch scrolls once cursor passes row 3).
+    size_t downs = 0;
+    for (int c = 0; c < 3; c++){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 350ms);
+        downs++;
+    }
+    std::optional<size_t> found;
+    int last_num = -1;
+    for (size_t idx = BERRY_POUCH_VISIBLE_ROWS; idx < MAX_BERRIES; idx++){
+        pbf_press_dpad(context, DPAD_DOWN, 100ms, 350ms);
+        downs++;
+        context.wait_for_all_requests();
+        VideoSnapshot cur = console.video().snapshot();
+        if (!cur){
+            break;
+        }
+        const int num = read_row_num(cur, BERRY_POUCH_VISIBLE_ROWS - 1);
+        if (num == *target_num){
+            found = idx;
+            break;
+        }
+        if (num < 0 || num == last_num){
+            break;
+        }
+        last_num = num;
+    }
+    for (size_t c = 0; c < downs; c++){
+        pbf_press_dpad(context, DPAD_UP, 80ms, 120ms);
+    }
+    context.wait_for_all_requests();
+    return found;
 }
 
 //  Opens Bag to `pocket` (0 = Items, 1 = Key Items, 2 = Poke Balls) with cursor on top row.
@@ -75,12 +154,14 @@ void open_bag_pocket_top(ConsoleHandle& console, ProControllerContext& context, 
 }
 
 //  Finds an item's 0-based row in the currently open pocket (cursor starts and ends on row 0).
+//  Set `require_count = false` for Key Items (which display no quantity column).
 std::optional<size_t> find_item_row_in_open_pocket(
-    ConsoleHandle& console, ProControllerContext& context, Language language, std::string_view item
+    ConsoleHandle& console, ProControllerContext& context, Language language, std::string_view item,
+    bool require_count = true
 ){
     const PocketRead read = read_open_pocket(console, context, language);
     for (size_t row = 0; row < read.rows.size(); row++){
-        if (read.rows[row].item == item && read.rows[row].count != 0){
+        if (read.rows[row].item == item && (!require_count || read.rows[row].count != 0)){
             return row;
         }
     }
@@ -99,12 +180,15 @@ Outcome run_buy_coins(StoryEnv& env, const StoryStep& step){
     while (remaining > 0){
         const bool buy_500 = remaining >= 500;
         const int64_t batch = buy_500 ? 500 : 50;
-        //  Talk to CoinsClerk: welcome text + multichoice box.
-        pbf_press_button(env.context, BUTTON_A, 160ms, 2200ms);
+        //  Talk to CoinsClerk:
+        //    Page 1: "Welcome to ROCKET GAME CORNER!\p" -> A advances page break.
+        //    Page 2: "Do you need some game COINS?..." + multichoice (0 = 50, 1 = 500, 2 = NO THANKS).
+        pbf_press_button(env.context, BUTTON_A, 160ms, 1800ms);
+        pbf_press_button(env.context, BUTTON_A, 160ms, 1800ms);
         if (buy_500){
             pbf_press_dpad(env.context, DPAD_DOWN, 120ms, 300ms);
         }
-        pbf_press_button(env.context, BUTTON_A, 160ms, 1200ms);
+        pbf_press_button(env.context, BUTTON_A, 160ms, 1500ms);
         mash_until_overworld(env.console, env.context, DIALOG_TIMEOUT);
         remaining -= batch;
         env.console.log(std::format("MailGlitch: bought {} coins ({} remaining).", batch, std::max<int64_t>(0, remaining)));
@@ -166,8 +250,21 @@ Outcome run_ingame_trade(StoryEnv& env, const StoryStep& step){
     //  Select mon -> SUMMARY / TRADE (cursor starts on SUMMARY? No: pokefirered EventScript_ChooseMonForInGameTrade
     //  opens party menu in PARTY_MENU_TYPE_INGAME_TRADE where pressing A directly selects the mon!).
     pbf_press_button(env.context, BUTTON_A, 160ms, 1000ms);
-    //  Wait out the trade cutscene and final dialog back to overworld.
-    mash_until_overworld(env.console, env.context, TRADE_TIMEOUT);
+    //  The trade cutscene shows a blue battle-style dialog ("Take good care of ...!")
+    //  that only closes on A/B (and that BattleScreenWatcher treats as a battle screen,
+    //  causing mash_until_overworld to stall). Tap A until the cutscene fades back to
+    //  the NPC's white post-trade dialog, then clear to overworld.
+    WhiteDialogWatcher post_trade_dialog(COLOR_RED);
+    run_until<ProControllerContext>(
+        env.console, env.context,
+        [](ProControllerContext& context){
+            for (int c = 0; c < 45; c++){
+                pbf_press_button(context, BUTTON_A, 160ms, 1000ms);
+            }
+        },
+        {{post_trade_dialog}}
+    );
+    mash_until_overworld(env.console, env.context, DIALOG_TIMEOUT);
     env.party.invalidate();
     return Pokemon::outcome_ok();
 }
@@ -240,7 +337,30 @@ Outcome run_give_bag_item(StoryEnv& env, const StoryStep& step){
     if (is_berry_item(item)){
         env.console.log(std::format("MailGlitch: giving {} from Berry Pouch to party slot {}.", item, *slot + 1));
         open_bag_pocket_top(env.console, env.context, /*Key Items=*/1);
-        const std::optional<size_t> pouch_row = find_item_row_in_open_pocket(env.console, env.context, env.language, "berry-pouch");
+        const PocketRead key_items = read_open_pocket(env.console, env.context, env.language);
+        std::optional<size_t> pouch_row;
+        for (size_t i = 0; i < key_items.rows.size(); i++){
+            if (key_items.rows[i].item == "berry-pouch"){
+                pouch_row = i;
+                break;
+            }
+        }
+        if (!pouch_row){
+            //  Language-free / low-res fallback: mg-02 appends Berry Pouch at the bottom
+            //  of the Key Items pocket (directly above CANCEL). Note that read_open_pocket
+            //  trims trailing unread rows from `key_items.rows`, so when scrolling occurred
+            //  (downs >= 4) the last item before CANCEL is at exact index `downs + 1`.
+            if (key_items.saw_cancel && key_items.downs >= 4){
+                pouch_row = key_items.downs + 1;
+            }else if (!key_items.rows.empty()){
+                pouch_row = key_items.rows.size() - 1;
+            }
+            if (pouch_row){
+                env.console.log(std::format(
+                    "MailGlitch: berry-pouch OCR unread; using last Key Items row ({}).", *pouch_row + 1
+                ), COLOR_ORANGE);
+            }
+        }
         if (!pouch_row){
             mash_until_overworld(env.console, env.context, DIALOG_TIMEOUT);
             return Pokemon::outcome_failed("no_berry_pouch", item);
@@ -250,21 +370,21 @@ Outcome run_give_bag_item(StoryEnv& env, const StoryStep& step){
         pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
         pbf_press_button(env.context, BUTTON_A, 160ms, 2000ms);
         //  Reset Berry Pouch cursor to top row.
-        for (int c = 0; c < 10; c++){
+        for (int c = 0; c < 12; c++){
             pbf_press_dpad(env.context, DPAD_UP, 80ms, 100ms);
         }
         env.context.wait_for_all_requests();
-        //  Find the target berry (or take row 0 if only 1 berry exists and OCR didn't match).
-        const std::optional<size_t> berry_row = find_item_row_in_open_pocket(env.console, env.context, env.language, item);
-        const size_t row = berry_row.value_or(0);
+        //  Identify target berry by its language-free 2-digit index ("No.07" / "No.10").
+        const std::optional<size_t> berry_row = find_berry_row_in_pouch(env.console, env.context, item);
         if (!berry_row){
-            env.console.log(std::format("MailGlitch: couldn't match {} in Berry Pouch; using row 1.", item), COLOR_ORANGE);
+            mash_until_overworld(env.console, env.context, DIALOG_TIMEOUT);
+            return Pokemon::outcome_failed("missing_bag_item", item);
         }
-        tap_dpad_times(env.context, DPAD_DOWN, row);
-        //  Berry Pouch context menu (pokefirered src/berry_pouch.c):
-        //    0 = USE, 1 = TOSS, 2 = GIVE, 3 = EXIT.
+        tap_dpad_times(env.context, DPAD_DOWN, *berry_row);
+        //  Berry Pouch field context menu (pokefirered/src/berry_pouch.c:187-192):
+        //    0 = USE, 1 = GIVE, 2 = TOSS, 3 = EXIT.
         pbf_press_button(env.context, BUTTON_A, 160ms, 800ms);
-        tap_dpad_times(env.context, DPAD_DOWN, 2);
+        tap_dpad_times(env.context, DPAD_DOWN, 1);
         pbf_press_button(env.context, BUTTON_A, 160ms, 1500ms);
     }else{
         env.console.log(std::format("MailGlitch: giving {} from Items pocket to party slot {}.", item, *slot + 1));
@@ -368,21 +488,32 @@ std::vector<Pokemon::StoryActionSpec> mail_glitch_action_specs(){
             required_arg("target_level", StoryArgType::INTEGER, "level to reach (2-100)"),
             required_arg("learn_move", StoryArgType::WORD, "move slug to ensure is learned (e.g. \"recycle\", \"knock-off\")"),
             optional_arg("learn_slot", StoryArgType::INTEGER, int64_t(1), "1-based move slot to overwrite on move learn prompts"),
-            optional_arg("pace", StoryArgType::DIRECTION, Direction::EAST, "pacing direction on the encounter patch"),
+            optional_arg("pace", StoryArgType::DIRECTION, Direction::EAST, "unused legacy pacing hint (spinning in place)"),
+            absent_arg("nurse", StoryArgType::GRID_POSE, "Pokemon Center nurse pose for mid-grind healing trips"),
             optional_arg("heal_pad_steps_east", StoryArgType::INTEGER, int64_t(0), "tiles east from patch anchor to Pokemon Tower 5F PurifiedZone (0 = no pad)"),
-            optional_arg("heal_every", StoryArgType::INTEGER, int64_t(10), "battles between PurifiedZone heals"),
+            optional_arg("heal_every", StoryArgType::INTEGER, int64_t(10), "battles between mid-grind heals"),
+            optional_arg("batch_battles", StoryArgType::INTEGER, int64_t(0), "max battles per looped checkpoint batch before returning to heal and save (0 = grind to target)"),
             optional_arg("encounters", StoryArgType::INTEGER, int64_t(300), "maximum wild battles before failing"),
+        }},
+        {.kind = StoryStepKind::GAME, .name = std::string(CLEAR_PURIFIED_ZONE_ACTION), .args = {
+            optional_arg("facing", StoryArgType::DIRECTION, Direction::WEST, "facing direction after clearing Pokemon Tower 5F PurifiedZone heal dialog"),
         }},
         {.kind = StoryStepKind::GAME, .name = std::string(PREPARE_BERRY_HP_ACTION), .args = {
             required_arg("species", StoryArgType::WORD, "low-level Berry holder species slug to faint and Revive"),
             required_arg("sweeper", StoryArgType::WORD, "sweeper species slug to flee after faint"),
             optional_arg("pace", StoryArgType::DIRECTION, Direction::WEST, "pacing direction in grass"),
         }},
+        {.kind = StoryStepKind::GAME, .name = "prepare_berry_pp", .args = {
+            required_arg("species", StoryArgType::WORD, "lead species holding the berry in the later double battle"),
+            required_arg("move", StoryArgType::WORD, "move to deplete before giving the Leppa Berry"),
+            required_arg("backup_move", StoryArgType::WORD, "move to finish the wild battle after depleting PP"),
+        }},
         {.kind = StoryStepKind::GAME, .name = std::string(MAIL_GLITCH_DOUBLE_BATTLE_ACTION), .args = {
             required_arg("knock_off_species", StoryArgType::WORD, "Knock Off user species (\"farfetchd\")"),
             required_arg("recycle_species", StoryArgType::WORD, "Recycle user species (\"mr-mime\")"),
             required_arg("sweeper", StoryArgType::WORD, "sweeper species (\"blastoise\")"),
-            optional_arg("step_direction", StoryArgType::DIRECTION, Direction::NORTH, "direction to step into Twins Eli & Anne sightline"),
+            required_arg("depleted_move", StoryArgType::WORD, "Leppa Berry holder's move depleted before the battle"),
+            optional_arg("step_direction", StoryArgType::DIRECTION, Direction::NORTH, "step into the double battle trainers' sightline"),
         }},
         {.kind = StoryStepKind::GAME, .name = std::string(VERIFY_MAIL_GLITCH_ACTION), .args = {
             required_arg("species", StoryArgType::WORD, "species whose Mail Glitch held-item icon to verify (\"mr-mime\")"),
@@ -415,16 +546,11 @@ bool swap_party_slots(StoryEnv& env, size_t from_slot, size_t to_slot){
         return false;
     }
     pbf_wait(env.context, 300ms);
-    env.context.wait_for_all_requests();
-    const VideoSnapshot screen = env.console.video().snapshot();
-    //  Party member menu: SUMMARY (0), field moves (1..k), SWITCH (1+k), ITEM (2+k), CANCEL (3+k).
-    size_t switch_row = 1;
-    if (screen){
-        if (const std::optional<PartyMemberMenu> menu = read_party_member_menu(env.console.logger(), env.language, screen)){
-            switch_row = 1 + menu->field_moves.size();
-        }
-    }
-    tap_dpad_times(env.context, DPAD_DOWN, switch_row);
+    //  Language-free SWITCH selection (pokefirered/src/party_menu.c:2963-2988, 3069-3072):
+    //  For >= 2 non-Egg mons, numActions >= 4 so the menu wraps, and the bottom 3 rows
+    //  are always [SWITCH, ITEM/MAIL, CANCEL] regardless of field moves or language.
+    //  Starting on SUMMARY (row 0), DPAD_UP x 3 always lands on SWITCH.
+    tap_dpad_times(env.context, DPAD_UP, 3);
     pbf_press_button(env.context, BUTTON_A, 160ms, 600ms);
 
     if (to_slot > from_slot){
@@ -461,8 +587,14 @@ std::optional<Outcome> run_mail_glitch_game_step(StoryEnv& env, RunState& state,
     if (step.action == SWITCH_GRIND_ACTION){
         return run_switch_grind_step(env, state, step);
     }
+    if (step.action == CLEAR_PURIFIED_ZONE_ACTION){
+        return run_clear_purified_zone_step(env, state, step);
+    }
     if (step.action == PREPARE_BERRY_HP_ACTION){
         return run_prepare_berry_hp_step(env, state, step);
+    }
+    if (step.action == "prepare_berry_pp"){
+        return run_prepare_berry_pp_step(env, step);
     }
     if (step.action == MAIL_GLITCH_DOUBLE_BATTLE_ACTION){
         return run_mail_glitch_double_battle_step(env, state, step);

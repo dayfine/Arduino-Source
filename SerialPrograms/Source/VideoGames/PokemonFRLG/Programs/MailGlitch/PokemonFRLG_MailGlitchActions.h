@@ -34,6 +34,7 @@ inline constexpr std::string_view INGAME_TRADE_ACTION = "ingame_trade";
 inline constexpr std::string_view PARTY_SWAP_ACTION = "party_swap";
 inline constexpr std::string_view GIVE_BAG_ITEM_ACTION = "give_bag_item";
 inline constexpr std::string_view SWITCH_GRIND_ACTION = "switch_grind";
+inline constexpr std::string_view CLEAR_PURIFIED_ZONE_ACTION = "clear_purified_zone";
 inline constexpr std::string_view PREPARE_BERRY_HP_ACTION = "prepare_berry_hp";
 inline constexpr std::string_view MAIL_GLITCH_DOUBLE_BATTLE_ACTION = "mail_glitch_double_battle";
 inline constexpr std::string_view VERIFY_MAIL_GLITCH_ACTION = "verify_mail_glitch";

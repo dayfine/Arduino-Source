@@ -1,0 +1,77 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "mg-04b",
+    "title": "Pokemon Tower 5F grind batch (looped): 10 battles, return to PurifiedZone, heal and save",
+    "start": {"map": "PokemonTower_5F", "tiles": [[10, 9]], "facing": "west"},
+    "events": [
+      {
+        "id": "to_tower_5f_grind_tile",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_5F", "tiles": [[8, 9]], "facing": "west"}
+        },
+        "why": "step 2 tiles west from PurifiedZone (10, 9) onto wild floor (8, 9) against tombstone wall (7, 9)"
+      },
+      {
+        "id": "grind_chding_knock_off",
+        "kind": "game_action",
+        "action": "switch_grind",
+        "args": {
+          "species": "farfetchd",
+          "sweeper": "blastoise",
+          "target_level": 21,
+          "learn_move": "knock-off",
+          "learn_slot": 1,
+          "batch_battles": 10,
+          "encounters": 10
+        },
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[8, 9]], "facing": "west"},
+        "why": "switch-grind CH'DING up to 10 battles toward Lv 21 Knock Off (skips immediately once done)"
+      },
+      {
+        "id": "grind_mimien_recycle",
+        "kind": "game_action",
+        "action": "switch_grind",
+        "args": {
+          "species": "mr-mime",
+          "sweeper": "blastoise",
+          "target_level": 33,
+          "learn_move": "recycle",
+          "learn_slot": 1,
+          "batch_battles": 10,
+          "encounters": 10
+        },
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[8, 9]], "facing": "west"},
+        "why": "switch-grind MIMIEN up to 10 battles toward Lv 33 Recycle on clean-EV Gastly/Haunter/Cubone (skips if CH'DING used this batch or already done)"
+      },
+      {
+        "id": "return_to_purified_zone",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_5F", "tiles": [[10, 9]], "facing": "east"}
+        },
+        "why": "walk 2 tiles east back onto Pokemon Tower 5F PurifiedZone (10, 9) to trigger full HP/PP/status heal"
+      },
+      {
+        "id": "settle_purified_zone",
+        "kind": "game_action",
+        "action": "clear_purified_zone",
+        "args": {
+          "facing": "west"
+        },
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[10, 9]], "facing": "west"},
+        "why": "clear PurifiedZone heal dialog and face west on (10, 9) so checkpoint saves idempotently"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

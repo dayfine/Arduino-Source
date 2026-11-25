@@ -94,8 +94,6 @@ constexpr std::pair<std::string_view, std::string_view> ENGLISH_ITEM_NAMES[] = {
     {"water-stone", "Water Stone"},
     {"leaf-stone", "Leaf Stone"},
     {"berry-pouch", "Berry Pouch"},
-    {"oran-berry", "Oran Berry"},
-    {"sitrus-berry", "Sitrus Berry"},
     {"cancel", "Cancel"},
 };
 

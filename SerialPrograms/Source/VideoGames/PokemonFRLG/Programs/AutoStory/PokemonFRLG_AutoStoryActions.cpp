@@ -441,11 +441,12 @@ IntroNameStep intro_name_step(IntroNameScreen screen, size_t keyboards_seen, siz
 
 
 std::optional<bool> yes_no_cursor(const ImageViewRGB32& screen){
-    //  The box's white right of NO (x 196-212, y 92-102 on the 240x160
-    //  screen). Without it the arrow alone matches the dark edge of a rock
-    //  on Route 3 at (36, 8), right where YES's arrow shows.
+    //  The box's right white margin (x 211-216, y 74-104 on the 240x160
+    //  screen), clear of English "NO", German "NEIN" (ends ~x=200), and
+    //  Japanese "いいえ" (ends ~x=203). Without it the arrow alone matches
+    //  the dark edge of a rock on Route 3 at (36, 8), right where YES's arrow shows.
     const ImageViewRGB32 game = extract_box_reference(screen, GameSettings::instance().GAME_BOX);
-    if (!is_white(extract_box_reference(game, ImageFloatBox(196.0 / 240, 92.0 / 160, 16.0 / 240, 10.0 / 160)))){
+    if (!is_white(extract_box_reference(game, ImageFloatBox(211.0 / 240, 74.0 / 160, 5.0 / 240, 30.0 / 160)))){
         return std::nullopt;
     }
     if (SelectionArrowDetector(COLOR_RED, nullptr, SelectionArrowPositionConfirmationMenu::YES).detect(screen)){

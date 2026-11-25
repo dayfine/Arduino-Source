@@ -20,6 +20,7 @@
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryFailureClasses.h"
 #include "VideoGames/PokemonFRLG/Programs/AutoStory/PokemonFRLG_AutoStoryLaunch.h"
 #include "PokemonFRLG_MailGlitchActivation.h"
+#include "PokemonFRLG_MailGlitchBattle.h"
 #include "PokemonFRLG_MailGlitchTable.h"
 
 namespace PokemonAutomation{
@@ -46,6 +47,8 @@ std::unique_ptr<StatsTracker> MailGlitchActivation_Descriptor::make_stats() cons
 
 
 namespace{
+
+constexpr size_t MAIL_GLITCH_MAX_GRIND_BATCHES = 60;
 
 const StringSelectDatabase& mail_glitch_database(){
     static const std::vector<std::string> labels = []{
@@ -87,6 +90,76 @@ Pokemon::StoryGameHooks mail_glitch_hooks(SingleSwitchProgramEnvironment& env, S
         env.console.overlay().add_log(line);
     };
     return game;
+}
+
+void append_segment_report(Pokemon::SegmentReport& total, const Pokemon::SegmentReport& part){
+    total.checkpoints_run += part.checkpoints_run;
+    total.reloads += part.reloads;
+    total.runs.insert(total.runs.end(), part.runs.begin(), part.runs.end());
+    if (!part.completed){
+        total.completed = false;
+        total.failed_checkpoint = part.failed_checkpoint;
+        total.failed_event = part.failed_event;
+        total.failure = part.failure;
+    }
+}
+
+bool run_grind_loop_checkpoint(
+    const Pokemon::SegmentPolicy& policy,
+    Pokemon::Segment& segment,
+    Pokemon::SegmentHooks& hooks,
+    Pokemon::RunState& state,
+    Pokemon::StoryGameHooks& game,
+    Pokemon::SegmentReport& total
+){
+    for (size_t batch = 1; batch <= MAIL_GLITCH_MAX_GRIND_BATCHES; batch++){
+        state.flags.erase(std::string(GRIND_BATCH_USED_FLAG));
+        const Pokemon::SegmentReport part = run_segment(
+            Pokemon::SegmentRange{std::string(MAIL_GLITCH_GRIND_CHECKPOINT), std::string(MAIL_GLITCH_GRIND_CHECKPOINT)},
+            policy, segment, hooks, state
+        );
+        append_segment_report(total, part);
+        if (!part.completed){
+            return false;
+        }
+        if (mail_glitch_grind_done(state.flags)){
+            game.log(std::format("MailGlitch: Tower 5F grind complete after {} batch(es).", batch));
+            return true;
+        }
+        game.log(std::format("MailGlitch: grind batch {} healed & saved on Tower 5F PurifiedZone; continuing.", batch));
+    }
+    total.completed = false;
+    total.failed_checkpoint = std::string(MAIL_GLITCH_GRIND_CHECKPOINT);
+    total.failure = Pokemon::outcome_failed("grind_batch_limit", "exceeded max Tower 5F grind batches");
+    return false;
+}
+
+Pokemon::SegmentReport run_mail_glitch_rows(
+    const std::vector<StoryCheckpoint>& rows,
+    const Pokemon::SegmentPolicy& policy,
+    Pokemon::Segment& segment,
+    Pokemon::SegmentHooks& hooks,
+    Pokemon::RunState& state,
+    Pokemon::StoryGameHooks& game
+){
+    Pokemon::SegmentReport total;
+    total.completed = true;
+    for (const StoryCheckpoint& row : rows){
+        if (row.id == MAIL_GLITCH_GRIND_CHECKPOINT){
+            if (!run_grind_loop_checkpoint(policy, segment, hooks, state, game, total)){
+                return total;
+            }
+            continue;
+        }
+        const Pokemon::SegmentReport part = run_segment(
+            Pokemon::SegmentRange{row.id, row.id}, policy, segment, hooks, state
+        );
+        append_segment_report(total, part);
+        if (!part.completed){
+            return total;
+        }
+    }
+    return total;
 }
 
 } // namespace
@@ -158,7 +231,7 @@ void MailGlitchActivation::program(SingleSwitchProgramEnvironment& env, ProContr
 
     Pokemon::SegmentReport report;
     try{
-        report = run_segment(Pokemon::SegmentRange{rows.front().id, rows.back().id}, policy, segment, hooks, state);
+        report = run_mail_glitch_rows(rows, policy, segment, hooks, state, game);
     }catch (OperationFailedException&){
         Pokemon::log_story_failure(game);
         throw;

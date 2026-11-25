@@ -1,0 +1,46 @@
+{
+  "format": "pokesim-authored-checkpoint/1",
+  "game": "frlg",
+  "checkpoint": {
+    "id": "mg-04a",
+    "title": "Climb Pokemon Tower to 5F PurifiedZone healing pad and save",
+    "start": {"map": "LavenderTown_PokemonCenter_1F", "tiles": [[7, 4]], "facing": "north"},
+    "events": [
+      {
+        "id": "lead_blastoise_for_tower",
+        "kind": "game_action",
+        "action": "party_swap",
+        "args": {
+          "species": "blastoise",
+          "target_slot": 1
+        },
+        "why": "keep Blastoise in Slot 1 so any wild encounter while climbing Pokemon Tower flees cleanly"
+      },
+      {
+        "id": "to_tower_5f_purified_zone",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "PokemonTower_5F", "tiles": [[10, 9]], "facing": "east"}
+        },
+        "why": "enter Pokemon Tower and climb to 5F PurifiedZone west edge (10, 9)"
+      },
+      {
+        "id": "settle_purified_zone",
+        "kind": "game_action",
+        "action": "clear_purified_zone",
+        "args": {
+          "facing": "west"
+        },
+        "declared_after": {"map": "PokemonTower_5F", "tiles": [[10, 9]], "facing": "west"},
+        "why": "let PurifiedZone healing chime and white dialog finish, then face west on (10, 9) and save"
+      }
+    ]
+  },
+  "execution": {
+    "menu": "full"
+  },
+  "metadata": {
+    "phase": "testing"
+  }
+}

@@ -59,6 +59,15 @@
         "why": "Fly to Vermilion City"
       },
       {
+        "id": "to_route6_pond_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "Route6", "tiles": [[10, 38]], "facing": "north"}
+        },
+        "why": "cross Vermilion City -> Route 6 map seam first so the short run north to (10, 33) has no border-load drift into the (9, 34) fence"
+      },
+      {
         "id": "to_route6_sitrus_berry",
         "kind": "route",
         "action": "run",
@@ -79,13 +88,33 @@
         "why": "clear hidden item message back to overworld"
       },
       {
+        "id": "fly_vermilion_house2",
+        "kind": "game_action",
+        "action": "fly",
+        "args": {
+          "town": "VermilionCity",
+          "species": "pidgey"
+        },
+        "declared_after": {"map": "VermilionCity", "tiles": [[15, 7]], "facing": "south"},
+        "why": "Fly back to Vermilion City to skip Route 6 grass and the 25-tile south run into wandering woman_1"
+      },
+      {
+        "id": "to_vermilion_mart_wall",
+        "kind": "route",
+        "action": "run",
+        "args": {
+          "target": {"map": "VermilionCity", "tiles": [[27, 14]], "facing": "south"}
+        },
+        "why": "skirt east of woman_1 (wanders x=18..26 on y=11) and wall-anchor against Vermilion Mart north wall (27, 15)"
+      },
+      {
         "id": "to_vermilion_elyssa",
         "kind": "route",
         "action": "run",
         "args": {
           "target": {"map": "VermilionCity_House2", "tiles": [[4, 5]], "facing": "north"}
         },
-        "why": "return to Vermilion City, enter House 2 (19, 17), and stand facing Elyssa (4, 4)"
+        "why": "enter Vermilion City House 2 (19, 17) and stand facing Elyssa (4, 4)"
       },
       {
         "id": "trade_chding",
